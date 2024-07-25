@@ -63,7 +63,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
-from snapred.meta.redantic import write_model_pretty
+from snapred.meta.redantic import parse_file_as, write_model_pretty
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -902,9 +902,7 @@ class LocalDataService:
         path: Path = self._groupingMapPath(stateId)
         if not path.exists():
             raise FileNotFoundError(f'required grouping-schema map for state "{stateId}" at "{path}" does not exist')
-        with open(path, "r") as f:
-            groupingMap = GroupingMap.model_validate_json(f.read())
-        return groupingMap
+        return parse_file_as(GroupingMap, path)
 
     def readGroupingMap(self, runNumber: str):
         # if the state exists then lookup its grouping map
@@ -919,9 +917,7 @@ class LocalDataService:
         path: Path = self._defaultGroupingMapPath()
         if not path.exists():
             raise FileNotFoundError(f'required default grouping-schema map "{path}" does not exist')
-        with open(path, "r") as f:
-            groupingMap = GroupingMap.model_validate_json(f.read())
-        return groupingMap
+        return parse_file_as(GroupingMap, path)
 
     def _writeGroupingMap(self, stateId: str, groupingMap: GroupingMap):
         # Write a GroupingMap to a file in JSON format, but only if it has been modified.

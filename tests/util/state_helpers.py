@@ -4,8 +4,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
+from pydantic import BaseModel
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Resource
+from snapred.meta.redantic import write_model_pretty
 
 # IMPLEMENTATION NOTES:
 # * Because so many other required directories are nested under
@@ -100,6 +102,12 @@ class state_root_redirect:
         assert Path(self.tmpdir.name) in Path(target).parents
         Path(target).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
+        assert Path(target).exists()
+
+    def saveObjectAt(self, object: BaseModel, target: str):
+        assert Path(self.tmpdir.name) in Path(target).parents
+        Path(target).parent.mkdir(parents=True, exist_ok=True)
+        write_model_pretty(object, target)
         assert Path(target).exists()
 
 

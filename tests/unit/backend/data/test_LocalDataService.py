@@ -34,13 +34,11 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.dao import StateConfig
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.ingredients import ReductionIngredients
-from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
@@ -67,8 +65,9 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
-from snapred.meta.redantic import parse_file_as, parse_raw_as, write_model_pretty
+from snapred.meta.redantic import parse_file_as, write_model_pretty
 from util.Config_helpers import Config_override
+from util.dao import DAOFactory
 from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 from util.instrument_helpers import addInstrumentLogs, getInstrumentLogDescriptors
 from util.state_helpers import reduction_root_redirect, state_root_redirect
@@ -90,9 +89,6 @@ def _capture_logging(monkeypatch):
 
 
 fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
-reductionIngredients = ReductionIngredients.model_validate_json(
-    Resource.read("inputs/calibration/ReductionIngredients.json")
-)
 
 ### GENERALIZED METHODS FOR TESTING NORMALIZATION / CALIBRATION METHODS ###
 # Note: the REDUCTION workflow does not use the Indexer system except indirectly.
@@ -171,32 +167,31 @@ def do_test_write_record_with_version(workflow: Literal["Calibration", "Normaliz
 
 
 def do_test_read_state_with_version(workflow: Literal["Calibration", "Normalization", "Reduction"]):
-    inputPath = Resource.getPath(f"inputs/{workflow.lower()}/{workflow}Parameters.json")
+    paramFactory = getattr(DAOFactory, f"{workflow.lower()}Parameters")
     localDataService = LocalDataService()
     versions = list(range(randint(10, 20)))
     shuffle(versions)
     for version in versions:
         for useLiteMode in [True, False]:
             with state_root_redirect(localDataService) as tmpRoot:
+                expectedState = paramFactory(version=version)
                 indexer = localDataService.indexer("xyz", useLiteMode, workflow)
-                tmpRoot.addFileAs(inputPath, indexer.parametersPath(version))
+                tmpRoot.saveObjectAt(expectedState, indexer.parametersPath(version))
                 assert indexer.parametersPath(version).exists()
                 actualState = getattr(localDataService, f"read{workflow}State")("xyz", useLiteMode, version)
-            expectedState = parse_file_as(globals()[workflow], inputPath)
             assert actualState == expectedState
 
 
 def do_test_read_state_no_version(workflow: Literal["Calibration", "Normalization", "Reduction"]):
     currentVersion = randint(20, 120)
-    inputPath = Resource.getPath(f"inputs/{workflow.lower()}/{workflow}Parameters.json")
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
         with state_root_redirect(localDataService) as tmpRoot:
+            expectedState = getattr(DAOFactory, f"{workflow.lower()}Parameters")()
             indexer = localDataService.indexer("xyz", useLiteMode, workflow)
-            tmpRoot.addFileAs(inputPath, indexer.parametersPath(currentVersion))
-            indexer.index = {currentVersion: mock.Mock()}  # make index point at the added version
+            tmpRoot.saveObjectAt(expectedState, indexer.parametersPath(currentVersion))
+            indexer.index = {currentVersion: mock.Mock()}  # NOTE manually update indexer
             actualState = getattr(localDataService, f"read{workflow}State")("xyz", useLiteMode)  # NOTE no version
-        expectedState = parse_file_as(globals()[workflow], inputPath)
         assert actualState == expectedState
 
 
@@ -256,62 +251,62 @@ def getMockInstrumentConfig():
 
 def test_readStateConfig_default():
     # readstateConfig will load the default parameters file
-    groupingMapPath = Resource.getPath("inputs/pixel_grouping/groupingMap.json")
-    parametersPath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
+    groupingMap = DAOFactory.groupingMap_SNAP()
+    parameters = DAOFactory.calibrationParameters("57514", True, VERSION_DEFAULT)
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
         indexer = localDataService.calibrationIndexer("57514", True)
-        tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
-        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(VERSION_DEFAULT))
+        tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
+        tmpRoot.saveObjectAt(parameters, indexer.parametersPath(VERSION_DEFAULT))
         indexer.index = {VERSION_DEFAULT: mock.Mock()}  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
-    assert actual.stateId == "ab8704b0bc2a2342"
+    assert actual.stateId == DAOFactory.magical_state_id
 
 
 def test_readStateConfig_previous():
     # readStateConfig will load the previous version's parameters file
-    groupingMapPath = Resource.getPath("inputs/pixel_grouping/groupingMap.json")
-    parametersPath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
+    version = randint(2, 10)
+    groupingMap = DAOFactory.groupingMap_SNAP()
+    parameters = DAOFactory.calibrationParameters("57514", True, version)
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
         indexer = localDataService.calibrationIndexer("57514", True)
-        tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
-        version = randint(2, 10)
-        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(version))
+        tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
+        tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
         indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
-    assert actual.stateId == "ab8704b0bc2a2342"
+    assert actual.stateId == DAOFactory.magical_state_id
 
 
 def test_readStateConfig_attaches_grouping_map():
     # test that `readStateConfig` reads the `GroupingMap` from its separate JSON file.
-    groupingMapPath = Resource.getPath("inputs/pixel_grouping/groupingMap.json")
-    parametersPath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
+    version = randint(2, 10)
+    groupingMap = DAOFactory.groupingMap_SNAP()
+    parameters = DAOFactory.calibrationParameters("57514", True, version)
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
         indexer = localDataService.calibrationIndexer("57514", True)
-        tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
-        version = randint(2, 10)
-        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(version))
+        tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
+        tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
         indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
-    expectedMap = parse_file_as(GroupingMap, groupingMapPath)
+    expectedMap = DAOFactory.groupingMap_SNAP()
     assert actual.groupingMap == expectedMap
 
 
 def test_readStateConfig_invalid_grouping_map():
     # Test that the attached grouping-schema map's 'stateId' is checked.
     # test that `readStateConfig` reads the `GroupingMap` from its separate JSON file.
-    groupingMapPath = Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
-    parametersPath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
+    version = randint(2, 10)
+    groupingMap = DAOFactory.groupingMap_SNAP(DAOFactory.nonsense_state_id)
+    parameters = DAOFactory.calibrationParameters("57514", True, version)
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
         indexer = localDataService.calibrationIndexer("57514", True)
-        tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
-        version = randint(2, 10)
-        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(version))
+        tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
+        tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
         indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
         # 'GroupingMap.defaultStateId' is _not_ a valid grouping-map 'stateId' for an existing `StateConfig`.
         with pytest.raises(  # noqa: PT012
@@ -323,18 +318,20 @@ def test_readStateConfig_invalid_grouping_map():
 
 def test_readStateConfig_calls_prepareStateRoot():
     # test that `readStateConfig` reads the `GroupingMap` from its separate JSON file.
-    groupingMapPath = Resource.getPath("inputs/pixel_grouping/groupingMap.json")
-    parametersPath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
-    expected = parse_file_as(Calibration, parametersPath)
+    version = randint(2, 10)
+    groupingMap = DAOFactory.groupingMap_SNAP()
+    expected = DAOFactory.calibrationParameters("57514", True, version)
     localDataService = LocalDataService()
     with state_root_redirect(localDataService, stateId=expected.instrumentState.id.hex) as tmpRoot:
         indexer = localDataService.calibrationIndexer("57514", True)
-        version = randint(2, 10)
-        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(version))
+        tmpRoot.saveObjectAt(expected, indexer.parametersPath(version))
         indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
         assert not localDataService._groupingMapPath(tmpRoot.stateId).exists()
         localDataService._prepareStateRoot = mock.Mock(
-            side_effect=lambda x: tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(x))
+            side_effect=lambda x: tmpRoot.saveObjectAt(
+                groupingMap,
+                localDataService._groupingMapPath(tmpRoot.stateId),
+            )
         )
         actual = localDataService.readStateConfig("57514", True)
         assert localDataService._groupingMapPath(tmpRoot.stateId).exists()
@@ -365,11 +362,8 @@ def test_prepareStateRoot_creates_state_root_directory():
     localDataService = LocalDataService()
     stateId = "ab8704b0bc2a2342"
     with state_root_redirect(localDataService, stateId=stateId):
-        defaultGroupingMap = parse_file_as(
-            GroupingMap, Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
-        )
+        defaultGroupingMap = DAOFactory.groupingMap_SNAP()
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
-
         assert not localDataService._constructCalibrationStateRoot().exists()
         localDataService._prepareStateRoot(stateId)
         assert localDataService._constructCalibrationStateRoot().exists()
@@ -381,9 +375,7 @@ def test_prepareStateRoot_existing_state_root():
     stateId = "ab8704b0bc2a2342"
     with state_root_redirect(localDataService, stateId=stateId):
         localDataService._constructCalibrationStateRoot().mkdir()
-        defaultGroupingMap = parse_file_as(
-            GroupingMap, Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
-        )
+        defaultGroupingMap = DAOFactory.groupingMap_SNAP()
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
         assert localDataService._constructCalibrationStateRoot().exists()
         localDataService._prepareStateRoot(stateId)
@@ -395,9 +387,7 @@ def test_prepareStateRoot_writes_grouping_map():
     localDataService = LocalDataService()
     stateId = "ab8704b0bc2a2342"
     with state_root_redirect(localDataService, stateId=stateId):
-        defaultGroupingMap = parse_file_as(
-            GroupingMap, Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
-        )
+        defaultGroupingMap = DAOFactory.groupingMap_SNAP()
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
 
         assert not localDataService._groupingMapPath(stateId).exists()
@@ -411,9 +401,7 @@ def test_prepareStateRoot_sets_grouping_map_stateid():
     localDataService = LocalDataService()
     stateId = "ab8704b0bc2a2342"
     with state_root_redirect(localDataService, stateId=stateId):
-        defaultGroupingMap = parse_file_as(
-            GroupingMap, Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
-        )
+        defaultGroupingMap = DAOFactory.groupingMap_SNAP()
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
 
         localDataService._prepareStateRoot(stateId)
@@ -443,18 +431,16 @@ def test_prepareStateRoot_does_not_overwrite_grouping_map():
     #   it should not be overwritten.
     localDataService = LocalDataService()
     stateId = "ab8704b0bc2a2342"
-    with state_root_redirect(localDataService, stateId=stateId):
+    with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         localDataService._constructCalibrationStateRoot().mkdir()
-        defaultGroupingMapFilePath = Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
 
         # Write a 'groupingMap.json' file to the <state root>, but with a different stateId;
         #   note that the _value_ of the stateId field is _not_ validated at this stage, except for its format.
-        groupingMap = parse_file_as(GroupingMap, defaultGroupingMapFilePath)
         otherStateId = "bbbbaaaabbbbeeee"
-        groupingMap.coerceStateId(otherStateId)
-        write_model_pretty(groupingMap, localDataService._groupingMapPath(stateId))
+        groupingMap = DAOFactory.groupingMap_SNAP(otherStateId)
+        tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(stateId))
 
-        defaultGroupingMap = parse_file_as(GroupingMap, defaultGroupingMapFilePath)
+        defaultGroupingMap = DAOFactory.groupingMap_SNAP(stateId)
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
         localDataService._prepareStateRoot(stateId)
 
@@ -465,40 +451,37 @@ def test_prepareStateRoot_does_not_overwrite_grouping_map():
 def test_writeGroupingMap_relative_paths():
     # Test that '_writeGroupingMap' preserves relative-path information.
     localDataService = LocalDataService()
-    with Config_override(
-        "instrument.calibration.powder.grouping.home",
-        Resource.getPath("inputs/pixel_grouping/"),
-    ):
-        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
-            stateId = "ab8704b0bc2a2342"
-            stateRootPath = Path(tmpDir) / stateId
-            os.makedirs(stateRootPath)
+    stateId = "ab8704b0bc2a2342"
+    with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
+        with Config_override(
+            "instrument.calibration.powder.grouping.home",
+            tmpRoot.path().parent,
+        ):
+            defaultGroupingMap = DAOFactory.groupingMap_SNAP(stateId)
+            defaultGroupingMapFilePath = localDataService._defaultGroupingMapPath()
+            write_model_pretty(defaultGroupingMap, defaultGroupingMapFilePath)
 
-            defaultGroupingMapFilePath = Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
-            groupingMapFilePath = stateRootPath / "groupingMap.json"
-            localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
+        # Write a 'groupingMap.json' file to the <state root>, with the _correct_ stateId;
+        #   note that the _value_ of the stateId field is _not_ validated at this stage, except for its format.
+        groupingMap = DAOFactory.groupingMap_SNAP(stateId)
+        groupingMapFilePath = localDataService._groupingMapPath(stateId)
+        tmpRoot.saveObjectAt(groupingMap, groupingMapFilePath)
 
-            # Write a 'groupingMap.json' file to the <state root>, with the _correct_ stateId;
-            #   note that the _value_ of the stateId field is _not_ validated at this stage, except for its format.
-            groupingMap = parse_file_as(GroupingMap, defaultGroupingMapFilePath)
-            groupingMap.coerceStateId(stateId)
-            localDataService._writeGroupingMap(stateId, groupingMap)
+        # read it back
+        groupingMap = parse_file_as(GroupingMap, groupingMapFilePath)
+        defaultGroupingMap = parse_file_as(GroupingMap, defaultGroupingMapFilePath)
 
-            # read it back
-            groupingMap = parse_file_as(GroupingMap, groupingMapFilePath)
-            defaultGroupingMap = parse_file_as(GroupingMap, defaultGroupingMapFilePath)
-
-        # test that relative paths are preserved
-        relativePathCount = 0
-        for n, focusGroup in enumerate(groupingMap.liteFocusGroups):
-            assert focusGroup == defaultGroupingMap.liteFocusGroups[n]
-            if not Path(focusGroup.definition).is_absolute():
-                relativePathCount += 1
-        for n, focusGroup in enumerate(groupingMap.nativeFocusGroups):
-            assert focusGroup == defaultGroupingMap.nativeFocusGroups[n]
-            if not Path(focusGroup.definition).is_absolute():
-                relativePathCount += 1
-        assert relativePathCount > 0
+    # test that relative paths are preserved
+    relativePathCount = 0
+    for n, focusGroup in enumerate(groupingMap.liteFocusGroups):
+        assert focusGroup == defaultGroupingMap.liteFocusGroups[n]
+        if not Path(focusGroup.definition).is_absolute():
+            relativePathCount += 1
+    for n, focusGroup in enumerate(groupingMap.nativeFocusGroups):
+        assert focusGroup == defaultGroupingMap.nativeFocusGroups[n]
+        if not Path(focusGroup.definition).is_absolute():
+            relativePathCount += 1
+    assert relativePathCount > 0
 
 
 @mock.patch(ThisService + "GetIPTS")
@@ -660,17 +643,12 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
     # This test verifies that `GroupingMap` is excluded from any future `StateConfig` JSON serialization.
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
-        # move the calculation parameters and grouping map into correct folder
+        # move the calculation parameters into correct folder
         indexer = localDataService.calibrationIndexer("57514", True)
-        tmpRoot.addFileAs(
-            Resource.getPath("inputs/calibration/CalibrationParameters.json"),
-            indexer.parametersPath(VERSION_DEFAULT),
-        )
+        indexer.writeParameters(DAOFactory.calibrationParameters("57514", True, VERSION_DEFAULT))
         indexer.index = {VERSION_DEFAULT: mock.Mock()}
-        tmpRoot.addFileAs(
-            Resource.getPath("inputs/pixel_grouping/groupingMap.json"),
-            localDataService._groupingMapPath(tmpRoot.stateId),
-        )
+        # move the grouping map into correct folder
+        write_model_pretty(DAOFactory.groupingMap_SNAP(), localDataService._groupingMapPath(tmpRoot.stateId))
 
         # construct the state config object
         actual = localDataService.readStateConfig("57514", True)
@@ -1019,11 +997,6 @@ def test_readNormalizationIndexMissing():
     do_test_index_missing("Normalization")
 
 
-def readReductionIngredientsFromFile():
-    with Resource.open("/inputs/calibration/ReductionIngredients.json", "r") as f:
-        return ReductionIngredients.model_validate_json(f.read())
-
-
 ### TESTS OF CALIBRATION METHODS ###
 
 
@@ -1051,7 +1024,7 @@ def test_createCalibrationIndexEntry():
 
 
 def test_createCalibrationRecord():
-    record = CalibrationRecord.model_validate_json(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+    record = DAOFactory.calibrationRecord("57514", True, 1)
     request = CreateCalibrationRecordRequest(**record.model_dump())
     localDataService = LocalDataService()
     with state_root_redirect(localDataService):
@@ -1086,10 +1059,9 @@ def test_writeCalibrationRecord_with_version():
 def test_readWriteCalibrationRecord():
     # ensure that reading and writing a calibration record will correctly interact with the file system
     # NOTE a similar test is done of the indexer, but this pre-existed and doesn't hurt to retain
-    record = CalibrationRecord.model_validate_json(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
-        record.useLiteMode = useLiteMode
+        record = DAOFactory.calibrationRecord("57514", useLiteMode, version=1)
         with state_root_redirect(localDataService):
             localDataService.writeCalibrationRecord(record)
             actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode)
@@ -1101,9 +1073,7 @@ def test_writeCalibrationWorkspaces(cleanup_workspace_at_exit):
     version = randint(2, 120)
     localDataService = LocalDataService()
     stateId = "ab8704b0bc2a2342"
-    testCalibrationRecord = CalibrationRecord.model_validate_json(
-        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-    )
+    testCalibrationRecord = DAOFactory.calibrationRecord("57514", True, 1)
     with state_root_redirect(localDataService, stateId=stateId):
         basePath = localDataService.calibrationIndexer(testCalibrationRecord.runNumber, True).versionPath(1)
 
@@ -1196,7 +1166,7 @@ def test_createNormalizationIndexEntry():
 
 
 def test_createNormalizationRecord():
-    record = NormalizationRecord.model_validate_json(Resource.read("inputs/normalization/NormalizationRecord.json"))
+    record = DAOFactory.normalizationRecord()
     request = CreateNormalizationRecordRequest(**record.model_dump())
     localDataService = LocalDataService()
     with state_root_redirect(localDataService):
@@ -1230,7 +1200,7 @@ def test_writeNormalizationRecord_with_version():
 
 def test_readWriteNormalizationRecord():
     # ensure that reading and writing a normalization record will correctly interact with the file system
-    record = parse_raw_as(NormalizationRecord, Resource.read("inputs/normalization/NormalizationRecord.json"))
+    record = DAOFactory.normalizationRecord()
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
         record.useLiteMode = useLiteMode
@@ -1248,10 +1218,7 @@ def test_writeNormalizationWorkspaces(cleanup_workspace_at_exit):
     version = randint(2, 120)
     stateId = "ab8704b0bc2a2342"
     localDataService = LocalDataService()
-    testNormalizationRecord = NormalizationRecord.model_validate_json(
-        Resource.read("inputs/normalization/NormalizationRecord.json")
-    )
-    testNormalizationRecord.version = version
+    testNormalizationRecord = DAOFactory.normalizationRecord(version=version)
     with state_root_redirect(localDataService, stateId=stateId):
         # Workspace names need to match the names that are used in the test record.
         runNumber = testNormalizationRecord.runNumber  # noqa: F841
@@ -1292,12 +1259,8 @@ def _writeSyntheticReductionRecord(filePath: Path, timestamp: float):
     # Create a `ReductionRecord` JSON file to be used by the unit tests.
 
     # TODO: Implement methods to create the synthetic `CalibrationRecord` and `NormalizationRecord`.
-    testCalibration = CalibrationRecord.model_validate_json(
-        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-    )
-    testNormalization = NormalizationRecord.model_validate_json(
-        Resource.read("inputs/normalization/NormalizationRecord.json")
-    )
+    testCalibration = DAOFactory.calibrationRecord("57514", True, 1)
+    testNormalization = DAOFactory.normalizationRecord("57514", True, 2)
     testRecord = ReductionRecord(
         runNumber=testCalibration.runNumber,
         useLiteMode=testCalibration.useLiteMode,
@@ -1762,10 +1725,8 @@ def test_readWriteCalibrationState():
     runNumber = "123"
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
+        calibration = DAOFactory.calibrationParameters(runNumber, useLiteMode)
         with state_root_redirect(localDataService):
-            calibration = parse_file_as(Calibration, Resource.getPath("/inputs/calibration/CalibrationParameters.json"))
-            calibration.seedRun = runNumber
-            calibration.useLiteMode = useLiteMode
             localDataService.writeCalibrationState(calibration)
             ans = localDataService.readCalibrationState(runNumber, useLiteMode)
         assert ans == calibration
@@ -1803,13 +1764,8 @@ def test_readWriteNormalizationState():
     runNumber = "123"
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
+        normalization = DAOFactory.normalizationParameters(runNumber, useLiteMode)
         with state_root_redirect(localDataService):
-            normalization = parse_file_as(
-                Normalization,
-                Resource.getPath("/inputs/normalization/NormalizationParameters.json"),
-            )
-            normalization.seedRun = runNumber
-            normalization.useLiteMode = useLiteMode
             localDataService.writeNormalizationState(normalization)
             ans = localDataService.readNormalizationState(runNumber, useLiteMode)
         assert ans == normalization
@@ -1833,8 +1789,7 @@ def test_readDetectorState():
     ]
     localDataService._readPVFile.return_value = pvFileMock
 
-    testCalibration = Calibration.model_validate_json(Resource.read("inputs/calibration/CalibrationParameters.json"))
-    testDetectorState = testCalibration.instrumentState.detectorState
+    testDetectorState = DAOFactory.unreal_detector_state.copy()
 
     actualDetectorState = localDataService.readDetectorState("123")
     assert actualDetectorState == testDetectorState
@@ -1981,11 +1936,12 @@ def test_initializeState():
     localDataService._readPVFile.return_value = pvFileMock
     localDataService._writeDefaultDiffCalTable = mock.Mock()
 
-    testCalibrationData = Calibration.model_validate_json(
-        Resource.read("inputs/calibration/CalibrationParameters.json")
+    testCalibrationData = DAOFactory.calibrationParameters(
+        runNumber=runNumber,
+        useLiteMode=useLiteMode,
+        version=VERSION_DEFAULT,
+        instrumentState=DAOFactory.pv_instrument_state.copy(),
     )
-    testCalibrationData.useLiteMode = useLiteMode
-    testCalibrationData.version = VERSION_DEFAULT
 
     localDataService.readInstrumentConfig = mock.Mock()
     localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
@@ -1993,18 +1949,16 @@ def test_initializeState():
     localDataService._prepareStateRoot = mock.Mock()
 
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
-        stateId = "ab8704b0bc2a2342"
+        stateId = testCalibrationData.instrumentState.id.hex  # "ab8704b0bc2a2342"
         stateRootPath = Path(tmpDir) / stateId
         localDataService._constructCalibrationStateRoot = mock.Mock(return_value=stateRootPath)
 
         actual = localDataService.initializeState(runNumber, useLiteMode, "test")
         actual.creationDate = testCalibrationData.creationDate
-
     assert actual == testCalibrationData
     assert localDataService._writeDefaultDiffCalTable.called_once_with(runNumber, useLiteMode)
 
 
-# @mock.patch.object(LocalDataService, "_prepareStateRoot")
 def test_initializeState_calls_prepareStateRoot():
     # Test that 'initializeState' initializes the <state root> directory.
 
@@ -2037,10 +1991,7 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService._readPVFile.return_value = pvFileMock
     localDataService._writeDefaultDiffCalTable = mock.Mock()
 
-    testCalibrationData = Calibration.model_validate_json(
-        Resource.read("inputs/calibration/CalibrationParameters.json")
-    )
-
+    testCalibrationData = DAOFactory.calibrationParameters()
     localDataService.readInstrumentConfig = mock.Mock()
     localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
     localDataService.writeCalibrationState = mock.Mock()
@@ -2065,11 +2016,9 @@ def test_badPaths():
     # get a handle on the service
     service = LocalDataService()
     service.verifyPaths = True  # override test setting
-    prevInstrumentHome = Config._config["instrument"]["home"]
-    Config._config["instrument"]["home"] = "/this/path/does/not/exist"
-    with pytest.raises(FileNotFoundError):
-        service.readInstrumentConfig()
-    Config._config["instrument"]["home"] = prevInstrumentHome
+    with Config_override("instrument.home", "this/path/does/not/exist"):
+        with pytest.raises(FileNotFoundError):
+            service.readInstrumentConfig()
     service.verifyPaths = False  # put the setting back
 
 
@@ -2078,11 +2027,9 @@ def test_noInstrumentConfig():
     # get a handle on the service
     service = LocalDataService()
     service.verifyPaths = True  # override test setting
-    prevInstrumentConfig = Config._config["instrument"]["config"]
-    Config._config["instrument"]["config"] = "/this/path/does/not/exist"
-    with pytest.raises(FileNotFoundError):
-        service.readInstrumentConfig()
-    Config._config["instrument"]["config"] = prevInstrumentConfig
+    with Config_override("instrument.config", "this/path/does/not/exist"):
+        with pytest.raises(FileNotFoundError):
+            service.readInstrumentConfig()
     service.verifyPaths = False  # put the setting back
 
 
@@ -2150,26 +2097,20 @@ def test_readNoSampleFilePaths():
 
 def test_readDefaultGroupingMap():
     service = LocalDataService()
-    savePath = Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"]
-    Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = Resource.getPath(
-        "inputs/pixel_grouping/"
-    )
-    groupingMap = None
-    groupingMap = service._readDefaultGroupingMap()
+    stateId = "ab8704b0bc2a2342"
+    with state_root_redirect(service, stateId=stateId) as tmpRoot:
+        groupingMap = DAOFactory.groupingMap_SNAP(GroupingMap.defaultStateId)
+        with Config_override("instrument.calibration.powder.grouping.home", tmpRoot.path().parent):
+            tmpRoot.saveObjectAt(groupingMap, service._defaultGroupingMapPath())
+            groupingMap = service._readDefaultGroupingMap()
     assert groupingMap.isDefault
-    Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = savePath
 
 
 def test_readGroupingMap_default_not_found():
     service = LocalDataService()
-    savePath = Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"]
-    Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = Resource.getPath("inputs/")
-    with pytest.raises(  # noqa: PT012
-        FileNotFoundError,
-        match="default grouping-schema map",
-    ):
-        service._readDefaultGroupingMap()
-    Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = savePath
+    with Config_override("instrument.calibration.powder.grouping.home", Resource.getPath("inputs/")):
+        with pytest.raises(FileNotFoundError, match="default grouping-schema map"):
+            service._readDefaultGroupingMap()
 
 
 def test_readGroupingMap_initialized_state():
@@ -2177,11 +2118,7 @@ def test_readGroupingMap_initialized_state():
     service = LocalDataService()
     stateId = "ab8704b0bc2a2342"
     with state_root_redirect(service, stateId=stateId) as tmpRoot:
-        service._constructCalibrationStateRoot(stateId).mkdir()
-        tmpRoot.addFileAs(
-            Resource.getPath("inputs/pixel_grouping/groupingMap.json"),
-            service._groupingMapPath(stateId),
-        )
+        tmpRoot.saveObjectAt(DAOFactory.groupingMap_SNAP(stateId), service._groupingMapPath(stateId))
         groupingMap = service._readGroupingMap(stateId)
     assert groupingMap.stateId == stateId
 
@@ -2208,14 +2145,11 @@ def test_writeCalibrantSample_success():  # noqa: ARG002
     sample.name = "apple"
     sample.unique_id = "banana"
     sample.model_dump_json.return_value = "I like to eat, eat, eat"
-    temp = Config._config["samples"]["home"]
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
-        Config._config["samples"]["home"] = tempdir
-        # mock_os_join.return_value = f"{tempdir}{sample.name}_{sample.unique_id}"
-        filePath = f"{tempdir}/{sample.name}_{sample.unique_id}.json"
-        localDataService.writeCalibrantSample(sample)
+        with Config_override("samples.home", tempdir):
+            filePath = f"{tempdir}/{sample.name}_{sample.unique_id}.json"
+            localDataService.writeCalibrantSample(sample)
         assert os.path.exists(filePath)
-    Config._config["samples"]["home"] = temp
 
 
 @mock.patch("os.path.exists", return_value=True)

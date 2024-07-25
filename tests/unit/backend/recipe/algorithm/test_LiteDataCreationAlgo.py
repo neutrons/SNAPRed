@@ -3,9 +3,9 @@ import unittest.mock as mock
 
 import pytest
 from mantid.simpleapi import DeleteWorkspace, mtd
-from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.meta.Config import Resource
+from util.dao import DAOFactory
 
 HAVE_MOUNT_SNAP = os.path.exists("/SNS/SNAP/")
 
@@ -47,7 +47,7 @@ def test_fakeInstrument():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-    instrumentState = InstrumentState.model_validate_json(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
+    instrumentState = DAOFactory.synthetic_instrument_state.copy()
 
     fullResolution: int = 16
     liteResolution: int = 4
@@ -266,7 +266,7 @@ def test_no_run_twice():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-    instrumentState = InstrumentState.model_validate_json(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
+    instrumentState = DAOFactory.synthetic_instrument_state.copy()
 
     LoadEmptyInstrument(
         OutputWorkspace=instrumentWorkspace,
@@ -433,7 +433,7 @@ def testLiteDataCreationAlgoWithCompressionCheck():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-    instrumentState = InstrumentState.model_validate_json(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
+    instrumentState = DAOFactory.synthetic_instrument_state.copy()
 
     fullResolution: int = 16
     liteResolution: int = 4

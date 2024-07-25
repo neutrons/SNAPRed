@@ -33,7 +33,6 @@ from mantid.simpleapi import (
     LoadEmptyInstrument,
     mtd,
 )
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_START
@@ -48,7 +47,8 @@ from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
-from snapred.meta.redantic import parse_file_as
+from snapred.meta.redantic import parse_file_as, write_model_pretty
+from util.dao import DAOFactory
 from util.diffraction_calibration_synthetic_data import SyntheticData
 
 dataSynthesizer = SyntheticData()
@@ -73,11 +73,7 @@ class ImitationDataService(LocalDataService):
             shutil.rmtree(self._stateRoot)
             assert not self._stateRoot.exists()
         # add the default grouping map for state init to find
-        print(self._defaultGroupingMapPath())
-        shutil.copy2(
-            Resource.getPath("inputs/testInstrument/groupingMap.json"),
-            self._defaultGroupingMapPath(),
-        )
+        write_model_pretty(DAOFactory.groupingMap_POP(), self._defaultGroupingMapPath())
 
     def __del__(self):
         shutil.rmtree(self._outputPath)
@@ -96,7 +92,7 @@ class ImitationDataService(LocalDataService):
         return Path(self._stateRoot)
 
     def readCalibrationState(self, runId: str, useLiteMode: bool):
-        return parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        return DAOFactory.calibrationParameters(runId, useLiteMode)
 
     def readDetectorState(self, runId: str):
         return DetectorState(
@@ -292,7 +288,7 @@ class TestVersioning(TestCase):
         # ensure the new state has grouping map, calibration state, and default diffcal table
         diffCalTableName = wng.diffCalTable().runNumber("default").version(VERSION_DEFAULT).build()
         assert self.localDataService._groupingMapPath(self.stateId).exists()
-        versionDir = wnvf.fileVersion(VERSION_DEFAULT)
+        versionDir = wnvf.pathVersion(VERSION_DEFAULT)
         assert Path(self.stateRoot, "lite", "diffraction", versionDir, "CalibrationParameters.json").exists()
         assert Path(self.stateRoot, "native", "diffraction", versionDir, "CalibrationParameters.json").exists()
         assert Path(self.stateRoot, "lite", "diffraction", versionDir, diffCalTableName + ".h5").exists()
@@ -375,22 +371,22 @@ class TestVersioning(TestCase):
         # send a request through interface controller to save the diffcal results
         # needs the list of output workspaces, and may take an optional version
         # create an export request using an existing record as a basis
-        record = parse_file_as(CalibrationRecord, Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"))
-        record.calculationParameters.creationDate = 0
         workspaces = {
             wngt.DIFFCAL_OUTPUT: [res["outputWorkspace"]],
             wngt.DIFFCAL_DIAG: [res["diagnosticWorkspace"]],
             wngt.DIFFCAL_TABLE: [res["calibrationTable"]],
             wngt.DIFFCAL_MASK: [res["maskWorkspace"]],
         }
+        params = DAOFactory.calibrationParameters()
+        params.creationDate = 0  # the creation data cannot be parsed by JSON, so set to something else
         createRecordRequest = {
             "runNumber": self.runNumber,
             "useLiteMode": self.useLiteMode,
             "version": version,
-            "calculationParameters": record.calculationParameters.model_dump(),
-            "crystalInfo": record.crystalInfo.model_dump(),
-            "pixelGroups": [x.model_dump() for x in record.pixelGroups],
-            "focusGroupCalibrationMetrics": record.focusGroupCalibrationMetrics.model_dump(),
+            "calculationParameters": params.model_dump(),
+            "crystalInfo": DAOFactory.default_xtal_info.model_dump(),
+            "pixelGroups": [x.model_dump() for x in DAOFactory.pixelGroups()],
+            "focusGroupCalibrationMetrics": DAOFactory.focusGroupCalibrationMetric_Column.model_dump(),
             "workspaces": workspaces,
         }
         createIndexEntryRequest = {

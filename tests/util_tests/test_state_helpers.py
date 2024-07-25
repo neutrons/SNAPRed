@@ -5,12 +5,11 @@ from pathlib import Path
 from shutil import rmtree
 
 import pytest
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.meta.Config import Config, Resource
+from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
-from snapred.meta.redantic import parse_file_as
+from util.dao import DAOFactory
 from util.state_helpers import reduction_root_redirect, state_root_override, state_root_redirect
 
 
@@ -92,23 +91,22 @@ def initPVFileMock() -> mock.Mock:
 
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "_generateStateId")
-@mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
+@mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
 def test_state_root_override_enter(
     mockReadPVFile,
     mockReadInstrumentConfig,
-    mockDefaultGroupingMapPath,
+    mockReadDefaultGroupingMap,
     mockGenerateStateId,
     mockWriteDiffCalTable,  # noqa ARG001
 ):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 
-    testCalibrationData = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+    testCalibrationData = DAOFactory.calibrationParameters("57514", True, 1)
     mockReadInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
-
-    mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+    mockReadDefaultGroupingMap.return_value = DAOFactory.groupingMap_SNAP()
 
     stateId = "ab8704b0bc2a2342"
     # NOTE delete the path first or the test can fail for confusing reasons
@@ -128,22 +126,21 @@ def test_state_root_override_enter(
 
 
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
-@mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
+@mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
 def test_state_root_override_exit(
     mockReadPVFile,
     mockReadInstrumentConfig,
-    mockDefaultGroupingMapPath,
+    mockReadDefaultGroupingMap,
     mockWriteDefaultDiffCalTable,  # noqa ARG001
 ):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 
-    testCalibrationData = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+    testCalibrationData = DAOFactory.calibrationParameters("57514", True, 1)
     mockReadInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
-
-    mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+    mockReadDefaultGroupingMap.return_value = DAOFactory.groupingMap_SNAP()
 
     stateId = "ab8704b0bc2a2342"  # noqa: F841
     runNumber = "123456"
@@ -158,22 +155,21 @@ def test_state_root_override_exit(
 
 
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
-@mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
+@mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
 def test_state_root_override_exit_no_delete(
     mockReadPVFile,
     mockReadInstrumentConfig,
-    mockDefaultGroupingMapPath,
+    mockReadDefaultGroupingMap,
     mockWriteDefaultDiffCalTable,  # noqa ARG001
 ):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 
-    testCalibrationData = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+    testCalibrationData = DAOFactory.calibrationParameters("57514", True, 1)
     mockReadInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
-
-    mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+    mockReadDefaultGroupingMap.return_value = DAOFactory.groupingMap_SNAP()
 
     stateId = "ab8704b0bc2a2342"  # noqa: F841
     runNumber = "123456"
@@ -199,16 +195,14 @@ def test_state_root_redirect_no_stateid():
         assert localDataService._generateStateId()[0] == tmpRoot.path().parts[-1]
         # make sure a file can be added inside the directory -- can be any file
         # verify it can be found by data services and equals the value written
+        expected = DAOFactory.calibrationParameters("xyz", True, 1)
         indexer = localDataService.calibrationIndexer("xyz", True)
-        tmpRoot.addFileAs(Resource.getPath("inputs/calibration/CalibrationParameters.json"), indexer.parametersPath(1))
+        tmpRoot.saveObjectAt(expected, indexer.parametersPath(1))
         ans = localDataService.readCalibrationState("xyz", True, 1)
-        assert ans == parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        assert ans == expected
         # make sure files can only be added inside the directory
         with pytest.raises(AssertionError):
-            tmpRoot.addFileAs(
-                Resource.getPath("inputs/calibration/CalibrationRecord_v0002.json"),
-                "here",
-            )
+            tmpRoot.saveObjectAt(expected, "here")
     # make sure the directory is deleted at exit
     assert not tmpRoot.path().exists()
     # make sure the construct state root method is restored on exit

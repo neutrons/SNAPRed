@@ -397,9 +397,6 @@ class TestGroceryService(unittest.TestCase):
         assert self.runNumber in res
         assert wnvf.formatVersion(self.version) in res
 
-    # NOTE if your branch merge puts test_diffcal_table_filename here, do not include it
-    # that test is above, under the filename tests
-
     ## TESTS OF ACCESS METHODS
 
     def test_workspaceDoesExist_false(self):
@@ -735,7 +732,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_fetch_failed(self):
         # this is some file that it can't load
-        mockFilename = Resource.getPath("inputs/crystalInfo/fake_file.cif")
+        mockFilename = Resource.getPath("inputs/crystalInfo/blank_file.cif")
         with pytest.raises(RuntimeError) as e:
             self.instance.fetchWorkspace(mockFilename, self.fetchedWSname, loader="")
         assert self.fetchedWSname in str(e.value)
@@ -971,7 +968,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_failed_fetch_grouping(self):
         # this is some file that it can't load
-        fakeFilepath = Resource.getPath("inputs/crystalInfo/fake_file.cif")
+        fakeFilepath = Resource.getPath("inputs/crystalInfo/blank_file.cif")
         self.instance._createGroupingFilename = mock.Mock(return_value=fakeFilepath)
         with pytest.raises(RuntimeError):
             self.instance.fetchGroupingDefinition(self.groupingItem)

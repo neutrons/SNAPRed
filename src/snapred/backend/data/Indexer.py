@@ -413,3 +413,4 @@ class Indexer:
         else:
             parametersPath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(parameters, parametersPath)
+        self.dirVersions.add(parameters.version)

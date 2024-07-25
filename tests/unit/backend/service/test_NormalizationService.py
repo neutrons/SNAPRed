@@ -23,9 +23,6 @@ with mock.patch.dict(
     },
 ):
     from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-    from snapred.backend.dao.ingredients import (
-        ReductionIngredients,
-    )
     from snapred.backend.dao.request import (
         FocusSpectraRequest,
         NormalizationRequest,
@@ -34,14 +31,9 @@ with mock.patch.dict(
     )
     from snapred.backend.dao.state import FocusGroup
     from snapred.backend.service.NormalizationService import NormalizationService
-    from snapred.meta.Config import Resource
     from util.SculleryBoy import SculleryBoy
 
     thisService = "snapred.backend.service.NormalizationService."
-
-    def readReductionIngredientsFromFile():
-        with Resource.open("/inputs/normalization/ReductionIngredients.json", "r") as f:
-            return ReductionIngredients.model_validate_json(f.read())
 
     def test_saveNormalization():
         normalizationService = NormalizationService()
