@@ -132,10 +132,10 @@ snapred.ui.view.PromptUserforCalibrationInputView module
    :show-inheritance:
    :exclude-members: dataEntered
 
-snapred.ui.view.reduction.ReductionView module
-----------------------------------------------
+snapred.ui.view.reduction.ReductionRequestView module
+-----------------------------------------------------
 
-.. automodule:: snapred.ui.view.reduction.ReductionView
+.. automodule:: snapred.ui.view.reduction.ReductionRequestView
    :members:
    :undoc-members:
    :exclude-members: signalRemoveRunNumber

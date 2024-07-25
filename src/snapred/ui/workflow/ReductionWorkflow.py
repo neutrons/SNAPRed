@@ -6,8 +6,8 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.ui.view.reduction.ReductionRequestView import ReductionRequestView
 from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
-from snapred.ui.view.reduction.ReductionView import ReductionView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
@@ -18,13 +18,16 @@ class ReductionWorkflow(WorkflowImplementer):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self._reductionView = ReductionView(parent=parent)
+        self._reductionView = ReductionRequestView(
+            parent=parent, populatePixelMaskDropdown=self._populatePixelMaskDropdown
+        )
         self.continueAnywayFlags = None
         self._compatibleMasks: Dict[str, WorkspaceName] = {}
 
         self._reductionView.enterRunNumberButton.clicked.connect(lambda: self._populatePixelMaskDropdown())
+        self._reductionView.pixelMaskDropdown.dropDown.view().pressed.connect(self._onPixelMaskSelection)
 
-        # TODO; Save Screen, to give users a chance to save their work before the reduction
+        # TODO: Save Screen, to give users a chance to save their work before the reduction
         # completes and erases the data
 
         self.workflow = (
@@ -66,7 +69,6 @@ class ReductionWorkflow(WorkflowImplementer):
         self._reductionView.liteModeToggle.setEnabled(False)
         self._reductionView.pixelMaskDropdown.setEnabled(False)
         self._reductionView.retainUnfocusedDataCheckbox.setEnabled(False)
-
         # Assemble the list of compatible masks for the current reduction state --
         #   note that all run numbers should be from the same state.
         compatibleMasks = []
@@ -85,15 +87,6 @@ class ReductionWorkflow(WorkflowImplementer):
         #  for reconstruction of the complete type after passing through Qt.
         self._compatibleMasks = {name.toString(): name for name in compatibleMasks}
 
-        #
-        # TODO:
-        #
-        # 1) Use "multi select" instead of the `SampleDropdown`.
-        #
-        # 2) On any selection from the dropdown:
-        #    * fill in the `ReductionRequest.pixelMasks` for the reduction itself:
-        #      IMPORTANT: use the recovered `WorkspaceName` from `self._compatibleMasks[key]` for this purpose.
-        #
         self._reductionView.pixelMaskDropdown.setItems(list(self._compatibleMasks.keys()))
 
         self._reductionView.liteModeToggle.setEnabled(True)
@@ -103,6 +96,11 @@ class ReductionWorkflow(WorkflowImplementer):
 
     def _reconstructPixelMaskNames(self, pixelMasks: List[str]) -> List[WorkspaceName]:
         return [self._compatibleMasks[name] for name in pixelMasks]
+
+    def _onPixelMaskSelection(self):
+        selectedKeys = self._reductionView.getPixelMasks()
+        selectedWorkspaceNames = self._reconstructPixelMaskNames(selectedKeys)
+        ReductionRequest.pixelMasks = selectedWorkspaceNames
 
     def _triggerReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView  # noqa: F841
@@ -115,12 +113,12 @@ class ReductionWorkflow(WorkflowImplementer):
                 runNumber=runNumber,
                 useLiteMode=self._reductionView.liteModeToggle.field.getState(),
                 continueFlags=self.continueAnywayFlags,
+                pixelMasks=pixelMasks,
                 keepUnfocused=self._reductionView.retainUnfocusedDataCheckbox.isChecked(),
                 convertUnitsTo=self._reductionView.convertUnitsDropdown.currentText(),
-                pixelMasks=pixelMasks,
             )
             # TODO: Handle Continue Anyway
-            self.request(path="reduction/", payload=payload.json())
+            self.request(path="reduction/", payload=payload)
 
             # Note: the run number is deliberately not deleted from the run numbers list.
 
