@@ -772,23 +772,6 @@ class LocalDataService:
             ) from e
         return detectorState
 
-    def detectorStateFromWorkspace(self, wsName: WorkspaceName) -> DetectorState:
-        detectorState = None
-        try:
-            logs = mtd[wsName].getRun()
-            detectorState = DetectorState(
-                arc=[logs.getProperty("det_arc1").value[0], logs.getProperty("det_arc2").value[0]],
-                wav=logs.getProperty("BL3:Chop:Skf1:WavelengthUserReq").value[0],
-                freq=logs.getProperty("BL3:Det:TH:BL:Frequency").value[0],
-                guideStat=logs.getProperty("BL3:Mot:OpticsPos:Pos").value[0],
-                lin=[logs.getProperty("det_lin1").value[0], logs.getProperty("det_lin2").value[0]],
-            )
-        except Exception as e:  # noqa: E722
-            raise RuntimeError(
-                f"Workspace '{wsName}' does not have all required logs to assemble a DetectorState"
-            ) from e
-        return detectorState
-
     @validate_call
     def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool):
         from snapred.backend.data.GroceryService import GroceryService
