@@ -1997,7 +1997,6 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService = LocalDataService()
     localDataService._readPVFile = mock.Mock()
 
-    # Create a mock pvFile object matching the calibrationParameters.json values
     pvFile = {
         "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [1.1],
         "entry/DASlogs/det_arc1/value": [1.0],
