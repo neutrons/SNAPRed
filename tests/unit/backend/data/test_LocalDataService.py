@@ -649,7 +649,7 @@ def test__generateStateId():
     localDataService._readPVFile.return_value = pvFile
 
     # Mock the readDetectorState method to return a valid DetectorState object
-    detectorState = DetectorState(arc=(0.1, 0.1), wav=0.1, freq=1, guideStat=1, lin=(0.1, 0.1))
+    detectorState = DetectorState(arc=(0.1, 0.1), wav=0.1, freq=0.1, guideStat=1, lin=(0.1, 0.1))
     localDataService.readDetectorState = mock.Mock(return_value=detectorState)
 
     # Call the method being tested
@@ -1963,12 +1963,12 @@ def test_initializeState():
     # Create a mock pvFile object matching the calibrationParameters.json values
     pvFile = {
         "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value": [1.1],
-        "entry/DASlogs/det_arc1/value": [1.0],
-        "entry/DASlogs/det_arc2/value": [2.0],
-        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
+        "entry/DASlogs/det_arc1/value": [1],
+        "entry/DASlogs/det_arc2/value": [2],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
         "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
-        "entry/DASlogs/det_lin1/value": [1.0],
-        "entry/DASlogs/det_lin2/value": [2.0],
+        "entry/DASlogs/det_lin1/value": [1],
+        "entry/DASlogs/det_lin2/value": [2],
     }
     localDataService._readPVFile.return_value = pvFile
 
@@ -1986,6 +1986,7 @@ def test_initializeState():
 
     actual = localDataService.initializeState(runNumber, useLiteMode, "test")
     actual.creationDate = testCalibrationData.creationDate
+    testCalibrationData.seedRun = runNumber
 
     assert actual == testCalibrationData
     assert localDataService._writeDefaultDiffCalTable.called_once_with(runNumber, useLiteMode)
