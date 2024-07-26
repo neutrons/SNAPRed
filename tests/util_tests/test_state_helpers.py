@@ -26,7 +26,7 @@ def _cleanup_directories():
 
 def initPVFileMock():
     return {
-        "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value": [1.1],
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [1.1],
         "entry/DASlogs/det_arc1/value": [1.0],
         "entry/DASlogs/det_arc2/value": [2.0],
         "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],

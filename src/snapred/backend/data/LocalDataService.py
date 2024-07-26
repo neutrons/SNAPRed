@@ -1007,8 +1007,8 @@ class LocalDataService:
         detectorState = None
         pvFile = self._readPVFile(runId)
         wav_value = None
-        wav_key_1 = "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value"
-        wav_key_2 = "entry/DASlogs/BL3:Chop:Skf1:WavelengthReq/value"
+        wav_key_1 = "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value"
+        wav_key_2 = "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value"
 
         if wav_key_1 in pvFile:
             wav_value = pvFile.get(wav_key_1)[0]

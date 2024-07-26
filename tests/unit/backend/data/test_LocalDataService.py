@@ -1909,7 +1909,7 @@ def test_readDetectorState():
 
     # Create a mock pvFile object matching the calibrationParameters.json values
     pvFile = {
-        "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value": [1.1],
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [1.1],
         "entry/DASlogs/det_arc1/value": [1.0],
         "entry/DASlogs/det_arc2/value": [2.0],
         "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
@@ -1938,7 +1938,7 @@ def test_readDetectorState_bad_logs():
 
     # Create a mock pvFile object with incorrect logs
     pvFile = {
-        "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value": "glitch",
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": "glitch",
         "entry/DASlogs/det_arc1/value": [2],
         "entry/DASlogs/det_arc2/value": [1.1],
         "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
@@ -1962,7 +1962,7 @@ def test_initializeState():
 
     # Create a mock pvFile object matching the calibrationParameters.json values
     pvFile = {
-        "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value": [1.1],
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [1.1],
         "entry/DASlogs/det_arc1/value": [1],
         "entry/DASlogs/det_arc2/value": [2],
         "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
@@ -2003,7 +2003,7 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService._readPVFile = mock.Mock()
 
     pvFile = {
-        "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value": [1.1],
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [1.1],
         "entry/DASlogs/det_arc1/value": [1.0],
         "entry/DASlogs/det_arc2/value": [2.0],
         "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
