@@ -100,7 +100,7 @@ def test_state_root_override_enter(
     mockReadInstrumentConfig,
     mockDefaultGroupingMapPath,
     mockGenerateStateId,
-    mockWriteDiffCalTable,  # noqa ARG001
+    mockWriteDefaultDiffCalTable,  # noqa ARG001
 ):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
