@@ -20,7 +20,9 @@ class RecoverableException(Exception):
         self.errorMsg = errorMsg
         self.message = errorMsg
         self.extraContext = kwargs
+        import traceback
 
+        traceback.print_exc()
         logMessage = f"{self.message} Original exception: {str(exception)}"
 
         if self.extraContext:

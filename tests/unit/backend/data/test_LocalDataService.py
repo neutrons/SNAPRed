@@ -661,6 +661,15 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
         assert stateConfig.groupingMap is None
 
 
+def test_readDefaultGroupingMap():
+    # test of public `readDefaultGroupingMap` method
+    localDataService = LocalDataService()
+    localDataService._readDefaultGroupingMap = mock.Mock()
+    localDataService._readDefaultGroupingMap.return_value = "defaultGroupingMap"
+    actual = localDataService.readDefaultGroupingMap()
+    assert actual == "defaultGroupingMap"
+
+
 def test_readRunConfig():
     # test of public `readRunConfig` method
     localDataService = LocalDataService()
@@ -2096,7 +2105,7 @@ def test_readNoSampleFilePaths():
 # interlude -- missplaced tests of grouping map #
 
 
-def test_readDefaultGroupingMap():
+def test__readDefaultGroupingMap():
     service = LocalDataService()
     stateId = "ab8704b0bc2a2342"
     with state_root_redirect(service, stateId=stateId) as tmpRoot:

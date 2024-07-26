@@ -3,7 +3,7 @@ from typing import Dict
 
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe
 from util.SculleryBoy import SculleryBoy
@@ -53,7 +53,7 @@ class RecipeTest(unittest.TestCase):
         recipe.validateInputs(ingredients, groceries)
 
         badIngredients = {"nothing": 0}
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValueError, match="Ingredients must be a Pydantic BaseModel."):
             recipe.validateInputs(badIngredients, groceries)
         badGroceries = {"ws": mtd.unique_name(prefix="bad")}
         with pytest.raises(RuntimeError):

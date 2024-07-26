@@ -182,11 +182,9 @@ class WorkflowPresenter(QObject):
 
     @Slot(object)
     def continueAnyway(self, continueInfo: ContinueWarning.Model):
-        # The associated signal is of type ``Signal(SNAPResponseHandler.continueAnyway) as Signal(object)``
-        if self.model.continueAnywayHandler:
-            self.model.continueAnywayHandler(continueInfo)
-
-        self.worker = self.worker_pool.createWorker(target=self.model.nextModel.continueAction, args=self)
-        self.worker.success.connect(lambda success: self.advanceWorkflow() if success else None)
-
-        self.worker_pool.submitWorker(self.worker)
+         # The associated signal is of type ``Signal(SNAPResponseHandler.continueAnyway) as Signal(object)``
+        if self.view.tabModel.continueAnywayHandler:
+            self.view.tabModel.continueAnywayHandler(continueInfo)
+        else:
+            raise NotImplementedError(f"Continue anyway handler not implemented: {self.view.tabModel}")
+        self.handleContinueButtonClicked(self.view.tabModel)

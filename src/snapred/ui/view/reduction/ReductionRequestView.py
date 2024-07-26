@@ -21,7 +21,7 @@ class ReductionRequestView(BackendRequestView):
         self.pixelMaskDropdown = self._multiSelectDropDown("Select Pixel Mask(s)", [])
         self.populatePixelMaskDropdown = populatePixelMaskDropdown
 
-        # Horizontal layout for run number input and button
+        # Horizontal layout for run number input and butto  n
         self.runNumberLayout = QHBoxLayout()
         self.runNumberInput = QLineEdit()
         self.enterRunNumberButton = QPushButton("Enter Run Number")

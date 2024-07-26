@@ -50,6 +50,8 @@ class SNAPResponseHandler(QWidget):
             raise RuntimeError(result.message)
         if result.code >= ResponseCode.RECOVERABLE:
             raise RecoverableException(result.message, "state")
+        if result.code == ResponseCode.CONTINUE_WARNING:
+            raise ContinueWarning.parse_raw(result.message)
         if result.message:
             self.signalWarning.emit(result.message, self)
 
@@ -99,6 +101,12 @@ class SNAPResponseHandler(QWidget):
 
     @staticmethod
     def _handleContinueWarning(message, view):
+        # print stacktrace
+        logger.info("It happens here and here")
+        import traceback
+
+        traceback.print_stack()
+
         continueAnyway = QMessageBox.warning(
             view,
             "Warning",

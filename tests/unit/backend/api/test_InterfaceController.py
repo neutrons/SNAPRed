@@ -3,6 +3,7 @@ import unittest.mock as mock
 
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.SNAPResponse import ResponseCode
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 
 # Mock out of scope modules before importing InterfaceController
@@ -17,7 +18,7 @@ with mock.patch.dict(
 ):
     from snapred.backend.api.InterfaceController import InterfaceController  # noqa: E402
 
-    def mockedSuccessfulInterfaceController(raiseRecoverable=False):
+    def mockedSuccessfulInterfaceController(raiseRecoverable=False, raiseContinueWarning=False):
         """Mock InterfaceController"""
         interfaceController = InterfaceController()
         interfaceController.serviceFactory = mock.Mock()
@@ -30,6 +31,8 @@ with mock.patch.dict(
                     exception=AttributeError("'NoneType' object has no attribute 'instrumentState'"),
                     errorMsg="AttributeError: 'NoneType' object has no attribute 'instrumentState'",
                 )
+            elif raiseContinueWarning:
+                raise ContinueWarning("Continue with warning")
             else:
                 return {"result": "Success!"}
 
@@ -62,6 +65,19 @@ with mock.patch.dict(
 
         assert response.code == ResponseCode.RECOVERABLE
         assert "state" in response.message
+        assert response.data is None
+
+    def test_executeRequest_continueWarning():
+        """Test executeRequest with a continue warning"""
+        interfaceController = mockedSuccessfulInterfaceController(raiseContinueWarning=True)
+        reductionRequest = mock.Mock()
+        reductionRequest.path = "Test Service"
+        reductionRequest.payload = json.dumps({"runNumber": "12345", "useLiteMode": "True"})
+
+        response = interfaceController.executeRequest(reductionRequest)
+
+        assert response.code == ResponseCode.CONTINUE_WARNING
+        assert response.message is not None
         assert response.data is None
 
     def test_executeRequest_unsuccessful():

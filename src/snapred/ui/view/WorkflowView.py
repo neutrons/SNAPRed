@@ -48,6 +48,10 @@ class WorkflowView(QWidget):
             self.tabWidget.setCurrentIndex(self.currentTab)
 
     @property
+    def tabModel(self):
+        return self.tabWidget.widget(self.currentTab).model
+
+    @property
     def tabView(self):
         return self.tabWidget.widget(self.currentTab).view
 

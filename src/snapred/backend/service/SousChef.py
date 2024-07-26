@@ -18,6 +18,7 @@ from snapred.backend.dao.state import FocusGroup, InstrumentState, PixelGroup
 from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.GenericRecipe import (
     DetectorPeakPredictorRecipe,
     PurgeOverlappingPeaksRecipe,
@@ -27,6 +28,8 @@ from snapred.backend.service.CrystallographicInfoService import Crystallographic
 from snapred.backend.service.Service import Service
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
+
+logger = snapredLogger.getLogger(__name__)
 
 
 @Singleton
@@ -50,6 +53,9 @@ class SousChef(Service):
     def name():
         return "souschef"
 
+    def logger(self):
+        return logger
+
     def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
         calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber, ingredients.useLiteMode)
         calibration.calibrantSamplePath = ingredients.calibrantSamplePath
@@ -58,7 +64,19 @@ class SousChef(Service):
         return calibration
 
     def prepInstrumentState(self, ingredients: FarmFreshIngredients) -> InstrumentState:
-        return self.prepCalibration(ingredients).instrumentState
+        # check if a calibration exists else just use default state
+        instrumentState = None
+        if self.dataFactoryService.calibrationExists(ingredients.runNumber, ingredients.useLiteMode):
+            calibration = self.prepCalibration(ingredients)
+            instrumentState = calibration.instrumentState
+        else:
+            mode = "lite" if ingredients.useLiteMode else "native"
+            self.logger().info(
+                f"No calibration found for run {ingredients.runNumber} in {mode} mode.  Using default instrument state."
+            )
+            instrumentState = self.dataFactoryService.getDefaultInstrumentState(ingredients.runNumber)
+
+        return instrumentState
 
     def prepRunConfig(self, runNumber: str) -> RunConfig:
         return self.dataFactoryService.getRunConfig(runNumber)
@@ -166,6 +184,11 @@ class SousChef(Service):
         return self._peaksCache[key]
 
     def prepManyDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[List[GroupPeakList]]:
+        if not self.dataFactoryService.calibrationExists(ingredients.runNumber, ingredients.useLiteMode):
+            mode = "lite" if ingredients.useLiteMode else "native"
+            self.logger().warning(f"No calibration record found for run {ingredients.runNumber} in {mode} mode.")
+            return None
+
         detectorPeaks = []
         ingredients_ = ingredients.model_copy()
         for focusGroup in ingredients.focusGroups:
@@ -173,32 +196,62 @@ class SousChef(Service):
             detectorPeaks.append(self.prepDetectorPeaks(ingredients_, purgePeaks=False))
         return detectorPeaks
 
-    def prepReductionIngredients(
+    # FFI = Farm Fresh Ingredients
+    def _pullCalibrationRecordFFI(
         self,
         ingredients: FarmFreshIngredients,
-    ) -> ReductionIngredients:
-        # Calibration and normalization may have distinct versions,
-        #   but they must both be from the same instrument state and <lite mode>.
+    ) -> FarmFreshIngredients:
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(
             ingredients.runNumber, ingredients.useLiteMode, ingredients.versions.calibration
         )
+        if calibrationRecord is not None:
+            ingredients.calibrantSamplePath = calibrationRecord.calculationParameters.calibrantSamplePath
+            ingredients.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients.calibrantSamplePath).stem)
+        return ingredients
+
+    def _pullManyCalibrationDetectorPeaks(
+        self, ingredients: FarmFreshIngredients, runNumber: str, useLiteMode: bool
+    ) -> FarmFreshIngredients:
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runNumber, useLiteMode)
+
+        if ingredients.cifPath is None:
+            ingredients = self._pullCalibrationRecordFFI(ingredients, runNumber, useLiteMode)
+
+        detectorPeaks = None
+        if calibrationRecord is not None:
+            detectorPeaks = self.prepManyDetectorPeaks(ingredients)
+
+        return detectorPeaks
+
+    # FFI = Farm Fresh Ingredients
+    def _pullNormalizationRecordFFI(
+        self,
+        ingredients: FarmFreshIngredients,
+    ) -> FarmFreshIngredients:
         normalizationRecord = self.dataFactoryService.getNormalizationRecord(
             ingredients.runNumber, ingredients.useLiteMode, ingredients.versions.normalization
         )
+        smoothingParameter = Config["calibration.parameters.default.smoothing"]
+        if normalizationRecord is not None:
+            ingredients.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
+            smoothingParameter = normalizationRecord.smoothingParameter
+        # TODO: Should smoothing parameter be an ingredient?
+        return ingredients, smoothingParameter
 
+    def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
         ingredients_ = ingredients.model_copy()
-        ingredients_.calibrantSamplePath = calibrationRecord.calculationParameters.calibrantSamplePath
-        ingredients_.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients_.calibrantSamplePath).stem)
-        ingredients_.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
+        # some of the reduction ingredients MUST match those used in the calibration/normalization processes
+        ingredients_ = self._pullCalibrationRecordFFI(ingredients_)
+        ingredients_, smoothingParameter = self._pullNormalizationRecordFFI(ingredients_)
 
         return ReductionIngredients(
             pixelGroups=self.prepManyPixelGroups(ingredients_),
-            smoothingParameter=normalizationRecord.smoothingParameter,
-            keepUnfocused=ingredients_.keepUnfocused,
-            convertUnitsTo=ingredients_.convertUnitsTo,
+            smoothingParameter=smoothingParameter,
             calibrantSamplePath=ingredients_.calibrantSamplePath,
             peakIntensityThreshold=ingredients_.peakIntensityThreshold,
             detectorPeaksMany=self.prepManyDetectorPeaks(ingredients_),
+            keepUnfocused=ingredients_.keepUnfocused,
+            convertUnitsTo=ingredients_.convertUnitsTo,
         )
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:

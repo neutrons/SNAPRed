@@ -34,9 +34,20 @@ class TestSousChef(unittest.TestCase):
 
     def test_prepManyDetectorPeaks(self):
         self.instance.prepDetectorPeaks = mock.Mock()
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         res = self.instance.prepManyDetectorPeaks(self.ingredients)
         assert res[0] == self.instance.prepDetectorPeaks.return_value
         assert self.instance.prepDetectorPeaks.called_once_with(self.ingredients, purgePeaks=False)
+
+    def test_prepManyDetectorPeaks_no_calibration(self):
+        self.instance.prepDetectorPeaks = mock.Mock()
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
+        self.instance.logger = mock.Mock()
+        self.instance.logger.warning = mock.Mock()
+
+        res = self.instance.prepManyDetectorPeaks(self.ingredients)
+        assert res is None
+        self.instance.logger().warning.assert_called_once_with("No calibration record found for run 123 in lite mode.")
 
     def test_prepManyPixelGroups(self):
         self.instance.prepPixelGroup = mock.Mock()
@@ -95,12 +106,24 @@ class TestSousChef(unittest.TestCase):
         assert res.instrumentState.fwhmMultipliers.right == fakeRight
 
     def test_prepInstrumentState(self):
-        runNumber = "123"
+        ingredients = mock.Mock()
+
         mockCalibration = mock.Mock(instrumentState=mock.Mock())
         self.instance.prepCalibration = mock.Mock(return_value=mockCalibration)
-        res = self.instance.prepInstrumentState(runNumber)
-        assert self.instance.prepCalibration.called_once_with(runNumber)
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        res = self.instance.prepInstrumentState(ingredients)
+        assert self.instance.prepCalibration.called_once_with(ingredients)
         assert res == self.instance.prepCalibration.return_value.instrumentState
+
+    def test_prepDefaultInstrumentState(self):
+        ingredients = mock.Mock()
+        mockCalibration = mock.Mock(instrumentState=mock.Mock())
+        self.instance.prepCalibration = mock.Mock(return_value=mockCalibration)
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
+        self.instance.dataFactoryService.getDefaultInstrumentState = mock.Mock(return_value=mock.Mock())
+        res = self.instance.prepInstrumentState(ingredients)
+        assert self.instance.prepCalibration.called_once_with(ingredients)
+        assert res == self.instance.dataFactoryService.getDefaultInstrumentState.return_value
 
     def test_prepRunConfig(self):
         self.instance.dataFactoryService.lookupService.readRunConfig = mock.Mock()
@@ -122,6 +145,7 @@ class TestSousChef(unittest.TestCase):
         PixelGroup,
     ):
         self.instance = SousChef()
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         key = (self.ingredients.runNumber, self.ingredients.useLiteMode, self.ingredients.focusGroup.name)
         # ensure there is no cached value
         assert self.instance._pixelGroupCache == {}
@@ -382,3 +406,20 @@ class TestSousChef(unittest.TestCase):
             maxOffset=self.ingredients.maxOffset,
         )
         assert res == DiffractionCalibrationIngredients.return_value
+
+    def test_pullManyCalibrationDetectorPeaks(self):
+        mockDataFactory = mock.Mock()
+        mockDataFactory.getCalibrationRecord = mock.Mock()
+        mockDataFactory.getCalibrationRecord.return_value = mock.Mock()
+        self.instance.dataFactoryService = mockDataFactory
+        self.instance.prepManyDetectorPeaks = mock.Mock()
+        self.instance._pullCalibrationRecordFFI = mock.Mock()
+
+        self.ingredients.cifPath = None
+
+        res = self.instance._pullManyCalibrationDetectorPeaks(self.ingredients, "12345", True)
+        assert res == self.instance.prepManyDetectorPeaks.return_value
+        assert self.instance.prepManyDetectorPeaks.called_once_with(
+            self.instance._pullCalibrationRecordFFI.return_value
+        )
+        assert self.instance._pullCalibrationRecordFFI.called_once_with(self.ingredients, "12345", True)

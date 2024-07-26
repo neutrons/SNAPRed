@@ -51,6 +51,7 @@ class DiffCalTweakPeakView(BackendRequestView):
     signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum, Pair, float)
     signalUpdateRecalculationButton = Signal(bool)
     signalMaxChiSqUpdate = Signal(float)
+    signalContinueAnyway = Signal(bool)
 
     def __init__(self, samples=[], groups=[], parent=None):
         super().__init__(parent=parent)
@@ -62,6 +63,9 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
         self.signalPeakThresholdUpdate.connect(self._updatePeakThreshold)
         self.signalMaxChiSqUpdate.connect(self._updateMaxChiSq)
+
+        self.continueAnyway = False
+        self.signalContinueAnyway.connect(self._updateContineAnyway)
 
         # create the graph elements
         self.figure = plt.figure(constrained_layout=True)
@@ -112,6 +116,14 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.initialLayoutHeight = self.size().height()
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
+
+    def updateContinueAnyway(self, continueAnyway):
+        self.signalContinueAnyway.emit(continueAnyway)
+
+    @Slot(bool)
+    def _updateContineAnyway(self, continueAnyway):
+        self.continueAnyway = continueAnyway
+
 
     @Slot(str)
     def _updateRunNumber(self, runNumber):
@@ -285,6 +297,7 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     def verify(self):
         self._testFailStates()
-        self._testContinueAnywayStates()
+        if not self.continueAnyway:
+            self._testContinueAnywayStates()
 
         return True

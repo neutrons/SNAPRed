@@ -21,7 +21,6 @@ class ReductionWorkflow(WorkflowImplementer):
         self._reductionView = ReductionRequestView(
             parent=parent, populatePixelMaskDropdown=self._populatePixelMaskDropdown
         )
-        self.continueAnywayFlags = None
         self._compatibleMasks: Dict[str, WorkspaceName] = {}
 
         self._reductionView.enterRunNumberButton.clicked.connect(lambda: self._populatePixelMaskDropdown())
@@ -41,7 +40,7 @@ class ReductionWorkflow(WorkflowImplementer):
                 self._triggerReduction,
                 self._reductionView,
                 "Reduction",
-                continueAnywayHandler=self._continueReductionHandler,
+                continueAnywayHandler=self._continueAnywayHandler,
             )
             .addNode(self._nothing, ReductionSaveView(parent=parent), "Save")
             .build()
@@ -55,12 +54,6 @@ class ReductionWorkflow(WorkflowImplementer):
 
     def _nothing(self, workflowPresenter):  # noqa: ARG002
         return SNAPResponse(code=200)
-
-    def _continueReductionHandler(self, continueInfo):
-        if isinstance(continueInfo, ContinueWarning.Model):
-            self.continueAnywayFlags = self.continueAnywayFlags | continueInfo.flag
-        else:
-            raise ValueError(f"Invalid continueInfo type: {type(continueInfo)}, expecting ContinueWarning.Model.")
 
     @ExceptionToErrLog
     def _populatePixelMaskDropdown(self):
@@ -114,7 +107,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         for runNumber in runNumbers:
             payload = ReductionRequest(
-                runNumber=runNumber,
+                runNumber=str(runNumber),
                 useLiteMode=self._reductionView.liteModeToggle.field.getState(),
                 continueFlags=self.continueAnywayFlags,
                 pixelMasks=pixelMasks,
