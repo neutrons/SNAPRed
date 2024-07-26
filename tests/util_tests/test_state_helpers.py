@@ -24,70 +24,16 @@ def _cleanup_directories():
         shutil.rmtree(stateRootPath)
 
 
-def initPVFileMock() -> mock.Mock:
-    mock_ = mock.Mock()
-    # 8X: seven required `readDetectorState` log entries:
-    #   * generated stateId hex-digest: 'ab8704b0bc2a2342',
-    #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json'
-    mock_.get.side_effect = [
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-    ]
-    return mock_
+def initPVFileMock():
+    return {
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [1.1],
+        "entry/DASlogs/det_arc1/value": [1.0],
+        "entry/DASlogs/det_arc2/value": [2.0],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [1.0],
+        "entry/DASlogs/det_lin2/value": [2.0],
+    }
 
 
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")

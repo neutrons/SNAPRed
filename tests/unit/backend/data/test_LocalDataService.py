@@ -42,6 +42,7 @@ from snapred.backend.dao.normalization.NormalizationRecord import NormalizationR
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.dao.state.GroupingMap import GroupingMap
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
@@ -136,7 +137,7 @@ def test_readStateConfig():
     fileMock = mock.Mock()
     localDataService._readPVFile.return_value = fileMock
     localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+    localDataService._generateStateId.return_value = ("4143c2b05e38867f", None)
     localDataService.readCalibrationState = mock.Mock()
     localDataService.readCalibrationState.return_value = Calibration.model_validate_json(
         Resource.read("inputs/calibration/CalibrationParameters.json")
@@ -152,7 +153,7 @@ def test_readStateConfig():
 
     actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
-    assert actual.stateId == "ab8704b0bc2a2342"
+    assert actual.stateId == "4143c2b05e38867f"
 
 
 def test_readStateConfig_attaches_grouping_map():
@@ -163,7 +164,7 @@ def test_readStateConfig_attaches_grouping_map():
     fileMock = mock.Mock()
     localDataService._readPVFile.return_value = fileMock
     localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+    localDataService._generateStateId.return_value = ("4143c2b05e38867f", None)
     localDataService.readCalibrationState = mock.Mock()
     localDataService.readCalibrationState.return_value = Calibration.model_validate_json(
         Resource.read("inputs/calibration/CalibrationParameters.json")
@@ -224,7 +225,7 @@ def test_readStateConfig_calls_prepareStateRoot(mockPrepareStateRoot):
     fileMock = mock.Mock()
     localDataService._readPVFile.return_value = fileMock
     localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+    localDataService._generateStateId.return_value = ("4143c2b05e38867f", None)
     localDataService.readCalibrationState = mock.Mock()
     localDataService.readCalibrationState.return_value = Calibration.model_validate_json(
         Resource.read("inputs/calibration/CalibrationParameters.json")
@@ -556,7 +557,7 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
     fileMock = mock.Mock()
     localDataService._readPVFile.return_value = fileMock
     localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+    localDataService._generateStateId.return_value = ("4143c2b05e38867f", None)
     localDataService.readCalibrationState = mock.Mock()
     localDataService.readCalibrationState.return_value = Calibration.model_validate_json(
         Resource.read("inputs/calibration/CalibrationParameters.json")
@@ -625,12 +626,33 @@ def test_readPVFile(h5pyMock):  # noqa: ARG001
 
 def test__generateStateId():
     localDataService = LocalDataService()
+
+    # Mock the _readPVFile method
     localDataService._readPVFile = mock.Mock()
-    fileMock = mock.Mock()
-    localDataService._readPVFile.return_value = fileMock
-    fileMock.get.side_effect = [[0.1], [0.1], [0.1], [0.1], [1], [0.1], [0.1]]
+
+    # Create a mock pvFile object
+    pvFile = {
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [0.1],
+        "entry/DASlogs/det_arc1/value": [0.1],
+        "entry/DASlogs/det_arc2/value": [0.1],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [0.1],
+        "entry/DASlogs/det_lin2/value": [0.1],
+    }
+
+    # Configure the mock to return the mock pvFile dictionary
+    localDataService._readPVFile.return_value = pvFile
+
+    # Mock the readDetectorState method to return a valid DetectorState object
+    detectorState = DetectorState(arc=(0.1, 0.1), wav=0.1, freq=1, guideStat=1, lin=(0.1, 0.1))
+    localDataService.readDetectorState = mock.Mock(return_value=detectorState)
+
+    # Call the method being tested
     actual, _ = localDataService._generateStateId("12345")
-    assert actual == "9618b936a4419a6e"
+
+    # Check that the returned value matches the expected result
+    assert actual == "640e41a43e129a8e"
 
 
 def test__generateStateId_cache():
@@ -641,46 +663,41 @@ def test__generateStateId_cache():
     )
 
     localDataService._readPVFile = mock.Mock()
-    fileMock = mock.Mock()
-    localDataService._readPVFile.return_value = fileMock
-    fileMock.get.side_effect = [
-        [0.1],
-        [0.1],
-        [0.1],
-        [0.1],
-        [1],
-        [0.1],
-        [0.1],  # => "9618b936a4419a6e"
-        [0.2],
-        [0.2],
-        [0.2],
-        [0.2],
-        [1],
-        [0.2],
-        [0.2],
-    ]
-    stateSHA1 = "9618b936a4419a6e"
-    stateSHA2 = "fa0bb25b44874edb"
 
+    # Mock the readDetectorState method to return different DetectorState objects
+    def mock_readDetectorState(runId):
+        if runId == "12345":
+            return DetectorState(arc=(0.1, 0.1), wav=0.1, freq=1, guideStat=1, lin=(0.1, 0.1))
+        elif runId == "67890":
+            return DetectorState(arc=(0.2, 0.2), wav=0.2, freq=1, guideStat=1, lin=(0.2, 0.2))
+        return None
+
+    localDataService.readDetectorState = mock.Mock(side_effect=mock_readDetectorState)
+
+    stateSHA1 = "640e41a43e129a8e"
+    stateSHA2 = "88103df53a8c296c"
+
+    # Call the method being tested and check the cache behavior
     actual, _ = localDataService._generateStateId("12345")
     assert actual == stateSHA1
     assert localDataService._generateStateId.cache_info() == functools._CacheInfo(
         hits=0, misses=1, maxsize=128, currsize=1
     )
 
-    # check cached value
+    # Check cached value
     actual, _ = localDataService._generateStateId("12345")
     assert actual == stateSHA1
     assert localDataService._generateStateId.cache_info() == functools._CacheInfo(
         hits=1, misses=1, maxsize=128, currsize=1
     )
 
-    # check a different value
+    # Check a different value
     actual, _ = localDataService._generateStateId("67890")
     assert actual == stateSHA2
     assert localDataService._generateStateId.cache_info() == functools._CacheInfo(
         hits=1, misses=2, maxsize=128, currsize=2
     )
+
     # ... and its cached value
     actual, _ = localDataService._generateStateId("67890")
     assert actual == stateSHA2
@@ -1886,20 +1903,22 @@ def test_readDetectorState():
     localDataService = LocalDataService()
     localDataService._readPVFile = mock.Mock()
 
-    pvFileMock = mock.Mock()
-    # 1X: seven required `readDetectorState` log entries:
-    #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json'
-    pvFileMock.get.side_effect = [
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-    ]
-    localDataService._readPVFile.return_value = pvFileMock
+    # Create a mock pvFile object matching the calibrationParameters.json values
+    pvFile = {
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [1.1],
+        "entry/DASlogs/det_arc1/value": [1.0],
+        "entry/DASlogs/det_arc2/value": [2.0],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [1.0],
+        "entry/DASlogs/det_lin2/value": [2.0],
+    }
+    localDataService._readPVFile.return_value = pvFile
 
+    # Mock the _constructPVFilePath method
+    localDataService._constructPVFilePath = mock.Mock(return_value="/mock/path")
+
+    # Read the expected detector state from the calibration file
     testCalibration = Calibration.model_validate_json(Resource.read("inputs/calibration/CalibrationParameters.json"))
     testDetectorState = testCalibration.instrumentState.detectorState
 
@@ -1913,21 +1932,19 @@ def test_readDetectorState_bad_logs():
     localDataService._constructPVFilePath.return_value = "/not/a/path"
     localDataService._readPVFile = mock.Mock()
 
-    pvFileMock = mock.Mock()
-    # 1X: seven required `readDetectorState` log entries:
-    #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json'
-    pvFileMock.get.side_effect = [
-        "glitch",
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-    ]
-    localDataService._readPVFile.return_value = pvFileMock
+    # Create a mock pvFile object with incorrect logs
+    pvFile = {
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": "glitch",
+        "entry/DASlogs/det_arc1/value": [2],
+        "entry/DASlogs/det_arc2/value": [1.1],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [1.0],
+        "entry/DASlogs/det_lin2/value": [2.0],
+    }
+    localDataService._readPVFile.return_value = pvFile
 
-    with pytest.raises(ValueError, match="Could not find all required logs"):
+    with pytest.raises(ValueError, match="Input should be a valid number, unable to parse string as a number"):
         localDataService.readDetectorState("123")
 
 
@@ -1939,27 +1956,18 @@ def test_initializeState():
     localDataService = LocalDataService()
     localDataService._readPVFile = mock.Mock()
 
-    pvFileMock = mock.Mock()
-    # 2X: seven required `readDetectorState` log entries:
-    #   * generated stateId hex-digest: 'ab8704b0bc2a2342',
-    #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json'
-    pvFileMock.get.side_effect = [
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-    ]
-    localDataService._readPVFile.return_value = pvFileMock
+    # Create a mock pvFile object matching the calibrationParameters.json values
+    pvFile = {
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [1.1],
+        "entry/DASlogs/det_arc1/value": [1.0],
+        "entry/DASlogs/det_arc2/value": [2.0],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [1.0],
+        "entry/DASlogs/det_lin2/value": [2.0],
+    }
+    localDataService._readPVFile.return_value = pvFile
+
     localDataService._writeDefaultDiffCalTable = mock.Mock()
 
     testCalibrationData = Calibration.model_validate_json(
@@ -1971,6 +1979,7 @@ def test_initializeState():
     localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
     localDataService.writeCalibrationState = mock.Mock()
     localDataService._prepareStateRoot = mock.Mock()
+
     actual = localDataService.initializeState(runNumber, useLiteMode, "test")
     actual.creationDate = testCalibrationData.creationDate
 
@@ -1988,27 +1997,17 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService = LocalDataService()
     localDataService._readPVFile = mock.Mock()
 
-    pvFileMock = mock.Mock()
-    # 2X: seven required `readDetectorState` log entries:
-    #   * generated stateId hex-digest: 'ab8704b0bc2a2342',
-    #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json'
-    pvFileMock.get.side_effect = [
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-    ]
-    localDataService._readPVFile.return_value = pvFileMock
+    # Create a mock pvFile object matching the calibrationParameters.json values
+    pvFile = {
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [1.1],
+        "entry/DASlogs/det_arc1/value": [1.0],
+        "entry/DASlogs/det_arc2/value": [2.0],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [1.0],
+        "entry/DASlogs/det_lin2/value": [2.0],
+    }
+    localDataService._readPVFile.return_value = pvFile
     localDataService._writeDefaultDiffCalTable = mock.Mock()
 
     testCalibrationData = Calibration.model_validate_json(
@@ -2133,7 +2132,7 @@ def test_readGroupingMap_default_not_found():
 def test_readGroupingMap_initialized_state():
     # Test that '_readGroupingMap' for an initialized state returns the state's <grouping map>.
     service = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = "4143c2b05e38867f"
     with state_root_redirect(service, stateId=stateId) as tmpRoot:
         service._constructCalibrationStateRoot(stateId).mkdir()
         tmpRoot.addFileAs(
