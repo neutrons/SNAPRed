@@ -8,9 +8,9 @@ from pydantic import Field
 class StateId:
     vdet_arc1: float
     vdet_arc2: float
-    WavelengthReq: float = Field(..., serialization_alias="WavelengthUserReq")
     Frequency: int
     Pos: int
+    WavelengthReq: float = Field(..., serialization_alias="WavelengthUserReq")
 
     # Round inputs to reduce number of possible states
     def __init__(self, vdet_arc1: float, vdet_arc2: float, WavelengthReq: float, Frequency: float, Pos: int):
