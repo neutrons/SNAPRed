@@ -636,7 +636,7 @@ def test__generateStateId():
 
     # Create a mock pvFile object
     pvFile = {
-        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [0.1],
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value": [0.1],
         "entry/DASlogs/det_arc1/value": [0.1],
         "entry/DASlogs/det_arc2/value": [0.1],
         "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
@@ -656,7 +656,7 @@ def test__generateStateId():
     actual, _ = localDataService._generateStateId("12345")
 
     # Check that the returned value matches the expected result
-    assert actual == "640e41a43e129a8e"
+    assert actual == UNCHANGING_STATE_ID
 
 
 def test__generateStateId_cache():
@@ -678,8 +678,8 @@ def test__generateStateId_cache():
 
     localDataService.readDetectorState = mock.Mock(side_effect=mock_readDetectorState)
 
-    stateSHA1 = "96540a8234037f28"
-    stateSHA2 = "ac66d62363738a5c"
+    stateSHA1 = UNCHANGING_STATE_ID
+    stateSHA2 = "fa0bb25b44874edb"
 
     # Call the method being tested and check the cache behavior
     actual, _ = localDataService._generateStateId("12345")
@@ -1909,7 +1909,7 @@ def test_readDetectorState():
 
     # Create a mock pvFile object matching the calibrationParameters.json values
     pvFile = {
-        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [1.1],
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value": [1.1],
         "entry/DASlogs/det_arc1/value": [1.0],
         "entry/DASlogs/det_arc2/value": [2.0],
         "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
@@ -1938,7 +1938,7 @@ def test_readDetectorState_bad_logs():
 
     # Create a mock pvFile object with incorrect logs
     pvFile = {
-        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": "glitch",
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value": "glitch",
         "entry/DASlogs/det_arc1/value": [2],
         "entry/DASlogs/det_arc2/value": [1.1],
         "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
@@ -1962,7 +1962,7 @@ def test_initializeState():
 
     # Create a mock pvFile object matching the calibrationParameters.json values
     pvFile = {
-        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [1.1],
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value": [1.1],
         "entry/DASlogs/det_arc1/value": [1.0],
         "entry/DASlogs/det_arc2/value": [2.0],
         "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
@@ -2002,7 +2002,7 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService._readPVFile = mock.Mock()
 
     pvFile = {
-        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [1.1],
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value": [1.1],
         "entry/DASlogs/det_arc1/value": [1.0],
         "entry/DASlogs/det_arc2/value": [2.0],
         "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],

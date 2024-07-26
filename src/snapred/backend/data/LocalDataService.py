@@ -204,7 +204,7 @@ class LocalDataService:
         stateID = StateId(
             vdet_arc1=detectorState.arc[0],
             vdet_arc2=detectorState.arc[1],
-            WavelengthReq=detectorState.wav,
+            WavelengthUserReq=detectorState.wav,
             Frequency=detectorState.freq,
             Pos=detectorState.guideStat,
             # TODO: these should probably be added:
