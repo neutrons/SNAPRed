@@ -1001,12 +1001,13 @@ class LocalDataService:
                 if not self.isCompatibleMask(ws, runNumber, useLiteMode):
                     excludedCount += 1
                     continue
-                
+
                 # Convert to a `WorkspaceName`
-                maskName = wng\
-                    .reductionUserPixelMask()\
-                    .numberTag(int(match_.group(2)) if match_.group(2) is not None else 1)\
+                maskName = (
+                    wng.reductionUserPixelMask()
+                    .numberTag(int(match_.group(2)) if match_.group(2) is not None else 1)
                     .build()
+                )
                 masks.add(maskName)
 
         if excludedCount > 0:

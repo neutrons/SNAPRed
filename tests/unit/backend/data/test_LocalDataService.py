@@ -1,5 +1,3 @@
-import typing
-from typing import List, Literal, Set
 import functools
 import importlib
 import json
@@ -9,10 +7,12 @@ import re
 import socket
 import tempfile
 import time
+import typing
 import unittest.mock as mock
 from contextlib import ExitStack
 from pathlib import Path
 from random import randint, shuffle
+from typing import List, Literal, Set
 
 import h5py
 import pydantic
@@ -57,10 +57,16 @@ from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import (
-    WorkspaceName,
-    WorkspaceNameGenerator as wng,
-    WorkspaceType as wngt,
     ValueFormatter as wnvf,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceName,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceNameGenerator as wng,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceType as wngt,
 )
 from snapred.meta.redantic import parse_file_as, parse_raw_as, write_model_pretty
 from util.Config_helpers import Config_override
@@ -2599,7 +2605,7 @@ class TestReductionPixelMasks:
                 continue
             # Be careful here: `masks: List[WorkspaceName]` not `masks: List[str]`
             # => iterate over the `WorkspaceName`, not over the `str`.
-            
+
             assert name in ["MaskWorkspace"]
             # somewhat complicated: `WorkspaceName` is an annotated type
             assert isinstance(name, typing.get_args(WorkspaceName)[0])
@@ -2613,7 +2619,6 @@ class TestReductionPixelMasks:
             # somewhat complicated: `WorkspaceName` is an annotated type
             assert isinstance(name, typing.get_args(WorkspaceName)[0])
             assert name.tokens("workspaceType") == wngt.REDUCTION_USER_PIXEL_MASK
-
 
     def test_getCompatibleReductionMasks_resident_pixel(self):
         # Check that any _resident_ pixel masks are compatible:
