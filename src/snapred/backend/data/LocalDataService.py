@@ -993,14 +993,22 @@ class LocalDataService:
                     masks.add(maskName)
 
         # Next: add compatible user-created masks that are already resident in the ADS
-        mantidMaskName = re.compile(r"MaskWorkspace(_[0-9]+)?")
+        mantidMaskName = re.compile(r"MaskWorkspace(_([0-9]+))?")
         wsNames = mtd.getObjectNames()
         for ws in wsNames:
-            if mantidMaskName.match(ws):
+            match_ = mantidMaskName.match(ws)
+            if match_:
                 if not self.isCompatibleMask(ws, runNumber, useLiteMode):
                     excludedCount += 1
                     continue
-                masks.add(ws)
+
+                # Convert to a `WorkspaceName`
+                maskName = (
+                    wng.reductionUserPixelMask()
+                    .numberTag(int(match_.group(2)) if match_.group(2) is not None else 1)
+                    .build()
+                )
+                masks.add(maskName)
 
         if excludedCount > 0:
             logger.warning(
