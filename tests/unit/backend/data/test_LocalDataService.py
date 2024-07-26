@@ -63,6 +63,7 @@ IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
 # NOTE: Devs, never changing the comparison value:
 UNCHANGING_STATE_ID = "9618b936a4419a6e"
+ENDURING_STATE_ID = "ab8704b0bc2a2342"
 
 
 @pytest.fixture(autouse=True)
@@ -140,7 +141,7 @@ def test_readStateConfig():
     fileMock = mock.Mock()
     localDataService._readPVFile.return_value = fileMock
     localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = (UNCHANGING_STATE_ID, None)
+    localDataService._generateStateId.return_value = (ENDURING_STATE_ID, None)
     localDataService.readCalibrationState = mock.Mock()
     localDataService.readCalibrationState.return_value = Calibration.model_validate_json(
         Resource.read("inputs/calibration/CalibrationParameters.json")
@@ -156,7 +157,7 @@ def test_readStateConfig():
 
     actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
-    assert actual.stateId == UNCHANGING_STATE_ID
+    assert actual.stateId == ENDURING_STATE_ID
 
 
 def test_readStateConfig_attaches_grouping_map():
@@ -638,7 +639,7 @@ def test__generateStateId():
         "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [0.1],
         "entry/DASlogs/det_arc1/value": [0.1],
         "entry/DASlogs/det_arc2/value": [0.1],
-        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
         "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
         "entry/DASlogs/det_lin1/value": [0.1],
         "entry/DASlogs/det_lin2/value": [0.1],
@@ -670,15 +671,15 @@ def test__generateStateId_cache():
     # Mock the readDetectorState method to return different DetectorState objects
     def mock_readDetectorState(runId):
         if runId == "12345":
-            return DetectorState(arc=(0.1, 0.1), wav=0.1, freq=1, guideStat=1, lin=(0.1, 0.1))
+            return DetectorState(arc=(0.1, 0.1), wav=0.1, freq=0.1, guideStat=1, lin=(0.1, 0.1))
         elif runId == "67890":
-            return DetectorState(arc=(0.2, 0.2), wav=0.2, freq=1, guideStat=1, lin=(0.2, 0.2))
+            return DetectorState(arc=(0.2, 0.2), wav=0.2, freq=0.2, guideStat=1, lin=(0.2, 0.2))
         return None
 
     localDataService.readDetectorState = mock.Mock(side_effect=mock_readDetectorState)
 
-    stateSHA1 = "640e41a43e129a8e"
-    stateSHA2 = "88103df53a8c296c"
+    stateSHA1 = "96540a8234037f28"
+    stateSHA2 = "ac66d62363738a5c"
 
     # Call the method being tested and check the cache behavior
     actual, _ = localDataService._generateStateId("12345")
@@ -1940,7 +1941,7 @@ def test_readDetectorState_bad_logs():
         "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": "glitch",
         "entry/DASlogs/det_arc1/value": [2],
         "entry/DASlogs/det_arc2/value": [1.1],
-        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
         "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
         "entry/DASlogs/det_lin1/value": [1.0],
         "entry/DASlogs/det_lin2/value": [2.0],
@@ -1953,7 +1954,7 @@ def test_readDetectorState_bad_logs():
 
 def test_initializeState():
     # Test 'initializeState'; test basic functionality.
-    runNumber = "123"
+    runNumber = "12345"
     useLiteMode = True
 
     localDataService = LocalDataService()
@@ -1964,7 +1965,7 @@ def test_initializeState():
         "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [1.1],
         "entry/DASlogs/det_arc1/value": [1.0],
         "entry/DASlogs/det_arc2/value": [2.0],
-        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
         "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
         "entry/DASlogs/det_lin1/value": [1.0],
         "entry/DASlogs/det_lin2/value": [2.0],
@@ -2004,7 +2005,7 @@ def test_initializeState_calls_prepareStateRoot():
         "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [1.1],
         "entry/DASlogs/det_arc1/value": [1.0],
         "entry/DASlogs/det_arc2/value": [2.0],
-        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
         "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
         "entry/DASlogs/det_lin1/value": [1.0],
         "entry/DASlogs/det_lin2/value": [2.0],
@@ -2022,7 +2023,7 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService._readDefaultGroupingMap = mock.Mock(return_value=mock.Mock(isDirty=False))
 
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
-        stateId = UNCHANGING_STATE_ID
+        stateId = ENDURING_STATE_ID
         stateRootPath = Path(tmpDir) / stateId
         localDataService._constructCalibrationStateRoot = mock.Mock(return_value=stateRootPath)
 
@@ -2134,7 +2135,7 @@ def test_readGroupingMap_default_not_found():
 def test_readGroupingMap_initialized_state():
     # Test that '_readGroupingMap' for an initialized state returns the state's <grouping map>.
     service = LocalDataService()
-    stateId = UNCHANGING_STATE_ID
+    stateId = ENDURING_STATE_ID
     with state_root_redirect(service, stateId=stateId) as tmpRoot:
         service._constructCalibrationStateRoot(stateId).mkdir()
         tmpRoot.addFileAs(
