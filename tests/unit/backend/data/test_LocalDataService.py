@@ -1,3 +1,5 @@
+import typing
+from typing import List, Literal, Set
 import functools
 import importlib
 import json
@@ -11,7 +13,6 @@ import unittest.mock as mock
 from contextlib import ExitStack
 from pathlib import Path
 from random import randint, shuffle
-from typing import List, Literal, Set
 
 import h5py
 import pydantic
@@ -56,16 +57,10 @@ from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import (
-    ValueFormatter as wnvf,
-)
-from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceName,
-)
-from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceNameGenerator as wng,
-)
-from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
+    ValueFormatter as wnvf,
 )
 from snapred.meta.redantic import parse_file_as, parse_raw_as, write_model_pretty
 from util.Config_helpers import Config_override
@@ -2593,6 +2588,33 @@ class TestReductionPixelMasks:
         for name in ["MaskWorkspace"]:
             assert name not in masks
 
+    def test_getCompatibleReductionMasks_resident_as_WNG(self):
+        # Check that resident masks are added as complete `WorkspaceName` (with builder).
+
+        # Compatible resident masks: one check for each run number
+        masks = self.service.getCompatibleReductionMasks(self.runNumber1, self.useLiteMode)
+        for name in masks:
+            if "MaskWorkspace" not in name:
+                # in this test: ignore non user-generated masks
+                continue
+            # Be careful here: `masks: List[WorkspaceName]` not `masks: List[str]`
+            # => iterate over the `WorkspaceName`, not over the `str`.
+            
+            assert name in ["MaskWorkspace"]
+            # somewhat complicated: `WorkspaceName` is an annotated type
+            assert isinstance(name, typing.get_args(WorkspaceName)[0])
+            assert name.tokens("workspaceType") == wngt.REDUCTION_USER_PIXEL_MASK
+
+        masks = self.service.getCompatibleReductionMasks(self.runNumber3, self.useLiteMode)
+        for name in masks:
+            if "MaskWorkspace" not in name:
+                continue
+            assert name in ["MaskWorkspace_2"]
+            # somewhat complicated: `WorkspaceName` is an annotated type
+            assert isinstance(name, typing.get_args(WorkspaceName)[0])
+            assert name.tokens("workspaceType") == wngt.REDUCTION_USER_PIXEL_MASK
+
+
     def test_getCompatibleReductionMasks_resident_pixel(self):
         # Check that any _resident_ pixel masks are compatible:
         #   this test checks against "reduction_pixelmask..." left over from
@@ -2640,6 +2662,28 @@ class TestReductionPixelMasks:
             assert self.runNumber3 in name or self.runNumber4 in name
             assert self.runNumber1 not in name
             assert self.runNumber2 not in name
+
+    def test_getCompatibleReductionMasks_nonresident_as_WNG(self):
+        # Check that non-resident masks are added as complete `WorkspaceName` (with builder).
+
+        # Compatible resident masks: one check for each run number
+        masks = self.service.getCompatibleReductionMasks(self.runNumber1, self.useLiteMode)
+        # Ignore user-generated masks
+        masks = [m for m in masks if "pixelmask" in m]
+        for name in masks:
+            assert self.runNumber1 in name or self.runNumber2 in name
+            # somewhat complicated: `WorkspaceName` is an annotated type
+            assert isinstance(name, typing.get_args(WorkspaceName)[0])
+            assert name.tokens("workspaceType") == wngt.REDUCTION_PIXEL_MASK
+
+        masks = self.service.getCompatibleReductionMasks(self.runNumber3, self.useLiteMode)
+        # Ignore user-generated masks
+        masks = [m for m in masks if "pixelmask" in m]
+        for name in masks:
+            assert self.runNumber3 in name or self.runNumber4 in name
+            # somewhat complicated: `WorkspaceName` is an annotated type
+            assert isinstance(name, typing.get_args(WorkspaceName)[0])
+            assert name.tokens("workspaceType") == wngt.REDUCTION_PIXEL_MASK
 
     def test_getCompatibleReductionMasks_nonresident_filenames(self):
         # Check that list of masks includes only valid file paths.
