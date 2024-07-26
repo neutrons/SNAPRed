@@ -61,6 +61,9 @@ ThisService = "snapred.backend.data.LocalDataService."
 VERSION_START = Config["instrument.startingVersionNumber"]
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
+# NOTE: Devs, never changing the comparison value:
+UNCHANGING_STATE_ID = "9618b936a4419a6e"
+
 
 @pytest.fixture(autouse=True)
 def _capture_logging(monkeypatch):
@@ -137,7 +140,7 @@ def test_readStateConfig():
     fileMock = mock.Mock()
     localDataService._readPVFile.return_value = fileMock
     localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("4143c2b05e38867f", None)
+    localDataService._generateStateId.return_value = (UNCHANGING_STATE_ID, None)
     localDataService.readCalibrationState = mock.Mock()
     localDataService.readCalibrationState.return_value = Calibration.model_validate_json(
         Resource.read("inputs/calibration/CalibrationParameters.json")
@@ -153,7 +156,7 @@ def test_readStateConfig():
 
     actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
-    assert actual.stateId == "4143c2b05e38867f"
+    assert actual.stateId == UNCHANGING_STATE_ID
 
 
 def test_readStateConfig_attaches_grouping_map():
@@ -164,7 +167,7 @@ def test_readStateConfig_attaches_grouping_map():
     fileMock = mock.Mock()
     localDataService._readPVFile.return_value = fileMock
     localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("4143c2b05e38867f", None)
+    localDataService._generateStateId.return_value = (UNCHANGING_STATE_ID, None)
     localDataService.readCalibrationState = mock.Mock()
     localDataService.readCalibrationState.return_value = Calibration.model_validate_json(
         Resource.read("inputs/calibration/CalibrationParameters.json")
@@ -195,7 +198,7 @@ def test_readStateConfig_invalid_grouping_map():
         fileMock = mock.Mock()
         localDataService._readPVFile.return_value = fileMock
         localDataService._generateStateId = mock.Mock()
-        localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+        localDataService._generateStateId.return_value = (UNCHANGING_STATE_ID, None)
         localDataService.readCalibrationState = mock.Mock()
         localDataService.readCalibrationState.return_value = Calibration.model_validate_json(
             Resource.read("inputs/calibration/CalibrationParameters.json")
@@ -225,7 +228,7 @@ def test_readStateConfig_calls_prepareStateRoot(mockPrepareStateRoot):
     fileMock = mock.Mock()
     localDataService._readPVFile.return_value = fileMock
     localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("4143c2b05e38867f", None)
+    localDataService._generateStateId.return_value = (UNCHANGING_STATE_ID, None)
     localDataService.readCalibrationState = mock.Mock()
     localDataService.readCalibrationState.return_value = Calibration.model_validate_json(
         Resource.read("inputs/calibration/CalibrationParameters.json")
@@ -250,7 +253,7 @@ def test_readStateConfig_calls_prepareStateRoot(mockPrepareStateRoot):
 def test_prepareStateRoot_creates_state_root_directory():
     # Test that the <state root> directory is created when it doesn't exist.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId):
         defaultGroupingMap = GroupingMap.model_validate_json(
             Resource.read("inputs/pixel_grouping/defaultGroupingMap.json")
@@ -265,7 +268,7 @@ def test_prepareStateRoot_creates_state_root_directory():
 def test_prepareStateRoot_existing_state_root():
     # Test that an already existing <state root> directory is not an error.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
 
     with state_root_redirect(localDataService, stateId=stateId):
         localDataService._constructCalibrationStateRoot().mkdir()
@@ -281,7 +284,7 @@ def test_prepareStateRoot_writes_grouping_map():
     # Test that the first time a <state root> directory is initialized,
     #   the `StateConfig.groupingMap` is written to the directory.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId):
         defaultGroupingMap = GroupingMap.model_validate_json(
             Resource.read("inputs/pixel_grouping/defaultGroupingMap.json")
@@ -297,7 +300,7 @@ def test_prepareStateRoot_sets_grouping_map_stateid():
     # Test that the first time a <state root> directory is initialized,
     #   the 'stateId' of the `StateConfig.groupingMap` is set to match that of the state.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId):
         defaultGroupingMap = GroupingMap.model_validate_json(
             Resource.read("inputs/pixel_grouping/defaultGroupingMap.json")
@@ -316,7 +319,7 @@ def test_prepareStateRoot_no_default_grouping_map():
     #   the 'defaultGroupingMap.json' at Config['instrument.calibration.powder.grouping.home']
     #   is required to exist.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId):
         defaultGroupingMapFilePath = Resource.getPath("inputs/pixel_grouping/does_not_exist.json")
         with pytest.raises(  # noqa: PT012
@@ -331,7 +334,7 @@ def test_prepareStateRoot_does_not_overwrite_grouping_map():
     # If a 'groupingMap.json' file already exists at the <state root> directory,
     #   it should not be overwritten.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId):
         localDataService._constructCalibrationStateRoot().mkdir()
         defaultGroupingMapFilePath = Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
@@ -364,7 +367,7 @@ def test_writeGroupingMap_relative_paths():
         )
 
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
-            stateId = "ab8704b0bc2a2342"
+            stateId = UNCHANGING_STATE_ID
             stateRootPath = Path(tmpDir) / stateId
             os.makedirs(stateRootPath)
 
@@ -403,7 +406,7 @@ def test_writeGroupingMap_relative_paths():
 @mock.patch(ThisService + "GetIPTS")
 def test_calibrationFileExists(GetIPTS):  # noqa ARG002
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         tmpRoot.path().mkdir()
         runNumber = "12345"
@@ -438,7 +441,7 @@ def test_calibrationFileExists_bad_ipts(GetIPTS):
 @mock.patch(ThisService + "GetIPTS")
 def test_calibrationFileExists_not(GetIPTS):  # noqa ARG002
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         nonExistentPath = tmpRoot.path() / "1755"
         assert not nonExistentPath.exists()
@@ -557,7 +560,7 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
     fileMock = mock.Mock()
     localDataService._readPVFile.return_value = fileMock
     localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("4143c2b05e38867f", None)
+    localDataService._generateStateId.return_value = (UNCHANGING_STATE_ID, None)
     localDataService.readCalibrationState = mock.Mock()
     localDataService.readCalibrationState.return_value = Calibration.model_validate_json(
         Resource.read("inputs/calibration/CalibrationParameters.json")
@@ -836,7 +839,7 @@ def readReductionIngredientsFromFile():
 
 def test_readWriteCalibrationRecord_version_numbers():
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     testCalibrationRecord_v0001 = CalibrationRecord.model_validate_json(
         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
     )
@@ -866,7 +869,7 @@ def test_readWriteCalibrationRecord_version_numbers():
 ##
 def test_readWriteCalibrationRecord_specified_version():
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     testCalibrationRecord_v0001 = CalibrationRecord.model_validate_json(
         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
     )
@@ -896,7 +899,7 @@ def test_readWriteCalibrationRecord_specified_version():
 
 def test_readWriteCalibrationRecord_with_version():
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId):
         localDataService.instrumentConfig = mock.Mock()
         localDataService.writeCalibrationRecord(
@@ -909,7 +912,7 @@ def test_readWriteCalibrationRecord_with_version():
 
 def test_readWriteCalibrationRecord():
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     testCalibrationRecord = CalibrationRecord.model_validate_json(
         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
     )
@@ -923,7 +926,7 @@ def test_readWriteCalibrationRecord():
 
 def test_writeCalibrationWorkspaces():
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     testCalibrationRecord = CalibrationRecord.model_validate_json(
         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
     )
@@ -1008,7 +1011,7 @@ def test_writeCalibrationWorkspaces_no_units():
 
 
 def test_readWriteNormalizationRecord_version_numbers():
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     testNormalizationRecord = NormalizationRecord.model_validate_json(
         Resource.read("inputs/normalization/NormalizationRecord.json")
     )
@@ -1041,7 +1044,7 @@ def test_readWriteNormalizationRecord_version_numbers():
 
 
 def test_readWriteNormalizationRecord_specified_version():
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     runNumber = "57514"
     useLiteMode = False
 
@@ -1085,7 +1088,7 @@ def test_readWriteNormalizationRecord_specified_version():
 
 
 def test_readWriteNormalizationRecord():
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     useLiteMode = True
     testNormalizationRecord = NormalizationRecord.model_validate_json(
         Resource.read("inputs/normalization/NormalizationRecord.json")
@@ -1102,7 +1105,7 @@ def test_readWriteNormalizationRecord():
 
 
 def test_writeNormalizationWorkspaces():
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     localDataService = LocalDataService()
     testNormalizationRecord = NormalizationRecord.model_validate_json(
         Resource.read("inputs/normalization/NormalizationRecord.json")
@@ -1180,7 +1183,7 @@ def test_readWriteReductionRecord_version_numbers():
     # Temporarily use a single run number
     useLiteMode = testReductionRecord_v0001.useLiteMode
     runNumber = testReductionRecord_v0001.runNumbers[0]
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService.instrumentConfig = mock.Mock()
@@ -1211,7 +1214,7 @@ def test_readWriteReductionRecord_specified_version():
     # Temporarily use a single run number
     useLiteMode = testReductionRecord_v0001.useLiteMode
     runNumber = testReductionRecord_v0001.runNumbers[0]
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         # WARNING: 'writeReductionRecord' modifies <incoming record>.version,
@@ -1246,7 +1249,7 @@ def test_readWriteReductionRecord_with_version():
 
     # Temporarily use a single run number
     runNumber = testRecord.runNumbers[0]
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService.instrumentConfig = mock.Mock()
@@ -1268,7 +1271,7 @@ def test_readWriteReductionRecord():
 
     # Temporarily use a single run number
     runNumber = testRecord.runNumbers[0]
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService.instrumentConfig = mock.Mock()
@@ -1343,7 +1346,7 @@ def test_writeReductionData(createReductionWorkspaces):
     useLiteMode = testRecord.useLiteMode
     runNumber = testRecord.runNumbers[0]
     version = int(testRecord.version)
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
     fileName += Config["nexus.file.extension"]
 
@@ -1380,7 +1383,7 @@ def test_writeReductionData_no_directories(createReductionWorkspaces):
     useLiteMode = testRecord.useLiteMode
     runNumber = testRecord.runNumbers[0]
     version = int(testRecord.version)
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
     fileName += Config["nexus.file.extension"]
 
@@ -1419,7 +1422,7 @@ def test_writeReductionData_metadata(createReductionWorkspaces):
     useLiteMode = testRecord.useLiteMode
     runNumber = testRecord.runNumbers[0]
     version = int(testRecord.version)
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
     fileName += Config["nexus.file.extension"]
 
@@ -1461,7 +1464,7 @@ def test_readWriteReductionData(createReductionWorkspaces):
     useLiteMode = testRecord.useLiteMode
     runNumber = testRecord.runNumbers[0]
     version = int(testRecord.version)
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
     fileName += Config["nexus.file.extension"]
 
@@ -1514,7 +1517,7 @@ def test__constructReductionDataFilePath():
     useLiteMode = testRecord.useLiteMode
     runNumber = testRecord.runNumbers[0]
     version = int(testRecord.version)
-    stateId = "ab8704b0bc2a2342"
+    stateId = UNCHANGING_STATE_ID
     testIPTS = "IPTS-12345"
     fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
     fileName += Config["nexus.file.extension"]
@@ -1767,7 +1770,7 @@ def test__constructCalibrationParametersFilePath():
     testVersion = randint(10, 20)
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+    localDataService._generateStateId.return_value = (UNCHANGING_STATE_ID, None)
     localDataService._constructCalibrationStatePath = mock.Mock()
     localDataService._constructCalibrationStatePath.return_value = Path(Resource.getPath("outputs/"))
     actualPath = localDataService._constructCalibrationParametersFilePath("57514", True, testVersion)
@@ -1778,10 +1781,10 @@ def test__constructCalibrationParametersFilePath():
 
 def test_readCalibrationState():
     localDataService = LocalDataService()
-    localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
+    localDataService._generateStateId = mock.Mock(return_value=(UNCHANGING_STATE_ID, None))
     localDataService._constructCalibrationParametersFilePath = mock.Mock()
     localDataService._constructCalibrationParametersFilePath.return_value = Resource.getPath(
-        "ab8704b0bc2a2342/v_0001/CalibrationParameters.json"
+        f"{UNCHANGING_STATE_ID}/v_0001/CalibrationParameters.json"
     )
     localDataService._getLatestFile = mock.Mock()
     localDataService._getLatestFile.return_value = Resource.getPath("inputs/calibration/CalibrationParameters.json")
@@ -1796,10 +1799,10 @@ def test_readCalibrationState():
 def test_readCalibrationState_no_file():
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+    localDataService._generateStateId.return_value = (UNCHANGING_STATE_ID, None)
     localDataService._constructCalibrationParametersFilePath = mock.Mock()
     localDataService._constructCalibrationParametersFilePath.return_value = Resource.getPath(
-        "ab8704b0bc2a2342/v_0001/CalibrationParameters.json"
+        f"{UNCHANGING_STATE_ID}/v_0001/CalibrationParameters.json"
     )
     localDataService._getLatestFile = mock.Mock()
     localDataService._getLatestFile.return_value = None
@@ -1810,10 +1813,10 @@ def test_readCalibrationState_no_file():
 def test_readNormalizationState():
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+    localDataService._generateStateId.return_value = (UNCHANGING_STATE_ID, None)
     localDataService.getNormalizationStatePath = mock.Mock()
     localDataService.getNormalizationStatePath.return_value = Path(
-        Resource.getPath("ab8704b0bc2a2342/v_0001/NormalizationParameters.json")
+        Resource.getPath(f"{UNCHANGING_STATE_ID}/v_0001/NormalizationParameters.json")
     )
     localDataService._getLatestFile = mock.Mock()
     localDataService._getLatestFile.return_value = Resource.getPath("inputs/normalization/NormalizationParameters.json")
@@ -2019,7 +2022,7 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService._readDefaultGroupingMap = mock.Mock(return_value=mock.Mock(isDirty=False))
 
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
-        stateId = "ab8704b0bc2a2342"
+        stateId = UNCHANGING_STATE_ID
         stateRootPath = Path(tmpDir) / stateId
         localDataService._constructCalibrationStateRoot = mock.Mock(return_value=stateRootPath)
 
@@ -2131,7 +2134,7 @@ def test_readGroupingMap_default_not_found():
 def test_readGroupingMap_initialized_state():
     # Test that '_readGroupingMap' for an initialized state returns the state's <grouping map>.
     service = LocalDataService()
-    stateId = "4143c2b05e38867f"
+    stateId = UNCHANGING_STATE_ID
     with state_root_redirect(service, stateId=stateId) as tmpRoot:
         service._constructCalibrationStateRoot(stateId).mkdir()
         tmpRoot.addFileAs(
