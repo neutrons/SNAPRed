@@ -3,8 +3,8 @@ from typing import List
 from snapred.backend.dao.request import (
     ClearWorkspacesRequest,
     ListWorkspacesRequest,
-    RenameWorkspacesFromTemplateRequest,
     RenameWorkspaceRequest,
+    RenameWorkspacesFromTemplateRequest,
 )
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.service.Service import Service
@@ -66,7 +66,7 @@ class WorkspaceService(Service):
     def getResidentWorkspaces(self, request: ListWorkspacesRequest):
         """
         Gets the list of workspaces resident in the ADS:
-        
+
         - optionally excludes the cached workspaces from this list.
         """
         return self.groceryService.getResidentWorkspaces(excludeCache=request.excludeCache)

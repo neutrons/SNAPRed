@@ -1575,9 +1575,9 @@ class TestGroceryService(unittest.TestCase):
         self.instance._loadedGroupings = {(1, "c"): "d"}
 
         with mock.patch.object(self.instance, "rebuildCache") as mockRebuildCache:
-            self.create_dumb_workspace(rawWsName) # in the cache
-            self.create_dumb_workspace("b")       # not in the cache
-            self.instance.clearADS(exclude=self.exclude) # default => don't clear cache
+            self.create_dumb_workspace(rawWsName)  # in the cache
+            self.create_dumb_workspace("b")  # not in the cache
+            self.instance.clearADS(exclude=self.exclude)  # default => don't clear cache
             assert not mtd.doesExist("b")
             assert mtd.doesExist(rawWsName)
 
@@ -1591,7 +1591,7 @@ class TestGroceryService(unittest.TestCase):
         dumbws = mtd.unique_name(prefix="_dumb_")
         self.create_dumb_workspace(dumbws)
         assert mtd.doesExist(dumbws)
-        
+
         # create a workspace group
         groupws = mtd.unique_name(prefix="_groupws_")
         subws1 = mtd.unique_name(prefix="a")

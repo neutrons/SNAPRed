@@ -1067,7 +1067,7 @@ class GroceryService:
     def getResidentWorkspaces(self, excludeCache: bool):
         """
         Get the list of ADS-resident workspaces:
-        
+
         - optionally exclude the cached workspaces from this list.
         """
         workspaces = set(mtd.getObjectNames())
