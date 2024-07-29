@@ -101,6 +101,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         pass
 
     def execute(self):
+        data: Dict[str, Any] = {"result": False}
         # 1. PreprocessReductionRecipe
         outputs = []
         self._applyRecipe(
@@ -157,7 +158,9 @@ class ReductionRecipe(Recipe[Ingredients]):
             # Cleanup
             outputs.append(sampleClone)
             self._deleteWorkspace(normalizationClone)
-        return outputs
+        data["result"] = True
+        data["outputs"] = outputs
+        return data
 
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         """

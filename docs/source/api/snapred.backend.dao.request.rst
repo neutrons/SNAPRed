@@ -36,10 +36,18 @@ snapred.backend.dao.request.CalibrationLoadAssessmentRequest module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.dao.request.ClearWorkspaceRequest module
+snapred.backend.dao.request.ClearWorkspacesRequest module
+---------------------------------------------------------
+
+.. automodule:: snapred.backend.dao.request.ClearWorkspacesRequest
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.backend.dao.request.ListWorkspacesRequest module
 --------------------------------------------------------
 
-.. automodule:: snapred.backend.dao.request.ClearWorkspaceRequest
+.. automodule:: snapred.backend.dao.request.ListWorkspacesRequest
    :members:
    :undoc-members:
    :show-inheritance:
@@ -104,6 +112,14 @@ snapred.backend.dao.request.RenameWorkspaceRequest module
 ---------------------------------------------------------
 
 .. automodule:: snapred.backend.dao.request.RenameWorkspaceRequest
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.backend.dao.request.RenameWorkspacesFromTemplateRequest module
+----------------------------------------------------------------------
+
+.. automodule:: snapred.backend.dao.request.RenameWorkspacesFromTemplateRequest
    :members:
    :undoc-members:
    :show-inheritance:

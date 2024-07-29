@@ -1,7 +1,6 @@
 from typing import List
 
-# from qtpy import signals and widgets
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import QComboBox, QGridLayout, QLabel, QMessageBox, QPushButton, QWidget
 
 from snapred.backend.dao.calibration import CalibrationIndexEntry
@@ -83,13 +82,15 @@ class DiffCalAssessmentView(QWidget):
     def onError(self, msg: str):
         self.signalError.emit(msg)
 
+    @Slot()
     def _displayError(self, msg: str):
-        msgBox = QMessageBox()
-        msgBox.setWindowTitle("Error")
-        msgBox.setIcon(QMessageBox.Critical)
-        msgBox.setText(msg)
-        msgBox.setFixedSize(500, 200)
-        msgBox.exec()
+        # Note: specifically using the static method `QMessageBox.critical` here helps with automated testing.
+        # (That is, we can "mock.patch" just that method, and not patch the entire `QMessageBox` class.)
+        QMessageBox.critical(
+            self,
+            "Error",
+            msg,
+        )
 
     def updateRunNumber(self, runNumber, useLiteMode):
         self.signalRunNumberUpdate.emit(runNumber, useLiteMode)

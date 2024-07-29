@@ -41,6 +41,7 @@ snapred.ui.workflow.WorkflowImplementer module
 .. automodule:: snapred.ui.workflow.WorkflowImplementer
    :members:
    :undoc-members:
+   :exclude-members: enableAllWorkflows
    :show-inheritance:
 
 Module contents

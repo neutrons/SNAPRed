@@ -118,6 +118,7 @@ class Section(wd.QWidget):
         self.updateAnimationHeight(self.contentHeight)
         self.toggleAnimation.start()
 
+    @cr.Slot()
     def toggle(self, collapsed):
         height = self.contentArea.layout().sizeHint().height() + self.collapsedHeight * 2
         if collapsed:

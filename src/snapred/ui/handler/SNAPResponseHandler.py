@@ -1,12 +1,14 @@
 import threading
 
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import QMessageBox, QWidget
 
-from snapred.backend.dao.SNAPResponse import ResponseCode
+from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
+from snapred.ui.view.InitializeStateCheckView import InitializationMenu
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -24,6 +26,7 @@ class SNAPResponseHandler(QWidget):
     def handle(self, result):
         self.signal.emit(result)
 
+    @Slot(SNAPResponse)
     def _handle(self, result):
         # if no complications, do nothing here (program will continue)
         # if errors, do nothing here (program will halt)
@@ -110,9 +113,6 @@ class SNAPResponseHandler(QWidget):
         """
         Handles a specific 'state' message.
         """
-        from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
-        from snapred.ui.view.InitializeStateCheckView import InitializationMenu
-
         try:
             logger.info("Handling 'state' message.")
             initializationMenu = InitializationMenu(

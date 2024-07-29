@@ -1,10 +1,12 @@
 import sys
+import traceback
 
 from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
-from qtpy.QtCore import Qt, QTimer
+from qtpy.QtCore import Qt, QTimer, Slot
 from qtpy.QtWidgets import (
     QApplication,
     QMainWindow,
+    QMessageBox,
     QPushButton,
     QSplitter,
     QStatusBar,
@@ -38,14 +40,10 @@ class SNAPRedGUI(QMainWindow):
         splitter.addWidget(logTable.widget)
 
         # add button to open new window
-        button = QPushButton("Open Calibration Panel")
-        button.clicked.connect(self.openNewWindow)
-        splitter.addWidget(button)
+        self.calibrationPanelButton = QPushButton("Open Calibration Panel")
+        self.calibrationPanelButton.clicked.connect(self.openCalibrationPanel)
+        splitter.addWidget(self.calibrationPanelButton)
 
-        # myiv = get_instrumentview(ws)
-        # myiv.show_view()
-
-        # import pdb; pdb.set_trace()
         workspaceWidget = WorkspaceWidget(self)
         splitter.addWidget(workspaceWidget)
 
@@ -78,28 +76,29 @@ class SNAPRedGUI(QMainWindow):
         else:
             print("UserDocsButton is not available. Skipping its initialization.")
 
-    def openNewWindow(self):
+    @Slot()
+    def openCalibrationPanel(self):
         try:
-            self.newWindow = TestPanel(self)
-            self.newWindow.widget.setWindowTitle("Calibration Panel")
-            self.newWindow.widget.show()
+            self.calibrationPanel = TestPanel(self)
+            self.calibrationPanel.widget.setWindowTitle("Calibration Panel")
+            self.calibrationPanel.widget.show()
         except Exception as e:  # noqa: BLE001
-            # show error message as popup
-            import traceback
-
+            # Print traceback
             traceback.print_exception(e)
-            from qtpy.QtWidgets import QMessageBox
 
+            # Additionally, show error message as popup
             msg = "Sorry!  Error encountered while opening Calibration Panel.\n"
             msg = msg + "This is usually caused by an issue with the file tree.\n"
             msg = msg + "An expert user can correct this by editing the application.yml file.\n"
             msg = msg + "Contact your IS or CIS for help in resolving this issue."
-            errorPopup = QMessageBox()
-            errorPopup.setIcon(QMessageBox.Critical)
-            errorPopup.setText(msg)
-            errorPopup.setDetailedText(str(e))
-            errorPopup.setFixedSize(500, 200)
-            errorPopup.exec()
+
+            # Note: specifically using the static method `QMessageBox.critical` here helps with automated testing.
+            # (That is, we can "mock.patch" just that method, and not patch the entire `QMessageBox` class.)
+            QMessageBox.critical(
+                None,
+                "Error",
+                msg,
+            )
 
     def closeEvent(self, event):
         event.accept()

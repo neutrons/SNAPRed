@@ -1,3 +1,4 @@
+from qtpy.QtCore import Slot
 from qtpy.QtWidgets import (
     QDialog,
     QGridLayout,
@@ -65,6 +66,7 @@ class InitializationMenu(QDialog):
     def getMode(self):
         return self.useLiteMode
 
+    @Slot()
     def handleButtonClicked(self):
         runNumber = self.getRunNumber()
         stateName = self.getStateName()

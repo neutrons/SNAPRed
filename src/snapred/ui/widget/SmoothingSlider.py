@@ -1,6 +1,6 @@
 import math
 
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Slot
 from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QMessageBox, QSlider, QWidget
 
 
@@ -50,11 +50,13 @@ class SmoothingSlider(QWidget):
         self._slider.valueChanged.connect(self._updateNumberFromSlider)
         self._number.editingFinished.connect(self._updateSliderFromNumber)
 
+    @Slot()
     def _updateNumberFromSlider(self):
         v = self._slider.value() / 100.0
         s = 10**v
         self._number.setText("{:.2e}".format(s))
 
+    @Slot()
     def _updateSliderFromNumber(self):
         text = self._number.text()
         try:

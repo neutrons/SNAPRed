@@ -163,7 +163,7 @@ class ReductionRecipeTest(TestCase):
         recipe.normalizationWs = "norm"
         recipe.groupWorkspaces = ["group1", "group2"]
 
-        output = recipe.execute()
+        result = recipe.execute()
 
         ingredients = recipe.ingredients()
         assert recipe._applyRecipe.called_once_with(PreprocessReductionRecipe, recipe.sampleWs)
@@ -191,8 +191,7 @@ class ReductionRecipeTest(TestCase):
         )
 
         assert recipe._deleteWorkspace.called_once_with("norm_grouped")
-
-        assert output[0] == "sample_grouped"
+        assert result["outputs"][0] == "sample_grouped"
 
     def test_cook(self):
         recipe = ReductionRecipe()

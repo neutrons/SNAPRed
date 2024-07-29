@@ -1,12 +1,10 @@
-# import regex
-
 from snapred.backend.error.UserException import UserException
 from snapred.backend.service.ApiService import ApiService
 from snapred.backend.service.CalibrantSampleService import CalibrantSampleService
 from snapred.backend.service.CalibrationService import CalibrationService
 
-# cant think of a good way around requireing the services to be imported
-# here in order to autoregister them
+# I can't think of a good way around requiring the services to be imported
+#   here in order to auto-register them.
 from snapred.backend.service.ConfigLookupService import ConfigLookupService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.LiteDataService import LiteDataService
@@ -20,7 +18,7 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 
 
-# singleton ServiceFactory class
+# Singleton ServiceFactory class
 @Singleton
 class ServiceFactory:
     serviceDirectory: ServiceDirectory = ServiceDirectory()

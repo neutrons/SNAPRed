@@ -1,4 +1,4 @@
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QWidget
 
 from snapred.meta.decorators.Resettable import Resettable
@@ -62,6 +62,7 @@ class DiffCalSaveView(QWidget):
 
     # This signal boilerplate mumbo jumbo is necessary because worker threads cant update the gui directly
     # So we have to send a signal to the main thread to update the gui, else we get an unhelpful segfault
+    @Slot(str)
     def _updateRunNumber(self, runNumber):
         self.fieldRunNumber.setText(runNumber)
 

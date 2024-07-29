@@ -49,7 +49,18 @@ class CalibrationIndexEntry(BaseModel):
             except ValueError:
                 raise ValueError(
                     "appliesTo must be in the format of 'runNumber',"
-                    "or '\{symbol\}runNumber' where symbol is one of '>', '<', '>=', '<='.."
+                    "or '{symbol}runNumber' where symbol is one of '>', '<', '>=', '<='.."
                 )
 
+        return v
+
+    @field_validator("timestamp", mode="before")
+    @classmethod
+    def timestamp_validator(cls, v):
+        """
+        Read both new and legacy timestamp format.
+        """
+        if v is not None:
+            if isinstance(v, float):
+                v = int(round(v * 1000.0))
         return v

@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, GroupWorkspaces, mtd
-from snapred.backend.dao.request import RenameWorkspaceFromTemplateRequest
+from snapred.backend.dao.request import RenameWorkspacesFromTemplateRequest
 from snapred.backend.service.WorkspaceService import WorkspaceService
 
 
@@ -25,7 +25,7 @@ class TestWorkspaceService:
         oldNames = ["old1", "old2"]
         renameTemplate = "{workspaceName}_X"
         newNames = [renameTemplate.format(workspaceName=ws) for ws in oldNames]
-        request = RenameWorkspaceFromTemplateRequest(
+        request = RenameWorkspacesFromTemplateRequest(
             workspaces=oldNames,
             renameTemplate=renameTemplate,
         )
@@ -53,7 +53,7 @@ class TestWorkspaceService:
             assert mtd.doesExist(old)
             assert not mtd.doesExist(new)
         # perform the request
-        request = RenameWorkspaceFromTemplateRequest(
+        request = RenameWorkspacesFromTemplateRequest(
             workspaces=["parent"],
             renameTemplate=renameTemplate,
         )
@@ -67,5 +67,5 @@ class TestWorkspaceService:
         mockGroceryService = MagicMock()
         service = WorkspaceService()
         service.groceryService = mockGroceryService
-        service.clear('{"exclude": ["name"]}')
+        service.clear('{"exclude": ["name"], "clearCache": false}')
         mockGroceryService.clearADS.assert_called_once_with(["name"], False)
