@@ -636,7 +636,7 @@ def test__generateStateId():
 
     # Create a mock pvFile object
     pvFile = {
-        "entry/DASlogs/BL3:Chop:Gbl:WavelengthUserReq/value": [0.1],
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [0.1],
         "entry/DASlogs/det_arc1/value": [0.1],
         "entry/DASlogs/det_arc2/value": [0.1],
         "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
@@ -647,10 +647,6 @@ def test__generateStateId():
 
     # Configure the mock to return the mock pvFile dictionary
     localDataService._readPVFile.return_value = pvFile
-
-    # Mock the readDetectorState method to return a valid DetectorState object
-    detectorState = DetectorState(arc=(0.1, 0.1), wav=0.1, freq=0.1, guideStat=1, lin=(0.1, 0.1))
-    localDataService.readDetectorState = mock.Mock(return_value=detectorState)
 
     # Call the method being tested
     actual, _ = localDataService._generateStateId("12345")
