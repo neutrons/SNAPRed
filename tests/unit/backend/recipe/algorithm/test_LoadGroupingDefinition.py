@@ -172,7 +172,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         assert "GroupingFilename" in str(excinfo.value)
 
     def test_fail_with_invalid_grouping_file_name_extension(self):
-        groupingFileBad = Resource.getPath("/inputs/pixel_grouping/abc.junk")
+        groupingFileBad = Resource.getPath("/inputs/crystalInfo/blank_file.cif")
 
         # load the input grouping definition as a workspace
         loadingAlgo = LoadingAlgo()
@@ -180,7 +180,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         loadingAlgo.setProperty("GroupingFilename", groupingFileBad)
         errors = loadingAlgo.validateInputs()
         assert "extension" in errors["GroupingFilename"]
-        assert "junk".upper() in errors["GroupingFilename"]
+        assert "cif".upper() in errors["GroupingFilename"]
 
     def test_with_valid_grouping_file_name(self):
         # load the input grouping definition as a workspace

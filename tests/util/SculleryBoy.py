@@ -7,12 +7,10 @@ from typing import List
 from unittest import mock
 
 import pydantic
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
     NormalizationIngredients,
-    PeakIngredients,
     ReductionIngredients,
 )
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
@@ -29,6 +27,7 @@ from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.GenericRecipe import DetectorPeakPredictorRecipe
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import parse_file_as
+from util.dao import DAOFactory
 
 
 class SculleryBoy:
@@ -43,13 +42,10 @@ class SculleryBoy:
         pass
 
     def prepCalibration(self, ingredients: FarmFreshIngredients):  # noqa ARG002
-        calibration = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
-        calibration.seedRun = ingredients.runNumber
-        calibration.useLiteMode = ingredients.useLiteMode
-        return calibration
+        return DAOFactory.calibrationParameters(ingredients.runNumber, ingredients.useLiteMode)
 
     def prepInstrumentState(self, ingredients: FarmFreshIngredients):  # noqa ARG002
-        return mock.Mock()
+        return DAOFactory.default_instrument_state.copy()
 
     def prepRunConfig(self, runNumber: str) -> RunConfig:
         return RunConfig(runNumber=runNumber)
@@ -64,10 +60,7 @@ class SculleryBoy:
         )
 
     def prepFocusGroup(self, ingredients: FarmFreshIngredients) -> FocusGroup:  # noqa ARG002
-        return FocusGroup(
-            name="Natural",
-            definition=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
-        )
+        return DAOFactory.focus_group_SNAP_column_lite.copy()
 
     def prepPixelGroup(self, ingredients: FarmFreshIngredients = None):  # noqa ARG002
         return PixelGroup(
@@ -79,14 +72,13 @@ class SculleryBoy:
         )
 
     def prepCrystallographicInfo(self, ingredients: FarmFreshIngredients):  # noqa ARG002
-        return mock.Mock()
+        return DAOFactory.default_xtal_info.copy()
 
     def prepPeakIngredients(self, ingredients: FarmFreshIngredients):  # noqa ARG002
         if "good" in ingredients:
-            path = Resource.getPath("/inputs/predict_peaks/input_good_ingredients.json")
+            return DAOFactory.good_peak_ingredients.copy()
         else:
-            path = Resource.getPath("/inputs/predict_peaks/input_fake_ingredients.json")
-        return parse_file_as(PeakIngredients, path)
+            return DAOFactory.fake_peak_ingredients.copy()
 
     def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]:
         try:

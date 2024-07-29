@@ -28,11 +28,8 @@ from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.backend.dao.state.InstrumentState import InstrumentState
-from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.meta.Config import Resource
-from snapred.meta.redantic import parse_file_as
+from util.dao import DAOFactory
 from util.helpers import *
 
 Peak = namedtuple("Peak", "centre sigma height")
@@ -51,9 +48,6 @@ class SyntheticData(object):
     # MOCK instruments and configuration files:
     fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     fakeGroupingFilePath = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
-    fakeInstrumentStatePath = Resource.getPath("inputs/diffcal/fakeInstrumentState.json")
-    fakeFocusGroupPath = Resource.getPath("inputs/diffcal/fakeFocusGroup.json")
-    fakePixelGroupPath = Resource.getPath("inputs/diffcal/fakePixelGroup.json")
 
     # REAL instruments and configuration files:
     SNAPInstrumentFilePath = str(Path(mantid.__file__).parent / "instrument" / "SNAP_Definition.xml")
@@ -66,12 +60,9 @@ class SyntheticData(object):
             IPTS="",
         )
 
-        self.fakeInstrumentState = parse_file_as(InstrumentState, SyntheticData.fakeInstrumentStatePath)
-
-        self.fakeFocusGroup = parse_file_as(FocusGroup, SyntheticData.fakeFocusGroupPath)
-        self.fakeFocusGroup.definition = SyntheticData.fakeGroupingFilePath
-
-        self.fakePixelGroup = parse_file_as(PixelGroup, SyntheticData.fakePixelGroupPath)
+        self.fakeInstrumentState = DAOFactory.synthetic_instrument_state
+        self.fakeFocusGroup = DAOFactory.synthetic_focus_group_natural
+        self.fakePixelGroup = DAOFactory.synthetic_pixel_group
 
         # Place all peaks within the _minimum_ d-space range of any pixel group.
         dMin = max(self.fakePixelGroup.dMin())
@@ -124,7 +115,7 @@ class SyntheticData(object):
 
     @staticmethod
     def fakeDetectorPeaks(scale: float = 1000.0) -> List[DetectorPeak]:
-        fakePixelGroup = parse_file_as(PixelGroup, SyntheticData.fakePixelGroupPath)
+        fakePixelGroup = DAOFactory.synthetic_pixel_group.copy()
 
         # Place all peaks within the _minimum_ d-space range of any pixel group.
         dMin = max(fakePixelGroup.dMin())

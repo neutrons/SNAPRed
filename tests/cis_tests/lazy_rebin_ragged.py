@@ -16,6 +16,7 @@ from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from util.dao import DAOFactory
 
 from snapred.meta.Config import Config, Resource
 Config._config['cis_mode'] = True
@@ -29,7 +30,7 @@ fakeRunConfig = RunConfig(runNumber=str(fakeRunNumber))
 TOFMin = 10
 TOFMax = 1000
 TOFBin = 0.001
-fakePixelGroup = PixelGroup.model_validate_json(Resource.read("inputs/diffcal/fakePixelGroup.json"))
+fakePixelGroup = DAOFactory.synthetic_pixel_group.copy()
 fakePixelGroup.timeOfFlight.minimum = TOFMin
 fakePixelGroup.timeOfFlight.maximum = TOFMax
 fakePixelGroup.timeOfFlight.binWidth = TOFBin

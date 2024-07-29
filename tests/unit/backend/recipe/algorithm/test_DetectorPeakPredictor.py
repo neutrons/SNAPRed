@@ -4,6 +4,7 @@ from typing import List
 
 import pydantic
 import pytest
+from util.dao import DAOFactory
 
 with mock.patch.dict(
     "sys.modules",
@@ -14,7 +15,6 @@ with mock.patch.dict(
 ):
     from mantid.simpleapi import DeleteWorkspace, mtd
     from snapred.backend.dao.GroupPeakList import GroupPeakList
-    from snapred.backend.dao.ingredients.PeakIngredients import PeakIngredients
     from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
     from snapred.meta.Config import Resource
 
@@ -45,8 +45,7 @@ with mock.patch.dict(
         teardown()
 
     def test_chopIngredients():
-        with open(Resource.getPath("/inputs/predict_peaks/input_fake_ingredients.json"), "r") as ingredientsFile:
-            ingredients = PeakIngredients.model_validate_json(ingredientsFile.read())
+        ingredients = DAOFactory.fake_peak_ingredients.copy()
         algo = DetectorPeakPredictor()
         algo.initialize()
         algo.chopIngredients(ingredients)
@@ -69,10 +68,9 @@ with mock.patch.dict(
         assert algo.allGroupIDs == ingredients.pixelGroup.groupIDs
 
     def test_execute():
-        ingredientsFile = "/inputs/predict_peaks/input_good_ingredients.json"
         peaksRefFile = "/outputs/predict_peaks/peaks.json"
 
-        ingredients = PeakIngredients.model_validate_json(Resource.read(ingredientsFile))
+        ingredients = DAOFactory.good_peak_ingredients.copy()
 
         peakPredictorAlgo = DetectorPeakPredictor()
         peakPredictorAlgo.initialize()
@@ -87,10 +85,9 @@ with mock.patch.dict(
         assert peaks_cal == peaks_ref
 
     def test_execute_purge_duplicates():
-        ingredientsFile = "/inputs/predict_peaks/input_good_ingredients.json"
         peaksRefFile = "/outputs/predict_peaks/peaks_purged.json"
 
-        ingredients = PeakIngredients.model_validate_json(Resource.read(ingredientsFile))
+        ingredients = DAOFactory.good_peak_ingredients.copy()
 
         peakPredictorAlgo = DetectorPeakPredictor()
         peakPredictorAlgo.initialize()

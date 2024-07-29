@@ -1,6 +1,7 @@
 import unittest.mock as mock
 
 from snapred.backend.dao import GroupPeakList
+from util.dao import DAOFactory
 from util.diffraction_calibration_synthetic_data import SyntheticData
 
 with mock.patch.dict(
@@ -30,11 +31,10 @@ with mock.patch.dict(
     # TODO this sample data has no overlapping peaks, so that the result of DetectorPeakPredictor
     # and PurgeOverlappingPeaks are the same.  Needs data with overlapping peaks to check if purged.
     def test_execute():
-        ingredientsFile = "/inputs/predict_peaks/input_good_ingredients.json"
         peaks = [GroupPeakList(peaks=SyntheticData.fakeDetectorPeaks(), groupID=1)]
         purgeAlgo = PurgeOverlappingPeaksAlgorithm()
         purgeAlgo.initialize()
-        purgeAlgo.setProperty("Ingredients", Resource.read(ingredientsFile))
+        purgeAlgo.setProperty("Ingredients", DAOFactory.good_peak_ingredients.model_dump_json())
         purgeAlgo.setProperty("DetectorPeaks", list_to_raw(peaks))
         purgeAlgo.execute()
 
