@@ -420,7 +420,7 @@ class TestVersioning(TestCase):
         assert savedRecord.calculationParameters.version == version
         # make sure all workspaces exist
         workspaces = savedRecord.workspaces
-        assert (self.indexer.versionPath(version) / (workspaces[wngt.DIFFCAL_OUTPUT][0] + ".tar")).exists()
+        assert (self.indexer.versionPath(version) / (workspaces[wngt.DIFFCAL_OUTPUT][0] + ".nxs.h5")).exists()
         assert (self.indexer.versionPath(version) / (workspaces[wngt.DIFFCAL_DIAG][0] + ".nxs.h5")).exists()
         assert (self.indexer.versionPath(version) / (workspaces[wngt.DIFFCAL_TABLE][0] + ".h5")).exists()
         # assert this version is in the index

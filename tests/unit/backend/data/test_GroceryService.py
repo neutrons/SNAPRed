@@ -2,7 +2,6 @@
 import json
 import os
 import shutil
-import tarfile
 import time
 import unittest
 from pathlib import Path
@@ -21,8 +20,10 @@ from mantid.simpleapi import (
     GenerateTableWorkspaceFromListOfDict,
     GroupWorkspaces,
     LoadEmptyInstrument,
+    LoadInstrument,
     SaveDiffCal,
     SaveNexusProcessed,
+    WrapLeftovers,
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
@@ -57,7 +58,7 @@ class TestGroceryService(unittest.TestCase):
             wng.diffCalOutput().runNumber(cls.runNumber1).unit(wng.Units.TOF).group(wng.Groups.UNFOC).build()
         )
         cls.sampleWSFilePath = Resource.getPath(f"inputs/test_{cls.runNumber}_groceryservice.nxs")
-        cls.sampleTarWsFilePath = Resource.getPath(f"inputs/{cls.diffCalOutputName}.tar")
+        cls.sampleTarWsFilePath = Resource.getPath(f"inputs/{cls.diffCalOutputName}.nxs.h5")
 
         cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         Config["instrument"]["native"]["definition"]["file"] = cls.instrumentFilePath
@@ -70,17 +71,27 @@ class TestGroceryService(unittest.TestCase):
         # create some sample data
         cls.sampleWS = "_grocery_to_fetch"
 
-        LoadEmptyInstrument(
-            Filename=cls.instrumentFilePath,
+        CreateWorkspace(
             OutputWorkspace=cls.sampleWS,
+            DataX=[0.5, 1.5] * 16,
+            DataY=[3] * 16,
+            NSpec=16,
+        )
+        LoadInstrument(
+            Workspace=cls.sampleWS,
+            Filename=cls.instrumentFilePath,
+            RewriteSpectraMap=True,
         )
         SaveNexusProcessed(
             InputWorkspace=cls.sampleWS,
             Filename=cls.sampleWSFilePath,
         )
 
-        with tarfile.open(cls.sampleTarWsFilePath, "w") as tar:
-            tar.add(cls.sampleWSFilePath, arcname="0.nxs")
+        # call wrap leftovers
+        WrapLeftovers(
+            InputWorkspace=cls.sampleWS,
+            Filename=cls.sampleTarWsFilePath,
+        )
 
         assert os.path.exists(cls.sampleWSFilePath)
 
@@ -282,7 +293,7 @@ class TestGroceryService(unittest.TestCase):
         assert wnvf.formatVersion(self.version) in res
         assert "tof" in res
         assert "some" in res
-        assert ".tar" in res
+        assert ".nxs.h5" in res
 
     def test_diffcal_table_filename(self):
         # Test name generation for diffraction-calibration table filename
@@ -1059,6 +1070,10 @@ class TestGroceryService(unittest.TestCase):
                 .buildList()
             )
             diffCalOutputFilename = self.instance._createDiffcalOutputWorkspaceFilename(groceryList[0])
+            WrapLeftovers(
+                InputWorkspace=self.sampleWS,
+                Filename=self.sampleTarWsFilePath,
+            )
             tmpRoot.addFileAs(self.sampleTarWsFilePath, diffCalOutputFilename)
             assert Path(diffCalOutputFilename).exists()
 

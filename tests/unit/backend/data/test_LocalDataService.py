@@ -1129,7 +1129,7 @@ def test_writeCalibrationWorkspaces(cleanup_workspace_at_exit):
             NumEvents=500,
             Random=True,
             XUnit="DSP",
-            XMin=0,
+            XMin=0.5,
             XMax=8000,
             BinWidth=100,
         )
@@ -2276,7 +2276,7 @@ def test_writeRaggedWorkspace(cleanup_workspace_at_exit):
             NumEvents=500,
             Random=True,
             XUnit="DSP",
-            XMin=0,
+            XMin=0.5,
             XMax=8000,
             BinWidth=100,
         )

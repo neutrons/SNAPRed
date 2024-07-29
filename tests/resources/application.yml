@@ -77,7 +77,7 @@ calibration:
         extension: .nxs
   diffraction:
     output:
-      extension: .tar
+      extension: .nxs.h5
     diagnostic:
       extension: .nxs.h5
     convergenceThreshold: 0.5

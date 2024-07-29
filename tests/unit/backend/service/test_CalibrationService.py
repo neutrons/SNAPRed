@@ -14,9 +14,10 @@ import pytest
 from mantid.simpleapi import (
     CloneWorkspace,
     CreateSingleValuedWorkspace,
+    CreateWorkspace,
     DeleteWorkspace,
     GroupWorkspaces,
-    LoadEmptyInstrument,
+    LoadInstrument,
     mtd,
 )
 from snapred.backend.dao.calibration.Calibration import Calibration
@@ -147,14 +148,28 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         cls.sampleTableWS = "_sample_diffcal_table"
         cls.sampleMaskWS = "_sample_diffcal_mask"
 
-        LoadEmptyInstrument(
-            Filename=cls.instrumentFilePath,
+        CreateWorkspace(
             OutputWorkspace=cls.sampleWS,
+            DataX=[0.5, 1.5] * 16,
+            DataY=[3] * 16,
+            NSpec=16,
+        )
+        LoadInstrument(
+            Filename=cls.instrumentFilePath,
+            Workspace=cls.sampleWS,
+            RewriteSpectraMap=True,
         )
         ws = mtd.unique_name()
-        LoadEmptyInstrument(
-            Filename=cls.instrumentFilePath,
+        CreateWorkspace(
             OutputWorkspace=ws,
+            DataX=[0.5, 1.5] * 16,
+            DataY=[3] * 16,
+            NSpec=16,
+        )
+        LoadInstrument(
+            Filename=cls.instrumentFilePath,
+            Workspace=ws,
+            RewriteSpectraMap=True,
         )
         GroupWorkspaces(
             InputWorkspaces=[ws],
@@ -207,7 +222,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                         filename = Path(wsName + ".nxs.h5")
                         self.instance.dataExportService.exportWorkspace(path, filename, self.sampleDiagnosticWS)
                     case _:
-                        filename = Path(wsName + ".tar")
+                        filename = Path(wsName + ".nxs.h5")
                         self.instance.dataExportService.exportRaggedWorkspace(path, filename, self.sampleWS)
 
         # Write the table and/or mask

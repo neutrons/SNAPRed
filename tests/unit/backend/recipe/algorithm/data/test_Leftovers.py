@@ -1,27 +1,20 @@
 import tempfile
 
-import numpy as np
 from mantid.api import mtd
-from mantid.simpleapi import *
-from snapred.backend.recipe.algorithm.data.ReheatLeftovers import ReheatLeftovers
-from snapred.backend.recipe.algorithm.data.WrapLeftovers import WrapLeftovers
+from mantid.simpleapi import (
+    CreateSampleWorkspace,
+    DeleteWorkspace,
+    LoadInstrument,
+    RebinRagged,
+    ReheatLeftovers,
+    ResampleX,
+    WrapLeftovers,
+)
+from snapred.meta.Config import Config
+from util.helpers import workspacesEqual
 
-
-def compareRaggedWorkspaces(ws1, ws2):
-    assert ws1.getNumberHistograms() == ws2.getNumberHistograms()
-
-    assert ws1.isRaggedWorkspace()
-    assert ws2.isRaggedWorkspace()
-
-    for i in range(ws1.getNumberHistograms()):
-        np.testing.assert_allclose(ws1.readX(i), ws2.readX(i))
-        np.testing.assert_allclose(ws1.readY(i), ws2.readY(i))
-        np.testing.assert_allclose(ws1.readE(i), ws2.readE(i))
-        spec1 = ws1.getSpectrum(i)
-        spec2 = ws2.getSpectrum(i)
-        assert spec1.getSpectrumNo() == spec2.getSpectrumNo()
-        for detId1, detId2 in zip(spec1.getDetectorIDs(), spec2.getDetectorIDs()):
-            assert detId1 == detId2
+NUM_BINS = Config["constants.ResampleX.NumberBins"]
+LOG_BINNING = True
 
 
 def test_saveLoad():
@@ -52,18 +45,24 @@ def test_saveLoad():
     RebinRagged(InputWorkspace="raw", XMin=xMin, XMax=xMax, Delta=delta, PreserveEvents=False, OutputWorkspace="raw")
 
     with tempfile.TemporaryDirectory(prefix="/tmp/") as extractPath:
-        filename = f"{extractPath}/leftovers.tar"
-        wrapLeftovers = WrapLeftovers()
-        wrapLeftovers.initialize()
-        wrapLeftovers.setPropertyValue("InputWorkspace", "raw")
-        wrapLeftovers.setPropertyValue("Filename", filename)
-        wrapLeftovers.execute()
+        filename = f"{extractPath}/leftovers.nxs.h5"
+        WrapLeftovers(
+            InputWorkspace="raw",
+            Filename=filename,
+        )
 
-        reheatLeftovers = ReheatLeftovers()
-        reheatLeftovers.initialize()
-        reheatLeftovers.setPropertyValue("OutputWorkspace", "reheated")
-        reheatLeftovers.setPropertyValue("Filename", filename)
-        reheatLeftovers.execute()
-        compareRaggedWorkspaces(mtd["raw"], mtd["reheated"])
-        DeleteWorkspace("raw")
-        DeleteWorkspace("reheated")
+        ReheatLeftovers(
+            OutputWorkspace="reheated",
+            Filename=filename,
+        )
+
+    ResampleX(
+        InputWorkspace="raw",
+        NumberBins=NUM_BINS,
+        LogBinning=LOG_BINNING,
+        OutputWorkspace="expected",
+    )
+    assert workspacesEqual(mtd["expected"], mtd["reheated"])
+    DeleteWorkspace("raw")
+    DeleteWorkspace("expected")
+    DeleteWorkspace("reheated")

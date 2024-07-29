@@ -1,5 +1,4 @@
-import os
-import tarfile
+import time
 
 from mantid.api import (
     AlgorithmFactory,
@@ -10,15 +9,18 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.kernel import Direction
-from mantid.simpleapi import mtd
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 
 
 class WrapLeftovers(PythonAlgorithm):
     """
     Saves ragged workspaces with a small number of histograms (< 20?) from a file.
     """
+
+    NUM_BINS = Config["constants.ResampleX.NumberBins"]
+    LOG_BINNING = True
 
     def category(self):
         return "SNAPRed Internal"
@@ -34,7 +36,7 @@ class WrapLeftovers(PythonAlgorithm):
                 "Filename",
                 defaultValue="",
                 action=FileAction.Save,
-                extensions=["tar"],
+                extensions=["nxs.h5"],
                 direction=Direction.Input,
             ),
             doc="Path to file to be loaded",
@@ -50,40 +52,22 @@ class WrapLeftovers(PythonAlgorithm):
     def unbagGroceries(self):
         self.inputWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
         self.filename = self.getPropertyValue("Filename")
-        self.tarFilename = self.filename
-        self.filename = self.filename[:-4] + "_{index}.nxs"
 
     def PyExec(self) -> None:
         self.unbagGroceries()
         self.validate()
 
-        for index in range(0, self.inputWS.getNumberHistograms()):
-            tmp = mtd.unique_hidden_name()
-            self.mantidSnapper.ExtractSpectra(
-                f"Extracting Spectra {index}",
-                InputWorkspace=self.inputWS,
-                OutputWorkspace=tmp,
-                StartWorkspaceIndex=index,
-                EndWorkspaceIndex=index,
-            )
-            self.mantidSnapper.executeQueue()
-            wsInst = self.mantidSnapper.mtd[tmp]
-            spec = wsInst.getSpectrum(0)
-            specNum = spec.getSpectrumNo()
-            self.mantidSnapper.SaveNexus(
-                f"Saving Spectra {specNum}", InputWorkspace=tmp, Filename=self.filename.format(index=index)
-            )
-            self.mantidSnapper.DeleteWorkspace(f"Deleting Spectra {index}", Workspace=tmp)
-            self.mantidSnapper.executeQueue()
-
-        # finally zip all outputs into a tarball
-        with tarfile.open(self.tarFilename, "w") as tar:
-            for index in range(0, self.inputWS.getNumberHistograms()):
-                tar.add(self.filename.format(index=index), arcname=f"{str(index).zfill(2)}.nxs")
-
-        # clean up
-        for index in range(0, self.inputWS.getNumberHistograms()):
-            os.remove(self.filename.format(index=index))
+        # timestamp as name
+        tmp = str(time.time())
+        self.mantidSnapper.ResampleX(
+            "Resampling X-axis...",
+            InputWorkspace=self.inputWS,
+            NumberBins=self.NUM_BINS,
+            LogBinning=self.LOG_BINNING,
+            OutputWorkspace=tmp,
+        )
+        self.mantidSnapper.SaveNexus("Saving re-ragged workspace", InputWorkspace=tmp, Filename=self.filename)
+        self.mantidSnapper.executeQueue()
 
 
 # Register algorithm with Mantid
