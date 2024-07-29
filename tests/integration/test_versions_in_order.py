@@ -252,7 +252,11 @@ class TestVersioning(TestCase):
 
         # create an InterfaceController
         self.api = InterfaceController()
+        self.old_self = self.api.serviceFactory.getService
         self.api.serviceFactory.getService = lambda x: self.instance  # noqa: ARG005
+
+    def tearDown(self):
+        self.api.serviceFactory.getService = self.old_self
 
     def test_calibration_versioning(self):
         """

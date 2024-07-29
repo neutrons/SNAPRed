@@ -2,7 +2,7 @@ from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest
 from snapred.backend.dao.request import (
     ClearWorkspaceRequest,
-    RenameWorkspaceRequest,
+    RenameWorkspaceFromTemplateRequest,
 )
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
@@ -26,11 +26,14 @@ class WorkflowImplementer:
 
     def _iterate(self, workflowPresenter):
         # rename output workspaces
-        for i, workspaceName in enumerate(self.outputs.copy()):
-            newName = self.renameTemplate.format(workspaceName=workspaceName, iteration=workflowPresenter.iteration)
-            self.outputs[i] = newName
-            payload = RenameWorkspaceRequest(oldName=workspaceName, newName=newName)
-            response = self.request(path="workspace/rename", payload=payload.json())
+        payload = RenameWorkspaceFromTemplateRequest(
+            workspaces=self.outputs.copy(),
+            renameTemplate=self.renameTemplate.format(
+                workspaceName="{workspaceName}", iteration=workflowPresenter.iteration
+            ),
+        )
+        response = self.request(path="workspace/renameFromTemplate", payload=payload.model_dump_json())
+        self.outputs = response.data
 
         # add outputs to list of all outputs of every iteration
         self.collectiveOutputs.extend(self.outputs)
@@ -39,7 +42,7 @@ class WorkflowImplementer:
 
         # clear every other workspace
         payload = ClearWorkspaceRequest(exclude=self.collectiveOutputs)
-        response = self.request(path="workspace/clear", payload=payload.json())
+        response = self.request(path="workspace/clear", payload=payload.model_dump_json())
         return response
 
     def reset(self):
