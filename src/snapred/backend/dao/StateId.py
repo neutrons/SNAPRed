@@ -6,9 +6,9 @@ from dataclasses import dataclass
 class StateId:
     vdet_arc1: float
     vdet_arc2: float
-    WavelengthUserReq: float
     Frequency: int
     Pos: int
+    WavelengthUserReq: float
 
     # Round inputs to reduce number of possible states
     def __init__(self, vdet_arc1: float, vdet_arc2: float, WavelengthUserReq: float, Frequency: float, Pos: int):
