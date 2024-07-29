@@ -636,6 +636,34 @@ def test__generateStateId():
 
     # Create a mock pvFile object
     pvFile = {
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [0.1],
+        "entry/DASlogs/det_arc1/value": [0.1],
+        "entry/DASlogs/det_arc2/value": [0.1],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [0.1],
+        "entry/DASlogs/det_lin2/value": [0.1],
+    }
+
+    # Configure the mock to return the mock pvFile dictionary
+    localDataService._readPVFile.return_value = pvFile
+
+    # Call the method being tested
+    actual, _ = localDataService._generateStateId("12345")
+
+    # Check that the returned value matches the expected result
+    assert actual == UNCHANGING_STATE_ID
+
+
+def test__generateStateId_old_wav_key():
+    # Ensures the old value of the wav key is still accepted
+    localDataService = LocalDataService()
+
+    # Mock the _readPVFile method
+    localDataService._readPVFile = mock.Mock()
+
+    # Create a mock pvFile object
+    pvFile = {
         "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [0.1],
         "entry/DASlogs/det_arc1/value": [0.1],
         "entry/DASlogs/det_arc2/value": [0.1],
@@ -1926,6 +1954,30 @@ def test_readDetectorState():
     assert actualDetectorState == testDetectorState
 
 
+def test_readDetectorState_bad_wav_key():
+    # Ensures a failure is thrown if a bad wav key is encountered
+    localDataService = LocalDataService()
+    localDataService._readPVFile = mock.Mock()
+    localDataService._constructPVFilePath = mock.Mock(return_value="/mock/path")
+
+    # Create a mock pvFile object
+    pvFile = {
+        "entry/DASlogs/not:a:real:log/value": [0.1],
+        "entry/DASlogs/det_arc1/value": [0.1],
+        "entry/DASlogs/det_arc2/value": [0.1],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [0.1],
+        "entry/DASlogs/det_lin2/value": [0.1],
+    }
+    localDataService._readPVFile.return_value = pvFile
+
+    # Call the method being tested
+    with pytest.raises(ValueError) as e:  # noqa PT011
+        localDataService.readDetectorState("12345")
+    assert "Could not find wavelength logs in file" in str(e.value)
+
+
 def test_readDetectorState_bad_logs():
     localDataService = LocalDataService()
     localDataService._constructPVFilePath = mock.Mock()
@@ -1944,7 +1996,7 @@ def test_readDetectorState_bad_logs():
     }
     localDataService._readPVFile.return_value = pvFile
 
-    with pytest.raises(ValueError, match="Input should be a valid number, unable to parse string as a number"):
+    with pytest.raises(ValueError, match="Input should be a valid number, unable to parse string as a number"):  # noqa: PT011
         localDataService.readDetectorState("123")
 
 
