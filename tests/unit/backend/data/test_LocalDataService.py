@@ -1978,6 +1978,30 @@ def test_readDetectorState_bad_wav_key():
     assert "Could not find wavelength logs in file" in str(e.value)
 
 
+def test_readDetectorState_missing_value():
+    # Ensures a failure is thrown if a needed key is missing
+    localDataService = LocalDataService()
+    localDataService._readPVFile = mock.Mock()
+    localDataService._constructPVFilePath = mock.Mock(return_value="/mock/path")
+
+    # Create a mock pvFile object
+    pvFile = {
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [0.1],
+        "entry/DASlogs/det_arc2/value": [0.1],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [0.1],
+        "entry/DASlogs/det_lin2/value": [0.1],
+    }
+    localDataService._readPVFile.return_value
+
+    # Call the method being tested
+    localDataService._readPVFile.return_value = pvFile
+    with pytest.raises(ValueError) as e:  # noqa: PT011
+        localDataService.readDetectorState("12345")
+    assert "Could not find all required logs" in str(e.value)
+
+
 def test_readDetectorState_bad_logs():
     localDataService = LocalDataService()
     localDataService._constructPVFilePath = mock.Mock()

@@ -1026,7 +1026,7 @@ class LocalDataService:
                 lin=[pvFile.get("entry/DASlogs/det_lin1/value")[0], pvFile.get("entry/DASlogs/det_lin2/value")[0]],
             )
             return detectorState
-        except KeyError as e:
+        except (TypeError, KeyError) as e:
             raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}': {e}")
 
     @validate_call
