@@ -79,7 +79,6 @@ class DAOFactory:
     ## DETECTOR STATE
 
     real_detector_state = DetectorState(
-        # 1
         arc=(-65.3, 104.95),
         wav=2.1,
         freq=60.0,
@@ -88,7 +87,6 @@ class DAOFactory:
     )
 
     unreal_detector_state = DetectorState(  # TODO remove this object?
-        # 2
         arc=(1, 2),
         wav=1.1,
         freq=1.2,
@@ -99,13 +97,11 @@ class DAOFactory:
     ## GSAS PARAMETERS
 
     real_gsas_params = GSASParameters(
-        # 2
         alpha=0.1,
         beta=(0.02, 0.05),
     )
 
     unreal_gsas_params = GSASParameters(
-        # 1
         alpha=1.1,
         beta=(1, 2),
     )
@@ -147,7 +143,6 @@ class DAOFactory:
     ## INSTRUMENT STATE
 
     default_instrument_state = InstrumentState(
-        # 1
         id=magical_state_id,
         instrumentConfig=other_instrument_config,
         detectorState=real_detector_state,
@@ -160,7 +155,6 @@ class DAOFactory:
 
     # POP
     pop_instrument_state = InstrumentState(
-        # 6
         id=magical_state_id,
         instrumentConfig=other_instrument_config,
         detectorState=real_detector_state,
@@ -174,7 +168,6 @@ class DAOFactory:
     # PGP
 
     pgp_instrument_state = InstrumentState(
-        # 5
         id=magical_state_id,
         instrumentConfig=default_instrument_config,  # TODO can be changed to other_?
         detectorState=real_detector_state,
@@ -186,7 +179,6 @@ class DAOFactory:
     )
 
     sample_instrument_state = InstrumentState(
-        # 3
         id=magical_state_id,
         instrumentConfig=other_instrument_config,
         detectorState=unreal_detector_state,
@@ -212,7 +204,6 @@ class DAOFactory:
 
     # For PV calculations
     pv_instrument_state = InstrumentState(
-        # 1
         id=pv_state_id,
         instrumentConfig=other_instrument_config,
         detectorState=unreal_detector_state,
