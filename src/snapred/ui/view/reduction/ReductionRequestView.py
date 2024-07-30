@@ -1,8 +1,7 @@
 from typing import Callable, List, Optional
 
 from qtpy.QtCore import Signal, Slot
-from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget
-
+from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
@@ -133,4 +132,3 @@ class ReductionRequestView(BackendRequestView):
 
     def getPixelMasks(self):
         return self.pixelMaskDropdown.checkedItems()
-

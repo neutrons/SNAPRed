@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, GroupWorkspaces, mtd
 from snapred.backend.dao.request import (
-    RenameWorkspacesFromTemplateRequest,
     ListWorkspacesRequest,
+    RenameWorkspacesFromTemplateRequest,
 )
 from snapred.backend.service.WorkspaceService import WorkspaceService
 
@@ -81,5 +81,3 @@ class TestWorkspaceService:
         request = ListWorkspacesRequest(excludeCache=True)
         service.getResidentWorkspaces(request)
         assert mockGroceryService.getResidentWorkspaces.called_once_with(excludeCache=True)
-        
-        

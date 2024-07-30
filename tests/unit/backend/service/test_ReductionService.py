@@ -1,13 +1,11 @@
 import time
+import unittest
+import unittest.mock as mock
 from typing import List
 
 import numpy as np
 import pydantic
-
-import unittest
-import unittest.mock as mock
 import pytest
-
 from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
@@ -110,7 +108,7 @@ class TestReductionService(unittest.TestCase):
         mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
         self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
-        
+
         result = self.instance.reduction(self.request)
         groupings = self.instance.fetchReductionGroupings(self.request)
         ingredients = self.instance.prepReductionIngredients(self.request)

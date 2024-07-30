@@ -8,12 +8,12 @@ from errno import ENOENT as NOT_FOUND
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
-import h5py
-from pydantic import validate_call
 
+import h5py
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import PhysicalConstants
 from mantid.simpleapi import GetIPTS, mtd
+from pydantic import validate_call
 
 from snapred.backend.dao import (
     GSASParameters,
@@ -53,8 +53,14 @@ from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     ValueFormatter as wnvf,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceName,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceNameGenerator as wng,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
 from snapred.meta.redantic import parse_file_as, write_model_pretty

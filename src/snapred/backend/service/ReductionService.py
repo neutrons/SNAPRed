@@ -23,7 +23,11 @@ from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceName,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceNameGenerator as wng,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
 from snapred.meta.validator.RunNumberValidator import RunNumberValidator

@@ -1,7 +1,6 @@
 # ruff: noqa: E722, PT011, PT012, F811
 import json
 import os
-import sys
 import shutil
 import time
 import unittest
@@ -1695,9 +1694,9 @@ class TestGroceryService(unittest.TestCase):
         self.instance._loadedGroupings = {(1, "c"): "d"}
 
         with mock.patch.object(self.instance, "rebuildCache") as mockRebuildCache:
-            self.create_dumb_workspace(rawWsName) # in the cache
-            self.create_dumb_workspace("b")       # not in the cache
-            self.instance.clearADS(exclude=self.exclude) # default => don't clear cache
+            self.create_dumb_workspace(rawWsName)  # in the cache
+            self.create_dumb_workspace("b")  # not in the cache
+            self.instance.clearADS(exclude=self.exclude)  # default => don't clear cache
             assert not mtd.doesExist("b")
             assert mtd.doesExist(rawWsName)
 
@@ -1711,7 +1710,7 @@ class TestGroceryService(unittest.TestCase):
         dumbws = mtd.unique_name(prefix="_dumb_")
         self.create_dumb_workspace(dumbws)
         assert mtd.doesExist(dumbws)
-        
+
         # create a workspace group
         groupws = mtd.unique_name(prefix="_groupws_")
         subws1 = mtd.unique_name(prefix="a")
@@ -1746,12 +1745,10 @@ class TestGroceryService(unittest.TestCase):
         mtd.remove(groupws)
 
     def test_getResidentWorkspaces(self):
-        with (
-            mock.patch.object(self.instance, "getCachedWorkspaces") as mockGetCachedWorkspaces
-            ):
-            expected = list(set(mtd.getObjectNames())) # note: re-ordering is required
+        with mock.patch.object(self.instance, "getCachedWorkspaces") as mockGetCachedWorkspaces:
+            expected = list(set(mtd.getObjectNames()))  # note: re-ordering is required
             assert len(expected)
-            
+
             actual = self.instance.getResidentWorkspaces(excludeCache=False)
             assert mockGetCachedWorkspaces.not_called
             assert actual == expected
@@ -1761,7 +1758,6 @@ class TestGroceryService(unittest.TestCase):
         self.instance._loadedRuns = {(0, "a"): rawWsName}
         expected = list(set(mtd.getObjectNames()).difference([rawWsName]))
         assert len(expected)
-        
+
         actual = self.instance.getResidentWorkspaces(excludeCache=True)
         assert actual == expected
-    
