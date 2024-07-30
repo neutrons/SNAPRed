@@ -1,5 +1,6 @@
 import time
 from pathlib import Path
+from typing import Tuple
 
 from pydantic import validate_call
 
@@ -44,6 +45,9 @@ class DataExportService:
 
     def getUniqueTimestamp(self) -> time.struct_time:
         return self.dataService.getUniqueTimestamp()
+
+    def checkFileandPermission(self) -> Tuple[bool, bool]:
+        return self.dataService.checkFileandPermission()
 
     ##### CALIBRATION METHODS #####
 

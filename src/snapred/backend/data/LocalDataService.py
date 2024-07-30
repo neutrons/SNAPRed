@@ -162,6 +162,19 @@ class LocalDataService:
         )
 
     @staticmethod
+    def checkFileandPermission(filePath: Path) -> Tuple[bool, bool]:
+        if filePath is None:
+            return False, False
+        else:
+            fileExists = Path(filePath).exists()
+            writePermission = LocalDataService._hasWritePermissionstoPath(filePath)
+            return fileExists, writePermission
+
+    @staticmethod
+    def _hasWritePermissionstoPath(filePath: Path) -> bool:
+        return os.access(filePath, os.W_OK) if filePath.exists() else False
+
+    @staticmethod
     def getUniqueTimestamp() -> float:
         """
         Generate a unique timestamp:

@@ -1,5 +1,6 @@
 import json
 from typing import List
+from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -73,13 +74,23 @@ def test_stateValidationExceptionWithInvalidState(mockLogger):  # noqa: ARG001
         assert str(e) == exception_msg  # noqa: PT017
 
 
-@patch("snapred.backend.error.StateValidationException.Config")
-def test_stateValidationExceptionWritePerms(mockConfig):
-    exceptionPath = "SNS/SNAP/expected/path/somefile.txt"
-    exceptionString = f"Error accessing {exceptionPath}"
-    mockConfig.__getitem__.return_value = exceptionPath
-    with pytest.raises(StateValidationException, match="You don't have permission to write to analysis directory: "):
-        raise StateValidationException(RuntimeError(exceptionString))
+def test_stateValidationExceptionWritePerms():
+    exception = Exception("Test Exception")
+
+    # Mocking the _checkFileAndPermissions method to simulate file existence and permission
+    with mock.patch.object(StateValidationException, "_checkFileAndPermissions", return_value=(True, True)):
+        # Creating a fake traceback
+        try:
+            raise exception
+        except Exception as e:  # noqa: BLE001
+            tb = e.__traceback__  # noqa: F841
+
+        # Raising the exception with the mocked traceback
+        with pytest.raises(StateValidationException) as excinfo:
+            raise StateValidationException(exception)
+
+        # Asserting that the error message is as expected
+        assert "A state related error occurred within" in str(excinfo.value)
 
 
 @ExceptionHandler(StateValidationException)

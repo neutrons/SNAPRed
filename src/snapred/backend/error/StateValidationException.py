@@ -26,7 +26,7 @@ class StateValidationException(Exception):
         else:
             filePath, lineNumber, functionName = None, None, None
 
-        doesFileExist, hasWritePermission = self.checkFileAndPermissions(filePath)
+        doesFileExist, hasWritePermission = self._checkFileAndPermissions(filePath)
 
         if filePath and doesFileExist and hasWritePermission:
             self.message = (
@@ -46,7 +46,7 @@ class StateValidationException(Exception):
         super().__init__(self.message)
 
     @staticmethod
-    def checkFileAndPermissions(filePath) -> Tuple[bool, bool]:
+    def _checkFileAndPermissions(filePath) -> Tuple[bool, bool]:
         if filePath is None:
             return False, False
         fileExists = Path(filePath).exists()
