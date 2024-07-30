@@ -76,10 +76,10 @@ snapred.ui.widget.SmoothingSlider module
    :undoc-members:
    :show-inheritance:
 
-snapred.ui.widget.SuccessDialog module
+snapred.ui.widget.SuccessPrompt module
 --------------------------------------
 
-.. automodule:: snapred.ui.widget.SuccessDialog
+.. automodule:: snapred.ui.widget.SuccessPrompt
    :members:
    :undoc-members:
    :show-inheritance:
@@ -120,14 +120,6 @@ snapred.ui.widget.Workflow module
 ---------------------------------
 
 .. automodule:: snapred.ui.widget.Workflow
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-snapred.ui.widget.WorkflowNode module
--------------------------------------
-
-.. automodule:: snapred.ui.widget.WorkflowNode
    :members:
    :undoc-members:
    :show-inheritance:

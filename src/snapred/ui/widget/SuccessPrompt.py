@@ -1,8 +1,8 @@
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Slot
 from qtpy.QtWidgets import QDialog, QLabel, QPushButton, QVBoxLayout
 
 
-class SuccessDialog(QDialog):
+class SuccessPrompt(QDialog):
     """
 
     This qt dialog is crafted to provide users with immediate, clear feedback on successful operations,
@@ -17,6 +17,7 @@ class SuccessDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent, Qt.WindowCloseButtonHint | Qt.WindowTitleHint)
+        self.setWindowModality(Qt.ApplicationModal)
         self.setWindowTitle("Success")
         self.setFixedSize(300, 120)
         layout = QVBoxLayout()
@@ -24,13 +25,21 @@ class SuccessDialog(QDialog):
         label = QLabel("State initialized successfully.")
         layout.addWidget(label)
 
-        okButton = QPushButton("OK")
-        layout.addWidget(okButton)
-        okButton.clicked.connect(self.accept)
+        self.okButton = QPushButton("OK")
+        layout.addWidget(self.okButton)
+        self.okButton.clicked.connect(self.accept)
 
         self.setLayout(layout)
 
+    @Slot()
     def accept(self):
         super().accept()
         if self.parent():
             self.parent().close()
+
+    # A static "factory" method to facilitate testing.
+    @staticmethod
+    def prompt(parent=None):
+        # Use of `setWindowModality(Qt.ApplicationModal)` with `open`
+        #   allows synchronous tasks.  Use of `exec_` does not, and should be avoided.
+        SuccessPrompt(parent).open()

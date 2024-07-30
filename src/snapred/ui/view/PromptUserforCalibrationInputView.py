@@ -1,4 +1,4 @@
-from qtpy.QtCore import Qt, Signal
+from qtpy.QtCore import Qt, Signal, Slot
 from qtpy.QtWidgets import QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout
 
 
@@ -30,6 +30,7 @@ class PromptUserforCalibrationInputView(QDialog):
     def getName(self):
         return self.name_input.text()
 
+    @Slot()
     def handle_continue_click(self):
         run_number = self.getRunNumber()
         state_name = self.getName()

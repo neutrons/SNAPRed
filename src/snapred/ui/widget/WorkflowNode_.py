@@ -1,4 +1,4 @@
-from snapred.ui.presenter.WorkflowNodePresenter import WorkflowPresenter
+from snapred.ui.presenter.WorkflowNodePresenter import WorkflowNodePresenter
 from snapred.ui.view.WorkflowNodeView import WorkflowNodeView
 
 
@@ -7,7 +7,7 @@ class WorkflowNode:
         # default loading subview
         subview = model.view
         view = WorkflowNodeView(subview, parent)
-        self._presenter = WorkflowPresenter(view, model)
+        self._presenter = WorkflowNodePresenter(view, model)
 
     @property
     def presenter(self):

@@ -19,8 +19,8 @@ def test_rename_on_iterate_list(qtbot):  # noqa: ARG001
     instance = WorkflowImplementer()
     newNames = [instance.renameTemplate.format(workspaceName=ws, iteration=mockPresenter.iteration) for ws in oldNames]
     instance.outputs = oldNames
-    instance._iterate(mockPresenter)
-    assert instance.collectiveOutputs == newNames
+    instance.iterate(mockPresenter)
+    assert instance.collectedOutputs == newNames
 
 
 def test_rename_on_iterate_group(qtbot):  # noqa: ARG001
@@ -42,8 +42,8 @@ def test_rename_on_iterate_group(qtbot):  # noqa: ARG001
         assert not mtd.doesExist(new)
 
     instance.outputs = [oldNames[0]]
-    instance._iterate(mockPresenter)
-    assert instance.collectiveOutputs == [newNames[0]]
+    instance.iterate(mockPresenter)
+    assert instance.collectedOutputs == [newNames[0]]
     for old, new in zip(oldNames, newNames):
         assert not mtd.doesExist(old)
         assert mtd.doesExist(new)

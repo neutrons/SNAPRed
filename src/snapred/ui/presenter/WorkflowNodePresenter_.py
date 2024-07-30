@@ -1,5 +1,7 @@
 from time import sleep
 
+from qtpy.QtCore import QObject, Signal, Slot
+
 from snapred.ui.threading.worker_pool import WorkerPool
 
 
@@ -15,10 +17,14 @@ class _Spinner:
         return symbol
 
 
-class WorkflowPresenter(object):
+class WorkflowNodePresenter(QObject):
     worker_pool = WorkerPool()
 
+    # Allow an observer (e.g. `qtbot`) to monitor action completion.
+    actionCompleted = Signal()
+
     def __init__(self, view, model):
+        super().__init__()
         self.view = view
         self.model = model
 
@@ -32,9 +38,11 @@ class WorkflowPresenter(object):
     def show(self):
         self.view.show()
 
+    @Slot()
     def updateSubview(self):
         self.view.updateSubview(self.model.view)
 
+    @Slot()
     def handleContinueButtonClicked(self):
         self.view.continueButton.setEnabled(False)
         self.view.quitButton.setEnabled(False)
@@ -62,10 +70,13 @@ class WorkflowPresenter(object):
 
         self.worker_pool.submitWorker(self.infworker)
         self.worker_pool.submitWorker(self.worker)
+        self.actionCompleted.emit()
 
+    @Slot()
     def handleQuitButtonClicked(self):
         self.view.close()
 
+    @Slot()
     def _updateButton(self, text):
         self.view.button.setText(text)
 

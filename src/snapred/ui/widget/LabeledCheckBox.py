@@ -1,9 +1,9 @@
-from qtpy.QtCore import Signal as pyqtSignal
+from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QWidget
 
 
 class LabeledCheckBox(QWidget):
-    checkedChanged = pyqtSignal(bool)
+    checkedChanged = Signal(bool)
 
     def __init__(self, label, parent=None):
         super(LabeledCheckBox, self).__init__(parent)
@@ -21,6 +21,7 @@ class LabeledCheckBox(QWidget):
 
         self._checkBox.stateChanged.connect(self.emitCheckedState)
 
+    @Slot()
     def emitCheckedState(self, state):
         self.checkedChanged.emit(state == QCheckBox.isChecked)
 

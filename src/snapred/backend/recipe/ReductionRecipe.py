@@ -14,7 +14,6 @@ logger = snapredLogger.getLogger(__name__)
 Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
-# @Singleton
 class ReductionRecipe(Recipe[Ingredients]):
     """
     Currently requires:
@@ -130,6 +129,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         pass
 
     def execute(self):
+        data: Dict[str, Any] = {"result": False}
         # 1. PreprocessReductionRecipe
         outputs = []
         self._applyRecipe(
@@ -195,7 +195,9 @@ class ReductionRecipe(Recipe[Ingredients]):
         if self.maskWs:
             outputs.append(self.maskWs)
 
-        return outputs
+        data["result"] = True
+        data["outputs"] = outputs
+        return data
 
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         """

@@ -1,3 +1,4 @@
+from qtpy.QtCore import Slot
 from qtpy.QtWidgets import QGridLayout, QTabWidget, QWidget
 
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
@@ -16,6 +17,7 @@ class WorkflowView(QWidget):
 
         # add a tab widget
         self.tabWidget = QTabWidget()
+        self.tabWidget.setObjectName("nodeTabs")
         self.tabWidget.tabBarClicked.connect(self.handleTabClicked)
         self.layout.addWidget(self.tabWidget)
 
@@ -27,16 +29,19 @@ class WorkflowView(QWidget):
         for i in range(1, self.tabWidget.count()):
             self.tabWidget.setTabEnabled(i, False)
 
+    @Slot(int)
     def handleTabClicked(self, index):
         # if clicked tab is enabled, set current tab to clicked tab
         if self.tabWidget.isTabEnabled(index):
             self.currentTab = index
 
+    @Slot()
     def goBack(self):
         if self.currentTab > 0:
             self.currentTab -= 1
             self.tabWidget.setCurrentIndex(self.currentTab)
 
+    @Slot()
     def goForward(self):
         if self.currentTab < self.position:
             self.currentTab += 1

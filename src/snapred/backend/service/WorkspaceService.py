@@ -1,9 +1,10 @@
 from typing import List
 
 from snapred.backend.dao.request import (
-    ClearWorkspaceRequest,
-    RenameWorkspaceFromTemplateRequest,
+    ClearWorkspacesRequest,
+    ListWorkspacesRequest,
     RenameWorkspaceRequest,
+    RenameWorkspacesFromTemplateRequest,
 )
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.service.Service import Service
@@ -23,6 +24,7 @@ class WorkspaceService(Service):
         self.registerPath("rename", self.rename)
         self.registerPath("renameFromTemplate", self.renameFromTemplate)
         self.registerPath("clear", self.clear)
+        self.registerPath("getResidentWorkspaces", self.getResidentWorkspaces)
         return
 
     @staticmethod
@@ -37,7 +39,7 @@ class WorkspaceService(Service):
         self.groceryService.renameWorkspace(request.oldName, request.newName)
 
     @FromString
-    def renameFromTemplate(self, request: RenameWorkspaceFromTemplateRequest) -> List[WorkspaceName]:
+    def renameFromTemplate(self, request: RenameWorkspacesFromTemplateRequest) -> List[WorkspaceName]:
         """
         Renames workspaces by applying a template to them.
         """
@@ -46,7 +48,7 @@ class WorkspaceService(Service):
         for workspace in request.workspaces:
             ws = self.groceryService.getWorkspaceForName(workspace)
             if ws.isGroup():
-                subRequest = RenameWorkspaceFromTemplateRequest(
+                subRequest = RenameWorkspacesFromTemplateRequest(
                     workspaces=ws.getNames(),
                     renameTemplate=request.renameTemplate,
                 )
@@ -55,8 +57,16 @@ class WorkspaceService(Service):
         return newWorkspaces
 
     @FromString
-    def clear(self, request: ClearWorkspaceRequest):
+    def clear(self, request: ClearWorkspacesRequest):
         """
         Clears the workspaces, excluding the given list of items and cache.
         """
-        self.groceryService.clearADS(request.exclude, request.cache)
+        self.groceryService.clearADS(request.exclude, request.clearCache)
+
+    def getResidentWorkspaces(self, request: ListWorkspacesRequest):
+        """
+        Gets the list of workspaces resident in the ADS:
+
+        - optionally excludes the cached workspaces from this list.
+        """
+        return self.groceryService.getResidentWorkspaces(excludeCache=request.excludeCache)
