@@ -778,6 +778,34 @@ def test__findMatchingFileList():
 
 
 ### TESTS OF PATH METHODS ###
+@mock.patch("pathlib.Path.exists", return_value=True)
+@mock.patch(ThisService + "hasWritePermissionsToPath", return_value=True)
+def testCheckFileAndPermission_fileExistsAndWritePermission(mockExists, mockWritePermission):  # noqa: ARG001
+    filePath = Path("/some/path/to/file")
+    result = LocalDataService.checkFileandPermission(filePath)
+    assert result == (True, True)
+
+
+@mock.patch("pathlib.Path.exists", return_value=False)
+def testCheckFileAndPermission_fileDoesNotExist(mockExists):  # noqa: ARG001
+    filePath = Path("/some/path/to/nonexistent/file")
+    result = LocalDataService.checkFileandPermission(filePath)
+    assert result == (False, False)
+
+
+@mock.patch("os.access", return_value=True)
+@mock.patch("pathlib.Path.exists", return_value=True)
+def testHasWritePermissionsToPath_fileExistsWithPermission(mockExists, mockAccess):  # noqa: ARG001
+    filePath = Path("/some/path/to/file")
+    result = LocalDataService._hasWritePermissionsToPath(filePath)
+    assert result is True
+
+
+@mock.patch("pathlib.Path.exists", return_value=False)
+def testHasWritePermissionsToPath_fileDoesNotExist(mockExists):  # noqa: ARG001
+    filePath = Path("/some/path/to/nonexistent/file")
+    result = LocalDataService._hasWritePermissionsToPath(filePath)
+    assert result is False
 
 
 def test_constructCalibrationStateRoot():
