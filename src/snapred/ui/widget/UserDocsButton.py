@@ -1,4 +1,4 @@
-from qtpy.QtCore import QUrl
+from qtpy.QtCore import QUrl, Slot
 from qtpy.QtWebEngineWidgets import QWebEngineView
 from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
 
@@ -26,6 +26,7 @@ class UserDocsButton(QWidget):
         self.button.clicked.connect(self.launchWebView)
         layout.addWidget(self.button)
 
+    @Slot()
     def launchWebView(self):
         # Create and configure the web view
         self.webView = QWebEngineView()

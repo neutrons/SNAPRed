@@ -17,9 +17,7 @@ from mantid.simpleapi import (
     RenameWorkspace,
     mtd,
 )
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
-from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
@@ -27,6 +25,7 @@ from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorith
 )
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import write_model_list_pretty
+from util.dao import DAOFactory
 from util.helpers import (
     createCompatibleMask,
     maskComponentByName,
@@ -43,9 +42,7 @@ IS_ON_ANALYSIS_MACHINE = REMOTE_OVERRIDE or socket.gethostname().startswith("ana
 class PixelGroupCalculation(unittest.TestCase):
     @classmethod
     def getInstrumentState(cls):
-        return Calibration.model_validate_json(
-            Resource.read("inputs/pixel_grouping/CalibrationParameters.json")
-        ).instrumentState
+        return DAOFactory.pgp_instrument_state.copy()
 
     @classmethod
     def getInstrumentDefinitionFilePath(cls, isLiteInstrument):
@@ -98,9 +95,7 @@ class PixelGroupCalculation(unittest.TestCase):
         cls.unmasked, cls.westMasked, cls.eastMasked = (7, 8, 9)
 
         # state corresponding to local test instrument
-        cls.localInstrumentState = InstrumentState.model_validate_json(
-            Resource.read("inputs/calibration/sampleInstrumentState.json")
-        )
+        cls.localInstrumentState = cls.getInstrumentState()
         cls.localIngredients = PixelGroupingIngredients(
             instrumentState=cls.localInstrumentState,
         )

@@ -7,6 +7,7 @@ import unittest.mock as mock
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
+from random import randint
 from typing import Dict, List
 from unittest.mock import MagicMock, patch
 
@@ -20,7 +21,6 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
 from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
 from snapred.backend.dao.request.CreateCalibrationRecordRequest import CreateCalibrationRecordRequest
@@ -33,6 +33,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceT
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import parse_file_as
+from util.dao import DAOFactory
 from util.state_helpers import state_root_redirect
 
 # Mock out of scope modules before importing DataExportService
@@ -50,9 +51,7 @@ with mock.patch.dict(
 ):
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
-    from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
     from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-    from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
     from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
     from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
     from snapred.backend.dao.request.HasStateRequest import HasStateRequest
@@ -69,10 +68,6 @@ with mock.patch.dict(
     from util.SculleryBoy import SculleryBoy
 
     thisService = "snapred.backend.service.CalibrationService."
-
-    def readReductionIngredientsFromFile():
-        with Resource.open("/inputs/calibration/ReductionIngredients.json", "r") as f:
-            return ReductionIngredients.model_validate_json(f.read())
 
     # test export calibration
     def test_exportCalibrationIndex():
@@ -270,48 +265,26 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         assert metric == FocusGroupMetric.return_value
 
-    @patch(
-        thisService + "CalibrationAssessmentResponse",
-        return_value=MagicMock(mockId="mock_calibration_assessment_response"),
-    )
-    @patch(thisService + "CreateCalibrationRecordRequest")
     @patch(thisService + "FitMultiplePeaksRecipe")
-    @patch(thisService + "FarmFreshIngredients")
-    @patch(
-        thisService + "CalibrationMetricsWorkspaceIngredients",
-        return_value=MagicMock(
-            calibrationRecord=CalibrationRecord.model_validate_json(
-                Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-            ),
-            timestamp=123.123,
-        ),
-    )
     def test_assessQuality(
         self,
-        CalibrationMetricsWorkspaceIngredients,
-        FarmFreshIngredients,
         FitMultiplePeaksRecipe,
-        CreateCalibrationRecordRequest,
-        CalibrationAssessmentResponse,
     ):
         # Mock input data
-        fakeFocusGroup = FocusGroup(name="egg", definition="muffin")
-        fakeMetrics = CalibrationMetric(
-            sigmaAverage=0.0,
-            sigmaStandardDeviation=0.0,
-            strainAverage=0.0,
-            strainStandardDeviation=0.0,
-            twoThetaAverage=0.0,
-        )
-        fakeMetrics = FocusGroupMetric(focusGroupName=fakeFocusGroup.name, calibrationMetric=[fakeMetrics])
+        fakeMetrics = DAOFactory.focusGroupCalibrationMetric_Column
+        time = 123.123
+        expectedRecord = DAOFactory.calibrationRecord()
+        expectedWorkspaces = [
+            wng.diffCalTimedMetric().runNumber(expectedRecord.runNumber).timestamp(time).metricName(metric).build()
+            for metric in ["sigma", "strain"]
+        ]
 
         # Mock the necessary method calls
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="good/cif/path")
-        self.instance.dataFactoryService.createCalibrationRecord = MagicMock()
+        self.instance.dataFactoryService.createCalibrationRecord = MagicMock(return_value=expectedRecord)
+        self.instance.dataExportService.getUniqueTimestamp = MagicMock(return_value=time)
         self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
-
-        FarmFreshIngredients.return_value.get.return_value = True
 
         # Call the method to test
         request = CalibrationAssessmentRequest(
@@ -334,20 +307,22 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         response = self.instance.assessQuality(request)
 
         # Assert correct method calls
-        assert FarmFreshIngredients.call_count == 1
         assert FitMultiplePeaksRecipe.called_once_with(self.instance.sousChef.prepPeakIngredients({}))
         assert self.instance.dataFactoryService.getCifFilePath.called_once_with("biscuit")
 
         # Assert the result is as expected
-        assert response == CalibrationAssessmentResponse.return_value
+        assert response.model_dump() == {
+            "record": expectedRecord.model_dump(),
+            "metricWorkspaces": expectedWorkspaces,
+        }
 
         # Assert expected calibration metric workspaces have been generated
-        for metric in ["sigma", "strain"]:
-            wsName = wng.diffCalTimedMetric().runNumber("57514").timestamp(123.123).metricName(metric).build()
+        for wsName in expectedWorkspaces:
             assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
 
     def test_save_respects_version(self):
-        record = parse_file_as(CalibrationRecord, Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"))
+        version = 1
+        record = DAOFactory.calibrationRecord(version=1)
         record.calculationParameters.creationDate = datetime.today()
         record.workspaces = {
             wngt.DIFFCAL_OUTPUT: ["_dsp_diffoc_057514"],
@@ -388,7 +363,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             createRecordRequest=CreateCalibrationRecordRequest(**record.model_dump()),
         )
         with state_root_redirect(self.localDataService) as tmpRoot:
-            pass
             self.instance.save(request)
             savedRecord = parse_file_as(
                 CalibrationRecord, tmpRoot.path() / "lite/diffraction/v_0001/CalibrationRecord.json"
@@ -417,10 +391,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockCalibrationMetricsWorkspaceIngredients,
     ):
         mockRequest = mock.Mock(runId=self.runNumber, version=self.version, checkExistent=False)
-        calibrationRecord = CalibrationRecord.model_validate_json(
-            Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-        )
-
+        calibrationRecord = DAOFactory.calibrationRecord(runNumber="57514", version=1)
         # Clear the input metrics list
         calibrationRecord.focusGroupCalibrationMetrics.calibrationMetric = []
         mockCalibrationMetricsWorkspaceIngredients.return_value = mock.Mock(
@@ -435,9 +406,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_load_quality_assessment_check_existent_metrics(self):
         path = Resource.getPath("outputs")
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpDir:
-            calibRecord = CalibrationRecord.model_validate_json(
-                Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-            )
+            calibRecord = DAOFactory.calibrationRecord()
             self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
@@ -467,22 +436,22 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             assert "is already loaded" in str(excinfo.value)
 
     def test_load_quality_assessment_check_existent_data(self):
-        inputFilepath = Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json")
-        paramsFilepath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
+        version = randint(2, 120)
+        record = DAOFactory.calibrationRecord(version=version)
+        parameters = DAOFactory.calibrationParameters(version=version)
         with state_root_redirect(self.localDataService) as tmpRoot:
-            calibRecord = parse_file_as(CalibrationRecord, inputFilepath)
-            indexer = self.localDataService.calibrationIndexer(calibRecord.runNumber, calibRecord.useLiteMode)
-            recordFilepath = indexer.recordPath(1)
-            tmpRoot.addFileAs(inputFilepath, recordFilepath)
-            tmpRoot.addFileAs(paramsFilepath, indexer.parametersPath(1))
+            indexer = self.localDataService.calibrationIndexer(record.runNumber, record.useLiteMode)
+            recordFilepath = indexer.recordPath(version)
+            tmpRoot.saveObjectAt(record, recordFilepath)
+            tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
-            self.create_fake_diffcal_files(recordFilepath.parent, calibRecord.workspaces, calibRecord.version)
+            self.create_fake_diffcal_files(recordFilepath.parent, record.workspaces, version)
 
             mockRequest = mock.Mock(
-                runId=calibRecord.runNumber,
-                useLiteMode=calibRecord.useLiteMode,
-                version=calibRecord.version,
+                runId=record.runNumber,
+                useLiteMode=record.useLiteMode,
+                version=version,
                 checkExistent=False,
             )
             self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
@@ -501,23 +470,23 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             assert "is already loaded" in str(excinfo.value)
 
     def test_load_quality_assessment(self):
-        inputFilepath = Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json")
-        paramsFilepath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
+        version = randint(2, 120)
+        record = DAOFactory.calibrationRecord(version=version)
+        parameters = DAOFactory.calibrationParameters(version=version)
         with state_root_redirect(self.localDataService) as tmpRoot:
-            calibRecord = parse_file_as(CalibrationRecord, inputFilepath)
-            indexer = self.localDataService.calibrationIndexer(calibRecord.runNumber, calibRecord.useLiteMode)
-            recordFilepath = indexer.recordPath(1)
-            tmpRoot.addFileAs(inputFilepath, recordFilepath)
-            tmpRoot.addFileAs(paramsFilepath, indexer.parametersPath(calibRecord.version))
+            indexer = self.localDataService.calibrationIndexer(record.runNumber, record.useLiteMode)
+            recordFilepath = indexer.recordPath(version)
+            tmpRoot.saveObjectAt(record, recordFilepath)
+            tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
-            self.create_fake_diffcal_files(recordFilepath.parent, calibRecord.workspaces, calibRecord.version)
+            self.create_fake_diffcal_files(recordFilepath.parent, record.workspaces, version)
 
             # Call the method to test. Use a mocked run and a mocked version
             mockRequest = MagicMock(
-                runId=calibRecord.runNumber,
-                useLiteMode=calibRecord.useLiteMode,
-                version=calibRecord.version,
+                runId=record.runNumber,
+                useLiteMode=record.useLiteMode,
+                version=version,
                 checkExistent=False,
             )
             self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
@@ -529,22 +498,20 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 ws_name = (
                     wng.diffCalMetric()
                     .metricName(metric)
-                    .runNumber(calibRecord.runNumber)
-                    .version(calibRecord.version)
+                    .runNumber(record.runNumber)
+                    .version(record.version)
                     .metricName(metric)
                     .build()
                 )
                 assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
             # Assert all "persistent" workspaces have been loaded
-            for wsNames in calibRecord.workspaces.values():
+            for wsNames in record.workspaces.values():
                 for wsName in wsNames:
                     assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
 
     def test_load_quality_assessment_no_units(self):
-        calibRecord = CalibrationRecord.model_validate_json(
-            Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-        )
+        calibRecord = DAOFactory.calibrationRecord(runNumber="57514", version=1)
         calibRecord.workspaces[wngt.DIFFCAL_OUTPUT] = ["_diffoc_057514_v0001"]  # NOTE no unit token
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
 
@@ -554,15 +521,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.instance.loadQualityAssessment(mockRequest)
 
     def test_load_quality_assessment_dsp_and_diag(self):
-        calibRecord = CalibrationRecord.model_validate_json(
-            Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+        calibRecord = DAOFactory.calibrationRecord(
+            workspaces={
+                "diffCalOutput": ["_dsp_diffoc_057514"],
+                "diffCalDiagnostic": ["_diagnostic_diffoc_057514"],
+                "diffCalTable": ["_diffract_consts_057514"],
+                "diffCalMask": ["_diffract_consts_mask_057514"],
+            }
         )
-        calibRecord.workspaces = {
-            "diffCalOutput": ["_dsp_diffoc_057514"],
-            "diffCalDiagnostic": ["_diagnostic_diffoc_057514"],
-            "diffCalTable": ["_diffract_consts_057514"],
-            "diffCalMask": ["_diffract_consts_mask_057514"],
-        }
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
 
         mockFetchGroceryDict = mock.Mock(return_value={})
@@ -576,9 +542,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert calledWithDict["diffCalDiagnostic_0000"].unit == wng.Units.DIAG
 
     def test_load_quality_assessment_unexpected_type(self):
-        calibRecord = CalibrationRecord.model_validate_json(
-            Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-        )
+        calibRecord = DAOFactory.calibrationRecord()
         calibRecord.workspaces = {
             "diffCalOutput": ["_dsp_diffoc_057514"],
             "diffCalTable": ["_diffract_consts_057514"],
@@ -740,9 +704,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert res == FitMultiplePeaksRecipe.return_value.executeRecipe.return_value
 
     def test_initializeState(self):
-        testCalibration = Calibration.model_validate_json(
-            Resource.read("inputs/calibration/CalibrationParameters.json")
-        )
+        testCalibration = DAOFactory.calibrationParameters()
         mockInitializeState = mock.Mock(return_value=testCalibration.instrumentState)
         self.instance.dataExportService.initializeState = mockInitializeState
         request = InitializeStateRequest(
@@ -754,9 +716,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockInitializeState.assert_called_once_with(request.runId, request.useLiteMode, request.humanReadableName)
 
     def test_getState(self):
-        testCalibration = Calibration.model_validate_json(
-            Resource.read("inputs/calibration/CalibrationParameters.json")
-        )
+        testCalibration = DAOFactory.calibrationParameters()
         testConfig = StateConfig.construct()
         testConfig.calibration = testCalibration
         states = [deepcopy(testConfig), deepcopy(testConfig), deepcopy(testConfig)]

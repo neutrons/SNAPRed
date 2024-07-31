@@ -4,13 +4,13 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
-from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.FocusSpectraAlgorithm import (
     FocusSpectraAlgorithm as ThisAlgo,  # noqa: E402
 )
 from snapred.meta.Config import Resource
+from util.dao import DAOFactory
 from util.helpers import workspacesEqual
 
 
@@ -20,7 +20,7 @@ class TestFocusSpectra(unittest.TestCase):
         self.maxOffset = 2
         self.fakeRunNumber = "555"
 
-        self.pixelGroup = PixelGroup.model_validate_json(Resource.read("/inputs/diffcal/fakePixelGroup.json"))
+        self.pixelGroup = DAOFactory.synthetic_pixel_group.copy()
 
         self.fakeRawData = f"_test_focusSpectra_{self.fakeRunNumber}"
         self.fakeGroupingWorkspace = f"_test_focusSpectra_difc_{self.fakeRunNumber}"

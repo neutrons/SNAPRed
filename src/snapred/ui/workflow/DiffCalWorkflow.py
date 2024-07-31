@@ -1,6 +1,9 @@
+from qtpy.QtCore import Slot
+
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VersionedObject
+from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
@@ -11,10 +14,13 @@ from snapred.backend.dao.request import (
     FocusSpectraRequest,
     HasStateRequest,
 )
+from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
+from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
+from snapred.ui.presenter.WorkflowPresenter import WorkflowPresenter
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 from snapred.ui.view.DiffCalRequestView import DiffCalRequestView
 from snapred.ui.view.DiffCalSaveView import DiffCalSaveView
@@ -84,16 +90,22 @@ class DiffCalWorkflow(WorkflowImplementer):
         # 4. user assesses calibration and chooses to iterate, or continue
         # 5. user may elect to save the calibration
         self.workflow = (
-            WorkflowBuilder(cancelLambda=self.resetWithPermission, iterateLambda=self._iterate, parent=parent)
+            WorkflowBuilder(
+                startLambda=self.start,
+                iterateLambda=self.iterate,
+                # Any implicit reset will retain output workspaces (at present: meaning reduction-output only).
+                resetLambda=self.reset,
+                parent=parent,
+            )
             .addNode(self._specifyRun, self._requestView, "Diffraction Calibration")
             .addNode(self._triggerDiffractionCalibration, self._tweakPeakView, "Tweak Peak Peek")
             .addNode(self._assessCalibration, self._assessmentView, "Assessing", iterate=True)
             .addNode(self._saveCalibration, self._saveView, name="Saving")
             .build()
         )
-        self.workflow.presenter.setResetLambda(self.reset)
 
     @ExceptionToErrLog
+    @Slot()
     def _populateGroupingDropdown(self):
         # when the run number is updated, freeze the drop down to populate it
         runNumber = self._requestView.runNumberField.text()
@@ -115,7 +127,7 @@ class DiffCalWorkflow(WorkflowImplementer):
                 self.groupingMap = self.defaultGroupingMap
             self.focusGroups = self.groupingMap.getMap(useLiteMode)
 
-            # populate and reenable the drop down
+            # populate and re-enable the drop down
             self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
         except Exception as e:  # noqa BLE001
             print(e)
@@ -124,6 +136,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._requestView.litemodeToggle.setEnabled(True)
 
     @ExceptionToErrLog
+    @Slot()
     def _switchLiteNativeGroups(self):
         # when the run number is updated, freeze the drop down to populate it
         useLiteMode = self._requestView.litemodeToggle.field.getState()
@@ -138,6 +151,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         self._requestView.groupingFileDropdown.setEnabled(True)
 
+    @Slot(WorkflowPresenter, result=SNAPResponse)
     def _specifyRun(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
 
@@ -204,6 +218,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         return response
 
     @ExceptionToErrLog
+    @Slot(int, float, float, float, SymmetricPeakEnum, Pair, float)
     def onValueChange(self, groupingIndex, xtalDMin, xtalDMax, peakThreshold, peakFunction, fwhm, maxChiSq):
         self._tweakPeakView.disableRecalculateButton()
         # TODO: This is a temporary solution,
@@ -299,6 +314,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         )
         return self.request(path="calibration/fitpeaks", payload=payload.json())
 
+    @Slot(WorkflowPresenter, result=SNAPResponse)
     def _triggerDiffractionCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
 
@@ -355,6 +371,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._assessmentView.updateRunNumber(self.runNumber, self.useLiteMode)
         return response
 
+    @Slot(WorkflowPresenter, result=SNAPResponse)
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
         if workflowPresenter.iteration > 1:
             self._saveView.enableIterationDropdown()
@@ -373,6 +390,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             for wsKey, wsNames in self.calibrationRecord.workspaces.items()
         }
 
+    @Slot(WorkflowPresenter, result=SNAPResponse)
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         runNumber = view.fieldRunNumber.get()

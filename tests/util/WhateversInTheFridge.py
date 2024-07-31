@@ -22,7 +22,7 @@ from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from snapred.meta.redantic import parse_file_as
+from util.dao import DAOFactory
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -64,7 +64,8 @@ class WhateversInTheFridge(LocalDataService):
 
     @ExceptionHandler(StateValidationException)
     def _generateStateId(self, runId: str) -> Tuple[str, str]:
-        return "outpus/2kfxjiqm", "some gibberish"
+        stateId = DAOFactory.magical_state_id.copy()
+        return stateId.hex, stateId.decodedKey
 
     ### CALIBRATION METHODS ###
 
@@ -152,17 +153,7 @@ class WhateversInTheFridge(LocalDataService):
         return Path(Resource.getPath("inputs/testInstrument/groupingMap.json"))
 
     def _readGroupingMap(self, stateId: str) -> GroupingMap:
-        thismap = self._readDefaultGroupingMap()
-        thismap.stateId = stateId
-        return thismap
+        return DAOFactory.groupingMap_POP(stateId)
 
     def _readDefaultGroupingMap(self) -> GroupingMap:
-        thismap = parse_file_as(GroupingMap, self._groupingMapPath("fakeStateID"))
-        thismap = GroupingMap.construct(
-            stateId=thismap.stateId,
-            nativeFocusGroups=thismap.nativeFocusGroups,
-            liteFocusGroups=thismap.liteFocusGroups,
-            _nativeMap={x.name: x for x in thismap.nativeFocusGroups},
-            _liteMap={x.name: x for x in thismap.liteFocusGroups},
-        )
-        return thismap
+        return DAOFactory.groupingMap_POP(stateId=DAOFactory.nonsense_state_id)

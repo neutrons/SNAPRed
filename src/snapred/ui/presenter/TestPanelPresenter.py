@@ -17,29 +17,27 @@ class TestPanelPresenter(object):
     def __init__(self, view):
         self.view = view
 
-        self.diffractionCalibrationWidget = self._createWorkflowWidget(self._createDiffCalWorkflow)
-        self.calibrationNormalizationWidget = self._createWorkflowWidget(self._createNormalizationWorkflow)
-        self.reductionWidget = self._createWorkflowWidget(self._createReductionWorkflow)
+        # For testing purposes:
+        #   here we retain references to the workflows themselves, and not just their widgets,
+        #   so that we can access their signals.
+        self.diffractionCalibrationWorkflow = DiffCalWorkflow(parent=self.view)
+        self.normalizationCalibrationWorkflow = NormalizationWorkflow(parent=self.view)
+        self.reductionWorkflow = ReductionWorkflow(parent=self.view)
+
+        self.diffractionCalibrationWidget = self._addWorkflowWidget(self.diffractionCalibrationWorkflow.widget)
+        self.normalizationCalibrationWidget = self._addWorkflowWidget(self.normalizationCalibrationWorkflow.widget)
+        self.reductionWidget = self._addWorkflowWidget(self.reductionWorkflow.widget)
 
         self.view.tabWidget.addTab(self.diffractionCalibrationWidget, "Diffraction Calibration")
-        self.view.tabWidget.addTab(self.calibrationNormalizationWidget, "Normalization")
+        self.view.tabWidget.addTab(self.normalizationCalibrationWidget, "Normalization")
         self.view.tabWidget.addTab(self.reductionWidget, "Reduction")
 
-    def _createWorkflowWidget(self, method):
+    def _addWorkflowWidget(self, widget_):
         layout = QGridLayout()
         widget = QWidget()
         widget.setLayout(layout)
-        layout.addWidget(method())
+        layout.addWidget(widget_)
         return widget
-
-    def _createDiffCalWorkflow(self):
-        return DiffCalWorkflow(parent=self.view).widget
-
-    def _createNormalizationWorkflow(self):
-        return NormalizationWorkflow(parent=self.view).widget
-
-    def _createReductionWorkflow(self):
-        return ReductionWorkflow(parent=self.view).widget
 
     @property
     def widget(self):

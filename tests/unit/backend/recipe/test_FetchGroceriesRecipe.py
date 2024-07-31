@@ -134,7 +134,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
 
     def test_fetch_failed(self):
         # this is some file that it can't load
-        mockFilename = Resource.getPath("inputs/crystalInfo/fake_file.cif")
+        mockFilename = Resource.getPath("inputs/crystalInfo/blank_file.cif")
         with pytest.raises(RuntimeError):
             self.rx.executeRecipe(mockFilename, self.fetchedWSname, "")
 

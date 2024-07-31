@@ -1,4 +1,4 @@
-from qtpy.QtCore import QObject
+from qtpy.QtCore import QObject, Slot
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest
@@ -31,6 +31,7 @@ class CalibrationAssessmentPresenter(QObject):
         super().__init__()
         self.view = view
 
+    @Slot()
     def loadSelectedCalibrationAssessment(self):
         if self.view.getCalibrationRecordCount() < 1:
             self.view.onError("No calibration records available.")
@@ -57,10 +58,12 @@ class CalibrationAssessmentPresenter(QObject):
         self.worker.result.connect(self.handleLoadAssessmentResult)
         self.worker_pool.submitWorker(self.worker)
 
+    @Slot(SNAPResponse)
     def handleLoadAssessmentResult(self, response: SNAPResponse):
         if response.code == ResponseCode.ERROR:
             self.view.onError(response.message)
 
+    @Slot(str, bool)
     def loadCalibrationIndex(self, runNumber: str, useLiteMode: bool):
         payload = CalibrationIndexRequest(
             run=RunConfig(runNumber=runNumber, useLiteMode=useLiteMode),
@@ -73,6 +76,7 @@ class CalibrationAssessmentPresenter(QObject):
         self.worker.result.connect(self.handleLoadCalibrationIndexResult)
         self.worker_pool.submitWorker(self.worker)
 
+    @Slot(SNAPResponse)
     def handleLoadCalibrationIndexResult(self, response: SNAPResponse):
         if response.code == ResponseCode.ERROR:
             self.view.onError(response.message)

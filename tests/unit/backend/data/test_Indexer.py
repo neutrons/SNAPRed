@@ -23,6 +23,7 @@ from snapred.backend.data.Indexer import Indexer, IndexerType
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
+from util.dao import DAOFactory
 
 IndexerModule = importlib.import_module(Indexer.__module__)
 
@@ -32,8 +33,7 @@ class TestIndexer(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        calibration = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
-        cls.instrumentState = calibration.instrumentState
+        cls.instrumentState = DAOFactory.default_instrument_state
 
     def setUp(self):
         self.tmpDir = tempfile.TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
@@ -921,23 +921,23 @@ class TestIndexer(unittest.TestCase):
 
     def test_readWriteRecord_calibration(self):
         # prepare the record
-        record = parse_file_as(CalibrationRecord, Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"))
+        record = DAOFactory.calibrationRecord()
         record.version = randint(2, 100)
         # write then read in the record
         indexer = self.initIndexer(IndexerType.CALIBRATION)
         indexer.writeRecord(record)
-        res = indexer.readRecord(record.version)
+        res = indexer.readRecord()
         assert type(res) is CalibrationRecord
         assert res == record
 
     def test_readWriteRecord_normalization(self):
         # prepare the record
-        record = parse_file_as(NormalizationRecord, Resource.getPath("inputs/normalization/NormalizationRecord.json"))
+        record = DAOFactory.normalizationRecord()
         record.version = randint(2, 100)
         # write then read in the record
         indexer = self.initIndexer(IndexerType.NORMALIZATION)
         indexer.writeRecord(record)
-        res = indexer.readRecord(record.version)
+        res = indexer.readRecord()
         assert type(res) is NormalizationRecord
         assert res == record
 
@@ -986,7 +986,7 @@ class TestIndexer(unittest.TestCase):
     # make sure the indexer can read/write specific state parameter types #
 
     def test_readWriteParameters_calibration(self):
-        params = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        params = DAOFactory.calibrationParameters()
         indexer = self.initIndexer(IndexerType.CALIBRATION)
         indexer.writeParameters(params)
         res = indexer.readParameters()
@@ -994,7 +994,7 @@ class TestIndexer(unittest.TestCase):
         assert res == params
 
     def test_readWriteParameters_normalization(self):
-        params = parse_file_as(Normalization, Resource.getPath("inputs/normalization/NormalizationParameters.json"))
+        params = DAOFactory.normalizationParameters()
         indexer = self.initIndexer(IndexerType.NORMALIZATION)
         indexer.writeParameters(params)
         res = indexer.readParameters()
@@ -1002,7 +1002,7 @@ class TestIndexer(unittest.TestCase):
         assert res == params
 
     def test_readWriteParameters_reduction(self):
-        params = parse_file_as(CalculationParameters, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        params = CalculationParameters(**DAOFactory.calibrationParameters().model_dump())
         indexer = self.initIndexer(IndexerType.REDUCTION)
         indexer.writeParameters(params)
         res = indexer.readParameters()

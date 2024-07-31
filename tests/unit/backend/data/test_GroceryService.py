@@ -408,9 +408,6 @@ class TestGroceryService(unittest.TestCase):
         assert self.runNumber in res
         assert wnvf.formatVersion(self.version) in res
 
-    # NOTE if your branch merge puts test_diffcal_table_filename here, do not include it
-    # that test is above, under the filename tests
-
     ## TESTS OF ACCESS METHODS
 
     def test_workspaceDoesExist_false(self):
@@ -746,7 +743,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_fetch_failed(self):
         # this is some file that it can't load
-        mockFilename = Resource.getPath("inputs/crystalInfo/fake_file.cif")
+        mockFilename = Resource.getPath("inputs/crystalInfo/blank_file.cif")
         with pytest.raises(RuntimeError) as e:
             self.instance.fetchWorkspace(mockFilename, self.fetchedWSname, loader="")
         assert self.fetchedWSname in str(e.value)
@@ -982,7 +979,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_failed_fetch_grouping(self):
         # this is some file that it can't load
-        fakeFilepath = Resource.getPath("inputs/crystalInfo/fake_file.cif")
+        fakeFilepath = Resource.getPath("inputs/crystalInfo/blank_file.cif")
         self.instance._createGroupingFilename = mock.Mock(return_value=fakeFilepath)
         with pytest.raises(RuntimeError):
             self.instance.fetchGroupingDefinition(self.groupingItem)
@@ -1679,32 +1676,41 @@ class TestGroceryService(unittest.TestCase):
         assert not mtd.doesExist(oldName)
         assert mtd.doesExist(newName)
 
+    def test_renameWorkspaces(self):
+        oldNames = ["old1", "old2"]
+        newNames = ["new1", "new2"]
+        for oldName in oldNames:
+            self.create_dumb_workspace(oldName)
+            assert mtd.doesExist(oldName)
+        self.instance.renameWorkspaces(oldNames, newNames)
+        for oldName in oldNames:
+            assert not mtd.doesExist(oldName)
+        for newName in newNames:
+            assert mtd.doesExist(newName)
+
     def test_clearADS(self):
         rawWsName = self.instance._createRawNeutronWorkspaceName(0, "a")
         self.instance._loadedRuns = {(0, "a"): rawWsName}
         self.instance._loadedGroupings = {(1, "c"): "d"}
 
-        rebuildCache = self.instance.rebuildCache
-        self.instance.rebuildCache = mock.Mock()
+        with mock.patch.object(self.instance, "rebuildCache") as mockRebuildCache:
+            self.create_dumb_workspace(rawWsName)  # in the cache
+            self.create_dumb_workspace("b")  # not in the cache
+            self.instance.clearADS(exclude=self.exclude)  # default => don't clear cache
+            assert not mtd.doesExist("b")
+            assert mtd.doesExist(rawWsName)
 
-        self.create_dumb_workspace("b")
-        self.instance.clearADS(exclude=self.exclude)
-
-        assert mtd.doesExist(rawWsName) is False
-        self.create_dumb_workspace(rawWsName)
-        assert mtd.doesExist(rawWsName) is True
-
-        self.instance.clearADS(exclude=self.exclude, cache=False)
-
-        assert mtd.doesExist(rawWsName) is True
-        self.instance.rebuildCache.assert_called()
-        self.instance.rebuildCache = rebuildCache
+            assert mtd.doesExist(rawWsName)
+            self.instance.clearADS(exclude=self.exclude, clearCache=True)
+            assert not mtd.doesExist(rawWsName)
+            mockRebuildCache.assert_called()
 
     def test_clearADS_group(self):
         # create a workspace that will be removed
         dumbws = mtd.unique_name(prefix="_dumb_")
         self.create_dumb_workspace(dumbws)
         assert mtd.doesExist(dumbws)
+
         # create a workspace group
         groupws = mtd.unique_name(prefix="_groupws_")
         subws1 = mtd.unique_name(prefix="a")
@@ -1737,3 +1743,21 @@ class TestGroceryService(unittest.TestCase):
 
         # delete these specially
         mtd.remove(groupws)
+
+    def test_getResidentWorkspaces(self):
+        with mock.patch.object(self.instance, "getCachedWorkspaces") as mockGetCachedWorkspaces:
+            expected = list(set(mtd.getObjectNames()))  # note: re-ordering is required
+            assert len(expected)
+
+            actual = self.instance.getResidentWorkspaces(excludeCache=False)
+            assert mockGetCachedWorkspaces.not_called
+            assert actual == expected
+
+    def test_getResidentWorkspaces_exclude_cache(self):
+        rawWsName = self.instance._createRawNeutronWorkspaceName(0, "a")
+        self.instance._loadedRuns = {(0, "a"): rawWsName}
+        expected = list(set(mtd.getObjectNames()).difference([rawWsName]))
+        assert len(expected)
+
+        actual = self.instance.getResidentWorkspaces(excludeCache=True)
+        assert actual == expected

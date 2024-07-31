@@ -357,6 +357,22 @@ class GroceryService:
         )
         self.mantidSnapper.executeQueue()
 
+    def renameWorkspaces(self, oldNames: List[WorkspaceName], newNames: List[WorkspaceName]):
+        """
+        Renames a list of workspaces in Mantid's ADS.
+
+        :param oldNames: the original names of the workspaces in the ADS
+        :type oldNames: List[WorkspaceName]
+        :param newNames: the names to replace the workspace names in the ADS
+        :type newNames: List[WorkspaceName]
+        """
+        self.mantidSnapper.RenameWorkspaces(
+            "Renaming several workspaces",
+            InputWorkspaces=oldNames,
+            WorkspaceNames=newNames,
+        )
+        self.mantidSnapper.executeQueue()
+
     def getWorkspaceForName(self, name: WorkspaceName):
         """
         Simple wrapper of mantid's ADS for the service layer.
@@ -1174,14 +1190,14 @@ class GroceryService:
         else:
             pass
 
-    def clearADS(self, exclude: List[WorkspaceName] = [], cache: bool = False):
+    def clearADS(self, exclude: List[WorkspaceName] = [], clearCache: bool = False):
         """
         Clears ADS of all workspaces except those in the exclude list and cache.
 
         :param exclude: a list of workspaces to retain in the ADS after clear
         :type exclude: List[WorkspaceName]
-        :param cache: whether or not to clear cached workspaces (True = yes, clear the cache), optional (defaults to False)
-        :type cache: bool
+        :param clearCache: whether or not to clear cached workspaces
+        :type clearCache: bool
         """  # noqa E501
         workspacesToClear = set(mtd.getObjectNames())
         # filter exclude
@@ -1191,10 +1207,22 @@ class GroceryService:
             if self.workspaceDoesExist(ws) and mtd[ws].isGroup():
                 workspacesToClear = workspacesToClear.difference(mtd[ws].getNames())
         # filter caches
-        if not cache:
+        if not clearCache:
             workspacesToClear = workspacesToClear.difference(self.getCachedWorkspaces())
         # clear the workspaces
         for workspace in workspacesToClear:
             self.deleteWorkspaceUnconditional(workspace)
 
-        self.rebuildCache()
+        if clearCache:
+            self.rebuildCache()
+
+    def getResidentWorkspaces(self, excludeCache: bool):
+        """
+        Get the list of ADS-resident workspaces:
+
+        - optionally exclude the cached workspaces from this list.
+        """
+        workspaces = set(mtd.getObjectNames())
+        if excludeCache:
+            workspaces = workspaces.difference(self.getCachedWorkspaces())
+        return list(workspaces)

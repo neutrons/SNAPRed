@@ -17,7 +17,7 @@ with mock.patch.dict(
 
     def test_init_path():
         """Test ability to initialize crystal ingestion algo from path name"""
-        fakeCIF = Resource.getPath("/inputs/crystalInfo/fake_file.cif")
+        fakeCIF = Resource.getPath("/inputs/crystalInfo/blank_file.cif")
         xtalAlgo = Algo()
         xtalAlgo.initialize()
         xtalAlgo.setProperty("CifPath", fakeCIF)
@@ -25,7 +25,7 @@ with mock.patch.dict(
 
     def test_failed_path():
         """Test failure of crystal ingestion algo with a bad path name"""
-        fakeCIF = Resource.getPath("/inputs/crystalInfo/fake_file.cif")
+        fakeCIF = Resource.getPath("/inputs/crystalInfo/blank_file.cif")
         xtalAlgo = Algo()
         xtalAlgo.initialize()
         xtalAlgo.setProperty("CifPath", fakeCIF)

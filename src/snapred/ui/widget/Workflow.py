@@ -3,10 +3,24 @@ from snapred.ui.presenter.WorkflowPresenter import WorkflowPresenter
 
 
 class Workflow:
-    def __init__(self, model: WorkflowNodeModel, cancelLambda=None, iterateLambda=None, parent=None):
+    def __init__(
+        self,
+        model: WorkflowNodeModel,
+        *,
+        startLambda=None,
+        iterateLambda=None,
+        resetLambda=None,
+        cancelLambda=None,
+        parent=None,
+    ):
         # default loading subview
         self._presenter = WorkflowPresenter(
-            model, cancelLambda=cancelLambda, iterateLambda=iterateLambda, parent=parent
+            model,
+            startLambda=startLambda,
+            iterateLambda=iterateLambda,
+            resetLambda=resetLambda,
+            cancelLambda=cancelLambda,
+            parent=parent,
         )
 
     @property

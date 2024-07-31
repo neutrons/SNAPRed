@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Slot
 from qtpy.QtWidgets import QGridLayout, QPushButton, QWidget
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
@@ -20,6 +20,7 @@ class _TestView(QWidget):
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
+    @Slot()
     def handleContinueButtonClicked(self):
         pass
 
@@ -35,7 +36,7 @@ def _generateWorkflow():
         return None
 
     WorkflowNodeModel(view, continueAction, None)
-    return WorkflowBuilder(None).addNode(continueAction, view, "Test").build()
+    return WorkflowBuilder().addNode(continueAction, view, "Test").build()
 
 
 def test_workflowPresenterHandleContinueButtonClicked(qtbot):

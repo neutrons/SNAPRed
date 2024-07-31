@@ -31,7 +31,7 @@ with mock.patch.dict(
 
     def test_failed_path():
         """Test failure of crystal ingestion recipe with a bad path name"""
-        fakeCIF = "fake_file.cif"
+        fakeCIF = "blank_file.cif"
         xtalRecipe = Recipe()
         with pytest.raises(Exception):  # noqa: PT011
             xtalRecipe.executeRecipe(fakeCIF)

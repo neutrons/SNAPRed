@@ -9,6 +9,7 @@ from snapred.backend.dao.request import (
     ReductionRequest,
 )
 from snapred.backend.dao.request.ReductionRequest import Versions
+from snapred.backend.dao.response.ReductionResponse import ReductionResponse
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
@@ -86,7 +87,10 @@ class ReductionService(Service):
         # attach the list of grouping workspaces to the grocery dictionary
         groceries["groupingWorkspaces"] = groupingResults["groupingWorkspaces"]
 
-        return ReductionRecipe().cook(ingredients, groceries)
+        data = ReductionRecipe().cook(ingredients, groceries)
+        return ReductionResponse(
+            workspaces=data["outputs"],
+        )
 
     @FromString
     def fetchReductionGroupings(self, request: ReductionRequest) -> Dict[str, Any]:

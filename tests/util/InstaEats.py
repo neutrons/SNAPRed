@@ -51,10 +51,7 @@ class InstaEats(GroceryService):
         if groupingScheme == "Lite":
             path = str(Config["instrument.lite.map.file"])
         else:
-            path = (
-                Resource.getPath("inputs/testInstrument/")
-                + self.groupingMap.getMap(useLiteMode)[groupingScheme].definition
-            )
+            path = self.groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
     ## FETCH METHODS
