@@ -26,15 +26,10 @@ class StateValidationException(Exception):
         else:
             filePath, lineNumber, functionName = None, None, None
 
-        doesFileExist, hasWritePermission = self._checkFileAndPermissions(filePath)
+        doesFileExist, hasWritePermission = self.checkFileAndPermissions(filePath)
 
         if filePath and doesFileExist and hasWritePermission:
-            self.message = (
-                f"A state related error occurred within {filePath}\n"
-                f"within {functionName}\n"
-                f"@ line {lineNumber}\n\n"
-                "Please contact your CIS."
-            )
+            self.message = f"The following error occurred:{exceptionStr}\n\n" "Please contact your CIS."
         elif filePath and doesFileExist:
             self.message = f"You do not have write permissions: {filePath}"
         elif filePath:
@@ -46,7 +41,7 @@ class StateValidationException(Exception):
         super().__init__(self.message)
 
     @staticmethod
-    def _checkFileAndPermissions(filePath) -> Tuple[bool, bool]:
+    def checkFileAndPermissions(filePath) -> Tuple[bool, bool]:
         if filePath is None:
             return False, False
         fileExists = Path(filePath).exists()
