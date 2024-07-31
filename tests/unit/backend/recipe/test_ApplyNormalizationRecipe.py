@@ -4,6 +4,8 @@ import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe, Ingredients
+from snapred.meta.Config import Config
+from util.Config_helpers import Config_override
 from util.SculleryBoy import SculleryBoy
 
 
@@ -35,8 +37,11 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         ingredients = Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
         recipe.chopIngredients(ingredients)
         assert recipe.pixelGroup == ingredients.pixelGroup
-        assert recipe.dMin == ingredients.pixelGroup.dMin()
-        assert recipe.dMax == ingredients.pixelGroup.dMax()
+        # Apply adjustment that happens in chopIngredients step
+        dMin = [x + Config["constants.CropFactors.lowdSpacingCrop"] for x in ingredients.pixelGroup.dMin()]
+        dMax = [x - Config["constants.CropFactors.highdSpacingCrop"] for x in ingredients.pixelGroup.dMax()]
+        assert recipe.dMin == dMin
+        assert recipe.dMax == dMax
 
     def test_unbagGroceries(self):
         recipe = ApplyNormalizationRecipe()
@@ -97,8 +102,11 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         assert divideTuple[2]["LHSWorkspace"] == groceries["inputWorkspace"]
         assert divideTuple[2]["RHSWorkspace"] == groceries["normalizationWorkspace"]
         assert resampleTuple[2]["InputWorkspace"] == groceries["inputWorkspace"]
-        assert resampleTuple[2]["XMin"] == ingredients.pixelGroup.dMin()
-        assert resampleTuple[2]["XMax"] == ingredients.pixelGroup.dMax()
+        # Apply adjustment that happens in chopIngredients step
+        dMin = [x + Config["constants.CropFactors.lowdSpacingCrop"] for x in ingredients.pixelGroup.dMin()]
+        dMax = [x - Config["constants.CropFactors.highdSpacingCrop"] for x in ingredients.pixelGroup.dMax()]
+        assert resampleTuple[2]["XMin"] == dMin
+        assert resampleTuple[2]["XMax"] == dMax
 
     def test_cook(self):
         untensils = Utensils()
@@ -137,3 +145,13 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         assert mockSnapper.executeQueue.called
         assert mockSnapper.Divide.called
         assert mockSnapper.ResampleX.called
+
+    def test_badChopIngredients(self):
+        recipe = ApplyNormalizationRecipe()
+        ingredients = Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
+        with (
+            Config_override("constants.CropFactors.lowdSpacingCrop", 500.0),
+            Config_override("constants.CropFactors.highdSpacingCrop", 1000.0),
+            pytest.raises(ValueError, match="d-spacing crop factors are too large"),
+        ):
+            recipe.chopIngredients(ingredients)
