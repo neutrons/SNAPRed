@@ -77,7 +77,7 @@ def test_stateValidationExceptionWithInvalidState(mockLogger):  # noqa: ARG001
 def test_stateValidationExceptionWritePerms():
     exception = Exception("Test Exception")
 
-    # Mocking the _checkFileAndPermissions method to simulate file existence and permission
+    # Mocking the checkFileAndPermissions method to simulate file existence and permission
     with mock.patch.object(StateValidationException, "_checkFileAndPermissions", return_value=(True, True)):
         # Creating a fake traceback
         try:
@@ -90,7 +90,7 @@ def test_stateValidationExceptionWritePerms():
             raise StateValidationException(exception)
 
         # Asserting that the error message is as expected
-        assert "A state related error occurred within" in str(excinfo.value)
+        assert "The following error occurred:Test Exception\n\nPlease contact your CIS." in str(excinfo.value)
 
 
 @ExceptionHandler(StateValidationException)
