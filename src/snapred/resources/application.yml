@@ -166,6 +166,8 @@ constants:
 
   CropFactors:
     lowWavelengthCrop: 0.05
+    lowdSpacingCrop: 0.1
+    highdSpacingCrop: 0.15
 
 docs:
   user:
