@@ -7,29 +7,31 @@ from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocuss
 from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
-from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
 Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
-@Singleton
 class ReductionRecipe(Recipe[Ingredients]):
     """
     Currently requires:
         Ingredients:
-            self.maskList = ingredients.maskList
-            self.pixelGroup = ingredients.pixelGroup
-            self.smoothingParameter = ingredients.smoothingParameter
-            self.detectorPeaks = ingredients.detectorPeaks
+            pixelGroups: List[PixelGroup]
+            detectorPeaksMany: List[List[GroupPeakList]]
+            ...
+            misc. scalar parameters
+            ...
+
 
         Groceries:
             self.sampleWs = groceries["inputWorkspace"]
             self.diffcalWs = groceries.get("diffcalWorkspace", "")
             self.normalizationWs = groceries.get("normalizationWorkspace", "")
-            ~~self.backgroundWs = groceries.get("backgroundWorkspace", "")~~
-            self.groupingWS = groceries["groupingWorkspace"]
+            # list of grouping workspaces
+            self.groupWorkspaces = groceries["groupingWorkspaces"]
     """
 
     def chopIngredients(self, ingredients: Ingredients):
@@ -82,14 +84,17 @@ class ReductionRecipe(Recipe[Ingredients]):
         # so that we can appropriately name the cloned workspaces
         # For now we are just appending it to the end, probably preferable
         # as it keeps the output colocated.
+        runNumber, timestamp = self.ingredients.runNumber, self.ingredients.timestamp
 
-        groupName = self.ingredients.pixelGroups[groupingIndex].focusGroup.name
-        sampleClone = self._cloneWorkspace(self.sampleWs, f"output_{self.sampleWs}_{groupName}")
+        groupingName = self.ingredients.pixelGroups[groupingIndex].focusGroup.name.lower()
+        reducedOutputWs = wng.reductionOutput().runNumber(runNumber).group(groupingName).timestamp(timestamp).build()
+        sampleClone = self._cloneWorkspace(self.sampleWs, reducedOutputWs)
         self.groceries["inputWorkspace"] = sampleClone
         normalizationClone = None
         if self.normalizationWs:
             normalizationClone = self._cloneWorkspace(
-                self.normalizationWs, f"output_{self.normalizationWs}_{groupName}"
+                self.normalizationWs,
+                f"reduced_normalization_{groupingName}_{wnvf.formatTimestamp(timestamp)}",
             )
             self.groceries["normalizationWorkspace"] = normalizationClone
         return sampleClone, normalizationClone
@@ -102,6 +107,7 @@ class ReductionRecipe(Recipe[Ingredients]):
 
     def execute(self):
         data: Dict[str, Any] = {"result": False}
+
         # 1. PreprocessReductionRecipe
         outputs = []
         self._applyRecipe(
@@ -157,7 +163,10 @@ class ReductionRecipe(Recipe[Ingredients]):
 
             # Cleanup
             outputs.append(sampleClone)
-            self._deleteWorkspace(normalizationClone)
+
+            if self.normalizationWs:
+                self._deleteWorkspace(normalizationClone)
+
         data["result"] = True
         data["outputs"] = outputs
         return data

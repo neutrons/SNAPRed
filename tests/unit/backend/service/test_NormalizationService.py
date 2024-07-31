@@ -257,17 +257,15 @@ class TestNormalizationService(unittest.TestCase):
         self.instance._sameStates = MagicMock(return_value=True)
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
-        result = self.instance.normalization(self.request)
+        expected = NormalizationResponse(
+            correctedVanadium="_tof_unfoc_raw_van_corr_012345",
+            focusedVanadium=f"_tof_{self.request.focusGroup.name}_s+f-vanadium_012345",
+            smoothedVanadium="_dsp_apple_fitted_van_corr_012345",
+            detectorPeaks=self.instance.sousChef.prepNormalizationIngredients(FarmFreshIngredients()).detectorPeaks,
+        ).dict()
 
-        assert (
-            result
-            == NormalizationResponse(
-                correctedVanadium="tof_unfoc_raw_van_corr_012345",
-                focusedVanadium=f"tof_{self.request.focusGroup.name}_s+f-vanadium_012345",
-                smoothedVanadium="dsp_apple_fitted_van_cor_012345",
-                detectorPeaks=self.instance.sousChef.prepNormalizationIngredients(FarmFreshIngredients()).detectorPeaks,
-            ).dict()
-        )
+        actual = self.instance.normalization(self.request)
+        assert actual == expected
 
     def test_nomaliztionStatesDontMatch(self):
         self.instance = NormalizationService()

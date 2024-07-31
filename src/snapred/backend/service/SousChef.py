@@ -99,11 +99,10 @@ class SousChef(Service):
 
     def prepManyPixelGroups(self, ingredients: FarmFreshIngredients) -> List[PixelGroup]:
         pixelGroups = []
-        focusGroups = ingredients.focusGroup
-        for focusGroup in focusGroups:
-            ingredients.focusGroup = focusGroup
-            pixelGroups.append(self.prepPixelGroup(ingredients))
-        ingredients.focusGroup = focusGroups
+        ingredients_ = ingredients.model_copy()
+        for focusGroup in ingredients.focusGroups:
+            ingredients_.focusGroup = focusGroup
+            pixelGroups.append(self.prepPixelGroup(ingredients_))
         return pixelGroups
 
     def _getInstrumentDefinitionFilename(self, useLiteMode: bool) -> str:
@@ -168,11 +167,10 @@ class SousChef(Service):
 
     def prepManyDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[List[GroupPeakList]]:
         detectorPeaks = []
-        focusGroups = ingredients.focusGroup
-        for focusGroup in focusGroups:
-            ingredients.focusGroup = focusGroup
-            detectorPeaks.append(self.prepDetectorPeaks(ingredients, purgePeaks=False))
-        ingredients.focusGroup = focusGroups
+        ingredients_ = ingredients.model_copy()
+        for focusGroup in ingredients.focusGroups:
+            ingredients_.focusGroup = focusGroup
+            detectorPeaks.append(self.prepDetectorPeaks(ingredients_, purgePeaks=False))
         return detectorPeaks
 
     def prepReductionIngredients(
@@ -186,16 +184,19 @@ class SousChef(Service):
             ingredients.runNumber, ingredients.useLiteMode, version
         )
         # grab information from records
-        ingredients.calibrantSamplePath = calibrationRecord.calibrationFittingIngredients.calibrantSamplePath
-        ingredients.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients.calibrantSamplePath).stem)
-        ingredients.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
+        ingredients_ = ingredients.model_copy()
+        ingredients_.calibrantSamplePath = calibrationRecord.calibrationFittingIngredients.calibrantSamplePath
+        ingredients_.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients_.calibrantSamplePath).stem)
+        ingredients_.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
         return ReductionIngredients(
-            maskList=[],  # TODO coming soon to a store near you!
-            pixelGroups=self.prepManyPixelGroups(ingredients),
+            runNumber=ingredients_.runNumber,
+            useLiteMode=ingredients_.useLiteMode,
+            timestamp=ingredients_.timestamp,
+            pixelGroups=self.prepManyPixelGroups(ingredients_),
             smoothingParameter=normalizationRecord.smoothingParameter,
-            calibrantSamplePath=ingredients.calibrantSamplePath,
-            peakIntensityThreshold=ingredients.peakIntensityThreshold,
-            detectorPeaksMany=self.prepManyDetectorPeaks(ingredients),
+            calibrantSamplePath=ingredients_.calibrantSamplePath,
+            peakIntensityThreshold=ingredients_.peakIntensityThreshold,
+            detectorPeaksMany=self.prepManyDetectorPeaks(ingredients_),
         )
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:

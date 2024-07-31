@@ -1,6 +1,5 @@
 import os
 import tarfile
-import time
 
 from mantid.api import (
     AlgorithmFactory,
@@ -58,8 +57,7 @@ class WrapLeftovers(PythonAlgorithm):
         self.validate()
 
         for index in range(0, self.inputWS.getNumberHistograms()):
-            # timestamp as name
-            tmp = str(time.time())
+            tmp = self.mantidSnapper.mtd.unique_hidden_name()
             self.mantidSnapper.ExtractSpectra(
                 f"Extracting Spectra {index}",
                 InputWorkspace=self.inputWS,

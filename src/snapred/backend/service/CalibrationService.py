@@ -267,7 +267,6 @@ class CalibrationService(Service):
         runId = request.runId
         useLiteMode = request.useLiteMode
         version = request.version
-        useLiteMode = request.useLiteMode
 
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, useLiteMode, version)
         if calibrationRecord is None:
@@ -378,7 +377,7 @@ class CalibrationService(Service):
             workspaces=request.workspaces,
         )
 
-        timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
+        timestamp = self.dataExportService.getUniqueTimestamp()
         metricWorkspaces = GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
             CalibrationMetricsWorkspaceIngredients(calibrationRecord=record, timestamp=timestamp)
         )

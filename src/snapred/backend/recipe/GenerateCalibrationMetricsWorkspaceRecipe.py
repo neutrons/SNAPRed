@@ -38,7 +38,7 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
         runId = ingredients.calibrationRecord.runNumber
 
         if ingredients.timestamp is not None:
-            timestamp = str(ingredients.timestamp)
+            timestamp = ingredients.timestamp
             ws_table = wng.diffCalTimedMetric().runNumber(runId).timestamp(timestamp).metricName("table").build()
             logger.info(f"Executing recipe {__name__} for run: {runId} timestamp: {timestamp}")
         else:

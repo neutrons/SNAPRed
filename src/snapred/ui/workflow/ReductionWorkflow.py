@@ -59,6 +59,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         self._reductionView.liteModeToggle.setEnabled(False)
         self._reductionView.pixelMaskDropdown.setEnabled(False)
+        self._reductionView.retainUnfocusedDataCheckbox.setEnabled(False)
 
         for runNumber in runNumbers:
             try:
@@ -74,10 +75,13 @@ class ReductionWorkflow(WorkflowImplementer):
 
         runNumbers = self._reductionView.getRunNumbers()
 
+        # Use one timestamp for the entire set of runNumbers:
+        timestamp = self.request(path="reduction/getUniqueTimestamp").data
         for runNumber in runNumbers:
             payload = ReductionRequest(
                 runNumber=runNumber,
                 useLiteMode=self._reductionView.liteModeToggle.field.getState(),
+                timestamp=timestamp,
                 continueFlags=self.continueAnywayFlags,
             )
             # TODO: Handle Continue Anyway
