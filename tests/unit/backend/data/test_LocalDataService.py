@@ -778,6 +778,47 @@ def test__findMatchingFileList():
 
 
 ### TESTS OF PATH METHODS ###
+def test_CheckFileAndPermission_fileIsNone():
+    filePath = None
+    localDS = LocalDataService()
+    result = localDS.checkFileandPermission(filePath)
+    assert result == (False, False)
+
+
+@mock.patch("pathlib.Path.exists", return_value=False)
+def test_CheckFileAndPermission_fileDoesNotExist(mockExists):  # noqa: ARG001
+    filePath = Path("/some/path/to/nonexistent/file")
+    localDS = LocalDataService()
+    result = localDS.checkFileandPermission(filePath)
+    assert result == (False, False)
+
+
+@mock.patch("os.access", return_value=True)
+@mock.patch("pathlib.Path.exists", return_value=True)
+def test_HasWritePermissionsToPath_fileExistsWithPermission(mockExists, mockAccess):  # noqa: ARG001
+    filePath = Path("/some/path/to/file")
+    localDS = LocalDataService()
+    result = localDS._hasWritePermissionstoPath(filePath)
+    assert result is True
+
+
+@mock.patch("pathlib.Path.exists", return_value=True)
+@mock.patch("os.access", return_value=True)
+def test_CheckFileAndPermission_fileExistsAndWritePermission(mockExists, mockOsAccess):  # noqa: ARG001
+    filePath = Path("/some/path/to/file")
+    localDS = LocalDataService()
+    localDS._hasWritePermissionstoPath = mock.Mock()
+    localDS._hasWritePermissionstoPath.return_value = True
+    result = localDS.checkFileandPermission(filePath)
+    assert result == (True, True)
+
+
+@mock.patch("pathlib.Path.exists", return_value=False)
+def test_HasWritePermissionsToPath_fileDoesNotExist(mockExists):  # noqa: ARG001
+    filePath = Path("/some/path/to/nonexistent/file")
+    localDS = LocalDataService()
+    result = localDS._hasWritePermissionstoPath(filePath)
+    assert result is False
 
 
 def test_constructCalibrationStateRoot():
