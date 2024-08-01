@@ -1,4 +1,5 @@
 import json
+import traceback
 from typing import List
 from unittest import mock
 from unittest.mock import MagicMock, patch
@@ -53,6 +54,29 @@ def test_FromStringOnListOfString():
 def test_FromStringOnListOfBaseModel():
     tester = Tester()
     tester.assertIsListOfModel(json.dumps([SNAPRequest(path="test").dict()]))
+
+
+def generate_mock_exception_with_traceback():
+    try:
+        raise Exception("Test error message")
+    except Exception as e:  # noqa: BLE001
+        return e
+
+
+@mock.patch("pathlib.Path.exists", return_value=False)
+def test_stateValidationExceptionFileDoesNotExist(mockExists):  # noqa: ARG001
+    # Create an exception with a real traceback
+    mockException = generate_mock_exception_with_traceback()
+
+    # Mock the traceback to simulate a valid file path
+    mockTb = [traceback.FrameSummary("non_existent_file.txt", 42, "test_function")]
+    with patch("traceback.extract_tb", return_value=mockTb):
+        try:
+            raise StateValidationException(mockException)
+        except StateValidationException as e:
+            # Assert the error message is as expected
+            expectedMessage = "The file does not exist: non_existent_file.txt"
+            assert e.message == expectedMessage  # noqa: PT017
 
 
 @patch("snapred.backend.log.logger.snapredLogger")
