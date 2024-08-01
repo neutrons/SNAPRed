@@ -2,7 +2,6 @@ from typing import Dict, List
 
 from snapred.backend.dao.request import ReductionRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
-from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName

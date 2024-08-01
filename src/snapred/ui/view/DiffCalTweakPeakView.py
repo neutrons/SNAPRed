@@ -124,7 +124,6 @@ class DiffCalTweakPeakView(BackendRequestView):
     def _updateContineAnyway(self, continueAnyway):
         self.continueAnyway = continueAnyway
 
-
     @Slot(str)
     def _updateRunNumber(self, runNumber):
         self.runNumberField.setText(runNumber)
