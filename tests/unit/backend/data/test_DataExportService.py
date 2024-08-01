@@ -34,6 +34,11 @@ class TestDataExportService(unittest.TestCase):
         self.instance.getFullLiteDataFilePath(mock.Mock())
         assert self.instance.dataService.getIPTS.called
 
+    def test_checkFileandPermission(self):
+        filePath = Path("some/mock/path")
+        self.instance.checkFileandPermission(filePath)
+        assert self.instance.dataService.checkFileandPermission.called
+
     def test_getUniqueTimestamp(self):
         self.instance.getUniqueTimestamp()
         assert self.instance.dataService.getUniqueTimestamp.called

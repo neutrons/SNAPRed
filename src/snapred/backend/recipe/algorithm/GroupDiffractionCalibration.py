@@ -328,7 +328,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             InstrumentWorkspace=self.originalWStof,
             CalibrationWorkspace=self.DIFCfinal,
         )
-        self.convertAndFocusAndReturn(self.originalWStof, self.outputWSdSpacing, "after", "dSpacing")
+        self.convertAndFocusAndReturn(self.originalWStof, self.outputWSdSpacing, "after", "dSpacing", False)
 
         # add the TOF-spacing workspace to the diagnostic workspace group
         self.mantidSnapper.CloneWorkspace(
@@ -351,7 +351,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.setPropertyValue("OutputWorkspace", self.outputWSdSpacing)
         self.setPropertyValue("FinalCalibrationTable", self.DIFCfinal)
 
-    def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str, units: str):
+    def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str, units: str, keepEvents: bool = True):
         # Use workspace name generator
         tmpWStof = f"_TOF_{self.runNumber}_diffoc_{note}"
         tmpWSdsp = f"_DSP_{self.runNumber}_diffoc_{note}"
@@ -380,6 +380,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             XMin=self.dMin,
             XMax=self.dMax,
             Delta=self.dBin,
+            preserveEvents=keepEvents,
         )
 
         if units == "TOF":
