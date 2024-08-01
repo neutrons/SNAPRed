@@ -77,6 +77,15 @@ from util.helpers import (
     maskGroups,
     maskComponentByName,
 )
+from util.IPTS_override import datasearch_directories
+
+## If required: override the IPTS search directories: ##
+# instrumentHome = "< your instrument-home directory goes here... >"
+# ConfigService.Instance().setDataSearchDirs(datasearch_directories(instrumentHome))
+# Config._config["instrument"]["home"] = instrumentHome + os.sep
+########################################################
+
+
 SNAPLiteInstrumentFilePath = str(Path(SNAPRed_module_root).parent / 'tests' / 'resources' / 'inputs' / 'pixel_grouping' / 'SNAPLite_Definition.xml')
 
 # USER INPUT ##########################

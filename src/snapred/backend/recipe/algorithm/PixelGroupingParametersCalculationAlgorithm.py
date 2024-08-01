@@ -94,6 +94,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                 MaskWorkspace=self.maskWorkspaceName,
                 OutputWorkspace=tmpGroupingWSName,
             )
+            
         self.mantidSnapper.executeQueue()
 
         # Create a grouped-by-detector workspace from the grouping workspace
