@@ -182,7 +182,7 @@ class WorkflowPresenter(QObject):
 
     @Slot(object)
     def continueAnyway(self, continueInfo: ContinueWarning.Model):
-         # The associated signal is of type ``Signal(SNAPResponseHandler.continueAnyway) as Signal(object)``
+        # The associated signal is of type ``Signal(SNAPResponseHandler.continueAnyway) as Signal(object)``
         if self.view.tabModel.continueAnywayHandler:
             self.view.tabModel.continueAnywayHandler(continueInfo)
         else:
