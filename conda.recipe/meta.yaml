@@ -1,13 +1,16 @@
-# load information from setup.cfg/setup.py
-{% set data = load_setup_py_data() %}
-{% set license = data.get('license') %}
-{% set description = data.get('description') %}
-{% set url = data.get('url') %}
+# load information from pyproject.toml
+{% set pyproject = load_file_data('pyproject.toml') %}
+{% set project = pyproject.get('project', {}) %}
+{% set license = project.get('license').get('text') %}
+{% set description = project.get('description') %}
+{% set project_url = pyproject.get('project', {}).get('urls') %}
+{% set url = project_url.get('homepage') %}
 # this will get the version set by environment variable
 {% set version = environ.get('VERSION') %}
 {% set version_number = version.split('+')[0] %}
 # change the build number by hand if you want to rebuild the package
 {% set build_number = 0 %}
+
 
 package:
   name: snapred
@@ -36,9 +39,6 @@ requirements:
     - setuptools
     - versioningit
     - {{ pin_compatible("pydantic", min_pin="2.7.3", max_pin="3") }}
-    - mantidworkbench
-    - qtpy
-    - pytest
 
   run:
     - {{ pin_compatible("pydantic", min_pin="2.7.3", max_pin="3") }}
