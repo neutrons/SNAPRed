@@ -56,17 +56,34 @@ def test_FromStringOnListOfBaseModel():
     tester.assertIsListOfModel(json.dumps([SNAPRequest(path="test").dict()]))
 
 
-def generate_mock_exception_with_traceback():
+def generateMockExceptionWithTraceback():
     try:
         raise Exception("Test error message")
     except Exception as e:  # noqa: BLE001
         return e
 
 
+@mock.patch("pathlib.Path.exists", return_value=True)
+@mock.patch("os.access", return_value=False)
+def test_stateValidationExceptionNoWritePermissions(mockExists, mockAccess):  # noqa: ARG001
+    # Create an exception with a real traceback
+    mock_exception = generateMockExceptionWithTraceback()
+
+    # Mock the traceback to simulate a valid file path
+    mockTb = [traceback.FrameSummary("nonExistentFile.txt", 42, "testFunction")]
+    with patch("traceback.extract_tb", return_value=mockTb):
+        try:
+            raise StateValidationException(mock_exception)
+        except StateValidationException as e:
+            # Assert the error message is as expected
+            expectedMessage = "You do not have write permissions: nonExistentFile.txt"
+            assert e.message == expectedMessage  # noqa: PT017
+
+
 @mock.patch("pathlib.Path.exists", return_value=False)
 def test_stateValidationExceptionFileDoesNotExist(mockExists):  # noqa: ARG001
     # Create an exception with a real traceback
-    mockException = generate_mock_exception_with_traceback()
+    mockException = generateMockExceptionWithTraceback()
 
     # Mock the traceback to simulate a valid file path
     mockTb = [traceback.FrameSummary("non_existent_file.txt", 42, "test_function")]
