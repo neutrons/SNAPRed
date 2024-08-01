@@ -46,8 +46,8 @@ class DataExportService:
     def getUniqueTimestamp(self) -> time.struct_time:
         return self.dataService.getUniqueTimestamp()
 
-    def checkFileandPermission(self) -> Tuple[bool, bool]:
-        return self.dataService.checkFileandPermission()
+    def checkFileandPermission(self, filePath: Path) -> Tuple[bool, bool]:
+        return self.dataService.checkFileandPermission(filePath)
 
     ##### CALIBRATION METHODS #####
 

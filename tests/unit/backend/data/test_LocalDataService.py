@@ -778,8 +778,15 @@ def test__findMatchingFileList():
 
 
 ### TESTS OF PATH METHODS ###
+def test_CheckFileAndPermission_fileIsNone():
+    filePath = None
+    localDS = LocalDataService()
+    result = localDS.checkFileandPermission(filePath)
+    assert result == (False, False)
+
+
 @mock.patch("pathlib.Path.exists", return_value=False)
-def testCheckFileAndPermission_fileDoesNotExist(mockExists):  # noqa: ARG001
+def test_CheckFileAndPermission_fileDoesNotExist(mockExists):  # noqa: ARG001
     filePath = Path("/some/path/to/nonexistent/file")
     localDS = LocalDataService()
     result = localDS.checkFileandPermission(filePath)
@@ -788,7 +795,7 @@ def testCheckFileAndPermission_fileDoesNotExist(mockExists):  # noqa: ARG001
 
 @mock.patch("os.access", return_value=True)
 @mock.patch("pathlib.Path.exists", return_value=True)
-def testHasWritePermissionsToPath_fileExistsWithPermission(mockExists, mockAccess):  # noqa: ARG001
+def test_HasWritePermissionsToPath_fileExistsWithPermission(mockExists, mockAccess):  # noqa: ARG001
     filePath = Path("/some/path/to/file")
     localDS = LocalDataService()
     result = localDS._hasWritePermissionstoPath(filePath)
@@ -797,7 +804,7 @@ def testHasWritePermissionsToPath_fileExistsWithPermission(mockExists, mockAcces
 
 @mock.patch("pathlib.Path.exists", return_value=True)
 @mock.patch("os.access", return_value=True)
-def testCheckFileAndPermission_fileExistsAndWritePermission(mockExists, mockOsAccess):  # noqa: ARG001
+def test_CheckFileAndPermission_fileExistsAndWritePermission(mockExists, mockOsAccess):  # noqa: ARG001
     filePath = Path("/some/path/to/file")
     localDS = LocalDataService()
     localDS._hasWritePermissionstoPath = mock.Mock()
@@ -807,7 +814,7 @@ def testCheckFileAndPermission_fileExistsAndWritePermission(mockExists, mockOsAc
 
 
 @mock.patch("pathlib.Path.exists", return_value=False)
-def testHasWritePermissionsToPath_fileDoesNotExist(mockExists):  # noqa: ARG001
+def test_HasWritePermissionsToPath_fileDoesNotExist(mockExists):  # noqa: ARG001
     filePath = Path("/some/path/to/nonexistent/file")
     localDS = LocalDataService()
     result = localDS._hasWritePermissionstoPath(filePath)
