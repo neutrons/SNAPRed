@@ -1,19 +1,35 @@
 [project]
 name = "SNAPRed"
 description = "A desktop application for Lifecycle Managment of data collected from the SNAP instrument."
-dynamic = ["version", 'dependencies', 'optional-dependencies']
-requires-python = ">=3.8"
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = [
+    "mantidworkbench >= 6.10.20240705",
+    "pyoncat ~= 1.6"
+]
 readme = "README.md"
 license = { text = "GPL3.0" }
 
-[tools.setuptools.dynamic.dependecies]
+
+[project.urls]
+homepage = "https://github.com/neutrons/SNAPRed"  # if no homepage, use repo url
+repository = "https://github.com/neutrons/SNAPRed"
+# documentation = add_url_to_readthedoc_here
+issues = "https://github.com/neutrons/SNAPRed/issues"
 
 [project.scripts]
 snapred = "snapred.__main__:main"
 
 [build-system]
-requires = ["setuptools", "wheel", "toml", "versioningit"]
+requires = ["setuptools", "toml", "versioningit"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.ui", "*.txt","*.yml","*.yaml","*.qss"]
 
 [tool.versioningit.vcs]
 method = "git"
@@ -55,4 +71,33 @@ extend-exclude = ["conftest.py"]
 module = [
     "yaml",
 ]
-ignore_missing_imports = true
+ignore_missing_imports = true # gets around mantid imports
+exclude = [
+"tests/",
+"src/snapred/backend/",
+"src/snapred/meta/",
+"src/snapred/ui/"
+]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.coverage.run]
+source = ["src/snapred"]
+omit = [
+        "*/tests/*",
+        "conda.recipe/*",
+        "docs/*",
+        "src/snapred/__init__.py",
+        "src/snapred/ui/*",
+        "src/snapred/backend/dao/*",
+        "src/snapred/_version.py",
+  ]
+
+[tool.coverage.report]
+fail_under = 1
+exclude_lines = [
+  'if __name__ == "__main__":'
+]
