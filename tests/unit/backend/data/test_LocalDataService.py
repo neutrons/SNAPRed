@@ -800,7 +800,7 @@ def testHasWritePermissionsToPath_fileExistsWithPermission(mockExists, mockAcces
 def testCheckFileAndPermission_fileExistsAndWritePermission(mockExists, mockOsAccess):  # noqa: ARG001
     filePath = Path("/some/path/to/file")
     localDS = LocalDataService()
-    localDS._hasWritePermissionstoPath = mock.Mock
+    localDS._hasWritePermissionstoPath = mock.Mock()
     localDS._hasWritePermissionstoPath.return_value = True
     result = localDS.checkFileandPermission(filePath)
     assert result == (True, True)
