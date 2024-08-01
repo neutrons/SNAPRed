@@ -46,12 +46,12 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     FIGURE_MARGIN = 0.5  # top + bottom: inches
 
+    signalContinueAnyway = Signal(bool)
     signalRunNumberUpdate = Signal(str)
     signalPeakThresholdUpdate = Signal(float)
     signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum, Pair, float)
     signalUpdateRecalculationButton = Signal(bool)
     signalMaxChiSqUpdate = Signal(float)
-    signalContinueAnyway = Signal(bool)
 
     def __init__(self, samples=[], groups=[], parent=None):
         super().__init__(parent=parent)
