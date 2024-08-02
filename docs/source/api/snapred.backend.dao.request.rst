@@ -76,14 +76,6 @@ snapred.backend.dao.request.FocusSpectraRequest module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.dao.request.InitializeStateHandler module
----------------------------------------------------------
-
-.. automodule:: snapred.backend.dao.request.InitializeStateHandler
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.dao.request.InitializeStateRequest module
 ---------------------------------------------------------
 
