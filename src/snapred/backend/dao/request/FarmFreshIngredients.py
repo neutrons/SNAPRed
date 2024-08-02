@@ -60,7 +60,7 @@ class FarmFreshIngredients(BaseModel):
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
     maxChiSq: Optional[float] = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
-    focusGroups: List[FocusGroup]
+    focusGroups: Optional[List[FocusGroup]] = None
 
     # Allow 'focusGroups' to be accessed as a single 'focusGroup'
     @property

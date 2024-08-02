@@ -14,6 +14,8 @@ from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
@@ -70,6 +72,30 @@ class ReductionService(Service):
     def name():
         return "reduction"
 
+    def validateReduction(self, request: ReductionRequest):
+        """
+        Validate the reduction request.
+
+        :param request: a reduction request
+        :type request: ReductionRequest
+        """
+        continueFlags = ContinueWarning.Type.UNSET
+        # check if nomalziations are present
+        if not self.dataFactoryService.normalizationExists(request.runNumber, request.useLiteMode):
+            continueFlags |= ContinueWarning.Type.MISSING_NORMALIZATION
+        # check if diffraction calibration is present
+        if not self.dataFactoryService.calibrationExists(request.runNumber, request.useLiteMode):
+            continueFlags |= ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
+
+        # remove any continue flags that are present in the request by xor-ing with the flags
+        if request.continueFlags:
+            continueFlags = continueFlags ^ request.continueFlags
+
+        if continueFlags:
+            raise ContinueWarning(
+                "Reduction is missing calibration data, continue in uncalibrated mode?", continueFlags
+            )
+
     @FromString
     def reduction(self, request: ReductionRequest):
         """
@@ -78,9 +104,10 @@ class ReductionService(Service):
         :param request: a ReductionRequest object holding needed information
         :type request: ReductionRequest
         """
+        self.validateReduction(request)
+
         groupingResults = self.fetchReductionGroupings(request)
         request.focusGroups = groupingResults["focusGroups"]
-
         ingredients = self.prepReductionIngredients(request)
 
         groceries = self.fetchReductionGroceries(request)
@@ -127,8 +154,16 @@ class ReductionService(Service):
 
         :rtype: Dict[str, Any]
         """
-        # fetch all valid groups for this run state
-        groupingMap = self.dataFactoryService.getGroupingMap(runNumber).getMap(useLiteMode)
+
+        # if grouping exists in state, use it
+        # else refer to root for default groups
+        # This branch is mostly relevent when a user proceeds without calibration.
+        try:
+            groupingMap = self.dataFactoryService.getGroupingMap(runNumber)
+        except StateValidationException:
+            groupingMap = self.dataFactoryService.getDefaultGroupingMap()
+
+        groupingMap = groupingMap.getMap(useLiteMode)
         for focusGroup in groupingMap.values():
             self.groceryClerk.fromRun(runNumber).grouping(focusGroup.name).useLiteMode(useLiteMode).add()
         groupingWorkspaces = self.groceryService.fetchGroceryList(self.groceryClerk.buildList())
@@ -192,6 +227,7 @@ class ReductionService(Service):
             convertUnitsTo=request.convertUnitsTo,
             versions=request.versions,
         )
+        # TODO: Skip calibrant sample if there is no calibrant
         return self.sousChef.prepReductionIngredients(farmFresh)
 
     @FromString
@@ -247,17 +283,28 @@ class ReductionService(Service):
 
         # As an interim solution: set the request "versions" field to the latest calibration and normalization versions.
         #   TODO: set these when the request is initially generated.
-        request.versions = Versions(
-            self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode),
-            self.dataFactoryService.getThisOrLatestNormalizationVersion(request.runNumber, request.useLiteMode),
-        )
+        calVersion = None
+        normVersion = None
+        if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
+            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
+                request.runNumber, request.useLiteMode
+            )
+            self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
+                request.useLiteMode
+            ).add()
 
-        self.groceryClerk.name("diffcalWorkspace").diffcal_table(
-            request.runNumber, request.versions.calibration
-        ).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.name("normalizationWorkspace").normalization(
-            request.runNumber, request.versions.normalization
-        ).useLiteMode(request.useLiteMode).add()
+        if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
+            normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
+                request.runNumber, request.useLiteMode
+            )
+            self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, normVersion).useLiteMode(
+                request.useLiteMode
+            ).add()
+
+        request.versions = Versions(
+            calVersion,
+            normVersion,
+        )
 
         return self.groceryService.fetchGroceryDict(
             groceryDict=self.groceryClerk.buildDict(),

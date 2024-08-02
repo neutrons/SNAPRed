@@ -33,7 +33,7 @@ class Worker(QObject):
         except ContinueWarning as w:
             results = SNAPResponse(code=ResponseCode.CONTINUE_WARNING, message=w.model.json())
         except RecoverableException as e:
-            results = SNAPResponse(code=ResponseCode.RECOVERABLE, message=e.errorMsg)
+            results = SNAPResponse(code=ResponseCode.RECOVERABLE, message=e.model.json())
         except Exception as e:  # noqa: BLE001
             # print stacktrace
             import traceback

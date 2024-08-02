@@ -21,6 +21,8 @@ from snapred.backend.dao.request.ReductionRequest import Versions
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.FocusGroup import FocusGroup
+from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -62,6 +64,8 @@ class TestReductionService(unittest.TestCase):
             versions=(1, 2),
             pixelMasks=[],
             focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
+            continueFlags=ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
+            | ContinueWarning.Type.MISSING_NORMALIZATION,
         )
         ## Mock out the assistant services
         self.instance.sousChef = self.sculleryBoy
@@ -78,6 +82,15 @@ class TestReductionService(unittest.TestCase):
         assert pydantic.TypeAdapter(List[FocusGroup]).validate_python(data["focusGroups"])
         assert pydantic.TypeAdapter(List[str]).validate_python(data["groupingWorkspaces"])
 
+    def test_loadAllGroupings_default(self):
+        self.instance.dataFactoryService.getGroupingMap = mock.Mock(
+            side_effect=StateValidationException(Exception("test"))
+        )
+        self.instance.dataFactoryService.getDefaultGroupingMap = mock.MagicMock()
+        self.instance.loadAllGroupings(self.request.runNumber, self.request.useLiteMode)
+
+        self.instance.dataFactoryService.getDefaultGroupingMap.assert_called_once()
+
     def test_fetchReductionGroupings(self):
         data = self.instance.fetchReductionGroupings(self.request)
         assert data == self.instance.loadAllGroupings(self.request.runNumber, self.request.useLiteMode)
@@ -92,7 +105,7 @@ class TestReductionService(unittest.TestCase):
     def test_fetchReductionGroceries(self):
         self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
-
+        self.request.continueFlags = ContinueWarning.Type.UNSET
         res = self.instance.fetchReductionGroceries(self.request)
         assert "inputWorkspace" in res
         assert "diffcalWorkspace" in res
@@ -155,13 +168,44 @@ class TestReductionService(unittest.TestCase):
         result = scheduler.handle([request], groupings)
 
         # Verify the request is sorted by state id then normalization version
-        lookupService = self.instance.dataFactoryService.lookupService
-        stateId, _ = lookupService._generateStateId(self.request.runNumber)
-        # need to add a normalization version to find
-        lookupService.normalizationIndexer(self.request.runNumber, self.request.useLiteMode).index = {1: mock.Mock()}
+        mockDataFactory = mock.Mock()
+        mockDataFactory.getThisOrCurrentNormalizationVersion.side_effect = [0, 1]
+        mockDataFactory.constructStateId.return_value = ("state1", "_")
+        self.instance.dataFactoryService = mockDataFactory
+
         # now sort
-        result = scheduler.handle([request], [self.instance._groupByStateId, self.instance._groupByVanadiumVersion])
-        assert result["root"][stateId]["normalization_1"][0] == request
+        result = scheduler.handle(
+            [request, request], [self.instance._groupByStateId, self.instance._groupByVanadiumVersion]
+        )
+
+        assert result["root"]["state1"]["normalization_1"][0] == request
+        assert result["root"]["state1"]["normalization_0"][0] == request
+
+    def test_validateReduction(self):
+        # assert no exceptions are raised
+        try:
+            self.instance.validateReduction(self.request)
+        except Exception as e:  # noqa: BLE001
+            self.fail(f"Unexpected exception: {e}")
+
+    def test_validateReduction_noCalibration(self):
+        # assert ContinueWarning is raised
+
+        # copilot come on, we have tested for exceptions before, please pick up on this
+        # its even in the same file
+        fakeDataService = mock.Mock()
+        fakeDataService.calibrationExists.return_value = False
+        self.instance.dataFactoryService = fakeDataService
+        with pytest.raises(ContinueWarning):
+            self.instance.validateReduction(self.request)
+
+    def test_validateReduction_noNormalization(self):
+        # assert ContinueWarning is raised
+        fakeDataService = mock.Mock()
+        fakeDataService.normalizationExists.return_value = False
+        self.instance.dataFactoryService = fakeDataService
+        with pytest.raises(ContinueWarning):
+            self.instance.validateReduction(self.request)
 
 
 class TestReductionServiceMasks:

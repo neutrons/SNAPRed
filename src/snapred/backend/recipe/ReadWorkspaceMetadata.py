@@ -42,6 +42,6 @@ class ReadWorkspaceMetadata(Recipe[WorkspaceMetadata]):
         Main interface method for the recipe.
         Given the ingredients and groceries, it prepares, executes and returns the final workspace.
         """
-        self.prep({}, groceries)
+        self.prep(None, groceries)
         self.execute()
         return self.metadata

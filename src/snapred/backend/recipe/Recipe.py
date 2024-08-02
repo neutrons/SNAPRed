@@ -52,10 +52,13 @@ class Recipe(ABC, Generic[Ingredients]):
         """
         Validate the input properties before chopping or unbagging
         """
+        if ingredients is not None and not isinstance(ingredients, BaseModel):
+            raise ValueError("Ingredients must be a Pydantic BaseModel.")
         # cast the ingredients into the Ingredients type
         try:
             # to run the same as Ingredients.model_validate(ingredients)
-            get_args(self.__orig_bases__[0])[0].model_validate(ingredients)
+            if ingredients is not None:
+                get_args(self.__orig_bases__[0])[0].model_validate(ingredients.dict())
         except ValidationError as e:
             raise e
         # ensure all of the given workspaces exist
@@ -65,7 +68,7 @@ class Recipe(ABC, Generic[Ingredients]):
             if not isinstance(ws, list):
                 ws = [ws]
             for wsStr in ws:
-                if not self.mantidSnapper.mtd.doesExist(wsStr):
+                if isinstance(wsStr, str) and not self.mantidSnapper.mtd.doesExist(wsStr):
                     raise RuntimeError(f"The indicated workspace {wsStr} not found in Mantid ADS.")
 
     def stirInputs(self):

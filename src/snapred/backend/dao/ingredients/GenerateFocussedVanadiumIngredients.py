@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
@@ -10,4 +12,5 @@ class GenerateFocussedVanadiumIngredients(BaseModel):
 
     smoothingParameter: float = Config["calibration.parameters.default.smoothing"]
     pixelGroup: PixelGroup
-    detectorPeaks: list[GroupPeakList]
+    # This can be None if we lack a calibration
+    detectorPeaks: Optional[list[GroupPeakList]] = None

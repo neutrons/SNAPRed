@@ -92,6 +92,10 @@ class ReductionRecipeTest(TestCase):
         recipe = ReductionRecipe()
         recipe.groceries = {}
         recipe.ingredients = mock.Mock()
+        recipe.mantidSnapper = mock.Mock()
+        recipe.mantidSnapper.mtd = mock.Mock()
+        recipe.mantidSnapper.mtd.doesExist = mock.Mock()
+        recipe.mantidSnapper.mtd.doesExist.return_value = True
 
         mockRecipe = mock.Mock()
         inputWS = "input"
@@ -99,6 +103,22 @@ class ReductionRecipeTest(TestCase):
 
         assert recipe.groceries["inputWorkspace"] == inputWS
         assert mockRecipe.cook.called_once_with(recipe.ingredients, recipe.groceries)
+
+    def test_applyRecipe_no_input_workspace(self):
+        recipe = ReductionRecipe()
+        recipe.groceries = {}
+        recipe.ingredients = mock.Mock()
+        recipe.mantidSnapper = mock.Mock()
+        recipe.mantidSnapper.mtd = mock.Mock()
+        recipe.mantidSnapper.mtd.doesExist = mock.Mock()
+        recipe.mantidSnapper.mtd.doesExist.return_value = False
+        recipe.logger = mock.Mock()
+        recipe.logger.return_value = mock.Mock()
+        recipe.logger().warning = mock.Mock()
+
+        recipe._applyRecipe(mock.Mock(), recipe.ingredients, inputWorkspace="input")
+
+        recipe.logger().warning.assert_called_once()
 
     def test_prepGroupingWorkspaces(self):
         recipe = ReductionRecipe()
@@ -121,6 +141,30 @@ class ReductionRecipeTest(TestCase):
         assert sampleClone == "cloned"
         assert normClone == "cloned"
 
+    def test_prepGroupingWorkspaces_no_normalization(self):
+        recipe = ReductionRecipe()
+        recipe.groupingWorkspaces = ["group1", "group2"]
+        recipe.normalizationWs = None
+        recipe.mantidSnapper = mock.Mock()
+        recipe.groceries = {}
+        recipe.ingredients = mock.Mock()
+        recipe.ingredients.pixelGroups = [mock.Mock(), mock.Mock()]
+        recipe.ingredients.detectorPeaksMany = [["peaks"], ["peaks2"]]
+
+        recipe.sampleWs = "sample"
+        recipe._cloneWorkspace = mock.Mock()
+        recipe._cloneWorkspace.return_value = "cloned"
+
+        recipe._deleteWorkspace = mock.Mock()
+
+        sampleClone, normClone = recipe._prepGroupingWorkspaces(0)
+
+        assert recipe.groceries["inputWorkspace"] == "cloned"
+        assert "normalizationWorkspace" not in recipe.groceries
+        assert sampleClone == "cloned"
+        assert normClone is None
+        recipe._deleteWorkspace.assert_not_called()
+
     def test_stubs(self):
         recipe = ReductionRecipe()
         recipe.validateInputs(None, None)
@@ -133,6 +177,10 @@ class ReductionRecipeTest(TestCase):
         recipe.ingredients = mock.Mock()
         recipe.ingredients.pixelGroups = ["group"]
         recipe.ingredients.detectorPeaksMany = [["peaks"]]
+        recipe.mantidSnapper = mock.Mock()
+        recipe.mantidSnapper.mtd = mock.Mock()
+        recipe.mantidSnapper.mtd.doesExist = mock.Mock()
+        recipe.mantidSnapper.mtd.doesExist.return_value = True
 
         groupingIndex = 0
         recipe._applyRecipe(
