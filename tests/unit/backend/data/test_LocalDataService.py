@@ -78,6 +78,10 @@ ThisService = "snapred.backend.data.LocalDataService."
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
+# NOTE: Devs, never changing the comparison value:
+UNCHANGING_STATE_ID = "9618b936a4419a6e"
+ENDURING_STATE_ID = "ab8704b0bc2a2342"
+
 
 @pytest.fixture(autouse=True)
 def _capture_logging(monkeypatch):
