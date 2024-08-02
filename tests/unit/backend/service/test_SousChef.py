@@ -374,6 +374,7 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepPixelGroup = mock.Mock()
         self.instance.prepDetectorPeaks = mock.Mock()
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
 
         res = self.instance.prepNormalizationIngredients(self.ingredients)
 
@@ -392,6 +393,7 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepRunConfig = mock.Mock()
         self.instance.prepPixelGroup = mock.Mock()
         self.instance.prepDetectorPeaks = mock.Mock()
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
 
         res = self.instance.prepDiffractionCalibrationIngredients(self.ingredients)
 

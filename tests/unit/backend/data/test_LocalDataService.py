@@ -170,6 +170,7 @@ def do_test_write_record_with_version(workflow: Literal["Calibration", "Normaliz
 def do_test_read_state_with_version(workflow: Literal["Calibration", "Normalization", "Reduction"]):
     paramFactory = getattr(DAOFactory, f"{workflow.lower()}Parameters")
     localDataService = LocalDataService()
+    localDataService.calibrationExists = mock.Mock(return_value=True)
     versions = list(range(randint(10, 20)))
     shuffle(versions)
     for version in versions:

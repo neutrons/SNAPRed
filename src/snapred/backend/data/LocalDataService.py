@@ -719,8 +719,10 @@ class LocalDataService:
     ##### READ / WRITE STATE METHODS #####
 
     @validate_call
-    @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        if not self.calibrationExists(runId, useLiteMode):
+            raise RecoverableException.stateUninitialized(runId, useLiteMode)
+
         indexer = self.calibrationIndexer(runId, useLiteMode)
         # NOTE if we prefer latest version in index, uncomment below
         # if version is None:

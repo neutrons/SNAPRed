@@ -44,3 +44,10 @@ class RecoverableException(Exception):
     def parse_raw(raw):
         raw = RecoverableException.Model.model_validate_json(raw)
         return RecoverableException(**raw.dict())
+
+    def stateUninitialized(runNumber: str, useLiteMode: bool):
+        return RecoverableException(
+            "State uninitialized",
+            flags=RecoverableException.Type.STATE_UNINITIALIZED,
+            data={"runNumber": runNumber, "useLiteMode": useLiteMode},
+        )

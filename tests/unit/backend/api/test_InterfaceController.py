@@ -27,10 +27,7 @@ with mock.patch.dict(
 
         def orchestrateRecipe_side_effect(request):  # noqa: ARG001
             if raiseRecoverable:
-                raise RecoverableException(
-                    exception=AttributeError("'NoneType' object has no attribute 'instrumentState'"),
-                    errorMsg="AttributeError: 'NoneType' object has no attribute 'instrumentState'",
-                )
+                raise RecoverableException.stateUninitialized("12345", True)
             elif raiseContinueWarning:
                 raise ContinueWarning("Continue with warning")
             else:
@@ -64,7 +61,7 @@ with mock.patch.dict(
         response = interfaceController.executeRequest(stateCheckRequest)
 
         assert response.code == ResponseCode.RECOVERABLE
-        assert "state" in response.message
+        assert "State uninitialized" in response.message
         assert response.data is None
 
     def test_executeRequest_continueWarning():
