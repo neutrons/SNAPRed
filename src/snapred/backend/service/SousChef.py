@@ -18,6 +18,7 @@ from snapred.backend.dao.state import FocusGroup, InstrumentState, PixelGroup
 from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.GenericRecipe import (
     DetectorPeakPredictorRecipe,
@@ -254,7 +255,21 @@ class SousChef(Service):
             convertUnitsTo=ingredients_.convertUnitsTo,
         )
 
+    def _verifyCalibrationExists(self, runNumber: str, useLiteMode: bool) -> bool:
+        if not self.dataFactoryService.calibrationExists(runNumber, useLiteMode):
+            recoveryData = {
+                "runNumber": runNumber,
+                "useLiteMode": useLiteMode,
+            }
+            raise RecoverableException(
+                f"No calibration record found for run {runNumber}.",
+                flags=RecoverableException.Type.STATE_UNINITIALIZED,
+                data=recoveryData,
+            )
+
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
+        self._verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
+
         return NormalizationIngredients(
             pixelGroup=self.prepPixelGroup(ingredients),
             calibrantSample=self.prepCalibrantSample(ingredients.calibrantSamplePath),
@@ -264,6 +279,8 @@ class SousChef(Service):
     def prepDiffractionCalibrationIngredients(
         self, ingredients: FarmFreshIngredients
     ) -> DiffractionCalibrationIngredients:
+        self._verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
+
         return DiffractionCalibrationIngredients(
             runConfig=self.prepRunConfig(ingredients.runNumber),
             pixelGroup=self.prepPixelGroup(ingredients),

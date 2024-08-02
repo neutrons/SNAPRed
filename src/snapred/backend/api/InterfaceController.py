@@ -1,9 +1,7 @@
-import json
 from typing import List
 
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import SNAPRequest, SNAPResponse
-from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
 from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
@@ -49,13 +47,7 @@ class InterfaceController:
 
         except RecoverableException as e:
             self.logger.error(f"Recoverable error occurred: {str(e)}")
-            payloadDict = json.loads(request.payload)
-            runNumber = payloadDict["runNumber"]
-            useLiteMode = payloadDict["useLiteMode"]
-            if runNumber:
-                InitializeStateHandler.runId = runNumber
-                InitializeStateHandler.useLiteMode = useLiteMode
-            response = SNAPResponse(code=ResponseCode.RECOVERABLE, message="state")
+            response = SNAPResponse(code=ResponseCode.RECOVERABLE, message=e.model.json())
         except ContinueWarning as e:
             self.logger.error(f"Continue warning occurred: {str(e)}")
             response = SNAPResponse(code=ResponseCode.CONTINUE_WARNING, message=e.model.json())

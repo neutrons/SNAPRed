@@ -3,7 +3,6 @@ import threading
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import QMessageBox, QWidget
 
-from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
@@ -49,7 +48,7 @@ class SNAPResponseHandler(QWidget):
         if result.code >= ResponseCode.ERROR:
             raise RuntimeError(result.message)
         if result.code >= ResponseCode.RECOVERABLE:
-            raise RecoverableException(result.message, "state")
+            raise RecoverableException.parse_raw(result.message)
         if result.code == ResponseCode.CONTINUE_WARNING:
             raise ContinueWarning.parse_raw(result.message)
         if result.message:
@@ -67,19 +66,9 @@ class SNAPResponseHandler(QWidget):
                 QMessageBox.Ok,
             )
         elif SNAPResponseHandler._isRecoverableError(code):
-            if "state" in message:
-                SNAPResponseHandler.handleStateMessage(view)
-            else:
-                logger.error(f"Unhandled scenario triggered by state message: {message}")
-                messageBox = QMessageBox(
-                    QMessageBox.Warning,
-                    "Warning",
-                    "The backend has encountered warning(s)",
-                    QMessageBox.Ok,
-                    view,
-                )
-                messageBox.setDetailedText(f"{message}")
-                messageBox.exec()
+            recoverableException = RecoverableException.parse_raw(message)
+            if recoverableException.flags == RecoverableException.Type.STATE_UNINITIALIZED:
+                SNAPResponseHandler.handleStateMessage(view, recoverableException)
         elif code == ResponseCode.CONTINUE_WARNING:
             continueInfo = ContinueWarning.Model.model_validate_json(message)
             if SNAPResponseHandler._handleContinueWarning(continueInfo.message, view):
@@ -117,15 +106,16 @@ class SNAPResponseHandler(QWidget):
         return continueAnyway == QMessageBox.Yes
 
     @staticmethod
-    def handleStateMessage(view):
+    def handleStateMessage(view, recoverableException):
         """
         Handles a specific 'state' message.
         """
+        recoveryData = recoverableException.data
+        runNumber = recoveryData.get("runNumber")
+        useLiteMode = recoveryData.get("useLiteMode")
         try:
             logger.info("Handling 'state' message.")
-            initializationMenu = InitializationMenu(
-                runNumber=InitializeStateHandler.runId, parent=view, useLiteMode=InitializeStateHandler.useLiteMode
-            )
+            initializationMenu = InitializationMenu(runNumber=runNumber, parent=view, useLiteMode=useLiteMode)
             initializationMenu.finished.connect(lambda: initializationMenu.deleteLater())
             initializationMenu.show()
         except Exception as e:  # noqa: BLE001

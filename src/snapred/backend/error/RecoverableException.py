@@ -1,13 +1,11 @@
-from typing import Any, Literal
+from enum import Flag, auto
+from typing import Any, Optional
+
+from pydantic import BaseModel
 
 from snapred.backend.log.logger import snapredLogger
 
 logger = snapredLogger.getLogger(__name__)
-
-RecoverableErrorType = Literal[
-    "AttributeError: 'NoneType' object has no attribute 'instrumentState'",
-    "etc",
-]
 
 
 class RecoverableException(Exception):
@@ -16,16 +14,33 @@ class RecoverableException(Exception):
     Allows for custom error types and optional extra context.
     """
 
-    def __init__(self, exception: Exception, errorMsg: RecoverableErrorType, **kwargs: Any):
-        self.errorMsg = errorMsg
-        self.message = errorMsg
-        self.extraContext = kwargs
-        import traceback
+    class Type(Flag):
+        UNSET = 0
+        STATE_UNINITIALIZED = auto()
 
-        traceback.print_exc()
-        logMessage = f"{self.message} Original exception: {str(exception)}"
+    class Model(BaseModel):
+        message: str
+        flags: "RecoverableException.Type"
+        data: Any
 
-        if self.extraContext:
-            logMessage += f" | Context: {self.extraContext}"
-        logger.error(logMessage)
-        super().__init__(self.message)
+    @property
+    def message(self):
+        return self.model.message
+
+    @property
+    def flags(self):
+        return self.model.flags
+
+    @property
+    def data(self):
+        return self.model.data
+
+    def __init__(self, message: str, flags: "Type" = 0, data: Optional[Any] = None):
+        RecoverableException.Model.update_forward_refs()
+        RecoverableException.Model.model_rebuild(force=True)
+        self.model = RecoverableException.Model(message=message, flags=flags, data=data)
+        super().__init__(message)
+
+    def parse_raw(raw):
+        raw = RecoverableException.Model.model_validate_json(raw)
+        return RecoverableException(**raw.dict())
