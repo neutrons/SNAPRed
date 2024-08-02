@@ -763,9 +763,9 @@ class LocalDataService:
                 guideStat=pvFile.get("entry/DASlogs/BL3:Mot:OpticsPos:Pos/value")[0],
                 lin=[pvFile.get("entry/DASlogs/det_lin1/value")[0], pvFile.get("entry/DASlogs/det_lin2/value")[0]],
             )
-            return detectorState
         except (TypeError, KeyError) as e:
             raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}': {e}")
+        return detectorState
 
     def detectorStateFromWorkspace(self, wsName: WorkspaceName) -> DetectorState:
         detectorState = None
