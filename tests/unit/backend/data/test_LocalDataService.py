@@ -365,7 +365,7 @@ def test_getUniqueTimestamp():
 def test_prepareStateRoot_creates_state_root_directory():
     # Test that the <state root> directory is created when it doesn't exist.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId):
         defaultGroupingMap = DAOFactory.groupingMap_SNAP()
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
@@ -377,7 +377,7 @@ def test_prepareStateRoot_creates_state_root_directory():
 def test_prepareStateRoot_existing_state_root():
     # Test that an already existing <state root> directory is not an error.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId):
         localDataService._constructCalibrationStateRoot().mkdir()
         defaultGroupingMap = DAOFactory.groupingMap_SNAP()
@@ -390,7 +390,7 @@ def test_prepareStateRoot_writes_grouping_map():
     # Test that the first time a <state root> directory is initialized,
     #   the `StateConfig.groupingMap` is written to the directory.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId):
         defaultGroupingMap = DAOFactory.groupingMap_SNAP()
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
@@ -404,7 +404,7 @@ def test_prepareStateRoot_sets_grouping_map_stateid():
     # Test that the first time a <state root> directory is initialized,
     #   the 'stateId' of the `StateConfig.groupingMap` is set to match that of the state.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId):
         defaultGroupingMap = DAOFactory.groupingMap_SNAP()
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
@@ -420,7 +420,7 @@ def test_prepareStateRoot_no_default_grouping_map():
     #   the 'defaultGroupingMap.json' at Config['instrument.calibration.powder.grouping.home']
     #   is required to exist.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId):
         defaultGroupingMapFilePath = Resource.getPath("inputs/pixel_grouping/does_not_exist.json")
         with pytest.raises(  # noqa: PT012
@@ -435,7 +435,7 @@ def test_prepareStateRoot_does_not_overwrite_grouping_map():
     # If a 'groupingMap.json' file already exists at the <state root> directory,
     #   it should not be overwritten.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         localDataService._constructCalibrationStateRoot().mkdir()
 
@@ -456,7 +456,7 @@ def test_prepareStateRoot_does_not_overwrite_grouping_map():
 def test_writeGroupingMap_relative_paths():
     # Test that '_writeGroupingMap' preserves relative-path information.
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         with Config_override(
             "instrument.calibration.powder.grouping.home",
@@ -492,7 +492,7 @@ def test_writeGroupingMap_relative_paths():
 @mock.patch(ThisService + "GetIPTS")
 def test_calibrationFileExists(GetIPTS):  # noqa ARG002
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         tmpRoot.path().mkdir()
         runNumber = "654321"
@@ -527,7 +527,7 @@ def test_calibrationFileExists_bad_ipts(GetIPTS):
 @mock.patch(ThisService + "GetIPTS")
 def test_calibrationFileExists_not(GetIPTS):  # noqa ARG002
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         nonExistentPath = tmpRoot.path() / "1755"
         assert not nonExistentPath.exists()
@@ -710,11 +710,18 @@ def test_readPVFile(h5pyMock):  # noqa: ARG001
 def test__generateStateId():
     localDataService = LocalDataService()
     localDataService._readPVFile = mock.Mock()
-    fileMock = mock.Mock()
+    fileMock = {
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [0.1],
+        "entry/DASlogs/det_arc1/value": [0.1],
+        "entry/DASlogs/det_arc2/value": [0.1],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [0.1],
+        "entry/DASlogs/det_lin2/value": [0.1],
+    }
     localDataService._readPVFile.return_value = fileMock
-    fileMock.get.side_effect = [[0.1], [0.1], [0.1], [0.1], [1], [0.1], [0.1]]
     actual, _ = localDataService._generateStateId("12345")
-    assert actual == "9618b936a4419a6e"
+    assert actual == UNCHANGING_STATE_ID
 
 
 def test__generateStateId_cache():
@@ -725,25 +732,17 @@ def test__generateStateId_cache():
     )
 
     localDataService._readPVFile = mock.Mock()
-    fileMock = mock.Mock()
-    localDataService._readPVFile.return_value = fileMock
-    fileMock.get.side_effect = [
-        [0.1],
-        [0.1],
-        [0.1],
-        [0.1],
-        [1],
-        [0.1],
-        [0.1],  # => "9618b936a4419a6e"
-        [0.2],
-        [0.2],
-        [0.2],
-        [0.2],
-        [1],
-        [0.2],
-        [0.2],
-    ]
-    stateSHA1 = "9618b936a4419a6e"
+
+    def mock_readDetectorState(runId):
+        if runId == "12345":
+            return DetectorState(arc=(0.1, 0.1), wav=0.1, freq=0.1, guideStat=1, lin=(0.1, 0.1))
+        elif runId == "67890":
+            return DetectorState(arc=(0.2, 0.2), wav=0.2, freq=0.2, guideStat=1, lin=(0.2, 0.2))
+        return None
+
+    localDataService.readDetectorState = mock.Mock(side_effect=mock_readDetectorState)
+
+    stateSHA1 = UNCHANGING_STATE_ID
     stateSHA2 = "fa0bb25b44874edb"
 
     actual, _ = localDataService._generateStateId("12345")
@@ -1118,7 +1117,7 @@ def test_readWriteCalibrationRecord():
 def test_writeCalibrationWorkspaces(cleanup_workspace_at_exit):
     version = randint(2, 120)
     localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     testCalibrationRecord = DAOFactory.calibrationRecord("57514", True, 1)
     with state_root_redirect(localDataService, stateId=stateId):
         basePath = localDataService.calibrationIndexer(testCalibrationRecord.runNumber, True).versionPath(1)
@@ -1262,7 +1261,7 @@ def test_readWriteNormalizationRecord():
 
 def test_writeNormalizationWorkspaces(cleanup_workspace_at_exit):
     version = randint(2, 120)
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     localDataService = LocalDataService()
     testNormalizationRecord = DAOFactory.normalizationRecord(version=version)
     with state_root_redirect(localDataService, stateId=stateId):
@@ -1371,7 +1370,7 @@ def test_readWriteReductionRecord_timestamps():
     assert oldTimestamp != newTimestamp
 
     runNumber, useLiteMode = testReductionRecord_v0001.runNumber, testReductionRecord_v0001.useLiteMode
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         # write: old timestamp
@@ -1395,7 +1394,7 @@ def test_readWriteReductionRecord():
         testRecord = ReductionRecord.model_validate_json(f.read())
 
     runNumber = testRecord.runNumber
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService.instrumentConfig = mock.Mock()
@@ -1513,7 +1512,7 @@ def test_writeReductionData(readSyntheticReductionRecord, createReductionWorkspa
 
     # Temporarily use a single run number
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
 
@@ -1541,7 +1540,7 @@ def test_writeReductionData_no_directories(readSyntheticReductionRecord, createR
     testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
 
@@ -1570,7 +1569,7 @@ def test_writeReductionData_metadata(readSyntheticReductionRecord, createReducti
     testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
 
@@ -1604,7 +1603,7 @@ def test_readWriteReductionData(readSyntheticReductionRecord, createReductionWor
     testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
 
@@ -1658,7 +1657,7 @@ def test_readWriteReductionData_pixel_mask(
     testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
@@ -1711,7 +1710,7 @@ def test__constructReductionDataFilePath():
         testRecord = ReductionRecord.model_validate_json(f.read())
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     testIPTS = "IPTS-12345"
     fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
@@ -1821,19 +1820,19 @@ def test_readDetectorState():
     localDataService = LocalDataService()
     localDataService._readPVFile = mock.Mock()
 
-    pvFileMock = mock.Mock()
-    # 1X: seven required `readDetectorState` log entries:
-    #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json'
-    pvFileMock.get.side_effect = [
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-    ]
-    localDataService._readPVFile.return_value = pvFileMock
+    pvFile = {
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [1.1],
+        "entry/DASlogs/det_arc1/value": [1.0],
+        "entry/DASlogs/det_arc2/value": [2.0],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [1.0],
+        "entry/DASlogs/det_lin2/value": [2.0],
+    }
+    localDataService._readPVFile.return_value = pvFile
+
+    # Mock the _constructPVFilePath method
+    localDataService._constructPVFilePath = mock.Mock(return_value="/mock/path")
 
     testDetectorState = DAOFactory.unreal_detector_state.copy()
 
@@ -1847,21 +1846,18 @@ def test_readDetectorState_bad_logs():
     localDataService._constructPVFilePath.return_value = "/not/a/path"
     localDataService._readPVFile = mock.Mock()
 
-    pvFileMock = mock.Mock()
-    # 1X: seven required `readDetectorState` log entries:
-    #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json'
-    pvFileMock.get.side_effect = [
-        "glitch",
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-    ]
-    localDataService._readPVFile.return_value = pvFileMock
+    pvFile = {
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": "glitch",
+        "entry/DASlogs/det_arc1/value": [2],
+        "entry/DASlogs/det_arc2/value": [1.1],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [1.0],
+        "entry/DASlogs/det_lin2/value": [2.0],
+    }
+    localDataService._readPVFile.return_value = pvFile
 
-    with pytest.raises(ValueError, match="Could not find all required logs"):
+    with pytest.raises(ValueError, match="Input should be a valid number, unable to parse string as a number"):  # noqa: PT011
         localDataService.readDetectorState("123")
 
 
@@ -1959,27 +1955,16 @@ def test_initializeState():
     localDataService = LocalDataService()
     localDataService._readPVFile = mock.Mock()
 
-    pvFileMock = mock.Mock()
-    # 2X: seven required `readDetectorState` log entries:
-    #   * generated stateId hex-digest: 'ab8704b0bc2a2342',
-    #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json'
-    pvFileMock.get.side_effect = [
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-    ]
-    localDataService._readPVFile.return_value = pvFileMock
+    pvFile = {
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [1.1],
+        "entry/DASlogs/det_arc1/value": [1.0],
+        "entry/DASlogs/det_arc2/value": [2.0],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [1.0],
+        "entry/DASlogs/det_lin2/value": [2.0],
+    }
+    localDataService._readPVFile.return_value = pvFile
     localDataService._writeDefaultDiffCalTable = mock.Mock()
 
     testCalibrationData = DAOFactory.calibrationParameters(
@@ -2014,27 +1999,20 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService = LocalDataService()
     localDataService._readPVFile = mock.Mock()
 
-    pvFileMock = mock.Mock()
+    pvFileMock = mock.Mock()  # noqa: F841
     # 2X: seven required `readDetectorState` log entries:
     #   * generated stateId hex-digest: 'ab8704b0bc2a2342',
     #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json'
-    pvFileMock.get.side_effect = [
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-        [1],
-        [2],
-        [1.1],
-        [1.2],
-        [1],
-        [1.0],
-        [2.0],
-    ]
-    localDataService._readPVFile.return_value = pvFileMock
+    pvFile = {
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [1.1],
+        "entry/DASlogs/det_arc1/value": [1.0],
+        "entry/DASlogs/det_arc2/value": [2.0],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [1.0],
+        "entry/DASlogs/det_lin2/value": [2.0],
+    }
+    localDataService._readPVFile.return_value = pvFile
     localDataService._writeDefaultDiffCalTable = mock.Mock()
 
     testCalibrationData = DAOFactory.calibrationParameters()
@@ -2044,7 +2022,7 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService._readDefaultGroupingMap = mock.Mock(return_value=mock.Mock(isDirty=False))
 
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
-        stateId = "ab8704b0bc2a2342"
+        stateId = ENDURING_STATE_ID
         stateRootPath = Path(tmpDir) / stateId
         localDataService._constructCalibrationStateRoot = mock.Mock(return_value=stateRootPath)
 
@@ -2143,7 +2121,7 @@ def test_readNoSampleFilePaths():
 
 def test_readDefaultGroupingMap():
     service = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     with state_root_redirect(service, stateId=stateId) as tmpRoot:
         groupingMap = DAOFactory.groupingMap_SNAP(GroupingMap.defaultStateId)
         with Config_override("instrument.calibration.powder.grouping.home", tmpRoot.path().parent):
@@ -2162,7 +2140,7 @@ def test_readGroupingMap_default_not_found():
 def test_readGroupingMap_initialized_state():
     # Test that '_readGroupingMap' for an initialized state returns the state's <grouping map>.
     service = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = ENDURING_STATE_ID
     with state_root_redirect(service, stateId=stateId) as tmpRoot:
         tmpRoot.saveObjectAt(DAOFactory.groupingMap_SNAP(stateId), service._groupingMapPath(stateId))
         groupingMap = service._readGroupingMap(stateId)
