@@ -23,8 +23,19 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         We are mostly concerned about the drange for a ResampleX operation.
         """
         self.pixelGroup = ingredients.pixelGroup
-        self.dMin = self.pixelGroup.dMin()
-        self.dMax = self.pixelGroup.dMax()
+        # The adjustment below is a temp fix, will be permanently fixed in EWM 6262
+        lowdSpacingCrop = Config["constants.CropFactors.lowdSpacingCrop"]
+        if lowdSpacingCrop < 0:
+            raise ValueError("Low d-spacing crop factor must be positive")
+        highdSpacingCrop = Config["constants.CropFactors.highdSpacingCrop"]
+        if highdSpacingCrop < 0:
+            raise ValueError("High d-spacing crop factor must be positive")
+        dMin = [x + lowdSpacingCrop for x in self.pixelGroup.dMin()]
+        dMax = [x - highdSpacingCrop for x in self.pixelGroup.dMax()]
+        if not dMax > dMin:
+            raise ValueError("d-spacing crop factors are too large -- resultant dMax must be > resultant dMin")
+        self.dMin = dMin
+        self.dMax = dMax
 
     def unbagGroceries(self, groceries: Dict[str, WorkspaceName]):
         """
