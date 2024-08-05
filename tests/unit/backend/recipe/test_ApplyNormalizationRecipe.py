@@ -155,3 +155,15 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
             pytest.raises(ValueError, match="d-spacing crop factors are too large"),
         ):
             recipe.chopIngredients(ingredients)
+
+        with (
+            Config_override("constants.CropFactors.lowdSpacingCrop", -10.0),
+            pytest.raises(ValueError, match="Low d-spacing crop factor must be positive"),
+        ):
+            recipe.chopIngredients(ingredients)
+
+        with (
+            Config_override("constants.CropFactors.highdSpacingCrop", -10.0),
+            pytest.raises(ValueError, match="High d-spacing crop factor must be positive"),
+        ):
+            recipe.chopIngredients(ingredients)
