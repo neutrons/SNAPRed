@@ -1,10 +1,9 @@
-import json
 from typing import List
 
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import SNAPRequest, SNAPResponse
-from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
 from snapred.backend.dao.SNAPResponse import ResponseCode
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.service.ServiceFactory import ServiceFactory
@@ -48,14 +47,10 @@ class InterfaceController:
 
         except RecoverableException as e:
             self.logger.error(f"Recoverable error occurred: {str(e)}")
-            payloadDict = json.loads(request.payload)
-            runNumber = payloadDict["runNumber"]
-            useLiteMode = payloadDict["useLiteMode"]
-            if runNumber:
-                InitializeStateHandler.runId = runNumber
-                InitializeStateHandler.useLiteMode = useLiteMode
-            response = SNAPResponse(code=ResponseCode.RECOVERABLE, message="state")
-
+            response = SNAPResponse(code=ResponseCode.RECOVERABLE, message=e.model.json())
+        except ContinueWarning as e:
+            self.logger.error(f"Continue warning occurred: {str(e)}")
+            response = SNAPResponse(code=ResponseCode.CONTINUE_WARNING, message=e.model.json())
         except Exception as e:  # noqa BLE001
             # handle exceptions, inform client if recoverable
             self.logger.exception("Failed to call service")

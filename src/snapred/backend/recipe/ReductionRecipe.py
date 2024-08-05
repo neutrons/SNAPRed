@@ -36,6 +36,9 @@ class ReductionRecipe(Recipe[Ingredients]):
             self.groupingWorkspaces = groceries["groupingWorkspaces"]
     """
 
+    def logger(self):
+        return logger
+
     def chopIngredients(self, ingredients: Ingredients):
         """
         Chops off the needed elements of the ingredients.
@@ -66,11 +69,12 @@ class ReductionRecipe(Recipe[Ingredients]):
         return outputWorkspace
 
     def _cloneIntermediateWorkspace(self, inputWorkspace: str, outputWorkspace: str) -> str:
-        self.mantidSnapper.MakeDirtyDish(
-            "Cloning workspace...", InputWorkspace=inputWorkspace, OutputWorkspace=outputWorkspace
-        )
-        self.mantidSnapper.executeQueue()
-        return inputWorkspace
+        if self.mantidSnapper.mtd.doesExist(inputWorkspace):
+            self.mantidSnapper.MakeDirtyDish(
+                "Cloning workspace...", InputWorkspace=inputWorkspace, OutputWorkspace=outputWorkspace
+            )
+            self.mantidSnapper.executeQueue()
+            return inputWorkspace
 
     def _deleteWorkspace(self, workspace: str):
         self.mantidSnapper.DeleteWorkspace(
@@ -102,8 +106,12 @@ class ReductionRecipe(Recipe[Ingredients]):
 
     def _applyRecipe(self, recipe: Type[Recipe], ingredients_, **kwargs):
         if "inputWorkspace" in kwargs:
-            self.groceries.update(kwargs)
-            recipe().cook(ingredients_, self.groceries)
+            inputWorkspace = kwargs["inputWorkspace"]
+            if self.mantidSnapper.mtd.doesExist(inputWorkspace):
+                self.groceries.update(kwargs)
+                recipe().cook(ingredients_, self.groceries)
+            else:
+                self.logger().warning(f"Skipping {type(recipe)} as {inputWorkspace} does not exist.")
 
     def _prepGroupingWorkspaces(self, groupingIndex: int):
         # TODO:  We need the wng to be able to deconstruct the workspace name
@@ -190,7 +198,8 @@ class ReductionRecipe(Recipe[Ingredients]):
             if self.keepUnfocused:
                 self._convertWorkspace(normalizationClone, self.convertUnitsTo)
             else:
-                self._deleteWorkspace(normalizationClone)
+                if self.normalizationWs:
+                    self._deleteWorkspace(normalizationClone)
 
         if self.maskWs:
             outputs.append(self.maskWs)

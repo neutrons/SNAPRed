@@ -435,6 +435,10 @@ class LocalDataService:
         indexer = self.normalizationIndexer(request.runNumber, request.useLiteMode)
         return indexer.createRecord(**request.model_dump())
 
+    def normalizationExists(self, runId: str, useLiteMode: bool) -> bool:
+        version = self.normalizationIndexer(runId, useLiteMode).currentVersion()
+        return version is not None
+
     @validate_call
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         """
@@ -489,6 +493,10 @@ class LocalDataService:
     def createCalibrationRecord(self, request: CreateCalibrationRecordRequest) -> CalibrationRecord:
         indexer = self.calibrationIndexer(request.runNumber, request.useLiteMode)
         return indexer.createRecord(**request.model_dump())
+
+    def calibrationExists(self, runId: str, useLiteMode: bool) -> bool:
+        version = self.calibrationIndexer(runId, useLiteMode).currentVersion()
+        return version is not None
 
     @validate_call
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
@@ -711,8 +719,10 @@ class LocalDataService:
     ##### READ / WRITE STATE METHODS #####
 
     @validate_call
-    @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        if not self.calibrationExists(runId, useLiteMode):
+            raise RecoverableException.stateUninitialized(runId, useLiteMode)
+
         indexer = self.calibrationIndexer(runId, useLiteMode)
         # NOTE if we prefer latest version in index, uncomment below
         # if version is None:
@@ -797,10 +807,7 @@ class LocalDataService:
         calibrationDataPath = indexer.versionPath(version)
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
 
-    @validate_call
-    @ExceptionHandler(StateValidationException)
-    # NOTE: if you are debugging and got here, comment out the `@ExceptionHandler` and try again.
-    def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
+    def generateInstrumentStateFromRoot(self, runId: str):
         stateId, _ = self._generateStateId(runId)
 
         # Read the detector state from the pv data file
@@ -827,7 +834,7 @@ class LocalDataService:
         )
         particleBounds = ParticleBounds(wavelength=lambdaLimit, tof=tofLimit)
 
-        instrumentState = InstrumentState(
+        return InstrumentState(
             id=stateId,
             instrumentConfig=instrumentConfig,
             detectorState=detectorState,
@@ -837,6 +844,14 @@ class LocalDataService:
             fwhmMultipliers=fwhmMultipliers,
             peakTailCoefficient=peakTailCoefficient,
         )
+
+    @validate_call
+    @ExceptionHandler(StateValidationException)
+    # NOTE if you are debugigng and got here, coment out the ExceptionHandler and try again
+    def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
+        stateId, _ = self._generateStateId(runId)
+
+        instrumentState = self.generateInstrumentStateFromRoot(runId)
 
         calibrationReturnValue = None
 
@@ -937,6 +952,9 @@ class LocalDataService:
         # otherwise return the default map
         else:
             return self._readDefaultGroupingMap()
+
+    def readDefaultGroupingMap(self):
+        return self._readDefaultGroupingMap()
 
     def _readDefaultGroupingMap(self) -> GroupingMap:
         path: Path = self._defaultGroupingMapPath()

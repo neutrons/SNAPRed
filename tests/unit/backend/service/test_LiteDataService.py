@@ -28,9 +28,9 @@ class TestLiteDataService(unittest.TestCase):
 
         liteDataService = LiteDataService()
         liteDataService._ensureLiteDataMap = Mock(return_value="lite_map")
-        liteDataService.dataFactoryService.getCalibrationState = Mock()
-        liteDataService.dataFactoryService.getCalibrationState.return_value.instrumentState = Mock()
-        liteDataService.dataFactoryService.getCalibrationState.return_value.instrumentState.model_dump_json.return_value = "{}"  # noqa: E501
+        liteDataService.sousChef.prepInstrumentState = Mock()
+        liteDataService.sousChef.prepInstrumentState.return_value = Mock()
+        liteDataService.sousChef.prepInstrumentState.return_value.model_dump_json.return_value = "{}"  # noqa: E501
 
         with TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/") as tmpdir:
             outputPath = Path(tmpdir, "555.nxs.h5")
@@ -55,9 +55,9 @@ class TestLiteDataService(unittest.TestCase):
 
         liteDataService = LiteDataService()
         liteDataService._ensureLiteDataMap = Mock(return_value="lite map")
-        liteDataService.dataFactoryService.getCalibrationState = Mock()
-        liteDataService.dataFactoryService.getCalibrationState.return_value.instrumentState = Mock()
-        liteDataService.dataFactoryService.getCalibrationState.return_value.instrumentState.model_dump_json.return_value = "{}"  # noqa: E501
+        liteDataService.sousChef.prepInstrumentState = Mock()
+        liteDataService.sousChef.prepInstrumentState.return_value = Mock()
+        liteDataService.sousChef.prepInstrumentState.return_value.model_dump_json.return_value = "{}"  # noqa: E501
 
         inputWorkspace = "_test_liteservice_555"
         outputWorkspace = "_test_output_lite_"

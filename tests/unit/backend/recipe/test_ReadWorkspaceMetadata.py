@@ -135,7 +135,7 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
     def test_invalid_workspace(self):
         groceries = {"workspace": "invalid_workspace_name_what_a_dumb_name"}
         with pytest.raises(RuntimeError) as e:
-            ReadWorkspaceMetadata().validateInputs({}, groceries)
+            ReadWorkspaceMetadata().validateInputs(None, groceries)
         assert "ADS" in str(e)
 
     def test_invalid_dao(self):

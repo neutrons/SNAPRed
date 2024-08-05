@@ -22,7 +22,7 @@ class _CustomMtd:
     def doesExist(self, key):
         if str(key.__class__) == str(callback(int).__class__):
             key = key.get()
-        return mtd.doesExist(key)
+        return key is not None and mtd.doesExist(key)
 
 
 class MantidSnapper:

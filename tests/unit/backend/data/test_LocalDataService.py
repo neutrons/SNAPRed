@@ -174,6 +174,7 @@ def do_test_write_record_with_version(workflow: Literal["Calibration", "Normaliz
 def do_test_read_state_with_version(workflow: Literal["Calibration", "Normalization", "Reduction"]):
     paramFactory = getattr(DAOFactory, f"{workflow.lower()}Parameters")
     localDataService = LocalDataService()
+    localDataService.calibrationExists = mock.Mock(return_value=True)
     versions = list(range(randint(10, 20)))
     shuffle(versions)
     for version in versions:
@@ -663,6 +664,15 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
         # read it back in and make sure there is no grouping map
         stateConfig = parse_file_as(StateConfig, stateConfigPath)
         assert stateConfig.groupingMap is None
+
+
+def test_readDefaultGroupingMap():
+    # test of public `readDefaultGroupingMap` method
+    localDataService = LocalDataService()
+    localDataService._readDefaultGroupingMap = mock.Mock()
+    localDataService._readDefaultGroupingMap.return_value = "defaultGroupingMap"
+    actual = localDataService.readDefaultGroupingMap()
+    assert actual == "defaultGroupingMap"
 
 
 def test_readRunConfig():
@@ -2119,7 +2129,7 @@ def test_readNoSampleFilePaths():
 # interlude -- missplaced tests of grouping map #
 
 
-def test_readDefaultGroupingMap():
+def test__readDefaultGroupingMap():
     service = LocalDataService()
     stateId = ENDURING_STATE_ID
     with state_root_redirect(service, stateId=stateId) as tmpRoot:

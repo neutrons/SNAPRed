@@ -1,9 +1,11 @@
 from typing import Any, Dict
 
+from snapred.backend.dao.request import FarmFreshIngredients
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.recipe.GenericRecipe import LiteDataRecipe as Recipe
 from snapred.backend.service.Service import Service
+from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -16,6 +18,7 @@ class LiteDataService(Service):
         self.registerPath("createLiteData", self.reduceLiteData)
         self.dataExportService = DataExportService()
         self.dataFactoryService = DataFactoryService()
+        self.sousChef = SousChef()
         return
 
     @staticmethod
@@ -36,8 +39,9 @@ class LiteDataService(Service):
     ) -> Dict[Any, Any]:
         liteDataMap = self._ensureLiteDataMap()
         runNumber = inputWorkspace.split("_")[-1].lstrip("0")
-        calibration = self.dataFactoryService.getCalibrationState(runNumber, True)
-        ingredients = calibration.instrumentState
+
+        ffIngredients = FarmFreshIngredients(runNumber=runNumber, useLiteMode=True)
+        ingredients = self.sousChef.prepInstrumentState(ffIngredients)
         try:
             data = Recipe().executeRecipe(
                 InputWorkspace=inputWorkspace,
