@@ -1856,7 +1856,32 @@ def test_readDetectorState_bad_logs():
     localDataService._constructPVFilePath.return_value = "/not/a/path"
     localDataService._readPVFile = mock.Mock()
 
-    pvFile = {
+    # Case where wavelength logs are missing
+    pvFile_missing_wav = {
+        "entry/DASlogs/det_arc1/value": [2],
+        "entry/DASlogs/det_arc2/value": [1.1],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [0.1],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [1.0],
+        "entry/DASlogs/det_lin2/value": [2.0],
+    }
+    localDataService._readPVFile.return_value = pvFile_missing_wav
+
+    with pytest.raises(ValueError, match="Could not find wavelength logs in file '/not/a/path'"):
+        localDataService.readDetectorState("123")
+
+    # Case where other required logs are missing
+    pvFile_missing_logs = {
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [1.1]
+        # Other required logs are missing
+    }
+    localDataService._readPVFile.return_value = pvFile_missing_logs
+
+    with pytest.raises(ValueError, match="Could not find all required logs in file '/not/a/path'"):
+        localDataService.readDetectorState("123")
+
+    # Case where value in wavelength logs is not valid
+    pvFile_invalid_wav_value = {
         "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": "glitch",
         "entry/DASlogs/det_arc1/value": [2],
         "entry/DASlogs/det_arc2/value": [1.1],
@@ -1865,9 +1890,9 @@ def test_readDetectorState_bad_logs():
         "entry/DASlogs/det_lin1/value": [1.0],
         "entry/DASlogs/det_lin2/value": [2.0],
     }
-    localDataService._readPVFile.return_value = pvFile
+    localDataService._readPVFile.return_value = pvFile_invalid_wav_value
 
-    with pytest.raises(ValueError, match="Input should be a valid number, unable to parse string as a number"):  # noqa: PT011
+    with pytest.raises(ValueError, match="Input should be a valid number, unable to parse string as a number"):
         localDataService.readDetectorState("123")
 
 
