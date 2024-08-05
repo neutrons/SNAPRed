@@ -65,7 +65,16 @@ class DataFactoryService:
     def getGroupingMap(self, runId: str):
         return self.lookupService.readGroupingMap(runId)
 
+    def getDefaultGroupingMap(self):
+        return self.lookupService.readDefaultGroupingMap()
+
+    def getDefaultInstrumentState(self, runId: str):
+        return self.lookupService.generateInstrumentStateFromRoot(runId)
+
     ##### CALIBRATION METHODS #####
+
+    def calibrationExists(self, runId: str, useLiteMode: bool):
+        return self.lookupService.calibrationExists(runId, useLiteMode)
 
     @validate_call
     def getCalibrationDataPath(self, runId: str, useLiteMode: bool, version: int):
@@ -113,6 +122,9 @@ class DataFactoryService:
         return self.lookupService.calibrationIndexer(runId, useLiteMode).thisOrLatestApplicableVersion(runId, version)
 
     ##### NORMALIZATION METHODS #####
+
+    def normalizationExists(self, runId: str, useLiteMode: bool):
+        return self.lookupService.normalizationExists(runId, useLiteMode)
 
     @validate_call
     def getNormalizationDataPath(self, runId: str, useLiteMode: bool, version: int):

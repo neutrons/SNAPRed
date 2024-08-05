@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -17,12 +17,13 @@ class ReductionIngredients(BaseModel):
     """Data class to hold the ingredients for each subrecipe of reduction and itself"""
 
     pixelGroups: List[PixelGroup]
-    detectorPeaksMany: List[List[GroupPeakList]]
 
     # these should come from calibration / normalization records
-    smoothingParameter: float
-    calibrantSamplePath: str
-    peakIntensityThreshold: float
+    # But will not exist if we proceed without calibration / normalization
+    detectorPeaksMany: Optional[List[List[GroupPeakList]]] = None
+    smoothingParameter: Optional[float]
+    calibrantSamplePath: Optional[str]
+    peakIntensityThreshold: Optional[float]
 
     keepUnfocused: bool
     convertUnitsTo: str
@@ -34,6 +35,11 @@ class ReductionIngredients(BaseModel):
         # At present, `PreprocessReductionIngredients` has no required parameters.
         return PreprocessReductionIngredients()
 
+    def getDetectorPeaks(self, groupingIndex: int) -> List[GroupPeakList]:
+        if self.detectorPeaksMany is None:
+            return None
+        return self.detectorPeaksMany[groupingIndex]
+
     def groupProcessing(self, groupingIndex: int) -> ReductionGroupProcessingIngredients:
         return ReductionGroupProcessingIngredients(pixelGroup=self.pixelGroups[groupingIndex])
 
@@ -41,7 +47,7 @@ class ReductionIngredients(BaseModel):
         return GenerateFocussedVanadiumIngredients(
             smoothingParameter=self.smoothingParameter,
             pixelGroup=self.pixelGroups[groupingIndex],
-            detectorPeaks=self.detectorPeaksMany[groupingIndex],
+            detectorPeaks=self.getDetectorPeaks(groupingIndex),
         )
 
     def applyNormalization(self, groupingIndex: int) -> ApplyNormalizationIngredients:

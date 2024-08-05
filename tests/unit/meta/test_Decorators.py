@@ -1,5 +1,7 @@
 import json
+import traceback
 from typing import List
+from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -54,6 +56,46 @@ def test_FromStringOnListOfBaseModel():
     tester.assertIsListOfModel(json.dumps([SNAPRequest(path="test").dict()]))
 
 
+def generateMockExceptionWithTraceback():
+    try:
+        raise Exception("Test error message")
+    except Exception as e:  # noqa: BLE001
+        return e
+
+
+@mock.patch("pathlib.Path.exists", return_value=True)
+@mock.patch("os.access", return_value=False)
+def test_stateValidationExceptionNoWritePermissions(mockExists, mockAccess):  # noqa: ARG001
+    # Create an exception with a real traceback
+    mock_exception = generateMockExceptionWithTraceback()
+
+    # Mock the traceback to simulate a valid file path
+    mockTb = [traceback.FrameSummary("nonExistentFile.txt", 42, "testFunction")]
+    with patch("traceback.extract_tb", return_value=mockTb):
+        try:
+            raise StateValidationException(mock_exception)
+        except StateValidationException as e:
+            # Assert the error message is as expected
+            expectedMessage = "You do not have write permissions: nonExistentFile.txt"
+            assert e.message == expectedMessage  # noqa: PT017
+
+
+@mock.patch("pathlib.Path.exists", return_value=False)
+def test_stateValidationExceptionFileDoesNotExist(mockExists):  # noqa: ARG001
+    # Create an exception with a real traceback
+    mockException = generateMockExceptionWithTraceback()
+
+    # Mock the traceback to simulate a valid file path
+    mockTb = [traceback.FrameSummary("non_existent_file.txt", 42, "test_function")]
+    with patch("traceback.extract_tb", return_value=mockTb):
+        try:
+            raise StateValidationException(mockException)
+        except StateValidationException as e:
+            # Assert the error message is as expected
+            expectedMessage = "The file does not exist: non_existent_file.txt"
+            assert e.message == expectedMessage  # noqa: PT017
+
+
 @patch("snapred.backend.log.logger.snapredLogger")
 @patch("snapred.meta.Config.Config", {"instrument.home": "/expected/path"})
 def test_stateValidationExceptionWithPermissionIssue(mockLogger):  # noqa: ARG001
@@ -73,13 +115,23 @@ def test_stateValidationExceptionWithInvalidState(mockLogger):  # noqa: ARG001
         assert str(e) == exception_msg  # noqa: PT017
 
 
-@patch("snapred.backend.error.StateValidationException.Config")
-def test_stateValidationExceptionWritePerms(mockConfig):
-    exceptionPath = "SNS/SNAP/expected/path/somefile.txt"
-    exceptionString = f"Error accessing {exceptionPath}"
-    mockConfig.__getitem__.return_value = exceptionPath
-    with pytest.raises(StateValidationException, match="You don't have permission to write to analysis directory: "):
-        raise StateValidationException(RuntimeError(exceptionString))
+def test_stateValidationExceptionWritePerms():
+    exception = Exception("Test Exception")
+
+    # Mocking the checkFileAndPermissions method to simulate file existence and permission
+    with mock.patch.object(StateValidationException, "_checkFileAndPermissions", return_value=(True, True)):
+        # Creating a fake traceback
+        try:
+            raise exception
+        except Exception as e:  # noqa: BLE001
+            tb = e.__traceback__  # noqa: F841
+
+        # Raising the exception with the mocked traceback
+        with pytest.raises(StateValidationException) as excinfo:
+            raise StateValidationException(exception)
+
+        # Asserting that the error message is as expected
+        assert "The following error occurred:Test Exception\n\nPlease contact your CIS." in str(excinfo.value)
 
 
 @ExceptionHandler(StateValidationException)
@@ -92,21 +144,10 @@ def test_stateExceptionHandler():
         throwsStateException()
 
 
-@ExceptionHandler(RecoverableException, "state")
-def throwsRecoverableException():
-    raise RuntimeError("'NoneType' object has no attribute 'instrumentState'")
-
-
-def test_recoverableExceptionHandler():
-    with pytest.raises(RecoverableException):
-        throwsRecoverableException()
-
-
 def test_recoverableExceptionKwargs():
-    exceptionPath = "SNS/SNAP/expected/path/somefile.txt"
-    exceptionString = f"Error accessing {exceptionPath}"
+    exceptionString = "State uninitialized"
     with pytest.raises(RecoverableException, match=exceptionString):
-        raise RecoverableException(RuntimeError(exceptionString), exceptionString, extraInfo="some extra info")
+        raise RecoverableException.stateUninitialized("57514", True)
 
 
 def throwsContinueWarning():

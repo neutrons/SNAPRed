@@ -24,7 +24,7 @@ class ReductionRequest(BaseModel):
     pixelMasks: List[WorkspaceName] = []
 
     # TODO: Move to SNAPRequest
-    continueFlags: Optional[ContinueWarning.Type] = None
+    continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
 
     @field_validator("versions")
     @classmethod

@@ -77,6 +77,7 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
             NumberBins=self.NUM_BINS,
             LogBinning=self.LOG_BINNING,
             OutputWorkspace=self.sampleWs,
+            PreserveEvents=False,
         )
 
     # NOTE: Metaphorically, would ingredients better have been called Spices?

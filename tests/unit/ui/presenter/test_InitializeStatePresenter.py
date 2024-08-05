@@ -57,9 +57,10 @@ def test__initializeState(setup_view_and_workflow):
     view.getMode.return_value = "True"
     mock_response = SNAPResponse(code=ResponseCode.OK)
 
-    with patch.object(workflow.interfaceController, "executeRequest", return_value=mock_response), patch(
-        "snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt"
-    ) as mock_dialog_showSuccess:
+    with (
+        patch.object(workflow.interfaceController, "executeRequest", return_value=mock_response),
+        patch("snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt") as mock_dialog_showSuccess,
+    ):
         workflow._initializeState("12345", "Test State", True)
         mock_dialog_showSuccess.assert_called_once()
 

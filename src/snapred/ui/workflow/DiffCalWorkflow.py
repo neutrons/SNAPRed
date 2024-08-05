@@ -98,11 +98,19 @@ class DiffCalWorkflow(WorkflowImplementer):
                 parent=parent,
             )
             .addNode(self._specifyRun, self._requestView, "Diffraction Calibration")
-            .addNode(self._triggerDiffractionCalibration, self._tweakPeakView, "Tweak Peak Peek")
+            .addNode(
+                self._triggerDiffractionCalibration,
+                self._tweakPeakView,
+                "Tweak Peak Peek",
+                continueAnywayHandler=self._continueAnywayHandlerTweak,
+            )
             .addNode(self._assessCalibration, self._assessmentView, "Assessing", iterate=True)
             .addNode(self._saveCalibration, self._saveView, name="Saving")
             .build()
         )
+
+    def _continueAnywayHandlerTweak(self, continueInfo):  # noqa: ARG002
+        self._tweakPeakView.updateContinueAnyway(True)
 
     @ExceptionToErrLog
     @Slot()

@@ -195,6 +195,7 @@ def test_state_root_redirect_no_stateid():
         assert localDataService._generateStateId()[0] == tmpRoot.path().parts[-1]
         # make sure a file can be added inside the directory -- can be any file
         # verify it can be found by data services and equals the value written
+        localDataService.calibrationExists = mock.Mock(return_value=True)
         expected = DAOFactory.calibrationParameters("xyz", True, 1)
         indexer = localDataService.calibrationIndexer("xyz", True)
         tmpRoot.saveObjectAt(expected, indexer.parametersPath(1))
