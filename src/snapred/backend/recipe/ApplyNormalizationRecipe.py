@@ -24,11 +24,15 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         """
         self.pixelGroup = ingredients.pixelGroup
         # The adjustment below is a temp fix, will be permanently fixed in EWM 6262
-        dMin = [x + Config["constants.CropFactors.lowdSpacingCrop"] for x in self.pixelGroup.dMin()]
-        dMax = [x - Config["constants.CropFactors.highdSpacingCrop"] for x in self.pixelGroup.dMax()]
+        lowdSpacingCrop = Config["constants.CropFactors.lowdSpacingCrop"]
+        if lowdSpacingCrop < 0:
+            raise ValueError("Low d-spacing crop factor must be positive")
+        highdSpacingCrop = Config["constants.CropFactors.highdSpacingCrop"]
+        if highdSpacingCrop < 0:
+            raise ValueError("High d-spacing crop factor must be positive")
+        dMin = [x + lowdSpacingCrop for x in self.pixelGroup.dMin()]
+        dMax = [x - highdSpacingCrop for x in self.pixelGroup.dMax()]
         if not dMax > dMin:
-            print(dMax)
-            print(dMin)
             raise ValueError("d-spacing crop factors are too large -- resultant dMax must be > resultant dMin")
         self.dMin = dMin
         self.dMax = dMax
