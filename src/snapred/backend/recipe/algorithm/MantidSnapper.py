@@ -24,6 +24,11 @@ class _CustomMtd:
             key = key.get()
         return key is not None and mtd.doesExist(key)
 
+    def unique_name(self, n=5, prefix="", suffix=""):
+        return mtd.unique_name(n=n, prefix=prefix, suffix=suffix)
+
+    def unique_hidden_name(self):
+        return mtd.unique_hidden_name()
 
 class MantidSnapper:
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}

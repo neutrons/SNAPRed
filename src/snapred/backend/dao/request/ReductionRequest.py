@@ -12,6 +12,7 @@ Versions = NamedTuple("Versions", [("calibration", Optional[int]), ("normalizati
 class ReductionRequest(BaseModel):
     runNumber: str
     useLiteMode: bool
+    timestamp: Optional[float] = None
     focusGroups: List[FocusGroup] = []
 
     keepUnfocused: bool = False

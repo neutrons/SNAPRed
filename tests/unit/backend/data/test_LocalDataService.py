@@ -390,7 +390,7 @@ def test_getUniqueTimestamp():
     assert len(tss) == numberToGenerate
 
     # generated values should have distinct `struct_time`:
-    #   this check ensures that they differ by at least 1 second
+    #   this check ensures that generated values differ by at least 1 second
     ts_structs = set([time.gmtime(ts) for ts in tss])
     assert len(ts_structs) == numberToGenerate
 
@@ -1336,13 +1336,12 @@ def _writeSyntheticReductionRecord(filePath: Path, timestamp: float):
     testRecord = ReductionRecord(
         runNumber=testCalibration.runNumber,
         useLiteMode=testCalibration.useLiteMode,
+        timestamp=timestamp,
         calibration=testCalibration,
         normalization=testNormalization,
         pixelGroupingParameters={
             pg.focusGroup.name: list(pg.pixelGroupingParameters.values()) for pg in testCalibration.pixelGroups
         },
-        timestamp=timestamp,
-        stateId=testCalibration.calculationParameters.instrumentState.id,
         workspaceNames=[
             wng.reductionOutput()
             .runNumber(testCalibration.runNumber)
@@ -1474,6 +1473,7 @@ def readSyntheticReductionRecord():
         #    WARNING: we cannot just use `model_validate` here,
         #      it will recreate the `WorkspaceName(<original name>)` and
         #        the `_builder` args will be stripped.
+        #   (TODO: is this still correct?  I think it works now.)
         record = ReductionRecord.model_validate(dict_)
         record.workspaceNames = wss
 
@@ -2465,7 +2465,6 @@ class TestReductionPixelMasks:
         # Warning: the order of class `__init__` vs. autouse-fixture setup calls is ambiguous;
         #   for this reason, the `service` attribute, and anything that is initialized using it,
         #   is initialized _here_ in this fixture.
-
         cls.service = LocalDataService()
 
         cls.runNumber1 = "123456"
@@ -2572,7 +2571,6 @@ class TestReductionPixelMasks:
         tmpPath = stack.enter_context(tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")))
         Config_override_fixture("instrument.reduction.home", tmpPath)
         self._createReductionFileSystem()
-
         # "instrument.<lite mode>.pixelResolution" is used by `isCompatibleMask`
         Config_override_fixture(
             "instrument." + ("lite" if self.useLiteMode else "native") + ".pixelResolution",

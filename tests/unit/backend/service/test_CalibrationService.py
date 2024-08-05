@@ -2,15 +2,16 @@
 import json
 import tempfile
 import time
-import unittest
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from random import randint
 from typing import Dict, List
-from unittest import mock
 
+import unittest
+from unittest import mock
 import pytest
+
 from mantid.simpleapi import (
     CloneWorkspace,
     CreateSingleValuedWorkspace,

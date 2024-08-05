@@ -229,14 +229,13 @@ class SousChef(Service):
     def _pullNormalizationRecordFFI(
         self,
         ingredients: FarmFreshIngredients,
-    ) -> FarmFreshIngredients:
+    ) -> Tuple[FarmFreshIngredients, float]:
         normalizationRecord = self.dataFactoryService.getNormalizationRecord(
             ingredients.runNumber, ingredients.useLiteMode, ingredients.versions.normalization
         )
         smoothingParameter = Config["calibration.parameters.default.smoothing"]
         if normalizationRecord is not None:
             smoothingParameter = normalizationRecord.smoothingParameter
-        # TODO: Should smoothing parameter be an ingredient?
         return ingredients, smoothingParameter
 
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
@@ -246,6 +245,9 @@ class SousChef(Service):
         ingredients_, smoothingParameter = self._pullNormalizationRecordFFI(ingredients_)
 
         return ReductionIngredients(
+            runNumber = ingredients_.runNumber,
+            useLiteMode = ingredients_.useLiteMode,
+            timestamp = ingredients_.timestamp,
             pixelGroups=self.prepManyPixelGroups(ingredients_),
             smoothingParameter=smoothingParameter,
             calibrantSamplePath=ingredients_.calibrantSamplePath,

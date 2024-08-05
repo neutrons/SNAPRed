@@ -1,7 +1,10 @@
-from unittest import TestCase, mock
+import time
 
+from unittest import TestCase, mock
 import pytest
+
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
+from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.ReductionRecipe import (
     ApplyNormalizationRecipe,
     GenerateFocussedVanadiumRecipe,
@@ -77,10 +80,10 @@ class ReductionRecipeTest(TestCase):
         recipe = ReductionRecipe()
         recipe.mantidSnapper = mock.Mock()
         workspace = wng.run().runNumber("555").lite(True).build()
-        msg = "Convert the clone of the final output"
 
         # TODO: All units are tested here for now, this will be changed when EWM 6615 is completed
         units = "dSpacing"
+        msg = f"Convert unfocused workspace to {units} units"
         recipe._cloneAndConvertWorkspace(workspace, units)
         outputWs = wng.run().runNumber("555").lite(True).unit(wng.Units.DSP).group(wng.Groups.UNFOC).build()
         recipe.mantidSnapper.ConvertUnits.assert_called_once_with(
@@ -90,6 +93,7 @@ class ReductionRecipeTest(TestCase):
         recipe.mantidSnapper.reset_mock()
 
         units = "MomentumTransfer"
+        msg = f"Convert unfocused workspace to {units} units"
         recipe._cloneAndConvertWorkspace(workspace, units)
         outputWs = wng.run().runNumber("555").lite(True).unit(wng.Units.QSP).group(wng.Groups.UNFOC).build()
         recipe.mantidSnapper.ConvertUnits.assert_called_once_with(
@@ -99,6 +103,7 @@ class ReductionRecipeTest(TestCase):
         recipe.mantidSnapper.reset_mock()
 
         units = "Wavelength"
+        msg = f"Convert unfocused workspace to {units} units"
         recipe._cloneAndConvertWorkspace(workspace, units)
         outputWs = wng.run().runNumber("555").lite(True).unit(wng.Units.LAM).group(wng.Groups.UNFOC).build()
         recipe.mantidSnapper.ConvertUnits.assert_called_once_with(
@@ -108,6 +113,7 @@ class ReductionRecipeTest(TestCase):
         recipe.mantidSnapper.reset_mock()
 
         units = "TOF"
+        msg = f"Convert unfocused workspace to {units} units"
         recipe._cloneAndConvertWorkspace(workspace, units)
         outputWs = wng.run().runNumber("555").lite(True).unit(wng.Units.TOF).group(wng.Groups.UNFOC).build()
         recipe.mantidSnapper.ConvertUnits.assert_called_once_with(
@@ -191,9 +197,14 @@ class ReductionRecipeTest(TestCase):
         recipe.normalizationWs = "norm"
         recipe.mantidSnapper = mock.Mock()
         recipe.groceries = {}
-        recipe.ingredients = mock.Mock()
-        recipe.ingredients.pixelGroups = [mock.Mock(), mock.Mock()]
-        recipe.ingredients.detectorPeaksMany = [["peaks"], ["peaks2"]]
+        recipe.ingredients = mock.Mock(
+            spec=ReductionIngredients,
+            runNumber="12345",
+            useLiteMode=True,
+            timestamp=time.time(),
+            pixelGroups = [mock.Mock(), mock.Mock()],
+            detectorPeaksMany = [["peaks"], ["peaks2"]],
+        )
 
         recipe.sampleWs = "sample"
         recipe._cloneWorkspace = mock.Mock()
@@ -212,9 +223,14 @@ class ReductionRecipeTest(TestCase):
         recipe.normalizationWs = None
         recipe.mantidSnapper = mock.Mock()
         recipe.groceries = {}
-        recipe.ingredients = mock.Mock()
-        recipe.ingredients.pixelGroups = [mock.Mock(), mock.Mock()]
-        recipe.ingredients.detectorPeaksMany = [["peaks"], ["peaks2"]]
+        recipe.ingredients = mock.Mock(
+            spec=ReductionIngredients,
+            runNumber="12345",
+            useLiteMode=True,
+            timestamp=time.time(),
+            pixelGroups = [mock.Mock(), mock.Mock()],
+            detectorPeaksMany = [["peaks"], ["peaks2"]],
+        )
 
         recipe.sampleWs = "sample"
         recipe._cloneWorkspace = mock.Mock()

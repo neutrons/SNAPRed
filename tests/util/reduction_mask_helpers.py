@@ -5,6 +5,7 @@ from mantid.api import MatrixWorkspace
 from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import (
     CreateSampleWorkspace,
+    DeleteWorkspace,
     LoadInstrument,
     mtd,
 )
@@ -86,7 +87,7 @@ def create_sample_pixel_mask(cleanup_class_workspace_at_exit, create_sample_work
     def _create_sample_pixel_mask(
         maskWSName: WorkspaceName, detectorState: DetectorState, instrumentFilePath: Path, fraction: float
     ) -> MaskWorkspace:
-        sampleWS = mtd.unique_name(prefix="joe_")
+        sampleWS = mtd.unique_name(prefix="donor_for_sample_mask_")
         create_sample_workspace(sampleWS, detectorState, instrumentFilePath)
         createCompatibleMask(maskWSName, sampleWS)
         initializeRandomMask(maskWSName, fraction)
