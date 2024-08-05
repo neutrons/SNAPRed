@@ -14,6 +14,7 @@ from snapred.backend.dao.ingredients import (
     PeakIngredients,
     ReductionIngredients,
 )
+from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.CalibrantSample import (
@@ -25,6 +26,7 @@ from snapred.backend.dao.state.CalibrantSample import (
 )
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
+from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.GenericRecipe import DetectorPeakPredictorRecipe
 from snapred.meta.Config import Resource
 
@@ -70,8 +72,18 @@ class SculleryBoy:
         )
 
     def prepPixelGroup(self, ingredients: FarmFreshIngredients = None):  # noqa ARG002
+        params = PixelGroupingParameters(
+            groupID=1,
+            isMasked=False,
+            L2=10.0,
+            twoTheta=3.14,
+            azimuth=0.0,
+            dResolution=Limit(minimum=0.1, maximum=1.0),
+            dRelativeResolution=0.01,
+        )
+
         return PixelGroup(
-            pixelGroupingParameters=[],
+            pixelGroupingParameters=[params],
             nBinsAcrossPeakWidth=7,
             focusGroup=self.prepFocusGroup(ingredients),
             timeOfFlight={"minimum": 0.001, "maximum": 100, "binWidth": 1, "binnindMode": -1},
