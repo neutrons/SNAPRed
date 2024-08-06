@@ -1922,7 +1922,35 @@ def test_detectorStateFromWorkspace(instrumentWorkspace):
     wsName = instrumentWorkspace
 
     # --- duplicates `groceryService.updateInstrumentParameters`: -----
-    logsInfo = getInstrumentLogDescriptors(detectorState1)
+    logsInfo = {
+        "logNames": [
+            "det_arc1",
+            "det_arc2",
+            "BL3:Chop:Skf1:WavelengthUserReq",
+            "BL3:Det:TH:BL:Frequency",
+            "BL3:Mot:OpticsPos:Pos",
+            "det_lin1",
+            "det_lin2",
+        ],
+        "logTypes": [
+            "Number Series",
+            "Number Series",
+            "Number Series",
+            "Number Series",
+            "Number Series",
+            "Number Series",
+            "Number Series",
+        ],
+        "logValues": [
+            str(detectorState1.arc[0]),
+            str(detectorState1.arc[1]),
+            str(detectorState1.wav),
+            str(detectorState1.freq),
+            str(detectorState1.guideStat),
+            str(detectorState1.lin[0]),
+            str(detectorState1.lin[1]),
+        ],
+    }
     addInstrumentLogs(wsName, **logsInfo)
     # ------------------------------------------------------
 
