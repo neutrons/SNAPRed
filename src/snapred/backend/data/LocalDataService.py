@@ -781,9 +781,20 @@ class LocalDataService:
         detectorState = None
         try:
             logs = mtd[wsName].getRun()
+
+            # Check for the wavelength logs
+            wav_value = None
+            if logs.hasProperty("BL3:Chop:Gbl:WavelengthReq"):
+                wav_value = logs.getProperty("BL3:Chop:Gbl:WavelengthReq").value[0]
+            elif logs.hasProperty("BL3:Chop:Skf1:WavelengthUserReq"):
+                wav_value = logs.getProperty("BL3:Chop:Skf1:WavelengthUserReq").value[0]
+            else:
+                raise ValueError(f"Workspace '{wsName}' does not have the required wavelength logs")
+
+            # Assemble DetectorState using the logs
             detectorState = DetectorState(
                 arc=[logs.getProperty("det_arc1").value[0], logs.getProperty("det_arc2").value[0]],
-                wav=logs.getProperty("BL3:Chop:Skf1:WavelengthUserReq").value[0],
+                wav=wav_value,
                 freq=logs.getProperty("BL3:Det:TH:BL:Frequency").value[0],
                 guideStat=logs.getProperty("BL3:Mot:OpticsPos:Pos").value[0],
                 lin=[logs.getProperty("det_lin1").value[0], logs.getProperty("det_lin2").value[0]],
