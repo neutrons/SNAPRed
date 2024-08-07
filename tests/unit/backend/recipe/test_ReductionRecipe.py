@@ -73,7 +73,7 @@ class ReductionRecipeTest(TestCase):
         assert recipe.mantidSnapper.DeleteWorkspace.called_once_with(mock.ANY, Workspace=workspace)
         assert recipe.mantidSnapper.executeQueue.called
 
-    def test_convertWorkspace(self):
+    def test_cloneAndConvertWorkspace(self):
         recipe = ReductionRecipe()
         recipe.mantidSnapper = mock.Mock()
         workspace = wng.run().runNumber("555").lite(True).build()
@@ -86,6 +86,40 @@ class ReductionRecipeTest(TestCase):
 
         assert recipe.mantidSnapper.ConvertUnits.called_once_with(mock.ANY, Workspace=workspace)
         assert recipe.mantidSnapper.executeQueue.called
+
+    def test_keepUnfocusedData(self):
+        recipe = ReductionRecipe()
+        recipe.groceries = {}
+
+        recipe.ingredients = mock.Mock()
+        recipe.ingredients.groupProcessing = mock.Mock(
+            return_value=lambda groupingIndex: f"groupProcessing_{groupingIndex}"
+        )
+        recipe.ingredients.generateFocussedVanadium = mock.Mock(
+            return_value=lambda groupingIndex: f"generateFocussedVanadium_{groupingIndex}"
+        )
+        recipe.ingredients.applyNormalization = mock.Mock(
+            return_value=lambda groupingIndex: f"applyNormalization_{groupingIndex}"
+        )
+
+        recipe._applyRecipe = mock.Mock()
+        recipe._cloneIntermediateWorkspace = mock.Mock()
+        recipe._deleteWorkspace = mock.Mock()
+        recipe._cloneAndConvertWorkspace = mock.Mock()
+        recipe._prepGroupingWorkspaces = mock.Mock()
+        recipe._prepGroupingWorkspaces.return_value = ("sample_grouped", "norm_grouped")
+        recipe.sampleWs = "sample"
+        recipe.maskWs = "mask"
+        recipe.normalizationWs = "norm"
+        recipe.groupingWorkspaces = ["group1", "group2"]
+        recipe.keepUnfocused = True
+        recipe.convertUnitsTo = "dSpacing"
+
+        result = recipe.execute()
+
+        assert recipe._cloneAndConvertWorkspace.called_once_with("sample", "dSpacing")
+        assert recipe._deleteWorkspace.called_once_with("norm_grouped")
+        assert result["outputs"][0] == "sample_grouped"
 
     def test_applyRecipe(self):
         recipe = ReductionRecipe()

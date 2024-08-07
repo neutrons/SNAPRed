@@ -176,6 +176,7 @@ class TestGroceryService(unittest.TestCase):
         os.remove(cls.sampleWSFilePath)
         os.remove(cls.sampleDiffCalFilePath)
         os.remove(cls.sampleTarWsFilePath)
+        os.remove(cls.samplePixelMaskFilePath)
         return super().tearDownClass()
 
     @classmethod
