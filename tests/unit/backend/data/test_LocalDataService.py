@@ -1845,7 +1845,8 @@ def test_readWriteNormalizationState():
 def test_readDetectorState():
     localDataService = LocalDataService()
     testDetectorState = mockDetectorState("123")
-    localDataService._readPVFile = mock.Mock(return_value=mockPVFile(testDetectorState))
+    pvFile = mockPVFile(testDetectorState)
+    localDataService._readPVFile = mock.Mock(return_value=pvFile)
 
     # Mock the _constructPVFilePath method
     localDataService._constructPVFilePath = mock.Mock(return_value="/mock/path")
@@ -1854,6 +1855,30 @@ def test_readDetectorState():
 
     actualDetectorState = localDataService.readDetectorState("123")
     assert actualDetectorState == testDetectorState
+
+
+def test_readDetectorStateWithDiffWavKey():
+    localDataService = LocalDataService()
+    pvFile = {
+        "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value": [1.1],
+        "entry/DASlogs/det_arc1/value": [1],
+        "entry/DASlogs/det_arc2/value": [2],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
+        "entry/DASlogs/det_lin1/value": [1],
+        "entry/DASlogs/det_lin2/value": [2],
+    }
+    localDataService._readPVFile = mock.Mock(return_value=pvFile)
+
+    expectedDetectorState = DetectorState(
+        arc=[1, 2],
+        wav=1.1,
+        freq=1.2,
+        guideStat=1,
+        lin=[1, 2],
+    )
+
+    assert localDataService.readDetectorState("12345") == expectedDetectorState
 
 
 def test_readDetectorState_bad_logs():
@@ -1923,6 +1948,22 @@ def test_detectorStateFromWorkspace(instrumentWorkspace):
 
     actual = service.detectorStateFromWorkspace(wsName)
     assert actual == detectorState1
+
+
+def test_detectorStateFromWorkspaceWithDiffWavKey(instrumentWorkspace):
+    service = LocalDataService()
+    detectorState2 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+    wsName = instrumentWorkspace
+
+    # --- duplicates `groceryService.updateInstrumentParameters`: -----
+    logsInfo = getInstrumentLogDescriptors(detectorState2)
+    idx = logsInfo["logNames"].index("BL3:Chop:Skf1:WavelengthUserReq")
+    logsInfo["logNames"][idx] = "BL3:Chop:Gbl:WavelengthReq"
+    addInstrumentLogs(wsName, **logsInfo)
+    # ------------------------------------------------------
+
+    actual = service.detectorStateFromWorkspace(wsName)
+    assert actual == detectorState2
 
 
 def test_detectorStateFromWorkspace_bad_logs(instrumentWorkspace):
