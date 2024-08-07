@@ -228,7 +228,7 @@ class ReductionRecipeTest(TestCase):
         recipe.normalizationWs = "norm"
         recipe.groupingWorkspaces = ["group1", "group2"]
         recipe.keepUnfocused = True
-        recipe.convertUnitsTo = "dSpacing"
+        recipe.convertUnitsTo = "TOF"
 
         result = recipe.execute()
 
