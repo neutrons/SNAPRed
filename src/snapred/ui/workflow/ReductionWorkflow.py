@@ -117,6 +117,8 @@ class ReductionWorkflow(WorkflowImplementer):
             response = self.request(path="reduction/", payload=payload)
             if response.code == ResponseCode.OK:
                 self.outputs.extend(response.data.workspaces)
+                if response.data.unfocusedData is not None:
+                    self.outputs.append(response.data.unfocusedData)
 
             # Note that the run number is deliberately not deleted from the run numbers list.
             # Almost certainly it should be moved to a "completed run numbers" list.

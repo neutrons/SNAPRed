@@ -83,26 +83,28 @@ class ReductionRecipe(Recipe[Ingredients]):
         )
         self.mantidSnapper.executeQueue()
 
-    def _convertWorkspace(self, workspace: str, units: str):
+    def _cloneAndConvertWorkspace(self, workspace: WorkspaceName, units: str) -> WorkspaceName:
         unitsAbrev = ""
-        if units == "TOF":
-            unitsAbrev = wng.Units.TOF
-        elif units == "Wavelength":
-            unitsAbrev = wng.Units.LAM
-        elif units == "MomentumTransfer":
-            unitsAbrev = wng.Units.QSP
-        elif units == "dSpacing":
-            unitsAbrev = wng.Units.DSP
-        outWS = workspace.replace("tof", unitsAbrev.lower())
+        match units:
+            case "Wavelength":
+                unitsAbrev = wng.Units.LAM
+            case "MomentumTransfer":
+                unitsAbrev = wng.Units.QSP
+            case "dSpacing":
+                unitsAbrev = wng.Units.DSP
+
+        runNumber, liteMode = workspace.tokens("runNumber", "lite")
+        self.unfocWS = wng.run().runNumber(runNumber).lite(liteMode).unit(unitsAbrev).build()
+        self._cloneWorkspace(workspace, self.unfocWS)
+
         self.mantidSnapper.ConvertUnits(
-            "Convert the clone of the final output back to TOFl",
+            "Convert the clone of the final output",
             InputWorkspace=workspace,
-            OutputWorkspace=outWS,
+            OutputWorkspace=self.unfocWS,
             Target=units,
         )
-        if outWS != workspace:
-            self._deleteWorkspace(workspace)
         self.mantidSnapper.executeQueue()
+        return self.unfocWS
 
     def _applyRecipe(self, recipe: Type[Recipe], ingredients_, **kwargs):
         if "inputWorkspace" in kwargs:
@@ -138,6 +140,13 @@ class ReductionRecipe(Recipe[Ingredients]):
 
     def execute(self):
         data: Dict[str, Any] = {"result": False}
+
+        if self.keepUnfocused:
+            if self.convertUnitsTo == "TOF":
+                data["unfocusedWS"] = self.sampleWs
+            else:
+                data["unfocusedWS"] = self._cloneAndConvertWorkspace(self.sampleWs, self.convertUnitsTo)
+
         # 1. PreprocessReductionRecipe
         outputs = []
         self._applyRecipe(
@@ -195,11 +204,8 @@ class ReductionRecipe(Recipe[Ingredients]):
             # Cleanup
             outputs.append(sampleClone)
 
-            if self.keepUnfocused:
-                self._convertWorkspace(normalizationClone, self.convertUnitsTo)
-            else:
-                if self.normalizationWs:
-                    self._deleteWorkspace(normalizationClone)
+            if self.normalizationWs:
+                self._deleteWorkspace(normalizationClone)
 
         if self.maskWs:
             outputs.append(self.maskWs)

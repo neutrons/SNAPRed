@@ -9,6 +9,7 @@ from snapred.backend.recipe.ReductionRecipe import (
     ReductionGroupProcessingRecipe,
     ReductionRecipe,
 )
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from util.SculleryBoy import SculleryBoy
 
 
@@ -75,15 +76,13 @@ class ReductionRecipeTest(TestCase):
     def test_convertWorkspace(self):
         recipe = ReductionRecipe()
         recipe.mantidSnapper = mock.Mock()
-        workspace = "input_tof"
+        workspace = wng.run().runNumber("555").lite(True).build()
         units = "dSpacing"
-        recipe._convertWorkspace(workspace, units)
-        units = "TOF"
-        recipe._convertWorkspace(workspace, units)
+        recipe._cloneAndConvertWorkspace(workspace, units)
         units = "MomentumTransfer"
-        recipe._convertWorkspace(workspace, units)
+        recipe._cloneAndConvertWorkspace(workspace, units)
         units = "Wavelength"
-        recipe._convertWorkspace(workspace, units)
+        recipe._cloneAndConvertWorkspace(workspace, units)
 
         assert recipe.mantidSnapper.ConvertUnits.called_once_with(mock.ANY, Workspace=workspace)
         assert recipe.mantidSnapper.executeQueue.called
@@ -221,7 +220,7 @@ class ReductionRecipeTest(TestCase):
         recipe._applyRecipe = mock.Mock()
         recipe._cloneIntermediateWorkspace = mock.Mock()
         recipe._deleteWorkspace = mock.Mock()
-        recipe._convertWorkspace = mock.Mock()
+        recipe._cloneAndConvertWorkspace = mock.Mock()
         recipe._prepGroupingWorkspaces = mock.Mock()
         recipe._prepGroupingWorkspaces.return_value = ("sample_grouped", "norm_grouped")
         recipe.sampleWs = "sample"
