@@ -12,7 +12,7 @@ import unittest.mock as mock
 from contextlib import ExitStack
 from pathlib import Path
 from random import randint, shuffle
-from typing import Any, Dict, List, Literal, Set
+from typing import List, Literal, Set
 
 import h5py
 import pydantic
@@ -84,7 +84,7 @@ ENDURING_STATE_ID = "ab8704b0bc2a2342"
 
 
 # NOTE: The state id values above are the result of how we define two specific DetectorState objects:
-def mock_readDetectorState(runId) -> DetectorState:
+def mockReadDetectorState(runId) -> DetectorState:
     if runId == "12345":
         return DetectorState(arc=(0.1, 0.1), wav=0.1, freq=0.1, guideStat=1, lin=(0.1, 0.1))
     elif runId == "67890":
@@ -92,8 +92,8 @@ def mock_readDetectorState(runId) -> DetectorState:
     return None
 
 
-def mockPVFile(detectorState: DetectorState) -> Dict[str, Any]:
-    return {
+def mockPVFile(detectorState: DetectorState) -> mock.Mock:
+    dict_ = {
         "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": detectorState.get("WavelengthUserReq", [1.1]),
         "entry/DASlogs/det_arc1/value": detectorState.get("det_arc1", [1.0]),
         "entry/DASlogs/det_arc2/value": detectorState.get("det_arc2", [2.0]),
@@ -102,6 +102,14 @@ def mockPVFile(detectorState: DetectorState) -> Dict[str, Any]:
         "entry/DASlogs/det_lin1/value": detectorState.get("det_lin1", [1.0]),
         "entry/DASlogs/det_lin2/value": detectorState.get("det_lin2", [2.0]),
     }
+
+    mock_ = mock.MagicMock(spec=h5py.File)
+    mock_.get = lambda key, default=None: dict_.get(key, default)
+    mock_.__getitem__.side_effect = dict_.__getitem__
+    mock_.__setitem__.side_effect = dict_.__setitem__
+    mock_.__contains__.side_effect = dict_.__contains__
+    mock_.keys.side_effect = dict_.keys
+    return mock_
 
 
 @pytest.fixture(autouse=True)
@@ -764,7 +772,7 @@ def test__generateStateId_cache():
 
     localDataService._readPVFile = mock.Mock()
 
-    localDataService.readDetectorState = mock.Mock(side_effect=mock_readDetectorState)
+    localDataService.readDetectorState = mock.Mock(side_effect=mockReadDetectorState)
 
     stateSHA1 = UNCHANGING_STATE_ID
     stateSHA2 = "fa0bb25b44874edb"
@@ -1901,7 +1909,7 @@ def test_readDetectorState_bad_logs():
     pvFile_invalid_wav_value["entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value"] = "glitch"
     localDataService._readPVFile.return_value = pvFile_invalid_wav_value
 
-    with pytest.raises(ValueError, match="Input should be a valid number, unable to parse string as a number"):
+    with pytest.raises(ValueError, match="Could not find wavelength logs in file '/not/a/path'"):
         localDataService.readDetectorState("123")
 
 
