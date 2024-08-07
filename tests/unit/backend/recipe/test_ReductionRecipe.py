@@ -77,14 +77,25 @@ class ReductionRecipeTest(TestCase):
         recipe = ReductionRecipe()
         recipe.mantidSnapper = mock.Mock()
         workspace = wng.run().runNumber("555").lite(True).build()
+
         units = "dSpacing"
         recipe._cloneAndConvertWorkspace(workspace, units)
+        assert recipe.mantidSnapper.ConvertUnits.called_once_with(mock.ANY, Workspace=workspace, Target=units)
+        assert recipe.mantidSnapper.executeQueue.called
+
         units = "MomentumTransfer"
         recipe._cloneAndConvertWorkspace(workspace, units)
+        assert recipe.mantidSnapper.ConvertUnits.called_once_with(mock.ANY, Workspace=workspace, Target=units)
+        assert recipe.mantidSnapper.executeQueue.called
+
         units = "Wavelength"
         recipe._cloneAndConvertWorkspace(workspace, units)
+        assert recipe.mantidSnapper.ConvertUnits.called_once_with(mock.ANY, Workspace=workspace, Target=units)
+        assert recipe.mantidSnapper.executeQueue.called
 
-        assert recipe.mantidSnapper.ConvertUnits.called_once_with(mock.ANY, Workspace=workspace)
+        units = "TOF"
+        recipe._cloneAndConvertWorkspace(workspace, units)
+        assert recipe.mantidSnapper.ConvertUnits.called_once_with(mock.ANY, Workspace=workspace, Target=units)
         assert recipe.mantidSnapper.executeQueue.called
 
     def test_keepUnfocusedData(self):
