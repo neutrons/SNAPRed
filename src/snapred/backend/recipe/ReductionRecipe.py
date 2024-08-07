@@ -92,6 +92,8 @@ class ReductionRecipe(Recipe[Ingredients]):
                 unitsAbrev = wng.Units.QSP
             case "dSpacing":
                 unitsAbrev = wng.Units.DSP
+            case "TOF":
+                unitsAbrev = wng.Units.TOF
 
         runNumber, liteMode = workspace.tokens("runNumber", "lite")
         self.unfocWS = wng.run().runNumber(runNumber).lite(liteMode).unit(unitsAbrev).build()
