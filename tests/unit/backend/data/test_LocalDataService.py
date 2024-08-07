@@ -84,9 +84,11 @@ ENDURING_STATE_ID = "ab8704b0bc2a2342"
 
 
 # NOTE: The state id values above are the result of how we define two specific DetectorState objects:
-def mockReadDetectorState(runId) -> DetectorState:
+def mockDetectorState(runId: str) -> DetectorState:
     if runId == "12345":
         return DetectorState(arc=(0.1, 0.1), wav=0.1, freq=0.1, guideStat=1, lin=(0.1, 0.1))
+    elif runId == "123":
+        return DetectorState(arc=(1.0, 2.0), wav=1.1, freq=1.2, guideStat=1, lin=(1.0, 2.0))
     elif runId == "67890":
         return DetectorState(arc=(0.2, 0.2), wav=0.2, freq=0.2, guideStat=1, lin=(0.2, 0.2))
     return None
@@ -94,13 +96,13 @@ def mockReadDetectorState(runId) -> DetectorState:
 
 def mockPVFile(detectorState: DetectorState) -> mock.Mock:
     dict_ = {
-        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": detectorState.get("WavelengthUserReq", [1.1]),
-        "entry/DASlogs/det_arc1/value": detectorState.get("det_arc1", [1.0]),
-        "entry/DASlogs/det_arc2/value": detectorState.get("det_arc2", [2.0]),
-        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": detectorState.get("Frequency", [1.2]),
-        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": detectorState.get("OpticsPos", [1]),
-        "entry/DASlogs/det_lin1/value": detectorState.get("det_lin1", [1.0]),
-        "entry/DASlogs/det_lin2/value": detectorState.get("det_lin2", [2.0]),
+        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [detectorState.wav],
+        "entry/DASlogs/det_arc1/value": [detectorState.arc[0]],
+        "entry/DASlogs/det_arc2/value": [detectorState.arc[1]],
+        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [detectorState.freq],
+        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [detectorState.guideStat],
+        "entry/DASlogs/det_lin1/value": [detectorState.lin[0]],
+        "entry/DASlogs/det_lin2/value": [detectorState.lin[1]],
     }
 
     mock_ = mock.MagicMock(spec=h5py.File)
@@ -749,15 +751,7 @@ def test_readPVFile(h5pyMock):  # noqa: ARG001
 def test__generateStateId():
     localDataService = LocalDataService()
     localDataService._readPVFile = mock.Mock()
-    testDetectorState = {
-        "WavelengthUserReq": [0.1],
-        "det_arc1": [0.1],
-        "det_arc2": [0.1],
-        "Frequency": [0.1],
-        "OpticsPos": [1],
-        "det_lin1": [0.1],
-        "det_lin2": [0.1],
-    }
+    testDetectorState = mockDetectorState("12345")
     localDataService._readPVFile.return_value = mockPVFile(testDetectorState)
     actual, _ = localDataService._generateStateId("12345")
     assert actual == UNCHANGING_STATE_ID
@@ -772,7 +766,7 @@ def test__generateStateId_cache():
 
     localDataService._readPVFile = mock.Mock()
 
-    localDataService.readDetectorState = mock.Mock(side_effect=mockReadDetectorState)
+    localDataService.readDetectorState = mock.Mock(side_effect=mockDetectorState)
 
     stateSHA1 = UNCHANGING_STATE_ID
     stateSHA2 = "fa0bb25b44874edb"
@@ -1850,15 +1844,7 @@ def test_readWriteNormalizationState():
 
 def test_readDetectorState():
     localDataService = LocalDataService()
-    testDetectorState = {
-        "WavelengthUserReq": [1.1],
-        "det_arc1": [1.0],
-        "det_arc2": [2.0],
-        "Frequency": [1.2],
-        "OpticsPos": [1],
-        "det_lin1": [1.0],
-        "det_lin2": [2.0],
-    }
+    testDetectorState = mockDetectorState("123")
     localDataService._readPVFile = mock.Mock(return_value=mockPVFile(testDetectorState))
 
     # Mock the _constructPVFilePath method
@@ -1875,15 +1861,7 @@ def test_readDetectorState_bad_logs():
     localDataService._constructPVFilePath = mock.Mock()
     localDataService._constructPVFilePath.return_value = "/not/a/path"
     localDataService._readPVFile = mock.Mock()
-    testDetectorState = {
-        "WavelengthUserReq": [0.1],
-        "det_arc1": [0.1],
-        "det_arc2": [0.1],
-        "Frequency": [0.1],
-        "OpticsPos": [1],
-        "det_lin1": [0.1],
-        "det_lin2": [0.1],
-    }
+    testDetectorState = mockDetectorState("12345")
     pvFile = mockPVFile(testDetectorState)
 
     # Case where wavelength logs are missing
@@ -2006,15 +1984,7 @@ def test_initializeState():
 
     localDataService = LocalDataService()
     localDataService._readPVFile = mock.Mock()
-    testDetectorState = {
-        "WavelengthUserReq": [1.1],
-        "det_arc1": [1.0],
-        "det_arc2": [2.0],
-        "Frequency": [1.2],
-        "OpticsPos": [1],
-        "det_lin1": [1.0],
-        "det_lin2": [2.0],
-    }
+    testDetectorState = mockDetectorState(runNumber)
     localDataService._readPVFile.return_value = mockPVFile(testDetectorState)
     localDataService._writeDefaultDiffCalTable = mock.Mock()
 
@@ -2049,15 +2019,7 @@ def test_initializeState_calls_prepareStateRoot():
 
     localDataService = LocalDataService()
     localDataService._readPVFile = mock.Mock()
-    testDetectorState = {
-        "WavelengthUserReq": [1.1],
-        "det_arc1": [1.0],
-        "det_arc2": [2.0],
-        "Frequency": [1.2],
-        "OpticsPos": [1],
-        "det_lin1": [1.0],
-        "det_lin2": [2.0],
-    }
+    testDetectorState = mockDetectorState("12345")
     localDataService._readPVFile.return_value = mockPVFile(testDetectorState)
     localDataService._writeDefaultDiffCalTable = mock.Mock()
 
