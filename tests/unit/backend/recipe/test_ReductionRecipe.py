@@ -126,19 +126,11 @@ class ReductionRecipeTest(TestCase):
         recipe.groupingWorkspaces = ["group1", "group2"]
         recipe.keepUnfocused = True
 
-        # Test keeping unfocused data in dSpacing units, _cloneAndConvertWorkspace() should be called
+        # Test keeping unfocused data in dSpacing units
         recipe.convertUnitsTo = "dSpacing"
         result = recipe.execute()
 
         assert recipe._cloneAndConvertWorkspace.called_once_with("sample", "dSpacing")
-        assert recipe._deleteWorkspace.called_once_with("norm_grouped")
-        assert result["outputs"][0] == "sample_grouped"
-
-        # Test the case of selecting TOF units, _cloneAndConvertWorkspace() should not be called
-        recipe.convertUnitsTo = "TOF"
-        result = recipe.execute()
-
-        assert recipe._cloneAndConvertWorkspace.not_called()
         assert recipe._deleteWorkspace.called_once_with("norm_grouped")
         assert result["outputs"][0] == "sample_grouped"
 
@@ -282,8 +274,8 @@ class ReductionRecipeTest(TestCase):
         recipe.maskWs = "mask"
         recipe.normalizationWs = "norm"
         recipe.groupingWorkspaces = ["group1", "group2"]
-        recipe.keepUnfocused = True
-        recipe.convertUnitsTo = "TOF"
+        recipe.keepUnfocused = False
+        # recipe.convertUnitsTo = "TOF"
 
         result = recipe.execute()
 

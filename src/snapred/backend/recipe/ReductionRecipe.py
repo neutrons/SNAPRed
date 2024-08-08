@@ -96,7 +96,7 @@ class ReductionRecipe(Recipe[Ingredients]):
                 unitsAbrev = wng.Units.TOF
 
         runNumber, liteMode = workspace.tokens("runNumber", "lite")
-        self.unfocWS = wng.run().runNumber(runNumber).lite(liteMode).unit(unitsAbrev).build()
+        self.unfocWS = wng.run().runNumber(runNumber).lite(liteMode).unit(unitsAbrev).group(wng.Groups.UNFOC).build()
         self._cloneWorkspace(workspace, self.unfocWS)
 
         self.mantidSnapper.ConvertUnits(
@@ -144,10 +144,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         data: Dict[str, Any] = {"result": False}
 
         if self.keepUnfocused:
-            if self.convertUnitsTo == "TOF":
-                data["unfocusedWS"] = self.sampleWs
-            else:
-                data["unfocusedWS"] = self._cloneAndConvertWorkspace(self.sampleWs, self.convertUnitsTo)
+            data["unfocusedWS"] = self._cloneAndConvertWorkspace(self.sampleWs, self.convertUnitsTo)
 
         # 1. PreprocessReductionRecipe
         outputs = []
