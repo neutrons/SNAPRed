@@ -11,7 +11,6 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.api.RequestScheduler import RequestScheduler
-from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.request import (
     ReductionExportRequest,
@@ -127,8 +126,8 @@ class TestReductionService(unittest.TestCase):
         ingredients = self.instance.prepReductionIngredients(self.request)
         groceries = self.instance.fetchReductionGroceries(self.request)
         groceries["groupingWorkspaces"] = groupings["groupingWorkspaces"]
-        assert mockReductionRecipe.called
-        assert mockReductionRecipe.return_value.cook.called_once_with(ingredients, groceries)
+        mockReductionRecipe.assert_called()
+        mockReductionRecipe.return_value.cook.assert_called_once_with(ingredients, groceries)
         assert result.workspaces == mockReductionRecipe.return_value.cook.return_value["outputs"]
 
     def test_saveReduction(self):
@@ -360,7 +359,7 @@ class TestReductionServiceMasks:
             self.service.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
             self.service.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=2)
 
-            groceryClerk = GroceryListItem.builder()
+            groceryClerk = self.service.groceryClerk
             for mask in (self.maskWS1, self.maskWS2):
                 runNumber, timestamp = mask.tokens("runNumber", "timestamp")
                 groceryClerk.name(mask).reduction_pixel_mask(runNumber, timestamp).useLiteMode(
@@ -371,6 +370,7 @@ class TestReductionServiceMasks:
             combinedMaskName = wng.reductionPixelMask().runNumber(request.runNumber).build()
             mockPrepCombinedMask.return_value = combinedMaskName
 
+            groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
             groceryClerk.name("diffcalWorkspace").diffcal_table(
                 request.runNumber, request.versions.calibration
             ).useLiteMode(request.useLiteMode).add()
@@ -381,8 +381,8 @@ class TestReductionServiceMasks:
             residentOtherGroceryKwargs = {"maskWorkspace": combinedMaskName}
 
             self.service.fetchReductionGroceries(request)
-            assert mockFetchGroceryDict.called_with(loadableMaskGroceryItems, **residentMaskGroceryKwargs)
-            assert mockFetchGroceryDict.called_with(loadableOtherGroceryItems, **residentOtherGroceryKwargs)
+            mockFetchGroceryDict.assert_any_call(loadableMaskGroceryItems, **residentMaskGroceryKwargs)
+            mockFetchGroceryDict.assert_any_call(groceryDict=loadableOtherGroceryItems, **residentOtherGroceryKwargs)
 
     def test_fetchReductionGroceries_pixelMasks_not_a_mask(self):
         with (
@@ -425,4 +425,4 @@ class TestReductionServiceMasks:
             self.service.dataFactoryService, "getCompatibleReductionMasks"
         ) as mockGetCompatibleReductionMasks:
             self.service.getCompatibleMasks(request)
-            assert mockGetCompatibleReductionMasks.called_with(request.runNumber, request.useLiteMode)
+            mockGetCompatibleReductionMasks.assert_called_with(request.runNumber, request.useLiteMode)

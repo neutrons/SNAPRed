@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -7,6 +7,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 class ReductionResponse(BaseModel):
     workspaces: List[WorkspaceName]
+    unfocusedData: Optional[WorkspaceName] = None
 
     model_config = ConfigDict(
         extra="forbid",

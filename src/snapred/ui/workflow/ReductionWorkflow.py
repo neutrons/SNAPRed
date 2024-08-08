@@ -117,6 +117,11 @@ class ReductionWorkflow(WorkflowImplementer):
             response = self.request(path="reduction/", payload=payload)
             if response.code == ResponseCode.OK:
                 self.outputs.extend(response.data.workspaces)
+                # Retain the unfocused data after the workflow is complete (if the box was checked),
+                # but do not actually save it as part of the reduction-data file.
+                # The unfocused data does not get added to the response.workspaces list.
+                if response.data.unfocusedData is not None:
+                    self.outputs.append(response.data.unfocusedData)
 
             # Note that the run number is deliberately not deleted from the run numbers list.
             # Almost certainly it should be moved to a "completed run numbers" list.

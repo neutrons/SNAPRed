@@ -115,9 +115,7 @@ class ReductionService(Service):
         groceries["groupingWorkspaces"] = groupingResults["groupingWorkspaces"]
 
         data = ReductionRecipe().cook(ingredients, groceries)
-        return ReductionResponse(
-            workspaces=data["outputs"],
-        )
+        return ReductionResponse(workspaces=data["outputs"], unfocusedData=data.get("unfocusedWS", None))
 
     @FromString
     def fetchReductionGroupings(self, request: ReductionRequest) -> Dict[str, Any]:
