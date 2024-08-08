@@ -754,25 +754,47 @@ class LocalDataService:
     def readDetectorState(self, runId: str) -> DetectorState:
         detectorState = None
         pvFile = self._readPVFile(runId)
+        wav_value = None
+        wav_key_1 = "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value"
+        wav_key_2 = "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value"
+
+        if wav_key_1 in pvFile:
+            wav_value = pvFile.get(wav_key_1)[0]
+        elif wav_key_2 in pvFile:
+            wav_value = pvFile.get(wav_key_2)[0]
+        else:
+            raise ValueError(f"Could not find wavelength logs in file '{self._constructPVFilePath(runId)}'")
+
         try:
             detectorState = DetectorState(
                 arc=[pvFile.get("entry/DASlogs/det_arc1/value")[0], pvFile.get("entry/DASlogs/det_arc2/value")[0]],
-                wav=pvFile.get("entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value")[0],
+                wav=wav_value,
                 freq=pvFile.get("entry/DASlogs/BL3:Det:TH:BL:Frequency/value")[0],
                 guideStat=pvFile.get("entry/DASlogs/BL3:Mot:OpticsPos:Pos/value")[0],
                 lin=[pvFile.get("entry/DASlogs/det_lin1/value")[0], pvFile.get("entry/DASlogs/det_lin2/value")[0]],
             )
-        except:  # noqa: E722
-            raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}'")
+        except (TypeError, KeyError) as e:
+            raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}': {e}")
         return detectorState
 
     def detectorStateFromWorkspace(self, wsName: WorkspaceName) -> DetectorState:
         detectorState = None
         try:
             logs = mtd[wsName].getRun()
+
+            # Check for the wavelength logs
+            wav_value = None
+            if logs.hasProperty("BL3:Chop:Gbl:WavelengthReq"):
+                wav_value = logs.getProperty("BL3:Chop:Gbl:WavelengthReq").value[0]
+            elif logs.hasProperty("BL3:Chop:Skf1:WavelengthUserReq"):
+                wav_value = logs.getProperty("BL3:Chop:Skf1:WavelengthUserReq").value[0]
+            else:
+                raise ValueError(f"Workspace '{wsName}' does not have the required wavelength logs")
+
+            # Assemble DetectorState using the logs
             detectorState = DetectorState(
                 arc=[logs.getProperty("det_arc1").value[0], logs.getProperty("det_arc2").value[0]],
-                wav=logs.getProperty("BL3:Chop:Skf1:WavelengthUserReq").value[0],
+                wav=wav_value,
                 freq=logs.getProperty("BL3:Det:TH:BL:Frequency").value[0],
                 guideStat=logs.getProperty("BL3:Mot:OpticsPos:Pos").value[0],
                 lin=[logs.getProperty("det_lin1").value[0], logs.getProperty("det_lin2").value[0]],
