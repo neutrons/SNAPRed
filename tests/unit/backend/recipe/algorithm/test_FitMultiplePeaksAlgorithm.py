@@ -1,8 +1,10 @@
-import os
-import unittest.mock as mock
 from typing import List
-
+import os
 import pydantic
+
+from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+
+import unittest.mock as mock
 
 with mock.patch.dict(
     "sys.modules",
@@ -24,7 +26,8 @@ with mock.patch.dict(
         """Test ability to initialize fit multiple peaks algo"""
         wsName = "testWS"
         CreateSingleValuedWorkspace(OutputWorkspace=wsName)
-        peaks = SculleryBoy().prepDetectorPeaks({})
+        mockFarmFresh = mock.Mock(spec_set=FarmFreshIngredients)
+        peaks = SculleryBoy().prepDetectorPeaks(mockFarmFresh)
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()
         fmpAlgo.setPropertyValue("InputWorkspace", wsName)
@@ -44,7 +47,8 @@ with mock.patch.dict(
             DataY=[1] * 6,
             NSpec=6,
         )
-        peaks = SculleryBoy().prepDetectorPeaks({"good": ""})
+        mockFarmFresh = mock.Mock(spec_set=FarmFreshIngredients)
+        peaks = SculleryBoy().prepDetectorPeaks(mockFarmFresh)
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()
         fmpAlgo.setPropertyValue("InputWorkspace", wsName)

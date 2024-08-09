@@ -1,4 +1,3 @@
-import unittest
 
 from mantid.simpleapi import (
     CreateWorkspace,
@@ -6,9 +5,14 @@ from mantid.simpleapi import (
     LoadNexusProcessed,
     mtd,
 )
+from snapred.backend.dao.request import FarmFreshIngredients
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo as Algo
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import list_to_raw
+
+import unittest
+from unittest import mock
+
 from util.SculleryBoy import SculleryBoy
 
 
@@ -61,7 +65,8 @@ class TestSmoothDataAlgo(unittest.TestCase):
         )
 
         # populate ingredients
-        peaks = SculleryBoy().prepDetectorPeaks({"good": "yes"})
+        mockFarmFresh = mock.Mock(spec_set=FarmFreshIngredients)
+        peaks = SculleryBoy().prepDetectorPeaks(mockFarmFresh)
 
         # initialize and run smoothdata algo
         smoothDataAlgo = Algo()

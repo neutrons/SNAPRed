@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from collections.abc import Iterable
 
 import numpy as np
 from mantid.dataobjects import MaskWorkspace
@@ -1022,7 +1023,7 @@ class GroceryService:
 
         return maskWSName
 
-    def fetchGroceryList(self, groceryList: List[GroceryListItem]) -> List[WorkspaceName]:
+    def fetchGroceryList(self, groceryList: Iterable[GroceryListItem]) -> List[WorkspaceName]:
         """
         :param groceryList: a list of GroceryListItems indicating the workspaces to create
         :type groceryList: List[GrocerListItem]
