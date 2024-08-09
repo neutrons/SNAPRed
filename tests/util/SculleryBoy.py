@@ -18,7 +18,7 @@ from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredient
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.CalibrantSample import (
     Atom,
-    CalibrantSamples,
+    CalibrantSample,
     Crystallography,
     Geometry,
     Material,
@@ -53,7 +53,7 @@ class SculleryBoy:
         return RunConfig(runNumber=runNumber)
 
     def prepCalibrantSample(self, calibrantSamplePath: str):  # noqa ARG002
-        return CalibrantSamples(
+        return CalibrantSample(
             name="fake cylinder sample",
             unique_id="435elmst",
             geometry=self._prepGeometry(),

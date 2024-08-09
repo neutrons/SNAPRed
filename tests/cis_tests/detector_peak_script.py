@@ -33,7 +33,7 @@ snapredLogger._level = 20
 #User inputs ###########################
 
 runNumber = '58882'#58409'
-cifPath = '/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif'
+cifPath = '/SNS/SNAP/shared/Calibration/CalibrantSample/Silicon_NIST_640d.cif'
 groupingScheme = "All"
 peakFractionalThreshold = 0.01
 isLite = True

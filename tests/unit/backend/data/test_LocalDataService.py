@@ -48,7 +48,7 @@ from snapred.backend.dao.request import (
     CreateNormalizationRecordRequest,
 )
 from snapred.backend.dao.state import DetectorState
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
 from snapred.backend.dao.state.GroupingMap import GroupingMap
 from snapred.backend.data.Indexer import IndexerType
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -2232,7 +2232,7 @@ def test_readCalibrantSample(mock1):  # noqa: ARG001
     result = localDataService.readCalibrantSample(
         Resource.getPath("inputs/calibrantSamples/Silicon_NIST_640D_001.json")
     )
-    assert type(result) is CalibrantSamples
+    assert type(result) is CalibrantSample
     assert result.name == "Silicon_NIST_640D"
 
 
@@ -2241,7 +2241,7 @@ def test_readCifFilePath(mock1):  # noqa: ARG001
     localDataService = LocalDataService()
 
     result = localDataService.readCifFilePath("testid")
-    assert result == "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/EntryWithCollCode52054_diamond.cif"
+    assert result == "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSample/EntryWithCollCode52054_diamond.cif"
 
 
 ##### TESTS OF WORKSPACE WRITE METHODS #####

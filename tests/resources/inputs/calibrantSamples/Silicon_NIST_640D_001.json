@@ -18,7 +18,7 @@
         "chemicalFormula": "Si"
     },
     "crystallography": {
-        "cifFile": "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/Silicon_NIST_640d.cif",
+        "cifFile": "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSample/Silicon_NIST_640d.cif",
         "spaceGroup": "F d -3 m",
         "latticeParameters": [
             5.43159,

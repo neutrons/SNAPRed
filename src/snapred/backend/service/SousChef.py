@@ -15,7 +15,7 @@ from snapred.backend.dao.ingredients import (
 )
 from snapred.backend.dao.request import FarmFreshIngredients
 from snapred.backend.dao.state import FocusGroup, InstrumentState, PixelGroup
-from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
+from snapred.backend.dao.state.CalibrantSample import CalibrantSample
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.RecoverableException import RecoverableException
@@ -82,7 +82,7 @@ class SousChef(Service):
     def prepRunConfig(self, runNumber: str) -> RunConfig:
         return self.dataFactoryService.getRunConfig(runNumber)
 
-    def prepCalibrantSample(self, calibrantSamplePath: str) -> CalibrantSamples:
+    def prepCalibrantSample(self, calibrantSamplePath: str) -> CalibrantSample:
         return self.dataFactoryService.getCalibrantSample(calibrantSamplePath)
 
     def prepFocusGroup(self, ingredients: FarmFreshIngredients) -> FocusGroup:

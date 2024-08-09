@@ -8,7 +8,7 @@ from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 from snapred.backend.dao.state.CalibrantSample.Material import Material
 
 
-class CalibrantSamples(BaseModel):
+class CalibrantSample(BaseModel):
     """Class containing all information used for a Calibrant Sample"""
 
     name: str

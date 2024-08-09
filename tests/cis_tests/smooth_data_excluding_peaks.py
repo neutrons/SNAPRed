@@ -24,7 +24,7 @@ from snapred.meta.redantic import list_to_raw
 runNumber = "58882" #58409
 isLite = True
 groupingScheme = "Column"
-cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
+cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSample/Silicon_NIST_640d.cif"
 smoothingParameter = 0.05
 #######################################
 

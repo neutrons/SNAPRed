@@ -4,14 +4,14 @@ import unittest
 
 from mantid.simpleapi import CreateWorkspace, DeleteWorkspace, SetSample
 from snapred.backend.dao.state.CalibrantSample.Atom import Atom
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.meta.Config import Resource
 
 
-class TestCalibrantSamples(unittest.TestCase):
+class TestCalibrantSample(unittest.TestCase):
     def setUp(self):
         self.geo = Geometry(shape="Cylinder", radius=0.1, height=3.6, center=[0.0, 0.0, 0.0])
         self.mat = Material(chemicalFormula="(Li7)2-C-H4-N-Cl6", massDensity=4.4, packingFraction=0.9)
@@ -22,7 +22,7 @@ class TestCalibrantSamples(unittest.TestCase):
             latticeParameters=[5.43159, 5.43159, 5.43159, 90.0, 90.0, 90.0],
             atoms=[self.atom, self.atom, self.atom],
         )
-        self.sample = CalibrantSamples(
+        self.sample = CalibrantSample(
             name="NIST_640D",
             unique_id="001",
             geometry=self.geo,
@@ -38,8 +38,8 @@ class TestCalibrantSamples(unittest.TestCase):
 
     def test_isShapedLikeItself(self):
         self.sample.date = str(datetime.datetime.now())
-        sampleFromDict = CalibrantSamples(**self.sample.dict())
-        sampleFromJSON = CalibrantSamples.model_validate_json(self.sample.model_dump_json())
+        sampleFromDict = CalibrantSample(**self.sample.dict())
+        sampleFromJSON = CalibrantSample.model_validate_json(self.sample.model_dump_json())
         assert self.sample == sampleFromDict
         assert self.sample == sampleFromJSON
 
@@ -110,14 +110,14 @@ class TestCalibrantSamples(unittest.TestCase):
             height=5.0,
         )
         # not create two differently shaped calibrant sample entries
-        sphereSample = CalibrantSamples(
+        sphereSample = CalibrantSample(
             name="fake sphere sample",
             unique_id="123fakest",
             geometry=sphere,
             material=fakeMaterial,
             crystallography=fakeXtal,
         )
-        cylinderSample = CalibrantSamples(
+        cylinderSample = CalibrantSample(
             name="fake cylinder sample",
             unique_id="435elmst",
             geometry=cylinder,

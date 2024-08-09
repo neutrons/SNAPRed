@@ -12,10 +12,10 @@ snapred.backend.dao.state.CalibrantSample.Atom module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.dao.state.CalibrantSample.CalibrantSamples module
+snapred.backend.dao.state.CalibrantSample.CalibrantSample module
 -----------------------------------------------------------------
 
-.. automodule:: snapred.backend.dao.state.CalibrantSample.CalibrantSamples
+.. automodule:: snapred.backend.dao.state.CalibrantSample.CalibrantSample
    :members:
    :undoc-members:
    :show-inheritance:

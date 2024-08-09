@@ -1,4 +1,4 @@
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
@@ -20,7 +20,7 @@ class CalibrantSampleService(Service):
         return "calibrant_sample"
 
     @FromString
-    def save_sample(self, calibrantSample: CalibrantSamples):
+    def save_sample(self, calibrantSample: CalibrantSample):
         try:
             self.dataExportService.exportCalibrantSampleFile(calibrantSample)
         except:

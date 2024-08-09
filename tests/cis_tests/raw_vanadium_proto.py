@@ -29,7 +29,7 @@ VRun = 57473
 VBRun = 57472
 groupingScheme = "Column"
 liteMode=True
-calibrantSamplePath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640D_001.json"
+calibrantSamplePath = "/SNS/SNAP/shared/Calibration/CalibrantSample/Silicon_NIST_640D_001.json"
 # File defining reduction parameters for this instrument state (Manually spec'ed for now)
 sPrmFile = '/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/057514/SNAPcalibLog57514.lite.json' 
 iPrmFile = '/SNS/SNAP/shared/Calibration/SNAPInstPrm.json'

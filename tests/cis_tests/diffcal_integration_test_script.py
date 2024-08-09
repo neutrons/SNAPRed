@@ -58,7 +58,7 @@ def script(goldenData):
     #User input ###########################
     runNumber = "58882"
     groupingScheme = "Column"
-    cifPath = f"{Config['instrument.home']}/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
+    cifPath = f"{Config['instrument.home']}/shared/Calibration/CalibrantSample/Silicon_NIST_640d.cif"
     calibrantSamplePath = f"{Config['instrument.home']}/shared/Calibration/CalibrationSamples/Silicon_NIST_640D_001.json"
     peakThreshold = 0.05
     offsetConvergenceLimit = 0.1

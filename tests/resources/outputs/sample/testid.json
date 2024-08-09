@@ -18,7 +18,7 @@
         "chemicalFormula": "La-11B6"
     },
     "crystallography": {
-        "cifFile": "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/EntryWithCollCode52054_diamond.cif",
+        "cifFile": "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSample/EntryWithCollCode52054_diamond.cif",
         "spaceGroup": "P m -3 m",
         "latticeParameters": [
             4.15682,

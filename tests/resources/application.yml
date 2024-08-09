@@ -17,7 +17,7 @@ instrument:
     home: ${instrument.home}/shared/Calibration
     sample:
       # "instrument.calibration.sample.home" is overridden in "test.yml":
-      home: ${instrument.calibration.home}/CalibrantSamples
+      home: ${instrument.calibration.home}/CalibrantSample
       extensions:
         - json
 
