@@ -147,6 +147,7 @@ def do_test_workflow_indexer(workflow):
         localDataService.indexer.assert_called_once_with("xyz", useLiteMode, IndexerType(workflow))
         localDataService.indexer.reset_mock()
 
+
 def do_test_read_index(workflow):
     # verify that calls to read index call out to the indexer
     mockIndex = ["nope"]

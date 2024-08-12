@@ -1,9 +1,9 @@
 # ruff: noqa: F811
 import json
 import os
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from collections.abc import Iterable
 
 import numpy as np
 from mantid.dataobjects import MaskWorkspace

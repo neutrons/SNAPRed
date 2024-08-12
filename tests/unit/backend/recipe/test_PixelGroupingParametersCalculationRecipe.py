@@ -1,5 +1,4 @@
 import unittest.mock as mock
-from typing import List
 
 import pytest
 from snapred.backend.dao.Limit import Limit
@@ -66,10 +65,10 @@ def test_resolve_callback(BinnedValue):
     parsePGPList = mock.Mock(return_value=[mock.Mock(dRelativeResolution=1.0)])
     recipe = PixelGroupingParametersCalculationRecipe()
     recipe.parsePGPList = parsePGPList
-        
+
     mockAlgo = mock.Mock(return_value=mock.Mock(get=mock.Mock(return_value="done")))
     recipe.mantidSnapper.PixelGroupingParametersCalculationAlgorithm = mockAlgo
-    
+
     ingredients = mock.Mock(nBinsAcrossPeakWidth=10)
     groceries = {
         "groupingWorkspace": "grouping workspace",

@@ -1550,13 +1550,12 @@ class TestGroceryService(unittest.TestCase):
 
         res = self.instance.fetchGroceryDict(groceryDict)
         assert res == {"InputWorkspace": cleanWorkspace, "GroupingWorkspace": groupWorkspace}
-        
+
         assert self.instance.fetchGroceryList.call_count == 1
 
         # <dict>.values() compare as "NOT IMPLEMENTED", which evaluates to False
         #   => so we need to extract and compare the call args as lists.
         assert list(self.instance.fetchGroceryList.call_args[0][0]) == list(groceryDict.values())
-
 
     def test_fetch_grocery_dict_with_kwargs(self):
         # expected workspaces
@@ -1576,7 +1575,7 @@ class TestGroceryService(unittest.TestCase):
             "GroupingWorkspace": groupWorkspace,
             "OtherWorkspace": otherWorkspace,
         }
-        
+
         assert self.instance.fetchGroceryList.call_count == 1
 
         # <dict>.values() compare as "NOT IMPLEMENTED", which evaluates to False
@@ -1651,8 +1650,8 @@ class TestGroceryService(unittest.TestCase):
         #   `LiteDataService`.
         # The circular reference from `LiteDataService` back to `GroceryService.fetchLiteDataMap`
         #   (which should almost certainly be a service-to-service `InterfaceController` request)
-        #   should be checked in `test_LiteDataService`, _not_ here.        
-        
+        #   should be checked in `test_LiteDataService`, _not_ here.
+
         workspacename = self.instance._createNeutronWorkspaceName(self.runNumber, False)
         self.instance.convertToLiteMode(workspacename)
 

@@ -23,15 +23,15 @@ from snapred.meta.Config import (  # noqa: E402
 # PATCH the `unittest.mock.Mock` class: BANNED FUNCTIONS
 def banned_function(function_name: str):
   _error_message: str = f"`Mock.{function_name}` is a mock, it always evaluates to True. Use `Mock.assert_{function_name}` instead."
-  
+
   def _banned_function(self, *args, **kwargs):
       nonlocal _error_message # this line should not be necessary!
-      
+
       # Ensure that the complete message is in the pytest-captured output stream:
       print(_error_message)
-      
+
       raise RuntimeError(_error_message)
-  
+
   return _banned_function
 
 # `mock.Mock.called` is OK: it exists as a boolean attribute

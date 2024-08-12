@@ -1,3 +1,5 @@
+import unittest
+from unittest import mock
 
 from mantid.simpleapi import (
     CreateWorkspace,
@@ -9,10 +11,6 @@ from snapred.backend.dao.request import FarmFreshIngredients
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo as Algo
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import list_to_raw
-
-import unittest
-from unittest import mock
-
 from util.SculleryBoy import SculleryBoy
 
 

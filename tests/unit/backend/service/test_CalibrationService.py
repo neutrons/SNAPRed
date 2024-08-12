@@ -2,12 +2,15 @@
 import json
 import tempfile
 import time
+import unittest
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from random import randint
 from typing import Dict, List
+from unittest import mock
 
+import pytest
 from mantid.simpleapi import (
     CloneWorkspace,
     CreateSingleValuedWorkspace,
@@ -28,20 +31,14 @@ from snapred.backend.dao.request import (
     InitializeStateRequest,
 )
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.meta.Config import Config
+from snapred.backend.dao.StateConfig import StateConfig
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
+from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import parse_file_as
-
-
-import unittest
-from unittest import mock
-import pytest
-
 from util.dao import DAOFactory
 from util.state_helpers import state_root_redirect
 
@@ -329,7 +326,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT][0],
             DetectorPeaks=self.instance.sousChef.prepDetectorPeaks(
                 FarmFreshIngredients.return_value,
-            )
+            ),
         )
         self.instance.dataFactoryService.getCifFilePath.assert_called_once_with("biscuit")
 
@@ -449,7 +446,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 version=calibRecord.version,
                 checkExistent=False,
             )
-            
+
             # Load the assessment workspaces:
             self.instance.loadQualityAssessment(mockRequest)
 
@@ -569,7 +566,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             useLiteMode=calibRecord.useLiteMode,
             version=calibRecord.version,
             checkExistent=False,
-        )        
+        )
         self.instance.loadQualityAssessment(mockRequest)
         calledWithDict = mockFetchGroceryDict.call_args[0][0]
         assert calledWithDict["diffCalOutput_0000"].unit == wng.Units.DSP
@@ -615,26 +612,24 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     def test_fetchDiffractionCalibrationGroceries(self):
         self.instance.groceryClerk = mock.Mock(spec=GroceryListBuilder)
-        
-        runNumber="12345"
-        useLiteMode=True
-        focusGroup=FocusGroup(name="group1", definition="/any/path")
-        diffcalOutputName = (
-            wng.diffCalOutput().unit(wng.Units.DSP).runNumber(runNumber).group(focusGroup.name).build()
-        )
+
+        runNumber = "12345"
+        useLiteMode = True
+        focusGroup = FocusGroup(name="group1", definition="/any/path")
+        diffcalOutputName = wng.diffCalOutput().unit(wng.Units.DSP).runNumber(runNumber).group(focusGroup.name).build()
         diagnosticWorkspaceName = (
             wng.diffCalOutput().unit(wng.Units.DIAG).runNumber(runNumber).group(focusGroup.name).build()
         )
         calibrationTableName = wng.diffCalTable().runNumber(runNumber).build()
         calibrationMaskName = wng.diffCalMask().runNumber(runNumber).build()
-        
+
         self.instance.groceryService.fetchGroceryDict = mock.Mock(
             return_value={
                 "grocery1": "orange",
                 "outputWorkspace": diffcalOutputName,
                 "diagnosticWorkspace": diagnosticWorkspaceName,
                 "calibrationTable": calibrationTableName,
-                "maskWorkspace": calibrationMaskName,                           
+                "maskWorkspace": calibrationMaskName,
             }
         )
 
@@ -653,7 +648,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             outputWorkspace=diffcalOutputName,
             diagnosticWorkspace=diagnosticWorkspaceName,
             calibrationTable=calibrationTableName,
-            maskWorkspace=calibrationMaskName,           
+            maskWorkspace=calibrationMaskName,
         )
         assert result == self.instance.groceryService.fetchGroceryDict.return_value
 

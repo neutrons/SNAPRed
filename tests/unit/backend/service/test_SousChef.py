@@ -1,13 +1,12 @@
 import os.path
 import tempfile
+import unittest
+from unittest import mock
 
 from mantid.simpleapi import DeleteWorkspace, mtd
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
-
-import unittest
-from unittest import mock
 
 thisService = "snapred.backend.service.SousChef."
 
@@ -88,7 +87,8 @@ class TestSousChef(unittest.TestCase):
         res = self.instance.prepCalibration(self.ingredients)
 
         self.instance.dataFactoryService.getCalibrationState.assert_called_once_with(
-            self.ingredients.runNumber, self.ingredients.useLiteMode,
+            self.ingredients.runNumber,
+            self.ingredients.useLiteMode,
         )
         assert res == self.instance.dataFactoryService.getCalibrationState.return_value
         assert res.instrumentState.fwhmMultipliers.dict() == Config["calibration.parameters.default.FWHMMultiplier"]
@@ -103,7 +103,8 @@ class TestSousChef(unittest.TestCase):
         res = self.instance.prepCalibration(self.ingredients)
 
         self.instance.dataFactoryService.getCalibrationState.assert_called_once_with(
-            self.ingredients.runNumber, self.ingredients.useLiteMode,
+            self.ingredients.runNumber,
+            self.ingredients.useLiteMode,
         )
         assert res == self.instance.dataFactoryService.getCalibrationState.return_value
         assert res.instrumentState.fwhmMultipliers == self.ingredients.fwhmMultipliers

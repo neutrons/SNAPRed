@@ -1,10 +1,9 @@
-
-from snapred.meta.Config import Config
-from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
-
 import unittest
 from unittest import mock
+
 import pytest
+from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
+from snapred.meta.Config import Config
 
 thisService = "snapred.backend.service.CrystallographicInfoService."
 
@@ -26,9 +25,7 @@ class TestXtalService(unittest.TestCase):
         cifPath = "apples"
         data = self.instance.ingest(cifPath)
         xtalRx.assert_called_once()
-        xtalRx.return_value.executeRecipe.assert_called_once_with(
-            cifPath=cifPath, crystalDMin=D_MIN, crystalDMax=D_MAX
-        )
+        xtalRx.return_value.executeRecipe.assert_called_once_with(cifPath=cifPath, crystalDMin=D_MIN, crystalDMax=D_MAX)
         assert data == xtalRx.return_value.executeRecipe.return_value
 
     @mock.patch(thisService + "CrystallographicInfoRecipe")

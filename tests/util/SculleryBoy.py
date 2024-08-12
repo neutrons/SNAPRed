@@ -1,6 +1,7 @@
 from typing import Dict, List
-import pydantic
+from unittest import mock
 
+import pydantic
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
@@ -23,8 +24,6 @@ from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParam
 from snapred.backend.recipe.GenericRecipe import DetectorPeakPredictorRecipe
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import parse_file_as
-
-from unittest import mock
 from util.dao import DAOFactory
 
 
@@ -40,7 +39,7 @@ class SculleryBoy:
         self,
         prepPeakIngredientsFlags: Dict[str, bool] = {"useFakePeakValues": False},
         prepDetectorPeaksFlags: Dict[str, bool] = {"removeDuplicatePeaks": True},
-        ):
+    ):
         # Flag values were previously passed in using mocks:  this is not a recommended practice
         #   as it causes the mock to deviate from its "spec" type.
         self.prepPeakIngredientsFlags = prepPeakIngredientsFlags
@@ -95,7 +94,7 @@ class SculleryBoy:
         else:
             return DAOFactory.fake_peak_ingredients.copy()
 
-    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]: # noqa: ARG002
+    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]:  # noqa: ARG002
         try:
             peakList = DetectorPeakPredictorRecipe().executeRecipe(
                 Ingredients=self.prepPeakIngredients(ingredients),
