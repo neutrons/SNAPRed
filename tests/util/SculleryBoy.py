@@ -95,7 +95,7 @@ class SculleryBoy:
         else:
             return DAOFactory.fake_peak_ingredients.copy()
 
-    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]:
+    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]: # noqa: ARG002
         try:
             peakList = DetectorPeakPredictorRecipe().executeRecipe(
                 Ingredients=self.prepPeakIngredients(ingredients),
