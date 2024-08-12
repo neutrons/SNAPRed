@@ -185,6 +185,7 @@ class SousChef(Service):
         normalizationRecord = self.dataFactoryService.getNormalizationRecord(
             ingredients.runNumber, ingredients.useLiteMode, version
         )
+        #  check for records
         if calibrationRecord is None:
             raise ValueError(
                 f"No calibration record found for run {ingredients.runNumber}, please run a calibration for this run."
