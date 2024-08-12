@@ -34,6 +34,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         cls.instrumentFilepath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.fetchedWSname = "_fetched_grocery"
         cls.groupingScheme = "Native"
+        cls.rtolValue = 1.0e-10
         # create some sample data
         cls.sampleWS = "_grocery_to_fetch"
         CreateWorkspace(
@@ -102,6 +103,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
+            rtol=self.rtolValue,
         )
 
         # make sure it won't load same workspace name again
@@ -114,6 +116,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
+            rtol=self.rtolValue,
         )
 
     @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchAlgo")

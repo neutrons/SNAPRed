@@ -28,6 +28,9 @@ IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 class TestSaveGroupingDefinition(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # rtol value
+        cls.rtolValue = 1.0e-10
+
         # file location for instrument definition
         cls.localInstrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.localGroupingFilename = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
@@ -222,7 +225,7 @@ class TestSaveGroupingDefinition(unittest.TestCase):
             assert loadingAlgo.execute()
 
             # retrieve the loaded workspace and compare it with the workspace created from the input grouping file
-            assert_wksp_almost_equal(loaded_ws_name, workspaceName)
+            assert_wksp_almost_equal(loaded_ws_name, workspaceName, rtol=self.rtolValue)
 
         def test_local_from_groupingfile_test(self):
             groupingFile = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
@@ -272,6 +275,7 @@ class TestSaveGroupingDefinition(unittest.TestCase):
             assert_wksp_almost_equal(
                 loaded_ws_name,
                 self.localReferenceWorkspace["Natural"],
+                rtol=self.rtolValue,
             )
 
     def test_local_from_workspace_test_column(self):
@@ -280,6 +284,7 @@ class TestSaveGroupingDefinition(unittest.TestCase):
         assert_wksp_almost_equal(
             self.columnGroupingWorkspace,
             self.localReferenceWorkspace["Column"],
+            rtol=self.rtolValue,
         )
 
     def test_local_from_workspace_test_natural(self):
@@ -288,6 +293,7 @@ class TestSaveGroupingDefinition(unittest.TestCase):
         assert_wksp_almost_equal(
             self.columnGroupingWorkspace,
             self.localReferenceWorkspace["Natural"],
+            rtol=self.rtolValue,
         )
 
     ## REMOTE CHECKS WITH FULL INSTRUMENT

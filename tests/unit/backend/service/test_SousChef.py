@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+import pytest
 from mantid.simpleapi import DeleteWorkspace, mtd
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
 from snapred.backend.service.SousChef import SousChef
@@ -346,6 +347,46 @@ class TestSousChef(unittest.TestCase):
             detectorPeaksMany=self.instance.prepManyDetectorPeaks.return_value,
         )
         assert res == ReductionIngredients.return_value
+
+    @mock.patch(thisService + "ReductionIngredients")
+    def test_prepReductionIngredients_noCalibrationRecord(self, ReductionIngredients):  # noqa: ARG002
+        record = mock.Mock(
+            smoothingParameter=1.0,
+            calibrationFittingIngredients=mock.Mock(calibrantSamplePath="a/b.x"),
+        )
+        self.instance.prepRunConfig = mock.Mock()
+        self.instance.prepManyPixelGroups = mock.Mock()
+        self.instance.prepManyDetectorPeaks = mock.Mock()
+        self.instance.dataFactoryService.getCifFilePath = mock.Mock()
+        self.instance.dataFactoryService.getReductionState = mock.Mock()
+        self.instance.dataFactoryService.getNormalizationRecord = mock.Mock(return_value=record)
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=None)
+
+        with pytest.raises(
+            ValueError,
+            match=f"No calibration record found for run {self.ingredients.runNumber}, please run a calibration for this run.",  # noqa: E501
+        ):
+            self.instance.prepReductionIngredients(self.ingredients)
+
+    @mock.patch(thisService + "ReductionIngredients")
+    def test_prepReductionIngredients_noNormalizationRecord(self, ReductionIngredients):  # noqa: ARG002
+        record = mock.Mock(
+            smoothingParameter=1.0,
+            calibrationFittingIngredients=mock.Mock(calibrantSamplePath="a/b.x"),
+        )
+        self.instance.prepRunConfig = mock.Mock()
+        self.instance.prepManyPixelGroups = mock.Mock()
+        self.instance.prepManyDetectorPeaks = mock.Mock()
+        self.instance.dataFactoryService.getCifFilePath = mock.Mock()
+        self.instance.dataFactoryService.getReductionState = mock.Mock()
+        self.instance.dataFactoryService.getNormalizationRecord = mock.Mock(return_value=None)
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=record)
+
+        with pytest.raises(
+            ValueError,
+            match=f"No normalization record found for run {self.ingredients.runNumber}, please run a normalization for this run.",  # noqa: E501
+        ):
+            self.instance.prepReductionIngredients(self.ingredients)
 
     @mock.patch(thisService + "NormalizationIngredients")
     def test_prepNormalizationIngredients(self, NormalizationIngredients):

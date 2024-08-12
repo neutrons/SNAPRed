@@ -60,6 +60,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
             InputWorkspace=cls.sampleWS,
             Filename=cls.filepath,
         )
+        cls.rtolValue = 1.0e-10
         assert os.path.exists(cls.filepath)
 
     def tearDown(self) -> None:
@@ -159,6 +160,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.fetchedWS,
             Workspace2=self.sampleWS,
+            rtol=self.rtolValue,
         )
         assert "LoadNexusProcessed" == algo.getPropertyValue("LoaderType")
 
@@ -173,6 +175,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.fetchedWS,
             Workspace2=self.sampleWS,
+            rtol=self.rtolValue,
         )
         assert "LoadNexus" == algo.getPropertyValue("LoaderType")
 
@@ -196,6 +199,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.fetchedWS,
             Workspace2=self.sampleWS,
+            rtol=self.rtolValue,
         )
         assert "LoadNexusProcessed" == algo.getPropertyValue("LoaderType")
 
@@ -219,6 +223,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=f"_{self.runNumber}_grouping_file",
             Workspace2=f"_{self.runNumber}_grouping_name",
+            rtol=self.rtolValue,
         )
         algo.setProperty("InstrumentName", "")
 
@@ -228,6 +233,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=f"_{self.runNumber}_grouping_file",
             Workspace2=f"_{self.runNumber}_grouping_donor",
+            rtol=self.rtolValue,
         )
 
     def test_loadGroupingTwice(self):
