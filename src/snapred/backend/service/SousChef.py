@@ -185,6 +185,14 @@ class SousChef(Service):
         normalizationRecord = self.dataFactoryService.getNormalizationRecord(
             ingredients.runNumber, ingredients.useLiteMode, version
         )
+        if calibrationRecord is None:
+            raise ValueError(
+                f"No calibration record found for run {ingredients.runNumber}, please run a calibration for this run."
+            )
+        elif normalizationRecord is None:
+            raise ValueError(
+                f"No normalization record found for run {ingredients.runNumber}, please run a normalization for this run."  # noqa: E501
+            )
         # grab information from records
         ingredients.calibrantSamplePath = calibrationRecord.calibrationFittingIngredients.calibrantSamplePath
         ingredients.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients.calibrantSamplePath).stem)
