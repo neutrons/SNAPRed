@@ -34,10 +34,6 @@ Attributes:
   bins to distribute across the width of a peak in the diffraction pattern, as defined in the system configurations.
   This parameter affects the resolution and granularity of the peak analysis.
 
-- peakIntensityThreshold (float, default=Config["calibration.diffraction.peakIntensityThreshold"]): Sets the threshold
-  for peak intensity, below which peaks will be disregarded in the analysis. This threshold is crucial for distinguishing
-  significant peaks from noise, ensuring the focus is on relevant data points.
-
 - peakFunction (ALLOWED_PEAK_TYPES, default="Gaussian"): Defines the type of peak model to be used in the assessment, with a
   default set to Gaussian. The choice of peak type influences the modeling and analysis of peak data, impacting the
   assessment outcomes.

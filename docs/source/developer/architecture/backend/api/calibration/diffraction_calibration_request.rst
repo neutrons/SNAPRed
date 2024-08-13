@@ -40,10 +40,6 @@ Attributes:
   Establishes the threshold for calibration convergence, guiding the precision and termination
   of the calibration process.
 
-- peakIntensityThreshold (float, default=Config["calibration.diffraction.peakIntensityThreshold"]):
-  Determines the minimum peak intensity required for consideration in the calibration, filtering
-  out insignificant peaks.
-
 - nBinsAcrossPeakWidth (int, default=Config["calibration.diffraction.nBinsAcrossPeakWidth"]):
   Specifies the number of bins to distribute across the peak width in the diffraction pattern,
   affecting peak resolution.
