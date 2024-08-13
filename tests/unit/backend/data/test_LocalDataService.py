@@ -1807,6 +1807,7 @@ def test__constructCalibrationParametersFilePath():
 def test_readCalibrationState():
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock(return_value=(ENDURING_STATE_ID, None))
+    localDataService.calibrationExists = mock.Mock(return_value=True)
     localDataService._constructCalibrationParametersFilePath = mock.Mock()
     localDataService._constructCalibrationParametersFilePath.return_value = Resource.getPath(
         f"{ENDURING_STATE_ID}/v_0001/CalibrationParameters.json"

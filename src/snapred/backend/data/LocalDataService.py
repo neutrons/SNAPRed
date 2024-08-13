@@ -906,7 +906,6 @@ class LocalDataService:
     ##### READ / WRITE STATE METHODS #####
 
     @validate_call
-    @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         # check to see if such a folder exists, if not create it and initialize it
         calibrationStatePathGlob: str = str(self._constructCalibrationParametersFilePath(runId, useLiteMode, "*"))
@@ -924,7 +923,7 @@ class LocalDataService:
                 calibrationState = Calibration.model_validate_json(f.read())
 
         if calibrationState is None:
-            raise ValueError("calibrationState is None")
+            raise RecoverableException.stateUninitialized(runId, useLiteMode)
 
         return calibrationState
 

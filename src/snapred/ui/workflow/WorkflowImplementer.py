@@ -9,6 +9,7 @@ from snapred.backend.dao.request import (
     ListWorkspacesRequest,
     RenameWorkspacesFromTemplateRequest,
 )
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.widget.Workflow import Workflow
@@ -23,7 +24,8 @@ class WorkflowImplementer(QObject):
         super().__init__()
         self.parent = parent
         self.interfaceController = InterfaceController()
-        self.responseHandler = SNAPResponseHandler(parent)
+        self.continueAnywayFlags = ContinueWarning.Type.UNSET
+        self.responseHandler = SNAPResponseHandler(self.parent)
         self.workflow: Workflow = None
 
         self.requests = []
@@ -107,10 +109,15 @@ class WorkflowImplementer(QObject):
         return response
 
     def _handleComplications(self, result):
-        if result.code == 400:
-            self.responseHandler.rethrow(result)
+        # requests never execute on the main thread
+        # so this should just rethrow and let the main thread handle it
+        self.responseHandler.rethrow(result)
+
+    def _continueAnywayHandler(self, continueInfo):
+        if isinstance(continueInfo, ContinueWarning.Model):
+            self.continueAnywayFlags = self.continueAnywayFlags | continueInfo.flags
         else:
-            self.responseHandler.handle(result)
+            raise ValueError(f"Invalid continueInfo type: {type(continueInfo)}, expecting ContinueWarning.Model.")
 
     @property
     def widget(self):
