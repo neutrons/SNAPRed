@@ -501,6 +501,10 @@ class LocalDataService:
 
     ##### NORMALIZATION METHODS #####
 
+    def normalizationExists(self, runId: str, useLiteMode: bool) -> bool:
+        version = self.normalizationIndexer(runId, useLiteMode).currentVersion()
+        return version is not None
+
     @validate_call
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         latestFile = ""
@@ -578,6 +582,10 @@ class LocalDataService:
         return record
 
     ##### CALIBRATION METHODS #####
+
+    def calibrationExists(self, runId: str, useLiteMode: bool) -> bool:
+        version = self.calibrationIndexer(runId, useLiteMode).currentVersion()
+        return version is not None
 
     @validate_call
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
@@ -906,8 +914,9 @@ class LocalDataService:
     ##### READ / WRITE STATE METHODS #####
 
     @validate_call
-    @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        if not self.calibrationExists(runId, useLiteMode):
+            raise RecoverableException.stateUninitialized(runId, useLiteMode)
         # check to see if such a folder exists, if not create it and initialize it
         calibrationStatePathGlob: str = str(self._constructCalibrationParametersFilePath(runId, useLiteMode, "*"))
 
