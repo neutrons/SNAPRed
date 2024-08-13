@@ -502,7 +502,7 @@ class LocalDataService:
     ##### NORMALIZATION METHODS #####
 
     def normalizationExists(self, runId: str, useLiteMode: bool) -> bool:
-        version = self.normalizationIndexer(runId, useLiteMode).currentVersion()
+        version = self._getVersionFromNormalizationIndex(runId, useLiteMode)
         return version is not None
 
     @validate_call
@@ -584,7 +584,7 @@ class LocalDataService:
     ##### CALIBRATION METHODS #####
 
     def calibrationExists(self, runId: str, useLiteMode: bool) -> bool:
-        version = self.calibrationIndexer(runId, useLiteMode).currentVersion()
+        version = self._getVersionFromCalibrationIndex(runId, useLiteMode)
         return version is not None
 
     @validate_call
