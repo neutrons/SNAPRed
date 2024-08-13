@@ -92,21 +92,10 @@ def test_stateExceptionHandler():
         throwsStateException()
 
 
-@ExceptionHandler(RecoverableException, "state")
-def throwsRecoverableException():
-    raise RuntimeError("'NoneType' object has no attribute 'instrumentState'")
-
-
-def test_recoverableExceptionHandler():
-    with pytest.raises(RecoverableException):
-        throwsRecoverableException()
-
-
 def test_recoverableExceptionKwargs():
-    exceptionPath = "SNS/SNAP/expected/path/somefile.txt"
-    exceptionString = f"Error accessing {exceptionPath}"
+    exceptionString = "State uninitialized"
     with pytest.raises(RecoverableException, match=exceptionString):
-        raise RecoverableException(RuntimeError(exceptionString), exceptionString, extraInfo="some extra info")
+        raise RecoverableException.stateUninitialized("57514", True)
 
 
 def throwsContinueWarning():
