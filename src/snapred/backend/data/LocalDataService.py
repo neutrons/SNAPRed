@@ -943,9 +943,6 @@ class LocalDataService:
             with open(latestFile, "r") as f:
                 normalizationState = Normalization.model_validate_json(f.read())
 
-        if normalizationState is None:
-            raise RecoverableException.stateUninitialized(runId, useLiteMode)
-
         return normalizationState
 
     def writeCalibrationState(self, calibration: Calibration, version: Optional[Version] = None):
