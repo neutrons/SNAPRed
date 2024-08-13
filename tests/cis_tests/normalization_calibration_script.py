@@ -26,8 +26,8 @@ from snapred.meta.Config import Config
 isLite = True
 runNumber = "58810"
 backgroundRunNumber = "58813"
-samplePath = "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSample/Silicon_NIST_640D_001.json"
-cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSample/Silicon_NIST_640d.cif"
+samplePath = "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/Silicon_NIST_640D_001.json"
+cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
 groupPath = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
 calibrationWorkspace = "/SNS/users/dzj/Desktop/58810_calibration_ws.nxs" # need to create this using diffc_test.py with run number 58810
 smoothingParam = 0.50

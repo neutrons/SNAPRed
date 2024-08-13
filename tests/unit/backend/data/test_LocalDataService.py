@@ -2247,7 +2247,7 @@ def test_readCifFilePath(mock1):  # noqa: ARG001
     localDataService = LocalDataService()
 
     result = localDataService.readCifFilePath("testid")
-    assert result == "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSample/EntryWithCollCode52054_diamond.cif"
+    assert result == "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/EntryWithCollCode52054_diamond.cif"
 
 
 ##### TESTS OF WORKSPACE WRITE METHODS #####

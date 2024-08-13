@@ -690,7 +690,6 @@ class LocalDataService:
             raise ValueError(f"The file '{filePath}' does not exist")
         with open(filePath, "r") as file:
             sampleJson = json.load(file)
-            print(sampleJson)
             if "mass-density" in sampleJson and "packingFraction" in sampleJson:
                 logger.warn(  # noqa: F821
                     "Can't specify both mass-density and packing fraction for single-element materials"

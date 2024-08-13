@@ -234,7 +234,6 @@ class SousChef(Service):
         )
         smoothingParameter = Config["calibration.parameters.default.smoothing"]
         if normalizationRecord is not None:
-            # ingredients.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
             smoothingParameter = normalizationRecord.smoothingParameter
         # TODO: Should smoothing parameter be an ingredient?
         return ingredients, smoothingParameter

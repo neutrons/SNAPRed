@@ -12,7 +12,7 @@ mat = Material(chemicalFormula="(Li7)2-C-H4-N-Cl6", massDensity=4.4, packingFrac
 geo = Geometry(shape="Cylinder", radius=0.1, height=3.6, center=[0.0, 0.0, 0.0])
 atom = Atom(symbol="Si", coordinates=[0.125, 0.125, 0.125], siteOccupationFactor=1.0)
 crystal = Crystallography(
-    cifFile="/SNS/SNAP/shared/Calibration/CalibrantSample/Silicon_NIST_640d.cif",
+    cifFile="/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif",
     spaceGroup="F d -3 m",
     latticeParameters=[5.43159, 5.43159, 5.43159, 90.0, 90.0, 90.0],
     atoms=[atom, atom, atom],
