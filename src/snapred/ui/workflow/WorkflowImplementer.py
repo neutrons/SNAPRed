@@ -24,6 +24,7 @@ class WorkflowImplementer(QObject):
         super().__init__()
         self.parent = parent
         self.interfaceController = InterfaceController()
+        self.continueAnywayFlags = ContinueWarning.Type.UNSET
         self.responseHandler = SNAPResponseHandler(self.parent)
         self.workflow: Workflow = None
 
