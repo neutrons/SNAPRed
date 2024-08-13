@@ -2225,15 +2225,18 @@ def test_writeCalibrantSample_success():  # noqa: ARG002
         assert os.path.exists(filePath)
 
 
-@mock.patch("os.path.exists", return_value=True)
-def test_readCalibrantSample(mock1):  # noqa: ARG001
+def test_readCalibrantSample():  # noqa: ARG001
     localDataService = LocalDataService()
+    sample = DAOFactory.sample_calibrant_sample
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+        with Config_override("samples.home", tempdir):
+            filePath = f"{tempdir}/{sample.name}_{sample.unique_id}.json"
+            localDataService.writeCalibrantSample(sample)
 
-    result = localDataService.readCalibrantSample(
-        Resource.getPath("inputs/calibrantSamples/Silicon_NIST_640D_001.json")
-    )
+            result = localDataService.readCalibrantSample(filePath)
+
     assert type(result) is CalibrantSample
-    assert result.name == "Silicon_NIST_640D"
+    assert result.name == "NIST_640D"
 
 
 @mock.patch("os.path.exists", return_value=True)

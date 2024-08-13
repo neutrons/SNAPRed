@@ -110,7 +110,6 @@ class CalibrationService(Service):
             # fiddly-bits
             peakFunction=request.peakFunction,
             crystalDBounds={"minimum": request.crystalDMin, "maximum": request.crystalDMax},
-            peakIntensityThreshold=request.peakIntensityThreshold,
             convergenceThreshold=request.convergenceThreshold,
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
             fwhmMultipliers=request.fwhmMultipliers,
@@ -416,7 +415,6 @@ class CalibrationService(Service):
             # fiddly bits
             peakFunction=request.peakFunction,
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
-            peakIntensityThreshold=request.peakIntensityThreshold,
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
             fwhmMultipliers=request.fwhmMultipliers,
             maxChiSq=request.maxChiSq,

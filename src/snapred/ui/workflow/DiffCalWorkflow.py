@@ -177,7 +177,6 @@ class DiffCalWorkflow(WorkflowImplementer):
         # fields with defaults
         self.convergenceThreshold = view.fieldConvergenceThreshold.get(self.DEFAULT_CONV)
         self.nBinsAcrossPeakWidth = view.fieldNBinsAcrossPeakWidth.get(self.DEFAULT_NBINS)
-        self.peakThreshold = view.fieldPeakIntensityThreshold.get(self.DEFAULT_PEAK_THRESHOLD)
 
         self._tweakPeakView.populateGroupingDropdown(list(self.groupingMap.getMap(self.useLiteMode).keys()))
         self._tweakPeakView.updateFields(
@@ -185,7 +184,6 @@ class DiffCalWorkflow(WorkflowImplementer):
             view.groupingFileDropdown.currentIndex(),
             view.peakFunctionDropdown.currentIndex(),
         )
-        self._tweakPeakView.updatePeakThreshold(self.peakThreshold)
         self._tweakPeakView.updateMaxChiSq(self.maxChiSq)
 
         payload = DiffractionCalibrationRequest(
@@ -195,7 +193,6 @@ class DiffCalWorkflow(WorkflowImplementer):
             calibrantSamplePath=self.calibrantSamplePath,
             # fiddly bits
             peakFunction=self.peakFunction,
-            peakIntensityThreshold=self.peakThreshold,
             convergenceThreshold=self.convergenceThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
@@ -209,7 +206,6 @@ class DiffCalWorkflow(WorkflowImplementer):
         # these are used to compare if the values have changed
         self.prevXtalDMin = payload.crystalDMin
         self.prevXtalDMax = payload.crystalDMax
-        self.prevThreshold = payload.peakIntensityThreshold
         self.prevFWHM = payload.fwhmMultipliers  # NOTE set in __init__ to defaults
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
         self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}_pre"
@@ -226,8 +222,8 @@ class DiffCalWorkflow(WorkflowImplementer):
         return response
 
     @ExceptionToErrLog
-    @Slot(int, float, float, float, SymmetricPeakEnum, Pair, float)
-    def onValueChange(self, groupingIndex, xtalDMin, xtalDMax, peakThreshold, peakFunction, fwhm, maxChiSq):
+    @Slot(int, float, float, SymmetricPeakEnum, Pair, float)
+    def onValueChange(self, groupingIndex, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq):
         self._tweakPeakView.disableRecalculateButton()
         # TODO: This is a temporary solution,
         # this should have never been setup to all run on the same thread.
@@ -239,24 +235,16 @@ class DiffCalWorkflow(WorkflowImplementer):
             # if peaks will change, redo only the smoothing
             xtalDMinValueChanged = xtalDMin != self.prevXtalDMin
             xtalDMaxValueChanged = xtalDMax != self.prevXtalDMax
-            thresholdChanged = peakThreshold != self.prevThreshold
             peakFunctionChanged = peakFunction != self.peakFunction
             fwhmChanged = fwhm != self.prevFWHM
             maxChiSqChanged = maxChiSq != self.maxChiSq
-            if (
-                xtalDMinValueChanged
-                or xtalDMaxValueChanged
-                or thresholdChanged
-                or peakFunctionChanged
-                or fwhmChanged
-                or maxChiSqChanged
-            ):
-                self._renewIngredients(xtalDMin, xtalDMax, peakThreshold, peakFunction, fwhm, maxChiSq)
+            if xtalDMinValueChanged or xtalDMaxValueChanged or peakFunctionChanged or fwhmChanged or maxChiSqChanged:
+                self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
                 self._renewFitPeaks(peakFunction)
 
             # if the grouping file changes, load new grouping and refocus
             if groupingIndex != self.prevGroupingIndex:
-                self._renewIngredients(xtalDMin, xtalDMax, peakThreshold, peakFunction, fwhm, maxChiSq)
+                self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
                 self._renewFocus(groupingIndex)
                 self._renewFitPeaks(peakFunction)
 
@@ -270,7 +258,6 @@ class DiffCalWorkflow(WorkflowImplementer):
             self.prevXtalDMin = xtalDMin
             self.prevXtalDMax = xtalDMax
             self.prevFWHM = fwhm
-            self.prevThreshold = peakThreshold
             self.peakFunction = peakFunction
             self.prevGroupingIndex = groupingIndex
             self.maxChiSq = maxChiSq
@@ -280,7 +267,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         # renable button when graph is updated
         self._tweakPeakView.enableRecalculateButton()
 
-    def _renewIngredients(self, xtalDMin, xtalDMax, peakThreshold, peakFunction, fwhm, maxChiSq):
+    def _renewIngredients(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq):
         payload = DiffractionCalibrationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
@@ -290,7 +277,6 @@ class DiffCalWorkflow(WorkflowImplementer):
             peakFunction=peakFunction,
             crystalDMin=xtalDMin,
             crystalDMax=xtalDMax,
-            peakIntensityThreshold=peakThreshold,
             fwhmMultipliers=fwhm,
             maxChiSq=maxChiSq,
         )
@@ -339,7 +325,6 @@ class DiffCalWorkflow(WorkflowImplementer):
             peakFunction=self.peakFunction,
             crystalDMin=self.prevXtalDMin,
             crystalDMax=self.prevXtalDMax,
-            peakIntensityThreshold=self.prevThreshold,
             convergenceThreshold=self.convergenceThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
@@ -363,7 +348,6 @@ class DiffCalWorkflow(WorkflowImplementer):
             peakFunction=self.peakFunction,
             crystalDMin=self.prevXtalDMin,
             crystalDMax=self.prevXtalDMax,
-            peakIntensityThreshold=self.prevThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
             maxChiSq=self.maxChiSq,

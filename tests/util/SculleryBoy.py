@@ -16,13 +16,6 @@ from snapred.backend.dao.ingredients import (
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.CalibrantSample import (
-    Atom,
-    CalibrantSample,
-    Crystallography,
-    Geometry,
-    Material,
-)
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
@@ -53,13 +46,7 @@ class SculleryBoy:
         return RunConfig(runNumber=runNumber)
 
     def prepCalibrantSample(self, calibrantSamplePath: str):  # noqa ARG002
-        return CalibrantSample(
-            name="fake cylinder sample",
-            unique_id="435elmst",
-            geometry=self._prepGeometry(),
-            material=self._prepMaterial(),
-            crystallography=self._prepCrystallography(),
-        )
+        return DAOFactory.sample_calibrant_sample
 
     def prepFocusGroup(self, ingredients: FarmFreshIngredients) -> FocusGroup:  # noqa ARG002
         return DAOFactory.focus_group_SNAP_column_lite.copy()
@@ -121,38 +108,4 @@ class SculleryBoy:
             pixelGroup=self.prepPixelGroup(ingredients),
             groupedPeakLists=self.prepDetectorPeaks(ingredients),
             maxChiSq=100.0,
-        )
-
-    # these methods are not in SousChef, but are needed to build other things
-
-    def _prepGeometry(self):
-        return Geometry(
-            shape="Cylinder",
-            radius=1.5,
-            height=5.0,
-        )
-
-    def _prepMaterial(self):
-        return Material(
-            packingFraction=0.3,
-            massDensity=1.0,
-            chemicalFormula="V-B",
-        )
-
-    def _prepCrystallography(self):
-        vanadiumAtom = Atom(
-            symbol="V",
-            coordinates=[0, 0, 0],
-            siteOccupationFactor=0.5,
-        )
-        boronAtom = Atom(
-            symbol="B",
-            coordinates=[0, 1, 0],
-            siteOccupationFactor=1.0,
-        )
-        return Crystallography(
-            cifFile=Resource.getPath("inputs/crystalInfo/example.cif"),
-            spaceGroup="I m -3 m",
-            latticeParameters=[1, 2, 3, 4, 5, 6],
-            atoms=[vanadiumAtom, boronAtom],
         )

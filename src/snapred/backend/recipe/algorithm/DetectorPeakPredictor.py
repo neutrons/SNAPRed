@@ -17,7 +17,6 @@ class DetectorPeakPredictor(PythonAlgorithm):
     # beta_d = BETA_D_COEFFICIENT*beta_T/(L*np.sin(tTheta/2))
     BETA_D_COEFFICIENT = 1 / (PhysicalConstants.h / (2 * PhysicalConstants.NeutronMass) * Config["constants.m2cm"])
     FWHM = Config["constants.DetectorPeakPredictor.fwhm"]
-    PEAK_INTENSITY_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
 
     def category(self):
         return "SNAPRed Data Processing"

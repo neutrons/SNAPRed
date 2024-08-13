@@ -60,7 +60,7 @@ class SousChef(Service):
     def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
         calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber, ingredients.useLiteMode)
         calibration.calibrantSamplePath = ingredients.calibrantSamplePath
-        calibration.peakIntensityThreshold = ingredients.peakIntensityThreshold
+        calibration.peakIntensityThreshold = self._getThresholdFromCalibrantSample(ingredients.calibrantSamplePath)
         calibration.instrumentState.fwhmMultipliers = ingredients.fwhmMultipliers
         return calibration
 
@@ -163,11 +163,11 @@ class SousChef(Service):
             ingredients.crystalDBounds.maximum,
             ingredients.fwhmMultipliers.left,
             ingredients.fwhmMultipliers.right,
-            ingredients.peakIntensityThreshold,
             purgePeaks,
         )
         crystalDMin = ingredients.crystalDBounds.minimum
         crystalDMax = ingredients.crystalDBounds.maximum
+        ingredients.peakIntensityThreshold = self._getThresholdFromCalibrantSample(ingredients.calibrantSamplePath)
         if key not in self._peaksCache:
             ingredients = self.prepPeakIngredients(ingredients)
             res = DetectorPeakPredictorRecipe().executeRecipe(
@@ -234,7 +234,7 @@ class SousChef(Service):
         )
         smoothingParameter = Config["calibration.parameters.default.smoothing"]
         if normalizationRecord is not None:
-            ingredients.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
+            # ingredients.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
             smoothingParameter = normalizationRecord.smoothingParameter
         # TODO: Should smoothing parameter be an ingredient?
         return ingredients, smoothingParameter
@@ -249,7 +249,7 @@ class SousChef(Service):
             pixelGroups=self.prepManyPixelGroups(ingredients_),
             smoothingParameter=smoothingParameter,
             calibrantSamplePath=ingredients_.calibrantSamplePath,
-            peakIntensityThreshold=ingredients_.peakIntensityThreshold,
+            peakIntensityThreshold=self._getThresholdFromCalibrantSample(ingredients_.calibrantSamplePath),
             detectorPeaksMany=self.prepManyDetectorPeaks(ingredients_),
             keepUnfocused=ingredients_.keepUnfocused,
             convertUnitsTo=ingredients_.convertUnitsTo,
@@ -290,3 +290,7 @@ class SousChef(Service):
             maxOffset=ingredients.maxOffset,
             maxChiSq=ingredients.maxChiSq,
         )
+
+    def _getThresholdFromCalibrantSample(self, calibrantSamplePath: str):
+        calibrantSample = self.prepCalibrantSample(calibrantSamplePath)
+        return calibrantSample.peakIntensityFractionThreshold

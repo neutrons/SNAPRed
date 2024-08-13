@@ -10,6 +10,11 @@ from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.normalization import Normalization, NormalizationRecord
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.ParticleBounds import ParticleBounds
+from snapred.backend.dao.state.CalibrantSample.Atom import Atom
+from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
+from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
+from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
+from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.GroupingMap import GroupingMap
@@ -564,7 +569,6 @@ class DAOFactory:
             version = randint(2, 120)
         other_properties.setdefault("backgroundRunNumber", runNumber)
         other_properties.setdefault("smoothingParameter", randint(1, 100) / 100.0)
-        other_properties.setdefault("peakIntensityThreshold", randint(1, 100) / 100.0)
         other_properties.setdefault(
             "workspaceNames",
             [
@@ -599,4 +603,79 @@ class DAOFactory:
     focusGroupCalibrationMetric_Column = FocusGroupMetric(
         focusGroupName="Column",
         calibrationMetric=[default_calibration_metric.copy()] * 6,
+    )
+
+    ## CalibrantSample
+
+    # Geometry
+    sample_geometry_cylinder = Geometry(shape="Cylinder", radius=0.1, height=3.6, center=[0.0, 0.0, 0.0])
+    fake_sphere = Geometry(
+        shape="Sphere",
+        radius=1.0,
+    )
+    fake_cylinder = Geometry(
+        shape="Cylinder",
+        radius=1.5,
+        height=5.0,
+    )
+
+    # Material
+    sample_material = Material(chemicalFormula="(Li7)2-C-H4-N-Cl6", massDensity=4.4, packingFraction=0.9)
+
+    fake_material = Material(
+        packingFraction=0.3,
+        massDensity=1.0,
+        chemicalFormula="V B",
+    )
+
+    # Atom
+    silicon_atom = Atom(symbol="Si", coordinates=[0.125, 0.125, 0.125], siteOccupationFactor=1.0)
+    vanadium_atom = Atom(
+        symbol="V",
+        coordinates=[0, 0, 0],
+        siteOccupationFactor=0.5,
+    )
+    boron_atom = Atom(
+        symbol="B",
+        coordinates=[0, 1, 0],
+        siteOccupationFactor=1.0,
+    )
+
+    # Crystallography
+    sample_xtal = Crystallography(
+        cifFile=Resource.getPath("inputs/crystalInfo/example.cif"),
+        spaceGroup="F d -3 m",
+        latticeParameters=[5.43159, 5.43159, 5.43159, 90.0, 90.0, 90.0],
+        atoms=[silicon_atom, silicon_atom, silicon_atom],
+    )
+    fake_xtal = Crystallography(
+        cifFile=Resource.getPath("inputs/crystalInfo/example.cif"),
+        spaceGroup="I m -3 m",
+        latticeParameters=[1, 2, 3, 4, 5, 6],
+        atoms=[vanadium_atom, boron_atom],
+    )
+
+    fake_sphere_sample = CalibrantSample(
+        name="fake sphere sample",
+        unique_id="123fakest",
+        geometry=fake_sphere,
+        material=fake_material,
+        crystallography=fake_xtal,
+        peakIntensityFractionThreshold=0.01,
+    )
+    fake_cylinder_sample = CalibrantSample(
+        name="fake cylinder sample",
+        unique_id="435elmst",
+        geometry=fake_cylinder,
+        material=fake_material,
+        crystallography=fake_xtal,
+        peakIntensityFractionThreshold=0.01,
+    )
+    sample_calibrant_sample = CalibrantSample(
+        name="NIST_640D",
+        unique_id="001",
+        geometry=sample_geometry_cylinder,
+        material=sample_material,
+        crystallography=sample_xtal,
+        peakIntensityFractionThreshold=0.01,
     )

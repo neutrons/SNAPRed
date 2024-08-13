@@ -95,7 +95,6 @@ class NormalizationWorkflow(WorkflowImplementer):
                 useLiteMode=self.useLiteMode,
             )
             hasState = self.request(path="calibration/hasState", payload=payload.json()).data
-            # hasState = self.request(path="calibration/hasState", payload=runNumber).data
             if hasState:
                 self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
             else:
@@ -141,7 +140,6 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.prevXtalDMin = float(self._tweakPeakView.fieldXtalDMin.field.text())
         self.prevXtalDMax = float(self._tweakPeakView.fieldXtalDMax.field.text())
-        self.prevThreshold = float(self._tweakPeakView.fieldThreshold.field.text())
 
         # init the payload
         payload = NormalizationRequest(
@@ -188,7 +186,6 @@ class NormalizationWorkflow(WorkflowImplementer):
             focusGroup=list(self.focusGroups.items())[self.prevGroupingIndex][1],
             smoothingParameter=self.prevSmoothingParameter,
             crystalDBounds={"minimum": self.prevXtalDMin, "maximum": self.prevXtalDMax},
-            peakIntensityThreshold=self.prevThreshold,
         )
         response = self.request(path="normalization/assessment", payload=payload.json())
         return response
@@ -225,7 +222,6 @@ class NormalizationWorkflow(WorkflowImplementer):
             calculationParameters=normalizationRecord.calculationParameters,
             backgroundRunNumber=normalizationRecord.backgroundRunNumber,
             smoothingParameter=normalizationRecord.smoothingParameter,
-            peakIntensityThreshold=normalizationRecord.peakIntensityThreshold,
             workspaceNames=normalizationRecord.workspaceNames,
             calibrationVersionUsed=normalizationRecord.calibrationVersionUsed,
             crystalDBounds=normalizationRecord.crystalDBounds,
@@ -239,7 +235,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         return response
 
     @EntryExitLogger(logger=logger)
-    def callNormalization(self, index, smoothingParameter, xtalDMin, xtalDMax, peakThreshold):
+    def callNormalization(self, index, smoothingParameter, xtalDMin, xtalDMax):
         payload = NormalizationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
@@ -248,7 +244,6 @@ class NormalizationWorkflow(WorkflowImplementer):
             focusGroup=list(self.focusGroups.items())[index][1],
             smoothingParameter=smoothingParameter,
             crystalDBounds={"minimum": xtalDMin, "maximum": xtalDMax},
-            peakIntensityThreshold=peakThreshold,
         )
         self.request(path="normalization", payload=payload.json())
 
@@ -258,7 +253,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
 
     @EntryExitLogger(logger=logger)
-    def applySmoothingUpdate(self, index, smoothingValue, xtalDMin, xtalDMax, peakThreshold):
+    def applySmoothingUpdate(self, index, smoothingValue, xtalDMin, xtalDMax):
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
 
@@ -272,7 +267,6 @@ class NormalizationWorkflow(WorkflowImplementer):
             smoothingParameter=smoothingValue,
             crystalDMin=xtalDMin,
             crystalDMax=xtalDMax,
-            peakIntensityThreshold=peakThreshold,
         )
         response = self.request(path="normalization/smooth", payload=payload.json())
 
@@ -281,8 +275,8 @@ class NormalizationWorkflow(WorkflowImplementer):
 
     @EntryExitLogger(logger=logger)
     @ExceptionToErrLog
-    @Slot(int, float, float, float, float)
-    def onNormalizationValueChange(self, index, smoothingValue, xtalDMin, xtalDMax, peakThreshold):  # noqa: ARG002
+    @Slot(int, float, float, float)
+    def onNormalizationValueChange(self, index, smoothingValue, xtalDMin, xtalDMax):  # noqa: ARG002
         if not self.initializationComplete:
             return
         # disable recalculate button
@@ -298,16 +292,13 @@ class NormalizationWorkflow(WorkflowImplementer):
             smoothingValueChanged = self.prevSmoothingParameter != smoothingValue
             xtalDMinValueChanged = xtalDMin != self.prevXtalDMin
             xtalDMaxValueChanged = xtalDMax != self.prevXtalDMax
-            thresholdChanged = peakThreshold != self.prevThreshold
-            peakListWillChange = (
-                smoothingValueChanged or xtalDMinValueChanged or xtalDMaxValueChanged or thresholdChanged
-            )
+            peakListWillChange = smoothingValueChanged or xtalDMinValueChanged or xtalDMaxValueChanged
 
             # check the case, apply correct update
             if groupingFileChanged:
-                self.callNormalization(index, smoothingValue, xtalDMin, xtalDMax, peakThreshold)
+                self.callNormalization(index, smoothingValue, xtalDMin, xtalDMax)
             elif peakListWillChange:
-                self.applySmoothingUpdate(index, smoothingValue, xtalDMin, xtalDMax, peakThreshold)
+                self.applySmoothingUpdate(index, smoothingValue, xtalDMin, xtalDMax)
             elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
                 # if nothing changed but this function was called anyway... just replot stuff with old values
                 focusWorkspace = self.responses[-1].data["focusedVanadium"]
@@ -322,7 +313,6 @@ class NormalizationWorkflow(WorkflowImplementer):
             self.prevSmoothingParameter = smoothingValue
             self.prevXtalDMin = xtalDMin
             self.prevXtalDMax = xtalDMax
-            self.prevThreshold = peakThreshold
         except Exception as e:  # noqa BLE001
             print(e)
 

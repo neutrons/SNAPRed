@@ -30,7 +30,6 @@ class DiffractionCalibrationRequest(BaseModel, extra="forbid"):
     crystalDMax: float = Config["constants.CrystallographicInfo.crystalDMax"]
     peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
     convergenceThreshold: float = Config["calibration.diffraction.convergenceThreshold"]
-    peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     maximumOffset: float = Config["calibration.diffraction.maximumOffset"]
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])

@@ -690,15 +690,16 @@ class LocalDataService:
             raise ValueError(f"The file '{filePath}' does not exist")
         with open(filePath, "r") as file:
             sampleJson = json.load(file)
+            print(sampleJson)
             if "mass-density" in sampleJson and "packingFraction" in sampleJson:
                 logger.warn(  # noqa: F821
                     "Can't specify both mass-density and packing fraction for single-element materials"
                 )  # noqa: F821
             del sampleJson["material"]["packingFraction"]
             for atom in sampleJson["crystallography"]["atoms"]:
-                atom["symbol"] = atom.pop("atom_type")
-                atom["coordinates"] = atom.pop("atom_coordinates")
-                atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
+                atom["symbol"] = atom.pop("symbol")
+                atom["coordinates"] = atom.pop("coordinates")
+                atom["siteOccupationFactor"] = atom.pop("siteOccupationFactor")
             sample = CalibrantSample.model_validate_json(json.dumps(sampleJson))
             return sample
 

@@ -83,6 +83,7 @@ class TestSousChef(unittest.TestCase):
     def test_prepCalibration(self):
         mockCalibration = mock.Mock()
         self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
+        self.instance.prepCalibrantSample = mock.Mock()
 
         res = self.instance.prepCalibration(self.ingredients)
 
@@ -96,6 +97,7 @@ class TestSousChef(unittest.TestCase):
         fakeLeft = 116
         fakeRight = 17
         self.ingredients.fwhmMultipliers = mock.Mock(left=fakeLeft, right=fakeRight)
+        self.instance.prepCalibrantSample = mock.Mock()
 
         res = self.instance.prepCalibration(self.ingredients)
 
@@ -258,7 +260,6 @@ class TestSousChef(unittest.TestCase):
             crystalInfo=self.instance.prepCrystallographicInfo.return_value,
             instrumentState=self.instance.prepInstrumentState.return_value,
             pixelGroup=self.instance.prepPixelGroup.return_value,
-            peakIntensityThreshold=self.ingredients.peakIntensityThreshold,
         )
         assert res == PeakIngredients.return_value
 
@@ -273,12 +274,12 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.crystalDBounds.maximum,
             self.ingredients.fwhmMultipliers.left,
             self.ingredients.fwhmMultipliers.right,
-            self.ingredients.peakIntensityThreshold,
             False,
         )
         # ensure the cache is clear
         assert self.instance._peaksCache == {}
 
+        self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepPeakIngredients = mock.Mock()
         self.instance.parseGroupPeakList = mock.Mock(side_effect=lambda y: [y])
 
@@ -306,12 +307,12 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.crystalDBounds.maximum,
             self.ingredients.fwhmMultipliers.left,
             self.ingredients.fwhmMultipliers.right,
-            self.ingredients.peakIntensityThreshold,
             True,
         )
         # ensure the cache is clear
         assert self.instance._peaksCache == {}
 
+        self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepPeakIngredients = mock.Mock()
         self.instance.parseGroupPeakList = mock.Mock(side_effect=lambda y: [y])
 
@@ -332,11 +333,11 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.crystalDBounds.maximum,
             self.ingredients.fwhmMultipliers.left,
             self.ingredients.fwhmMultipliers.right,
-            self.ingredients.peakIntensityThreshold,
             True,
         )
         # ensure the cache is prepared
         self.instance._peaksCache[key] = [mock.Mock()]
+        self.instance.prepCalibrantSample = mock.Mock()
 
         res = self.instance.prepDetectorPeaks(self.ingredients)
 
@@ -348,8 +349,8 @@ class TestSousChef(unittest.TestCase):
         record = mock.Mock(
             smoothingParamter=1.0,
             calculationParameters=mock.Mock(calibrantSamplePath="a/b.x"),
-            peakIntensityThreshold=1.0e-5,
         )
+        self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepRunConfig = mock.Mock()
         self.instance.prepManyPixelGroups = mock.Mock()
         self.instance.prepManyDetectorPeaks = mock.Mock()

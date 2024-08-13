@@ -17,6 +17,7 @@ class CalibrantSample(BaseModel):
     geometry: Geometry
     material: Material
     crystallography: Optional[Crystallography] = None
+    peakIntensityFractionThreshold: float
 
     # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
     # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
@@ -27,3 +28,12 @@ class CalibrantSample(BaseModel):
     @classmethod
     def set_datetime(cls, v: str) -> str:
         return v or str(datetime.datetime.now())
+
+    @field_validator("peakIntensityFractionThreshold", mode="before")
+    @classmethod
+    def validate_threshold(cls, v) -> float:
+        if not isinstance(v, float):
+            raise ValueError("peakIntensityFractionThreshold must be a float")
+        if v < 0:
+            raise ValueError("peakIntensityFractionThreshold must be a positive value")
+        return v
