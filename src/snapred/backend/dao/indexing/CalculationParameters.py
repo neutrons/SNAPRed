@@ -6,7 +6,7 @@ from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 # NOTE: the request __init__ loads CalibrationExportRequest, which imports Calibration,
 #       which imports this module, which causes a circular import situation.
-#       In the future, need to remove the circualr import so that full set of ingredients
+#       In the future, need to remove the circular import so that full set of ingredients
 #       can be preserved
 # from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
 

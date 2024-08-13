@@ -4,7 +4,6 @@ import socket
 import tempfile
 import unittest
 import unittest.mock as mock
-from unittest.mock import ANY
 
 import pytest
 from mantid.simpleapi import (
@@ -251,13 +250,15 @@ class TestSaveGroupingDefinition(unittest.TestCase):
             assert savingAlgo.execute()
 
             # assert that the mocked methods were called
-            assert savingAlgo.mantidSnapper.LoadGroupingDefinition.called_once_with(
-                ANY,
+            savingAlgo.mantidSnapper.LoadGroupingDefinition.assert_called_once_with(
+                mock.ANY,
                 GroupingFilename=groupingFile,
-                OutputWorkspace=ANY,
+                OutputWorkspace=mock.ANY,
+                InstrumentFileName="",
+                InstrumentName="",
                 InstrumentDonor=self.localIDFWorkspace,
             )
-            assert savingAlgo.mantidSnapper.WashDishes.called_once
+            savingAlgo.mantidSnapper.WashDishes.assert_called_once()
             # assert the save went through
             assert os.path.exists(outputFilePath)
 

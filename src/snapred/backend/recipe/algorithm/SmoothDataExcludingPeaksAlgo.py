@@ -54,7 +54,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
                 PropertyMode.Mandatory,
                 validator=WorkspaceUnitValidator("dSpacing"),
             ),
-            doc="Hitogram Workspace with removed peaks",
+            doc="Histogram Workspace with removed peaks",
         )
         self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
         self.declareProperty("SmoothingParameter", defaultValue=-1.0, direction=Direction.Input)

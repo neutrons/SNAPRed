@@ -37,7 +37,7 @@ class TestSousChef(unittest.TestCase):
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         res = self.instance.prepManyDetectorPeaks(self.ingredients)
         assert res[0] == self.instance.prepDetectorPeaks.return_value
-        assert self.instance.prepDetectorPeaks.called_once_with(self.ingredients, purgePeaks=False)
+        self.instance.prepDetectorPeaks.assert_called_once_with(self.ingredients, purgePeaks=False)
 
     def test_prepManyDetectorPeaks_no_calibration(self):
         self.instance.prepDetectorPeaks = mock.Mock()
@@ -53,7 +53,7 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepPixelGroup = mock.Mock()
         res = self.instance.prepManyPixelGroups(self.ingredients)
         assert res[0] == self.instance.prepPixelGroup.return_value
-        assert self.instance.prepPixelGroup.called_once_with(self.ingredients)
+        self.instance.prepPixelGroup.assert_called_once_with(self.ingredients)
 
     def test_prepFocusGroup_exists(self):
         # create a temp file to be used a the path for the focus group
@@ -87,7 +87,10 @@ class TestSousChef(unittest.TestCase):
 
         res = self.instance.prepCalibration(self.ingredients)
 
-        assert self.instance.dataFactoryService.getCalibrationState.called_once_with(self.ingredients)
+        self.instance.dataFactoryService.getCalibrationState.assert_called_once_with(
+            self.ingredients.runNumber,
+            self.ingredients.useLiteMode,
+        )
         assert res == self.instance.dataFactoryService.getCalibrationState.return_value
         assert res.instrumentState.fwhmMultipliers.dict() == Config["calibration.parameters.default.FWHMMultiplier"]
 
@@ -101,7 +104,10 @@ class TestSousChef(unittest.TestCase):
 
         res = self.instance.prepCalibration(self.ingredients)
 
-        assert self.instance.dataFactoryService.getCalibrationState.called_once_with(self.ingredients)
+        self.instance.dataFactoryService.getCalibrationState.assert_called_once_with(
+            self.ingredients.runNumber,
+            self.ingredients.useLiteMode,
+        )
         assert res == self.instance.dataFactoryService.getCalibrationState.return_value
         assert res.instrumentState.fwhmMultipliers == self.ingredients.fwhmMultipliers
         assert res.instrumentState.fwhmMultipliers.left == fakeLeft
@@ -114,18 +120,26 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepCalibration = mock.Mock(return_value=mockCalibration)
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         res = self.instance.prepInstrumentState(ingredients)
-        assert self.instance.prepCalibration.called_once_with(ingredients)
+        self.instance.prepCalibration.assert_called_once_with(ingredients)
         assert res == self.instance.prepCalibration.return_value.instrumentState
 
     def test_prepDefaultInstrumentState(self):
-        ingredients = mock.Mock()
-        mockCalibration = mock.Mock(instrumentState=mock.Mock())
-        self.instance.prepCalibration = mock.Mock(return_value=mockCalibration)
+        ingredients = mock.Mock(
+            spec=FarmFreshIngredients,
+            runNumber="12345",
+            useLiteMode=True,
+        )
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
         self.instance.dataFactoryService.getDefaultInstrumentState = mock.Mock(return_value=mock.Mock())
-        res = self.instance.prepInstrumentState(ingredients)
-        assert self.instance.prepCalibration.called_once_with(ingredients)
-        assert res == self.instance.dataFactoryService.getDefaultInstrumentState.return_value
+        result = self.instance.prepInstrumentState(ingredients)
+        self.instance.dataFactoryService.calibrationExists.assert_called_once_with(
+            ingredients.runNumber,
+            ingredients.useLiteMode,
+        )
+        self.instance.dataFactoryService.getDefaultInstrumentState.assert_called_once_with(
+            ingredients.runNumber,
+        )
+        assert result == self.instance.dataFactoryService.getDefaultInstrumentState.return_value
 
     def test_prepRunConfig(self):
         self.instance.dataFactoryService.lookupService.readRunConfig = mock.Mock()
@@ -155,25 +169,27 @@ class TestSousChef(unittest.TestCase):
         # mock the calibration, which will give the instrument state
         mockCalibration = mock.Mock(instrumentState=mock.Mock())
         self.instance.prepCalibration = mock.Mock(return_value=mockCalibration)
-        self.instance.groceryService.fetchGroceryList = mock.Mock(return_value="banana")
+        self.instance.groceryService.fetchGroceryDict = mock.Mock(
+            return_value={"groupingWorkspace", self.ingredients.focusGroup.name},
+        )
 
         # call the method to be tested
         # make sure the focus group definition exists, by pointing it to a tmp file
         with tempfile.NamedTemporaryFile() as existent:
             self.ingredients.focusGroup.definition = existent.name
-            res = self.instance.prepPixelGroup(self.ingredients)
+            result = self.instance.prepPixelGroup(self.ingredients)
 
         # make necessary assertions
-        assert PixelGroupingIngredients.called_once_with(
+        PixelGroupingIngredients.assert_called_once_with(
             instrumentState=self.instance.prepCalibration.return_value.instrumentState,
             nBinsAcrossPeakWidth=self.ingredients.nBinsAcrossPeakWidth,
         )
-        assert PixelGroupingParametersCalculationRecipe.return_value.executeRecipe.called_once_with(
+        PixelGroupingParametersCalculationRecipe.return_value.executeRecipe.assert_called_once_with(
             PixelGroupingIngredients.return_value,
-            self.instance.groceryService.fetchGroceryList.return_value,
+            self.instance.groceryService.fetchGroceryDict.return_value,
         )
         assert self.instance._pixelGroupCache == {key: PixelGroup.return_value}
-        assert res == self.instance._pixelGroupCache[key]
+        assert result == self.instance._pixelGroupCache[key]
 
     @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
     def test_prepPixelGroup_cache(self, PixelGroupingParametersCalculationRecipe):
@@ -202,7 +218,7 @@ class TestSousChef(unittest.TestCase):
 
         res = self.instance.prepCrystallographicInfo(self.ingredients)
 
-        assert XtalService.return_value.ingest.called_once_with(key)
+        XtalService.return_value.ingest.assert_called_once_with(*key)
         assert self.instance._xtalCache == {key: XtalService.return_value.ingest.return_value["crystalInfo"]}
         assert res == self.instance._xtalCache[key]
 
@@ -251,17 +267,17 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepInstrumentState = mock.Mock()
         self.instance.prepPixelGroup = mock.Mock()
 
-        res = self.instance.prepPeakIngredients(self.ingredients)
+        result = self.instance.prepPeakIngredients(self.ingredients)
 
-        assert self.instance.prepCrystallographicInfo.called_once_with(self.ingredients)
-        assert self.instance.prepInstrumentState.called_once_with(self.ingredients.runNumber)
-        assert self.instance.prepPixelGroup.called_once_with(self.ingredients)
-        assert PeakIngredients.called_once_with(
+        self.instance.prepCrystallographicInfo.assert_called_once_with(self.ingredients)
+        self.instance.prepInstrumentState.assert_called_once_with(self.ingredients)
+        self.instance.prepPixelGroup.assert_called_once_with(self.ingredients)
+        PeakIngredients.assert_called_once_with(
             crystalInfo=self.instance.prepCrystallographicInfo.return_value,
             instrumentState=self.instance.prepInstrumentState.return_value,
             pixelGroup=self.instance.prepPixelGroup.return_value,
         )
-        assert res == PeakIngredients.return_value
+        assert result == PeakIngredients.return_value
 
     @mock.patch(thisService + "DetectorPeakPredictorRecipe")
     @mock.patch(thisService + "GroupPeakList")
@@ -285,8 +301,10 @@ class TestSousChef(unittest.TestCase):
 
         res = self.instance.prepDetectorPeaks(self.ingredients, False)
 
-        assert self.instance.prepPeakIngredients.called_once_with(self.ingredients)
-        assert DetectorPeakPredictorRecipe.return_value.executeRecipe.called_once_with(Ingredients=self.ingredients)
+        self.instance.prepPeakIngredients.assert_called_once_with(self.ingredients)
+        DetectorPeakPredictorRecipe.return_value.executeRecipe.assert_called_once_with(
+            Ingredients=self.instance.prepPeakIngredients.return_value,
+        )
         assert res == [DetectorPeakPredictorRecipe.return_value.executeRecipe.return_value]
         assert self.instance._peaksCache == {key: [DetectorPeakPredictorRecipe.return_value.executeRecipe.return_value]}
 
@@ -318,8 +336,10 @@ class TestSousChef(unittest.TestCase):
 
         res = self.instance.prepDetectorPeaks(self.ingredients)
 
-        assert self.instance.prepPeakIngredients.called_once_with(self.ingredients)
-        assert DetectorPeakPredictorRecipe.return_value.executeRecipe.called_once_with(Ingredients=self.ingredients)
+        self.instance.prepPeakIngredients.assert_called_once_with(self.ingredients)
+        DetectorPeakPredictorRecipe.return_value.executeRecipe.assert_called_once_with(
+            Ingredients=self.instance.prepPeakIngredients.return_value,
+        )
         assert res == [PurgeOverlappingPeaksRecipe.return_value.executeRecipe.return_value]
         assert self.instance._peaksCache == {key: [PurgeOverlappingPeaksRecipe.return_value.executeRecipe.return_value]}
 
@@ -346,9 +366,12 @@ class TestSousChef(unittest.TestCase):
 
     @mock.patch(thisService + "ReductionIngredients")
     def test_prepReductionIngredients(self, ReductionIngredients):
+        calibrationCalibrantSamplePath = "a/sample.x"
         record = mock.Mock(
             smoothingParamter=1.0,
-            calculationParameters=mock.Mock(calibrantSamplePath="a/b.x"),
+            calculationParameters=mock.Mock(
+                calibrantSamplePath=calibrationCalibrantSamplePath,
+            ),
         )
         self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepRunConfig = mock.Mock()
@@ -359,16 +382,26 @@ class TestSousChef(unittest.TestCase):
         self.instance.dataFactoryService.getNormalizationRecord = mock.Mock(return_value=record)
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=record)
 
-        res = self.instance.prepReductionIngredients(self.ingredients)
+        ingredients_ = self.ingredients.model_copy()
+        # ... from calibration record:
+        ingredients_.calibrantSamplePath = calibrationCalibrantSamplePath
+        ingredients_.cifPath = self.instance.dataFactoryService.getCifFilePath.return_value
+        # ... from normalization record:
+        ingredients_.peakIntensityThreshold = record.peakIntensityThreshold
+        result = self.instance.prepReductionIngredients(ingredients_)
 
-        assert self.instance.prepManyPixelGroups.called_once_with(self.ingredients)
-        assert self.instance.dataFactoryService.getCifFilePath.called_once_with("sample")
-        assert ReductionIngredients.called_once_with(
+        self.instance.prepManyPixelGroups.assert_called_once_with(ingredients_)
+        self.instance.dataFactoryService.getCifFilePath.assert_called_once_with("sample")
+        ReductionIngredients.assert_called_once_with(
             pixelGroups=self.instance.prepManyPixelGroups.return_value,
             smoothingParameter=record.smoothingParameter,
+            calibrantSamplePath=ingredients_.calibrantSamplePath,
+            peakIntensityThreshold=ingredients_.peakIntensityThreshold,
             detectorPeaksMany=self.instance.prepManyDetectorPeaks.return_value,
+            keepUnfocused=ingredients_.keepUnfocused,
+            convertUnitsTo=ingredients_.convertUnitsTo,
         )
-        assert res == ReductionIngredients.return_value
+        assert result == ReductionIngredients.return_value
 
     @mock.patch(thisService + "NormalizationIngredients")
     def test_prepNormalizationIngredients(self, NormalizationIngredients):
@@ -379,13 +412,13 @@ class TestSousChef(unittest.TestCase):
 
         res = self.instance.prepNormalizationIngredients(self.ingredients)
 
-        assert self.instance.prepCalibrantSample.called_once_with(self.ingredients.calibrantSamplePath)
-        assert self.instance.prepPixelGroup.called_once_with(self.ingredients)
-        assert self.instance.prepDetectorPeaks.called_once_with(self.ingredients)
-        assert NormalizationIngredients.called_once_with(
+        self.instance.prepCalibrantSample.assert_called_once_with(self.ingredients.calibrantSamplePath)
+        self.instance.prepPixelGroup.assert_called_once_with(self.ingredients)
+        self.instance.prepDetectorPeaks.assert_called_once_with(self.ingredients, purgePeaks=False)
+        NormalizationIngredients.assert_called_once_with(
             pixelGroup=self.instance.prepPixelGroup.return_value,
-            calibrantSamplePath=self.instance.prepCalibrantSample.return_value,
-            detectorPeakskLists=self.instance.prepDetectorPeaks.return_value,
+            calibrantSample=self.instance.prepCalibrantSample.return_value,
+            detectorPeaks=self.instance.prepDetectorPeaks.return_value,
         )
         assert res == NormalizationIngredients.return_value
 
@@ -396,19 +429,21 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepDetectorPeaks = mock.Mock()
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
 
-        res = self.instance.prepDiffractionCalibrationIngredients(self.ingredients)
+        result = self.instance.prepDiffractionCalibrationIngredients(self.ingredients)
 
-        assert self.instance.prepRunConfig.called_once_with(self.ingredients.runNumber)
-        assert self.instance.prepPixelGroup.called_once_with(self.ingredients)
-        assert self.instance.prepDetectorPeaks.called_once_with(self.ingredients)
-        assert DiffractionCalibrationIngredients.called_once_with(
+        self.instance.prepRunConfig.assert_called_once_with(self.ingredients.runNumber)
+        self.instance.prepPixelGroup.assert_called_once_with(self.ingredients)
+        self.instance.prepDetectorPeaks.assert_called_once_with(self.ingredients)
+        DiffractionCalibrationIngredients.assert_called_once_with(
             runConfig=self.instance.prepRunConfig.return_value,
-            pixelGroup=self.instance.prepRunConfig.return_value,
+            pixelGroup=self.instance.prepPixelGroup.return_value,
             groupedPeakLists=self.instance.prepDetectorPeaks.return_value,
+            peakFunction=self.ingredients.peakFunction,
             convergenceThreshold=self.ingredients.convergenceThreshold,
             maxOffset=self.ingredients.maxOffset,
+            maxChiSq=self.ingredients.maxChiSq,
         )
-        assert res == DiffractionCalibrationIngredients.return_value
+        assert result == DiffractionCalibrationIngredients.return_value
 
     def test_pullManyCalibrationDetectorPeaks(self):
         mockDataFactory = mock.Mock()
@@ -422,7 +457,7 @@ class TestSousChef(unittest.TestCase):
 
         res = self.instance._pullManyCalibrationDetectorPeaks(self.ingredients, "12345", True)
         assert res == self.instance.prepManyDetectorPeaks.return_value
-        assert self.instance.prepManyDetectorPeaks.called_once_with(
+        self.instance.prepManyDetectorPeaks.assert_called_once_with(
             self.instance._pullCalibrationRecordFFI.return_value
         )
-        assert self.instance._pullCalibrationRecordFFI.called_once_with(self.ingredients, "12345", True)
+        self.instance._pullCalibrationRecordFFI.assert_called_once_with(self.ingredients, "12345", True)

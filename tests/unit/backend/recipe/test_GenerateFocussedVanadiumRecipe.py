@@ -7,6 +7,7 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.dao.ingredients import GenerateFocussedVanadiumIngredients as Ingredients
+from snapred.backend.dao.request import FarmFreshIngredients
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe as Recipe
 from snapred.meta.Config import Resource
 from util.helpers import deleteWorkspaceNoThrow
@@ -26,7 +27,9 @@ class TestGenerateFocussedVanadiumRecipe(unittest.TestCase):
             Filename=Resource.getPath(testWorkspaceFile),
             outputWorkspace=self.fakeInputWorkspace,
         )
-        peaks = SculleryBoy().prepDetectorPeaks({})
+
+        mockFarmFresh = mock.Mock(spec_set=FarmFreshIngredients)
+        peaks = SculleryBoy().prepDetectorPeaks(mockFarmFresh)
 
         self.fakeIngredients = Ingredients(
             smoothingParameter=0.1,

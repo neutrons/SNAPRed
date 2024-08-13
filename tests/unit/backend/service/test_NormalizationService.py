@@ -130,8 +130,7 @@ class TestNormalizationService(unittest.TestCase):
 
         res = self.instance.focusSpectra(mockRequest)
 
-        # assert self.instance.sousChef.prepPixelGroup.called_once_with(FarmFreshIngredients.return_value)
-        assert mockRecipeInst.executeRecipe.called_once_with(
+        mockRecipeInst.executeRecipe.assert_called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             GroupingWorkspace=mockRequest.groupingWorkspace,
             Ingredients=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
@@ -162,8 +161,7 @@ class TestNormalizationService(unittest.TestCase):
         res = self.instance.vanadiumCorrection(mockRequest)
 
         mockRecipeInst = RawVanadiumCorrectionRecipe.return_value
-        # assert self.instance.sousChef.prepNormalizationIngredients.called_once_with(FarmFreshIngredients.return_value)
-        assert mockRecipeInst.executeRecipe.called_once_with(
+        mockRecipeInst.executeRecipe.assert_called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             BackgroundWorkspace=mockRequest.backgroundWorkspace,
             Ingredients=self.instance.sousChef.prepNormalizationIngredients({}),
@@ -178,7 +176,7 @@ class TestNormalizationService(unittest.TestCase):
         mockRecipe,
         FarmFreshIngredients,
     ):
-        FarmFreshIngredients.return_value = {"good": ""}
+        FarmFreshIngredients.return_value = mock.Mock(spec=FarmFreshIngredients)
         mockRequest = SmoothDataExcludingPeaksRequest(
             runNumber="12345",
             useLiteMode=True,
@@ -192,17 +190,17 @@ class TestNormalizationService(unittest.TestCase):
 
         self.instance = NormalizationService()
         self.instance.sousChef = SculleryBoy()
-        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
+        self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="path/to/cif")
 
         mockRecipeInst = mockRecipe.return_value
 
         self.instance.smoothDataExcludingPeaks(mockRequest)
 
-        # assert self.instance.sousChef.prepDetectorPeaks.called_once_with(FarmFreshIngredients.return_value)
-        assert mockRecipeInst.executeRecipe.called_once_with(
+        mockRecipeInst.executeRecipe.assert_called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             OutputWorkspace=mockRequest.outputWorkspace,
-            Ingredients=self.instance.sousChef.prepDetectorPeaks({}),
+            DetectorPeaks=self.instance.sousChef.prepDetectorPeaks(FarmFreshIngredients.return_value),
+            SmoothingParameter=mockRequest.smoothingParameter,
         )
 
     def test_normalizationAssessment(self):

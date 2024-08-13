@@ -1,5 +1,4 @@
 import unittest.mock as mock
-from typing import List
 
 import pytest
 from snapred.backend.dao.Limit import Limit
@@ -62,12 +61,14 @@ def test_execute_unsuccessful():
 @mock.patch("snapred.backend.recipe.PixelGroupingParametersCalculationRecipe.BinnedValue")
 def test_resolve_callback(BinnedValue):
     BinnedValue.return_value = "tof"
-    parsePGPList = mock.Mock(return_value=[mock.Mock(dRelativeResolution=1.0)])
-    mockAlgo = mock.Mock(return_value=mock.Mock(get=mock.Mock(return_value="done")))
 
+    parsePGPList = mock.Mock(return_value=[mock.Mock(dRelativeResolution=1.0)])
     recipe = PixelGroupingParametersCalculationRecipe()
     recipe.parsePGPList = parsePGPList
+
+    mockAlgo = mock.Mock(return_value=mock.Mock(get=mock.Mock(return_value="done")))
     recipe.mantidSnapper.PixelGroupingParametersCalculationAlgorithm = mockAlgo
+
     ingredients = mock.Mock(nBinsAcrossPeakWidth=10)
     groceries = {
         "groupingWorkspace": "grouping workspace",
@@ -77,4 +78,4 @@ def test_resolve_callback(BinnedValue):
     assert data["result"]
     assert data["tof"] == BinnedValue.return_value
     assert data["parameters"] == parsePGPList.return_value
-    assert parsePGPList.called_once_with(List[PixelGroupingParameters], "done")
+    parsePGPList.assert_called_once_with("done")
