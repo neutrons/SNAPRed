@@ -20,6 +20,27 @@ from snapred.meta.Config import (  # noqa: E402
 )
 
 
+# PATCH the `unittest.mock.Mock` class: BANNED FUNCTIONS
+def banned_function(function_name: str):
+  _error_message: str = f"`Mock.{function_name}` is a mock, it always evaluates to True. Use `Mock.assert_{function_name}` instead."
+
+  def _banned_function(self, *args, **kwargs):
+      nonlocal _error_message # this line should not be necessary!
+
+      # Ensure that the complete message is in the pytest-captured output stream:
+      print(_error_message)
+
+      raise RuntimeError(_error_message)
+
+  return _banned_function
+
+# `mock.Mock.called` is OK: it exists as a boolean attribute
+mock.Mock.called_once = banned_function("called_once")
+mock.Mock.called_once_with = banned_function("called_once_with")
+mock.Mock.called_with = banned_function("called_with")
+mock.Mock.not_called = banned_function("not_called")
+
+
 def mock_decorator(orig_cls):
     return orig_cls
 
@@ -55,7 +76,8 @@ def clear_loggers():  # noqa: PT004
             logger.removeHandler(handler)
 
 
-## Import `pytest.fixture` defined in separate `tests/util` modules:
+## Import various `pytest.fixture` defined in separate `tests/util` modules:
+#  -------------------------------------------------------------------------
 # *** IMPORTANT WARNING: these must be included _after_ the `Singleton` decorator is patched ! ***
 #   * Otherwise, the modules imported by these will not have the patched decorator applied to them.
 

@@ -1,8 +1,9 @@
 import unittest
-from unittest.mock import patch
+from unittest import mock
 
 import pytest
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
+from snapred.meta.Config import Config
 
 thisService = "snapred.backend.service.CrystallographicInfoService."
 
@@ -16,16 +17,18 @@ class TestXtalService(unittest.TestCase):
     def test_name(self):
         assert "ingestion" == self.instance.name()
 
-    @patch(thisService + "CrystallographicInfoRecipe")
+    @mock.patch(thisService + "CrystallographicInfoRecipe")
     def test_ingest_good(self, xtalRx):
+        D_MIN = Config["constants.CrystallographicInfo.crystalDMin"]
+        D_MAX = Config["constants.CrystallographicInfo.crystalDMax"]
         xtalRx.return_value.executeRecipe.return_value = {"good": "yup"}
         cifPath = "apples"
         data = self.instance.ingest(cifPath)
-        assert xtalRx.called_once
-        assert xtalRx.return_value.executeRecipe.called_once_with(cifPath)
+        xtalRx.assert_called_once()
+        xtalRx.return_value.executeRecipe.assert_called_once_with(cifPath=cifPath, crystalDMin=D_MIN, crystalDMax=D_MAX)
         assert data == xtalRx.return_value.executeRecipe.return_value
 
-    @patch(thisService + "CrystallographicInfoRecipe")
+    @mock.patch(thisService + "CrystallographicInfoRecipe")
     def test_ingest_bad(self, xtalRx):
         xtalRx.side_effect = RuntimeError("nope!")
         cifPath = "bananas"

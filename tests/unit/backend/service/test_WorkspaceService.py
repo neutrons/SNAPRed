@@ -80,4 +80,4 @@ class TestWorkspaceService:
         service.groceryService = mockGroceryService
         request = ListWorkspacesRequest(excludeCache=True)
         service.getResidentWorkspaces(request)
-        assert mockGroceryService.getResidentWorkspaces.called_once_with(excludeCache=True)
+        mockGroceryService.getResidentWorkspaces.assert_called_once_with(excludeCache=True)

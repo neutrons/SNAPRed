@@ -144,7 +144,8 @@ def do_test_workflow_indexer(workflow):
     localDataService.indexer = mock.Mock()
     for useLiteMode in [True, False]:
         getattr(localDataService, f"{workflow.lower()}Indexer")("xyz", useLiteMode)
-        assert localDataService.indexer.called_once_with("xyz", useLiteMode, workflow.upper())
+        localDataService.indexer.assert_called_once_with("xyz", useLiteMode, IndexerType(workflow))
+        localDataService.indexer.reset_mock()
 
 
 def do_test_read_index(workflow):
@@ -574,15 +575,15 @@ def test_getIPTS(mockGetIPTS):
     runNumber = "123456"
     res = localDataService.getIPTS(runNumber)
     assert res == mockGetIPTS.return_value
-    assert mockGetIPTS.called_with(
-        runNumber=runNumber,
-        instrumentName=Config["instrument.name"],
+    mockGetIPTS.assert_called_with(
+        RunNumber=runNumber,
+        Instrument=Config["instrument.name"],
     )
     res = localDataService.getIPTS(runNumber, "CRACKLE")
     assert res == mockGetIPTS.return_value
-    assert mockGetIPTS.called_with(
-        runNumber=runNumber,
-        instrumentName="CRACKLE",
+    mockGetIPTS.assert_called_with(
+        RunNumber=runNumber,
+        Instrument="CRACKLE",
     )
 
 
@@ -2049,7 +2050,9 @@ def test_initializeState():
         actual = localDataService.initializeState(runNumber, useLiteMode, "test")
         actual.creationDate = testCalibrationData.creationDate
     assert actual == testCalibrationData
-    assert localDataService._writeDefaultDiffCalTable.called_once_with(runNumber, useLiteMode)
+    assert localDataService._writeDefaultDiffCalTable.call_count == 2
+    localDataService._writeDefaultDiffCalTable.assert_any_call(runNumber, True)
+    localDataService._writeDefaultDiffCalTable.assert_any_call(runNumber, False)
 
 
 def test_initializeState_calls_prepareStateRoot():

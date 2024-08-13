@@ -135,13 +135,13 @@ def test_resource_packageMode_exists():
             assert rs._packageMode
             test_path = "any/path"
             rs.exists(test_path)
-            assert mockExistsInPackage.called_with(test_path)
+            mockExistsInPackage.assert_called_with(test_path)
 
 
 def test_resource_exists():
     with mock.patch.object(Resource, "_existsInPackage") as mockExistsInPackage:
         assert Resource.exists("application.yml")
-        assert mockExistsInPackage.not_called()
+        mockExistsInPackage.assert_not_called()
 
 
 def test_resource_exists_false():
@@ -157,7 +157,7 @@ def test_resource_open():
         assert not Resource._packageMode
         with Resource.open("application.yml", "r") as file:
             assert file is not None
-            assert mockResourcesPath.not_called()
+            mockResourcesPath.assert_not_called()
 
 
 def test_resource_packageMode_open():
@@ -174,7 +174,7 @@ def test_resource_packageMode_open():
         test_path = "application.yml"
         with Resource.open(test_path, "r") as file:
             assert file is not None
-            assert mockResourcesPath.called_once_with(test_path)
+            mockResourcesPath.assert_called_once_with("snapred.resources", test_path)
 
 
 def test_config_accessor():

@@ -1,6 +1,7 @@
 # ruff: noqa: F811
 import json
 import os
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -1022,7 +1023,7 @@ class GroceryService:
 
         return maskWSName
 
-    def fetchGroceryList(self, groceryList: List[GroceryListItem]) -> List[WorkspaceName]:
+    def fetchGroceryList(self, groceryList: Iterable[GroceryListItem]) -> List[WorkspaceName]:
         """
         :param groceryList: a list of GroceryListItems indicating the workspaces to create
         :type groceryList: List[GrocerListItem]

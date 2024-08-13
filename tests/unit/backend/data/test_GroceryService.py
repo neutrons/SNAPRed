@@ -7,7 +7,6 @@ import unittest
 from pathlib import Path
 from random import randint
 from unittest import mock
-from unittest.mock import ANY
 
 import pytest
 import snapred.backend.recipe.algorithm  # noqa: F401
@@ -464,7 +463,7 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance._loadedRuns == {}
         assert not mtd.doesExist(wsname)
         self.instance._updateNeutronCacheFromADS(runId, useLiteMode)
-        assert self.instance._createRawNeutronWorkspaceName.called_once_with(runId, useLiteMode)
+        self.instance._createRawNeutronWorkspaceName.assert_called_once_with(runId, useLiteMode)
         assert self.instance._loadedRuns == {}
         assert not mtd.doesExist(wsname)
 
@@ -478,7 +477,7 @@ class TestGroceryService(unittest.TestCase):
         self.create_dumb_workspace(wsname)
         assert mtd.doesExist(wsname)
         self.instance._updateNeutronCacheFromADS(runId, useLiteMode)
-        assert self.instance._createRawNeutronWorkspaceName.called_once_with(runId, useLiteMode)
+        self.instance._createRawNeutronWorkspaceName.assert_called_once_with(runId, useLiteMode)
         assert self.instance._loadedRuns == {(runId, useLiteMode): 1}
 
     def test_updateNeutronCacheFromADS_cache_no_ADS(self):
@@ -490,7 +489,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance._loadedRuns[(runId, useLiteMode)] = 1
         assert not mtd.doesExist(wsname)
         self.instance._updateNeutronCacheFromADS(runId, useLiteMode)
-        assert self.instance._createRawNeutronWorkspaceName.called_once_with(runId, useLiteMode)
+        self.instance._createRawNeutronWorkspaceName.assert_called_once_with(runId, useLiteMode)
         assert self.instance._loadedRuns == {}
 
     def test_updateNeutronCacheFromADS_ADS_no_cache(self):
@@ -503,7 +502,7 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance._loadedRuns == {}
         assert mtd.doesExist(wsname)
         self.instance._updateNeutronCacheFromADS(runId, useLiteMode)
-        assert self.instance._createRawNeutronWorkspaceName.called_once_with(runId, useLiteMode)
+        self.instance._createRawNeutronWorkspaceName.assert_called_once_with(runId, useLiteMode)
         assert self.instance._loadedRuns == {(runId, useLiteMode): 0}
 
     def test_updateGroupingCacheFromADS_noop(self):
@@ -517,7 +516,7 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance._loadedGroupings == {}
         assert not mtd.doesExist(wsname)
         self.instance._updateGroupingCacheFromADS(key, wsname)
-        assert self.instance._createGroupingWorkspaceName.called_once_with(groupingScheme, wsname)
+        self.instance._createGroupingWorkspaceName.assert_not_called()
         assert self.instance._loadedGroupings == {}
         assert not mtd.doesExist(wsname)
 
@@ -533,7 +532,7 @@ class TestGroceryService(unittest.TestCase):
         self.create_dumb_workspace(wsname)
         assert mtd.doesExist(wsname)
         self.instance._updateGroupingCacheFromADS(key, wsname)
-        assert self.instance._createGroupingWorkspaceName.called_once_with(groupingScheme, wsname)
+        self.instance._createGroupingWorkspaceName.assert_not_called()
         assert self.instance._loadedGroupings == {key: wsname}
 
     def test_updateGroupingCacheFromADS_cache_no_ADS(self):
@@ -547,7 +546,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance._loadedGroupings[key] = wsname
         assert not mtd.doesExist(wsname)
         self.instance._updateGroupingCacheFromADS(key, wsname)
-        assert self.instance._createGroupingWorkspaceName.called_once_with(groupingScheme, wsname)
+        self.instance._createGroupingWorkspaceName.assert_not_called()
         assert self.instance._loadedGroupings == {}
 
     def test_updateGroupingCacheFromADS_ADS_no_cache(self):
@@ -562,7 +561,7 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance._loadedGroupings == {}
         assert mtd.doesExist(wsname)
         self.instance._updateGroupingCacheFromADS(key, wsname)
-        assert self.instance._createGroupingWorkspaceName.called_once_with(groupingScheme, wsname)
+        self.instance._createGroupingWorkspaceName.assert_not_called()
         assert self.instance._loadedGroupings == {key: wsname}
 
     def test_updateInstrumentCacheFromADS_noop(self):
@@ -696,7 +695,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance.mantidSnapper.WashDishes = mockAlgo
         # wash the dish
         self.instance.deleteWorkspace(wsname)
-        assert mockAlgo.called_once_with(ANY, Workspace=wsname)
+        mockAlgo.assert_called_once_with(mock.ANY, Workspace=wsname)
 
     def test_deleteWorkspaceUnconditional(self):
         wsname = mtd.unique_name(prefix="_test_ws_")
@@ -704,12 +703,12 @@ class TestGroceryService(unittest.TestCase):
         self.instance.mantidSnapper.DeleteWorkspace = mockAlgo
         # if the workspace does not exist, then don't do anything
         self.instance.deleteWorkspaceUnconditional(wsname)
-        assert mockAlgo.not_called
+        mockAlgo.assert_not_called()
         # make the workspace
         self.create_dumb_workspace(wsname)
         # if the workspace does exist, then delete it
         self.instance.deleteWorkspaceUnconditional(wsname)
-        assert mockAlgo.called_once_with(ANY, Workspace=wsname)
+        mockAlgo.assert_called_once_with(mock.ANY, Workspace=wsname)
 
     ## TEST FETCH METHODS
 
@@ -736,7 +735,7 @@ class TestGroceryService(unittest.TestCase):
             "loader": "cached",
             "workspace": self.fetchedWSname,
         }
-        assert self.instance.grocer.executeRecipe.not_called
+        self.instance.grocer.executeRecipe.assert_not_called()
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
@@ -933,7 +932,8 @@ class TestGroceryService(unittest.TestCase):
             assert mtd.doesExist(ws)
         assert self.instance._loadedRuns == {testKey: 1, nativeKey: 0}
         # make sure it calls to convert to lite mode
-        assert self.instance.convertToLiteMode.called_once
+        self.instance.convertToLiteMode.assert_called_once()
+        self.instance.convertToLiteMode.reset_mock()
 
         # clear out the Lite workspaces from ADS and the cache
         self.instance._createNeutronFilename.side_effect = [fakeFilename, self.sampleWSFilePath]
@@ -955,7 +955,7 @@ class TestGroceryService(unittest.TestCase):
             assert mtd.doesExist(ws)
         assert self.instance._loadedRuns == {testKey: 1, nativeKey: 0}
         # make sure it calls to convert to lite mode
-        assert self.instance.convertToLiteMode.called_once
+        self.instance.convertToLiteMode.assert_called_once()
 
     def test_fetch_grouping(self):
         groupFilepath = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
@@ -1034,12 +1034,12 @@ class TestGroceryService(unittest.TestCase):
         for i, fetchMethod in enumerate(
             [self.instance.fetchNeutronDataCached, self.instance.fetchNeutronDataSingleUse]
         ):
-            assert fetchMethod.called_once_with(
+            fetchMethod.assert_called_once_with(
                 groceryList[i].runNumber,
                 groceryList[i].useLiteMode,
                 groceryList[i].loader,
             )
-        assert self.instance.fetchGroupingDefinition.called_once_with(groceryList[2])
+        self.instance.fetchGroupingDefinition.assert_called_once_with(groceryList[2])
 
     def test_fetch_grocery_list_fails(self):
         self.instance.fetchNeutronDataSingleUse = mock.Mock(return_value={"result": False, "workspace": "unimportant"})
@@ -1352,8 +1352,8 @@ class TestGroceryService(unittest.TestCase):
 
         res = self.instance.fetchGroceryList(groceryList)
         assert res == [cleanWorkspace, groupWorkspace]
-        assert self.instance.fetchGroupingDefinition.called_with(groupItemWithSource)
-        assert self.instance.fetchNeutronDataCached.called_with(self.runNumber, False, "")
+        self.instance.fetchGroupingDefinition.assert_called_with(groupItemWithSource)
+        self.instance.fetchNeutronDataCached.assert_called_with(self.runNumber, False, "")
 
     def test_updateInstrumentParameters(self):
         wsName = mtd.unique_hidden_name()
@@ -1550,9 +1550,12 @@ class TestGroceryService(unittest.TestCase):
 
         res = self.instance.fetchGroceryDict(groceryDict)
         assert res == {"InputWorkspace": cleanWorkspace, "GroupingWorkspace": groupWorkspace}
-        assert self.instance.fetchGroceryList.called_once_with(
-            groceryDict["InputWorkspace"], groceryDict["GroupingWorkspace"]
-        )
+
+        assert self.instance.fetchGroceryList.call_count == 1
+
+        # <dict>.values() compare as "NOT IMPLEMENTED", which evaluates to False
+        #   => so we need to extract and compare the call args as lists.
+        assert list(self.instance.fetchGroceryList.call_args[0][0]) == list(groceryDict.values())
 
     def test_fetch_grocery_dict_with_kwargs(self):
         # expected workspaces
@@ -1572,10 +1575,12 @@ class TestGroceryService(unittest.TestCase):
             "GroupingWorkspace": groupWorkspace,
             "OtherWorkspace": otherWorkspace,
         }
-        assert self.instance.fetchGroceryList.called_once_with(
-            groceryDict["InputWorkspace"],
-            groceryDict["GroupingWorkspace"],
-        )
+
+        assert self.instance.fetchGroceryList.call_count == 1
+
+        # <dict>.values() compare as "NOT IMPLEMENTED", which evaluates to False
+        #   => so we need to extract and compare the call args as lists.
+        assert list(self.instance.fetchGroceryList.call_args[0][0]) == list(groceryDict.values())
 
     def test_fetch_default_diffcal_table(self):
         """
@@ -1640,19 +1645,19 @@ class TestGroceryService(unittest.TestCase):
         assert runNumber in str(e)
 
     @mock.patch("snapred.backend.service.LiteDataService.LiteDataService")
-    def test_make_lite(self, mockLDS):
-        # mock out the fetch grouping part to make it think it fetched the ltie data map
-        liteMapWorkspace = "unimportant"
-        self.instance.fetchGroupingDefinition = mock.MagicMock(return_value={"workspace": liteMapWorkspace})
+    def test_make_lite(self, mockLiteDataService):
+        # This test makes sure that `GroceryService.convertToLiteMode` appropriately calls
+        #   `LiteDataService`.
+        # The circular reference from `LiteDataService` back to `GroceryService.fetchLiteDataMap`
+        #   (which should almost certainly be a service-to-service `InterfaceController` request)
+        #   should be checked in `test_LiteDataService`, _not_ here.
 
-        # now call to make lite
         workspacename = self.instance._createNeutronWorkspaceName(self.runNumber, False)
         self.instance.convertToLiteMode(workspacename)
-        # assert the call to lite data mode fetched the lite data map
-        assert self.instance.fetchGroupingDefinition.called_once_with("Lite", False)
+
         # assert that the lite data service was created and called
-        assert mockLDS.called_once()
-        assert mockLDS.reduceLiteData.called_once_with(workspacename, workspacename)
+        mockLiteDataService.assert_called_once()
+        mockLiteDataService.return_value.reduceLiteData.assert_called_once_with(workspacename, workspacename)
 
     def test_getCachedWorkspaces(self):
         rawWsName = self.instance._createRawNeutronWorkspaceName("556854", False)
@@ -1751,7 +1756,7 @@ class TestGroceryService(unittest.TestCase):
             assert len(expected)
 
             actual = self.instance.getResidentWorkspaces(excludeCache=False)
-            assert mockGetCachedWorkspaces.not_called
+            mockGetCachedWorkspaces.assert_not_called()
             assert actual == expected
 
     def test_getResidentWorkspaces_exclude_cache(self):

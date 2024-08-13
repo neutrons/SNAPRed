@@ -199,7 +199,7 @@ class LocalDataService:
 
     @lru_cache
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
-        ipts = GetIPTS(runNumber, instrumentName)
+        ipts = GetIPTS(RunNumber=runNumber, Instrument=instrumentName)
         return str(ipts)
 
     def workspaceIsInstance(self, wsName: str, wsType: Any) -> bool:
@@ -858,7 +858,7 @@ class LocalDataService:
 
     @validate_call
     @ExceptionHandler(StateValidationException)
-    # NOTE if you are debugigng and got here, coment out the ExceptionHandler and try again
+    # NOTE if you are debugging and got here, coment out the ExceptionHandler and try again
     def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
         stateId, _ = self._generateStateId(runId)
 

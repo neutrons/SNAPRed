@@ -1,9 +1,4 @@
-# ruff: noqa: ARG002
-
-# TODO this needs to be setup to better handle inputs
-
-
-from typing import List
+from typing import Dict, List
 from unittest import mock
 
 import pydantic
@@ -40,8 +35,15 @@ class SculleryBoy:
     Should be able to mock out the SousChef.
     """
 
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        prepPeakIngredientsFlags: Dict[str, bool] = {"useFakePeakValues": False},
+        prepDetectorPeaksFlags: Dict[str, bool] = {"removeDuplicatePeaks": True},
+    ):
+        # Flag values were previously passed in using mocks:  this is not a recommended practice
+        #   as it causes the mock to deviate from its "spec" type.
+        self.prepPeakIngredientsFlags = prepPeakIngredientsFlags
+        self.prepDetectorPeaksFlags = prepDetectorPeaksFlags
 
     def prepCalibration(self, ingredients: FarmFreshIngredients):  # noqa ARG002
         return DAOFactory.calibrationParameters(ingredients.runNumber, ingredients.useLiteMode)
@@ -87,16 +89,16 @@ class SculleryBoy:
         return DAOFactory.default_xtal_info.copy()
 
     def prepPeakIngredients(self, ingredients: FarmFreshIngredients):  # noqa ARG002
-        if "good" in ingredients:
+        if not self.prepPeakIngredientsFlags["useFakePeakValues"]:
             return DAOFactory.good_peak_ingredients.copy()
         else:
             return DAOFactory.fake_peak_ingredients.copy()
 
-    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]:
+    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]:  # noqa: ARG002
         try:
             peakList = DetectorPeakPredictorRecipe().executeRecipe(
                 Ingredients=self.prepPeakIngredients(ingredients),
-                PurgeDuplicates=ingredients.get("purge", True),
+                PurgeDuplicates=self.prepDetectorPeaksFlags["removeDuplicatePeaks"],
             )
             return pydantic.TypeAdapter(List[GroupPeakList]).validate_json(peakList)
         except (TypeError, AttributeError):

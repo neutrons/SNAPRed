@@ -3,13 +3,12 @@ import json
 import tempfile
 import time
 import unittest
-import unittest.mock as mock
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from random import randint
 from typing import Dict, List
-from unittest.mock import MagicMock, patch
+from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
@@ -22,12 +21,19 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
-from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
-from snapred.backend.dao.request.CreateCalibrationRecordRequest import CreateCalibrationRecordRequest
-from snapred.backend.dao.request.CreateIndexEntryRequest import CreateIndexEntryRequest
-from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
+from snapred.backend.dao.request import (
+    CalibrationAssessmentRequest,
+    CalibrationExportRequest,
+    CalibrationLoadAssessmentRequest,
+    CreateCalibrationRecordRequest,
+    CreateIndexEntryRequest,
+    DiffractionCalibrationRequest,
+    InitializeStateRequest,
+)
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.StateConfig import StateConfig
+from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -114,7 +120,7 @@ with mock.patch.dict(
         calibrationService.dataFactoryService.getCalibrationIndex = mock.Mock(
             return_value=IndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
         )
-        calibrationService.getCalibrationIndex(MagicMock(run=MagicMock(runNumber="123")))
+        calibrationService.getCalibrationIndex(mock.MagicMock(run=mock.MagicMock(runNumber="123")))
         assert calibrationService.dataFactoryService.getCalibrationIndex.called
 
 
@@ -230,18 +236,18 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 maskWorkspaceName=self.sampleMaskWS if maskWSName else "",
             )
 
-    @patch(thisService + "CalibrationMetricExtractionRecipe")
-    @patch(thisService + "FocusGroupMetric")
+    @mock.patch(thisService + "CalibrationMetricExtractionRecipe")
+    @mock.patch(thisService + "FocusGroupMetric")
     def test_collectMetrics(
         self,
         FocusGroupMetric,
         CalibrationMetricExtractionRecipe,
     ):
         # mock the inputs to the function
-        focussedData = MagicMock(spec_set=str)
-        focusGroup = MagicMock(spec=FocusGroup)
+        focussedData = mock.MagicMock(spec_set=str)
+        focusGroup = mock.MagicMock(spec=FocusGroup)
         focusGroup.name = "group1"
-        pixelGroup = MagicMock(spec_set=PixelGroup)
+        pixelGroup = mock.MagicMock(spec=PixelGroup, json=lambda: "I'm a little teapot")
 
         # mock external method calls
         self.instance.parseCalibrationMetricList = mock.Mock(
@@ -254,37 +260,46 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         metric = self.instance._collectMetrics(focussedData, focusGroup, pixelGroup)
 
         # Assert correct behavior
-        assert CalibrationMetricExtractionRecipe.called_once_with(
+        CalibrationMetricExtractionRecipe.return_value.executeRecipe.assert_called_once_with(
             InputWorkspace=focussedData,
-            PixelGroup=pixelGroup,
+            PixelGroup=pixelGroup.json(),
         )
-        assert self.instance.parseCalibrationMetricList.called_once_with(mockMetric)
-        assert FocusGroupMetric.called_once_with(
+        self.instance.parseCalibrationMetricList.assert_called_once_with(mockMetric)
+        FocusGroupMetric.assert_called_once_with(
             focusGroupName=focusGroup.name,
             calibrationMetric=mockMetric,  # NOTE this is because of above lambda
         )
         assert metric == FocusGroupMetric.return_value
 
-    @patch(thisService + "FitMultiplePeaksRecipe")
+    @mock.patch(thisService + "FarmFreshIngredients")
+    @mock.patch(thisService + "FitMultiplePeaksRecipe")
     def test_assessQuality(
         self,
         FitMultiplePeaksRecipe,
+        FarmFreshIngredients,
     ):
         # Mock input data
+        timestamp = time.time()
+        mockFarmFreshIngredients = mock.Mock(
+            spec=FarmFreshIngredients,
+            runNumber="12345",
+            useLiteMode=True,
+            timestamp=timestamp,
+        )
+        FarmFreshIngredients.return_value = mockFarmFreshIngredients
         fakeMetrics = DAOFactory.focusGroupCalibrationMetric_Column
-        time = 123.123
         expectedRecord = DAOFactory.calibrationRecord()
         expectedWorkspaces = [
-            wng.diffCalTimedMetric().runNumber(expectedRecord.runNumber).timestamp(time).metricName(metric).build()
+            wng.diffCalTimedMetric().runNumber(expectedRecord.runNumber).timestamp(timestamp).metricName(metric).build()
             for metric in ["sigma", "strain"]
         ]
 
         # Mock the necessary method calls
         self.instance.sousChef = SculleryBoy()
-        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="good/cif/path")
-        self.instance.dataFactoryService.createCalibrationRecord = MagicMock(return_value=expectedRecord)
-        self.instance.dataExportService.getUniqueTimestamp = MagicMock(return_value=time)
-        self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
+        self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="good/cif/path")
+        self.instance.dataFactoryService.createCalibrationRecord = mock.Mock(return_value=expectedRecord)
+        self.instance.dataExportService.getUniqueTimestamp = mock.Mock(return_value=timestamp)
+        self.instance._collectMetrics = mock.Mock(return_value=fakeMetrics)
 
         # Call the method to test
         request = CalibrationAssessmentRequest(
@@ -307,8 +322,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         response = self.instance.assessQuality(request)
 
         # Assert correct method calls
-        assert FitMultiplePeaksRecipe.called_once_with(self.instance.sousChef.prepPeakIngredients({}))
-        assert self.instance.dataFactoryService.getCifFilePath.called_once_with("biscuit")
+        FitMultiplePeaksRecipe.return_value.executeRecipe.assert_called_once_with(
+            InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT][0],
+            DetectorPeaks=self.instance.sousChef.prepDetectorPeaks(
+                FarmFreshIngredients.return_value,
+            ),
+        )
+        self.instance.dataFactoryService.getCifFilePath.assert_called_once_with("biscuit")
 
         # Assert the result is as expected
         assert response.model_dump() == {
@@ -374,7 +394,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     def test_load_quality_assessment_no_calibration_record_exception(self):
         with state_root_redirect(self.localDataService):
-            mockRequest = MagicMock(
+            mockRequest = mock.Mock(
                 runId=self.runNumber,
                 useLiteMode=True,
                 version=self.version,
@@ -385,7 +405,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             assert str(mockRequest.runId) in str(excinfo.value)
             assert str(mockRequest.version) in str(excinfo.value)
 
-    @patch(thisService + "CalibrationMetricsWorkspaceIngredients")
+    @mock.patch(thisService + "CalibrationMetricsWorkspaceIngredients")
     def test_load_quality_assessment_no_calibration_metrics_exception(
         self,
         mockCalibrationMetricsWorkspaceIngredients,
@@ -407,19 +427,25 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         path = Resource.getPath("outputs")
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpDir:
             calibRecord = DAOFactory.calibrationRecord()
-            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+            self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
-            self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpDir)
-            self.instance.groceryService.dataService.readCalibrationRecord = MagicMock()
-            self.instance.groceryService.fetchCalibrationWorkspaces = MagicMock()
-            self.instance.groceryService._createDiffcalTableWorkspaceName = MagicMock()
-            self.instance.groceryService.fetchGroceryDict = MagicMock()
+            self.instance.dataFactoryService.getCalibrationDataPath = mock.Mock(return_value=tmpDir)
+            self.instance.groceryService.dataService.readCalibrationRecord = mock.Mock()
+            self.instance.groceryService.fetchCalibrationWorkspaces = mock.Mock()
+            self.instance.groceryService._createDiffcalTableWorkspaceName = mock.Mock()
+            self.instance.groceryService.fetchGroceryDict = mock.Mock()
             self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
 
-            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
-            self.instance.groceryService._getCalibrationDataPath = MagicMock(return_value=tmpDir)
-            self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
+            self.instance.groceryService._getCalibrationDataPath = mock.Mock(return_value=tmpDir)
+            self.instance.groceryService._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+            mockRequest = mock.Mock(
+                spec=CalibrationLoadAssessmentRequest,
+                runId=calibRecord.runNumber,
+                useLiteMode=calibRecord.useLiteMode,
+                version=calibRecord.version,
+                checkExistent=False,
+            )
 
             # Load the assessment workspaces:
             self.instance.loadQualityAssessment(mockRequest)
@@ -430,7 +456,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                     if mtd.doesExist(ws):
                         DeleteWorkspace(Workspace=ws)
 
-            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=True)
+            mockRequest = mock.Mock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=True)
             with pytest.raises(RuntimeError) as excinfo:  # noqa: PT011
                 self.instance.loadQualityAssessment(mockRequest)
             assert "is already loaded" in str(excinfo.value)
@@ -454,7 +480,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 version=version,
                 checkExistent=False,
             )
-            self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
+            self.instance.groceryService._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
 
             # Load the assessment workspaces:
             self.instance.loadQualityAssessment(mockRequest)
@@ -483,13 +509,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.create_fake_diffcal_files(recordFilepath.parent, record.workspaces, version)
 
             # Call the method to test. Use a mocked run and a mocked version
-            mockRequest = MagicMock(
+            mockRequest = mock.Mock(
                 runId=record.runNumber,
                 useLiteMode=record.useLiteMode,
                 version=version,
                 checkExistent=False,
             )
-            self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
+            self.instance.groceryService._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
 
             self.instance.loadQualityAssessment(mockRequest)
 
@@ -513,10 +539,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_load_quality_assessment_no_units(self):
         calibRecord = DAOFactory.calibrationRecord(runNumber="57514", version=1)
         calibRecord.workspaces[wngt.DIFFCAL_OUTPUT] = ["_diffoc_057514_v0001"]  # NOTE no unit token
-        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
 
         # Call the method to test. Use a mocked run and a mocked version
-        mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+        mockRequest = mock.Mock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
         with pytest.raises(RuntimeError, match=r".*without a units token in its name.*"):
             self.instance.loadQualityAssessment(mockRequest)
 
@@ -534,8 +560,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockFetchGroceryDict = mock.Mock(return_value={})
         self.instance.groceryService.fetchGroceryDict = mockFetchGroceryDict
 
-        # Call the method to test. Use a mocked run and a mocked version
-        mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+        mockRequest = mock.Mock(
+            spec=CalibrationLoadAssessmentRequest,
+            runId=calibRecord.runNumber,
+            useLiteMode=calibRecord.useLiteMode,
+            version=calibRecord.version,
+            checkExistent=False,
+        )
         self.instance.loadQualityAssessment(mockRequest)
         calledWithDict = mockFetchGroceryDict.call_args[0][0]
         assert calledWithDict["diffCalOutput_0000"].unit == wng.Units.DSP
@@ -549,14 +580,19 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             "diffCalMask": ["_diffract_consts_mask_057514"],
             "rawVanadium": ["_unexpected_workspace_type"],
         }
-        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
 
-        # Call the method to test. Use a mocked run and a mocked version
-        mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+        mockRequest = mock.Mock(
+            spec=CalibrationLoadAssessmentRequest,
+            runId=calibRecord.runNumber,
+            useLiteMode=calibRecord.useLiteMode,
+            version=calibRecord.version,
+            checkExistent=False,
+        )
         with pytest.raises(RuntimeError, match=r".*not implemented: unable to load unexpected.*"):
             self.instance.loadQualityAssessment(mockRequest)
 
-    @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     def test_prepDiffractionCalibrationIngredients(self, FarmFreshIngredients):
         mockFF = mock.Mock()
         FarmFreshIngredients.return_value = mockFF
@@ -571,26 +607,53 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Perform assertions to check the result and method calls
         assert FarmFreshIngredients.call_count == 1
-        assert self.instance.dataFactoryService.getCifFilePath.called_once_with("cake_egg")
+        self.instance.dataFactoryService.getCifFilePath.assert_called_once_with("cake_egg")
         assert res == self.instance.sousChef.prepDiffractionCalibrationIngredients(mockFF)
 
     def test_fetchDiffractionCalibrationGroceries(self):
-        self.instance.groceryClerk = mock.Mock()
-        self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
+        self.instance.groceryClerk = mock.Mock(spec=GroceryListBuilder)
+
+        runNumber = "12345"
+        useLiteMode = True
+        focusGroup = FocusGroup(name="group1", definition="/any/path")
+        diffcalOutputName = wng.diffCalOutput().unit(wng.Units.DSP).runNumber(runNumber).group(focusGroup.name).build()
+        diagnosticWorkspaceName = (
+            wng.diffCalOutput().unit(wng.Units.DIAG).runNumber(runNumber).group(focusGroup.name).build()
+        )
+        calibrationTableName = wng.diffCalTable().runNumber(runNumber).build()
+        calibrationMaskName = wng.diffCalMask().runNumber(runNumber).build()
+
+        self.instance.groceryService.fetchGroceryDict = mock.Mock(
+            return_value={
+                "grocery1": "orange",
+                "outputWorkspace": diffcalOutputName,
+                "diagnosticWorkspace": diagnosticWorkspaceName,
+                "calibrationTable": calibrationTableName,
+                "maskWorkspace": calibrationMaskName,
+            }
+        )
 
         # Call the method with the provided parameters
-        request = mock.Mock(runNumber="12345", focusGroup=mock.Mock(name="group1"))
-        res = self.instance.fetchDiffractionCalibrationGroceries(request)
-
-        # Perform assertions to check the result and method calls
-        assert self.instance.groceryClerk.buildDict.call_count == 1
-        assert self.instance.groceryService.fetchGroceryDict.called_once_with(
-            self.instance.groceryClerk.buildDict.return_value
+        request = mock.Mock(
+            spec=DiffractionCalibrationRequest,
+            runNumber=runNumber,
+            useLiteMode=useLiteMode,
+            focusGroup=focusGroup,
         )
-        assert res == self.instance.groceryService.fetchGroceryDict.return_value
+        result = self.instance.fetchDiffractionCalibrationGroceries(request)
 
-    @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
-    @patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
+        assert self.instance.groceryClerk.buildDict.call_count == 1
+        self.instance.groceryService.fetchGroceryDict.assert_called_once_with(
+            self.instance.groceryClerk.buildDict.return_value,
+            outputWorkspace=diffcalOutputName,
+            diagnosticWorkspace=diagnosticWorkspaceName,
+            calibrationTable=calibrationTableName,
+            maskWorkspace=calibrationMaskName,
+        )
+        assert result == self.instance.groceryService.fetchGroceryDict.return_value
+
+    @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @mock.patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
     def test_diffractionCalibration(
         self,
         DiffractionCalibrationRecipe,
@@ -615,14 +678,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Perform assertions to check the result and method calls
         assert FarmFreshIngredients.call_count == 1
-        assert DiffractionCalibrationRecipe().executeRecipe.called_once_with(
+        DiffractionCalibrationRecipe().executeRecipe.assert_called_once_with(
             self.instance.sousChef.prepDiffractionCalibrationIngredients(FarmFreshIngredients()),
             self.instance.groceryService.fetchGroceryDict.return_value,
         )
         assert res == {"calibrationTable": "fake"}
 
-    @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
-    @patch(thisService + "FocusSpectraRecipe")
+    @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @mock.patch(thisService + "FocusSpectraRecipe")
     def test_focusSpectra_not_exist(
         self,
         FocusSpectraRecipe,
@@ -654,9 +717,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         groupingItem = self.instance.groceryClerk.build.return_value
         groupingWorkspace = self.instance.groceryService.fetchGroupingDefinition.return_value["workspace"]
         assert FarmFreshIngredients.call_count == 1
-        # assert self.instance.sousChef.prepPixelGroup.called_once_with(FarmFreshIngredients.return_value)
-        assert self.instance.groceryService.fetchGroupingDefinition.called_once_with(groupingItem)
-        assert FocusSpectraRecipe().executeRecipe.called_once_with(
+        self.instance.groceryService.fetchGroupingDefinition.assert_called_once_with(groupingItem)
+        FocusSpectraRecipe().executeRecipe.assert_called_once_with(
             InputWorkspace=request.inputWorkspace,
             GroupingWorkspace=groupingWorkspace,
             Ingredients=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
@@ -664,8 +726,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         assert res == (focusedWorkspace, groupingWorkspace)
 
-    @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
-    @patch(thisService + "FocusSpectraRecipe")
+    @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @mock.patch(thisService + "FocusSpectraRecipe")
     def test_focusSpectra_exists(self, FocusSpectraRecipe, FarmFreshIngredients):
         self.instance.sousChef = SculleryBoy()
 
@@ -691,13 +753,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         groupingItem = self.instance.groceryClerk.build.return_value
         groupingWorkspace = self.instance.groceryService.fetchGroupingDefinition.return_value["workspace"]
         assert FarmFreshIngredients.call_count == 1
-        assert self.instance.groceryService.fetchGroupingDefinition.called_once_with(groupingItem)
+        self.instance.groceryService.fetchGroupingDefinition.assert_called_once_with(groupingItem)
 
         # assert that the recipe is not called and the correct workspaces are returned
-        assert FocusSpectraRecipe().executeRecipe.call_count == 0
+        FocusSpectraRecipe().executeRecipe.assert_not_called()
         assert res == (focusedWorkspace, groupingWorkspace)
 
-    @patch(thisService + "FitMultiplePeaksRecipe")
+    @mock.patch(thisService + "FitMultiplePeaksRecipe")
     def test_fitPeaks(self, FitMultiplePeaksRecipe):
         request = mock.Mock()
         res = self.instance.fitPeaks(request)
