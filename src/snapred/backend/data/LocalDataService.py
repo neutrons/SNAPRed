@@ -502,8 +502,8 @@ class LocalDataService:
     ##### NORMALIZATION METHODS #####
 
     def normalizationExists(self, runId: str, useLiteMode: bool) -> bool:
-        version = self._getVersionFromNormalizationIndex(runId, useLiteMode)
-        return version is not None
+        record = self._getCurrentNormalizationRecord(runId, useLiteMode)
+        return record is not None
 
     @validate_call
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
@@ -584,8 +584,10 @@ class LocalDataService:
     ##### CALIBRATION METHODS #####
 
     def calibrationExists(self, runId: str, useLiteMode: bool) -> bool:
-        version = self._getVersionFromCalibrationIndex(runId, useLiteMode)
-        return version is not None
+        record = self._getCurrentCalibrationRecord(runId, useLiteMode)
+        if not record:
+            logger.info(f"Calibration record does not exist for run {runId}")
+        return record is not None
 
     @validate_call
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
@@ -915,8 +917,6 @@ class LocalDataService:
 
     @validate_call
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        if not self.calibrationExists(runId, useLiteMode):
-            raise RecoverableException.stateUninitialized(runId, useLiteMode)
         # check to see if such a folder exists, if not create it and initialize it
         calibrationStatePathGlob: str = str(self._constructCalibrationParametersFilePath(runId, useLiteMode, "*"))
 
@@ -933,7 +933,7 @@ class LocalDataService:
                 calibrationState = Calibration.model_validate_json(f.read())
 
         if calibrationState is None:
-            raise ValueError("calibrationState is None")
+            raise RecoverableException.stateUninitialized(runId, useLiteMode)
 
         return calibrationState
 
@@ -952,6 +952,9 @@ class LocalDataService:
         if latestFile:
             with open(latestFile, "r") as f:
                 normalizationState = Normalization.model_validate_json(f.read())
+
+        if normalizationState is None:
+            raise RecoverableException.stateUninitialized(runId, useLiteMode)
 
         return normalizationState
 
