@@ -266,6 +266,9 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepCrystallographicInfo = mock.Mock()
         self.instance.prepInstrumentState = mock.Mock()
         self.instance.prepPixelGroup = mock.Mock()
+        self.instance.prepCalibrantSample = mock.Mock()
+        calibrantSample = self.instance.prepCalibrantSample()
+        self.ingredients.peakIntensityThreshold = calibrantSample.peakIntensityFractionThreshold
 
         result = self.instance.prepPeakIngredients(self.ingredients)
 
@@ -276,6 +279,7 @@ class TestSousChef(unittest.TestCase):
             crystalInfo=self.instance.prepCrystallographicInfo.return_value,
             instrumentState=self.instance.prepInstrumentState.return_value,
             pixelGroup=self.instance.prepPixelGroup.return_value,
+            peakIntensityThreshold=calibrantSample.peakIntensityFractionThreshold,
         )
         assert result == PeakIngredients.return_value
 
@@ -387,7 +391,8 @@ class TestSousChef(unittest.TestCase):
         ingredients_.calibrantSamplePath = calibrationCalibrantSamplePath
         ingredients_.cifPath = self.instance.dataFactoryService.getCifFilePath.return_value
         # ... from normalization record:
-        ingredients_.peakIntensityThreshold = record.peakIntensityThreshold
+        calibrantSample = self.instance.prepCalibrantSample()
+        ingredients_.peakIntensityThreshold = calibrantSample.peakIntensityFractionThreshold
         result = self.instance.prepReductionIngredients(ingredients_)
 
         self.instance.prepManyPixelGroups.assert_called_once_with(ingredients_)
