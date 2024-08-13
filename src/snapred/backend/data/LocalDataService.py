@@ -501,10 +501,6 @@ class LocalDataService:
 
     ##### NORMALIZATION METHODS #####
 
-    def normalizationExists(self, runId: str, useLiteMode: bool) -> bool:
-        record = self._getCurrentNormalizationRecord(runId, useLiteMode)
-        return record is not None
-
     @validate_call
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         latestFile = ""
@@ -582,12 +578,6 @@ class LocalDataService:
         return record
 
     ##### CALIBRATION METHODS #####
-
-    def calibrationExists(self, runId: str, useLiteMode: bool) -> bool:
-        record = self._getCurrentCalibrationRecord(runId, useLiteMode)
-        if not record:
-            logger.info(f"Calibration record does not exist for run {runId}")
-        return record is not None
 
     @validate_call
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
