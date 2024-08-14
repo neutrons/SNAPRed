@@ -73,8 +73,8 @@ def testDiffCalMaskName():
         f"_diffract_consts_mask_{fRunNumber}_{fVersion}"
         == wng.diffCalMask().runNumber(runNumber).version(version).build()
     )
-    
-    
+
+
 def testDiffCalMetricsNames():
     assert (
         f"_calib_metrics_strain_{fRunNumber}" == wng.diffCalMetric().runNumber(runNumber).metricName("strain").build()

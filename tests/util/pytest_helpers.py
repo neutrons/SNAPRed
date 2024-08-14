@@ -85,7 +85,7 @@ def get_unique_timestamp():
 
     def _get_unique_timestamp() -> float:
         nonlocal _previousTimestamp
-        
+
         nextTimestamp = time.time()
         if _previousTimestamp is not None:
             # compare as `time.struct_time`
