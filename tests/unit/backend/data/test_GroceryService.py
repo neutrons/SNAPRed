@@ -287,10 +287,10 @@ class TestGroceryService(unittest.TestCase):
         """Test the creation of a plain nexus workspace name"""
         res = self.instance._createNeutronWorkspaceName(self.runNumber, False)
         fRunNumber = wnvf.formatRunNumber(self.runNumber)
-        assert res == f"tof_all_{fRunNumber}"
+        assert res == f"_tof_all_{fRunNumber}"
         # now use lite mode
         res = self.instance._createNeutronWorkspaceName(self.runNumber, True)
-        assert res == f"tof_all_lite_{fRunNumber}"
+        assert res == f"_tof_all_lite_{fRunNumber}"
 
     def test_neutron_workspacename_raw(self):
         """Test the creation of a raw nexus workspace name"""

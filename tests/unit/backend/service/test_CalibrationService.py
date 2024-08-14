@@ -1,5 +1,6 @@
 # ruff: noqa: E402, ARG002
 import tempfile
+import time
 import unittest
 import unittest.mock as mock
 from copy import deepcopy
@@ -15,7 +16,12 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
+from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
+from snapred.backend.dao.request import (
+    DiffractionCalibrationRequest,
+    FocusSpectraRequest,
+    InitializeStateRequest,
+)
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.meta.Config import Config
@@ -232,7 +238,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             calibrationRecord=CalibrationRecord.model_validate_json(
                 Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
             ),
-            timestamp="123",
+            timestamp=time.time(),
         ),
     )
     def test_assessQuality(
@@ -260,6 +266,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
 
         FarmFreshIngredients.return_value.get.return_value = True
+
+        # Retrieve ingredients for comparison:
+        ingredients = CalibrationMetricsWorkspaceIngredients()
 
         # Call the method to test
         request = CalibrationAssessmentRequest(
@@ -291,7 +300,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Assert expected calibration metric workspaces have been generated
         for metric in ["sigma", "strain"]:
-            wsName = wng.diffCalTimedMetric().runNumber("57514").timestamp("123").metricName(metric).build()
+            wsName = (
+                wng.diffCalTimedMetric().runNumber("57514").timestamp(ingredients.timestamp).metricName(metric).build()
+            )
             assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
 
     def test_load_quality_assessment_no_calibration_record_exception(self):
@@ -302,19 +313,25 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert str(mockRequest.runId) in str(excinfo.value)
         assert str(mockRequest.version) in str(excinfo.value)
 
-    @patch(thisService + "CalibrationMetricsWorkspaceIngredients", return_value=MagicMock())
+    @patch(thisService + "CalibrationMetricsWorkspaceIngredients")
     def test_load_quality_assessment_no_calibration_metrics_exception(
         self,
         mockCalibrationMetricsWorkspaceIngredients,
     ):
-        mockRequest = MagicMock(runId=self.runNumber, version=self.version, checkExistent=False)
-        calibRecord = CalibrationRecord.model_validate_json(
+        mockRequest = mock.Mock(runId=self.runNumber, version=self.version, checkExistent=False)
+        calibrationRecord = CalibrationRecord.model_validate_json(
             Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
         )
-        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
-        with pytest.raises(Exception) as excinfo:  # noqa: PT011
+        # Clear the input metrics list
+        calibrationRecord.focusGroupCalibrationMetrics.calibrationMetric = []
+        mockCalibrationMetricsWorkspaceIngredients.return_value = mock.Mock(
+            spec=CalibrationMetricsWorkspaceIngredients,
+            calibrationRecord=calibrationRecord,
+            timestamp=time.time(),
+        )
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibrationRecord)
+        with pytest.raises(Exception, match=r".*input table is empty.*"):
             self.instance.loadQualityAssessment(mockRequest)
-        assert "The input table is empty" in str(excinfo.value)
 
     def test_load_quality_assessment_check_existent_metrics(self):
         path = Resource.getPath("outputs")
@@ -483,7 +500,21 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.sousChef = mock.Mock(spec_set=SousChef)
 
         # Call the method with the provided parameters
-        request = mock.Mock(calibrantSamplePath="bundt/cake_egg.py")
+        request = mock.Mock(
+            spec=DiffractionCalibrationRequest,
+            runNumber="12345",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+            focusGroup=mock.Mock(name="groupName", definition="focusGroupDefinition"),
+            peakFunction="GAUSSIAN",
+            crystalDMin=0.001,
+            crystalDMax=10.0,
+            convergenceThreshold=0.1,
+            peakIntensityThreshold=0.00001,
+            nBinsAcrossPeakWidth=10,
+            fwhmMultipliers=[1.0, 1.0],
+            maxChiSq=100.0,
+        )
         res = self.instance.prepDiffractionCalibrationIngredients(request)
 
         # Perform assertions to check the result and method calls
@@ -496,7 +527,21 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
 
         # Call the method with the provided parameters
-        request = mock.Mock()
+        request = mock.Mock(
+            spec=DiffractionCalibrationRequest,
+            runNumber="12345",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+            focusGroup=mock.Mock(name="groupName", definition="focusGroupDefinition"),
+            peakFunction="GAUSSIAN",
+            crystalDMin=0.001,
+            crystalDMax=10.0,
+            convergenceThreshold=0.1,
+            peakIntensityThreshold=0.00001,
+            nBinsAcrossPeakWidth=10,
+            fwhmMultipliers=[1.0, 1.0],
+            maxChiSq=100.0,
+        )
         res = self.instance.fetchDiffractionCalibrationGroceries(request)
 
         # Perform assertions to check the result and method calls
@@ -523,7 +568,21 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
 
         # Call the method with the provided parameters
-        request = mock.Mock(calibrantSamplePath="bundt/cake_egg.py")
+        request = mock.Mock(
+            spec=DiffractionCalibrationRequest,
+            runNumber="12345",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+            focusGroup=mock.Mock(name="groupName", definition="focusGroupDefinition"),
+            peakFunction="GAUSSIAN",
+            crystalDMin=0.001,
+            crystalDMax=10.0,
+            convergenceThreshold=0.1,
+            peakIntensityThreshold=0.00001,
+            nBinsAcrossPeakWidth=10,
+            fwhmMultipliers=[1.0, 1.0],
+            maxChiSq=100.0,
+        )
         res = self.instance.diffractionCalibration(request)
 
         # Perform assertions to check the result and method calls
@@ -545,7 +604,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         FocusSpectraRecipe().executeRecipe.return_value = mock.Mock()
 
-        request = mock.Mock()
+        request = mock.Mock(
+            spec=FocusSpectraRequest,
+            runNumber="12345",
+            useLiteMode=True,
+            focusGroup=mock.Mock(name="groupName", definition="focusGroupDefinition"),
+            inputWorkspace="inputWS",
+            groupingWorkspace="groupingWS",
+            outputWorkspace="outputWS",
+        )
         self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
 
@@ -582,7 +649,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_focusSpectra_exists(self, FocusSpectraRecipe, FarmFreshIngredients):
         self.instance.sousChef = SculleryBoy()
 
-        request = mock.Mock()
+        request = mock.Mock(
+            spec=FocusSpectraRequest,
+            runNumber="12345",
+            useLiteMode=True,
+            focusGroup=mock.Mock(name="groupName", definition="focusGroupDefinition"),
+            inputWorkspace="inputWS",
+            groupingWorkspace="groupingWS",
+            outputWorkspace="outputWS",
+        )
         self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
 

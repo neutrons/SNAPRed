@@ -1,0 +1,967 @@
+{
+    "useLiteMode": true,
+    "runNumber": "57514",
+    "calibration": {
+        "runNumber": "57514",
+        "crystalInfo": {
+            "peaks": [
+                {
+                    "hkl": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "dSpacing": 3.13592994862768,
+                    "fSquared": 535.9619564273586,
+                    "multiplicity": 8
+                },
+                {
+                    "hkl": [
+                        2,
+                        2,
+                        0
+                    ],
+                    "dSpacing": 1.9203570608125202,
+                    "fSquared": 1023.9787120274582,
+                    "multiplicity": 12
+                },
+                {
+                    "hkl": [
+                        3,
+                        1,
+                        1
+                    ],
+                    "dSpacing": 1.6376860040951353,
+                    "fSquared": 498.1235946287523,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        3,
+                        3,
+                        1
+                    ],
+                    "dSpacing": 1.2460922059340045,
+                    "fSquared": 462.95658217953996,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        3,
+                        3,
+                        3
+                    ],
+                    "dSpacing": 1.0453099828758932,
+                    "fSquared": 430.2723245685628,
+                    "multiplicity": 8
+                },
+                {
+                    "hkl": [
+                        4,
+                        0,
+                        0
+                    ],
+                    "dSpacing": 1.3578975000000002,
+                    "fSquared": 951.6868701996577,
+                    "multiplicity": 6
+                },
+                {
+                    "hkl": [
+                        4,
+                        2,
+                        2
+                    ],
+                    "dSpacing": 1.108718666000307,
+                    "fSquared": 884.4987579059488,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        4,
+                        4,
+                        0
+                    ],
+                    "dSpacing": 0.9601785304062601,
+                    "fSquared": 822.0540571007734,
+                    "multiplicity": 12
+                },
+                {
+                    "hkl": [
+                        4,
+                        4,
+                        4
+                    ],
+                    "dSpacing": 0.78398248715692,
+                    "fSquared": 710.0790122848589,
+                    "multiplicity": 8
+                },
+                {
+                    "hkl": [
+                        5,
+                        1,
+                        1
+                    ],
+                    "dSpacing": 1.0453099828758932,
+                    "fSquared": 430.27232456856234,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        5,
+                        3,
+                        1
+                    ],
+                    "dSpacing": 0.9181062796881728,
+                    "fSquared": 399.8955418627943,
+                    "multiplicity": 48
+                },
+                {
+                    "hkl": [
+                        5,
+                        3,
+                        3
+                    ],
+                    "dSpacing": 0.8283097096328722,
+                    "fSquared": 371.6633287118501,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        5,
+                        5,
+                        1
+                    ],
+                    "dSpacing": 0.7605747301605699,
+                    "fSquared": 345.42428071520527,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        5,
+                        5,
+                        3
+                    ],
+                    "dSpacing": 0.7071327869943331,
+                    "fSquared": 321.0376824669837,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        5,
+                        5,
+                        5
+                    ],
+                    "dSpacing": 0.627185989725536,
+                    "fSquared": 277.3079440497553,
+                    "multiplicity": 8
+                },
+                {
+                    "hkl": [
+                        6,
+                        2,
+                        0
+                    ],
+                    "dSpacing": 0.8588097858096985,
+                    "fSquared": 764.0178878212722,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        6,
+                        4,
+                        2
+                    ],
+                    "dSpacing": 0.7258267444795525,
+                    "fSquared": 659.9481657756581,
+                    "multiplicity": 48
+                },
+                {
+                    "hkl": [
+                        6,
+                        6,
+                        0
+                    ],
+                    "dSpacing": 0.64011902027084,
+                    "fSquared": 570.054168172224,
+                    "multiplicity": 12
+                },
+                {
+                    "hkl": [
+                        6,
+                        6,
+                        4
+                    ],
+                    "dSpacing": 0.5790094394749851,
+                    "fSquared": 492.4049667879426,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        7,
+                        1,
+                        1
+                    ],
+                    "dSpacing": 0.7605747301605699,
+                    "fSquared": 345.4242807152059,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        7,
+                        3,
+                        1
+                    ],
+                    "dSpacing": 0.7071327869943332,
+                    "fSquared": 321.03768246698314,
+                    "multiplicity": 48
+                },
+                {
+                    "hkl": [
+                        7,
+                        3,
+                        3
+                    ],
+                    "dSpacing": 0.663574332271264,
+                    "fSquared": 298.37275292395174,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        7,
+                        5,
+                        1
+                    ],
+                    "dSpacing": 0.627185989725536,
+                    "fSquared": 277.30794404975575,
+                    "multiplicity": 48
+                },
+                {
+                    "hkl": [
+                        7,
+                        5,
+                        3
+                    ],
+                    "dSpacing": 0.5961944569174021,
+                    "fSquared": 257.73028897414855,
+                    "multiplicity": 48
+                },
+                {
+                    "hkl": [
+                        7,
+                        5,
+                        5
+                    ],
+                    "dSpacing": 0.5458953346983784,
+                    "fSquared": 222.6238864097245,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        7,
+                        7,
+                        1
+                    ],
+                    "dSpacing": 0.5458953346983784,
+                    "fSquared": 222.62388640972324,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        7,
+                        7,
+                        3
+                    ],
+                    "dSpacing": 0.5250916246535536,
+                    "fSquared": 206.90686944991165,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        8,
+                        0,
+                        0
+                    ],
+                    "dSpacing": 0.6789487500000001,
+                    "fSquared": 613.3565053686378,
+                    "multiplicity": 6
+                },
+                {
+                    "hkl": [
+                        8,
+                        2,
+                        2
+                    ],
+                    "dSpacing": 0.64011902027084,
+                    "fSquared": 570.054168172224,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        8,
+                        4,
+                        0
+                    ],
+                    "dSpacing": 0.6072702232954043,
+                    "fSquared": 529.8089313574962,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        8,
+                        4,
+                        4
+                    ],
+                    "dSpacing": 0.5543593330001535,
+                    "fSquared": 457.64168357107144,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        8,
+                        6,
+                        2
+                    ],
+                    "dSpacing": 0.5326112192276046,
+                    "fSquared": 425.33265232468636,
+                    "multiplicity": 48
+                },
+                {
+                    "hkl": [
+                        9,
+                        1,
+                        1
+                    ],
+                    "dSpacing": 0.5961944569174022,
+                    "fSquared": 257.7302889741486,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        9,
+                        3,
+                        1
+                    ],
+                    "dSpacing": 0.5693853436290405,
+                    "fSquared": 239.53479617150862,
+                    "multiplicity": 48
+                },
+                {
+                    "hkl": [
+                        9,
+                        3,
+                        3
+                    ],
+                    "dSpacing": 0.5458953346983784,
+                    "fSquared": 222.62388640972318,
+                    "multiplicity": 24
+                },
+                {
+                    "hkl": [
+                        9,
+                        5,
+                        1
+                    ],
+                    "dSpacing": 0.5250916246535536,
+                    "fSquared": 206.90686944991126,
+                    "multiplicity": 48
+                },
+                {
+                    "hkl": [
+                        9,
+                        5,
+                        3
+                    ],
+                    "dSpacing": 0.5064983791390006,
+                    "fSquared": 192.29945769059668,
+                    "multiplicity": 48
+                },
+                {
+                    "hkl": [
+                        10,
+                        2,
+                        0
+                    ],
+                    "dSpacing": 0.5326112192276046,
+                    "fSquared": 425.33265232468636,
+                    "multiplicity": 24
+                }
+            ]
+        },
+        "useLiteMode": true,
+        "calculationParameters": {
+            "instrumentState": {
+                "id": {
+                    "hex": "ab8704b0bc2a2342",
+                    "decodedKey": null
+                },
+                "instrumentConfig": {
+                    "version": "1.4",
+                    "facility": "SNS",
+                    "name": "SNAP",
+                    "nexusFileExtension": ".nxs.h5",
+                    "nexusFilePrefix": "SNAP_",
+                    "calibrationFileExtension": "json",
+                    "calibrationFilePrefix": "SNAPcalibLog",
+                    "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+                    "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+                    "sharedDirectory": "shared/",
+                    "nexusDirectory": "nexus/",
+                    "reducedDataDirectory": "shared/manualReduced/",
+                    "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+                    "bandwidth": 3.0,
+                    "maxBandwidth": 3.2,
+                    "L1": 15.0,
+                    "L2": 0.5,
+                    "delTOverT": 0.002,
+                    "delLOverL": 6.452e-05,
+                    "delThNoGuide": 0.0006667,
+                    "delThWithGuide": 0.0032,
+                    "width": 1600.0,
+                    "frequency": 60.4
+                },
+                "detectorState": {
+                    "arc": [
+                        -65.3,
+                        104.95
+                    ],
+                    "wav": 2.1,
+                    "freq": 60.0,
+                    "guideStat": 1,
+                    "lin": [
+                        0.045,
+                        0.043
+                    ]
+                },
+                "gsasParameters": {
+                    "alpha": 0.1,
+                    "beta": [
+                        0.02,
+                        0.05
+                    ]
+                },
+                "particleBounds": {
+                    "wavelength": {
+                        "minimum": 0.7,
+                        "maximum": 3.5
+                    },
+                    "tof": {
+                        "minimum": 2742.6,
+                        "maximum": 13713.0
+                    }
+                },
+                "defaultGroupingSliceValue": 5.0,
+                "fwhmMultipliers": {
+                    "left": 1.3,
+                    "right": 1.3
+                },
+                "peakTailCoefficient": 1.1
+            },
+            "seedRun": 57514,
+            "useLiteMode": true,
+            "creationDate": "2023-06-05T15:49:59.583421",
+            "name": "test",
+            "version": 1
+        },
+        "pixelGroups": [
+            {
+                "pixelGroupingParameters": {
+                    "0": {
+                        "groupID": 0,
+                        "isMasked": false,
+                        "L2": 10.0,
+                        "azimuth": 0.0,
+                        "twoTheta": 2.1108948177427838,
+                        "dResolution": {
+                            "minimum": 0.40224298673776404,
+                            "maximum": 2.0112149336888203
+                        },
+                        "dRelativeResolution": 0.002771822370612031
+                    },
+                    "1": {
+                        "groupID": 1,
+                        "isMasked": false,
+                        "L2": 10.0,
+                        "azimuth": 0.0,
+                        "twoTheta": 1.82310673131693,
+                        "dResolution": {
+                            "minimum": 0.44278229953817677,
+                            "maximum": 2.213911497690884
+                        },
+                        "dRelativeResolution": 0.003234525153614593
+                    },
+                    "2": {
+                        "groupID": 2,
+                        "isMasked": false,
+                        "L2": 10.0,
+                        "azimuth": 0.0,
+                        "twoTheta": 1.5352228379083572,
+                        "dResolution": {
+                            "minimum": 0.5040188478793922,
+                            "maximum": 2.5200942393969608
+                        },
+                        "dRelativeResolution": 0.004014748859873182
+                    },
+                    "3": {
+                        "groupID": 3,
+                        "isMasked": false,
+                        "L2": 10.0,
+                        "azimuth": 0.0,
+                        "twoTheta": 1.440276389170165,
+                        "dResolution": {
+                            "minimum": 0.530714277849788,
+                            "maximum": 2.6535713892489396
+                        },
+                        "dRelativeResolution": 0.004309856397320412
+                    },
+                    "4": {
+                        "groupID": 4,
+                        "isMasked": false,
+                        "L2": 10.0,
+                        "azimuth": 0.0,
+                        "twoTheta": 1.1543988461042238,
+                        "dResolution": {
+                            "minimum": 0.6414024711539658,
+                            "maximum": 3.207012355769829
+                        },
+                        "dRelativeResolution": 0.005408489642872038
+                    },
+                    "5": {
+                        "groupID": 5,
+                        "isMasked": false,
+                        "L2": 10.0,
+                        "azimuth": 0.0,
+                        "twoTheta": 0.8690010092470938,
+                        "dResolution": {
+                            "minimum": 0.831438096217031,
+                            "maximum": 4.157190481085156
+                        },
+                        "dRelativeResolution": 0.007548513084996265
+                    }
+                },
+                "nBinsAcrossPeakWidth": 10,
+                "focusGroup": {
+                    "name": "Column",
+                    "definition": ""
+                },
+                "timeOfFlight": {
+                    "minimum": 2742.6,
+                    "binWidth": 1.0,
+                    "maximum": 13713.0,
+                    "binningMode": 1
+                },
+                "binningMode": -1
+            },
+            {
+                "pixelGroupingParameters": {
+                    "0": {
+                        "groupID": 0,
+                        "isMasked": false,
+                        "L2": 10.0,
+                        "azimuth": 0.0,
+                        "twoTheta": 1.8230747956560218,
+                        "dResolution": {
+                            "minimum": 0.4427877783643468,
+                            "maximum": 2.2139388918217344
+                        },
+                        "dRelativeResolution": 0.003379514789208845
+                    },
+                    "1": {
+                        "groupID": 1,
+                        "isMasked": false,
+                        "L2": 10.0,
+                        "azimuth": 0.0,
+                        "twoTheta": 1.1545587481738246,
+                        "dResolution": {
+                            "minimum": 0.641323731469231,
+                            "maximum": 3.2066186573461555
+                        },
+                        "dRelativeResolution": 0.005910630879382727
+                    }
+                },
+                "nBinsAcrossPeakWidth": 10,
+                "focusGroup": {
+                    "name": "Bank",
+                    "definition": ""
+                },
+                "timeOfFlight": {
+                    "minimum": 2742.6,
+                    "binWidth": 1.0,
+                    "maximum": 13713.0,
+                    "binningMode": 1
+                },
+                "binningMode": -1
+            },
+            {
+                "pixelGroupingParameters": {
+                    "0": {
+                        "groupID": 0,
+                        "isMasked": false,
+                        "L2": 10.0,
+                        "azimuth": 0.0,
+                        "twoTheta": 1.4888167719149363,
+                        "dResolution": {
+                            "minimum": 0.5165770976155033,
+                            "maximum": 2.5828854880775167
+                        },
+                        "dRelativeResolution": 0.004814388725622084
+                    }
+                },
+                "nBinsAcrossPeakWidth": 10,
+                "focusGroup": {
+                    "name": "All",
+                    "definition": ""
+                },
+                "timeOfFlight": {
+                    "minimum": 2742.6,
+                    "binWidth": 1.0,
+                    "maximum": 13713.0,
+                    "binningMode": 1
+                },
+                "binningMode": -1
+            }
+        ],
+        "focusGroupCalibrationMetrics": {
+            "focusGroupName": "Column",
+            "calibrationMetric": [
+                {
+                    "sigmaAverage": 0.002517952998136214,
+                    "sigmaStandardDeviation": 8.78421857231147e-06,
+                    "strainAverage": 0.1515216185900471,
+                    "strainStandardDeviation": 0.013151225165758604,
+                    "twoThetaAverage": 2.110894794556694
+                },
+                {
+                    "sigmaAverage": 0.003176206362503416,
+                    "sigmaStandardDeviation": 1.4979115537326051e-05,
+                    "strainAverage": 0.11967297872183888,
+                    "strainStandardDeviation": 0.010670589671407833,
+                    "twoThetaAverage": 1.8231067294302894
+                },
+                {
+                    "sigmaAverage": 0.0020173258481625943,
+                    "sigmaStandardDeviation": 0.0011833789198171258,
+                    "strainAverage": 2.9472523966464146,
+                    "strainStandardDeviation": 1.7234726438089345,
+                    "twoThetaAverage": 1.5352228117682118
+                },
+                {
+                    "sigmaAverage": 0.0019681238298694874,
+                    "sigmaStandardDeviation": 0.0012719855843628899,
+                    "strainAverage": 2.97560355438957,
+                    "strainStandardDeviation": 1.7073076840182733,
+                    "twoThetaAverage": 1.440276416886144
+                },
+                {
+                    "sigmaAverage": 0.002792254157654066,
+                    "sigmaStandardDeviation": 0.0018788822023715769,
+                    "strainAverage": 2.6968257593469005,
+                    "strainStandardDeviation": 1.5521868842356747,
+                    "twoThetaAverage": 1.1543988480234637
+                },
+                {
+                    "sigmaAverage": 0.0035439650966407016,
+                    "sigmaStandardDeviation": 0.0026213074118901255,
+                    "strainAverage": 2.9942330576453013,
+                    "strainStandardDeviation": 1.7458314136551056,
+                    "twoThetaAverage": 0.8690010316506124
+                }
+            ]
+        },
+        "workspaces": {
+            "diffCalOutput": ["_dsp_column_057514_v0001"],
+            "diffCalDiagnostic": ["_diagnostic_column_057514_v0001"],
+            "diffCalTable": ["_diffract_consts_057514_v0001"],
+            "diffCalMask": ["_diffract_consts_mask_057514_v0001"]
+        },
+        "version": 1
+    },
+    "normalization": {
+        "runNumber": "57514",
+        "useLiteMode": true,
+        "backgroundRunNumber": "58813",
+        "smoothingParameter": 0.5,
+        "peakIntensityThreshold": 0.05,
+        "calculationParameters": {
+            "instrumentState": {
+                "id": {
+                    "hex": "ab8704b0bc2a2342",
+                    "decodedKey": null
+                },
+                "instrumentConfig": {
+                    "version": "1.4",
+                    "facility": "SNS",
+                    "name": "SNAP",
+                    "nexusFileExtension": ".nxs.h5",
+                    "nexusFilePrefix": "SNAP_",
+                    "calibrationFileExtension": "json",
+                    "calibrationFilePrefix": "SNAPcalibLog",
+                    "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+                    "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+                    "sharedDirectory": "shared/",
+                    "nexusDirectory": "nexus/",
+                    "reducedDataDirectory": "shared/manualReduced/",
+                    "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+                    "bandwidth": 3.0,
+                    "maxBandwidth": 3.2,
+                    "L1": 15.0,
+                    "L2": 0.5,
+                    "delTOverT": 0.002,
+                    "delLOverL": 6.452e-05,
+                    "delThNoGuide": 0.0006667,
+                    "delThWithGuide": 0.0032,
+                    "width": 1600.0,
+                    "frequency": 60.4
+                },
+                "detectorState": {
+                    "arc": [
+                        -65.3,
+                        104.95
+                    ],
+                    "wav": 2.1,
+                    "freq": 60.0,
+                    "guideStat": 1,
+                    "lin": [
+                        0.045,
+                        0.043
+                    ]
+                },
+                "gsasParameters": {
+                    "alpha": 0.1,
+                    "beta": [
+                        0.02,
+                        0.05
+                    ]
+                },
+                "particleBounds": {
+                    "wavelength": {
+                        "minimum": 0.7,
+                        "maximum": 3.5
+                    },
+                    "tof": {
+                        "minimum": 2742.6,
+                        "maximum": 13713.0
+                    }
+                },
+                "defaultGroupingSliceValue": 5.0,
+                "fwhmMultipliers": {
+                    "left": 1.3,
+                    "right": 1.3
+                },
+                "peakTailCoefficient": 1.1
+            },
+            "seedRun": 57514,
+            "useLiteMode": true,
+            "creationDate": "2023-06-05T15:49:59.583421",
+            "name": "test",
+            "version": 0
+        },
+        "workspaceNames": [
+            "fitted_strippedFocussedData_stripped_0",
+            "fitted_strippedFocussedData_stripped_1",
+            "fitted_strippedFocussedData_stripped_2"
+        ],
+        "version": 7,
+        "crystalDBounds": {"minimum": 0.4, "maximum": 100.0}
+    },
+    "calculationParameters": {
+        "instrumentState": {
+            "id": {
+                "hex": "ab8704b0bc2a2342",
+                "decodedKey": null
+            },
+            "instrumentConfig": {
+                "version": "1.4",
+                "facility": "SNS",
+                "name": "SNAP",
+                "nexusFileExtension": ".nxs.h5",
+                "nexusFilePrefix": "SNAP_",
+                "calibrationFileExtension": "json",
+                "calibrationFilePrefix": "SNAPcalibLog",
+                "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+                "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+                "sharedDirectory": "shared/",
+                "nexusDirectory": "nexus/",
+                "reducedDataDirectory": "shared/manualReduced/",
+                "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+                "bandwidth": 3.0,
+                "maxBandwidth": 3.2,
+                "L1": 15.0,
+                "L2": 0.5,
+                "delTOverT": 0.002,
+                "delLOverL": 6.452e-05,
+                "delThNoGuide": 0.0006667,
+                "delThWithGuide": 0.0032,
+                "width": 1600.0,
+                "frequency": 60.4
+            },
+            "detectorState": {
+                "arc": [
+                    -65.3,
+                    104.95
+                ],
+                "wav": 2.1,
+                "freq": 60.0,
+                "guideStat": 1,
+                "lin": [
+                    0.045,
+                    0.043
+                ]
+            },
+            "gsasParameters": {
+                "alpha": 0.1,
+                "beta": [
+                    0.02,
+                    0.05
+                ]
+            },
+            "particleBounds": {
+                "wavelength": {
+                    "minimum": 0.7,
+                    "maximum": 3.5
+                },
+                "tof": {
+                    "minimum": 2742.6,
+                    "maximum": 13713.0
+                }
+            },
+            "defaultGroupingSliceValue": 5.0,
+            "fwhmMultipliers": {
+                "left": 1.3,
+                "right": 1.3
+            },
+            "peakTailCoefficient": 1.1
+        },
+        "seedRun": 57514,
+        "useLiteMode": true,
+        "creationDate": "2023-06-05T15:49:59.583421",
+        "name": "test",
+        "version": 1
+    },
+    "pixelGroupingParameters": {
+        "Column": [
+            {
+                "groupID": 0,
+                "isMasked": false,
+                "L2": 10.0,
+                "azimuth": 0.0,
+                "twoTheta": 2.1108948177427838,
+                "dResolution": {
+                    "minimum": 0.40224298673776404,
+                    "maximum": 2.0112149336888203
+                },
+                "dRelativeResolution": 0.002771822370612031
+            },
+            {
+                "groupID": 1,
+                "isMasked": false,
+                "L2": 10.0,
+                "azimuth": 0.0,
+                "twoTheta": 1.82310673131693,
+                "dResolution": {
+                    "minimum": 0.44278229953817677,
+                    "maximum": 2.213911497690884
+                },
+                "dRelativeResolution": 0.003234525153614593
+            },
+            {
+                "groupID": 2,
+                "isMasked": false,
+                "L2": 10.0,
+                "azimuth": 0.0,
+                "twoTheta": 1.5352228379083572,
+                "dResolution": {
+                    "minimum": 0.5040188478793922,
+                    "maximum": 2.5200942393969608
+                },
+                "dRelativeResolution": 0.004014748859873182
+            },
+            {
+                "groupID": 3,
+                "isMasked": false,
+                "L2": 10.0,
+                "azimuth": 0.0,
+                "twoTheta": 1.440276389170165,
+                "dResolution": {
+                    "minimum": 0.530714277849788,
+                    "maximum": 2.6535713892489396
+                },
+                "dRelativeResolution": 0.004309856397320412
+            },
+            {
+                "groupID": 4,
+                "isMasked": false,
+                "L2": 10.0,
+                "azimuth": 0.0,
+                "twoTheta": 1.1543988461042238,
+                "dResolution": {
+                    "minimum": 0.6414024711539658,
+                    "maximum": 3.207012355769829
+                },
+                "dRelativeResolution": 0.005408489642872038
+            },
+            {
+                "groupID": 5,
+                "isMasked": false,
+                "L2": 10.0,
+                "azimuth": 0.0,
+                "twoTheta": 0.8690010092470938,
+                "dResolution": {
+                    "minimum": 0.831438096217031,
+                    "maximum": 4.157190481085156
+                },
+                "dRelativeResolution": 0.007548513084996265
+            }
+        ],
+        "Bank": [
+            {
+                "groupID": 0,
+                "isMasked": false,
+                "L2": 10.0,
+                "azimuth": 0.0,
+                "twoTheta": 1.8230747956560218,
+                "dResolution": {
+                    "minimum": 0.4427877783643468,
+                    "maximum": 2.2139388918217344
+                },
+                "dRelativeResolution": 0.003379514789208845
+            },
+            {
+                "groupID": 1,
+                "isMasked": false,
+                "L2": 10.0,
+                "azimuth": 0.0,
+                "twoTheta": 1.1545587481738246,
+                "dResolution": {
+                    "minimum": 0.641323731469231,
+                    "maximum": 3.2066186573461555
+                },
+                "dRelativeResolution": 0.005910630879382727
+            }
+        ],
+        "All": [
+            {
+                "groupID": 0,
+                "isMasked": false,
+                "L2": 10.0,
+                "azimuth": 0.0,
+                "twoTheta": 1.4888167719149363,
+                "dResolution": {
+                    "minimum": 0.5165770976155033,
+                    "maximum": 2.5828854880775167
+                },
+                "dRelativeResolution": 0.004814388725622084
+            }
+        ]
+    },
+    "timestamp": 1718384660.538665,
+    "stateId": {
+        "hex": "ab8704b0bc2a2342",
+        "decodedKey": null
+    },
+    "workspaceNames": [
+        "_reduced_dsp_column_057514_20240614T130420",
+        "_reduced_dsp_bank_057514_20240614T130420",
+        "_reduced_dsp_all_057514_20240614T130420",
+        "_pixelmask_057514_20240614T130420"
+    ]
+}

@@ -18,7 +18,9 @@ class TestSousChef(unittest.TestCase):
         self.ingredients = FarmFreshIngredients(
             runNumber="123",
             useLiteMode=True,
-            focusGroup={"name": "apple", "definition": "banana/coconut"},
+            focusGroups=[
+                {"name": "apple", "definition": "banana/coconut"},
+            ],
             calibrantSamplePath="path/to/sample.xyz",
             cifPath="path/to/cif",
             maxChiSq=100.0,
@@ -35,14 +37,12 @@ class TestSousChef(unittest.TestCase):
 
     def test_prepManyDetectorPeaks(self):
         self.instance.prepDetectorPeaks = mock.Mock()
-        self.ingredients.focusGroup = [self.ingredients.focusGroup]
         res = self.instance.prepManyDetectorPeaks(self.ingredients)
         assert res[0] == self.instance.prepDetectorPeaks.return_value
         assert self.instance.prepDetectorPeaks.called_once_with(self.ingredients, purgePeaks=False)
 
     def test_prepManyPixelGroups(self):
         self.instance.prepPixelGroup = mock.Mock()
-        self.ingredients.focusGroup = [self.ingredients.focusGroup]
         res = self.instance.prepManyPixelGroups(self.ingredients)
         assert res[0] == self.instance.prepPixelGroup.return_value
         assert self.instance.prepPixelGroup.called_once_with(self.ingredients)

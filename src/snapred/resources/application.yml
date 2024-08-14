@@ -107,19 +107,48 @@ mantid:
           input: "{unit},{runNumber},raw"
           table: "diffract_consts,{runNumber},{version}"
           output: "{unit},{group},{runNumber},{version}"
+          diagnostic: "diagnostic,{group},{runNumber},{version}"
           mask: "diffract_consts,mask,{runNumber},{version}"
           metric: "calib_metrics,{metricName},{runNumber},{version}"
           timedMetric: "calib_metrics,{metricName},{runNumber},{timestamp}"
         normCal:
           rawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
           focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
-          smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_cor,{version}"
+          smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_corr,{version}"
         reduction:
-          output: "reduced,{unit},{group},{runNumber},{version}"
-          output_group: "reduced,{stateId},{version}"
+          output: "reduced,{unit},{group},{runNumber},{timestamp}"
+          outputGroup: "reduced,{stateId},{timestamp}"
+          pixelMask: "pixelmask,{runNumber},{timestamp}"
+          # the user pixel mask name token is case sensitive
+          userPixelMask: "MaskWorkspace,{numberTag}"
+      formatter:
+        version:
+          # Zero fill to 4 digits.  Allow excess length.
+          workspace: "v{version:04d}"
+          path: "v_{version:04d}"
+        timestamp:
+          # Substitute timestamp-in-milliseconds if the keyword is present (e.g. "ts{timestamp}"),
+          #   otherwise use `datetime.strftime` format-string syntax.
+          workspace: "%Y-%m-%dT%H%M%S%z"
+          path: "%Y-%m-%dT%H%M%S%z"
+          path_regx: "([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})"
+        numberTag:
+          # No zero fill.  Will not be output if == 1.  Allow excess length.
+          workspace: "{number}"
+          path: "{number}"
+        runNumber:
+          # Zero fill to 6 digits.  Allow excess length.
+          workspace: "{runNumber:>06}"
+          path: "{runNumber:>06}"
+        stateId:
+          # Only use the first 8 characters from the SHA.
+          workspace: "{stateId:8.8}"
+          path: "{stateId}"
       units:
         dSpacing: DSP
         timeOfFlight: TOF
+        momentumTransfer: QSP
+        wavelength: LAM
         diagnostic: diagnostic
       groups:
         unfocussed: Unfoc
@@ -138,6 +167,12 @@ logging:
 
 samples:
   home: ${instrument.calibration.sample.home}
+
+version:
+  friendlyName:
+    error: "uninitialized"  # alphanumeric
+    default: 0 # alphanumeric
+  start: 1   # MUST be nonnegative integer
 
 cis_mode: false
 

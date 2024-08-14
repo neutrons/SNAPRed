@@ -35,9 +35,6 @@ class ReductionService(Service):
 
     """
 
-    dataFactoryService: "DataFactoryService"
-    dataExportService: "DataExportService"
-
     def __init__(self):
         super().__init__()
         self.dataFactoryService = DataFactoryService()
@@ -53,6 +50,7 @@ class ReductionService(Service):
         self.registerPath("save", self.saveReduction)
         self.registerPath("load", self.loadReduction)
         self.registerPath("hasState", self.hasState)
+        self.registerPath("getUniqueTimestamp", self.getUniqueTimestamp)
         return
 
     @staticmethod
@@ -60,16 +58,9 @@ class ReductionService(Service):
         return "reduction"
 
     @FromString
-    def fakeMethod(self):  # pragma: no cover
-        # NOTE this is not a real method
-        # it's here to be used in the registered paths above, for the moment
-        # when possible this and its registered paths should be deleted
-        raise NotImplementedError("You tried to access an invalid path in the reduction service.")
-
-    @FromString
     def reduction(self, request: ReductionRequest):
         """
-        Perform reduction on a list of run numbers, once for each grouping in this state.
+        Perform reduction on a single run number, once for each grouping in this state.
 
         :param request: a ReductionRequest object holding needed information
         :type request: ReductionRequest
@@ -143,6 +134,7 @@ class ReductionService(Service):
 
             - runNumber
             - lite mode flag
+            - timestamp
             - at least one focus group specified
             - a smoothing parameter
             - a calibrant sample path
@@ -156,7 +148,9 @@ class ReductionService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
-            focusGroup=request.focusGroups,
+            timestamp=request.timestamp,
+            focusGroups=request.focusGroups,
+            versions=request.versions,
         )
         return self.sousChef.prepReductionIngredients(farmFresh)
 
@@ -167,8 +161,7 @@ class ReductionService(Service):
 
             - neutron run data
             - diffcal tables
-            - pixel mask workspaces
-            - normalizations
+            - normalization
 
         :param request: a reduction request
         :type request: ReductionRequest
@@ -193,10 +186,10 @@ class ReductionService(Service):
     @FromString
     def saveReduction(self, request: ReductionExportRequest):
         record = request.reductionRecord
-        record = self.dataExportService.exportReductionRecord(record)
-        record = self.dataExportService.exportReductionData(record)
+        self.dataExportService.exportReductionRecord(record)
+        self.dataExportService.exportReductionData(record)
 
-    def loadReduction(self):
+    def loadReduction(self, *, timestamp: float, stateId: str):
         raise NotImplementedError("SNAPRed cannot load reductions")
 
     def hasState(self, runNumber: str):
@@ -204,6 +197,9 @@ class ReductionService(Service):
             logger.error(f"Invalid run number: {runNumber}")
             return False
         return self.dataFactoryService.checkCalibrationStateExists(runNumber)
+
+    def getUniqueTimestamp(self):
+        return self.dataExportService.getUniqueTimestamp()
 
     def _groupByStateId(self, requests: List[SNAPRequest]):
         stateIDs = {}

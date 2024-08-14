@@ -109,30 +109,59 @@ mantid:
       nameTemplate:
         delimiter: "_"
         template:
-          run: "{unit},{group},{lite},{auxiliary},{runNumber}"
+          run: "_{unit},{group},{lite},{auxiliary},{runNumber}"
           diffCal:
             input: "_{unit},{runNumber},raw"
             table: "_diffract_consts,{runNumber},{version}"
             output: "_{unit},{group},{runNumber},{version}"
+            diagnostic: "_diagnostic,{group},{runNumber},{version}"
             mask: "_diffract_consts,mask,{runNumber},{version}"
             metric: "_calib_metrics,{metricName},{runNumber},{version}"
             timedMetric: "_calib_metrics,{metricName},{runNumber},{timestamp}"
           normCal:
-            rawVanadium: "{unit},{group},raw_van_corr,{runNumber},{version}"
-            focusedRawVanadium: "{unit},{group},raw_van_corr,{runNumber},{version}"
-            smoothedFocusedRawVanadium: "{unit},{group},fitted_van_cor,{runNumber},{version}"
+            rawVanadium: "_{unit},{group},raw_van_corr,{runNumber},{version}"
+            focusedRawVanadium: "_{unit},{group},raw_van_corr,{runNumber},{version}"
+            smoothedFocusedRawVanadium: "_{unit},{group},fitted_van_corr,{runNumber},{version}"
           reduction:
-            output: "_reduced,{unit},{group},{runNumber},{version}"
-            outputGroup: "_reduced,{stateId},{version}"
+            output: "_reduced,{unit},{group},{runNumber},{timestamp}"
+            outputGroup: "_reduced,{stateId},{timestamp}"
+            pixelMask: "_pixelmask,{runNumber},{timestamp}"
+            # the user pixel mask name token is case sensitive
+            userPixelMask: "MaskWorkspace,{numberTag}"
+        formatter:
+          version:
+            # Zero fill to 4 digits.  Allow excess length.
+            workspace: "v{version:04d}"
+            path: "v_{version:04d}"
+          timestamp:
+            # Substitute timestamp-in-milliseconds if the keyword is present (e.g. "ts{timestamp}"),
+            #   otherwise use `datetime.strftime` format-string syntax.
+            workspace: "%Y-%m-%dT%H%M%S%z"
+            path: "%Y-%m-%dT%H%M%S%z"
+            path_regx: "([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})"
+          numberTag:
+            # No zero fill.  Will not be output if == 1.  Allow excess length.
+            workspace: "{number}"
+            path: "{number}"
+          runNumber:
+            # Zero fill to 6 digits.  Allow excess length.
+            workspace: "{runNumber:>06}"
+            path: "{runNumber:>06}"
+          stateId:
+            # Only use the first 8 characters from the SHA.
+            workspace: "{stateId:8.8}"
+            path: "{stateId}"
         units:
-          dSpacing: dsp
-          timeOfFlight: tof
+          dSpacing: DSP
+          timeOfFlight: TOF
+          momentumTransfer: QSP
+          wavelength: LAM
           diagnostic: diagnostic
         groups:
-          unfocussed: unfoc
-          all: all
-          column: column
-          bank: bank
+          unfocussed: Unfoc
+          all: All
+          column: Column
+          bank: Bank
 
 localdataservice:
   config:
@@ -161,6 +190,12 @@ test:
     home: ${test.persistence}/data/${test.config.name}
 
 cis_mode: false
+
+version:
+  friendlyName:
+    error: "uninitialized"
+    default: "0xF"  # this tests alphanumeric defaults
+  start: 0
 
 constants:
   millisecondsPerSecond: 1000

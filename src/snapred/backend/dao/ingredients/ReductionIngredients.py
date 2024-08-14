@@ -11,13 +11,15 @@ from snapred.backend.dao.ingredients.GenerateFocussedVanadiumIngredients import 
 from snapred.backend.dao.ingredients.PreprocessReductionIngredients import PreprocessReductionIngredients
 from snapred.backend.dao.ingredients.ReductionGroupProcessingIngredients import ReductionGroupProcessingIngredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 class ReductionIngredients(BaseModel):
     """Data class to hold the ingredients for each subrecipe of reduction and itself"""
 
-    maskList: List[WorkspaceName]
+    runNumber: str
+    useLiteMode: bool
+    timestamp: float
+
     pixelGroups: List[PixelGroup]
     detectorPeaksMany: List[List[GroupPeakList]]
 
@@ -31,7 +33,7 @@ class ReductionIngredients(BaseModel):
     #
     def preprocess(self) -> PreprocessReductionIngredients:
         # Note: at present, there are no required parameters.
-        return PreprocessReductionIngredients(maskList=None)
+        return PreprocessReductionIngredients()
 
     def groupProcessing(self, groupingIndex: int) -> ReductionGroupProcessingIngredients:
         return ReductionGroupProcessingIngredients(pixelGroup=self.pixelGroups[groupingIndex])
@@ -50,6 +52,4 @@ class ReductionIngredients(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
-        # required in order to use 'WorkspaceName'
-        arbitrary_types_allowed=True,
     )

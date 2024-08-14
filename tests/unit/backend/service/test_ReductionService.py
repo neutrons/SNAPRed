@@ -1,4 +1,3 @@
-# ruff: noqa: E402, ARG002
 import unittest
 import unittest.mock as mock
 from typing import List
@@ -9,11 +8,6 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
-
-# Mock out of scope modules before importing DataExportService
-
-localMock = mock.Mock()
-
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -26,6 +20,7 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.service.ReductionService import ReductionService
 from util.InstaEats import InstaEats
 from util.SculleryBoy import SculleryBoy
+from util.state_helpers import reduction_root_redirect
 
 thisService = "snapred.backend.service.ReductionService."
 
@@ -35,6 +30,7 @@ class TestReductionService(unittest.TestCase):
     def setUpClass(cls):
         cls.sculleryBoy = SculleryBoy()
         cls.instaEats = InstaEats()
+        cls.localDataService = cls.instaEats.dataService
 
     def clearoutWorkspaces(self) -> None:
         # Delete the workspaces created by loading
@@ -48,25 +44,24 @@ class TestReductionService(unittest.TestCase):
 
     def setUp(self):
         self.instance = ReductionService()
-        self.request = ReductionRequest(
-            runNumber="123",
-            useLiteMode=False,
-            focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
-        )
+
         ## Mock out the assistant services
         self.instance.sousChef = self.sculleryBoy
         self.instance.groceryService = self.instaEats
-        self.instance.dataFactoryService.lookupService = self.instaEats.dataService
-        self.instance.dataExportService.dataService = self.instaEats.dataService
+        self.instance.dataFactoryService.lookupService = self.localDataService
+        self.instance.dataExportService.dataService = self.localDataService
+
+        self.request = ReductionRequest(
+            runNumber="123",
+            useLiteMode=False,
+            timestamp=self.instance.getUniqueTimestamp(),
+            versions=(1, 2),
+            focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
+        )
 
     def test_name(self):
         ## this makes codecov happy
         assert "reduction" == self.instance.name()
-
-    def test_fakeMethod(self):
-        ## this makes codecov happy
-        with pytest.raises(NotImplementedError):
-            self.instance.fakeMethod()
 
     def test_loadAllGroupings(self):
         data = self.instance.loadAllGroupings(self.request.runNumber, self.request.useLiteMode)
@@ -109,17 +104,31 @@ class TestReductionService(unittest.TestCase):
         assert result.workspaces == mockReductionRecipe.return_value.cook.return_value["outputs"]
 
     def test_saveReduction(self):
-        # this method only needs to call the methods in the data service
-        # the corresponding methods are setup to add themselves to the list of run numbers
-        record = ReductionRecord.construct(runNumbers=["test"])
-        request = ReductionExportRequest.construct(reductionRecord=record)
-        self.instance.saveReduction(request)
-        assert record.runNumbers == ["test", "writeReductionRecord", "writeReductionData"]
+        with (
+            mock.patch.object(self.instance.dataExportService, "exportReductionRecord") as mockExportRecord,
+            mock.patch.object(self.instance.dataExportService, "exportReductionData") as mockExportData,
+        ):
+            runNumber = "123456"
+            useLiteMode = True
+            timestamp = self.instance.getUniqueTimestamp()
+            record = ReductionRecord.model_construct(
+                runNumber=runNumber,
+                useLiteMode=useLiteMode,
+                timestamp=timestamp,
+            )
+            request = ReductionExportRequest(reductionRecord=record)
+            with reduction_root_redirect(self.localDataService):
+                self.instance.saveReduction(request)
+                mockExportRecord.assert_called_once_with(record)
+                mockExportData.assert_called_once_with(record)
 
     def test_loadReduction(self):
         ## this makes codecov happy
         with pytest.raises(NotImplementedError):
-            self.instance.loadReduction()
+            self.instance.loadReduction(
+                stateId="babeeeee",
+                timestamp=self.instance.getUniqueTimestamp(),
+            )
 
     def test_hasState(self):
         assert self.instance.hasState("123456")

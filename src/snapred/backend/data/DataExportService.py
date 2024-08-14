@@ -1,5 +1,5 @@
+import time
 from pathlib import Path
-from typing import Optional
 
 from pydantic import validate_call
 
@@ -41,6 +41,9 @@ class DataExportService:
         fileName = Config[pre] + str(runNumber) + Config[ext]
         return Path(path, fileName)
 
+    def getUniqueTimestamp(self) -> time.struct_time:
+        return self.dataService.getUniqueTimestamp()
+
     ##### REDUCTION METHODS #####
 
     # NOTE will be added shortly
@@ -79,11 +82,11 @@ class DataExportService:
 
     ##### REDUCTION METHODS #####
 
-    def exportReductionRecord(self, record: ReductionRecord, version: Optional[int] = None) -> ReductionRecord:
-        return self.dataService.writeReductionRecord(record, version)
+    def exportReductionRecord(self, record: ReductionRecord):
+        self.dataService.writeReductionRecord(record)
 
     def exportReductionData(self, record: ReductionRecord):
-        return self.dataService.writeReductionData(record)
+        self.dataService.writeReductionData(record)
 
     ##### WORKSPACE METHODS #####
 

@@ -66,7 +66,7 @@ def test_state_root_override_enter(
         assert Path(stateRootPath) == Path(Config["instrument.calibration.powder.home"]) / stateId
         assert Path(stateRootPath).exists()
         assert Path(stateRootPath).joinpath("groupingMap.json").exists()
-        versionString = wnvf.fileVersion(VERSION_START)
+        versionString = wnvf.pathVersion(VERSION_START)
         assert (Path(stateRootPath) / "lite" / "diffraction" / versionString / "CalibrationParameters.json").exists()
 
 

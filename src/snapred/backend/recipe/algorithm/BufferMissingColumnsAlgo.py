@@ -1,5 +1,3 @@
-import time
-
 from mantid.api import AlgorithmFactory, ITableWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 
@@ -32,7 +30,7 @@ class BufferMissingColumnsAlgo(PythonAlgorithm):
 
         # create a whole new table workspace, because we can't obviously change the order
         # of columns in an existing one for whatever reason
-        tempTableName = f"{time.time()}_bufferMissingColumns_tempTable"
+        tempTableName = self.mantidSnapper.mtd.unique_name(suffix="bufferMissingColumns_tempTable")
         tempTable = self.mantidSnapper.CreateEmptyTableWorkspace(
             "Make temp workspace to copy to", OutputWorkspace=tempTableName
         )

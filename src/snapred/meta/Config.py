@@ -13,20 +13,19 @@ from snapred.meta.decorators.Singleton import Singleton
 
 
 def _find_root_dir():
-    ROOT_MODULE = None
+    try:
+        MODULE_ROOT = Path(sys.modules["snapred"].__file__).parent
 
-    # Using `"test" in env` here allows different versions of "[category]_test.yml" to be used for different
-    #  test categories: e.g. unit tests use "test.yml" but integration tests use "integration_test.yml".
-    env = os.environ.get("env")
-    if env and "test" in env and "conftest" in sys.modules:
-        ROOT_MODULE = sys.modules["conftest"].__file__
-    elif "snapred" in sys.modules:
-        ROOT_MODULE = sys.modules["snapred"].__file__
+        # Using `"test" in env` here allows different versions of "[category]_test.yml" to be used for different
+        #  test categories: e.g. unit tests use "test.yml" but integration tests use "integration_test.yml".
+        env = os.environ.get("env")
+        if env and "test" in env and "conftest" in sys.modules:
+            # WARNING: there are now multiple "conftest.py" at various levels in the test hierarchy.
+            MODULE_ROOT = MODULE_ROOT.parent.parent / "tests"
+    except Exception as e:
+        raise RuntimeError("Unable to determine SNAPRed-module root directory") from e
 
-    if ROOT_MODULE is None:
-        raise Exception("Unable to determine root directory")
-
-    return os.path.dirname(ROOT_MODULE)
+    return str(MODULE_ROOT)
 
 
 @Singleton
@@ -98,10 +97,15 @@ class _Config:
         # use refresh to do initial load, clearing shouldn't matter
         self.refresh("application.yml", True)
 
+        # ---------- SNAPRed-internal values: --------------------------
         # allow "resources" relative paths to be entered into the "yml"
         #   using "${module.root}"
         self._config["module"] = {}
         self._config["module"]["root"] = _find_root_dir()
+
+        self._config["version"] = self._config.get("version", {})
+        self._config["version"]["default"] = -1
+        # ---------- end: internal values: -----------------------------
 
         # see if user used environment injection to modify what is needed
         # this will get from the os environment or from the currently loaded one

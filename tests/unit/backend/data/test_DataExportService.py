@@ -37,6 +37,10 @@ class TestDataExportService(unittest.TestCase):
         self.instance.getFullLiteDataFilePath(mock.Mock())
         assert self.instance.dataService.getIPTS.called
 
+    def test_getUniqueTimestamp(self):
+        self.instance.getUniqueTimestamp()
+        assert self.instance.dataService.getUniqueTimestamp.called
+
     ##### TEST REDUCTION METHODS #####
 
     # NOTE will exist in future
