@@ -2242,6 +2242,13 @@ def test_readCalibrantSample():  # noqa: ARG001
     assert result.name == "NIST_640D"
 
 
+def test_readCalibrantSample_does_not_exist():  # noqa: ARG001
+    localDataService = LocalDataService()
+    filePath = "GarbagePath"
+    with pytest.raises(ValueError, match=f"The file '{filePath}' does not exist"):
+        localDataService.readCalibrantSample(filePath)
+
+
 @mock.patch("os.path.exists", return_value=True)
 def test_readCifFilePath(mock1):  # noqa: ARG001
     localDataService = LocalDataService()

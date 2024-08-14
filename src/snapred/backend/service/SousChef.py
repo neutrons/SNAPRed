@@ -290,6 +290,6 @@ class SousChef(Service):
             maxChiSq=ingredients.maxChiSq,
         )
 
-    def _getThresholdFromCalibrantSample(self, calibrantSamplePath: str):
+    def _getThresholdFromCalibrantSample(self, calibrantSamplePath: str) -> float:
         calibrantSample = self.prepCalibrantSample(calibrantSamplePath)
         return calibrantSample.peakIntensityFractionThreshold
