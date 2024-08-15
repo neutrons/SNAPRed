@@ -39,7 +39,7 @@ class TestSaveGroupingDefinition(unittest.TestCase):
             OutputWorkspace=cls.localIDFWorkspace,
             Filename=cls.localInstrumentFilename,
         )
-
+        cls.rtolValue = 1.0e-10
         # NOTE: the below do not need to match the actual grouping workspaces,
         #  and can be arbitary for these tests to still work
         cls.localReferenceWorkspace = {
@@ -221,7 +221,11 @@ class TestSaveGroupingDefinition(unittest.TestCase):
             assert loadingAlgo.execute()
 
             # retrieve the loaded workspace and compare it with the workspace created from the input grouping file
-            assert_wksp_almost_equal(loaded_ws_name, workspaceName)
+            assert_wksp_almost_equal(
+                loaded_ws_name,
+                workspaceName,
+                rtol=self.rtolValue,
+            )
 
         def test_local_from_groupingfile_test(self):
             groupingFile = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
@@ -273,6 +277,7 @@ class TestSaveGroupingDefinition(unittest.TestCase):
             assert_wksp_almost_equal(
                 loaded_ws_name,
                 self.localReferenceWorkspace["Natural"],
+                rtol=self.rtolValue,
             )
 
     def test_local_from_workspace_test_column(self):
@@ -281,6 +286,7 @@ class TestSaveGroupingDefinition(unittest.TestCase):
         assert_wksp_almost_equal(
             self.columnGroupingWorkspace,
             self.localReferenceWorkspace["Column"],
+            rtol=self.rtolValue,
         )
 
     def test_local_from_workspace_test_natural(self):
@@ -289,6 +295,7 @@ class TestSaveGroupingDefinition(unittest.TestCase):
         assert_wksp_almost_equal(
             self.columnGroupingWorkspace,
             self.localReferenceWorkspace["Natural"],
+            rtol=self.rtolValue,
         )
 
     ## REMOTE CHECKS WITH FULL INSTRUMENT
@@ -325,7 +332,11 @@ class TestSaveGroupingDefinition(unittest.TestCase):
 
             lnp_ws_name = "lnp_ws_name"
             original_ws = LoadNexusProcessed(Filename=groupingFile, OutputWorkspace=lnp_ws_name)
-            assert_wksp_almost_equal(original_ws, saved_and_loaded_ws)
+            assert_wksp_almost_equal(
+                original_ws,
+                saved_and_loaded_ws,
+                rtol=self.rtolValue,
+            )
 
         @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
         def test_with_xml_grouping_file(self):
@@ -358,7 +369,11 @@ class TestSaveGroupingDefinition(unittest.TestCase):
             ldgf_ws_name = "ldgf_ws_name"
             original_ws = LoadDetectorsGroupingFile(InputFile=groupingFile, OutputWorkspace=ldgf_ws_name)
 
-            assert_wksp_almost_equal(original_ws, saved_and_loaded_ws)
+            assert_wksp_almost_equal(
+                original_ws,
+                saved_and_loaded_ws,
+                rtol=self.rtolValue,
+            )
 
         @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
         def test_with_grouping_workspace(self):
@@ -391,4 +406,8 @@ class TestSaveGroupingDefinition(unittest.TestCase):
 
             # retrieve the loaded workspace and compare it with the workspace created from the input grouping file
             saved_and_loaded_ws = mtd[loaded_ws_name]
-            assert_wksp_almost_equal(original_ws, saved_and_loaded_ws)
+            assert_wksp_almost_equal(
+                original_ws,
+                saved_and_loaded_ws,
+                rtol=self.rtolValue,
+            )

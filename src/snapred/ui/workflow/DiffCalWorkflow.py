@@ -62,6 +62,8 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.groupingMap = self.defaultGroupingMap
         self.focusGroups = self.groupingMap.lite
 
+        self.addResetHook(self._resetSaveView)
+
         self._requestView = DiffCalRequestView(
             samples=self.samplePaths,
             groups=list(self.focusGroups.keys()),
@@ -397,6 +399,10 @@ class DiffCalWorkflow(WorkflowImplementer):
             wsKey: [self.renameTemplate.format(workspaceName=wsName, iteration=iteration) for wsName in wsNames]
             for wsKey, wsNames in self.calibrationRecord.workspaces.items()
         }
+
+    def _resetSaveView(self):
+        self._saveView.hideIterationDropdown()
+        self._saveView.resetIterationDropdown()
 
     @Slot(WorkflowPresenter, result=SNAPResponse)
     def _saveCalibration(self, workflowPresenter):

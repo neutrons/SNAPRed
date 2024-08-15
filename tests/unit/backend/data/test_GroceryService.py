@@ -70,6 +70,8 @@ class TestGroceryService(unittest.TestCase):
         # create some sample data
         cls.sampleWS = "_grocery_to_fetch"
 
+        cls.rtolValue = 1.0e-10
+
         CreateWorkspace(
             OutputWorkspace=cls.sampleWS,
             DataX=[0.5, 1.5] * 16,
@@ -452,6 +454,7 @@ class TestGroceryService(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=wsname1,
             Workspace2=wsname2,
+            rtol=self.rtolValue,
         )
 
     def test_updateNeutronCacheFromADS_noop(self):
@@ -724,6 +727,7 @@ class TestGroceryService(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
+            rtol=self.rtolValue,
         )
 
         # make sure it won't load same workspace name again
@@ -739,6 +743,7 @@ class TestGroceryService(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
+            rtol=self.rtolValue,
         )
 
     def test_fetch_failed(self):
@@ -787,6 +792,7 @@ class TestGroceryService(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
+            rtol=self.rtolValue,
         )
 
         # test that it will use a raw workspace if one exists
@@ -810,6 +816,7 @@ class TestGroceryService(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
+            rtol=self.rtolValue,
         )
 
         # test calling with Lite data, that it will call to lite service
@@ -862,6 +869,7 @@ class TestGroceryService(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=workspaceNameCopy1,
+            rtol=self.rtolValue,
         )
 
         # run with a raw workspace in cache -- it will copy it
@@ -877,6 +885,7 @@ class TestGroceryService(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=workspaceNameCopy2,
+            rtol=self.rtolValue,
         )
 
     def test_fetch_cached_lite(self):
