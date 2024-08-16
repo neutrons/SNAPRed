@@ -1,4 +1,4 @@
-from typing import List
+from typing import Callable, List
 
 from qtpy.QtCore import QObject, Signal
 
@@ -52,7 +52,7 @@ class WorkflowImplementer(QObject):
 
         self.resetHooks = []
 
-    def addResetHook(self, hook: callable[[], None]):
+    def addResetHook(self, hook: Callable[[], None]):
         self.resetHooks.append(hook)
 
     def iterate(self, workflowPresenter):
