@@ -1,4 +1,4 @@
-from typing import List
+from typing import Callable, List
 
 from qtpy.QtCore import QObject, Signal
 
@@ -50,6 +50,11 @@ class WorkflowImplementer(QObject):
         self.continueAnywayFlags = ContinueWarning.Type.UNSET
         self.responseHandler = SNAPResponseHandler(self.parent)
 
+        self.resetHooks = []
+
+    def addResetHook(self, hook: Callable[[], None]):
+        self.resetHooks.append(hook)
+
     def iterate(self, workflowPresenter):
         # rename output workspaces
         payload = RenameWorkspacesFromTemplateRequest(
@@ -91,6 +96,9 @@ class WorkflowImplementer(QObject):
         self.outputs = []
         self.collectedOutputs = []
 
+        for hook in self.resetHooks:
+            hook()
+
     def _clearWorkspaces(self, *, exclude: List[str], clearCachedWorkspaces: bool):
         # Always exclude any external workspaces.
         exclude_ = set(self.externalWorkspaces)
@@ -98,6 +106,10 @@ class WorkflowImplementer(QObject):
         payload = ClearWorkspacesRequest(exclude=list(exclude_), clearCache=clearCachedWorkspaces)
         response = self.request(path="workspace/clear", payload=payload.json())
         return response
+
+    def complete(self):
+        for hook in self.resetHooks:
+            hook()
 
     def _request(self, request: SNAPRequest):
         response = self.interfaceController.executeRequest(request)

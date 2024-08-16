@@ -74,7 +74,7 @@ class DiffCalSaveView(QWidget):
         self.layout.addWidget(self.iterationWidget)
 
     def setIterationDropdown(self, iterations):
-        self.iterationDropdown.clear()
+        self.resetIterationDropdown()
         self.iterationDropdown.addItems(iterations)
         self.iterationDropdown.setItemText(0, self.currentIterationText)
 
@@ -84,3 +84,9 @@ class DiffCalSaveView(QWidget):
         if self.fieldComments.text() == "":
             raise ValueError("You must add comments")
         return True
+
+    def hideIterationDropdown(self):
+        self.iterationWidget.setVisible(False)
+
+    def resetIterationDropdown(self):
+        self.iterationDropdown.clear()

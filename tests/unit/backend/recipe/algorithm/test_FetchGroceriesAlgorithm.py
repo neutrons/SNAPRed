@@ -39,6 +39,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         cls.filepath = Resource.getPath(f"inputs/test_{cls.runNumber}_fetchgroceriesalgo.nxs")
         cls.instrumentFilepath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.fetchedWS = f"_{cls.runNumber}_fetched"
+        cls.rtolValue = 1.0e-10
         # create some sample data
         cls.sampleWS = f"_{cls.runNumber}_grocery_to_fetch"
         # create some sample data
@@ -159,6 +160,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.fetchedWS,
             Workspace2=self.sampleWS,
+            rtol=self.rtolValue,
         )
         assert "LoadNexusProcessed" == algo.getPropertyValue("LoaderType")
 
@@ -173,6 +175,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.fetchedWS,
             Workspace2=self.sampleWS,
+            rtol=self.rtolValue,
         )
         assert "LoadNexus" == algo.getPropertyValue("LoaderType")
 
@@ -196,6 +199,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=self.fetchedWS,
             Workspace2=self.sampleWS,
+            rtol=self.rtolValue,
         )
         assert "LoadNexusProcessed" == algo.getPropertyValue("LoaderType")
 
@@ -219,6 +223,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=f"_{self.runNumber}_grouping_file",
             Workspace2=f"_{self.runNumber}_grouping_name",
+            rtol=self.rtolValue,
         )
         algo.setProperty("InstrumentName", "")
 
@@ -228,6 +233,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=f"_{self.runNumber}_grouping_file",
             Workspace2=f"_{self.runNumber}_grouping_donor",
+            rtol=self.rtolValue,
         )
 
     def test_loadGroupingTwice(self):
