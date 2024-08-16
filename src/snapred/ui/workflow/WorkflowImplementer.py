@@ -52,7 +52,7 @@ class WorkflowImplementer(QObject):
 
         self.resetHooks = []
 
-    def addResetHook(self, hook):
+    def addResetHook(self, hook: callable[[], None]):
         self.resetHooks.append(hook)
 
     def iterate(self, workflowPresenter):
