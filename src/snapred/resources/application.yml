@@ -167,7 +167,7 @@ logging:
       format: 'MANTID %(levelname)-8s - %(asctime)s - %(message)s'
     file:
       level: "INFO"
-      format: ${logging.SNAP.format}
+      format: ${logging.SNAP.stream.format}
       output: "mantidlog.txt"
   SNAP:
     stream:
