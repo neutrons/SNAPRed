@@ -168,11 +168,18 @@ localdataservice:
 
 logging:
   # logging.NOTSET: 0, logging.DEBUG: 10, logging.INFO: 20, logging:WARNING: 30, logging.ERROR: 40, logging.CRITICAL: 50
-  level:  40
   SNAP:
-    format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
+    stream:
+      level: 40
+      format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
   mantid:
-    format: '%Y-%m-%d %H:%M:%S,%i - %p - %s - %t'
+    stream:
+      level: 40
+      format: 'MANTID %(levelname)s - %(message)s'
+    file:
+      level: 40
+      format: 'MANTID FILE %(levelname)s - %(message)s'
+      output: '/dev/null'
 
 samples:
   home: ${instrument.calibration.sample.home}

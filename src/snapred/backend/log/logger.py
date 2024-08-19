@@ -18,15 +18,17 @@ class CustomFormatter(logging.Formatter):
     _bold_red = "\x1b[31;1m"
     _reset = "\x1b[0m"
     _host = socket.gethostname().split(".")[0]
-    _format = _host + " - " + Config["logging.SNAP.format"]
 
-    FORMATS = {
-        logging.DEBUG: _grey + _format + _reset,
-        logging.INFO: _grey + _format + _reset,
-        logging.WARNING: _yellow + _format + _reset,
-        logging.ERROR: _red + _format + _reset,
-        logging.CRITICAL: _bold_red + _format + _reset,
-    }
+    def __init__(self, name="SNAP.stream"):
+        self._format = self._host + " - " + Config[f"logging.{name}.format"]
+
+        self.FORMATS = {
+            logging.DEBUG: self._grey + self._format + self._reset,
+            logging.INFO: self._grey + self._format + self._reset,
+            logging.WARNING: self._yellow + self._format + self._reset,
+            logging.ERROR: self._red + self._format + self._reset,
+            logging.CRITICAL: self._bold_red + self._format + self._reset,
+        }
 
     def _colorCodeFormat(self, rawFormat):
         fields = rawFormat.split("-")
@@ -44,13 +46,10 @@ class CustomFormatter(logging.Formatter):
 
 @Singleton
 class _SnapRedLogger:
-    _level = Config["logging.level"]
+    _level = Config["logging.SNAP.stream.level"]
     _warnings = []
 
     def __init__(self):
-        # Configure Mantid to send messages to Python
-        log_to_python()
-        self.getLogger("Mantid")
         self.resetProgress(0, 1.0, 100)
 
     def _setFormatter(self, logger):
@@ -97,4 +96,34 @@ class _SnapRedLogger:
         return logger
 
 
+@Singleton
+class _MantidLogger:
+    _streamlevel = Config["logging.mantid.stream.level"]
+    _filelevel = Config["logging.mantid.file.level"]
+    _outputfile = Config["logging.mantid.file.output"]
+
+    def __init__(self):
+        # Configure Mantid to send messages to Python
+        log_to_python()
+        logger = logging.getLogger("Mantid")
+        # NOTE it is necessary to set the log to a nonzero level before adding handlers
+        logger.setLevel(logging.DEBUG)
+
+        # the stream handler will print alongside the SNAPRed logs
+        ch = logging.StreamHandler(sys.stdout)
+        streamformatter = CustomFormatter("mantid.stream")
+        ch.setLevel(self._streamlevel)
+        ch.setFormatter(streamformatter)
+
+        # the file handler will print to an external file
+        file = logging.FileHandler(self._outputfile, "w")
+        fileformatter = CustomFormatter("mantid.file")
+        file.setLevel(self._filelevel)
+        file.setFormatter(fileformatter)
+
+        logger.addHandler(file)
+        logger.addHandler(ch)
+
+
+mantidLogger = _MantidLogger()
 snapredLogger = _SnapRedLogger()
