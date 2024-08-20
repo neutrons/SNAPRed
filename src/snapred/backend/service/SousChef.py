@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -62,6 +63,8 @@ class SousChef(Service):
         calibration.calibrantSamplePath = ingredients.calibrantSamplePath
         if ingredients.calibrantSamplePath is not None:
             calibration.peakIntensityThreshold = self._getThresholdFromCalibrantSample(ingredients.calibrantSamplePath)
+        else:
+            calibration.peakIntensityThreshold = Config["constants.PeakIntensityFractionThreshold"]
         calibration.instrumentState.fwhmMultipliers = ingredients.fwhmMultipliers
         return calibration
 
@@ -292,5 +295,8 @@ class SousChef(Service):
         )
 
     def _getThresholdFromCalibrantSample(self, calibrantSamplePath: str) -> float:
-        calibrantSample = self.prepCalibrantSample(calibrantSamplePath)
-        return calibrantSample.peakIntensityFractionThreshold
+        if not os.path.exists(calibrantSamplePath):
+            return Config["constants.PeakIntensityFractionThreshold"]
+        else:
+            calibrantSample = self.prepCalibrantSample(calibrantSamplePath)
+            return calibrantSample.peakIntensityFractionThreshold

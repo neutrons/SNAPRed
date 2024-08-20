@@ -391,8 +391,9 @@ class TestSousChef(unittest.TestCase):
         ingredients_.calibrantSamplePath = calibrationCalibrantSamplePath
         ingredients_.cifPath = self.instance.dataFactoryService.getCifFilePath.return_value
         # ... from normalization record:
-        calibrantSample = self.instance.prepCalibrantSample()
-        ingredients_.peakIntensityThreshold = calibrantSample.peakIntensityFractionThreshold
+        ingredients_.peakIntensityThreshold = self.instance._getThresholdFromCalibrantSample(
+            "calibrationCalibrantSamplePath"
+        )
         result = self.instance.prepReductionIngredients(ingredients_)
 
         self.instance.prepManyPixelGroups.assert_called_once_with(ingredients_)
