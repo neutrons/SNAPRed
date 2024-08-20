@@ -467,3 +467,12 @@ class TestSousChef(unittest.TestCase):
             self.instance._pullCalibrationRecordFFI.return_value
         )
         self.instance._pullCalibrationRecordFFI.assert_called_once_with(self.ingredients, "12345", True)
+
+    @mock.patch("os.path.exists", return_value=True)
+    def test__getThresholdFromCalibrantSample(self, mockOS):  # noqa: ARG002
+        self.instance.prepCalibrantSample = mock.Mock()
+        calibrantSample = self.instance.prepCalibrantSample()
+        calibrantSample.peakIntensityFractionThreshold = mock.Mock()
+        path = self.ingredients.calibrantSamplePath
+        result = self.instance._getThresholdFromCalibrantSample(path)
+        assert result == calibrantSample.peakIntensityFractionThreshold
