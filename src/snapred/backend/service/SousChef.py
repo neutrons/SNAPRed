@@ -61,10 +61,7 @@ class SousChef(Service):
     def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
         calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber, ingredients.useLiteMode)
         calibration.calibrantSamplePath = ingredients.calibrantSamplePath
-        if ingredients.calibrantSamplePath is not None:
-            calibration.peakIntensityThreshold = self._getThresholdFromCalibrantSample(ingredients.calibrantSamplePath)
-        else:
-            calibration.peakIntensityThreshold = Config["constants.PeakIntensityFractionThreshold"]
+        calibration.peakIntensityThreshold = self._getThresholdFromCalibrantSample(ingredients.calibrantSamplePath)
         calibration.instrumentState.fwhmMultipliers = ingredients.fwhmMultipliers
         return calibration
 
