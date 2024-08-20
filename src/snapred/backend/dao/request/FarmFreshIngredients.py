@@ -50,7 +50,7 @@ class FarmFreshIngredients(BaseModel):
     ## the below are not-so-fresh, being fiddly optional parameters with defaults
     convergenceThreshold: float = Config["calibration.diffraction.convergenceThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
-    peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
+    peakIntensityThreshold: Optional[float] = None
     peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
     maxOffset: float = Config["calibration.diffraction.maximumOffset"]
     crystalDBounds: Limit[float] = Limit(

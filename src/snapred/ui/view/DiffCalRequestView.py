@@ -26,7 +26,6 @@ class DiffCalRequestView(BackendRequestView):
         self.runNumberField = self._labeledField("Run Number")
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
         self.fieldConvergenceThreshold = self._labeledField("Convergence Threshold")
-        self.fieldPeakIntensityThreshold = self._labeledField("Peak Intensity Threshold")
         self.fieldNBinsAcrossPeakWidth = self._labeledField("Bins Across Peak Width")
 
         # drop downs
@@ -42,7 +41,6 @@ class DiffCalRequestView(BackendRequestView):
         self.layout.addWidget(self.runNumberField, 0, 0)
         self.layout.addWidget(self.litemodeToggle, 0, 1)
         self.layout.addWidget(self.fieldConvergenceThreshold, 1, 0)
-        self.layout.addWidget(self.fieldPeakIntensityThreshold, 1, 1)
         self.layout.addWidget(self.fieldNBinsAcrossPeakWidth, 1, 2)
         self.layout.addWidget(self.sampleDropdown, 2, 0)
         self.layout.addWidget(self.groupingFileDropdown, 2, 1)

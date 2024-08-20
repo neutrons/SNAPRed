@@ -41,7 +41,7 @@ from snapred.backend.dao.state import (
     GroupingMap,
     InstrumentState,
 )
-from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
+from snapred.backend.dao.state.CalibrantSample import CalibrantSample
 from snapred.backend.data.Indexer import Indexer, IndexerType
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.backend.error.RecoverableException import RecoverableException
@@ -677,7 +677,7 @@ class LocalDataService:
         sampleFiles.sort()
         return sampleFiles
 
-    def writeCalibrantSample(self, sample: CalibrantSamples):
+    def writeCalibrantSample(self, sample: CalibrantSample):
         samplePath: str = Config["samples.home"]
         fileName: str = sample.name + "_" + sample.unique_id
         filePath = os.path.join(samplePath, fileName) + ".json"
@@ -695,11 +695,7 @@ class LocalDataService:
                     "Can't specify both mass-density and packing fraction for single-element materials"
                 )  # noqa: F821
             del sampleJson["material"]["packingFraction"]
-            for atom in sampleJson["crystallography"]["atoms"]:
-                atom["symbol"] = atom.pop("atom_type")
-                atom["coordinates"] = atom.pop("atom_coordinates")
-                atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
-            sample = CalibrantSamples.model_validate_json(json.dumps(sampleJson))
+            sample = CalibrantSample.model_validate_json(json.dumps(sampleJson))
             return sample
 
     def readCifFilePath(self, sampleId: str):

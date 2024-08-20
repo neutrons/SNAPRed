@@ -39,11 +39,10 @@ class NormalizationTweakPeakView(BackendRequestView):
 
     XTAL_DMIN = Config["constants.CrystallographicInfo.crystalDMin"]
     XTAL_DMAX = Config["constants.CrystallographicInfo.crystalDMax"]
-    PEAK_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
 
     signalRunNumberUpdate = Signal(str)
     signalBackgroundRunNumberUpdate = Signal(str)
-    signalValueChanged = Signal(int, float, float, float, float)
+    signalValueChanged = Signal(int, float, float, float)
     signalUpdateRecalculationButton = Signal(bool)
     signalUpdateFields = Signal(int, int, float)
     signalPopulateGroupingDropdown = Signal(list)
@@ -75,12 +74,10 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.smoothingSlider = self._labeledField("Smoothing", SmoothingSlider())
         self.fieldXtalDMin = self._labeledField("xtal dMin", QLineEdit(str(self.XTAL_DMIN)))
         self.fieldXtalDMax = self._labeledField("xtal dMax", QLineEdit(str(self.XTAL_DMAX)))
-        self.fieldThreshold = self._labeledField("intensity threshold", QLineEdit(str(self.PEAK_THRESHOLD)))
         peakControlLayout = QHBoxLayout()
         peakControlLayout.addWidget(self.smoothingSlider, 2)
         peakControlLayout.addWidget(self.fieldXtalDMin)
         peakControlLayout.addWidget(self.fieldXtalDMax)
-        peakControlLayout.addWidget(self.fieldThreshold)
 
         # a big ol recalculate button
         self.recalculationButton = QPushButton("Recalculate")
@@ -136,7 +133,6 @@ class NormalizationTweakPeakView(BackendRequestView):
             smoothingValue = self.smoothingSlider.field.value()
             xtalDMin = float(self.fieldXtalDMin.field.text())
             xtalDMax = float(self.fieldXtalDMax.field.text())
-            peakThreshold = float(self.fieldThreshold.text())
         except ValueError as e:
             QMessageBox.warning(
                 self,
@@ -163,7 +159,7 @@ class NormalizationTweakPeakView(BackendRequestView):
                 QMessageBox.Ok,
             )
             return
-        self.signalValueChanged.emit(index, smoothingValue, xtalDMin, xtalDMax, peakThreshold)
+        self.signalValueChanged.emit(index, smoothingValue, xtalDMin, xtalDMax)
 
     def updateWorkspaces(self, focusWorkspace, smoothedWorkspace, peaks):
         self.focusWorkspace = focusWorkspace

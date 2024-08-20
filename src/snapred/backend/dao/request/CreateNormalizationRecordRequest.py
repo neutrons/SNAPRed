@@ -19,7 +19,6 @@ class CreateNormalizationRecordRequest(BaseModel, extra="forbid"):
     calculationParameters: Normalization
     backgroundRunNumber: str
     smoothingParameter: float
-    peakIntensityThreshold: float
     workspaceNames: List[WorkspaceName] = []
     calibrationVersionUsed: Optional[int] = VERSION_DEFAULT
     crystalDBounds: Limit[float]

@@ -46,9 +46,3 @@ Attributes:
 - crystalDMax (float, default=Config["constants.CrystallographicInfo.dMax"]): The maximum
   d-spacing value to consider in the smoothing process, sourced from application.yml.
   Like crystalDMin, this parameter delimits the data range of interest.
-
-- peakIntensityThreshold (float, default=Config["constants.PeakIntensityFractionThreshold"]):
-  The threshold for peak intensity; peaks below this threshold will not be considered
-  in the smoothing process. Sourced from application.yml, this parameter helps to
-  exclude insignificant peaks from the smoothing operation, focusing on the most
-  relevant features of the data.

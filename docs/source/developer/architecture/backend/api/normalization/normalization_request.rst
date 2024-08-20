@@ -42,11 +42,6 @@ Attributes:
   crystal d-spacing value to consider, sourced from application.yml. This parameter
   defines the upper bound for d-spacing values considered in the calibration.
 
-- peakIntensityThreshold (float, default=Config["constants.PeakIntensityFractionThreshold"]):
-  The threshold for peak intensity, below which peaks will be ignored, from
-  application.yml. This threshold is crucial for distinguishing significant peaks from
-  noise in the diffraction pattern.
-
 - nBinsAcrossPeakWidth (int, default=Config["calibration.diffraction.nBinsAcrossPeakWidth"]):
   The number of bins to distribute across the width of a peak in the diffraction pattern,
   as defined in application.yml. This parameter affects the resolution of the

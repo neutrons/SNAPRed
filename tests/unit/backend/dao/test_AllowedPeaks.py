@@ -19,7 +19,6 @@ def test_literal_bad():
             peakFunction=bad,
             crystalDMin=0.0,
             crystaldMax=10.0,
-            peakIntensityThreshold=1.0,
             nBinsAcrossPeakWidth=10,
         )
     assert "peakFunction" in str(e.value)
@@ -37,7 +36,6 @@ def test_literal_good():
                 peakFunction=good,
                 crystalDMin=0.0,
                 crystalDMax=10.0,
-                peakIntensityThreshold=1.0,
                 nBinsAcrossPeakWidth=10,
                 maxChiSq=100.0,
             )

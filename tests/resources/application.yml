@@ -17,7 +17,7 @@ instrument:
     home: ${instrument.home}/shared/Calibration
     sample:
       # "instrument.calibration.sample.home" is overridden in "test.yml":
-      home: ${instrument.calibration.home}/CalibrantSamples
+      home: ${instrument.calibration.home}/CalibrantSample
       extensions:
         - json
 
@@ -81,7 +81,6 @@ calibration:
     diagnostic:
       extension: .nxs.h5
     convergenceThreshold: 0.5
-    peakIntensityThreshold: 0.05
     nBinsAcrossPeakWidth: 10
     maximumIterations: 5
     maximumOffset: 10

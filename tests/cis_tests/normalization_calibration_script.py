@@ -42,7 +42,7 @@ def getCalibrantSample(samplePath):
         atom["symbol"] = atom.pop("atom_type")
         atom["coordinates"] = atom.pop("atom_coordinates")
         atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
-    sample = CalibrantSamples.model_validate_json(json.dumps(sampleJson))
+    sample = CalibrantSample.model_validate_json(json.dumps(sampleJson))
     return sample
 ###########################################################################################################
 

@@ -75,7 +75,6 @@ calibration:
       extension: .nxs.h5
     maximumIterations: 5
     convergenceThreshold: 0.5
-    peakIntensityThreshold: 0.05
     nBinsAcrossPeakWidth: 10
     maximumOffset: 10
     maxDSpaceShiftFactor: 2.5
