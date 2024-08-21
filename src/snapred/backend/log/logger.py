@@ -5,6 +5,7 @@ import socket
 import sys
 
 from mantid.api import Progress
+from mantid.kernel import ConfigService
 from mantid.utils.logging import log_to_python
 
 from snapred.meta.Config import Config
@@ -103,6 +104,10 @@ class _MantidLogger:
     _outputfile = Config["logging.mantid.file.output"]
 
     def __init__(self):
+        # remove any previous logging settings
+        # NOTE this step is necessary for dark and mysterious reasons
+        ConfigService.remove("logging.channels.consoleChannel.class")
+
         # Configure Mantid to send messages to Python
         log_to_python()
         logger = logging.getLogger("Mantid")
