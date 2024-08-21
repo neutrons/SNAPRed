@@ -39,7 +39,7 @@ class FarmFreshIngredients(BaseModel):
 
     ## mandatory for reduction
     timestamp: Optional[float] = None
-    
+
     ## needs to be mandatory for diffcal
     cifPath: Optional[str] = None
 

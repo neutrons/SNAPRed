@@ -5,7 +5,6 @@ from mantid.api import MatrixWorkspace
 from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import (
     CreateSampleWorkspace,
-    DeleteWorkspace,
     LoadInstrument,
     mtd,
 )

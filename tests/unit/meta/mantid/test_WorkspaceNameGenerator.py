@@ -6,12 +6,12 @@ import pytest
 from pydantic import BaseModel, ConfigDict
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import (
-    ValueFormatter as wnvf,
-)
-from snapred.meta.mantid.WorkspaceNameGenerator import (
     VERSION_DEFAULT,
     VERSION_DEFAULT_NAME,
     WorkspaceName,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    ValueFormatter as wnvf,
 )
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceNameGenerator as wng,

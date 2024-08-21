@@ -172,7 +172,9 @@ class ReductionService(Service):
         }
 
     # WARNING: `WorkspaceName` does not work with `@FromString`!
-    def prepCombinedMask(self, runNumber: str, useLiteMode: bool, timestamp: float, pixelMasks: Iterable[WorkspaceName]) -> WorkspaceName:
+    def prepCombinedMask(
+        self, runNumber: str, useLiteMode: bool, timestamp: float, pixelMasks: Iterable[WorkspaceName]
+    ) -> WorkspaceName:
         """
         Combine all of the individual pixel masks for application and final output
         """
@@ -275,7 +277,9 @@ class ReductionService(Service):
                 **residentMasks,
             )
             # combine all of the pixel masks, for application and final output
-            combinedMask = self.prepCombinedMask(request.runNumber, request.useLiteMode, request.timestamp, maskGroceries.values())
+            combinedMask = self.prepCombinedMask(
+                request.runNumber, request.useLiteMode, request.timestamp, maskGroceries.values()
+            )
 
         # gather the input workspace and the diffcal table
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
@@ -326,10 +330,10 @@ class ReductionService(Service):
             logger.error(f"Invalid run number: {runNumber}")
             return False
         return self.dataFactoryService.checkCalibrationStateExists(runNumber)
-    
+
     def getUniqueTimestamp(self):
         return self.dataExportService.getUniqueTimestamp()
-    
+
     def _groupByStateId(self, requests: List[SNAPRequest]):
         stateIDs = {}
         for request in requests:

@@ -1,13 +1,17 @@
+import unittest
+import unittest.mock as mock
 from typing import List
+
 import numpy as np
 import pydantic
-
+import pytest
 from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
+from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
     ReductionExportRequest,
     ReductionRequest,
@@ -16,17 +20,11 @@ from snapred.backend.dao.request.ReductionRequest import Versions
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-
-import unittest
-import unittest.mock as mock
-import pytest
-
 from util.helpers import (
     arrayFromMask,
     createCompatibleMask,
@@ -65,7 +63,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.groceryService = self.instaEats
         self.instance.dataFactoryService.lookupService = self.localDataService
         self.instance.dataExportService.dataService = self.localDataService
-        
+
         self.request = ReductionRequest(
             runNumber="123",
             useLiteMode=False,
@@ -76,7 +74,6 @@ class TestReductionService(unittest.TestCase):
             continueFlags=ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
             | ContinueWarning.Type.MISSING_NORMALIZATION,
         )
-
 
     def test_name(self):
         ## this makes codecov happy
@@ -264,28 +261,16 @@ class TestReductionServiceMasks:
 
         # Create a pair of mask workspaces for each state
         cls.maskWS1 = (
-            wng.reductionPixelMask()
-            .runNumber(cls.runNumber1)
-            .timestamp(cls.service.getUniqueTimestamp())
-            .build()
+            wng.reductionPixelMask().runNumber(cls.runNumber1).timestamp(cls.service.getUniqueTimestamp()).build()
         )
         cls.maskWS2 = (
-            wng.reductionPixelMask()
-            .runNumber(cls.runNumber2)
-            .timestamp(cls.service.getUniqueTimestamp())
-            .build()
+            wng.reductionPixelMask().runNumber(cls.runNumber2).timestamp(cls.service.getUniqueTimestamp()).build()
         )
         cls.maskWS3 = (
-            wng.reductionPixelMask()
-            .runNumber(cls.runNumber3)
-            .timestamp(cls.service.getUniqueTimestamp())
-            .build()
+            wng.reductionPixelMask().runNumber(cls.runNumber3).timestamp(cls.service.getUniqueTimestamp()).build()
         )
         cls.maskWS4 = (
-            wng.reductionPixelMask()
-            .runNumber(cls.runNumber4)
-            .timestamp(cls.service.getUniqueTimestamp())
-            .build()
+            wng.reductionPixelMask().runNumber(cls.runNumber4).timestamp(cls.service.getUniqueTimestamp()).build()
         )
         cls.maskWS5 = wng.reductionUserPixelMask().numberTag(1).build()
         cls.maskWS6 = wng.reductionUserPixelMask().numberTag(2).build()
@@ -349,20 +334,20 @@ class TestReductionServiceMasks:
     def test_prepCombinedMask(self):
         masks = [self.maskWS1, self.maskWS2]
         maskArrays = [arrayFromMask(mask) for mask in masks]
-        
+
         # WARNING: the timestamp used here must be unique,
-        #   otherwise `prepCombinedMask` might overwrite one of the 
+        #   otherwise `prepCombinedMask` might overwrite one of the
         #   sample mask workspaces!
         timestamp = self.service.getUniqueTimestamp()
-        combinedMask = self.service.prepCombinedMask(
-            self.runNumber1, self.useLiteMode, timestamp, masks
-        )
+        combinedMask = self.service.prepCombinedMask(self.runNumber1, self.useLiteMode, timestamp, masks)
         actual = arrayFromMask(combinedMask)
         expected = np.zeros(maskArrays[0].shape, dtype=bool)
         for mask in maskArrays:
             expected |= mask
         if not np.all(expected == actual):
-            print(f"The test-computed combined mask doesn't match the returned mask at {np.count_nonzero(expected != actual)} pixels.")
+            print(
+                f"The test-computed combined mask doesn't match the returned mask at {np.count_nonzero(expected != actual)} pixels."
+            )
         assert np.all(expected == actual)
 
     def test_fetchReductionGroceries_pixelMasks(self):

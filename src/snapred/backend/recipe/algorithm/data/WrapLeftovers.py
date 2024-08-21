@@ -1,5 +1,3 @@
-import time
-
 from mantid.api import (
     AlgorithmFactory,
     FileAction,

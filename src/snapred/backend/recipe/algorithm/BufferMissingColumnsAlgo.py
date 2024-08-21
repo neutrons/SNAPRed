@@ -1,5 +1,3 @@
-import time
-
 from mantid.api import AlgorithmFactory, ITableWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 

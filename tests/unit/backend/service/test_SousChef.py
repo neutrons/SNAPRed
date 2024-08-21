@@ -399,9 +399,9 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepManyPixelGroups.assert_called_once_with(ingredients_)
         self.instance.dataFactoryService.getCifFilePath.assert_called_once_with("sample")
         ReductionIngredients.assert_called_once_with(
-            runNumber = ingredients_.runNumber,
-            useLiteMode = ingredients_.useLiteMode,
-            timestamp = ingredients_.timestamp,
+            runNumber=ingredients_.runNumber,
+            useLiteMode=ingredients_.useLiteMode,
+            timestamp=ingredients_.timestamp,
             pixelGroups=self.instance.prepManyPixelGroups.return_value,
             smoothingParameter=record.smoothingParameter,
             calibrantSamplePath=ingredients_.calibrantSamplePath,

@@ -7,10 +7,8 @@ from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocuss
 from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
-from snapred.meta.mantid.WorkspaceNameGenerator import (
-    ValueFormatter as wnvf,
-    WorkspaceNameGenerator as wng
-)
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -128,13 +126,9 @@ class ReductionRecipe(Recipe[Ingredients]):
         # For now we are just appending it to the end, probably preferable
         # as it keeps the output colocated.
         runNumber, timestamp = self.ingredients.runNumber, self.ingredients.timestamp
-        
+
         groupingName = self.ingredients.pixelGroups[groupingIndex].focusGroup.name.lower()
-        reducedOutputWs = wng.reductionOutput()\
-            .runNumber(runNumber)\
-            .group(groupingName)\
-            .timestamp(timestamp)\
-            .build()
+        reducedOutputWs = wng.reductionOutput().runNumber(runNumber).group(groupingName).timestamp(timestamp).build()
         sampleClone = self._cloneWorkspace(self.sampleWs, reducedOutputWs)
         self.groceries["inputWorkspace"] = sampleClone
         normalizationClone = None

@@ -19,7 +19,7 @@ class ReductionIngredients(BaseModel):
     runNumber: str
     useLiteMode: bool
     timestamp: float
-    
+
     pixelGroups: List[PixelGroup]
 
     # these should come from calibration / normalization records

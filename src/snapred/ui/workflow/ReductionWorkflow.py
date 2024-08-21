@@ -103,7 +103,7 @@ class ReductionWorkflow(WorkflowImplementer):
         # ReductionRequest.pixelMasks = selectedWorkspaceNames
         #
         # ## Why would I want to set the ~obfuscated-by-pydantic~ `pixelMasks` field of the class object?
-        
+
     def _triggerReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView  # noqa: F841
 

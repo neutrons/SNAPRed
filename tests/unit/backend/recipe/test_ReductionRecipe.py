@@ -1,8 +1,7 @@
 import time
-
 from unittest import TestCase, mock
-import pytest
 
+import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.ReductionRecipe import (
@@ -202,8 +201,8 @@ class ReductionRecipeTest(TestCase):
             runNumber="12345",
             useLiteMode=True,
             timestamp=time.time(),
-            pixelGroups = [mock.Mock(), mock.Mock()],
-            detectorPeaksMany = [["peaks"], ["peaks2"]],
+            pixelGroups=[mock.Mock(), mock.Mock()],
+            detectorPeaksMany=[["peaks"], ["peaks2"]],
         )
 
         recipe.sampleWs = "sample"
@@ -228,8 +227,8 @@ class ReductionRecipeTest(TestCase):
             runNumber="12345",
             useLiteMode=True,
             timestamp=time.time(),
-            pixelGroups = [mock.Mock(), mock.Mock()],
-            detectorPeaksMany = [["peaks"], ["peaks2"]],
+            pixelGroups=[mock.Mock(), mock.Mock()],
+            detectorPeaksMany=[["peaks"], ["peaks2"]],
         )
 
         recipe.sampleWs = "sample"

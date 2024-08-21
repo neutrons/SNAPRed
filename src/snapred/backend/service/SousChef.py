@@ -245,9 +245,9 @@ class SousChef(Service):
         ingredients_, smoothingParameter = self._pullNormalizationRecordFFI(ingredients_)
 
         return ReductionIngredients(
-            runNumber = ingredients_.runNumber,
-            useLiteMode = ingredients_.useLiteMode,
-            timestamp = ingredients_.timestamp,
+            runNumber=ingredients_.runNumber,
+            useLiteMode=ingredients_.useLiteMode,
+            timestamp=ingredients_.timestamp,
             pixelGroups=self.prepManyPixelGroups(ingredients_),
             smoothingParameter=smoothingParameter,
             calibrantSamplePath=ingredients_.calibrantSamplePath,

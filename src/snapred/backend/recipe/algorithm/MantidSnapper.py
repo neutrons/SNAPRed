@@ -30,6 +30,7 @@ class _CustomMtd:
     def unique_hidden_name(self):
         return mtd.unique_hidden_name()
 
+
 class MantidSnapper:
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}
     _mtd = _CustomMtd()
