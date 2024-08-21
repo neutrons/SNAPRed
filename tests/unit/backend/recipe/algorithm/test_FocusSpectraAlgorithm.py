@@ -4,6 +4,7 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
+from mantid.testing import assert_almost_equal
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.FocusSpectraAlgorithm import (
@@ -11,7 +12,6 @@ from snapred.backend.recipe.algorithm.FocusSpectraAlgorithm import (
 )
 from snapred.meta.Config import Resource
 from util.dao import DAOFactory
-from util.helpers import workspacesEqual
 
 
 class TestFocusSpectra(unittest.TestCase):
@@ -137,7 +137,12 @@ class TestFocusSpectra(unittest.TestCase):
         assert mtd[outputWs].getNumberHistograms() == mtd[outputWs + "_loaded"].getNumberHistograms()
         # check block size
         assert mtd[outputWs].blocksize() == mtd[outputWs + "_loaded"].blocksize()
-        assert workspacesEqual(outputWs, outputWs + "_loaded", CheckAllData=True)
+        assert_almost_equal(
+            Workspace1=outputWs,
+            Workspace2=outputWs + "_loaded",
+            atol=1e-10,
+            CheckAllData=True,
+        )
 
     def test_chopIngredients(self):
         algo = ThisAlgo()

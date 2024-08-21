@@ -4,6 +4,7 @@ from mantid.simpleapi import (
     LoadEmptyInstrument,
     mtd,
 )
+from mantid.testing import assert_almost_equal
 from snapred.backend.log.logger import snapredLogger
 
 # the algorithm to test
@@ -12,7 +13,6 @@ from snapred.meta.Config import Resource
 from util.helpers import (
     createCompatibleMask,
     deleteWorkspaceNoThrow,
-    workspacesEqual,
 )
 
 logger = snapredLogger.getLogger(__name__)
@@ -132,9 +132,10 @@ class TestMaskDetectorFlags:
         algo.setProperty("OutputWorkspace", self.testInstrumentWS)
 
         algo.execute()
-        assert workspacesEqual(
+        assert_almost_equal(
             Workspace1=self.testInstrumentWS,
             Workspace2=self.instrumentWS,
+            atol=1e-10,
             CheckInstrument=False,
         )
 
@@ -196,9 +197,10 @@ class TestMaskDetectorFlags:
         algo.setProperty("OutputWorkspace", self.testGroupingWS)
 
         algo.execute()
-        assert workspacesEqual(
+        assert_almost_equal(
             Workspace1=self.testGroupingWS,
             Workspace2=self.groupingWS,
+            atol=1e-10,
             CheckInstrument=False,
         )
 
@@ -274,8 +276,9 @@ class TestMaskDetectorFlags:
         algo.setProperty("OutputWorkspace", testOtherMaskWS)
 
         algo.execute()
-        assert workspacesEqual(
+        assert_almost_equal(
             Workspace1=testOtherMaskWS,
             Workspace2=self.maskWS,
+            atol=1e-10,
             CheckInstrument=False,
         )
