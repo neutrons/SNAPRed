@@ -120,6 +120,10 @@ class ReductionRecipeTest(TestCase):
         )
         recipe.mantidSnapper.executeQueue.assert_called()
         recipe.mantidSnapper.reset_mock()
+        
+        units = "NOT_A_UNIT"
+        with pytest.raises(ValueError, match=r"cannot convert to unit.*"):
+            recipe._cloneAndConvertWorkspace(workspace, units)
 
     def test_keepUnfocusedData(self):
         # Prepare recipe for testing

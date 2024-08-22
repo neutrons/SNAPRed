@@ -816,8 +816,8 @@ class LocalDataService:
         calibrationDataPath = indexer.versionPath(version)
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, tableWorkspaceName=outWS)
 
-        # TODO: all of this should have its own workflow, in which case, it could act like all other workflows.
-        #   However, in the general scheme of things, the new diffraction-calibration table will not immediately be used.
+        # TODO: all of this should have its own workflow, in which case, it could act like all other workflows
+        #   and delete its workspaces after completion.
         grocer.deleteWorkspaceUnconditional(outWS)
 
     def generateInstrumentStateFromRoot(self, runId: str):

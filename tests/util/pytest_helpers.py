@@ -85,6 +85,7 @@ def get_unique_timestamp():
 
     def _get_unique_timestamp() -> float:
         nextTimestamp = time.time()
+        nonlocal _previousTimestamp
         if _previousTimestamp is not None:
             # compare as `time.struct_time`
             if nextTimestamp < _previousTimestamp or time.gmtime(nextTimestamp) == time.gmtime(_previousTimestamp):
