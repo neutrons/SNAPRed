@@ -476,3 +476,7 @@ class TestSousChef(unittest.TestCase):
         path = self.ingredients.calibrantSamplePath
         result = self.instance._getThresholdFromCalibrantSample(path)
         assert result == calibrantSample.peakIntensityFractionThreshold
+
+    def test__getThresholdFromCalibrantSample_none_path(self):
+        result = self.instance._getThresholdFromCalibrantSample(None)
+        assert result == Config["constants.PeakIntensityFractionThreshold"]
