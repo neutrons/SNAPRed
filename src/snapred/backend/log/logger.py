@@ -5,8 +5,6 @@ import socket
 import sys
 
 from mantid.api import Progress
-from mantid.kernel import ConfigService
-from mantid.utils.logging import log_to_python
 
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
@@ -97,38 +95,4 @@ class _SnapRedLogger:
         return logger
 
 
-@Singleton
-class _MantidLogger:
-    _streamlevel = Config["logging.mantid.stream.level"]
-    _filelevel = Config["logging.mantid.file.level"]
-    _outputfile = Config["logging.mantid.file.output"]
-
-    def __init__(self):
-        # remove any previous logging settings
-        # NOTE this step is necessary for dark and mysterious reasons
-        ConfigService.remove("logging.channels.consoleChannel.class")
-
-        # Configure Mantid to send messages to Python
-        log_to_python()
-        logger = logging.getLogger("Mantid")
-        # NOTE it is necessary to set the log to a nonzero level before adding handlers
-        logger.setLevel(logging.DEBUG)
-
-        # the stream handler will print alongside the SNAPRed logs
-        ch = logging.StreamHandler(sys.stdout)
-        streamformatter = CustomFormatter("mantid.stream")
-        ch.setLevel(self._streamlevel)
-        ch.setFormatter(streamformatter)
-
-        # the file handler will print to an external file
-        file = logging.FileHandler(self._outputfile, "w")
-        fileformatter = CustomFormatter("mantid.file")
-        file.setLevel(self._filelevel)
-        file.setFormatter(fileformatter)
-
-        logger.addHandler(file)
-        logger.addHandler(ch)
-
-
-mantidLogger = _MantidLogger()
 snapredLogger = _SnapRedLogger()

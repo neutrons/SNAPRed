@@ -1,6 +1,9 @@
+import logging
 import sys
 import traceback
 
+from mantid.kernel import ConfigService
+from mantid.utils.logging import log_to_python
 from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
 from qtpy.QtCore import Qt, QTimer, Slot
 from qtpy.QtWidgets import (
@@ -15,8 +18,8 @@ from qtpy.QtWidgets import (
 )
 from workbench.plugins.workspacewidget import WorkspaceWidget
 
-from snapred.backend.log.logger import snapredLogger
-from snapred.meta.Config import Resource
+from snapred.backend.log.logger import CustomFormatter, snapredLogger
+from snapred.meta.Config import Config, Resource
 from snapred.ui.widget.LogTable import LogTable
 from snapred.ui.widget.TestPanel import TestPanel
 from snapred.ui.widget.ToolBar import ToolBar
@@ -28,7 +31,15 @@ except ImportError:
     UserDocsButton = None
 
 
+LOGGERCLASSKEY = "logging.channels.consoleChannel.class"
+LOGGERLEVELKEY = "logging.loggers.root.level"
+
+
 class SNAPRedGUI(QMainWindow):
+    _streamlevel = Config["logging.mantid.stream.level"]
+    _filelevel = Config["logging.mantid.file.level"]
+    _outputfile = Config["logging.mantid.file.output"]
+
     def __init__(self, parent=None, window_flags=None, translucentBackground=False):
         super(SNAPRedGUI, self).__init__(parent)
         if window_flags:
@@ -38,6 +49,9 @@ class SNAPRedGUI(QMainWindow):
         logTable = LogTable("load dummy", self)
         splitter = QSplitter(Qt.Vertical)
         splitter.addWidget(logTable.widget)
+
+        # make sure mantid console logging is disabled
+        self.redirectMantidConsoleLog()
 
         # add button to open new window
         self.calibrationPanelButton = QPushButton("Open Calibration Panel")
@@ -101,6 +115,7 @@ class SNAPRedGUI(QMainWindow):
             )
 
     def closeEvent(self, event):
+        self.restartMantidConsoleLog()
         event.accept()
 
     def changeEvent(self, event):
@@ -109,6 +124,36 @@ class SNAPRedGUI(QMainWindow):
 
     def resizeEvent(self, event):
         self.titleBar.presenter.resizeEvent(event)
+
+    def redirectMantidConsoleLog(self):
+        # Configure Mantid to send messages to Python
+        log_to_python()
+        logger = logging.getLogger("Mantid")
+        # NOTE it is necessary to set the log to a nonzero level before adding handlers
+        logger.setLevel(logging.DEBUG)
+
+        # the stream handler will print alongside the SNAPRed logs
+        ch = logging.StreamHandler(sys.stdout)
+        streamformatter = CustomFormatter("mantid.stream")
+        ch.setLevel(self._streamlevel)
+        ch.setFormatter(streamformatter)
+
+        # the file handler will print to an external file
+        file = logging.FileHandler(self._outputfile, "w")
+        fileformatter = CustomFormatter("mantid.file")
+        file.setLevel(self._filelevel)
+        file.setFormatter(fileformatter)
+
+        logger.addHandler(file)
+        logger.addHandler(ch)
+
+    def restartMantidConsoleLog(self):
+        # return logging to the stream
+        ConfigService.setString(LOGGERCLASSKEY, "PythonLoggingChannel")
+        ConfigService.setString(LOGGERLEVELKEY, "debug")
+        logger = logging.getLogger("Mantid")
+        logger.setLevel(logging.DEBUG)
+        logger.handlers.clear()
 
 
 def qapp():
