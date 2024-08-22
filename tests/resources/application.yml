@@ -38,7 +38,7 @@ instrument:
     pixelResolution: 1179648
     # "instrument.native.definition" is overridden in "test.yml":
     definition:
-      file: ${instrument.home}/shared/Malcolm/dataFiles/SNAP_Definition.xml
+      file: ${module.root}/resources/SNAP_Definition.xml
   lite:
     pixelResolution: 18432
     # "instrument.lite.definition" is overridden in "test.yml":

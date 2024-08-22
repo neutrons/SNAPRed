@@ -33,7 +33,7 @@ instrument:
   native:
     pixelResolution: 1179648
     definition:
-      file: ${instrument.home}/shared/Malcolm/dataFiles/SNAP_Definition.xml
+      file: ${module.root}/resources/SNAP_Definition.xml
   lite:
     pixelResolution: 18432
     definition:
