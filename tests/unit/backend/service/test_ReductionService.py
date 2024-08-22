@@ -346,8 +346,8 @@ class TestReductionServiceMasks:
             expected |= mask
         if not np.all(expected == actual):
             print(
-                f"The expected combined mask doesn't match the calculated mask.\n" + 
-                f"  Masking values are incorrect for {np.count_nonzero(expected != actual)} pixels."
+                "The expected combined mask doesn't match the calculated mask.\n"
+                + f"  Masking values are incorrect for {np.count_nonzero(expected != actual)} pixels."
             )
         assert np.all(expected == actual)
 
