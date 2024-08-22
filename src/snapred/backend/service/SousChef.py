@@ -292,7 +292,9 @@ class SousChef(Service):
         )
 
     def _getThresholdFromCalibrantSample(self, calibrantSamplePath: str) -> float:
-        if not os.path.exists(calibrantSamplePath):
+        if type(calibrantSamplePath) is None:
+            return Config["constants.PeakIntensityFractionThreshold"]
+        elif not os.path.exists(calibrantSamplePath):
             return Config["constants.PeakIntensityFractionThreshold"]
         else:
             calibrantSample = self.prepCalibrantSample(calibrantSamplePath)
