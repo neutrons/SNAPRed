@@ -43,7 +43,7 @@ instrument:
     pixelResolution: 18432
     # "instrument.lite.definition" is overridden in "test.yml":
     definition:
-      file: ${module.root}/../../tests/resources/inputs/pixel_grouping/SNAPLite_Definition.xml
+      file: ${module.root}/resources/SNAPLite_Definition.xml
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000
