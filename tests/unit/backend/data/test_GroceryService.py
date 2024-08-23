@@ -299,7 +299,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_diffcal_table_filename(self):
         # Test name generation for diffraction-calibration table filename
-        res = self.instance._createDiffcalTableFilename(self.runNumber, self.useLiteMode, self.version)
+        res = self.instance._createDiffcalTableFilepath(self.runNumber, self.useLiteMode, self.version)
         assert self.difc_name in res
         assert self.runNumber in res
         assert wnvf.formatVersion(self.version) in res
@@ -391,7 +391,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_diffcal_table_workspacename(self):
         # Test name generation for diffraction-calibration output table
-        res = self.instance._createDiffcalTableWorkspaceName(self.runNumber, self.useLiteMode, self.version)
+        res = self.instance.createDiffcalTableWorkspaceName(self.runNumber, self.useLiteMode, self.version)
         assert self.difc_name in res
         assert self.runNumber in res
         assert wnvf.formatVersion(self.version) in res
@@ -1127,7 +1127,8 @@ class TestGroceryService(unittest.TestCase):
             groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()
             # independently construct the pathname, move file to there, assert exists
             diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
-            diffCalTableFilename = self.instance._createDiffcalTableFilename(
+            self.instance.lookupDiffcalTableWorkspaceName = mock.Mock(return_value=diffCalTableName)
+            diffCalTableFilename = self.instance._createDiffcalTableFilepath(
                 runNumber=groceryList[0].runNumber,
                 useLiteMode=groceryList[0].useLiteMode,
                 version=self.version,
@@ -1148,6 +1149,7 @@ class TestGroceryService(unittest.TestCase):
         groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()
         diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
         diffCalTableName = f"{diffCalTableName}_{wnvf.formatVersion(self.version)}"
+        self.instance.lookupDiffcalTableWorkspaceName = mock.Mock(return_value=diffCalTableName)
 
         CloneWorkspace(
             InputWorkspace=self.sampleTableWS,
@@ -1168,8 +1170,9 @@ class TestGroceryService(unittest.TestCase):
         with state_root_redirect(self.instance.dataService) as tmpRoot:
             groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()
             diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
+            self.instance.lookupDiffcalTableWorkspaceName = mock.Mock(return_value=diffCalTableName)
             diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
-            diffCalTableFilename = self.instance._createDiffcalTableFilename(
+            diffCalTableFilename = self.instance._createDiffcalTableFilepath(
                 runNumber=groceryList[0].runNumber,
                 useLiteMode=groceryList[0].useLiteMode,
                 version=self.version,
@@ -1192,7 +1195,7 @@ class TestGroceryService(unittest.TestCase):
             diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
 
             # DiffCal filename is constructed from the table name
-            diffCalTableFilename = self.instance._createDiffcalTableFilename(
+            diffCalTableFilename = self.instance._createDiffcalTableFilepath(
                 runNumber=groceryList[0].runNumber,
                 useLiteMode=groceryList[0].useLiteMode,
                 version=groceryList[0].version,
@@ -1201,6 +1204,9 @@ class TestGroceryService(unittest.TestCase):
             assert Path(diffCalTableFilename).exists()
 
             assert not mtd.doesExist(diffCalMaskName)
+            self.instance.lookupDiffcalTableWorkspaceName = mock.Mock(
+                return_value=wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
+            )
             items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
@@ -1210,6 +1216,9 @@ class TestGroceryService(unittest.TestCase):
         #   workspace already in ADS
         groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1, self.version).buildList()
         diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
+        self.instance.lookupDiffcalTableWorkspaceName = mock.Mock(
+            return_value=wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
+        )
         CloneWorkspace(
             InputWorkspace=self.sampleMaskWS,
             OutputWorkspace=diffCalMaskName,
@@ -1241,7 +1250,8 @@ class TestGroceryService(unittest.TestCase):
 
             # DiffCal filename is constructed from the table name
             diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
-            diffCalTableFilename = self.instance._createDiffcalTableFilename(
+            self.instance.lookupDiffcalTableWorkspaceName = mock.Mock(return_value=diffCalTableName)
+            diffCalTableFilename = self.instance._createDiffcalTableFilepath(
                 runNumber=groceryList[0].runNumber,
                 useLiteMode=groceryList[0].useLiteMode,
                 version=groceryList[0].version,
@@ -1638,7 +1648,7 @@ class TestGroceryService(unittest.TestCase):
         ws = self.instance.fetchDefaultDiffCalTable(runNumber, useLiteMode, self.version)
 
         # make sure the correct workspace name is generated
-        assert ws == self.instance._createDiffcalTableWorkspaceName("default", useLiteMode, self.version)
+        assert ws == self.instance.createDiffcalTableWorkspaceName("default", useLiteMode, self.version)
         ## Compare the two diffcal tables to ensure equality
         table1 = mtd[ws]
         table2 = mtd[refTable]

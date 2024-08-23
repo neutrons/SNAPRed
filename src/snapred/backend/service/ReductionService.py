@@ -343,13 +343,10 @@ class ReductionService(Service):
         #   TODO: set these when the request is initially generated.
         calVersion = None
         normVersion = None
-        if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
-            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
-                request.runNumber, request.useLiteMode
-            )
-            self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
-                request.useLiteMode
-            ).add()
+        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
+        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
+            request.useLiteMode
+        ).add()
 
         if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
             normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(

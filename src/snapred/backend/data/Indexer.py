@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 from pydantic import validate_call
 
 from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
@@ -57,6 +57,10 @@ RECORD_TYPE = {
     IndexerType.NORMALIZATION: NormalizationRecord,
     IndexerType.REDUCTION: ReductionRecord,
     IndexerType.DEFAULT: Record,
+}
+
+DEFAULT_RECORD_TYPE = {
+    IndexerType.CALIBRATION: CalibrationDefaultRecord,
 }
 
 # the params type for each indexer type
@@ -352,6 +356,15 @@ class Indexer:
         record.calculationParameters.version = record.version
         return record
 
+    def _determineRecordType(self, version: Optional[int] = None):
+        version = self.thisOrCurrentVersion(version)
+        recordType = None
+        if version == VERSION_DEFAULT:
+            recordType = DEFAULT_RECORD_TYPE.get(self.indexerType, None)
+        if recordType is None:
+            recordType = RECORD_TYPE[self.indexerType]
+        return recordType
+
     def readRecord(self, version: Optional[int] = None) -> Record:
         """
         If no version given, defaults to current version
@@ -360,7 +373,7 @@ class Indexer:
         filePath = self.recordPath(version)
         record = None
         if filePath.exists():
-            record = parse_file_as(RECORD_TYPE[self.indexerType], filePath)
+            record = parse_file_as(self._determineRecordType(version), filePath)
         return record
 
     def writeRecord(self, record: Record):
