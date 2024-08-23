@@ -4,6 +4,7 @@
     "backgroundRunNumber": 58813,
     "smoothingParameter": 0.5,
     "peakIntensityThreshold": 0.05,
+    "normalizationCalibrantSamplePath": "/path/to/sample",
     "calibration":{
         "instrumentState": {
             "id": "ab8704b0bc2a2342",
