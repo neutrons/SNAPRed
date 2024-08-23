@@ -191,7 +191,7 @@ class LocalDataService:
         _previousTimestamp = getattr(LocalDataService.getUniqueTimestamp, "_previousTimestamp", None)
         nextTimestamp = time.time()
         if _previousTimestamp is not None:
-            # compare as `time.struct_time`
+            # compare as `time.struct_time` to ensure uniqueness after formatting
             if nextTimestamp < _previousTimestamp or time.gmtime(nextTimestamp) == time.gmtime(_previousTimestamp):
                 nextTimestamp = _previousTimestamp + 1.0
         LocalDataService.getUniqueTimestamp._previousTimestamp = nextTimestamp
@@ -304,8 +304,10 @@ class LocalDataService:
     def _constructReductionStateRoot(self, runNumber: str) -> Path:
         stateId, _ = self._generateStateId(runNumber)
         IPTS = Path(self.getIPTS(runNumber))
-        # substitute the last component of the IPTS-directory for the '{IPTS}' tag
-        reductionHome = Path(Config["instrument.reduction.home"].format(IPTS=IPTS.name))
+        # Substitute the last component of the IPTS-directory for the '{IPTS}' tag,
+        #   but only if the '{IPTS}' tag exists in the format string
+        fmt = Config["instrument.reduction.home"]
+        reductionHome = Path(fmt.format(IPTS=IPTS.name)) if "{IPTS}" in fmt else Path(fmt)
         return reductionHome / stateId
 
     @validate_call
@@ -812,7 +814,11 @@ class LocalDataService:
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
 
         calibrationDataPath = indexer.versionPath(version)
-        self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
+        self.writeDiffCalWorkspaces(calibrationDataPath, filename, tableWorkspaceName=outWS)
+
+        # TODO: all of this should have its own workflow, in which case, it could act like all other workflows
+        #   and delete its workspaces after completion.
+        grocer.deleteWorkspaceUnconditional(outWS)
 
     def generateInstrumentStateFromRoot(self, runId: str):
         stateId, _ = self._generateStateId(runId)

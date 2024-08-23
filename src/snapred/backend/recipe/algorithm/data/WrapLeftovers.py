@@ -1,5 +1,3 @@
-import time
-
 from mantid.api import (
     AlgorithmFactory,
     FileAction,
@@ -57,8 +55,7 @@ class WrapLeftovers(PythonAlgorithm):
         self.unbagGroceries()
         self.validate()
 
-        # timestamp as name
-        tmp = str(time.time())
+        tmp = self.mantidSnapper.mtd.unique_hidden_name()
         self.mantidSnapper.ResampleX(
             "Resampling X-axis...",
             InputWorkspace=self.inputWS,

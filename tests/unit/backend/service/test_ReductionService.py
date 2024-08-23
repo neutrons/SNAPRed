@@ -1,4 +1,3 @@
-import time
 import unittest
 import unittest.mock as mock
 from typing import List
@@ -12,6 +11,7 @@ from mantid.simpleapi import (
 )
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
+from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
     ReductionExportRequest,
     ReductionRequest,
@@ -57,20 +57,23 @@ class TestReductionService(unittest.TestCase):
 
     def setUp(self):
         self.instance = ReductionService()
+
+        ## Mock out the assistant services
+        self.instance.sousChef = self.sculleryBoy
+        self.instance.groceryService = self.instaEats
+        self.instance.dataFactoryService.lookupService = self.localDataService
+        self.instance.dataExportService.dataService = self.localDataService
+
         self.request = ReductionRequest(
             runNumber="123",
             useLiteMode=False,
+            timestamp=self.instance.getUniqueTimestamp(),
             versions=(1, 2),
             pixelMasks=[],
             focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
             continueFlags=ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
             | ContinueWarning.Type.MISSING_NORMALIZATION,
         )
-        ## Mock out the assistant services
-        self.instance.sousChef = self.sculleryBoy
-        self.instance.groceryService = self.instaEats
-        self.instance.dataFactoryService.lookupService = self.localDataService
-        self.instance.dataExportService.dataService = self.localDataService
 
     def test_name(self):
         ## this makes codecov happy
@@ -131,25 +134,31 @@ class TestReductionService(unittest.TestCase):
         assert result.workspaces == mockReductionRecipe.return_value.cook.return_value["outputs"]
 
     def test_saveReduction(self):
-        # this test will ensure the two indicated files (record, data)
-        # are saved into the appropriate directory when save is called.
-        runNumber = "123456"
-        useLiteMode = True
-        timestamp = time.time()
-        record = self.localDataService.readReductionRecord(runNumber, useLiteMode, timestamp)
-        request = ReductionExportRequest(reductionRecord=record)
-        with reduction_root_redirect(self.localDataService):
-            # save the files
-            self.instance.saveReduction(request)
-
-            # now ensure the files exist
-            assert self.localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp).exists()
-            assert self.localDataService._constructReductionDataFilePath(runNumber, useLiteMode, timestamp).exists()
+        with (
+            mock.patch.object(self.instance.dataExportService, "exportReductionRecord") as mockExportRecord,
+            mock.patch.object(self.instance.dataExportService, "exportReductionData") as mockExportData,
+        ):
+            runNumber = "123456"
+            useLiteMode = True
+            timestamp = self.instance.getUniqueTimestamp()
+            record = ReductionRecord.model_construct(
+                runNumber=runNumber,
+                useLiteMode=useLiteMode,
+                timestamp=timestamp,
+            )
+            request = ReductionExportRequest(reductionRecord=record)
+            with reduction_root_redirect(self.localDataService):
+                self.instance.saveReduction(request)
+                mockExportRecord.assert_called_once_with(record)
+                mockExportData.assert_called_once_with(record)
 
     def test_loadReduction(self):
         ## this makes codecov happy
         with pytest.raises(NotImplementedError):
-            self.instance.loadReduction(stateId="babeeeee", timestamp=time.time())
+            self.instance.loadReduction(
+                stateId="babeeeee",
+                timestamp=self.instance.getUniqueTimestamp(),
+            )
 
     def test_hasState(self):
         assert self.instance.hasState("123456")
@@ -252,28 +261,16 @@ class TestReductionServiceMasks:
 
         # Create a pair of mask workspaces for each state
         cls.maskWS1 = (
-            wng.reductionPixelMask()
-            .runNumber(cls.runNumber1)
-            .timestamp(cls.dataExportService.getUniqueTimestamp())
-            .build()
+            wng.reductionPixelMask().runNumber(cls.runNumber1).timestamp(cls.service.getUniqueTimestamp()).build()
         )
         cls.maskWS2 = (
-            wng.reductionPixelMask()
-            .runNumber(cls.runNumber2)
-            .timestamp(cls.dataExportService.getUniqueTimestamp())
-            .build()
+            wng.reductionPixelMask().runNumber(cls.runNumber2).timestamp(cls.service.getUniqueTimestamp()).build()
         )
         cls.maskWS3 = (
-            wng.reductionPixelMask()
-            .runNumber(cls.runNumber3)
-            .timestamp(cls.dataExportService.getUniqueTimestamp())
-            .build()
+            wng.reductionPixelMask().runNumber(cls.runNumber3).timestamp(cls.service.getUniqueTimestamp()).build()
         )
         cls.maskWS4 = (
-            wng.reductionPixelMask()
-            .runNumber(cls.runNumber4)
-            .timestamp(cls.dataExportService.getUniqueTimestamp())
-            .build()
+            wng.reductionPixelMask().runNumber(cls.runNumber4).timestamp(cls.service.getUniqueTimestamp()).build()
         )
         cls.maskWS5 = wng.reductionUserPixelMask().numberTag(1).build()
         cls.maskWS6 = wng.reductionUserPixelMask().numberTag(2).build()
@@ -337,11 +334,21 @@ class TestReductionServiceMasks:
     def test_prepCombinedMask(self):
         masks = [self.maskWS1, self.maskWS2]
         maskArrays = [arrayFromMask(mask) for mask in masks]
-        combinedMask = self.service.prepCombinedMask(self.runNumber1, self.useLiteMode, masks)
+
+        # WARNING: the timestamp used here must be unique,
+        #   otherwise `prepCombinedMask` might overwrite one of the
+        #   sample mask workspaces!
+        timestamp = self.service.getUniqueTimestamp()
+        combinedMask = self.service.prepCombinedMask(self.runNumber1, self.useLiteMode, timestamp, masks)
         actual = arrayFromMask(combinedMask)
         expected = np.zeros(maskArrays[0].shape, dtype=bool)
         for mask in maskArrays:
             expected |= mask
+        if not np.all(expected == actual):
+            print(
+                "The expected combined mask doesn't match the calculated mask.\n"
+                + f"  Masking values are incorrect for {np.count_nonzero(expected != actual)} pixels."
+            )
         assert np.all(expected == actual)
 
     def test_fetchReductionGroceries_pixelMasks(self):
@@ -349,9 +356,12 @@ class TestReductionServiceMasks:
             mock.patch.object(self.service.groceryService, "fetchGroceryDict") as mockFetchGroceryDict,
             mock.patch.object(self.service, "prepCombinedMask") as mockPrepCombinedMask,
         ):
+            # timestamp must be unique: see comment at `test_prepCombinedMask`.
+            timestamp = self.service.getUniqueTimestamp()
             request = ReductionRequest(
                 runNumber=self.runNumber1,
                 useLiteMode=False,
+                timestamp=timestamp,
                 versions=Versions(1, 2),
                 pixelMasks=[self.maskWS1, self.maskWS2, self.maskWS5],
                 focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
@@ -394,13 +404,16 @@ class TestReductionServiceMasks:
                 .unit(wng.Units.DSP)
                 .group("bank")
                 .runNumber(self.runNumber1)
-                .timestamp(self.dataExportService.getUniqueTimestamp())
+                .timestamp(self.service.getUniqueTimestamp())
                 .build()
             )
 
+            # timestamp must be unique: see comment at `test_prepCombinedMask`.
+            timestamp = self.service.getUniqueTimestamp()
             request = ReductionRequest(
                 runNumber=self.runNumber1,
                 useLiteMode=False,
+                timestamp=timestamp,
                 versions=Versions(1, 2),
                 pixelMasks=[self.maskWS1, self.maskWS2, self.maskWS5, not_a_mask],
                 focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],

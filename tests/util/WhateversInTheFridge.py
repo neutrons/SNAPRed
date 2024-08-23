@@ -115,7 +115,6 @@ class WhateversInTheFridge(LocalDataService):
             useLiteMode=useLiteMode,
             timestamp=timestamp,
             workspaceNames=[wsName],
-            stateId="0xdeadbeefdeadbeef",
             calibration=self.readCalibrationRecord(runNumber, useLiteMode, 1),
             normalization=self.readNormalizationRecord(runNumber, useLiteMode, 1),
         )

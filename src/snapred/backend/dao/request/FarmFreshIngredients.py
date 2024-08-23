@@ -22,9 +22,9 @@ class FarmFreshIngredients(BaseModel):
     runNumber: str
 
     versions: Versions = Versions(None, None)
+
     # allow 'versions' to be accessed as a single version,
     #   or, to be accessed ambiguously
-
     @property
     def version(self) -> Optional[int]:
         if self.versions.calibration is not None and self.versions.normalization is not None:
@@ -36,6 +36,9 @@ class FarmFreshIngredients(BaseModel):
         self.versions = (v, None)
 
     useLiteMode: bool
+
+    ## mandatory for reduction
+    timestamp: Optional[float] = None
 
     ## needs to be mandatory for diffcal
     cifPath: Optional[str] = None
@@ -113,6 +116,7 @@ class FarmFreshIngredients(BaseModel):
                 if fg is None:
                     raise ValidationError("'focusGroup' is None")
                 v["focusGroups"] = [fg]
+                del v["focusGroup"]
         return v
 
     model_config = ConfigDict(extra="forbid")

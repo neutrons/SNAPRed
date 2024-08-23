@@ -72,6 +72,7 @@ class ReductionWorkflow(WorkflowImplementer):
             compatibleMasks = self.request(
                 path="reduction/getCompatibleMasks",
                 payload=ReductionRequest(
+                    # All runNumbers are from the same state => any one can be used here
                     runNumber=runNumbers[0],
                     useLiteMode=useLiteMode,
                 ),
@@ -94,9 +95,14 @@ class ReductionWorkflow(WorkflowImplementer):
         return [self._compatibleMasks[name] for name in pixelMasks]
 
     def _onPixelMaskSelection(self):
-        selectedKeys = self._reductionView.getPixelMasks()
-        selectedWorkspaceNames = self._reconstructPixelMaskNames(selectedKeys)
-        ReductionRequest.pixelMasks = selectedWorkspaceNames
+        pass
+        #  The previous version of this method actually does nothing:  :(
+        #
+        # selectedKeys = self._reductionView.getPixelMasks()
+        # selectedWorkspaceNames = self._reconstructPixelMaskNames(selectedKeys)
+        # ReductionRequest.pixelMasks = selectedWorkspaceNames
+        #
+        # ## Why would I want to set the ~obfuscated-by-pydantic~ `pixelMasks` field of the class object?
 
     def _triggerReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView  # noqa: F841
@@ -104,10 +110,13 @@ class ReductionWorkflow(WorkflowImplementer):
         runNumbers = self._reductionView.getRunNumbers()
         pixelMasks = self._reconstructPixelMaskNames(self._reductionView.getPixelMasks())
 
+        # Use one timestamp for the entire set of runNumbers:
+        timestamp = self.request(path="reduction/getUniqueTimestamp").data
         for runNumber in runNumbers:
             payload = ReductionRequest(
                 runNumber=str(runNumber),
                 useLiteMode=self._reductionView.liteModeToggle.field.getState(),
+                timestamp=timestamp,
                 continueFlags=self.continueAnywayFlags,
                 pixelMasks=pixelMasks,
                 keepUnfocused=self._reductionView.retainUnfocusedDataCheckbox.isChecked(),

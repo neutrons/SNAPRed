@@ -76,7 +76,8 @@ class ImitationDataService(LocalDataService):
         write_model_pretty(DAOFactory.groupingMap_POP(), self._defaultGroupingMapPath())
 
     def __del__(self):
-        shutil.rmtree(self._outputPath)
+        if self._outputPath.exists():
+            shutil.rmtree(self._outputPath)
 
     def readCifFilePath(self, sampleId: str):
         return Resource.getPath("inputs/crystalInfo/example.cif")

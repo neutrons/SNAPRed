@@ -99,7 +99,7 @@ class NameBuilder:
             raise RuntimeError(f"Key '{key}' not a valid property for workspace-type '{self.props['workspaceType']}'.")
 
         def setValue(value):
-            # IMPORTANT: in the builder, we retain the unformatted values;
+            # IMPORTANT: in the builder, we retain the _unformatted_ values;
             #   formatting occurs only at the time of build.
             self.props[key] = value
             return self
@@ -229,9 +229,9 @@ class ValueFormatter:
             case "stateId":
                 value = ValueFormatter.formatStateId(value)
             case _:
-                # IMPORTANT: moving the lowercase conversion to this location enables case sensitivity
+                # IMPORTANT: moving the _lowercase_ conversion to this location enables case sensitivity
                 #   in both formatter output and in literal tokens from the template itself.
-                # This is now required as Mantid itself uses capitalized names (e.g. "MaskWorkspace_2").
+                # This is now required, as Mantid itself uses capitalized names (e.g. "MaskWorkspace_2").
                 value = str(value).lower() if value != "" else ""
         return value
 

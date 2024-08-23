@@ -66,6 +66,7 @@ class ReductionService(Service):
         self.registerPath("load", self.loadReduction)
         self.registerPath("hasState", self.hasState)
         self.registerPath("getCompatibleMasks", self.getCompatibleMasks)
+        self.registerPath("getUniqueTimestamp", self.getUniqueTimestamp)
         return
 
     @staticmethod
@@ -80,10 +81,10 @@ class ReductionService(Service):
         :type request: ReductionRequest
         """
         continueFlags = ContinueWarning.Type.UNSET
-        # check if nomalziations are present
+        # check if a normalization is present
         if not self.dataFactoryService.normalizationExists(request.runNumber, request.useLiteMode):
             continueFlags |= ContinueWarning.Type.MISSING_NORMALIZATION
-        # check if diffraction calibration is present
+        # check if a diffraction calibration is present
         if not self.dataFactoryService.calibrationExists(request.runNumber, request.useLiteMode):
             continueFlags |= ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
 
@@ -99,7 +100,7 @@ class ReductionService(Service):
     @FromString
     def reduction(self, request: ReductionRequest):
         """
-        Perform reduction on a list of run numbers, once for each grouping in this state.
+        Perform reduction on a single run number, once for each grouping in this state.
 
         :param request: a ReductionRequest object holding needed information
         :type request: ReductionRequest
@@ -171,7 +172,9 @@ class ReductionService(Service):
         }
 
     # WARNING: `WorkspaceName` does not work with `@FromString`!
-    def prepCombinedMask(self, runNumber: str, useLiteMode: bool, pixelMasks: Iterable[WorkspaceName]) -> WorkspaceName:
+    def prepCombinedMask(
+        self, runNumber: str, useLiteMode: bool, timestamp: float, pixelMasks: Iterable[WorkspaceName]
+    ) -> WorkspaceName:
         """
         Combine all of the individual pixel masks for application and final output
         """
@@ -184,9 +187,7 @@ class ReductionService(Service):
             ==> TO / FROM mask-dropdown in Reduction panel
             This MUST be a list of valid `WorkspaceName` (i.e. containing their original `builder` attribute)
         """
-
-        # no reduction timestamp has been assigned yet
-        combinedMask = wng.reductionPixelMask().runNumber(runNumber).build()
+        combinedMask = wng.reductionPixelMask().runNumber(runNumber).timestamp(timestamp).build()
         self.groceryService.fetchCompatiblePixelMask(combinedMask, runNumber, useLiteMode)
         for n, mask in enumerate(pixelMasks):
             self.mantidSnapper.BinaryOperateMasks(
@@ -207,6 +208,7 @@ class ReductionService(Service):
 
             - runNumber
             - lite mode flag
+            - timestamp
             - at least one focus group specified
             - a smoothing parameter
             - a calibrant sample path
@@ -220,6 +222,7 @@ class ReductionService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
+            timestamp=request.timestamp,
             focusGroups=request.focusGroups,
             keepUnfocused=request.keepUnfocused,
             convertUnitsTo=request.convertUnitsTo,
@@ -274,7 +277,9 @@ class ReductionService(Service):
                 **residentMasks,
             )
             # combine all of the pixel masks, for application and final output
-            combinedMask = self.prepCombinedMask(request.runNumber, request.useLiteMode, maskGroceries.values())
+            combinedMask = self.prepCombinedMask(
+                request.runNumber, request.useLiteMode, request.timestamp, maskGroceries.values()
+            )
 
         # gather the input workspace and the diffcal table
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
@@ -315,6 +320,7 @@ class ReductionService(Service):
         self.dataExportService.exportReductionData(record)
 
     def loadReduction(self, stateId: str, timestamp: float):
+        # How to implement:
         # 1) Create the file path from the stateId and the timestamp;
         # 2) Load the reduction record and workspaces using `DataFactoryService.getReductionData`.
         raise NotImplementedError("not implemented: 'ReductionService.loadReduction")
@@ -324,6 +330,9 @@ class ReductionService(Service):
             logger.error(f"Invalid run number: {runNumber}")
             return False
         return self.dataFactoryService.checkCalibrationStateExists(runNumber)
+
+    def getUniqueTimestamp(self):
+        return self.dataExportService.getUniqueTimestamp()
 
     def _groupByStateId(self, requests: List[SNAPRequest]):
         stateIDs = {}
