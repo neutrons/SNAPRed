@@ -186,9 +186,10 @@ class SousChef(Service):
         return self._peaksCache[key]
 
     def prepManyDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[List[GroupPeakList]]:
-        if not self.dataFactoryService.calibrationExists(ingredients.runNumber, ingredients.useLiteMode):
+        # this also needs to check if it is in fact the default calibration
+        if ingredients.calibrantSamplePath is None:
             mode = "lite" if ingredients.useLiteMode else "native"
-            self.logger().warning(f"No calibration record found for run {ingredients.runNumber} in {mode} mode.")
+            self.logger().warning(f"No calibrant sample found for run {ingredients.runNumber} in {mode} mode.")
             return None
 
         detectorPeaks = []
@@ -234,15 +235,19 @@ class SousChef(Service):
             ingredients.runNumber, ingredients.useLiteMode, ingredients.versions.normalization
         )
         smoothingParameter = Config["calibration.parameters.default.smoothing"]
+        calibrantSamplePath = None
         if normalizationRecord is not None:
             smoothingParameter = normalizationRecord.smoothingParameter
-        return ingredients, smoothingParameter
+            calibrantSamplePath = normalizationRecord.calibrantSamplePath
+        # TODO: Should smoothing parameter be an ingredient?
+        return ingredients, smoothingParameter, calibrantSamplePath
 
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
         ingredients_ = ingredients.model_copy()
         # some of the reduction ingredients MUST match those used in the calibration/normalization processes
         ingredients_ = self._pullCalibrationRecordFFI(ingredients_)
-        ingredients_, smoothingParameter = self._pullNormalizationRecordFFI(ingredients_)
+        ingredients_, smoothingParameter, calibrantSamplePath = self._pullNormalizationRecordFFI(ingredients_)
+        ingredients_.calibrantSamplePath = calibrantSamplePath
 
         return ReductionIngredients(
             runNumber=ingredients_.runNumber,
@@ -296,8 +301,8 @@ class SousChef(Service):
     def _getThresholdFromCalibrantSample(self, calibrantSamplePath: str) -> float:
         if calibrantSamplePath is None:
             return Config["constants.PeakIntensityFractionThreshold"]
-        elif not os.path.exists(calibrantSamplePath):
-            return Config["constants.PeakIntensityFractionThreshold"]
         else:
+            if not os.path.exists(calibrantSamplePath):
+                raise FileNotFoundError(f"Calibrant sample file {calibrantSamplePath} does not exist.")
             calibrantSample = self.prepCalibrantSample(calibrantSamplePath)
             return calibrantSample.peakIntensityFractionThreshold

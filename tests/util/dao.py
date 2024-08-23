@@ -582,6 +582,7 @@ class DAOFactory:
         other_properties.setdefault(
             "calculationParameters", cls.normalizationParameters(runNumber, useLiteMode, version)
         )
+        other_properties.setdefault("normalizationCalibrantSamplePath", "fakePath")
 
         return NormalizationRecord(
             runNumber=runNumber,
