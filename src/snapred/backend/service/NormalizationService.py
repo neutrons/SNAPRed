@@ -169,6 +169,7 @@ class NormalizationService(Service):
             peakIntensityThreshold=request.peakIntensityThreshold,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
+            normalizationCalibrantSamplePath=request.calibrantSamplePath,
             calibration=calibration,
             crystalDBounds=request.crystalDBounds,
         )
