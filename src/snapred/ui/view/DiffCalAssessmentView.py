@@ -96,5 +96,5 @@ class DiffCalAssessmentView(QWidget):
         self.signalRunNumberUpdate.emit(runNumber, useLiteMode)
 
     def verify(self):
-        # TODO vwhat fields need to be verified?
+        # TODO: what fields need to be verified?
         return True

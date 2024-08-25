@@ -25,6 +25,7 @@ from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
     CalibrationLoadAssessmentRequest,
+    CalibrationWritePermissionsRequest,
     CreateCalibrationRecordRequest,
     CreateIndexEntryRequest,
     DiffractionCalibrationRequest,
@@ -33,6 +34,7 @@ from snapred.backend.dao.request import (
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.StateConfig import StateConfig
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
@@ -88,6 +90,18 @@ with mock.patch.dict(
         assert savedEntry.appliesTo == ">=1"
         assert savedEntry.timestamp is not None
 
+    def test_exportCalibrationIndex_no_timestamp():
+        calibrationService = CalibrationService()
+        calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
+        calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
+        calibrationService.dataExportService.getUniqueTimestamp = mock.Mock(return_value=123.123)
+        entry = IndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
+        entry.timestamp = None
+        calibrationService.saveCalibrationToIndex(entry)
+        assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
+        savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
+        assert savedEntry.timestamp == calibrationService.dataExportService.getUniqueTimestamp.return_value
+
     def test_save():
         workspace = mtd.unique_name(prefix="_dsp_")
         CreateSingleValuedWorkspace(OutputWorkspace=workspace)
@@ -108,6 +122,44 @@ with mock.patch.dict(
         assert calibrationService.dataExportService.exportCalibrationRecord.called
         savedEntry = calibrationService.dataExportService.exportCalibrationRecord.call_args.args[0]
         assert savedEntry.parameters is not None
+
+    def test_save_unexpected_units():
+        workspace = mtd.unique_name(prefix="_tof_")
+        CreateSingleValuedWorkspace(OutputWorkspace=workspace)
+        workspaces = {wngt.DIFFCAL_OUTPUT: [workspace]}
+        calibrationService = CalibrationService()
+        calibrationService.dataExportService.exportCalibrationRecord = mock.Mock()
+        calibrationService.dataExportService.exportCalibrationWorkspaces = mock.Mock()
+        calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
+        calibrationService.dataFactoryService.createCalibrationIndexEntry = mock.Mock()
+        calibrationService.dataFactoryService.createCalibrationRecord = mock.Mock(
+            return_value=mock.Mock(
+                runNumber="012345",
+                focusGroupCalibrationMetrics=mock.Mock(focusGroupName="group"),
+                workspaces=workspaces,
+            )
+        )
+        with pytest.raises(RuntimeError, match=r".*without a units token in its name.*"):
+            calibrationService.save(mock.Mock())
+
+    def test_save_unexpected_type():
+        workspace = mtd.unique_name(prefix="_dsp_")
+        CreateSingleValuedWorkspace(OutputWorkspace=workspace)
+        workspaces = {wngt.REDUCTION_OUTPUT: [workspace]}
+        calibrationService = CalibrationService()
+        calibrationService.dataExportService.exportCalibrationRecord = mock.Mock()
+        calibrationService.dataExportService.exportCalibrationWorkspaces = mock.Mock()
+        calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
+        calibrationService.dataFactoryService.createCalibrationIndexEntry = mock.Mock()
+        calibrationService.dataFactoryService.createCalibrationRecord = mock.Mock(
+            return_value=mock.Mock(
+                runNumber="012345",
+                focusGroupCalibrationMetrics=mock.Mock(focusGroupName="group"),
+                workspaces=workspaces,
+            )
+        )
+        with pytest.raises(RuntimeError, match=r".*Unexpected output type.*"):
+            calibrationService.save(mock.Mock())
 
     def test_load():
         calibrationService = CalibrationService()
@@ -660,6 +712,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     ):
         FarmFreshIngredients.return_value = mock.Mock(runNumber="123")
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
         self.instance.sousChef = SculleryBoy()
 
         DiffractionCalibrationRecipe().executeRecipe.return_value = {"calibrationTable": "fake"}
@@ -668,13 +722,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
 
         # Call the method with the provided parameters
-        request = mock.Mock(
+        request = DiffractionCalibrationRequest(
             runNumber="123",
             useLiteMode=True,
             calibrantSamplePath="bundt/cake_egg.py",
             removeBackground=True,
+            focusGroup=FocusGroup(name="all", definition="path/to/all"),
+            continueFlags=ContinueWarning.Type.UNSET,
         )
-        res = self.instance.diffractionCalibration(request)
+        result = self.instance.diffractionCalibration(request)
 
         # Perform assertions to check the result and method calls
         assert FarmFreshIngredients.call_count == 1
@@ -684,7 +740,67 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             prepared_ingredients,
             self.instance.groceryService.fetchGroceryDict.return_value,
         )
-        assert res == {"calibrationTable": "fake"}
+        assert result == {"calibrationTable": "fake"}
+        self.instance.dataExportService.getCalibrationStateRoot.assert_called_once_with(request.runNumber)
+        self.instance.dataExportService.checkWritePermissions.assert_called_once_with(
+            self.instance.dataExportService.getCalibrationStateRoot.return_value
+        )
+
+    def test_validateRequest(self):
+        # test that `validateRequest` calls `validateWritePermissions`
+        request = DiffractionCalibrationRequest(
+            runNumber="123",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+            removeBackground=True,
+            focusGroup=FocusGroup(name="all", definition="path/to/all"),
+            continueFlags=ContinueWarning.Type.UNSET,
+        )
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=request.runNumber, continueFlags=request.continueFlags
+        )
+        with mock.patch.object(self.instance, "validateWritePermissions") as mockValidateWritePermissions:
+            self.instance.validateRequest(request)
+            mockValidateWritePermissions.assert_called_once_with(permissionsRequest)
+
+    def test_validateWritePermissions(self):
+        # test that `validateWritePermissions` throws no exceptions
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value=Path("lah/dee/dah"))
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
+        request = DiffractionCalibrationRequest(
+            runNumber="123",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+            removeBackground=True,
+            focusGroup=FocusGroup(name="all", definition="path/to/all"),
+            continueFlags=ContinueWarning.Type.UNSET,
+        )
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=request.runNumber, continueFlags=request.continueFlags
+        )
+        self.instance.validateWritePermissions(permissionsRequest)
+        self.instance.dataExportService.getCalibrationStateRoot.assert_called_once_with(request.runNumber)
+        self.instance.dataExportService.checkWritePermissions.assert_called_once_with(
+            self.instance.dataExportService.getCalibrationStateRoot.return_value
+        )
+
+    def test_validateWritePermissions_no_permissions(self):
+        # test that `validateWritePermissions` raises `ContinueWarning`
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value=Path("lah/dee/dah"))
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=False)
+        request = DiffractionCalibrationRequest(
+            runNumber="123",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+            removeBackground=True,
+            focusGroup=FocusGroup(name="all", definition="path/to/all"),
+            continueFlags=ContinueWarning.Type.UNSET,
+        )
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=request.runNumber, continueFlags=request.continueFlags
+        )
+        with pytest.raises(RuntimeError, match=r".*you don't have permissions to write.*"):
+            self.instance.validateWritePermissions(permissionsRequest)
 
     @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     @mock.patch(thisService + "FocusSpectraRecipe")

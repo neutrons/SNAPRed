@@ -95,6 +95,7 @@ class WorkflowImplementer(QObject):
         self.responses = []
         self.outputs = []
         self.collectedOutputs = []
+        self.continueAnywayFlags = ContinueWarning.Type.UNSET
 
         for hook in self.resetHooks:
             hook()

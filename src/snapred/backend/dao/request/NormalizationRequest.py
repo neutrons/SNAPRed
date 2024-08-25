@@ -1,7 +1,10 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.state.FocusGroup import FocusGroup
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.meta.Config import Config
 
 
@@ -27,3 +30,5 @@ class NormalizationRequest(BaseModel, extra="forbid"):
     )
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
+
+    continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET

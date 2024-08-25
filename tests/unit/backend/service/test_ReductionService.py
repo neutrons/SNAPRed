@@ -1,5 +1,6 @@
 import unittest
 import unittest.mock as mock
+from pathlib import Path
 from typing import List
 
 import numpy as np
@@ -71,8 +72,6 @@ class TestReductionService(unittest.TestCase):
             versions=(1, 2),
             pixelMasks=[],
             focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
-            continueFlags=ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
-            | ContinueWarning.Type.MISSING_NORMALIZATION,
         )
 
     def test_name(self):
@@ -122,7 +121,9 @@ class TestReductionService(unittest.TestCase):
         }
         mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
         self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
 
         result = self.instance.reduction(self.request)
         groupings = self.instance.fetchReductionGroupings(self.request)
@@ -131,7 +132,7 @@ class TestReductionService(unittest.TestCase):
         groceries["groupingWorkspaces"] = groupings["groupingWorkspaces"]
         mockReductionRecipe.assert_called()
         mockReductionRecipe.return_value.cook.assert_called_once_with(ingredients, groceries)
-        assert result.workspaces == mockReductionRecipe.return_value.cook.return_value["outputs"]
+        assert result.record.workspaceNames == mockReductionRecipe.return_value.cook.return_value["outputs"]
 
     def test_saveReduction(self):
         with (
@@ -146,7 +147,7 @@ class TestReductionService(unittest.TestCase):
                 useLiteMode=useLiteMode,
                 timestamp=timestamp,
             )
-            request = ReductionExportRequest(reductionRecord=record)
+            request = ReductionExportRequest(record=record)
             with reduction_root_redirect(self.localDataService):
                 self.instance.saveReduction(request)
                 mockExportRecord.assert_called_once_with(record)
@@ -164,6 +165,44 @@ class TestReductionService(unittest.TestCase):
         assert self.instance.hasState("123456")
         assert not self.instance.hasState("not a state")
         assert not self.instance.hasState("1")
+
+    def test_uniqueTimestamp(self):
+        with mock.patch.object(self.instance.dataExportService, "getUniqueTimestamp") as mockTimestamp:
+            mockTimestamp.return_value = 123.456
+            assert self.instance.getUniqueTimestamp() == mockTimestamp.return_value
+
+    def test_checkWritePermissions(self):
+        with (
+            mock.patch.object(self.instance.dataExportService, "checkWritePermissions") as mockCheckWritePermissions,
+            mock.patch.object(self.instance.dataExportService, "getReductionStateRoot") as mockGetReductionStateRoot,
+        ):
+            runNumber = "12345"
+            mockCheckWritePermissions.return_value = True
+            mockGetReductionStateRoot.return_value = Path("/reduction/state/root")
+            assert self.instance.checkWritePermissions(runNumber)
+            mockCheckWritePermissions.assert_called_once_with(mockGetReductionStateRoot.return_value)
+            mockGetReductionStateRoot.assert_called_once_with(runNumber)
+
+    def test_getSavePath(self):
+        with mock.patch.object(self.instance.dataExportService, "getReductionStateRoot") as mockGetReductionStateRoot:
+            runNumber = "12345"
+            expected = Path("/reduction/state/root")
+            mockGetReductionStateRoot.return_value = expected
+            actual = self.instance.getSavePath(runNumber)
+            assert actual == expected
+            mockGetReductionStateRoot.assert_called_once_with(runNumber)
+
+    def test_getStateIds(self):
+        expectedStateIds = ["0" * 16, "1" * 16, "2" * 16, "3" * 16]
+        with mock.patch.object(self.instance.dataFactoryService, "constructStateId") as mockConstructStateId:
+            runNumbers = ["4" * 6, "5" * 6, "6" * 6, "7" * 6]
+            mockConstructStateId.side_effect = lambda runNumber: (
+                dict(zip(runNumbers, expectedStateIds))[runNumber],
+                None,
+            )
+            actualStateIds = self.instance.getStateIds(runNumbers)
+            assert actualStateIds == expectedStateIds
+            mockConstructStateId.call_count == len(runNumbers)
 
     def test_groupRequests(self):
         payload = self.request.json()
@@ -190,11 +229,11 @@ class TestReductionService(unittest.TestCase):
         assert result["root"]["state1"]["normalization_0"][0] == request
 
     def test_validateReduction(self):
-        # assert no exceptions are raised
-        try:
-            self.instance.validateReduction(self.request)
-        except Exception as e:  # noqa: BLE001
-            self.fail(f"Unexpected exception: {e}")
+        fakeDataService = mock.Mock()
+        fakeDataService.calibrationExists.return_value = True
+        fakeDataService.normalizationExists.return_value = True
+        self.instance.dataFactoryService = fakeDataService
+        self.instance.validateReduction(self.request)
 
     def test_validateReduction_noCalibration(self):
         # assert ContinueWarning is raised
@@ -203,17 +242,103 @@ class TestReductionService(unittest.TestCase):
         # its even in the same file
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = False
+        fakeDataService.normalizationExists.return_value = True
         self.instance.dataFactoryService = fakeDataService
-        with pytest.raises(ContinueWarning):
+        with pytest.raises(ContinueWarning) as excInfo:
             self.instance.validateReduction(self.request)
+        assert excInfo.value.model.flags == ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
 
     def test_validateReduction_noNormalization(self):
         # assert ContinueWarning is raised
         fakeDataService = mock.Mock()
+        fakeDataService.calibrationExists.return_value = True
         fakeDataService.normalizationExists.return_value = False
         self.instance.dataFactoryService = fakeDataService
-        with pytest.raises(ContinueWarning):
+        with pytest.raises(ContinueWarning) as excInfo:
             self.instance.validateReduction(self.request)
+        assert excInfo.value.model.flags == ContinueWarning.Type.MISSING_NORMALIZATION
+
+    def test_validateReduction_reentry(self):
+        # assert ContinueWarning is NOT raised multiple times
+        fakeDataService = mock.Mock()
+        fakeDataService.calibrationExists.return_value = False
+        fakeDataService.normalizationExists.return_value = False
+        self.instance.dataFactoryService = fakeDataService
+        self.request.continueFlags = (
+            ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
+        )
+        self.instance.validateReduction(self.request)
+
+    @mock.patch("os.access", return_value=False)
+    def test_validateReduction_no_permissions(self, mockAccess):  # noqa: ARG002
+        # assert ContinueWarning is raised
+        fakeDataService = mock.Mock()
+        fakeDataService.calibrationExists.return_value = True
+        fakeDataService.normalizationExists.return_value = True
+        self.instance.dataFactoryService = fakeDataService
+        with pytest.raises(ContinueWarning) as excInfo:
+            self.instance.validateReduction(self.request)
+        assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+    @mock.patch("os.access", return_value=False)
+    def test_validateReduction_no_permissions_reentry(self, mockAccess):  # noqa: ARG002
+        # assert ContinueWarning is NOT raised multiple times
+        fakeDataService = mock.Mock()
+        fakeDataService.calibrationExists.return_value = True
+        fakeDataService.normalizationExists.return_value = True
+        self.instance.dataFactoryService = fakeDataService
+        self.request.continueFlags = ContinueWarning.Type.NO_WRITE_PERMISSIONS
+        self.instance.validateReduction(self.request)
+
+    @mock.patch("os.access", return_value=False)
+    def test_validateReduction_no_permissions_and_no_calibrations(self, mockAccess):  # noqa: ARG002
+        # assert ContinueWarning is raised
+        fakeDataService = mock.Mock()
+        fakeDataService.calibrationExists.return_value = False
+        fakeDataService.normalizationExists.return_value = False
+        self.instance.dataFactoryService = fakeDataService
+        with pytest.raises(ContinueWarning) as excInfo:
+            self.instance.validateReduction(self.request)
+
+        # Note: this tests the _first_ continue-anyway check,
+        #   which _only_ deals with the calibrations.
+        assert (
+            excInfo.value.model.flags
+            == ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
+        )
+
+    @mock.patch("os.access", return_value=False)
+    def test_validateReduction_no_permissions_and_no_calibrations_first_reentry(self, mockAccess):  # noqa: ARG002
+        # assert ContinueWarning is raised
+        fakeDataService = mock.Mock()
+        fakeDataService.calibrationExists.return_value = False
+        fakeDataService.normalizationExists.return_value = False
+        self.instance.dataFactoryService = fakeDataService
+        self.request.continueFlags = (
+            ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
+        )
+        with pytest.raises(ContinueWarning) as excInfo:
+            self.instance.validateReduction(self.request)
+
+        # Note: this tests re-entry for the _first_ continue-anyway check,
+        #   but with no re-entry for the second continue-anyway check.
+        assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+    @mock.patch("os.access", return_value=False)
+    def test_validateReduction_no_permissions_and_no_calibrations_second_reentry(self, mockAccess):  # noqa: ARG002
+        # assert ContinueWarning is raised
+        fakeDataService = mock.Mock()
+        fakeDataService.calibrationExists.return_value = False
+        fakeDataService.normalizationExists.return_value = False
+        self.instance.dataFactoryService = fakeDataService
+        self.request.continueFlags = (
+            ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
+            | ContinueWarning.Type.MISSING_NORMALIZATION
+            | ContinueWarning.Type.NO_WRITE_PERMISSIONS
+        )
+        # Note: this tests re-entry for the _first_ continue-anyway check,
+        #   and in addition, re-entry for the second continue-anyway check.
+        self.instance.validateReduction(self.request)
 
 
 class TestReductionServiceMasks:
@@ -289,7 +414,7 @@ class TestReductionServiceMasks:
     def _setup_test_mocks(self, monkeypatch, cleanup_workspace_at_exit):
         monkeypatch.setattr(
             self.service.dataFactoryService.lookupService,
-            "_generateStateId",
+            "generateStateId",
             lambda runNumber: {
                 self.runNumber1: (self.stateId1, None),
                 self.runNumber2: (self.stateId1, None),
