@@ -402,9 +402,9 @@ def test_prepareStateRoot_creates_state_root_directory():
     with state_root_redirect(localDataService, stateId=stateId):
         defaultGroupingMap = DAOFactory.groupingMap_SNAP()
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
-        assert not localDataService._constructCalibrationStateRoot().exists()
+        assert not localDataService.constructCalibrationStateRoot().exists()
         localDataService._prepareStateRoot(stateId)
-        assert localDataService._constructCalibrationStateRoot().exists()
+        assert localDataService.constructCalibrationStateRoot().exists()
 
 
 def test_prepareStateRoot_existing_state_root():
@@ -412,10 +412,10 @@ def test_prepareStateRoot_existing_state_root():
     localDataService = LocalDataService()
     stateId = ENDURING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId):
-        localDataService._constructCalibrationStateRoot().mkdir()
+        localDataService.constructCalibrationStateRoot().mkdir()
         defaultGroupingMap = DAOFactory.groupingMap_SNAP()
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
-        assert localDataService._constructCalibrationStateRoot().exists()
+        assert localDataService.constructCalibrationStateRoot().exists()
         localDataService._prepareStateRoot(stateId)
 
 
@@ -470,7 +470,7 @@ def test_prepareStateRoot_does_not_overwrite_grouping_map():
     localDataService = LocalDataService()
     stateId = ENDURING_STATE_ID
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
-        localDataService._constructCalibrationStateRoot().mkdir()
+        localDataService.constructCalibrationStateRoot().mkdir()
 
         # Write a 'groupingMap.json' file to the <state root>, but with a different stateId;
         #   note that the _value_ of the stateId field is _not_ validated at this stage, except for its format.
@@ -749,19 +749,19 @@ def test_readPVFile(h5pyMock):  # noqa: ARG001
     assert actual is not None
 
 
-def test__generateStateId():
+def test_generateStateId():
     localDataService = LocalDataService()
     localDataService._readPVFile = mock.Mock()
     testDetectorState = mockDetectorState("12345")
     localDataService._readPVFile.return_value = mockPVFile(testDetectorState)
-    actual, _ = localDataService._generateStateId("12345")
+    actual, _ = localDataService.generateStateId("12345")
     assert actual == UNCHANGING_STATE_ID
 
 
-def test__generateStateId_cache():
+def test_generateStateId_cache():
     localDataService = LocalDataService()
-    localDataService._generateStateId.cache_clear()
-    assert localDataService._generateStateId.cache_info() == functools._CacheInfo(
+    localDataService.generateStateId.cache_clear()
+    assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
         hits=0, misses=0, maxsize=128, currsize=0
     )
 
@@ -772,29 +772,29 @@ def test__generateStateId_cache():
     stateSHA1 = UNCHANGING_STATE_ID
     stateSHA2 = "fa0bb25b44874edb"
 
-    actual, _ = localDataService._generateStateId("12345")
+    actual, _ = localDataService.generateStateId("12345")
     assert actual == stateSHA1
-    assert localDataService._generateStateId.cache_info() == functools._CacheInfo(
+    assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
         hits=0, misses=1, maxsize=128, currsize=1
     )
 
     # check cached value
-    actual, _ = localDataService._generateStateId("12345")
+    actual, _ = localDataService.generateStateId("12345")
     assert actual == stateSHA1
-    assert localDataService._generateStateId.cache_info() == functools._CacheInfo(
+    assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
         hits=1, misses=1, maxsize=128, currsize=1
     )
 
     # check a different value
-    actual, _ = localDataService._generateStateId("67890")
+    actual, _ = localDataService.generateStateId("67890")
     assert actual == stateSHA2
-    assert localDataService._generateStateId.cache_info() == functools._CacheInfo(
+    assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
         hits=1, misses=2, maxsize=128, currsize=2
     )
     # ... and its cached value
-    actual, _ = localDataService._generateStateId("67890")
+    actual, _ = localDataService.generateStateId("67890")
     assert actual == stateSHA2
-    assert localDataService._generateStateId.cache_info() == functools._CacheInfo(
+    assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
         hits=2, misses=2, maxsize=128, currsize=2
     )
 
@@ -823,18 +823,15 @@ def test_CheckFileAndPermission_fileDoesNotExist(mockExists):  # noqa: ARG001
     assert result == (False, False)
 
 
-@mock.patch("os.access", return_value=True)
+@mock.patch("stat.S_IMODE", return_value=0o777)
+@mock.patch("os.stat")
 @mock.patch("pathlib.Path.exists", return_value=True)
-def test_HasWritePermissionsToPath_fileExistsWithPermission(mockExists, mockAccess):  # noqa: ARG001
-    filePath = Path("/some/path/to/file")
-    localDS = LocalDataService()
-    result = localDS._hasWritePermissionstoPath(filePath)
-    assert result is True
-
-
-@mock.patch("pathlib.Path.exists", return_value=True)
-@mock.patch("os.access", return_value=True)
-def test_CheckFileAndPermission_fileExistsAndWritePermission(mockExists, mockOsAccess):  # noqa: ARG001
+def test_checkFileAndPermission_fileExistsAndWritePermission(mockExists, mockStat, mockS_IMODE):  # noqa: ARG001
+    mockStat.return_value = mock.Mock(
+        st_uid=os.getuid(),
+        st_gid=os.getgroups()[0],
+        st_mode=0o777
+    )
     filePath = Path("/some/path/to/file")
     localDS = LocalDataService()
     localDS._hasWritePermissionstoPath = mock.Mock()
@@ -843,18 +840,84 @@ def test_CheckFileAndPermission_fileExistsAndWritePermission(mockExists, mockOsA
     assert result == (True, True)
 
 
+@mock.patch("stat.S_IMODE", return_value=0o777)
+@mock.patch("os.stat")
+@mock.patch("pathlib.Path.exists", return_value=True)
+def test__hasWritePermissionsToPath_fileExistsWithPermission(mockExists, mockStat, mockS_IMODE):  # noqa: ARG001
+    mockStat.return_value = mock.Mock(
+        st_uid=os.getuid(),
+        st_gid=os.getgroups()[0],
+        st_mode=0o777
+    )
+    filePath = Path("/some/path/to/file")
+    localDS = LocalDataService()
+    result = localDS._hasWritePermissionstoPath(filePath)
+    assert result is True
+
+
 @mock.patch("pathlib.Path.exists", return_value=False)
-def test_HasWritePermissionsToPath_fileDoesNotExist(mockExists):  # noqa: ARG001
+def test__hasWritePermissionsToPath_fileDoesNotExist(mockExists):  # noqa: ARG001
     filePath = Path("/some/path/to/nonexistent/file")
     localDS = LocalDataService()
     result = localDS._hasWritePermissionstoPath(filePath)
     assert result is False
 
 
+def test_checkWritePermissions_path_exists():
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+        path = Path(tmpDir) / "one" / "two" / "three"
+        path.mkdir(parents=True)
+        assert path.exists()
+        status = LocalDataService().checkWritePermissions(path)
+        assert status
+
+
+@mock.patch("stat.S_IMODE", return_value=0o000)
+def test_checkWritePermissions_path_exists_no_permissions(mockOsAccess):
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+        path = Path(tmpDir) / "one" / "two" / "three"
+        path.mkdir(parents=True)
+        assert path.exists()
+        status = LocalDataService().checkWritePermissions(path)
+        assert not status
+        mockOsAccess.assert_called_once()
+
+
+def test_checkWritePermissions_parent_exists():
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+        path = Path(tmpDir) / "one" / "two" / "three"
+        path.mkdir(parents=True)
+        assert path.exists()
+        path = path / "four"
+        assert not path.exists()
+        status = LocalDataService().checkWritePermissions(path)
+        assert status
+
+
+@mock.patch("stat.S_IMODE", return_value=0o000)
+def test_checkWritePermissions_parent_exists_no_permissions(mockOsAccess):
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+        path = Path(tmpDir) / "one" / "two" / "three"
+        path.mkdir(parents=True)
+        assert path.exists()
+        path = path / "four"
+        assert not path.exists()
+        status = LocalDataService().checkWritePermissions(path)
+        assert not status
+        mockOsAccess.assert_called_once()
+
+
+def test_checkWritePermissions_path_does_not_exist():
+    path = Path("/does_not_exist") / "one" / "two" / "three"
+    assert not path.exists()
+    status = LocalDataService().checkWritePermissions(path)
+    assert not status
+
+
 def test_constructCalibrationStateRoot():
     fakeState = "joobiewoobie"
     localDataService = LocalDataService()
-    ans = localDataService._constructCalibrationStateRoot(fakeState)
+    ans = localDataService.constructCalibrationStateRoot(fakeState)
     assert isinstance(ans, Path)
     assert ans.parts[-1] == fakeState
 
@@ -867,7 +930,7 @@ def test_constructCalibrationStatePath():
         assert isinstance(ans, Path)
         assert ans.parts[-1] == "diffraction"
         assert ans.parts[-2] == "lite" if useLiteMode else "native"
-        assert ans.parts[:-2] == localDataService._constructCalibrationStateRoot(fakeState).parts
+        assert ans.parts[:-2] == localDataService.constructCalibrationStateRoot(fakeState).parts
 
 
 def test_constructNormalizationStatePath():
@@ -878,7 +941,7 @@ def test_constructNormalizationStatePath():
         assert isinstance(ans, Path)
         assert ans.parts[-1] == "normalization"
         assert ans.parts[-2] == "lite" if useLiteMode else "native"
-        assert ans.parts[:-2] == localDataService._constructCalibrationStateRoot(fakeState).parts
+        assert ans.parts[:-2] == localDataService.constructCalibrationStateRoot(fakeState).parts
 
 
 def test_constructReductionStateRoot():
@@ -886,7 +949,7 @@ def test_constructReductionStateRoot():
     fakeState = "joobiewoobie"
     localDataService = LocalDataService()
     localDataService.getIPTS = mock.Mock(return_value=fakeIPTS)
-    localDataService._generateStateId = mock.Mock(return_value=(fakeState, "gibberish"))
+    localDataService.generateStateId = mock.Mock(return_value=(fakeState, "gibberish"))
     runNumber = "xyz"
     ans = localDataService._constructReductionStateRoot(runNumber)
     assert isinstance(ans, Path)
@@ -899,7 +962,7 @@ def test_constructReductionDataRoot():
     fakeState = "joobiewoobie"
     localDataService = LocalDataService()
     localDataService.getIPTS = mock.Mock(return_value=fakeIPTS)
-    localDataService._generateStateId = mock.Mock(return_value=(fakeState, "gibberish"))
+    localDataService.generateStateId = mock.Mock(return_value=(fakeState, "gibberish"))
     runNumber = "xyz"
     for useLiteMode in [True, False]:
         ans = localDataService._constructReductionDataRoot(runNumber, useLiteMode)
@@ -971,25 +1034,25 @@ def test_index_default(Indexer):
 
     # make an indexer
     stateId = "abc"
-    localDataService._generateStateId = mock.Mock(return_value=(stateId, "gibberish"))
+    localDataService.generateStateId = mock.Mock(return_value=(stateId, "gibberish"))
     localDataService._statePathForWorkflow = mock.Mock(return_value="/not/real/path")
     indexerType = IndexerType.DEFAULT
     for useLiteMode in [True, False]:
         res = localDataService.indexer("xyz", useLiteMode, indexerType)
         assert res == indexer
-        assert localDataService._generateStateId.called
+        assert localDataService.generateStateId.called
         assert localDataService._statePathForWorkflow.called
         assert Indexer.called
 
         # reset call counts for next check
         Indexer.reset_mock()
-        localDataService._generateStateId.reset_mock()
+        localDataService.generateStateId.reset_mock()
         localDataService._statePathForWorkflow.reset_mock()
 
         # call again and make sure cached version in returned
         res = localDataService.indexer("xyz", useLiteMode, indexerType)
         assert res == indexer
-        assert localDataService._generateStateId.called
+        assert localDataService.generateStateId.called
         assert not localDataService._statePathForWorkflow.called
         assert not Indexer.called
 
@@ -1003,7 +1066,7 @@ def test_index_reduction(Indexer):
     localDataService = LocalDataService()
 
     # make an indexer
-    localDataService._generateStateId = mock.Mock(return_value=("xyz", "123"))
+    localDataService.generateStateId = mock.Mock(return_value=("xyz", "123"))
 
     indexerType = IndexerType.REDUCTION
     for useLiteMode in [True, False]:
@@ -1540,7 +1603,7 @@ def test_writeReductionData(readSyntheticReductionRecord, createReductionWorkspa
     # Temporarily use a single run number
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = ENDURING_STATE_ID
-    fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
+    fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
 
     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
@@ -1568,7 +1631,7 @@ def test_writeReductionData_no_directories(readSyntheticReductionRecord, createR
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = ENDURING_STATE_ID
-    fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
+    fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
 
     localDataService = LocalDataService()
@@ -1597,7 +1660,7 @@ def test_writeReductionData_metadata(readSyntheticReductionRecord, createReducti
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = ENDURING_STATE_ID
-    fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
+    fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
 
     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
@@ -1631,7 +1694,7 @@ def test_readWriteReductionData(readSyntheticReductionRecord, createReductionWor
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = ENDURING_STATE_ID
-    fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
+    fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
 
     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
@@ -1685,7 +1748,7 @@ def test_readWriteReductionData_pixel_mask(
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = ENDURING_STATE_ID
-    fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
+    fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
     localDataService = LocalDataService()
@@ -1739,7 +1802,7 @@ def test__constructReductionDataFilePath():
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = ENDURING_STATE_ID
     testIPTS = "IPTS-12345"
-    fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
+    fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
 
     expectedFilePath = (
@@ -1752,7 +1815,7 @@ def test__constructReductionDataFilePath():
     )
 
     localDataService = LocalDataService()
-    localDataService._generateStateId = mock.Mock(return_value=(stateId, None))
+    localDataService.generateStateId = mock.Mock(return_value=(stateId, None))
     localDataService.getIPTS = mock.Mock(return_value=testIPTS)
     actualFilePath = localDataService._constructReductionDataFilePath(runNumber, useLiteMode, timestamp)
     assert actualFilePath == expectedFilePath
@@ -1761,8 +1824,8 @@ def test__constructReductionDataFilePath():
 def test_getReductionRecordFilePath():
     timestamp = time.time()
     localDataService = LocalDataService()
-    localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("123", "456")
+    localDataService.generateStateId = mock.Mock()
+    localDataService.generateStateId.return_value = ("123", "456")
     localDataService._constructReductionDataRoot = mock.Mock()
     localDataService._constructReductionDataRoot.return_value = Path(Resource.getPath("outputs"))
     actualPath = localDataService._constructReductionRecordFilePath("57514", True, timestamp)
@@ -2045,7 +2108,7 @@ def test_initializeState():
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         stateId = testCalibrationData.instrumentState.id.hex  # "ab8704b0bc2a2342"
         stateRootPath = Path(tmpDir) / stateId
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=stateRootPath)
+        localDataService.constructCalibrationStateRoot = mock.Mock(return_value=stateRootPath)
 
         actual = localDataService.initializeState(runNumber, useLiteMode, "test")
         actual.creationDate = testCalibrationData.creationDate
@@ -2076,7 +2139,7 @@ def test_initializeState_calls_prepareStateRoot():
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         stateId = ENDURING_STATE_ID
         stateRootPath = Path(tmpDir) / stateId
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=stateRootPath)
+        localDataService.constructCalibrationStateRoot = mock.Mock(return_value=stateRootPath)
 
         assert not stateRootPath.exists()
         localDataService.initializeState(runNumber, useLiteMode, "test")
@@ -2134,7 +2197,7 @@ def test_readSampleFilePaths():
 def test_readGroupingMap_no_calibration_file():
     localDataService = LocalDataService()
     localDataService.checkCalibrationFileExists = mock.Mock(return_value=False)
-    localDataService._generateStateId = mock.Mock(side_effect=RuntimeError("YOU IDIOT!"))
+    localDataService.generateStateId = mock.Mock(side_effect=RuntimeError("YOU IDIOT!"))
     localDataService._readDefaultGroupingMap = mock.Mock()
     localDataService._readGroupingMap = mock.Mock()
 
@@ -2146,7 +2209,7 @@ def test_readGroupingMap_no_calibration_file():
 def test_readGroupingMap_yes_calibration_file():
     localDataService = LocalDataService()
     localDataService.checkCalibrationFileExists = mock.Mock(return_value=True)
-    localDataService._generateStateId = mock.Mock(return_value=(mock.Mock(), mock.Mock()))
+    localDataService.generateStateId = mock.Mock(return_value=(mock.Mock(), mock.Mock()))
     localDataService._readGroupingMap = mock.Mock()
     localDataService._readDefaultGroupingMap = mock.Mock(side_effect=RuntimeError("YOU IDIOT!"))
 
@@ -2531,7 +2594,7 @@ class TestReductionPixelMasks:
             for ts in tss:
                 # Warnings:
                 # * this depends on `_constructReductionDataRoot` mock in `_setup_test_mocks`;
-                # * this depends on `_generateStateId` mock in `_setup_test_mocks`:
+                # * this depends on `generateStateId` mock in `_setup_test_mocks`:
                 #   so only a few run numbers will be set up to work.
 
                 dataPath = self.service._constructReductionDataPath(runNumber, self.useLiteMode, ts)
@@ -2548,7 +2611,7 @@ class TestReductionPixelMasks:
     ):
         monkeypatch.setattr(
             self.service,
-            "_generateStateId",
+            "generateStateId",
             lambda runNumber: {
                 self.runNumber1: (self.stateId1, None),
                 self.runNumber2: (self.stateId1, None),

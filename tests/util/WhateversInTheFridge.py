@@ -63,7 +63,7 @@ class WhateversInTheFridge(LocalDataService):
         return str(self.iptsCache[key])
 
     @ExceptionHandler(StateValidationException)
-    def _generateStateId(self, runId: str) -> Tuple[str, str]:
+    def generateStateId(self, runId: str) -> Tuple[str, str]:
         stateId = DAOFactory.magical_state_id.copy()
         return stateId.hex, stateId.decodedKey
 

@@ -3,6 +3,7 @@ from qtpy.QtCore import Slot
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.backend.dao.request import (
+    CalibrationWritePermissionsRequest,
     CreateIndexEntryRequest,
     CreateNormalizationRecordRequest,
     HasStateRequest,
@@ -71,7 +72,12 @@ class NormalizationWorkflow(WorkflowImplementer):
                 resetLambda=self.reset,
                 parent=parent,
             )
-            .addNode(self._triggerNormalization, self._requestView, "Normalization Calibration")
+            .addNode(
+                self._triggerNormalization,
+                self._requestView,
+                "Normalization Calibration",
+                continueAnywayHandler=self._continueAnywayHandler,
+            )
             .addNode(self._specifyNormalization, self._tweakPeakView, "Tweak Parameters")
             .addNode(self._saveNormalization, self._saveView, "Saving")
             .build()
@@ -140,6 +146,12 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.prevXtalDMin = float(self._tweakPeakView.fieldXtalDMin.field.text())
         self.prevXtalDMax = float(self._tweakPeakView.fieldXtalDMax.field.text())
+
+        # Validate that the user has write permissions as early as possible in the workflow.
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=self.runNumber, continueFlags=self.continueAnywayFlags
+        )
+        self.request(path="normalization/validateWritePermissions", payload=permissionsRequest)
 
         # init the payload
         payload = NormalizationRequest(

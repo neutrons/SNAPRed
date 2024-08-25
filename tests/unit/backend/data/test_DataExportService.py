@@ -39,6 +39,11 @@ class TestDataExportService(unittest.TestCase):
         self.instance.checkFileandPermission(filePath)
         assert self.instance.dataService.checkFileandPermission.called
 
+    def test_checkWritePermissions(self):
+        path = Path("some/mock/path")
+        self.instance.checkWritePermissions(path)
+        assert self.instance.dataService.checkWritePermissions.called
+
     def test_getUniqueTimestamp(self):
         self.instance.getUniqueTimestamp()
         assert self.instance.dataService.getUniqueTimestamp.called
@@ -56,6 +61,15 @@ class TestDataExportService(unittest.TestCase):
     def test_exportCalibrationWorkspaces(self):
         self.instance.exportCalibrationWorkspaces(mock.Mock())
         assert self.instance.dataService.writeCalibrationWorkspaces.called
+
+    def test_getCalibrationStateRoot(self):
+        with mock.patch.object(self.instance.dataService, "generateStateId") as mockGenerateStateId:
+            mockGenerateStateId.return_value = ("1a2b3c4d5e6f7a8b", None)
+            self.instance.getCalibrationStateRoot(mock.Mock())
+            assert mockGenerateStateId.called
+            self.instance.dataService.constructCalibrationStateRoot.assert_called_once_with(
+                mockGenerateStateId.return_value[0]
+            )
 
     def test_exportCalibrationState(self):
         self.instance.exportCalibrationState(mock.Mock())
@@ -92,6 +106,10 @@ class TestDataExportService(unittest.TestCase):
     def test_exportReductionData(self):
         self.instance.exportReductionData(mock.Mock())
         assert self.instance.dataService.writeReductionData.called
+
+    def test_getReductionStateRoot(self):
+        self.instance.getReductionStateRoot(mock.Mock())
+        assert self.instance.dataService._constructReductionStateRoot.called
 
     ##### TEST WORKSPACE METHODS #####
 
