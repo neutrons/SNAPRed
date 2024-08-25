@@ -1,13 +1,16 @@
 # ruff: noqa: E402, ARG002
 import unittest
 import unittest.mock as mock
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from mantid.simpleapi import (
     mtd,
 )
+from snapred.backend.dao.request import CalibrationWritePermissionsRequest
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
+from snapred.backend.error.ContinueWarning import ContinueWarning
 
 thisService = "snapred.backend.service.NormalizationService"
 localMock = mock.Mock()
@@ -45,9 +48,9 @@ with mock.patch.dict(
     def test_saveNormalization():
         normalizationService = NormalizationService()
         normalizationService.dataExportService.exportNormalizationRecord = mock.Mock()
-        normalizationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version="1.0.0")
+        normalizationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version=1)
         normalizationService.dataExportService.exportNormalizationWorkspaces = mock.Mock()
-        normalizationService.dataExportService.exportNormalizationWorkspaces.return_value = MagicMock(version="1.0.0")
+        normalizationService.dataExportService.exportNormalizationWorkspaces.return_value = MagicMock(version=1)
         normalizationService.dataExportService.exportNormalizationIndexEntry = mock.Mock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = MagicMock("expected")
         normalizationService.saveNormalization(mock.Mock())
@@ -83,6 +86,7 @@ class TestNormalizationService(unittest.TestCase):
             focusGroup=FocusGroup(name="apple", definition="path/to/grouping"),
             smoothingParameter=0.5,
             crystalDBounds={"minimum": 0.4, "maximum": 100.0},
+            continueFlags=ContinueWarning.Type.UNSET,
         )
 
     def clearoutWorkspaces(self) -> None:
@@ -116,8 +120,7 @@ class TestNormalizationService(unittest.TestCase):
 
         res = self.instance.focusSpectra(mockRequest)
 
-        # assert self.instance.sousChef.prepPixelGroup.called_once_with(FarmFreshIngredients.return_value)
-        assert mockRecipeInst.executeRecipe.called_once_with(
+        mockRecipeInst.executeRecipe.assert_called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             GroupingWorkspace=mockRequest.groupingWorkspace,
             Ingredients=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
@@ -148,8 +151,7 @@ class TestNormalizationService(unittest.TestCase):
         res = self.instance.vanadiumCorrection(mockRequest)
 
         mockRecipeInst = RawVanadiumCorrectionRecipe.return_value
-        # assert self.instance.sousChef.prepNormalizationIngredients.called_once_with(FarmFreshIngredients.return_value)
-        assert mockRecipeInst.executeRecipe.called_once_with(
+        mockRecipeInst.executeRecipe.assert_called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             BackgroundWorkspace=mockRequest.backgroundWorkspace,
             Ingredients=self.instance.sousChef.prepNormalizationIngredients({}),
@@ -164,7 +166,7 @@ class TestNormalizationService(unittest.TestCase):
         mockRecipe,
         FarmFreshIngredients,
     ):
-        FarmFreshIngredients.return_value = {"good": ""}
+        FarmFreshIngredients.return_value = mock.Mock(spec=FarmFreshIngredients)
         mockRequest = SmoothDataExcludingPeaksRequest(
             runNumber="12345",
             useLiteMode=True,
@@ -178,17 +180,17 @@ class TestNormalizationService(unittest.TestCase):
 
         self.instance = NormalizationService()
         self.instance.sousChef = SculleryBoy()
-        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
+        self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="path/to/cif")
 
         mockRecipeInst = mockRecipe.return_value
 
         self.instance.smoothDataExcludingPeaks(mockRequest)
 
-        # assert self.instance.sousChef.prepDetectorPeaks.called_once_with(FarmFreshIngredients.return_value)
-        assert mockRecipeInst.executeRecipe.called_once_with(
+        mockRecipeInst.executeRecipe.assert_called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             OutputWorkspace=mockRequest.outputWorkspace,
-            Ingredients=self.instance.sousChef.prepDetectorPeaks({}),
+            DetectorPeaks=self.instance.sousChef.prepDetectorPeaks(FarmFreshIngredients.return_value),
+            SmoothingParameter=mockRequest.smoothingParameter,
         )
 
     @patch(
@@ -197,15 +199,12 @@ class TestNormalizationService(unittest.TestCase):
     )
     def test_normalizationAssessment(
         self,
-        NormalizationRecord,
+        mockNormalizationRecord,
     ):
         self.instance = NormalizationService()
         self.instance.sousChef = SculleryBoy()
-        self.instance.dataFactoryService.getNormalizationRecord = MagicMock(return_value=MagicMock())
-
         result = self.instance.normalizationAssessment(self.request)
-
-        assert result.mockId == NormalizationRecord.return_value.mockId
+        assert result == mockNormalizationRecord.return_value
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "RawVanadiumCorrectionRecipe")
@@ -237,6 +236,9 @@ class TestNormalizationService(unittest.TestCase):
         self.instance._sameStates = MagicMock(return_value=True)
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
+
         result = self.instance.normalization(self.request)
 
         self.assertIsInstance(result, dict)  # noqa: PT009
@@ -248,20 +250,64 @@ class TestNormalizationService(unittest.TestCase):
         mockFocusSpectra.assert_called_once()
         mockSmoothDataExcludingPeaks.assert_called_once()
 
+    def test_validateRequest(self):
+        # test `validateRequest` internal calls
+        self.instance._sameStates = mock.Mock(return_value=True)
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
+        )
+        with mock.patch.object(self.instance, "validateWritePermissions") as mockValidateWritePermissions:
+            self.instance.validateRequest(self.request)
+            self.instance._sameStates.assert_called_once_with(self.request.runNumber, self.request.backgroundRunNumber)
+            mockValidateWritePermissions.assert_called_once_with(permissionsRequest)
+
+    def test_validateRequest_different_states(self):
+        # test `validateRequest` raises `ValueError`
+        self.instance._sameStates = mock.Mock(return_value=False)
+        self.instance.validateWritePermissions = mock.Mock()
+        with pytest.raises(
+            ValueError, match=r"Run number and background run number must be of the same Instrument State."
+        ):
+            self.instance.validateRequest(self.request)
+
+    def test_validateWritePermissions(self):
+        # test that `validateWritePermissions` throws no exceptions
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value=Path("lah/dee/dah"))
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
+        )
+        self.instance.validateWritePermissions(permissionsRequest)
+        self.instance.dataExportService.getCalibrationStateRoot.assert_called_once_with(self.request.runNumber)
+        self.instance.dataExportService.checkWritePermissions.assert_called_once_with(
+            self.instance.dataExportService.getCalibrationStateRoot.return_value
+        )
+
+    def test_validateWritePermissions_no_permissions(self):
+        # test that `validateWritePermissions` raises `ContinueWarning`
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value=Path("lah/dee/dah"))
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=False)
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
+        )
+        with pytest.raises(RuntimeError, match=r".*you don't have permissions to write.*"):
+            self.instance.validateWritePermissions(permissionsRequest)
+
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "GroceryService")
-    def test_cachedNormalization(self, mockGroceryService, FarmFreshIngredients):
-        FarmFreshIngredients.return_value = {"purge": True}
+    def test_cachedNormalization(self, mockGroceryService, mockFarmFreshIngredients):
+        mockFarmFreshIngredients.return_value = {"purge": True}
         mockGroceryService.workSpaceDoesExist = mock.Mock(return_value=True)
         self.instance = NormalizationService()
-        self.instance._sameStates = MagicMock(return_value=True)
+        self.instance._sameStates = mock.Mock(return_value=True)
+        self.instance.checkWritePermissions = mock.Mock(return_value=True)
         self.instance.sousChef = SculleryBoy()
-        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
+        self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="path/to/cif")
         expected = NormalizationResponse(
             correctedVanadium="_tof_unfoc_raw_van_corr_012345",
             focusedVanadium=f"_tof_{self.request.focusGroup.name}_s+f-vanadium_012345",
             smoothedVanadium="_dsp_apple_fitted_van_corr_012345",
-            detectorPeaks=self.instance.sousChef.prepNormalizationIngredients(FarmFreshIngredients()).detectorPeaks,
+            detectorPeaks=self.instance.sousChef.prepNormalizationIngredients(mockFarmFreshIngredients()).detectorPeaks,
         ).dict()
 
         actual = self.instance.normalization(self.request)

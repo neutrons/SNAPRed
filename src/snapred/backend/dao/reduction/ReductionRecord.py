@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -19,13 +19,13 @@ class ReductionRecord(BaseModel):
     # Reduction has distinct registration attributes from Calibration and Normalization.
     #   for this reason, this class is not derived from 'Record',
     #   and does not include a 'CalculationParameters' instance.
+    runNumber: str
     useLiteMode: bool
     timestamp: float = Field(frozen=True, default=None)
 
     # specific to reduction records
-    runNumber: str
-    calibration: CalibrationRecord
-    normalization: NormalizationRecord
+    calibration: Optional[CalibrationRecord] = None
+    normalization: Optional[NormalizationRecord] = None
     pixelGroupingParameters: Dict[str, List[PixelGroupingParameters]]
 
     workspaceNames: List[WorkspaceName]

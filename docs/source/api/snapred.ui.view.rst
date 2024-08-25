@@ -30,7 +30,7 @@ snapred.ui.view.DiffCalAssessmentView module
    :show-inheritance:
 
 snapred.ui.view.DiffCalRequestView module
-------------------------------------------------------
+-----------------------------------------
 
 .. automodule:: snapred.ui.view.DiffCalRequestView
    :members:
@@ -105,7 +105,7 @@ snapred.ui.view.NormalizationRequestView module
    :show-inheritance:
 
 snapred.ui.view.NormalizationSaveView module
------------------------------------------------
+--------------------------------------------
 
 .. automodule:: snapred.ui.view.NormalizationSaveView
    :members:
@@ -132,10 +132,10 @@ snapred.ui.view.PromptUserforCalibrationInputView module
    :show-inheritance:
    :exclude-members: dataEntered
 
-snapred.ui.view.reduction.ReductionView module
-----------------------------------------------
+snapred.ui.view.reduction.ReductionRequestView module
+-----------------------------------------------------
 
-.. automodule:: snapred.ui.view.reduction.ReductionView
+.. automodule:: snapred.ui.view.reduction.ReductionRequestView
    :members:
    :undoc-members:
    :exclude-members: signalRemoveRunNumber

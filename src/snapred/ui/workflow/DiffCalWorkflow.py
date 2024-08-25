@@ -6,12 +6,14 @@ from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
+    CalibrationWritePermissionsRequest,
     DiffractionCalibrationRequest,
     FitMultiplePeaksRequest,
     FocusSpectraRequest,
     HasStateRequest,
 )
 from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
@@ -94,7 +96,12 @@ class DiffCalWorkflow(WorkflowImplementer):
                 resetLambda=self.reset,
                 parent=parent,
             )
-            .addNode(self._specifyRun, self._requestView, "Diffraction Calibration")
+            .addNode(
+                self._specifyRun,
+                self._requestView,
+                "Diffraction Calibration",
+                continueAnywayHandler=self._continueAnywayHandler,
+            )
             .addNode(
                 self._triggerDiffractionCalibration,
                 self._tweakPeakView,
@@ -106,7 +113,8 @@ class DiffCalWorkflow(WorkflowImplementer):
             .build()
         )
 
-    def _continueAnywayHandlerTweak(self, continueInfo):  # noqa: ARG002
+    def _continueAnywayHandlerTweak(self, continueInfo: ContinueWarning.Model):  # noqa: ARG002
+        self._continueAnywayHandler(continueInfo)
         self._tweakPeakView.updateContinueAnyway(True)
 
     @ExceptionToErrLog
@@ -167,6 +175,12 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.calibrantSamplePath = view.sampleDropdown.currentText()
         self.peakFunction = view.peakFunctionDropdown.currentText()
         self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
+
+        # Validate that the user has write permissions as early as possible in the workflow.
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=self.runNumber, continueFlags=self.continueAnywayFlags
+        )
+        self.request(path="calibration/validateWritePermissions", payload=permissionsRequest)
 
         self._tweakPeakView.updateRunNumber(self.runNumber)
         self._saveView.updateRunNumber(self.runNumber)

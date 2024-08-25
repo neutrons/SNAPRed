@@ -2,6 +2,7 @@ from qtpy.QtCore import Slot
 
 from snapred.backend.dao.normalization import NormalizationIndexEntry
 from snapred.backend.dao.request import (
+    CalibrationWritePermissionsRequest,
     HasStateRequest,
     NormalizationExportRequest,
     NormalizationRequest,
@@ -68,7 +69,12 @@ class NormalizationWorkflow(WorkflowImplementer):
                 resetLambda=self.reset,
                 parent=parent,
             )
-            .addNode(self._triggerNormalization, self._requestView, "Normalization Calibration")
+            .addNode(
+                self._triggerNormalization,
+                self._requestView,
+                "Normalization Calibration",
+                continueAnywayHandler=self._continueAnywayHandler,
+            )
             .addNode(self._specifyNormalization, self._tweakPeakView, "Tweak Parameters")
             .addNode(self._saveNormalization, self._saveView, "Saving")
             .build()
@@ -92,7 +98,6 @@ class NormalizationWorkflow(WorkflowImplementer):
                 useLiteMode=self.useLiteMode,
             )
             hasState = self.request(path="calibration/hasState", payload=payload.json()).data
-            # hasState = self.request(path="calibration/hasState", payload=runNumber).data
             if hasState:
                 self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
             else:
@@ -139,6 +144,12 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.prevXtalDMin = float(self._tweakPeakView.fieldXtalDMin.field.text())
         self.prevXtalDMax = float(self._tweakPeakView.fieldXtalDMax.field.text())
         self.prevThreshold = float(self._tweakPeakView.fieldThreshold.field.text())
+
+        # Validate that the user has write permissions as early as possible in the workflow.
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=self.runNumber, continueFlags=self.continueAnywayFlags
+        )
+        self.request(path="normalization/validateWritePermissions", payload=permissionsRequest)
 
         # init the payload
         payload = NormalizationRequest(

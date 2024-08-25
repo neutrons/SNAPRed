@@ -26,11 +26,12 @@ logger = snapredLogger.getLogger(__name__)
 @Singleton
 class WhateversInTheFridge(LocalDataService):
     """
-    Yeah, it'd be nice to use the LocalDataService and get all this...
+    Yeah, it'd be nice to go to the LocalDataService to get all this...
     But that's really complicated, and we don't have time.
     Just grab whatever's in the fridge.
 
-    Can mock out the LocalDataService for testing
+    Can mock out the LocalDataService for testing.
+    Only mocks out the factory methods; for export methods, use state_root_redirect
     """
 
     iptsCache: Dict[Tuple[str, str], Any] = {}
@@ -73,7 +74,7 @@ class WhateversInTheFridge(LocalDataService):
         return str(self.iptsCache[key])
 
     @ExceptionHandler(StateValidationException)
-    def _generateStateId(self, runId: str) -> Tuple[str, str]:
+    def generateStateId(self, runId: str) -> Tuple[str, str]:
         return "outpus/2kfxjiqm", "some gibberish"
 
     def checkCalibrationFileExists(self, runId: str):

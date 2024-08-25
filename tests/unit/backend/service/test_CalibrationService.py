@@ -2,11 +2,11 @@
 import tempfile
 import time
 import unittest
-import unittest.mock as mock
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List
-from unittest.mock import MagicMock, patch
+from unittest import mock
+from unittest.mock import MagicMock
 
 import pytest
 from mantid.simpleapi import (
@@ -18,12 +18,14 @@ from mantid.simpleapi import (
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
 from snapred.backend.dao.request import (
+    CalibrationWritePermissionsRequest,
     DiffractionCalibrationRequest,
-    FocusSpectraRequest,
     InitializeStateRequest,
 )
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateConfig import StateConfig
+from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -80,6 +82,18 @@ with mock.patch.dict(
         savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
         assert savedEntry.appliesTo == ">=1"
         assert savedEntry.timestamp is not None
+
+    def test_exportCalibrationIndex_no_timestamp():
+        calibrationService = CalibrationService()
+        calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
+        calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
+        calibrationService.dataExportService.getUniqueTimestamp = mock.Mock(return_value=123.123)
+        entry = CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
+        entry.timestamp = None
+        calibrationService.saveCalibrationToIndex(entry)
+        assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
+        savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
+        assert savedEntry.timestamp == calibrationService.dataExportService.getUniqueTimestamp.return_value
 
     def test_save():
         calibrationService = CalibrationService()
@@ -190,8 +204,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 maskWorkspaceName=self.sampleMaskWS if maskWSName else "",
             )
 
-    @patch(thisService + "CalibrationMetricExtractionRecipe")
-    @patch(thisService + "FocusGroupMetric")
+    @mock.patch(thisService + "CalibrationMetricExtractionRecipe")
+    @mock.patch(thisService + "FocusGroupMetric")
     def test_collectMetrics(
         self,
         FocusGroupMetric,
@@ -214,25 +228,25 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         metric = self.instance._collectMetrics(focussedData, focusGroup, pixelGroup)
 
         # Assert correct behavior
-        assert CalibrationMetricExtractionRecipe.called_once_with(
+        CalibrationMetricExtractionRecipe.return_value.executeRecipe.assert_called_once_with(
             InputWorkspace=focussedData,
-            PixelGroup=pixelGroup,
+            PixelGroup=pixelGroup.json(),
         )
-        assert self.instance.parseCalibrationMetricList.called_once_with(mockMetric)
-        assert FocusGroupMetric.called_once_with(
+        self.instance.parseCalibrationMetricList.assert_called_once_with(mockMetric)
+        FocusGroupMetric.assert_called_once_with(
             focusGroupName=focusGroup.name,
             calibrationMetric=mockMetric,  # NOTE this is because of above lambda
         )
         assert metric == FocusGroupMetric.return_value
 
-    @patch(
+    @mock.patch(
         thisService + "CalibrationAssessmentResponse",
         return_value=MagicMock(mockId="mock_calibration_assessment_response"),
     )
-    @patch(thisService + "CalibrationRecord", return_value=MagicMock(mockId="mock_calibration_record"))
-    @patch(thisService + "FitMultiplePeaksRecipe")
-    @patch(thisService + "FarmFreshIngredients")
-    @patch(
+    @mock.patch(thisService + "CalibrationRecord", return_value=MagicMock(mockId="mock_calibration_record"))
+    @mock.patch(thisService + "FitMultiplePeaksRecipe")
+    @mock.patch(thisService + "FarmFreshIngredients")
+    @mock.patch(
         thisService + "CalibrationMetricsWorkspaceIngredients",
         return_value=MagicMock(
             calibrationRecord=CalibrationRecord.model_validate_json(
@@ -291,9 +305,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         response = self.instance.assessQuality(request)
 
         # Assert correct method calls
-        assert FarmFreshIngredients.call_count == 1
-        assert FitMultiplePeaksRecipe.called_once_with(self.instance.sousChef.prepPeakIngredients({}))
-        assert self.instance.dataFactoryService.getCifFilePath.called_once_with("biscuit")
+        FarmFreshIngredients.assert_called_once()
+        FitMultiplePeaksRecipe.return_value.executeRecipe.assert_called_once_with(
+            InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT][0],
+            DetectorPeaks=self.instance.sousChef.prepDetectorPeaks(
+                FarmFreshIngredients.return_value,
+            ),
+        )
+        self.instance.dataFactoryService.getCifFilePath.assert_called_once_with("biscuit")
 
         # Assert the result is as expected
         assert response == CalibrationAssessmentResponse.return_value
@@ -313,7 +332,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert str(mockRequest.runId) in str(excinfo.value)
         assert str(mockRequest.version) in str(excinfo.value)
 
-    @patch(thisService + "CalibrationMetricsWorkspaceIngredients")
+    @mock.patch(thisService + "CalibrationMetricsWorkspaceIngredients")
     def test_load_quality_assessment_no_calibration_metrics_exception(
         self,
         mockCalibrationMetricsWorkspaceIngredients,
@@ -490,7 +509,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
             self.instance.loadQualityAssessment(mockRequest)
 
-    @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     def test_prepDiffractionCalibrationIngredients(self, FarmFreshIngredients):
         mockFF = mock.Mock()
         FarmFreshIngredients.return_value = mockFF
@@ -523,36 +542,49 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert res == self.instance.sousChef.prepDiffractionCalibrationIngredients(mockFF)
 
     def test_fetchDiffractionCalibrationGroceries(self):
-        self.instance.groceryClerk = mock.Mock()
-        self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
+        self.instance.groceryClerk = mock.Mock(spec=GroceryListBuilder)
+
+        runNumber = "12345"
+        useLiteMode = True
+        focusGroup = FocusGroup(name="group1", definition="/any/path")
+        diffcalOutputName = wng.diffCalOutput().unit(wng.Units.DSP).runNumber(runNumber).group(focusGroup.name).build()
+        diagnosticWorkspaceName = (
+            wng.diffCalOutput().unit(wng.Units.DIAG).runNumber(runNumber).group(focusGroup.name).build()
+        )
+        calibrationTableName = wng.diffCalTable().runNumber(runNumber).build()
+        calibrationMaskName = wng.diffCalMask().runNumber(runNumber).build()
+
+        self.instance.groceryService.fetchGroceryDict = mock.Mock(
+            return_value={
+                "grocery1": "orange",
+                "outputWorkspace": diffcalOutputName,
+                "diagnosticWorkspace": diagnosticWorkspaceName,
+                "calibrationTable": calibrationTableName,
+                "maskWorkspace": calibrationMaskName,
+            }
+        )
 
         # Call the method with the provided parameters
         request = mock.Mock(
             spec=DiffractionCalibrationRequest,
-            runNumber="12345",
-            useLiteMode=True,
-            calibrantSamplePath="bundt/cake_egg.py",
-            focusGroup=mock.Mock(name="groupName", definition="focusGroupDefinition"),
-            peakFunction="GAUSSIAN",
-            crystalDMin=0.001,
-            crystalDMax=10.0,
-            convergenceThreshold=0.1,
-            peakIntensityThreshold=0.00001,
-            nBinsAcrossPeakWidth=10,
-            fwhmMultipliers=[1.0, 1.0],
-            maxChiSq=100.0,
+            runNumber=runNumber,
+            useLiteMode=useLiteMode,
+            focusGroup=focusGroup,
         )
-        res = self.instance.fetchDiffractionCalibrationGroceries(request)
+        result = self.instance.fetchDiffractionCalibrationGroceries(request)
 
-        # Perform assertions to check the result and method calls
         assert self.instance.groceryClerk.buildDict.call_count == 1
-        assert self.instance.groceryService.fetchGroceryDict.called_once_with(
-            self.instance.groceryClerk.buildDict.return_value
+        self.instance.groceryService.fetchGroceryDict.assert_called_once_with(
+            self.instance.groceryClerk.buildDict.return_value,
+            outputWorkspace=diffcalOutputName,
+            diagnosticWorkspace=diagnosticWorkspaceName,
+            calibrationTable=calibrationTableName,
+            maskWorkspace=calibrationMaskName,
         )
-        assert res == self.instance.groceryService.fetchGroceryDict.return_value
+        assert result == self.instance.groceryService.fetchGroceryDict.return_value
 
-    @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
-    @patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
+    @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @mock.patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
     def test_diffractionCalibration(
         self,
         DiffractionCalibrationRecipe,
@@ -560,6 +592,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     ):
         FarmFreshIngredients.return_value = mock.Mock(runNumber="123")
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
         self.instance.sousChef = SculleryBoy()
 
         DiffractionCalibrationRecipe().executeRecipe.return_value = {"calibrationTable": "fake"}
@@ -568,33 +602,82 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
 
         # Call the method with the provided parameters
-        request = mock.Mock(
-            spec=DiffractionCalibrationRequest,
-            runNumber="12345",
+        request = DiffractionCalibrationRequest(
+            runNumber="123",
             useLiteMode=True,
             calibrantSamplePath="bundt/cake_egg.py",
-            focusGroup=mock.Mock(name="groupName", definition="focusGroupDefinition"),
-            peakFunction="GAUSSIAN",
-            crystalDMin=0.001,
-            crystalDMax=10.0,
-            convergenceThreshold=0.1,
-            peakIntensityThreshold=0.00001,
-            nBinsAcrossPeakWidth=10,
-            fwhmMultipliers=[1.0, 1.0],
-            maxChiSq=100.0,
+            focusGroup=FocusGroup(name="all", definition="path/to/all"),
+            continueFlags=ContinueWarning.Type.UNSET,
         )
-        res = self.instance.diffractionCalibration(request)
+        result = self.instance.diffractionCalibration(request)
 
         # Perform assertions to check the result and method calls
-        assert FarmFreshIngredients.call_count == 1
-        assert DiffractionCalibrationRecipe().executeRecipe.called_once_with(
+        FarmFreshIngredients.assert_called_once()
+        DiffractionCalibrationRecipe().executeRecipe.assert_called_once_with(
             self.instance.sousChef.prepDiffractionCalibrationIngredients(FarmFreshIngredients()),
             self.instance.groceryService.fetchGroceryDict.return_value,
         )
-        assert res == {"calibrationTable": "fake"}
+        assert result == {"calibrationTable": "fake"}
+        self.instance.dataExportService.getCalibrationStateRoot.assert_called_once_with(request.runNumber)
+        self.instance.dataExportService.checkWritePermissions.assert_called_once_with(
+            self.instance.dataExportService.getCalibrationStateRoot.return_value
+        )
 
-    @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
-    @patch(thisService + "FocusSpectraRecipe")
+    def test_validateRequest(self):
+        # test that `validateRequest` calls `validateWritePermissions`
+        request = DiffractionCalibrationRequest(
+            runNumber="123",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+            focusGroup=FocusGroup(name="all", definition="path/to/all"),
+            continueFlags=ContinueWarning.Type.UNSET,
+        )
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=request.runNumber, continueFlags=request.continueFlags
+        )
+        with mock.patch.object(self.instance, "validateWritePermissions") as mockValidateWritePermissions:
+            self.instance.validateRequest(request)
+            mockValidateWritePermissions.assert_called_once_with(permissionsRequest)
+
+    def test_validateWritePermissions(self):
+        # test that `validateWritePermissions` throws no exceptions
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value=Path("lah/dee/dah"))
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
+        request = DiffractionCalibrationRequest(
+            runNumber="123",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+            focusGroup=FocusGroup(name="all", definition="path/to/all"),
+            continueFlags=ContinueWarning.Type.UNSET,
+        )
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=request.runNumber, continueFlags=request.continueFlags
+        )
+        self.instance.validateWritePermissions(permissionsRequest)
+        self.instance.dataExportService.getCalibrationStateRoot.assert_called_once_with(request.runNumber)
+        self.instance.dataExportService.checkWritePermissions.assert_called_once_with(
+            self.instance.dataExportService.getCalibrationStateRoot.return_value
+        )
+
+    def test_validateWritePermissions_no_permissions(self):
+        # test that `validateWritePermissions` raises `ContinueWarning`
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value=Path("lah/dee/dah"))
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=False)
+        request = DiffractionCalibrationRequest(
+            runNumber="123",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+            focusGroup=FocusGroup(name="all", definition="path/to/all"),
+            continueFlags=ContinueWarning.Type.UNSET,
+        )
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=request.runNumber, continueFlags=request.continueFlags
+        )
+        with pytest.raises(RuntimeError, match=r".*you don't have permissions to write.*"):
+            self.instance.validateWritePermissions(permissionsRequest)
+
+    @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @mock.patch(thisService + "FocusSpectraRecipe")
     def test_focusSpectra_not_exist(
         self,
         FocusSpectraRecipe,
@@ -604,15 +687,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         FocusSpectraRecipe().executeRecipe.return_value = mock.Mock()
 
-        request = mock.Mock(
-            spec=FocusSpectraRequest,
-            runNumber="12345",
-            useLiteMode=True,
-            focusGroup=mock.Mock(name="groupName", definition="focusGroupDefinition"),
-            inputWorkspace="inputWS",
-            groupingWorkspace="groupingWS",
-            outputWorkspace="outputWS",
-        )
+        request = mock.Mock(runNumber="12345", focusGroup=mock.Mock(name="group1"))
         self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
 
@@ -634,9 +709,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         groupingItem = self.instance.groceryClerk.build.return_value
         groupingWorkspace = self.instance.groceryService.fetchGroupingDefinition.return_value["workspace"]
         assert FarmFreshIngredients.call_count == 1
-        # assert self.instance.sousChef.prepPixelGroup.called_once_with(FarmFreshIngredients.return_value)
-        assert self.instance.groceryService.fetchGroupingDefinition.called_once_with(groupingItem)
-        assert FocusSpectraRecipe().executeRecipe.called_once_with(
+        self.instance.groceryService.fetchGroupingDefinition.assert_called_once_with(groupingItem)
+        FocusSpectraRecipe().executeRecipe.assert_called_once_with(
             InputWorkspace=request.inputWorkspace,
             GroupingWorkspace=groupingWorkspace,
             Ingredients=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
@@ -644,20 +718,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         assert res == (focusedWorkspace, groupingWorkspace)
 
-    @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
-    @patch(thisService + "FocusSpectraRecipe")
+    @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @mock.patch(thisService + "FocusSpectraRecipe")
     def test_focusSpectra_exists(self, FocusSpectraRecipe, FarmFreshIngredients):
         self.instance.sousChef = SculleryBoy()
 
-        request = mock.Mock(
-            spec=FocusSpectraRequest,
-            runNumber="12345",
-            useLiteMode=True,
-            focusGroup=mock.Mock(name="groupName", definition="focusGroupDefinition"),
-            inputWorkspace="inputWS",
-            groupingWorkspace="groupingWS",
-            outputWorkspace="outputWS",
-        )
+        request = mock.Mock(runNumber="12345", focusGroup=mock.Mock(name="group1"))
         self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
 
@@ -679,13 +745,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         groupingItem = self.instance.groceryClerk.build.return_value
         groupingWorkspace = self.instance.groceryService.fetchGroupingDefinition.return_value["workspace"]
         assert FarmFreshIngredients.call_count == 1
-        assert self.instance.groceryService.fetchGroupingDefinition.called_once_with(groupingItem)
+        self.instance.groceryService.fetchGroupingDefinition.assert_called_once_with(groupingItem)
 
         # assert that the recipe is not called and the correct workspaces are returned
-        assert FocusSpectraRecipe().executeRecipe.call_count == 0
+        FocusSpectraRecipe().executeRecipe.assert_not_called()
         assert res == (focusedWorkspace, groupingWorkspace)
 
-    @patch(thisService + "FitMultiplePeaksRecipe")
+    @mock.patch(thisService + "FitMultiplePeaksRecipe")
     def test_fitPeaks(self, FitMultiplePeaksRecipe):
         request = mock.Mock()
         res = self.instance.fitPeaks(request)

@@ -64,7 +64,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.signalPeakThresholdUpdate.connect(self._updatePeakThreshold)
         self.signalMaxChiSqUpdate.connect(self._updateMaxChiSq)
         self.continueAnyway = False
-        self.signalContinueAnyway.connect(self._updateContineAnyway)
+        self.signalContinueAnyway.connect(self._updateContinueAnyway)
 
         # create the graph elements
         self.figure = plt.figure(constrained_layout=True)
@@ -116,11 +116,11 @@ class DiffCalTweakPeakView(BackendRequestView):
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
 
-    def updateContinueAnyway(self, continueAnyway):
+    def updateContinueAnyway(self, continueAnyway: bool):
         self.signalContinueAnyway.emit(continueAnyway)
 
     @Slot(bool)
-    def _updateContineAnyway(self, continueAnyway):
+    def _updateContinueAnyway(self, continueAnyway: bool):
         self.continueAnyway = continueAnyway
 
     @Slot(str)

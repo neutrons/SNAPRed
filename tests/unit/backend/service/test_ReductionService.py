@@ -1,5 +1,6 @@
 import unittest
 import unittest.mock as mock
+from pathlib import Path
 from typing import List
 
 import pydantic
@@ -17,6 +18,7 @@ from snapred.backend.dao.request import (
 )
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state.FocusGroup import FocusGroup
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.service.ReductionService import ReductionService
 from util.InstaEats import InstaEats
 from util.SculleryBoy import SculleryBoy
@@ -93,15 +95,19 @@ class TestReductionService(unittest.TestCase):
             "outputs": ["one", "two", "three"],
         }
         mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
 
         result = self.instance.reduction(self.request)
         groupings = self.instance.fetchReductionGroupings(self.request)
         ingredients = self.instance.prepReductionIngredients(self.request)
         groceries = self.instance.fetchReductionGroceries(self.request)
         groceries["groupingWorkspaces"] = groupings["groupingWorkspaces"]
-        assert mockReductionRecipe.called
-        assert mockReductionRecipe.return_value.cook.called_once_with(ingredients, groceries)
-        assert result.workspaces == mockReductionRecipe.return_value.cook.return_value["outputs"]
+        mockReductionRecipe.assert_called()
+        mockReductionRecipe.return_value.cook.assert_called_once_with(ingredients, groceries)
+        assert result.record.workspaceNames == mockReductionRecipe.return_value.cook.return_value["outputs"]
 
     def test_saveReduction(self):
         with (
@@ -116,7 +122,7 @@ class TestReductionService(unittest.TestCase):
                 useLiteMode=useLiteMode,
                 timestamp=timestamp,
             )
-            request = ReductionExportRequest(reductionRecord=record)
+            request = ReductionExportRequest(record=record)
             with reduction_root_redirect(self.localDataService):
                 self.instance.saveReduction(request)
                 mockExportRecord.assert_called_once_with(record)
@@ -135,6 +141,44 @@ class TestReductionService(unittest.TestCase):
         assert not self.instance.hasState("not a state")
         assert not self.instance.hasState("1")
 
+    def test_uniqueTimestamp(self):
+        with mock.patch.object(self.instance.dataExportService, "getUniqueTimestamp") as mockTimestamp:
+            mockTimestamp.return_value = 123.456
+            assert self.instance.getUniqueTimestamp() == mockTimestamp.return_value
+
+    def test_checkWritePermissions(self):
+        with (
+            mock.patch.object(self.instance.dataExportService, "checkWritePermissions") as mockCheckWritePermissions,
+            mock.patch.object(self.instance.dataExportService, "getReductionStateRoot") as mockGetReductionStateRoot,
+        ):
+            runNumber = "12345"
+            mockCheckWritePermissions.return_value = True
+            mockGetReductionStateRoot.return_value = Path("/reduction/state/root")
+            assert self.instance.checkWritePermissions(runNumber)
+            mockCheckWritePermissions.assert_called_once_with(mockGetReductionStateRoot.return_value)
+            mockGetReductionStateRoot.assert_called_once_with(runNumber)
+
+    def test_getSavePath(self):
+        with mock.patch.object(self.instance.dataExportService, "getReductionStateRoot") as mockGetReductionStateRoot:
+            runNumber = "12345"
+            expected = Path("/reduction/state/root")
+            mockGetReductionStateRoot.return_value = expected
+            actual = self.instance.getSavePath(runNumber)
+            assert actual == expected
+            mockGetReductionStateRoot.assert_called_once_with(runNumber)
+
+    def test_getStateIds(self):
+        expectedStateIds = ["0" * 16, "1" * 16, "2" * 16, "3" * 16]
+        with mock.patch.object(self.instance.dataFactoryService, "constructStateId") as mockConstructStateId:
+            runNumbers = ["4" * 6, "5" * 6, "6" * 6, "7" * 6]
+            mockConstructStateId.side_effect = lambda runNumber: (
+                dict(zip(runNumbers, expectedStateIds))[runNumber],
+                None,
+            )
+            actualStateIds = self.instance.getStateIds(runNumbers)
+            assert actualStateIds == expectedStateIds
+            mockConstructStateId.call_count == len(runNumbers)
+
     def test_groupRequests(self):
         payload = self.request.json()
         request = SNAPRequest(path="test", payload=payload)
@@ -144,6 +188,65 @@ class TestReductionService(unittest.TestCase):
         groupings = self.instance.getGroupings("")
         result = scheduler.handle([request], groupings)
 
-        # outpus/2kfxjiqm is the state id defined in WhateversInTheFridge util
         # Verify the request is sorted by state id then normalization version
-        assert result["root"]["outpus/2kfxjiqm"]["normalization_0"][0] == request
+        mockDataFactory = mock.Mock()
+        mockDataFactory.getNormalizationVersion.side_effect = [0, 1]
+        mockDataFactory.constructStateId.return_value = ("state1", "_")
+        self.instance.dataFactoryService = mockDataFactory
+
+        # now sort
+        result = scheduler.handle(
+            [request, request], [self.instance._groupByStateId, self.instance._groupByVanadiumVersion]
+        )
+        assert result["root"]["state1"]["normalization_1"][0] == request
+        assert result["root"]["state1"]["normalization_0"][0] == request
+
+    def test_validateReduction(self):
+        fakeDataService = mock.Mock()
+        fakeDataService.calibrationExists.return_value = True
+        fakeDataService.normalizationExists.return_value = True
+        self.instance.dataFactoryService = fakeDataService
+        self.instance.validateReduction(self.request)
+
+    def test_validateReduction_noCalibration(self):
+        # assert RuntimeError is raised
+        fakeDataService = mock.Mock()
+        fakeDataService.getCalibrationRecord.return_value = None
+        fakeDataService.getNormalizationRecord.return_value = mock.Mock()
+        self.instance.dataFactoryService = fakeDataService
+        with pytest.raises(RuntimeError, match=r".*missing calibration data.*"):
+            self.instance.validateReduction(self.request)
+
+    def test_validateReduction_noNormalization(self):
+        # assert RuntimeError is raised
+        fakeDataService = mock.Mock()
+        fakeDataService.getCalibrationRecord.return_value = mock.Mock()
+        fakeDataService.getNormalizationRecord.return_value = None
+        self.instance.dataFactoryService = fakeDataService
+        with pytest.raises(RuntimeError, match=r".*missing calibration data.*"):
+            self.instance.validateReduction(self.request)
+
+    def test_validateReduction_no_permissions(self):
+        # assert ContinueWarning is raised
+        fakeDataService = mock.Mock()
+        fakeDataService.getCalibrationRecord.return_value = mock.Mock()
+        fakeDataService.getNormalizationRecord.return_value = mock.Mock()
+        self.instance.dataFactoryService = fakeDataService
+        fakeExportService = mock.Mock()
+        fakeExportService.checkWritePermissions.return_value = False
+        self.instance.dataExportService = fakeExportService
+        with pytest.raises(ContinueWarning) as excInfo:
+            self.instance.validateReduction(self.request)
+        assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+    def test_validateReduction_no_permissions_reentry(self):
+        # assert ContinueWarning is NOT raised multiple times
+        fakeDataService = mock.Mock()
+        fakeDataService.getCalibrationRecord.return_value = mock.Mock()
+        fakeDataService.getNormalizationRecord.return_value = mock.Mock()
+        self.instance.dataFactoryService = fakeDataService
+        fakeExportService = mock.Mock()
+        fakeExportService.checkWritePermissions.return_value = False
+        self.instance.dataExportService = fakeExportService
+        self.request.continueFlags = ContinueWarning.Type.NO_WRITE_PERMISSIONS
+        self.instance.validateReduction(self.request)

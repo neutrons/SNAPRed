@@ -1,15 +1,11 @@
-from typing import List
-
 from pydantic import BaseModel, ConfigDict
 
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 
 
 class ReductionResponse(BaseModel):
-    workspaces: List[WorkspaceName]
+    record: ReductionRecord
 
     model_config = ConfigDict(
         extra="forbid",
-        # required in order to use 'WorkspaceName'
-        arbitrary_types_allowed=True,
     )

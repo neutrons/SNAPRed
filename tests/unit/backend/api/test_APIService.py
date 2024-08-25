@@ -49,8 +49,6 @@ class TestAPIService:
         mockService = MockService()
         serviceDirectory.registerService(mockService)
         validPaths = apiService.getValidPaths()
-        with Resource.open("/outputs/APIServicePaths.json.new", "w") as f:
-            f.write(json.dumps(validPaths, indent=2))
         with Resource.open("/outputs/APIServicePaths.json", "r") as f:
             actualValidPaths = json.load(f)
             assert validPaths == actualValidPaths
