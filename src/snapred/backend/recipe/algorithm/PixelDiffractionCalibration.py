@@ -129,11 +129,11 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             Target="dSpacing",
         )
 
-        self.mantidSnapper.CloneWorkspace(
-            "Convert to d-spacing to diffraction focus",
-            InputWorkspace=self.wsDSP,
-            OutPutWorkspace=self.wsBG,
-        )
+        # self.mantidSnapper.CloneWorkspace(
+        #     "Convert to d-spacing to diffraction focus",
+        #     InputWorkspace=self.wsDSP,
+        #     OutPutWorkspace=self.wsBG,
+        # )
 
         # for inspection, make a copy of initial data
         self.mantidSnapper.MakeDirtyDish(
@@ -170,7 +170,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
                 OutputWorkspace=self.wsDSP,
             )
             self.mantidSnapper.ConvertUnits(
-                "Convert to d-spacing",
+                "Convert to TOF",
                 InputWorkspace=self.wsDSP,
                 OutputWorkspace=self.wsTOF,
                 Target="TOF",
