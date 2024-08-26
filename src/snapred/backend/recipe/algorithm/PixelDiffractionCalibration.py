@@ -129,11 +129,11 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             Target="dSpacing",
         )
 
-        # self.mantidSnapper.CloneWorkspace(
-        #     "Convert to d-spacing to diffraction focus",
-        #     InputWorkspace=self.wsDSP,
-        #     OutPutWorkspace=self.wsBG,
-        # )
+        self.mantidSnapper.CloneWorkspace(
+            "Convert to d-spacing to diffraction focus",
+            InputWorkspace=self.wsTOF,
+            OutPutWorkspace=self.wsBG,
+        )
 
         # for inspection, make a copy of initial data
         self.mantidSnapper.MakeDirtyDish(
@@ -148,32 +148,39 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         )
 
         # if the data is event data, extract the background before cross-correlation
-        if "EventWorkspace" in self.mantidSnapper.mtd[self.wsTOF].id():
-            # self.mantidSnapper.RemoveEventBackground(
-            #     "Extracting background events...",
+        if not self.removeBackground:
+            self.mantidSnapper.RemoveEventBackground(
+                "Extracting background events...",
+                InputWorkspace=self.wsBG,
+                OutputWorkspace=self.wsBG,
+                GroupingWorkspace=self.getPropertyValue("GroupingWorkspace"),
+                DetectorPeaks=self.detectorPeaksJson,
+            )
+            # self.mantidSnapper.SmoothDataExcludingPeaks(
+            #     "Smoothing data excluding peaks",
             #     InputWorkspace=self.wsTOF,
             #     OutputWorkspace=self.wsBG,
-            #     GroupingWorkspace=self.getPropertyValue("GroupingWorkspace"),
             #     DetectorPeaks=self.detectorPeaksJson,
+            #     SmoothingParameter=0.001,
             # )
-            self.mantidSnapper.SmoothDataExcludingPeaksAlgo(
-                "Smoothing data excluding peaks",
-                InputWorkspace=self.wsDSP,
-                OutputWorkspace=self.wsBG,
-                DetectorPeaks=self.detectorPeaksJson,
-                SmoothingParameter=0.001,
+            self.mantidSnapper.ConvertToMatrixWorkspace(
+                "Converting TOF data to MatrixWorkspace...",
+                InputWorkspace=self.wsTOF,
+                OutputWorkspace=self.wsTOF,
             )
+            # self.mantidSnapper.executeQueue()
+
             self.mantidSnapper.Minus(
                 "Subtracting background from input data",
-                LHSWorkspace=self.wsDSP,
+                LHSWorkspace=self.wsTOF,
                 RHSWorkspace=self.wsBG,
-                OutputWorkspace=self.wsDSP,
+                OutputWorkspace=self.wsTOF,
             )
             self.mantidSnapper.ConvertUnits(
-                "Convert to TOF",
-                InputWorkspace=self.wsDSP,
-                OutputWorkspace=self.wsTOF,
-                Target="TOF",
+                "Convert to d-spacing",
+                InputWorkspace=self.wsTOF,
+                OutputWorkspace=self.wsDSP,
+                Target="dSpacing",
             )
             self.mantidSnapper.MakeDirtyDish(
                 "Creating copy of background-subtracted TOF data",
@@ -185,6 +192,8 @@ class PixelDiffractionCalibration(PythonAlgorithm):
                 InputWorkspace=self.wsDSP,
                 OutputWorkspace=self.wsDSP + "_pixelStripped",
             )
+        else:
+            pass
         # get handle to group focusing workspace and retrieve workspace indices for all detectors in each group
         focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
         focusWS = self.mantidSnapper.mtd[focusWSname]
@@ -220,7 +229,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             InputWorkspace=outputWS,
             OutputWorkspace=outputWS,
             Params=self.dSpaceParams,
-            PreserveEvents=True,
+            PreserveEvents=self.removeBackground,
             BinningMode="Logarithmic",
         )
         self.mantidSnapper.executeQueue()

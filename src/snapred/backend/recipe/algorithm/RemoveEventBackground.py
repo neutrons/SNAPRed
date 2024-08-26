@@ -9,6 +9,7 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 from pydantic import TypeAdapter
+from scipy.interpolate import make_smoothing_spline
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -29,14 +30,20 @@ class RemoveEventBackground(PythonAlgorithm):
             doc="Workspace holding the detector grouping information, for assigning peak windows",
         )
         self.declareProperty(
-            IEventWorkspaceProperty("OutputWorkspace", "", Direction.Output),
-            doc="Event workspace representing the extracted background",
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output),
+            doc="Histogram workspace representing the extracted background",
         )
         self.declareProperty(
             "DetectorPeaks",
             defaultValue="",
             direction=Direction.Input,
             doc="A list of GroupPeakList objects, as a string",
+        )
+        self.declareProperty(
+            "SmoothingParameter",
+            defaultValue=0.001,
+            direction=Direction.Input,
+            doc="Smoothing parameter for the spline smoothing after background extraction",
         )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
@@ -65,6 +72,7 @@ class RemoveEventBackground(PythonAlgorithm):
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
         self.outputBackgroundWorkspaceName = self.getPropertyValue("OutputWorkspace")
+        self.smoothingParameter = float(self.getPropertyValue("SmoothingParameter"))
 
     def PyExec(self):
         """
@@ -105,13 +113,19 @@ class RemoveEventBackground(PythonAlgorithm):
                 for mask in self.maskRegions[groupID]:
                     event_list.maskTof(mask[0], mask[1])
 
-        # for inspection, make a copy of background-stripped d-space data
-        self.mantidSnapper.MakeDirtyDish(
-            "Creating copy of initial d-spacing data",
+        self.mantidSnapper.ConvertToMatrixWorkspace(
+            "Converting EventWorkspace to MatrixWorkspace...",
             InputWorkspace=self.outputBackgroundWorkspaceName,
-            OutputWorkspace=self.outputBackgroundWorkspaceName + "_stripped",
+            OutputWorkspace=self.outputBackgroundWorkspaceName,
         )
-        # now convert back to TOF
+        self.mantidSnapper.executeQueue()
+
+        ws = self.mantidSnapper.mtd[self.outputBackgroundWorkspaceName]
+
+        # Apply smoothing after masking the peaks
+        self.applySmoothing(ws)
+
+        # Convert back to TOF
         self.mantidSnapper.ConvertUnits(
             "Convert units back to TOF",
             InputWorkspace=self.outputBackgroundWorkspaceName,
@@ -119,6 +133,31 @@ class RemoveEventBackground(PythonAlgorithm):
             Target="TOF",
         )
         self.mantidSnapper.executeQueue()
+
+        self.setPropertyValue("OutputWorkspace", self.outputBackgroundWorkspaceName)
+
+    def applySmoothing(self, workspace):
+        """
+        Applies smoothing to the workspace using a spline function after peaks have been masked.
+        """
+        numSpec = workspace.getNumberHistograms()
+
+        for index in range(numSpec):
+            x = workspace.readX(index)
+            y = workspace.readY(index)
+
+            xMidpoints = (x[:-1] + x[1:]) / 2
+            yMidpoints = y.copy()
+
+            # Throw an exception if y or xMidpoints are empty
+            if len(yMidpoints) == 0 or len(xMidpoints) == 0:
+                raise ValueError("No data in the workspace, all data removed by peak masking.")
+
+            # Generate spline with purged dataset
+            tck = make_smoothing_spline(xMidpoints, yMidpoints, lam=self.smoothingParameter)
+            # Fill in the removed data using the spline function and original datapoints
+            smoothing_results = tck(xMidpoints, extrapolate=False)
+            workspace.setY(index, smoothing_results)
 
 
 # Register algorithm with Mantid
