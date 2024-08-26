@@ -194,7 +194,7 @@ class SousChef(Service):
             )
         # grab information from records
         ingredients_ = ingredients.model_copy()
-        ingredients_.calibrantSamplePath = calibrationRecord.calibrationFittingIngredients.calibrantSamplePath
+        ingredients_.calibrantSamplePath = normalizationRecord.normalizationCalibrantSamplePath
         ingredients_.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients_.calibrantSamplePath).stem)
         ingredients_.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
         return ReductionIngredients(

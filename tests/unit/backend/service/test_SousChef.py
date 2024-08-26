@@ -324,17 +324,18 @@ class TestSousChef(unittest.TestCase):
 
     @mock.patch(thisService + "ReductionIngredients")
     def test_prepReductionIngredients(self, ReductionIngredients):
-        record = mock.Mock(
-            smoothingParamter=1.0,
-            calibrationFittingIngredients=mock.Mock(calibrantSamplePath="a/b.x"),
+        calibrationRecord = mock.Mock()
+        normalizationRecord = mock.Mock(
+            smoothingParameter=1.0,
+            normalizationCalibrantSamplePath="a/b.x",
         )
         self.instance.prepRunConfig = mock.Mock()
         self.instance.prepManyPixelGroups = mock.Mock()
         self.instance.prepManyDetectorPeaks = mock.Mock()
         self.instance.dataFactoryService.getCifFilePath = mock.Mock()
         self.instance.dataFactoryService.getReductionState = mock.Mock()
-        self.instance.dataFactoryService.getNormalizationRecord = mock.Mock(return_value=record)
-        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=record)
+        self.instance.dataFactoryService.getNormalizationRecord = mock.Mock(return_value=normalizationRecord)
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibrationRecord)
 
         res = self.instance.prepReductionIngredients(self.ingredients)
 
@@ -343,7 +344,7 @@ class TestSousChef(unittest.TestCase):
         assert ReductionIngredients.called_once_with(
             maskList=[],
             pixelGroups=self.instance.prepManyPixelGroups.return_value,
-            smoothingParameter=record.smoothingParameter,
+            smoothingParameter=normalizationRecord.smoothingParameter,
             detectorPeaksMany=self.instance.prepManyDetectorPeaks.return_value,
         )
         assert res == ReductionIngredients.return_value

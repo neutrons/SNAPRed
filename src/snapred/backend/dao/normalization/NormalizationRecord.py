@@ -28,6 +28,7 @@ class NormalizationRecord(BaseModel):
     workspaceNames: List[WorkspaceName] = []
     version: int = Config["instrument.startingVersionNumber"]
     crystalDBounds: Limit[float]
+    normalizationCalibrantSamplePath: str
 
     @field_validator("runNumber", "backgroundRunNumber", mode="before")
     @classmethod
