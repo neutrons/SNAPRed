@@ -156,24 +156,24 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             #     GroupingWorkspace=self.getPropertyValue("GroupingWorkspace"),
             #     DetectorPeaks=self.detectorPeaksJson,
             # )
-            self.mantidSnapper.SmoothDataExcludingPeaks(
+            self.mantidSnapper.SmoothDataExcludingPeaksAlgo(
                 "Smoothing data excluding peaks",
-                InputWorkspace=self.wsTOF,
+                InputWorkspace=self.wsDSP,
                 OutputWorkspace=self.wsBG,
                 DetectorPeaks=self.detectorPeaksJson,
                 SmoothingParameter=0.001,
             )
             self.mantidSnapper.Minus(
                 "Subtracting background from input data",
-                LHSWorkspace=self.wsTOF,
+                LHSWorkspace=self.wsDSP,
                 RHSWorkspace=self.wsBG,
-                OutputWorkspace=self.wsTOF,
+                OutputWorkspace=self.wsDSP,
             )
             self.mantidSnapper.ConvertUnits(
                 "Convert to d-spacing",
-                InputWorkspace=self.wsTOF,
-                OutputWorkspace=self.wsDSP,
-                Target="dSpacing",
+                InputWorkspace=self.wsDSP,
+                OutputWorkspace=self.wsTOF,
+                Target="TOF",
             )
             self.mantidSnapper.MakeDirtyDish(
                 "Creating copy of background-subtracted TOF data",
@@ -220,7 +220,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             InputWorkspace=outputWS,
             OutputWorkspace=outputWS,
             Params=self.dSpaceParams,
-            PreserveEvents=False,
+            PreserveEvents=True,
             BinningMode="Logarithmic",
         )
         self.mantidSnapper.executeQueue()
