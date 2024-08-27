@@ -17,7 +17,7 @@ instrument:
     home: ${instrument.home}/shared/Calibration
     sample:
       # "instrument.calibration.sample.home" is overridden in "test.yml":
-      home: ${instrument.calibration.home}/CalibrantSamples
+      home: ${instrument.calibration.home}/CalibrantSample
       extensions:
         - json
 
@@ -38,12 +38,12 @@ instrument:
     pixelResolution: 1179648
     # "instrument.native.definition" is overridden in "test.yml":
     definition:
-      file: ${instrument.home}/shared/Malcolm/dataFiles/SNAP_Definition.xml
+      file: ${module.root}/resources/SNAP_Definition.xml
   lite:
     pixelResolution: 18432
     # "instrument.lite.definition" is overridden in "test.yml":
     definition:
-      file: ${instrument.calibration.home}/Powder/SNAPLite.xml
+      file: ${module.root}/resources/SNAPLite_Definition.xml
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000
@@ -81,7 +81,6 @@ calibration:
     diagnostic:
       extension: .nxs.h5
     convergenceThreshold: 0.5
-    peakIntensityThreshold: 0.05
     nBinsAcrossPeakWidth: 10
     maximumIterations: 5
     maximumOffset: 10
@@ -135,7 +134,7 @@ mantid:
           timestamp:
             # Substitute timestamp-in-milliseconds if the keyword is present (e.g. "ts{timestamp}"),
             #   otherwise use `datetime.strftime` format-string syntax.
-            workspace: "%Y%m%dT%H%M%S"
+            workspace: "%Y-%m-%dT%H%M%S%z"
             path: "%Y-%m-%dT%H%M%S%z"
             path_regx: "([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})"
           numberTag:
@@ -168,11 +167,18 @@ localdataservice:
 
 logging:
   # logging.NOTSET: 0, logging.DEBUG: 10, logging.INFO: 20, logging:WARNING: 30, logging.ERROR: 40, logging.CRITICAL: 50
-  level:  40
   SNAP:
-    format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
+    stream:
+      level: 40
+      format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
   mantid:
-    format: '%Y-%m-%d %H:%M:%S,%i - %p - %s - %t'
+    stream:
+      level: 40
+      format: 'MANTID %(levelname)s - %(message)s'
+    file:
+      level: 40
+      format: 'MANTID FILE %(levelname)s - %(message)s'
+      output: '/dev/null'
 
 samples:
   home: ${instrument.calibration.sample.home}

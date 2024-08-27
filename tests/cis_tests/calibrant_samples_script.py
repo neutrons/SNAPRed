@@ -2,7 +2,7 @@
 
 from mantid.simpleapi import CreateWorkspace, SetSample
 from mantid.geometry import CrystalStructure
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 from snapred.backend.dao.state.CalibrantSample.Material import Material
@@ -17,9 +17,9 @@ crystal = Crystallography(
     latticeParameters=[5.43159, 5.43159, 5.43159, 90.0, 90.0, 90.0],
     atoms=[atom, atom, atom],
 )
-sample = CalibrantSamples(name="NIST_640D", unique_id="001", geometry=geo, material=mat, crystallography=crystal)
+sample = CalibrantSample(name="NIST_640D", unique_id="001", geometry=geo, material=mat, crystallography=crystal)
 
-# Calling SetSample() with Geometry and Material from CalibrantSamples object should not fail
+# Calling SetSample() with Geometry and Material from CalibrantSample object should not fail
 ws = CreateWorkspace(DataX=1, DataY=1)
 SetSample(ws, Geometry=sample.geometry.json(), Material=sample.material.json())
 

@@ -38,7 +38,6 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     XTAL_DMIN = Config["constants.CrystallographicInfo.crystalDMin"]
     XTAL_DMAX = Config["constants.CrystallographicInfo.crystalDMax"]
-    THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
     MIN_PEAKS = Config["calibration.diffraction.minimumPeaksPerGroup"]
     PREF_PEAKS = Config["calibration.diffraction.preferredPeaksPerGroup"]
     MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
@@ -47,8 +46,7 @@ class DiffCalTweakPeakView(BackendRequestView):
     FIGURE_MARGIN = 0.5  # top + bottom: inches
 
     signalRunNumberUpdate = Signal(str)
-    signalPeakThresholdUpdate = Signal(float)
-    signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum, Pair, float)
+    signalValueChanged = Signal(int, float, float, SymmetricPeakEnum, Pair, float)
     signalUpdateRecalculationButton = Signal(bool)
     signalMaxChiSqUpdate = Signal(float)
     signalContinueAnyway = Signal(bool)
@@ -61,7 +59,6 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
         self.maxChiSqField = self._labeledField("Max Chi Sq", QLineEdit(str(self.MAX_CHI_SQ)))
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
-        self.signalPeakThresholdUpdate.connect(self._updatePeakThreshold)
         self.signalMaxChiSqUpdate.connect(self._updateMaxChiSq)
 
         self.continueAnyway = False
@@ -86,13 +83,11 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.fieldXtalDMax = self._labeledField("xtal dMax", QLineEdit(str(self.XTAL_DMAX)))
         self.fieldFWHMleft = self._labeledField("FWHM left", QLineEdit(str(self.FWHM.left)))
         self.fieldFWHMright = self._labeledField("FWHM right", QLineEdit(str(self.FWHM.right)))
-        self.fieldThreshold = self._labeledField("intensity threshold", QLineEdit(str(self.THRESHOLD)))
         peakControlLayout = QHBoxLayout()
         peakControlLayout.addWidget(self.fieldXtalDMin)
         peakControlLayout.addWidget(self.fieldXtalDMax)
         peakControlLayout.addWidget(self.fieldFWHMleft)
         peakControlLayout.addWidget(self.fieldFWHMright)
-        peakControlLayout.addWidget(self.fieldThreshold)
         peakControlLayout.addWidget(self.maxChiSqField)
 
         # a big ol recalculate button
@@ -132,13 +127,6 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.signalRunNumberUpdate.emit(runNumber)
 
     @Slot(float)
-    def _updatePeakThreshold(self, peakThreshold: float):
-        self.fieldThreshold.setText(str(peakThreshold))
-
-    def updatePeakThreshold(self, peakThreshold):
-        self.signalPeakThresholdUpdate.emit(float(peakThreshold))
-
-    @Slot(float)
     def _updateMaxChiSq(self, maxChiSq: float):
         self.maxChiSqField.setText(str(maxChiSq))
 
@@ -157,7 +145,6 @@ class DiffCalTweakPeakView(BackendRequestView):
             groupingIndex = self.groupingFileDropdown.currentIndex()
             xtalDMin = float(self.fieldXtalDMin.field.text())
             xtalDMax = float(self.fieldXtalDMax.field.text())
-            peakThreshold = float(self.fieldThreshold.text())
             peakFunction = SymmetricPeakEnum(self.peakFunctionDropdown.currentText())
             fwhm = Pair(
                 left=float(self.fieldFWHMleft.text()),
@@ -190,7 +177,7 @@ class DiffCalTweakPeakView(BackendRequestView):
                 QMessageBox.Ok,
             )
             return
-        self.signalValueChanged.emit(groupingIndex, xtalDMin, xtalDMax, peakThreshold, peakFunction, fwhm, maxChiSq)
+        self.signalValueChanged.emit(groupingIndex, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
 
     def updateGraphs(self, workspace, peaks, diagnostic):
         # get the updated workspaces and optimal graph grid

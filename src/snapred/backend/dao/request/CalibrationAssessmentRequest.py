@@ -32,7 +32,6 @@ class CalibrationAssessmentRequest(BaseModel, extra="forbid"):
     peakFunction: PeakFunctionEnum
     crystalDMin: float
     crystalDMax: float
-    peakIntensityThreshold: float
     nBinsAcrossPeakWidth: int
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
     maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]

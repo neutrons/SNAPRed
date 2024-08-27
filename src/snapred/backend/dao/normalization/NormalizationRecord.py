@@ -29,7 +29,6 @@ class NormalizationRecord(Record, extra="ignore"):
     # specific to normalization records
     backgroundRunNumber: str
     smoothingParameter: float
-    peakIntensityThreshold: float
     # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
     workspaceNames: List[WorkspaceName] = []
     calibrationVersionUsed: int = VERSION_DEFAULT

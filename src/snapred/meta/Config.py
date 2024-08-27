@@ -23,7 +23,7 @@ def _find_root_dir():
             # WARNING: there are now multiple "conftest.py" at various levels in the test hierarchy.
             MODULE_ROOT = MODULE_ROOT.parent.parent / "tests"
     except Exception as e:
-        raise RuntimeError("Unable to determine SNAPRed-module root directory") from e
+        raise RuntimeError("Unable to determine SNAPRed module-root directory") from e
 
     return str(MODULE_ROOT)
 

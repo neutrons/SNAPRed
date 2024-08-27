@@ -4,6 +4,7 @@ conda.recipe/
 src/snapred/resources/dev.yml
 docs/source/developer/dao.rst
 docs/source/developer/snapred/*
+mantidlog.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

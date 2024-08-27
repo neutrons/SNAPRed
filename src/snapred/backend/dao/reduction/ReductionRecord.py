@@ -19,11 +19,11 @@ class ReductionRecord(BaseModel):
     # Reduction has distinct registration attributes from Calibration and Normalization.
     #   for this reason, this class is not derived from 'Record',
     #   and does not include a 'CalculationParameters' instance.
+    runNumber: str
     useLiteMode: bool
     timestamp: float = Field(frozen=True, default=None)
 
     # specific to reduction records
-    runNumber: str
     calibration: CalibrationRecord
     normalization: NormalizationRecord
     pixelGroupingParameters: Dict[str, List[PixelGroupingParameters]]

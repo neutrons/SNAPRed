@@ -48,7 +48,7 @@ from snapred.backend.dao.request import (
     CreateNormalizationRecordRequest,
 )
 from snapred.backend.dao.state import DetectorState
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
 from snapred.backend.dao.state.GroupingMap import GroupingMap
 from snapred.backend.data.Indexer import IndexerType
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -390,7 +390,7 @@ def test_getUniqueTimestamp():
     assert len(tss) == numberToGenerate
 
     # generated values should have distinct `struct_time`:
-    #   this check ensures that they differ by at least 1 second
+    #   this check ensures that generated values differ by at least 1 second
     ts_structs = set([time.gmtime(ts) for ts in tss])
     assert len(ts_structs) == numberToGenerate
 
@@ -1336,13 +1336,12 @@ def _writeSyntheticReductionRecord(filePath: Path, timestamp: float):
     testRecord = ReductionRecord(
         runNumber=testCalibration.runNumber,
         useLiteMode=testCalibration.useLiteMode,
+        timestamp=timestamp,
         calibration=testCalibration,
         normalization=testNormalization,
         pixelGroupingParameters={
             pg.focusGroup.name: list(pg.pixelGroupingParameters.values()) for pg in testCalibration.pixelGroups
         },
-        timestamp=timestamp,
-        stateId=testCalibration.calculationParameters.instrumentState.id,
         workspaceNames=[
             wng.reductionOutput()
             .runNumber(testCalibration.runNumber)
@@ -1474,6 +1473,7 @@ def readSyntheticReductionRecord():
         #    WARNING: we cannot just use `model_validate` here,
         #      it will recreate the `WorkspaceName(<original name>)` and
         #        the `_builder` args will be stripped.
+        #   (TODO: is this still correct?  I think it works now.)
         record = ReductionRecord.model_validate(dict_)
         record.workspaceNames = wss
 
@@ -2228,15 +2228,25 @@ def test_writeCalibrantSample_success():  # noqa: ARG002
         assert os.path.exists(filePath)
 
 
-@mock.patch("os.path.exists", return_value=True)
-def test_readCalibrantSample(mock1):  # noqa: ARG001
+def test_readCalibrantSample():  # noqa: ARG001
     localDataService = LocalDataService()
+    sample = DAOFactory.sample_calibrant_sample
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+        with Config_override("samples.home", tempdir):
+            filePath = f"{tempdir}/{sample.name}_{sample.unique_id}.json"
+            localDataService.writeCalibrantSample(sample)
 
-    result = localDataService.readCalibrantSample(
-        Resource.getPath("inputs/calibrantSamples/Silicon_NIST_640D_001.json")
-    )
-    assert type(result) is CalibrantSamples
-    assert result.name == "Silicon_NIST_640D"
+            result = localDataService.readCalibrantSample(filePath)
+
+    assert type(result) is CalibrantSample
+    assert result.name == "NIST_640D"
+
+
+def test_readCalibrantSample_does_not_exist():  # noqa: ARG001
+    localDataService = LocalDataService()
+    filePath = "GarbagePath"
+    with pytest.raises(ValueError, match=f"The file '{filePath}' does not exist"):
+        localDataService.readCalibrantSample(filePath)
 
 
 @mock.patch("os.path.exists", return_value=True)
@@ -2455,7 +2465,6 @@ class TestReductionPixelMasks:
         # Warning: the order of class `__init__` vs. autouse-fixture setup calls is ambiguous;
         #   for this reason, the `service` attribute, and anything that is initialized using it,
         #   is initialized _here_ in this fixture.
-
         cls.service = LocalDataService()
 
         cls.runNumber1 = "123456"
@@ -2562,7 +2571,6 @@ class TestReductionPixelMasks:
         tmpPath = stack.enter_context(tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")))
         Config_override_fixture("instrument.reduction.home", tmpPath)
         self._createReductionFileSystem()
-
         # "instrument.<lite mode>.pixelResolution" is used by `isCompatibleMask`
         Config_override_fixture(
             "instrument." + ("lite" if self.useLiteMode else "native") + ".pixelResolution",

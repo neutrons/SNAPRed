@@ -10,7 +10,7 @@ from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
@@ -33,7 +33,7 @@ class DataExportService:
 
     ##### MISCELLANEOUS #####
 
-    def exportCalibrantSampleFile(self, entry: CalibrantSamples):
+    def exportCalibrantSampleFile(self, entry: CalibrantSample):
         self.dataService.writeCalibrantSample(entry)
 
     def getFullLiteDataFilePath(self, runNumber: str) -> Path:

@@ -5,7 +5,6 @@ import socket
 import sys
 
 from mantid.api import Progress
-from mantid.utils.logging import log_to_python
 
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
@@ -18,15 +17,17 @@ class CustomFormatter(logging.Formatter):
     _bold_red = "\x1b[31;1m"
     _reset = "\x1b[0m"
     _host = socket.gethostname().split(".")[0]
-    _format = _host + " - " + Config["logging.SNAP.format"]
 
-    FORMATS = {
-        logging.DEBUG: _grey + _format + _reset,
-        logging.INFO: _grey + _format + _reset,
-        logging.WARNING: _yellow + _format + _reset,
-        logging.ERROR: _red + _format + _reset,
-        logging.CRITICAL: _bold_red + _format + _reset,
-    }
+    def __init__(self, name="SNAP.stream"):
+        self._format = self._host + " - " + Config[f"logging.{name}.format"]
+
+        self.FORMATS = {
+            logging.DEBUG: self._grey + self._format + self._reset,
+            logging.INFO: self._grey + self._format + self._reset,
+            logging.WARNING: self._yellow + self._format + self._reset,
+            logging.ERROR: self._red + self._format + self._reset,
+            logging.CRITICAL: self._bold_red + self._format + self._reset,
+        }
 
     def _colorCodeFormat(self, rawFormat):
         fields = rawFormat.split("-")
@@ -44,13 +45,10 @@ class CustomFormatter(logging.Formatter):
 
 @Singleton
 class _SnapRedLogger:
-    _level = Config["logging.level"]
+    _level = Config["logging.SNAP.stream.level"]
     _warnings = []
 
     def __init__(self):
-        # Configure Mantid to send messages to Python
-        log_to_python()
-        self.getLogger("Mantid")
         self.resetProgress(0, 1.0, 100)
 
     def _setFormatter(self, logger):

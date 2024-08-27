@@ -83,6 +83,7 @@ class TestSousChef(unittest.TestCase):
     def test_prepCalibration(self):
         mockCalibration = mock.Mock()
         self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
+        self.instance.prepCalibrantSample = mock.Mock()
 
         res = self.instance.prepCalibration(self.ingredients)
 
@@ -99,6 +100,7 @@ class TestSousChef(unittest.TestCase):
         fakeLeft = 116
         fakeRight = 17
         self.ingredients.fwhmMultipliers = mock.Mock(left=fakeLeft, right=fakeRight)
+        self.instance.prepCalibrantSample = mock.Mock()
 
         res = self.instance.prepCalibration(self.ingredients)
 
@@ -264,6 +266,9 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepCrystallographicInfo = mock.Mock()
         self.instance.prepInstrumentState = mock.Mock()
         self.instance.prepPixelGroup = mock.Mock()
+        self.instance.prepCalibrantSample = mock.Mock()
+        calibrantSample = self.instance.prepCalibrantSample()
+        self.ingredients.peakIntensityThreshold = calibrantSample.peakIntensityFractionThreshold
 
         result = self.instance.prepPeakIngredients(self.ingredients)
 
@@ -274,7 +279,7 @@ class TestSousChef(unittest.TestCase):
             crystalInfo=self.instance.prepCrystallographicInfo.return_value,
             instrumentState=self.instance.prepInstrumentState.return_value,
             pixelGroup=self.instance.prepPixelGroup.return_value,
-            peakIntensityThreshold=self.ingredients.peakIntensityThreshold,
+            peakIntensityThreshold=calibrantSample.peakIntensityFractionThreshold,
         )
         assert result == PeakIngredients.return_value
 
@@ -289,12 +294,12 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.crystalDBounds.maximum,
             self.ingredients.fwhmMultipliers.left,
             self.ingredients.fwhmMultipliers.right,
-            self.ingredients.peakIntensityThreshold,
             False,
         )
         # ensure the cache is clear
         assert self.instance._peaksCache == {}
 
+        self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepPeakIngredients = mock.Mock()
         self.instance.parseGroupPeakList = mock.Mock(side_effect=lambda y: [y])
 
@@ -324,12 +329,12 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.crystalDBounds.maximum,
             self.ingredients.fwhmMultipliers.left,
             self.ingredients.fwhmMultipliers.right,
-            self.ingredients.peakIntensityThreshold,
             True,
         )
         # ensure the cache is clear
         assert self.instance._peaksCache == {}
 
+        self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepPeakIngredients = mock.Mock()
         self.instance.parseGroupPeakList = mock.Mock(side_effect=lambda y: [y])
 
@@ -352,11 +357,11 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.crystalDBounds.maximum,
             self.ingredients.fwhmMultipliers.left,
             self.ingredients.fwhmMultipliers.right,
-            self.ingredients.peakIntensityThreshold,
             True,
         )
         # ensure the cache is prepared
         self.instance._peaksCache[key] = [mock.Mock()]
+        self.instance.prepCalibrantSample = mock.Mock()
 
         res = self.instance.prepDetectorPeaks(self.ingredients)
 
@@ -371,8 +376,8 @@ class TestSousChef(unittest.TestCase):
             calculationParameters=mock.Mock(
                 calibrantSamplePath=calibrationCalibrantSamplePath,
             ),
-            peakIntensityThreshold=1.0e-5,
         )
+        self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepRunConfig = mock.Mock()
         self.instance.prepManyPixelGroups = mock.Mock()
         self.instance.prepManyDetectorPeaks = mock.Mock()
@@ -386,12 +391,17 @@ class TestSousChef(unittest.TestCase):
         ingredients_.calibrantSamplePath = calibrationCalibrantSamplePath
         ingredients_.cifPath = self.instance.dataFactoryService.getCifFilePath.return_value
         # ... from normalization record:
-        ingredients_.peakIntensityThreshold = record.peakIntensityThreshold
+        ingredients_.peakIntensityThreshold = self.instance._getThresholdFromCalibrantSample(
+            "calibrationCalibrantSamplePath"
+        )
         result = self.instance.prepReductionIngredients(ingredients_)
 
         self.instance.prepManyPixelGroups.assert_called_once_with(ingredients_)
         self.instance.dataFactoryService.getCifFilePath.assert_called_once_with("sample")
         ReductionIngredients.assert_called_once_with(
+            runNumber=ingredients_.runNumber,
+            useLiteMode=ingredients_.useLiteMode,
+            timestamp=ingredients_.timestamp,
             pixelGroups=self.instance.prepManyPixelGroups.return_value,
             smoothingParameter=record.smoothingParameter,
             calibrantSamplePath=ingredients_.calibrantSamplePath,
@@ -460,3 +470,16 @@ class TestSousChef(unittest.TestCase):
             self.instance._pullCalibrationRecordFFI.return_value
         )
         self.instance._pullCalibrationRecordFFI.assert_called_once_with(self.ingredients, "12345", True)
+
+    @mock.patch("os.path.exists", return_value=True)
+    def test__getThresholdFromCalibrantSample(self, mockOS):  # noqa: ARG002
+        self.instance.prepCalibrantSample = mock.Mock()
+        calibrantSample = self.instance.prepCalibrantSample()
+        calibrantSample.peakIntensityFractionThreshold = mock.Mock()
+        path = self.ingredients.calibrantSamplePath
+        result = self.instance._getThresholdFromCalibrantSample(path)
+        assert result == calibrantSample.peakIntensityFractionThreshold
+
+    def test__getThresholdFromCalibrantSample_none_path(self):
+        result = self.instance._getThresholdFromCalibrantSample(None)
+        assert result == Config["constants.PeakIntensityFractionThreshold"]

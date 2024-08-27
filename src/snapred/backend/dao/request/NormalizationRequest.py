@@ -25,6 +25,5 @@ class NormalizationRequest(BaseModel, extra="forbid"):
         minimum=Config["constants.CrystallographicInfo.crystalDMin"],
         maximum=Config["constants.CrystallographicInfo.crystalDMax"],
     )
-    peakIntensityThreshold: float = Config["constants.PeakIntensityFractionThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])

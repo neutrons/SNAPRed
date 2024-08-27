@@ -16,6 +16,10 @@ from snapred.backend.dao.state.PixelGroup import PixelGroup
 class ReductionIngredients(BaseModel):
     """Data class to hold the ingredients for each subrecipe of reduction and itself"""
 
+    runNumber: str
+    useLiteMode: bool
+    timestamp: float
+
     pixelGroups: List[PixelGroup]
 
     # these should come from calibration / normalization records

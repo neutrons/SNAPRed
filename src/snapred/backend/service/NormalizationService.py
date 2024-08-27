@@ -83,7 +83,6 @@ class NormalizationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             crystalDBounds=request.crystalDBounds,
-            peakIntensityThreshold=request.peakIntensityThreshold,
         )
         ingredients = self.sousChef.prepNormalizationIngredients(farmFresh)
 
@@ -161,7 +160,6 @@ class NormalizationService(Service):
             useLiteMode=request.useLiteMode,
             calibrantSamplePath=request.calibrantSamplePath,
             fwhmMultipliers=request.fwhmMultipliers,
-            peakIntensityThreshold=request.peakIntensityThreshold,
             crystalDBounds=request.crystalDBounds,
         )
         normalization = parse_obj_as(Normalization, self.sousChef.prepCalibration(farmFresh))
@@ -169,7 +167,6 @@ class NormalizationService(Service):
         createRecordRequest = CreateNormalizationRecordRequest(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
-            peakIntensityThreshold=request.peakIntensityThreshold,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
             calculationParameters=normalization,
@@ -252,7 +249,6 @@ class NormalizationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
-            peakIntensityThreshold=request.peakIntensityThreshold,
         )
         peaks = self.sousChef.prepDetectorPeaks(farmFresh, purgePeaks=False)
 

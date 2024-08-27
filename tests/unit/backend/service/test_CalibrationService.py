@@ -315,7 +315,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             peakFunction="Gaussian",
             crystalDMin=0,
             crystalDMax=10,
-            peakIntensityThreshold=0,
             nBinsAcrossPeakWidth=0,
             maxChiSq=100.0,
         )

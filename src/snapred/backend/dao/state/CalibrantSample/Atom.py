@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from pydantic import BaseModel, StrictStr, field_validator, validate_call
+from pydantic import AliasChoices, BaseModel, Field, StrictStr, field_validator, validate_call
 
 
 class Atom(BaseModel):
@@ -17,9 +17,9 @@ class Atom(BaseModel):
         site occupation factor: float in range [0, 1]
         adp: positive float, default is 0.01"""
 
-    symbol: str
-    coordinates: Tuple[float, float, float]
-    siteOccupationFactor: float
+    symbol: str = Field(validation_alias=AliasChoices("symbol", "atom_type"))
+    coordinates: Tuple[float, float, float] = Field(validation_alias=AliasChoices("coordinates", "atom_coordinates"))
+    siteOccupationFactor: float = Field(validation_alias=AliasChoices("siteOccupationFactor", "site_occupation_factor"))
     adp: float = 0.1
 
     @validate_call

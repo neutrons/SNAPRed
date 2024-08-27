@@ -7,6 +7,7 @@ from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocuss
 from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
@@ -94,13 +95,15 @@ class ReductionRecipe(Recipe[Ingredients]):
                 unitsAbrev = wng.Units.DSP
             case "TOF":
                 unitsAbrev = wng.Units.TOF
+            case _:
+                raise ValueError(f"cannot convert to unit '{units}'")
 
         runNumber, liteMode = workspace.tokens("runNumber", "lite")
         self.unfocWS = wng.run().runNumber(runNumber).lite(liteMode).unit(unitsAbrev).group(wng.Groups.UNFOC).build()
         self._cloneWorkspace(workspace, self.unfocWS)
 
         self.mantidSnapper.ConvertUnits(
-            "Convert the clone of the final output",
+            f"Convert unfocused workspace to {units} units",
             InputWorkspace=workspace,
             OutputWorkspace=self.unfocWS,
             Target=units,
@@ -122,14 +125,17 @@ class ReductionRecipe(Recipe[Ingredients]):
         # so that we can appropriately name the cloned workspaces
         # For now we are just appending it to the end, probably preferable
         # as it keeps the output colocated.
+        runNumber, timestamp = self.ingredients.runNumber, self.ingredients.timestamp
 
-        groupingName = self.ingredients.pixelGroups[groupingIndex].focusGroup.name
-        sampleClone = self._cloneWorkspace(self.sampleWs, f"output_{self.sampleWs}_{groupingName}")
+        groupingName = self.ingredients.pixelGroups[groupingIndex].focusGroup.name.lower()
+        reducedOutputWs = wng.reductionOutput().runNumber(runNumber).group(groupingName).timestamp(timestamp).build()
+        sampleClone = self._cloneWorkspace(self.sampleWs, reducedOutputWs)
         self.groceries["inputWorkspace"] = sampleClone
         normalizationClone = None
         if self.normalizationWs:
             normalizationClone = self._cloneWorkspace(
-                self.normalizationWs, f"output_{self.normalizationWs}_{groupingName}"
+                self.normalizationWs,
+                f"reduced_normalization_{groupingName}_{wnvf.formatTimestamp(timestamp)}",
             )
             self.groceries["normalizationWorkspace"] = normalizationClone
         return sampleClone, normalizationClone

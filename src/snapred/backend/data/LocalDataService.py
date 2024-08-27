@@ -41,7 +41,7 @@ from snapred.backend.dao.state import (
     GroupingMap,
     InstrumentState,
 )
-from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
+from snapred.backend.dao.state.CalibrantSample import CalibrantSample
 from snapred.backend.data.Indexer import Indexer, IndexerType
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.backend.error.RecoverableException import RecoverableException
@@ -191,7 +191,7 @@ class LocalDataService:
         _previousTimestamp = getattr(LocalDataService.getUniqueTimestamp, "_previousTimestamp", None)
         nextTimestamp = time.time()
         if _previousTimestamp is not None:
-            # compare as `time.struct_time`
+            # compare as `time.struct_time` to ensure uniqueness after formatting
             if nextTimestamp < _previousTimestamp or time.gmtime(nextTimestamp) == time.gmtime(_previousTimestamp):
                 nextTimestamp = _previousTimestamp + 1.0
         LocalDataService.getUniqueTimestamp._previousTimestamp = nextTimestamp
@@ -304,8 +304,10 @@ class LocalDataService:
     def _constructReductionStateRoot(self, runNumber: str) -> Path:
         stateId, _ = self._generateStateId(runNumber)
         IPTS = Path(self.getIPTS(runNumber))
-        # substitute the last component of the IPTS-directory for the '{IPTS}' tag
-        reductionHome = Path(Config["instrument.reduction.home"].format(IPTS=IPTS.name))
+        # Substitute the last component of the IPTS-directory for the '{IPTS}' tag,
+        #   but only if the '{IPTS}' tag exists in the format string
+        fmt = Config["instrument.reduction.home"]
+        reductionHome = Path(fmt.format(IPTS=IPTS.name)) if "{IPTS}" in fmt else Path(fmt)
         return reductionHome / stateId
 
     @validate_call
@@ -677,7 +679,7 @@ class LocalDataService:
         sampleFiles.sort()
         return sampleFiles
 
-    def writeCalibrantSample(self, sample: CalibrantSamples):
+    def writeCalibrantSample(self, sample: CalibrantSample):
         samplePath: str = Config["samples.home"]
         fileName: str = sample.name + "_" + sample.unique_id
         filePath = os.path.join(samplePath, fileName) + ".json"
@@ -695,11 +697,7 @@ class LocalDataService:
                     "Can't specify both mass-density and packing fraction for single-element materials"
                 )  # noqa: F821
             del sampleJson["material"]["packingFraction"]
-            for atom in sampleJson["crystallography"]["atoms"]:
-                atom["symbol"] = atom.pop("atom_type")
-                atom["coordinates"] = atom.pop("atom_coordinates")
-                atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
-            sample = CalibrantSamples.model_validate_json(json.dumps(sampleJson))
+            sample = CalibrantSample.model_validate_json(json.dumps(sampleJson))
             return sample
 
     def readCifFilePath(self, sampleId: str):
@@ -816,7 +814,11 @@ class LocalDataService:
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
 
         calibrationDataPath = indexer.versionPath(version)
-        self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
+        self.writeDiffCalWorkspaces(calibrationDataPath, filename, tableWorkspaceName=outWS)
+
+        # TODO: all of this should have its own workflow, in which case, it could act like all other workflows
+        #   and delete its workspaces after completion.
+        grocer.deleteWorkspaceUnconditional(outWS)
 
     def generateInstrumentStateFromRoot(self, runId: str):
         stateId, _ = self._generateStateId(runId)
