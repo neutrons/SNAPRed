@@ -120,19 +120,12 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.wsTOF: str = self.getPropertyValue("InputWorkspace")
         # TODO: use workspace namer
         self.wsDSP: str = self.wsTOF + "_dsp"
-        self.wsBG: str = self.wsTOF + "_bg"
 
         self.mantidSnapper.ConvertUnits(
             "Convert to d-spacing to diffraction focus",
             InputWorkspace=self.wsTOF,
             OutPutWorkspace=self.wsDSP,
             Target="dSpacing",
-        )
-
-        self.mantidSnapper.CloneWorkspace(
-            "Convert to d-spacing to diffraction focus",
-            InputWorkspace=self.wsTOF,
-            OutPutWorkspace=self.wsBG,
         )
 
         # for inspection, make a copy of initial data
@@ -149,6 +142,13 @@ class PixelDiffractionCalibration(PythonAlgorithm):
 
         # if the data is event data, extract the background before cross-correlation
         if not self.removeBackground:
+            self.wsBG: str = self.wsTOF + "_bg"
+
+            self.mantidSnapper.CloneWorkspace(
+                "Cloning input workspace for background subtraction",
+                InputWorkspace=self.wsTOF,
+                OutPutWorkspace=self.wsBG,
+            )
             self.mantidSnapper.RemoveEventBackground(
                 "Extracting background events...",
                 InputWorkspace=self.wsBG,
