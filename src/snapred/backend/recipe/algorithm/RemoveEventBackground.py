@@ -14,6 +14,7 @@ from scipy.interpolate import make_smoothing_spline
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 
 
 class RemoveEventBackground(PythonAlgorithm):
@@ -42,7 +43,7 @@ class RemoveEventBackground(PythonAlgorithm):
         )
         self.declareProperty(
             "SmoothingParameter",
-            defaultValue=0.0001,
+            defaultValue=Config["calibration.diffraction.smoothingParameter"],
             direction=Direction.Input,
             doc="Smoothing parameter for the spline smoothing after background extraction",
         )

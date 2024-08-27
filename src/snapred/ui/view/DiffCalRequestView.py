@@ -33,6 +33,10 @@ class DiffCalRequestView(BackendRequestView):
         self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
 
+        # checkbox for removing background
+        self.removeBackgroundCheckBox = self._labeledCheckBox("Remove Background?")
+        self.removeBackgroundCheckBox.setChecked(False)
+
         # set field properties
         self.litemodeToggle.setEnabled(True)
         self.peakFunctionDropdown.setCurrentIndex(0)
@@ -40,6 +44,7 @@ class DiffCalRequestView(BackendRequestView):
         # add all widgets to layout
         self.layout.addWidget(self.runNumberField, 0, 0)
         self.layout.addWidget(self.litemodeToggle, 0, 1)
+        self.layout.addWidget(self.removeBackgroundCheckBox, 0, 2)
         self.layout.addWidget(self.fieldConvergenceThreshold, 1, 0)
         self.layout.addWidget(self.fieldNBinsAcrossPeakWidth, 1, 2)
         self.layout.addWidget(self.sampleDropdown, 2, 0)
@@ -65,3 +70,6 @@ class DiffCalRequestView(BackendRequestView):
 
     def getLiteMode(self):
         return self.litemodeToggle.field.getState()
+
+    def getRemoveBackground(self):
+        return self.removeBackgroundCheckBox.isChecked()

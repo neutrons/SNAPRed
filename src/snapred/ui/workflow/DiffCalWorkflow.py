@@ -60,6 +60,8 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
         self.groupingMap = self.defaultGroupingMap
         self.focusGroups = self.groupingMap.lite
+        self.removeBackground = True  # NOTE: this will NOT subtract the background, this needs to
+        # be false in order for background subtraction to occur.
 
         self.addResetHook(self._resetSaveView)
 
@@ -172,6 +174,8 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.peakFunction = view.peakFunctionDropdown.currentText()
         self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
 
+        self.removeBackground = not view.removeBackgroundCheckBox.isChecked()
+
         self._tweakPeakView.updateRunNumber(self.runNumber)
         self._saveView.updateRunNumber(self.runNumber)
 
@@ -198,6 +202,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
             maxChiSq=self.maxChiSq,
+            removeBackground=self.removeBackground,
         )
 
         self.ingredients = self.request(path="calibration/ingredients", payload=payload.json()).data
