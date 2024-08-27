@@ -1,5 +1,6 @@
 from typing import Dict, List, Tuple
 
+import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     IEventWorkspaceProperty,
@@ -41,7 +42,7 @@ class RemoveEventBackground(PythonAlgorithm):
         )
         self.declareProperty(
             "SmoothingParameter",
-            defaultValue=0.001,
+            defaultValue=0.0001,
             direction=Direction.Input,
             doc="Smoothing parameter for the spline smoothing after background extraction",
         )
@@ -105,14 +106,6 @@ class RemoveEventBackground(PythonAlgorithm):
             OutputWorkspace=self.outputBackgroundWorkspaceName + "_extractDSP",
         )
 
-        # get a handle on the workspace
-        ws = self.mantidSnapper.mtd[self.outputBackgroundWorkspaceName]
-        for groupID in self.groupIDs:
-            for detid in self.groupDetectorIDs[groupID]:
-                event_list = ws.getEventList(detid)
-                for mask in self.maskRegions[groupID]:
-                    event_list.maskTof(mask[0], mask[1])
-
         self.mantidSnapper.ConvertToMatrixWorkspace(
             "Converting EventWorkspace to MatrixWorkspace...",
             InputWorkspace=self.outputBackgroundWorkspaceName,
@@ -120,9 +113,25 @@ class RemoveEventBackground(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
+        # Replace peak regions with interpolated values from surrounding data
         ws = self.mantidSnapper.mtd[self.outputBackgroundWorkspaceName]
+        for groupID in self.groupIDs:
+            for detid in self.groupDetectorIDs[groupID]:
+                y_data = ws.readY(detid).copy()
+                x_data = ws.readX(detid)
 
-        # Apply smoothing after masking the peaks
+                for mask in self.maskRegions[groupID]:
+                    mask_indices = (x_data >= mask[0]) & (x_data <= mask[1])
+                    before_mask = np.where(x_data < mask[0])[0][-1]
+                    after_mask = np.where(x_data > mask[1])[0][0]
+
+                    # Linear interpolation across the masked region
+                    interp_values = np.linspace(y_data[before_mask], y_data[after_mask], mask_indices.sum())
+                    y_data[mask_indices[:-1]] = interp_values
+
+                ws.setY(detid, y_data)
+
+        # Apply smoothing to the entire dataset
         self.applySmoothing(ws)
 
         # Convert back to TOF
@@ -138,7 +147,7 @@ class RemoveEventBackground(PythonAlgorithm):
 
     def applySmoothing(self, workspace):
         """
-        Applies smoothing to the workspace using a spline function after peaks have been masked.
+        Applies smoothing to the entire workspace data.
         """
         numSpec = workspace.getNumberHistograms()
 
@@ -146,18 +155,14 @@ class RemoveEventBackground(PythonAlgorithm):
             x = workspace.readX(index)
             y = workspace.readY(index)
 
-            xMidpoints = (x[:-1] + x[1:]) / 2
-            yMidpoints = y.copy()
+            # Apply spline smoothing to the entire dataset
+            tck = make_smoothing_spline(x[:-1], y, lam=self.smoothingParameter)
+            y_smooth = tck(x[:-1], extrapolate=False)
 
-            # Throw an exception if y or xMidpoints are empty
-            if len(yMidpoints) == 0 or len(xMidpoints) == 0:
-                raise ValueError("No data in the workspace, all data removed by peak masking.")
+            # Ensure no negative values after smoothing
+            y_smooth[y_smooth < 0] = 0
 
-            # Generate spline with purged dataset
-            tck = make_smoothing_spline(xMidpoints, yMidpoints, lam=self.smoothingParameter)
-            # Fill in the removed data using the spline function and original datapoints
-            smoothing_results = tck(xMidpoints, extrapolate=False)
-            workspace.setY(index, smoothing_results)
+            workspace.setY(index, y_smooth)
 
 
 # Register algorithm with Mantid
