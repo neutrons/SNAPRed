@@ -7,6 +7,7 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    WorkspaceUnitValidator,
 )
 from mantid.kernel import Direction
 from pydantic import TypeAdapter
@@ -24,7 +25,9 @@ class RemoveEventBackground(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            IEventWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            IEventWorkspaceProperty(
+                "InputWorkspace", "", Direction.Input, PropertyMode.Mandatory, validator=WorkspaceUnitValidator("TOF")
+            ),
             doc="Event workspace containing the data with peaks and background, in TOF units",
         )
         self.declareProperty(
@@ -32,20 +35,23 @@ class RemoveEventBackground(PythonAlgorithm):
             doc="Workspace holding the detector grouping information, for assigning peak windows",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output),
+            MatrixWorkspaceProperty(
+                "OutputWorkspace",
+                "",
+                Direction.Output,
+                validator=WorkspaceUnitValidator("TOF"),
+            ),
             doc="Histogram workspace representing the extracted background",
         )
         self.declareProperty(
             "DetectorPeaks",
             defaultValue="",
             direction=Direction.Input,
-            doc="A list of GroupPeakList objects, as a string",
         )
         self.declareProperty(
             "SmoothingParameter",
             defaultValue=Config["calibration.diffraction.smoothingParameter"],
             direction=Direction.Input,
-            doc="Smoothing parameter for the spline smoothing after background extraction",
         )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
