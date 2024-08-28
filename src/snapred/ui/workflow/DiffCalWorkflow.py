@@ -335,6 +335,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
             maxChiSq=self.maxChiSq,
+            removeBackground=self.removeBackground,
         )
 
         response = self.request(path="calibration/diffraction", payload=payload.json())
