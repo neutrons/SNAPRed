@@ -66,6 +66,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.addResetHook(self._resetSaveView)
 
         self._requestView = DiffCalRequestView(
+            removeBackgroundToggle=Config["cis_mode"],
             samples=self.samplePaths,
             groups=list(self.focusGroups.keys()),
             parent=parent,
@@ -174,7 +175,8 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.peakFunction = view.peakFunctionDropdown.currentText()
         self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
 
-        self.removeBackground = not view.removeBackgroundCheckBox.isChecked()
+        if Config["cis_mode"]:
+            self.removeBackground = not view.removeBackgroundCheckBox.isChecked()
 
         self._tweakPeakView.updateRunNumber(self.runNumber)
         self._saveView.updateRunNumber(self.runNumber)
