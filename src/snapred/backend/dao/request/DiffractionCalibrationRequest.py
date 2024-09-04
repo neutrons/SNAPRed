@@ -1,5 +1,5 @@
 # TODO this can probably be relaced in the code with FarmFreshIngredients
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -34,6 +34,7 @@ class DiffractionCalibrationRequest(BaseModel, extra="forbid"):
     maximumOffset: float = Config["calibration.diffraction.maximumOffset"]
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
     maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
+    removeBackground: Optional[bool]
 
     @field_validator("fwhmMultipliers", mode="before")
     @classmethod

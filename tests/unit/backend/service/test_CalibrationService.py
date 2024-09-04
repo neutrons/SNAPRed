@@ -672,13 +672,16 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             runNumber="123",
             useLiteMode=True,
             calibrantSamplePath="bundt/cake_egg.py",
+            removeBackground=True,
         )
         res = self.instance.diffractionCalibration(request)
 
         # Perform assertions to check the result and method calls
         assert FarmFreshIngredients.call_count == 1
+        prepared_ingredients = self.instance.sousChef.prepDiffractionCalibrationIngredients(FarmFreshIngredients())
+        prepared_ingredients.removeBackground = request.removeBackground
         DiffractionCalibrationRecipe().executeRecipe.assert_called_once_with(
-            self.instance.sousChef.prepDiffractionCalibrationIngredients(FarmFreshIngredients()),
+            prepared_ingredients,
             self.instance.groceryService.fetchGroceryDict.return_value,
         )
         assert res == {"calibrationTable": "fake"}

@@ -145,6 +145,7 @@ class CalibrationService(Service):
     def diffractionCalibration(self, request: DiffractionCalibrationRequest):
         # ingredients
         ingredients = self.prepDiffractionCalibrationIngredients(request)
+        ingredients.removeBackground = request.removeBackground
         # groceries
         groceries = self.fetchDiffractionCalibrationGroceries(request)
 

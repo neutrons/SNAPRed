@@ -81,6 +81,7 @@ calibration:
     peakFunction: GAUSSIAN
     minimumPeaksPerGroup: 2
     preferredPeaksPerGroup: 4
+    smoothingParameter: 0.0001
   parameters:
     default:
       # degrees

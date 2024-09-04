@@ -60,10 +60,13 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
         self.groupingMap = self.defaultGroupingMap
         self.focusGroups = self.groupingMap.lite
+        self.removeBackground = True  # NOTE: this will NOT subtract the background, this needs to
+        # be false in order for background subtraction to occur.
 
         self.addResetHook(self._resetSaveView)
 
         self._requestView = DiffCalRequestView(
+            removeBackgroundToggle=Config["cis_mode"],
             samples=self.samplePaths,
             groups=list(self.focusGroups.keys()),
             parent=parent,
@@ -172,6 +175,9 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.peakFunction = view.peakFunctionDropdown.currentText()
         self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
 
+        if Config["cis_mode"]:
+            self.removeBackground = not view.removeBackgroundCheckBox.isChecked()
+
         self._tweakPeakView.updateRunNumber(self.runNumber)
         self._saveView.updateRunNumber(self.runNumber)
 
@@ -198,6 +204,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
             maxChiSq=self.maxChiSq,
+            removeBackground=self.removeBackground,
         )
 
         self.ingredients = self.request(path="calibration/ingredients", payload=payload.json()).data
@@ -280,6 +287,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             crystalDMax=xtalDMax,
             fwhmMultipliers=fwhm,
             maxChiSq=maxChiSq,
+            removeBackground=self.removeBackground,
         )
         response = self.request(path="calibration/ingredients", payload=payload.json())
         self.ingredients = response.data
@@ -330,6 +338,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
             maxChiSq=self.maxChiSq,
+            removeBackground=self.removeBackground,
         )
 
         response = self.request(path="calibration/diffraction", payload=payload.json())
