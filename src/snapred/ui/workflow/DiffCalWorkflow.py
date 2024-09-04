@@ -287,6 +287,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             crystalDMax=xtalDMax,
             fwhmMultipliers=fwhm,
             maxChiSq=maxChiSq,
+            removeBackground=self.removeBackground,
         )
         response = self.request(path="calibration/ingredients", payload=payload.json())
         self.ingredients = response.data
