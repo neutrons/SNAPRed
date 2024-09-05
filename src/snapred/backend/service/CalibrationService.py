@@ -32,7 +32,6 @@ from snapred.backend.dao.response.CalibrationAssessmentResponse import Calibrati
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
-from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
 from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
@@ -184,15 +183,17 @@ class CalibrationService(Service):
         # check that the user has write permissions to the save directory
         if not self.checkWritePermissions(request.runNumber):
             raise RuntimeError(
-                "<font size = ""2"" >"
+                "<font size = "
+                "2"
+                " >"
                 + "<p>It looks like you don't have permissions to write to "
                 + f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
                 + "which is a requirement in order to run the diffraction-calibration workflow.</p>"
                 + "<p>If this is something that you need to do, then you may need to change the "
                 + "<br><b>instrument.calibration.powder.home</b> entry in SNAPRed's <b>application.yml</b> file.</p>"
-                + "</font>"            
+                + "</font>"
             )
-            
+
     @FromString
     def focusSpectra(self, request: FocusSpectraRequest):
         # prep the ingredients -- a pixel group
