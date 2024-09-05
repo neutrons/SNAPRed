@@ -184,11 +184,13 @@ class CalibrationService(Service):
         # check that the user has write permissions to the save directory
         if not self.checkWritePermissions(request.runNumber):
             raise RuntimeError(
-                "<font size = ""2"" ><p>It looks like you don't have permissions to write to "
+                "<font size = ""2"" >"
+                + "<p>It looks like you don't have permissions to write to "
                 + f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
                 + "which is a requirement in order to run the diffraction-calibration workflow.</p>"
                 + "<p>If this is something that you need to do, then you may need to change the "
-                + "<br><b>instrument.calibration.powder.home</b> entry in SNAPRed's <b>application.yml</b> file.</p></font>"            
+                + "<br><b>instrument.calibration.powder.home</b> entry in SNAPRed's <b>application.yml</b> file.</p>"
+                + "</font>"            
             )
             
     @FromString
