@@ -19,6 +19,6 @@ class ReductionRequest(BaseModel):
     versions: Versions = Versions(None, None)
 
     # TODO: Move to SNAPRequest
-    continueFlags: Optional[ContinueWarning.Type] = None
+    continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
 
     model_config = ConfigDict(extra="forbid")

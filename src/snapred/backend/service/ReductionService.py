@@ -1,7 +1,9 @@
 import json
+from pathlib import Path
 from typing import Any, Dict, List
 
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
+from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
     ReductionExportRequest,
@@ -12,12 +14,14 @@ from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.validator.RunNumberValidator import RunNumberValidator
 
 logger = snapredLogger.getLogger(__name__)
@@ -51,11 +55,53 @@ class ReductionService(Service):
         self.registerPath("load", self.loadReduction)
         self.registerPath("hasState", self.hasState)
         self.registerPath("getUniqueTimestamp", self.getUniqueTimestamp)
+        self.registerPath("checkWritePermissions", self.checkWritePermissions)
+        self.registerPath("getSavePath", self.getSavePath)
+        self.registerPath("getStateIds", self.getStateIds)
         return
 
     @staticmethod
     def name():
         return "reduction"
+
+    def validateReduction(self, request: ReductionRequest):
+        """
+        Validate the reduction request.
+
+        :param request: a reduction request
+        :type request: ReductionRequest
+        """
+
+        ## CONTINUE WITHOUT CALIBRATION: NOT YET SUPPORTED IN 3.0.1 ##
+
+        if (
+            self.dataFactoryService.getNormalizationRecord(request.runNumber, request.useLiteMode) is None
+            or self.dataFactoryService.getCalibrationRecord(request.runNumber, request.useLiteMode) is None
+        ):
+            raise RuntimeError(
+                f"<p><b>Reduction is missing calibration data for run '{request.runNumber}'</b>:<br>"
+                + "you will need to run diffraction-calibration and normalization-calibration before continuing.</p>"
+            )
+
+        # ... ensure separate continue warnings ...
+        continueFlags = ContinueWarning.Type.UNSET
+
+        # check that the user has write permissions to the save directory
+        if not self.checkWritePermissions(request.runNumber):
+            continueFlags |= ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+        # remove any continue flags that are present in the request by xor-ing with the flags
+        if request.continueFlags:
+            continueFlags = continueFlags ^ (request.continueFlags & continueFlags)
+
+        if continueFlags:
+            raise ContinueWarning(
+                f"<p>It looks like you don't have permissions to write to "
+                f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
+                + "but you can still save using the workbench tools.</p>"
+                + "<p>Would you like to continue anyway?</p>",
+                continueFlags,
+            )
 
     @FromString
     def reduction(self, request: ReductionRequest):
@@ -65,6 +111,8 @@ class ReductionService(Service):
         :param request: a ReductionRequest object holding needed information
         :type request: ReductionRequest
         """
+        self.validateReduction(request)
+
         groupResults = self.fetchReductionGroupings(request)
         focusGroups = groupResults["focusGroups"]
         groupingWorkspaces = groupResults["groupingWorkspaces"]
@@ -77,8 +125,38 @@ class ReductionService(Service):
         groceries["groupingWorkspaces"] = groupingWorkspaces
 
         data = ReductionRecipe().cook(ingredients, groceries)
-        return ReductionResponse(
-            workspaces=data["outputs"],
+        record = self._createReductionRecord(request, ingredients, data["outputs"])
+        return ReductionResponse(record=record)
+
+    def _createReductionRecord(
+        self, request: ReductionRequest, ingredients: ReductionIngredients, workspaceNames: List[WorkspaceName]
+    ) -> ReductionRecord:
+        calibration = None
+        normalization = None
+        if request.continueFlags is not None:
+            if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
+                # If a diffraction calibration exists,
+                #   its version will have been filled in by `fetchReductionGroceries`.
+                calibration = self.dataFactoryService.getCalibrationRecord(
+                    request.runNumber, request.useLiteMode, request.versions.calibration
+                )
+            if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
+                normalization = self.dataFactoryService.getNormalizationRecord(
+                    request.runNumber, request.useLiteMode, request.versions.normalization
+                )
+        else:
+            breakpoint()
+
+        return ReductionRecord(
+            runNumber=request.runNumber,
+            useLiteMode=request.useLiteMode,
+            timestamp=request.timestamp,
+            calibration=calibration,
+            normalization=normalization,
+            pixelGroupingParameters={
+                pg.focusGroup.name: [pg[gid] for gid in pg.groupIDs] for pg in ingredients.pixelGroups
+            },
+            workspaceNames=workspaceNames,
         )
 
     @FromString
@@ -96,8 +174,8 @@ class ReductionService(Service):
         :rtype: Dict[str, Any]
         """
         # fetch all valid groups for this run state
-        res = self.loadAllGroupings(request.runNumber, request.useLiteMode)
-        return res
+        result = self.loadAllGroupings(request.runNumber, request.useLiteMode)
+        return result
 
     @FromString
     def loadAllGroupings(self, runNumber: str, useLiteMode: bool) -> Dict[str, Any]:
@@ -185,12 +263,14 @@ class ReductionService(Service):
 
     @FromString
     def saveReduction(self, request: ReductionExportRequest):
-        record = request.reductionRecord
-        self.dataExportService.exportReductionRecord(record)
-        self.dataExportService.exportReductionData(record)
+        self.dataExportService.exportReductionRecord(request.record)
+        self.dataExportService.exportReductionData(request.record)
 
-    def loadReduction(self, *, timestamp: float, stateId: str):
-        raise NotImplementedError("SNAPRed cannot load reductions")
+    def loadReduction(self, *, stateId: str, timestamp: float):
+        # How to implement:
+        # 1) Create the file path from the stateId and the timestamp;
+        # 2) Load the reduction record and workspaces using `DataFactoryService.getReductionData`.
+        raise NotImplementedError("not implemented: 'ReductionService.loadReduction")
 
     def hasState(self, runNumber: str):
         if not RunNumberValidator.validateRunNumber(runNumber):
@@ -200,6 +280,20 @@ class ReductionService(Service):
 
     def getUniqueTimestamp(self):
         return self.dataExportService.getUniqueTimestamp()
+
+    def checkWritePermissions(self, runNumber: str) -> bool:
+        path = self.dataExportService.getReductionStateRoot(runNumber)
+        return self.dataExportService.checkWritePermissions(path)
+
+    def getSavePath(self, runNumber: str) -> Path:
+        return self.dataExportService.getReductionStateRoot(runNumber)
+
+    def getStateIds(self, runNumbers: List[str]) -> List[str]:
+        stateIds = []
+        for runNumber in runNumbers:
+            stateId, _ = self.dataFactoryService.constructStateId(runNumber)
+            stateIds.append(stateId)
+        return stateIds
 
     def _groupByStateId(self, requests: List[SNAPRequest]):
         stateIDs = {}

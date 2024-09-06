@@ -37,7 +37,7 @@ def initPVFileMock():
 
 
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
-@mock.patch.object(LocalDataService, "_generateStateId")
+@mock.patch.object(LocalDataService, "generateStateId")
 @mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
@@ -57,13 +57,16 @@ def test_state_root_override_enter(
     mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
 
     stateId = "ab8704b0bc2a2342"
+    # NOTE delete the path first or the test can fail for confusing reasons
+    expectedStateRootPath = Path(Config["instrument.calibration.powder.home"]) / stateId
+    shutil.rmtree(expectedStateRootPath, ignore_errors=True)
     decodedKey = None
     mockGenerateStateId.return_value = (stateId, decodedKey)
     runNumber = "123456"
     stateName = "my happy state"
     useLiteMode = True
     with state_root_override(runNumber, stateName, useLiteMode) as stateRootPath:
-        assert Path(stateRootPath) == Path(Config["instrument.calibration.powder.home"]) / stateId
+        assert Path(stateRootPath) == expectedStateRootPath
         assert Path(stateRootPath).exists()
         assert Path(stateRootPath).joinpath("groupingMap.json").exists()
         versionString = wnvf.pathVersion(VERSION_START)
@@ -133,13 +136,13 @@ def test_state_root_override_exit_no_delete(
 
 def test_state_root_redirect_no_stateid():
     localDataService = LocalDataService()
-    oldSelf = localDataService._constructCalibrationStateRoot
+    oldSelf = localDataService.constructCalibrationStateRoot
     with state_root_redirect(localDataService) as tmpRoot:
         # make sure the path exists
         assert tmpRoot.path().exists()
         # make sure the data service's path points to the tmp directory
-        assert localDataService._constructCalibrationStateRoot() == tmpRoot.path()
-        assert localDataService._generateStateId()[0] == tmpRoot.path().parts[-1]
+        assert localDataService.constructCalibrationStateRoot() == tmpRoot.path()
+        assert localDataService.generateStateId()[0] == tmpRoot.path().parts[-1]
         # make sure a file can be added inside the directory
         tmpRoot.addFileAs(
             Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"),
@@ -156,7 +159,7 @@ def test_state_root_redirect_no_stateid():
     # make sure the directory is deleted at exit
     assert not tmpRoot.path().exists()
     # make sure the construct state root method is restored on exit
-    assert oldSelf == localDataService._constructCalibrationStateRoot
+    assert oldSelf == localDataService.constructCalibrationStateRoot
 
 
 def test_state_root_redirect_with_stateid():
@@ -164,9 +167,9 @@ def test_state_root_redirect_with_stateid():
     localDataService = LocalDataService()
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         # make sure the root is pointing to this state ID
-        assert localDataService._generateStateId() == (stateId, "gibberish")
-        assert localDataService._constructCalibrationStateRoot() == tmpRoot.path()
-        assert stateId == localDataService._constructCalibrationStateRoot().parts[-1]
+        assert localDataService.generateStateId() == (stateId, None)
+        assert localDataService.constructCalibrationStateRoot() == tmpRoot.path()
+        assert stateId == localDataService.constructCalibrationStateRoot().parts[-1]
 
 
 def test_reduction_root_redirect_no_stateid():
@@ -177,7 +180,7 @@ def test_reduction_root_redirect_no_stateid():
         assert tmpRoot.path().exists()
         # make sure the data service's path points to the tmp directory
         assert localDataService._constructReductionStateRoot() == tmpRoot.path()
-        assert localDataService._generateStateId()[0] == tmpRoot.path().parts[-1]
+        assert localDataService.generateStateId()[0] == tmpRoot.path().parts[-1]
     # make sure the directory is deleted at exit
     assert not tmpRoot.path().exists()
     # make sure the construct state root method is restored on exit
@@ -189,6 +192,6 @@ def test_reduction_root_redirect_with_stateid():
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         # make sure the root is pointing to this state ID
-        assert localDataService._generateStateId() == (stateId, "gibberish")
+        assert localDataService.generateStateId() == (stateId, None)
         assert localDataService._constructReductionStateRoot() == tmpRoot.path()
         assert stateId == localDataService._constructReductionStateRoot().parts[-1]

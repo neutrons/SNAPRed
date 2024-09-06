@@ -22,7 +22,7 @@ class CalibrationIndexEntry(BaseModel):
     appliesTo: Optional[str] = None
     comments: str
     author: str
-    timestamp: Optional[int] = None
+    timestamp: Optional[float] = None
 
     def parseAppliesTo(appliesTo: str):
         symbols = [">=", "<=", "<", ">"]

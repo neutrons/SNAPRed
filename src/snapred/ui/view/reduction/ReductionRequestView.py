@@ -1,20 +1,34 @@
+from typing import Callable, List, Optional
+
 from qtpy.QtCore import Signal, Slot
-from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget
+from qtpy.QtWidgets import (
+    QHBoxLayout,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.LabeledCheckBox import LabeledCheckBox
 from snapred.ui.widget.LabeledField import LabeledField
 from snapred.ui.widget.SampleDropDown import SampleDropDown
 from snapred.ui.widget.Toggle import Toggle
 
+logger = snapredLogger.getLogger(__name__)
+
 
 @Resettable
-class ReductionView(QWidget):
+class ReductionRequestView(QWidget):
     signalRemoveRunNumber = Signal(int)
 
-    def __init__(self, pixelMasks=[], parent=None):
-        super().__init__(parent)
+    def __init__(self, parent=None, validateRunNumbers: Optional[Callable[[List[str]], None]] = None):
+        super(ReductionRequestView, self).__init__(parent=parent)
 
         self.runNumbers = []
+        self.validateRunNumbers = validateRunNumbers
 
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
@@ -38,7 +52,9 @@ class ReductionView(QWidget):
         # Lite mode toggle, pixel masks dropdown, and retain unfocused data checkbox
         self.liteModeToggle = LabeledField("Lite Mode", Toggle(parent=self, state=True))
         self.retainUnfocusedDataCheckbox = LabeledCheckBox("Retain Unfocussed Data")
-        self.pixelMaskDropdown = SampleDropDown("Pixel Masks", pixelMasks)
+
+        # not active in this release, but kept as a "promise" for future releases
+        self.pixelMaskDropdown = SampleDropDown("Pixel Masks", [])
 
         # Set field properties
         self.liteModeToggle.setEnabled(False)
@@ -60,24 +76,36 @@ class ReductionView(QWidget):
 
     @Slot()
     def addRunNumber(self):
-        runNumberList = self.parseInputRunNumbers()
-        if runNumberList is not None:
-            noDuplicates = set(self.runNumbers)
-            noDuplicates.update(runNumberList)
-            self.runNumbers = list(noDuplicates)
-            self.updateRunNumberList()
+        # TODO: FIX THIS!
+        #   We're not inside the SNAPResponseHandler here, so we can't just throw a `ValueError`.
+        try:
+            runNumberList = self.parseInputRunNumbers()
+            if runNumberList is not None:
+                # remove duplicates
+                noDuplicates = set(self.runNumbers)
+                noDuplicates.update(runNumberList)
+                noDuplicates = list(noDuplicates)
+                if self.validateRunNumbers is not None:
+                    self.validateRunNumbers(noDuplicates)
+                self.runNumbers = noDuplicates
+                self.updateRunNumberList()
+                self.runNumberInput.clear()
+        except ValueError as e:
+            QMessageBox.warning(self, "Warning", str(e), buttons=QMessageBox.Ok, defaultButton=QMessageBox.Ok)
             self.runNumberInput.clear()
 
-    def parseInputRunNumbers(self):
+    def parseInputRunNumbers(self) -> List[str]:
+        # WARNING: run numbers are strings.
+        #   For now, it's OK to parse them as integer, but they should not be passed around that way.
         runNumberString = self.runNumberInput.text().strip()
         if runNumberString:
-            try:
-                runNumberList = [num.strip() for num in runNumberString.split(",") if num.strip().isdigit()]
-                return runNumberList
-            except ValueError:
-                raise ValueError(
-                    "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
-                )
+            runNumberList = [num.strip() for num in runNumberString.split(",") if num.strip()]
+            for runNumber in runNumberList:
+                if not runNumber.isdigit():
+                    raise ValueError(
+                        "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
+                    )
+            return runNumberList
 
     @Slot()
     def removeRunNumber(self, runNumber):
@@ -85,6 +113,11 @@ class ReductionView(QWidget):
 
     @Slot()
     def _removeRunNumber(self, runNumber):
+        if runNumber not in self.runNumbers:
+            logger.warning(
+                f"[ReductionRequestView]: attempting to remove run {runNumber} not in the list {self.runNumbers}"
+            )
+            return
         self.runNumbers.remove(runNumber)
         self.updateRunNumberList()
 
@@ -103,19 +136,7 @@ class ReductionView(QWidget):
                 raise ValueError(
                     "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
                 )
-        # They dont need to select a pixel mask
-        # if self.pixelMaskDropdown.currentIndex() < 0:
-        #     raise ValueError("Please select a pixel mask.")
         return True
 
     def getRunNumbers(self):
         return self.runNumbers
-
-    # Placeholder for checkBox logic
-    """
-    def onCheckBoxChecked(self, checked):
-        if checked:
-
-        else:
-            pass
-    """

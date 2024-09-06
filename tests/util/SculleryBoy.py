@@ -3,7 +3,7 @@
 # TODO this needs to be setup to better handle inputs
 
 
-from typing import List
+from typing import Dict, List
 from unittest import mock
 
 import pydantic
@@ -39,8 +39,15 @@ class SculleryBoy:
     Should be able to mock out the SousChef.
     """
 
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        prepPeakIngredientsFlags: Dict[str, bool] = {"useFakePeakValues": False},
+        prepDetectorPeaksFlags: Dict[str, bool] = {"removeDuplicatePeaks": True},
+    ):
+        # Flag values were previously passed in using mocks:  this is not a recommended practice
+        #   as it causes the mock to deviate from its "spec" type.
+        self.prepPeakIngredientsFlags = prepPeakIngredientsFlags
+        self.prepDetectorPeaksFlags = prepDetectorPeaksFlags
 
     def prepCalibration(self, ingredients: FarmFreshIngredients):  # noqa ARG002
         return {
@@ -94,22 +101,20 @@ class SculleryBoy:
         return mock.Mock()
 
     def prepPeakIngredients(self, ingredients: FarmFreshIngredients):  # noqa ARG002
-        if "good" in ingredients:
+        if not self.prepPeakIngredientsFlags["useFakePeakValues"]:
             path = Resource.getPath("/inputs/predict_peaks/input_good_ingredients.json")
         else:
             path = Resource.getPath("/inputs/predict_peaks/input_fake_ingredients.json")
         return PeakIngredients.parse_file(path)
 
-    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]:
+    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]:  # noqa: ARG002
         try:
             peakList = DetectorPeakPredictorRecipe().executeRecipe(
                 Ingredients=self.prepPeakIngredients(ingredients),
-                PurgeDuplicates=ingredients.get("purge", True),
+                PurgeDuplicates=self.prepDetectorPeaksFlags["removeDuplicatePeaks"],
             )
             return pydantic.TypeAdapter(List[GroupPeakList]).validate_json(peakList)
-        except TypeError:
-            return [mock.Mock(spec_set=GroupPeakList)]
-        except AttributeError:
+        except (TypeError, AttributeError):
             return [mock.Mock(spec_set=GroupPeakList)]
 
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients):  # noqa ARG002

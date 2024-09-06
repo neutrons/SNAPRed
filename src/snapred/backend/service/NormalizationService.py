@@ -10,6 +10,7 @@ from snapred.backend.dao.normalization import (
     NormalizationRecord,
 )
 from snapred.backend.dao.request import (
+    CalibrationWritePermissionsRequest,
     FarmFreshIngredients,
     FocusSpectraRequest,
     NormalizationExportRequest,
@@ -56,6 +57,7 @@ class NormalizationService(Service):
         self.diffractionCalibrationService = CalibrationService()
         self.sousChef = SousChef()
         self.registerPath("", self.normalization)
+        self.registerPath("validateWritePermissions", self.validateWritePermissions)
         self.registerPath("assessment", self.normalizationAssessment)
         self.registerPath("save", self.saveNormalization)
         self.registerPath("smooth", self.smoothDataExcludingPeaks)
@@ -67,8 +69,7 @@ class NormalizationService(Service):
 
     @FromString
     def normalization(self, request: NormalizationRequest):
-        if not self._sameStates(request.runNumber, request.backgroundRunNumber):
-            raise ValueError("Run number and background run number must be of the same Instrument State.")
+        self.validateRequest(request)
 
         groupingScheme = request.focusGroup.name
 
@@ -146,10 +147,56 @@ class NormalizationService(Service):
             detectorPeaks=ingredients.detectorPeaks,
         ).dict()
 
+    def validateRequest(self, request: NormalizationRequest):
+        """
+        Validate the normalization request.
+
+        :param request: a normalization request
+        :type request: NormalizationRequest
+        """
+        if not self._sameStates(request.runNumber, request.backgroundRunNumber):
+            raise ValueError("Run number and background run number must be of the same Instrument State.")
+
+        # This is a redundant call, but it is placed here to facilitate re-sequencing.
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=request.runNumber, continueFlags=request.continueFlags
+        )
+        self.validateWritePermissions(permissionsRequest)
+
+    def validateWritePermissions(self, request: CalibrationWritePermissionsRequest):
+        """
+        Validate that the normalization-calibration workflow will be able to save its output.
+
+        :param request: a write-permissions request containing the run number and existing continue flags
+        :type request: CalibrationWritePermissionsRequest
+        """
+        # Note: this is split-out as a separate method so it can be checked as early as possible in the workflow.
+
+        # check that the user has write permissions to the save directory
+        if not self.checkWritePermissions(request.runNumber):
+            raise RuntimeError(
+                "<font size = "
+                "2"
+                " >"
+                + "<p>It looks like you don't have permissions to write to "
+                + f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
+                + "which is a requirement in order to run the normalization-calibration workflow.</p>"
+                + "<p>If this is something that you need to do, then you may need to change the "
+                + "<br><b>instrument.calibration.powder.home</b> entry in SNAPRed's <b>application.yml</b> file.</p>"
+                + "</font>"
+            )
+
     def _sameStates(self, runnumber1, runnumber2):
         stateId1 = self.dataFactoryService.constructStateId(runnumber1)
         stateId2 = self.dataFactoryService.constructStateId(runnumber2)
         return stateId1 == stateId2
+
+    def checkWritePermissions(self, runNumber: str) -> bool:
+        path = self.dataExportService.getCalibrationStateRoot(runNumber)
+        return self.dataExportService.checkWritePermissions(path)
+
+    def getSavePath(self, runNumber: str) -> Path:
+        return self.dataExportService.getCalibrationStateRoot(runNumber)
 
     @FromString
     def normalizationAssessment(self, request: NormalizationRequest):

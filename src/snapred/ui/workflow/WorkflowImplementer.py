@@ -87,6 +87,7 @@ class WorkflowImplementer(QObject):
         self.responses = []
         self.outputs = []
         self.collectedOutputs = []
+        self.continueAnywayFlags = ContinueWarning.Type.UNSET
 
     def _clearWorkspaces(self, *, exclude: List[str], clearCachedWorkspaces: bool):
         # Always exclude any external workspaces.

@@ -46,7 +46,7 @@ class DataFactoryService:
         return self.lookupService.readStateConfig(runId, useLiteMode)
 
     def constructStateId(self, runId: str):
-        return self.lookupService._generateStateId(runId)
+        return self.lookupService.generateStateId(runId)
 
     def getCalibrantSample(self, filePath):
         return self.lookupService.readCalibrantSample(filePath)

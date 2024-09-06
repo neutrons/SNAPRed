@@ -1,4 +1,3 @@
-import time
 from pathlib import Path
 from typing import Dict, List
 
@@ -21,6 +20,7 @@ from snapred.backend.dao.request import (
     CalibrationExportRequest,
     CalibrationIndexRequest,
     CalibrationLoadAssessmentRequest,
+    CalibrationWritePermissionsRequest,
     DiffractionCalibrationRequest,
     FarmFreshIngredients,
     FitMultiplePeaksRequest,
@@ -68,8 +68,6 @@ class CalibrationService(Service):
 
     """
 
-    dataFactoryService: "DataFactoryService"
-    dataExportService: "DataExportService"
     MILLISECONDS_PER_SECOND = Config["constants.millisecondsPerSecond"]
     MINIMUM_PEAKS_PER_GROUP = Config["calibration.diffraction.minimumPeaksPerGroup"]
 
@@ -93,6 +91,7 @@ class CalibrationService(Service):
         self.registerPath("loadQualityAssessment", self.loadQualityAssessment)
         self.registerPath("index", self.getCalibrationIndex)
         self.registerPath("diffraction", self.diffractionCalibration)
+        self.registerPath("validateWritePermissions", self.validateWritePermissions)
         return
 
     @staticmethod
@@ -148,6 +147,8 @@ class CalibrationService(Service):
 
     @FromString
     def diffractionCalibration(self, request: DiffractionCalibrationRequest):
+        self.validateRequest(request)
+
         # ingredients
         ingredients = self.prepDiffractionCalibrationIngredients(request)
         # groceries
@@ -155,6 +156,44 @@ class CalibrationService(Service):
 
         # now have all ingredients and groceries, run recipe
         return DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
+
+    def validateRequest(self, request: DiffractionCalibrationRequest):
+        """
+        Validate the diffraction-calibration request.
+
+        :param request: a diffraction-calibration request
+        :type request: DiffractionCalibrationRequest
+        """
+
+        # This is a redundant call, but it is placed here to facilitate re-sequencing.
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=request.runNumber, continueFlags=request.continueFlags
+        )
+        self.validateWritePermissions(permissionsRequest)
+
+    def validateWritePermissions(self, request: CalibrationWritePermissionsRequest):
+        """
+        Validate that the diffraction-calibration workflow will be able to save its output.
+
+        :param request: a write-permissions request containing the run number and existing continue flags
+        :type request: CalibrationWritePermissionsRequest
+        """
+        # Note: this is split-out as a separate method and a registered service call.
+        #   Permissions must be checked as early as possible in the workflow.
+
+        # check that the user has write permissions to the save directory
+        if not self.checkWritePermissions(request.runNumber):
+            raise RuntimeError(
+                "<font size = "
+                "2"
+                " >"
+                + "<p>It looks like you don't have permissions to write to "
+                + f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
+                + "which is a requirement in order to run the diffraction-calibration workflow.</p>"
+                + "<p>If this is something that you need to do, then you may need to change the "
+                + "<br><b>instrument.calibration.powder.home</b> entry in SNAPRed's <b>application.yml</b> file.</p>"
+                + "</font>"
+            )
 
     @FromString
     def focusSpectra(self, request: FocusSpectraRequest):
@@ -217,7 +256,7 @@ class CalibrationService(Service):
         if entry.appliesTo is None:
             entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:
-            entry.timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
+            entry.timestamp = self.dataExportService.getUniqueTimestamp()
         logger.info("Saving calibration index entry for Run Number {}".format(entry.runNumber))
         self.dataExportService.exportCalibrationIndexEntry(entry)
 
@@ -240,6 +279,13 @@ class CalibrationService(Service):
             logger.error(f"Invalid run number: {runId}")
             return False
         return self.dataFactoryService.checkCalibrationStateExists(runId)
+
+    def checkWritePermissions(self, runNumber: str) -> bool:
+        path = self.dataExportService.getCalibrationStateRoot(runNumber)
+        return self.dataExportService.checkWritePermissions(path)
+
+    def getSavePath(self, runNumber: str) -> Path:
+        return self.dataExportService.getCalibrationStateRoot(runNumber)
 
     @staticmethod
     def parseCalibrationMetricList(src: str) -> List[CalibrationMetric]:
@@ -338,10 +384,6 @@ class CalibrationService(Service):
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
-        # NOTE the previous structure of this method implied it was meant to loop over a list.
-        # However, its actual implementation did not actually loop over a list.
-        # I removed most of the parts that implied a loop or list.
-        # This can be easily refactored to a loop structure when needed
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.run.runNumber,

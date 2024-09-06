@@ -48,6 +48,9 @@ class DataExportService:
 
     # NOTE will be added shortly
 
+    def checkWritePermissions(self, path: Path) -> bool:
+        return self.dataService.checkWritePermissions(path)
+
     ##### CALIBRATION METHODS #####
 
     @validate_call
@@ -65,6 +68,10 @@ class DataExportService:
 
     def exportCalibrationState(self, calibration: Calibration):
         return self.dataService.writeCalibrationState(calibration)
+
+    def getCalibrationStateRoot(self, runNumber: str) -> Path:
+        stateId, _ = self.dataService.generateStateId(runNumber)
+        return self.dataService.constructCalibrationStateRoot(stateId)
 
     ##### NORMALIZATION METHODS #####
 
@@ -87,6 +94,9 @@ class DataExportService:
 
     def exportReductionData(self, record: ReductionRecord):
         self.dataService.writeReductionData(record)
+
+    def getReductionStateRoot(self, runNumber: str) -> Path:
+        return self.dataService._constructReductionStateRoot(runNumber)
 
     ##### WORKSPACE METHODS #####
 

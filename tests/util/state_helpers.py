@@ -29,8 +29,8 @@ def state_root_override(runNumber: str, name: str, useLiteMode: bool = False, de
 
     # __enter__
     dataService = LocalDataService()
-    stateId, _ = dataService._generateStateId(runNumber)
-    stateRoot = Path(dataService._constructCalibrationStateRoot(stateId))
+    stateId, _ = dataService.generateStateId(runNumber)
+    stateRoot = Path(dataService.constructCalibrationStateRoot(stateId))
     if stateRoot.exists():
         raise RuntimeError(f"state-root directory '{stateRoot}' already exists -- please move it out of the way!")
 
@@ -72,8 +72,8 @@ class state_root_redirect:
     def __init__(self, dataService: LocalDataService, *, stateId: str = None):
         self.dataService = dataService
         self.stateId = stateId
-        self.old_constructCalibrationStateRoot = dataService._constructCalibrationStateRoot
-        self.old_generateStateId = dataService._generateStateId
+        self.old_constructCalibrationStateRoot = dataService.constructCalibrationStateRoot
+        self.old_generateStateId = dataService.generateStateId
 
     def __enter__(self):
         self.tmpdir = TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
@@ -82,13 +82,13 @@ class state_root_redirect:
             self.tmppath = self.tmppath / Path(self.stateId)
         else:
             self.stateId = str(self.tmppath.parts[-1])
-        self.dataService._generateStateId = lambda *x, **y: (self.stateId, "gibberish")  # noqa ARG005
-        self.dataService._constructCalibrationStateRoot = lambda *x, **y: self.tmppath  # noqa ARG005
+        self.dataService.generateStateId = lambda *x, **y: (self.stateId, None)  # noqa ARG005
+        self.dataService.constructCalibrationStateRoot = lambda *x, **y: self.tmppath  # noqa ARG005
         return self
 
     def __exit__(self, *arg, **kwargs):
-        self.dataService._constructCalibrationStateRoot = self.old_constructCalibrationStateRoot
-        self.dataService._generateStateId = self.old_generateStateId
+        self.dataService.constructCalibrationStateRoot = self.old_constructCalibrationStateRoot
+        self.dataService.generateStateId = self.old_generateStateId
         self.tmpdir.cleanup()
         assert not self.tmppath.exists()
         del self.tmpdir
@@ -121,7 +121,7 @@ class reduction_root_redirect:
         self.dataService = dataService
         self.stateId = stateId
         self.old_constructReductionStateRoot = dataService._constructReductionStateRoot
-        self.old_generateStateId = dataService._generateStateId
+        self.old_generateStateId = dataService.generateStateId
 
     def __enter__(self):
         self.tmpdir = TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
@@ -130,13 +130,13 @@ class reduction_root_redirect:
             self.tmppath = self.tmppath / Path(self.stateId)
         else:
             self.stateId = str(self.tmppath.parts[-1])
-        self.dataService._generateStateId = lambda *x, **y: (self.stateId, "gibberish")  # noqa ARG005
+        self.dataService.generateStateId = lambda *x, **y: (self.stateId, None)  # noqa ARG005
         self.dataService._constructReductionStateRoot = lambda *x, **y: self.tmppath  # noqa ARG005
         return self
 
     def __exit__(self, *arg, **kwargs):
         self.dataService._constructReductionStateRoot = self.old_constructReductionStateRoot
-        self.dataService._generateStateId = self.old_generateStateId
+        self.dataService.generateStateId = self.old_generateStateId
         self.tmpdir.cleanup()
         assert not self.tmppath.exists()
         del self.tmpdir
