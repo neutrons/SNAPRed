@@ -5,7 +5,8 @@ import traceback
 from mantid.kernel import ConfigService
 from mantid.utils.logging import log_to_python
 from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
-from qtpy.QtCore import Qt, QTimer, Slot
+from qtpy.QtCore import QEvent, QObject, QPoint, Qt, QTimer, Slot
+from qtpy.QtGui import QCursor, QMouseEvent
 from qtpy.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -33,6 +34,37 @@ except ImportError:
 
 LOGGERCLASSKEY = "logging.channels.consoleChannel.class"
 LOGGERLEVELKEY = "logging.loggers.root.level"
+
+logger = snapredLogger.getLogger(__name__)
+
+
+class KeyPressEater(QObject):
+    def eventFilter(self, obj, event):
+        logger.info("Event Filter")
+        return True
+
+
+def widgets_at(pos):
+    """Return ALL widgets at `pos`
+    Arguments:
+            pos (QPoint): Position at which to get widgets
+    """
+
+    widgets = []
+    widget_at = qapp().widgetAt(pos)
+
+    while widget_at:
+        widgets.append(widget_at)
+
+        # Make widget invisible to further enquiries
+        widget_at.setAttribute(Qt.WA_TransparentForMouseEvents)
+        widget_at = qapp().widgetAt(pos)
+
+    # Restore attribute
+    for widget in widgets:
+        widget.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+
+    return widgets
 
 
 class SNAPRedGUI(QMainWindow):
@@ -160,13 +192,24 @@ def qapp():
     if QApplication.instance():
         _app = QApplication.instance()
     else:
-        _app = QApplication(sys.argv)
+
+        class NotifyApplication(QApplication):
+            eventRecord = []
+
+            def notify(self, object: QObject, event: QEvent):
+                if event.type() == QEvent.KeyPress:
+                    print("Key Pressed" + str(event.key()))
+                if event.type() == QEvent.MouseButtonPress:
+                    print("Mouse Coordinate" + str(QCursor.pos()))
+
+                return super().notify(object, event)
+
+        _app = NotifyApplication(sys.argv)
+    logger.info("Filter installed")
     return _app
 
 
 def start(options=None):
-    logger = snapredLogger.getLogger(__name__)
-
     app = qapp()
     with Resource.open("style.qss", "r") as styleSheet:
         app.setStyleSheet(styleSheet.read())
@@ -175,6 +218,33 @@ def start(options=None):
     try:
         ex = SNAPRedGUI(translucentBackground=True)
         ex.show()
+
+        def clickScreen(coords=(901, 377)):
+            QCursor.setPos(*coords)
+            target = qapp().widgetAt(*coords)
+            event = QMouseEvent(
+                QEvent.MouseButtonPress,
+                target.mapFromGlobal(QPoint(*coords)),
+                Qt.LeftButton,
+                Qt.LeftButton,
+                Qt.NoModifier,
+            )
+            qapp().sendEvent(target, event)
+            event = QMouseEvent(
+                QEvent.MouseButtonRelease,
+                target.mapFromGlobal(QPoint(*coords)),
+                Qt.LeftButton,
+                Qt.LeftButton,
+                Qt.NoModifier,
+            )
+            qapp().sendEvent(target, event)
+            # shuld build in smething t cnfirm the intended target was clicked
+            print("target" + str(target))
+
+        # wait 3 seconds
+        QTimer.singleShot(3000, lambda: clickScreen())
+        QTimer.singleShot(3500, lambda: clickScreen((1043, 900)))
+        QTimer.singleShot(4000, lambda: clickScreen((1718, 704)))
 
         if options.headcheck:
             SECONDS = 3  # arbitrarily chosen
