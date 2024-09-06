@@ -1,7 +1,14 @@
 from typing import Callable, List, Optional
 
 from qtpy.QtCore import Signal, Slot
-from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout
+from qtpy.QtWidgets import (
+    QHBoxLayout,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
@@ -14,12 +21,18 @@ logger = snapredLogger.getLogger(__name__)
 class ReductionRequestView(BackendRequestView):
     signalRemoveRunNumber = Signal(int)
 
-    def __init__(self, parent=None, populatePixelMaskDropdown: Optional[Callable[[], None]] = None):
+    def __init__(
+        self,
+        parent=None,
+        populatePixelMaskDropdown: Optional[Callable[[], None]] = None,
+        validateRunNumbers: Optional[Callable[[List[str]], None]] = None,
+    ):
         super(ReductionRequestView, self).__init__(parent=parent)
 
         self.runNumbers = []
         self.pixelMaskDropdown = self._multiSelectDropDown("Select Pixel Mask(s)", [])
         self.populatePixelMaskDropdown = populatePixelMaskDropdown
+        self.validateRunNumbers = validateRunNumbers
 
         # Horizontal layout for run number input and butto  n
         self.runNumberLayout = QHBoxLayout()
@@ -66,29 +79,38 @@ class ReductionRequestView(BackendRequestView):
 
     @Slot()
     def addRunNumber(self):
-        runNumberList = self.parseInputRunNumbers()
-        if runNumberList is not None:
-            # remove duplicates
-            noDuplicates = set(self.runNumbers)
-            noDuplicates.update(runNumberList)
-            self.runNumbers = list(noDuplicates)
-            self.updateRunNumberList()
+        # TODO: FIX THIS!
+        #   We're not inside the SNAPResponseHandler here, so we can't just throw a `ValueError`.
+        try:
+            runNumberList = self.parseInputRunNumbers()
+            if runNumberList is not None:
+                # remove duplicates
+                noDuplicates = set(self.runNumbers)
+                noDuplicates.update(runNumberList)
+                noDuplicates = list(noDuplicates)
+                if self.validateRunNumbers is not None:
+                    self.validateRunNumbers(noDuplicates)
+                self.runNumbers = noDuplicates
+                self.updateRunNumberList()
+                self.runNumberInput.clear()
+                if self.populatePixelMaskDropdown is not None:
+                    self.populatePixelMaskDropdown()
+        except ValueError as e:
+            QMessageBox.warning(self, "Warning", str(e), buttons=QMessageBox.Ok, defaultButton=QMessageBox.Ok)
             self.runNumberInput.clear()
-            if self.populatePixelMaskDropdown:
-                self.populatePixelMaskDropdown()
 
     def parseInputRunNumbers(self) -> List[str]:
         # WARNING: run numbers are strings.
         #   For now, it's OK to parse them as integer, but they should not be passed around that way.
         runNumberString = self.runNumberInput.text().strip()
         if runNumberString:
-            try:
-                runNumberList = [num.strip() for num in runNumberString.split(",") if num.strip().isdigit()]
-                return runNumberList
-            except ValueError:
-                raise ValueError(
-                    "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
-                )
+            runNumberList = [num.strip() for num in runNumberString.split(",") if num.strip()]
+            for runNumber in runNumberList:
+                if not runNumber.isdigit():
+                    raise ValueError(
+                        "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
+                    )
+            return runNumberList
 
     @Slot()
     def removeRunNumber(self, runNumber):

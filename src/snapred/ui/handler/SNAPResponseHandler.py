@@ -71,7 +71,7 @@ class SNAPResponseHandler(QWidget):
                 SNAPResponseHandler.handleStateMessage(view, recoverableException)
         elif code == ResponseCode.CONTINUE_WARNING:
             continueInfo = ContinueWarning.Model.model_validate_json(message)
-            if SNAPResponseHandler._handleContinueWarning(continueInfo.message, view):
+            if SNAPResponseHandler._handleContinueWarning(continueInfo, view):
                 view.continueAnyway.emit(continueInfo)
         elif message:
             SNAPResponseHandler._handleWarning(message, view)
@@ -89,7 +89,7 @@ class SNAPResponseHandler(QWidget):
         messageBox.exec()
 
     @staticmethod
-    def _handleContinueWarning(message, view):
+    def _handleContinueWarning(continueInfo: ContinueWarning.Model, view):
         # print stacktrace
         logger.info("It happens here and here")
         import traceback
@@ -99,9 +99,9 @@ class SNAPResponseHandler(QWidget):
         continueAnyway = QMessageBox.warning(
             view,
             "Warning",
-            message,
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            continueInfo.message,
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            defaultButton=QMessageBox.No,
         )
         return continueAnyway == QMessageBox.Yes
 

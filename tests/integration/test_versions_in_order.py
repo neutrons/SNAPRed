@@ -86,10 +86,10 @@ class ImitationDataService(LocalDataService):
         # if this is not overriden, it creates hundreds of headaches
         return Resource.getPath("inputs/testInstrument/IPTS-456/")
 
-    def _generateStateId(self, runId: str) -> Tuple[str, str]:
+    def generateStateId(self, runId: str) -> Tuple[str, str]:
         return (self.stateId, "gibberish")
 
-    def _constructCalibrationStateRoot(self, stateId) -> Path:
+    def constructCalibrationStateRoot(self, stateId) -> Path:
         return Path(self._stateRoot)
 
     def readCalibrationState(self, runId: str, useLiteMode: bool):
@@ -245,8 +245,8 @@ class TestVersioning(TestCase):
         self.instance.dataFactoryService.lookupService = self.localDataService
         self.instance.sousChef.dataFactoryService = self.instance.dataFactoryService
 
-        self.stateId = self.localDataService._generateStateId(self.runNumber)
-        self.stateRoot = self.localDataService._constructCalibrationStateRoot(self.stateId)
+        self.stateId = self.localDataService.generateStateId(self.runNumber)
+        self.stateRoot = self.localDataService.constructCalibrationStateRoot(self.stateId)
 
         # grab the associated Indexer
         self.indexer = self.localDataService.calibrationIndexer(self.runNumber, self.useLiteMode)

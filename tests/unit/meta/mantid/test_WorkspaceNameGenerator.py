@@ -131,10 +131,11 @@ def testReductionOutputName():
 
 def testReductionOutputGroupName():
     assert (  # "reduced_data,{stateId},{timestamp}"
-        f"_reduced_{fStateId}" == wng.reductionOutputGroup().stateId(stateId).build()
+        f"_reduced_{fRunNumber}" == wng.reductionOutputGroup().runNumber(runNumber).build()
     )
     assert (
-        f"_reduced_{fStateId}_{fTimestamp}" == wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
+        f"_reduced_{fRunNumber}_{fTimestamp}"
+        == wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
     )
 
 
