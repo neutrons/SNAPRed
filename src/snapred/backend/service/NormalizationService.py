@@ -22,7 +22,6 @@ from snapred.backend.dao.response.NormalizationResponse import NormalizationResp
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
-from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.GenericRecipe import (
     FocusSpectraRecipe,
@@ -177,7 +176,9 @@ class NormalizationService(Service):
         # check that the user has write permissions to the save directory
         if not self.checkWritePermissions(request.runNumber):
             raise RuntimeError(
-                "<font size = ""2"" >"
+                "<font size = "
+                "2"
+                " >"
                 + "<p>It looks like you don't have permissions to write to "
                 + f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
                 + "which is a requirement in order to run the normalization-calibration workflow.</p>"
@@ -185,7 +186,7 @@ class NormalizationService(Service):
                 + "<br><b>instrument.calibration.powder.home</b> entry in SNAPRed's <b>application.yml</b> file.</p>"
                 + "</font>"
             )
-        
+
     def _sameStates(self, runnumber1, runnumber2):
         stateId1 = self.dataFactoryService.constructStateId(runnumber1)
         stateId2 = self.dataFactoryService.constructStateId(runnumber2)

@@ -827,11 +827,7 @@ def test_CheckFileAndPermission_fileDoesNotExist(mockExists):  # noqa: ARG001
 @mock.patch("os.stat")
 @mock.patch("pathlib.Path.exists", return_value=True)
 def test_checkFileAndPermission_fileExistsAndWritePermission(mockExists, mockStat, mockS_IMODE):  # noqa: ARG001
-    mockStat.return_value = mock.Mock(
-        st_uid=os.getuid(),
-        st_gid=os.getgroups()[0],
-        st_mode=0o777
-    )
+    mockStat.return_value = mock.Mock(st_uid=os.getuid(), st_gid=os.getgroups()[0], st_mode=0o777)
     filePath = Path("/some/path/to/file")
     localDS = LocalDataService()
     localDS._hasWritePermissionstoPath = mock.Mock()
@@ -844,11 +840,7 @@ def test_checkFileAndPermission_fileExistsAndWritePermission(mockExists, mockSta
 @mock.patch("os.stat")
 @mock.patch("pathlib.Path.exists", return_value=True)
 def test__hasWritePermissionsToPath_fileExistsWithPermission(mockExists, mockStat, mockS_IMODE):  # noqa: ARG001
-    mockStat.return_value = mock.Mock(
-        st_uid=os.getuid(),
-        st_gid=os.getgroups()[0],
-        st_mode=0o777
-    )
+    mockStat.return_value = mock.Mock(st_uid=os.getuid(), st_gid=os.getgroups()[0], st_mode=0o777)
     filePath = Path("/some/path/to/file")
     localDS = LocalDataService()
     result = localDS._hasWritePermissionstoPath(filePath)
