@@ -775,11 +775,7 @@ def test__findMatchingFileList():
 @mock.patch("os.stat")
 @mock.patch("pathlib.Path.exists", return_value=True)
 def test__hasWritePermissionsToPath_fileExistsWithPermission(mockExists, mockStat, mockS_IMODE):  # noqa: ARG001
-    mockStat.return_value = mock.Mock(
-        st_uid=os.getuid(),
-        st_gid=os.getgroups()[0],
-        st_mode=0o777
-    )
+    mockStat.return_value = mock.Mock(st_uid=os.getuid(), st_gid=os.getgroups()[0], st_mode=0o777)
     filePath = Path("/some/path/to/file")
     localDS = LocalDataService()
     result = localDS._hasWritePermissionstoPath(filePath)
@@ -823,6 +819,7 @@ def test_checkWritePermissions_parent_exists():
         assert not path.exists()
         status = LocalDataService().checkWritePermissions(path)
         assert status
+
 
 @mock.patch("stat.S_IMODE", return_value=0o000)
 def test_checkWritePermissions_parent_exists_no_permissions(mockOsAccess):

@@ -3,7 +3,6 @@ import glob
 import json
 import os
 import stat
-import re
 import time
 from copy import deepcopy
 from errno import ENOENT as NOT_FOUND
@@ -161,10 +160,10 @@ class LocalDataService:
     @staticmethod
     def _hasWritePermissionstoPath(filePath: Path) -> bool:
         # WARNING: `os.access` does not work correctly on the `/SNS` shared filesystem.
-        
+
         # formerly:
         #   `return os.access(filePath, os.W_OK) if filePath.exists() else False`
-        
+
         # alternative implementation (LINUX specific):
         hasPermissions = False
         if filePath.exists():
@@ -185,9 +184,9 @@ class LocalDataService:
             #   checking the user-bits, if the current user is the owner;
             #   then checking the group-bits, if the user belongs to the file-owner's group;
             #   and finally checking the other-bits.
-            hasPermissions = (uid == fuid) and bool(mode & 0o200)\
-                or (fgid in gids) and bool(mode & 0o020)\
-                or bool(mode & 0o002)
+            hasPermissions = (
+                (uid == fuid) and bool(mode & 0o200) or (fgid in gids) and bool(mode & 0o020) or bool(mode & 0o002)
+            )
         return hasPermissions
 
     @staticmethod
