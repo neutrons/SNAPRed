@@ -14,7 +14,6 @@ from mantid.simpleapi import (
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition as LoadingAlgo
 from snapred.meta.Config import Resource
-from util.helpers import workspacesEqual
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
@@ -251,7 +250,11 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
-        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace)
+        assert_wksp_almost_equal(
+            Workspace1=outputWorkspace,
+            Workspace2=self.localReferenceWorkspace,
+            atol=0.0,
+        )
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals
@@ -273,7 +276,11 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         ConfigService.updateFacilities("")
         ConfigService.reset()
         assert mtd.doesExist(outputWorkspace)
-        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace)
+        assert_wksp_almost_equal(
+            Workspace1=outputWorkspace,
+            Workspace2=self.localReferenceWorkspace,
+            atol=0.0,
+        )
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals
@@ -290,7 +297,11 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
-        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace)
+        assert_wksp_almost_equal(
+            Workspace1=outputWorkspace,
+            Workspace2=self.localReferenceWorkspace,
+            atol=0.0,
+        )
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals

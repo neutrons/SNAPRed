@@ -211,31 +211,6 @@ def deleteWorkspaceNoThrow(wsName: str):
         pass
 
 
-def workspacesEqual(Workspace1: str, Workspace2: str, **other_options):
-    """
-    Meant to be called as
-    ``` python
-    assert workspacesEqual(ws1, ws2)
-    ```
-    Parameters:
-    - Workspace1: str -- one of the workspaces to compare
-    - Workspace2: str -- one of the workspaces to compare
-    - other_options: kwargs dict -- other options available to CompareWorkspaces
-    Returns: if the workspaces are equal, will return True
-    Otherwise, will raise an assertion error containing the result of CompareWorkspaces in description
-    """
-    # NOTE this can be re-worked to call `assert_wksp_almost_equal` when that
-    # has been fixed to allow exact comparisons.
-    equal, message = CompareWorkspaces(
-        Workspace1=Workspace1,
-        Workspace2=Workspace2,
-        **other_options,
-    )
-    if not equal:
-        raise AssertionError(message.column("Message"))
-    return equal
-
-
 def workspacesNotEqual(Workspace1: str, Workspace2: str, **other_options):
     """
     Meant to be called as

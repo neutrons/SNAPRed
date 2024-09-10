@@ -10,8 +10,8 @@ from mantid.simpleapi import (
     ResampleX,
     WrapLeftovers,
 )
+from mantid.testing import assert_almost_equal
 from snapred.meta.Config import Config
-from util.helpers import workspacesEqual
 
 NUM_BINS = Config["constants.ResampleX.NumberBins"]
 LOG_BINNING = True
@@ -62,7 +62,11 @@ def test_saveLoad():
         LogBinning=LOG_BINNING,
         OutputWorkspace="expected",
     )
-    assert workspacesEqual(mtd["expected"], mtd["reheated"])
+    assert_almost_equal(
+        Workspace1=mtd["expected"],
+        Workspace2=mtd["reheated"],
+        atol=0.0,
+    )
     DeleteWorkspace("raw")
     DeleteWorkspace("expected")
     DeleteWorkspace("reheated")
