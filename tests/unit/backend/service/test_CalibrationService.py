@@ -665,7 +665,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         DiffractionCalibrationRecipe().executeRecipe.return_value = {"calibrationTable": "fake"}
 
         self.instance.groceryClerk = mock.Mock()
-        self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
+        self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"maskWorkspace": self.sampleMaskWS})
 
         # Call the method with the provided parameters
         request = mock.Mock(

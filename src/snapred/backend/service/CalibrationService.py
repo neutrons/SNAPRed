@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import pydantic
+from mantid.api import mtd
 
 from snapred.backend.dao import Limit, RunConfig
 from snapred.backend.dao.calibration import (
@@ -114,6 +115,7 @@ class CalibrationService(Service):
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
             fwhmMultipliers=request.fwhmMultipliers,
             maxChiSq=request.maxChiSq,
+            skipPixelCalibration=request.skipPixelCalibration,
         )
         return self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
 
@@ -149,7 +151,25 @@ class CalibrationService(Service):
         groceries = self.fetchDiffractionCalibrationGroceries(request)
 
         # now have all ingredients and groceries, run recipe
-        return DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
+        res = DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
+
+        if request.useLiteMode is False:
+            if request.skipPixelCalibration is False:
+                maskWS = groceries.get("maskWorkspace", "")
+                print(maskWS)
+                percentMasked = mtd[maskWS].getNumberMasked() / mtd[maskWS].getNumberHistograms()
+                threshold = 0.15
+                if percentMasked > threshold:
+                    raise Exception(
+                        (
+                            "WARNING: More than 15% of pixels failed calibration. Please check your input data. If "
+                            "input data has poor statistics, you may get better results by disabling Cross "
+                            "Correlation. You can also improve statistics by activating Lite mode if this is not "
+                            "already activated."
+                        ),
+                    )
+
+        return res
 
     @FromString
     def focusSpectra(self, request: FocusSpectraRequest):

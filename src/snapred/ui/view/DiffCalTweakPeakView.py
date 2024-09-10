@@ -94,6 +94,10 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.recalculationButton = QPushButton("Recalculate")
         self.recalculationButton.clicked.connect(self.emitValueChange)
 
+        # skip pixel calibration button
+        self.skipPixelCalToggle = self._labeledField("Skip Pixel Calibration", Toggle(parent=self, state=False))
+        self.skipPixelCalToggle.setEnabled(False)
+
         # add all elements to the grid layout
         self.layout.addWidget(self.runNumberField, 0, 0)
         self.layout.addWidget(self.litemodeToggle, 0, 1)
@@ -104,6 +108,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.layout.addWidget(self.groupingFileDropdown, 4, 1)
         self.layout.addWidget(self.peakFunctionDropdown, 4, 2)
         self.layout.addWidget(self.recalculationButton, 5, 0, 1, 2)
+        self.layout.addWidget(self.skipPixelCalToggle, 0, 2)
 
         self.layout.setRowStretch(2, 10)
 

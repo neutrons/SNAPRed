@@ -34,6 +34,7 @@ class DiffractionCalibrationRequest(BaseModel, extra="forbid"):
     maximumOffset: float = Config["calibration.diffraction.maximumOffset"]
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
     maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
+    skipPixelCalibration: bool = False
 
     @field_validator("fwhmMultipliers", mode="before")
     @classmethod
