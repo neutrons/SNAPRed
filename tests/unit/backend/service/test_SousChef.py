@@ -32,6 +32,9 @@ class TestSousChef(unittest.TestCase):
         for ws in mtd.getObjectNames():
             DeleteWorkspace(ws)
 
+    def test_name(self):
+        assert SousChef.name() == "souschef"
+
     def test_prepManyDetectorPeaks(self):
         self.instance.prepDetectorPeaks = mock.Mock()
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)

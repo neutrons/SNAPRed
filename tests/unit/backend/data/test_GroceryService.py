@@ -33,6 +33,7 @@ from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType
 from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 from util.instrument_helpers import mapFromSampleLogs
 from util.kernel_helpers import tupleFromQuat, tupleFromV3D
@@ -1787,3 +1788,47 @@ class TestGroceryService(unittest.TestCase):
 
         actual = self.instance.getResidentWorkspaces(excludeCache=True)
         assert actual == expected
+
+    def test_lookupDiffcalTableWorkspaceName_no_record(self):
+        runNumber = 123
+        version = 1
+        mockIndexer = mock.Mock()
+        mockIndexer.readRecord = mock.Mock(return_value=None)
+        mockDataService = mock.Mock()
+        mockDataService.calibrationIndexer = mock.Mock(return_value=mockIndexer)
+        self.instance.dataService = mockDataService
+
+        with pytest.raises(RuntimeError, match=r".*Could not find calibration record*"):
+            self.instance.lookupDiffcalTableWorkspaceName(runNumber, True, version)
+
+    def test_lookupDiffcalTableWorkspaceName_nonInt_version(self):
+        runNumber = 123
+        version = "v1"
+        mockRecord = mock.Mock()
+        mockRecord.version = 1
+        mockRecord.workspaces = {WorkspaceType.DIFFCAL_TABLE: ["diffcal_table"]}
+        mockIndexer = mock.Mock()
+        mockIndexer.latestApplicableVersion = mock.Mock(return_value=1)
+        mockIndexer.readRecord = mock.Mock(return_value=mockRecord)
+        mockDataService = mock.Mock()
+        mockDataService.calibrationIndexer = mock.Mock(return_value=mockIndexer)
+        self.instance.dataService = mockDataService
+
+        self.instance.lookupDiffcalTableWorkspaceName(runNumber, True, version)
+
+        mockIndexer.latestApplicableVersion.assert_called_once_with(runNumber)
+
+    def test_lookupDiffcalTableWorkspaceName_missing_workspace_in_record(self):
+        runNumber = 123
+        version = "v1"
+        mockRecord = mock.Mock()
+        mockRecord.version = 1
+        mockRecord.workspaces = {"doesnt_exists": ["diffcal_table"]}
+        mockIndexer = mock.Mock()
+        mockIndexer.readRecord = mock.Mock(return_value=mockRecord)
+        mockDataService = mock.Mock()
+        mockDataService.calibrationIndexer = mock.Mock(return_value=mockIndexer)
+        self.instance.dataService = mockDataService
+
+        with pytest.raises(RuntimeError, match=r".*Could not find diffcal table in record*"):
+            self.instance.lookupDiffcalTableWorkspaceName(runNumber, True, version)
