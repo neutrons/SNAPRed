@@ -1,6 +1,7 @@
 # ruff: noqa: E402, ARG002
 import unittest
 import unittest.mock as mock
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,7 +9,9 @@ from mantid.simpleapi import (
     CreateSingleValuedWorkspace,
     mtd,
 )
+from snapred.backend.dao.request import CalibrationWritePermissionsRequest
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
+from snapred.backend.error.ContinueWarning import ContinueWarning
 
 thisService = "snapred.backend.service.NormalizationService"
 localMock = mock.Mock()
@@ -80,6 +83,7 @@ class TestNormalizationService(unittest.TestCase):
             focusGroup=FocusGroup(name="apple", definition="path/to/grouping"),
             smoothingParameter=0.5,
             crystalDBounds={"minimum": 0.4, "maximum": 100.0},
+            continueFlags=ContinueWarning.Type.UNSET,
         )
 
     def clearoutWorkspaces(self) -> None:
@@ -242,6 +246,9 @@ class TestNormalizationService(unittest.TestCase):
         self.instance._sameStates = MagicMock(return_value=True)
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
+
         result = self.instance.normalization(self.request)
 
         self.assertIsInstance(result, dict)  # noqa: PT009
@@ -253,6 +260,49 @@ class TestNormalizationService(unittest.TestCase):
         mockFocusSpectra.assert_called_once()
         mockSmoothDataExcludingPeaks.assert_called_once()
 
+    def test_validateRequest(self):
+        # test `validateRequest` internal calls
+        self.instance._sameStates = mock.Mock(return_value=True)
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
+        )
+        with mock.patch.object(self.instance, "validateWritePermissions") as mockValidateWritePermissions:
+            self.instance.validateRequest(self.request)
+            self.instance._sameStates.assert_called_once_with(self.request.runNumber, self.request.backgroundRunNumber)
+            mockValidateWritePermissions.assert_called_once_with(permissionsRequest)
+
+    def test_validateRequest_different_states(self):
+        # test `validateRequest` raises `ValueError`
+        self.instance._sameStates = mock.Mock(return_value=False)
+        self.instance.validateWritePermissions = mock.Mock()
+        with pytest.raises(
+            ValueError, match=r"Run number and background run number must be of the same Instrument State."
+        ):
+            self.instance.validateRequest(self.request)
+
+    def test_validateWritePermissions(self):
+        # test that `validateWritePermissions` throws no exceptions
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value=Path("lah/dee/dah"))
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
+        )
+        self.instance.validateWritePermissions(permissionsRequest)
+        self.instance.dataExportService.getCalibrationStateRoot.assert_called_once_with(self.request.runNumber)
+        self.instance.dataExportService.checkWritePermissions.assert_called_once_with(
+            self.instance.dataExportService.getCalibrationStateRoot.return_value
+        )
+
+    def test_validateWritePermissions_no_permissions(self):
+        # test that `validateWritePermissions` raises `ContinueWarning`
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value=Path("lah/dee/dah"))
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=False)
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
+        )
+        with pytest.raises(RuntimeError, match=r".*you don't have permissions to write.*"):
+            self.instance.validateWritePermissions(permissionsRequest)
+
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "GroceryService")
     def test_cachedNormalization(self, mockGroceryService, mockFarmFreshIngredients):
@@ -262,6 +312,8 @@ class TestNormalizationService(unittest.TestCase):
         self.instance._sameStates = MagicMock(return_value=True)
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
         result = self.instance.normalization(self.request)
 
         assert (

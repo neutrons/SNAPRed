@@ -116,7 +116,7 @@ mantid:
           smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_corr,{version}"
         reduction:
           output: "reduced,{unit},{group},{runNumber},{timestamp}"
-          outputGroup: "reduced,{stateId},{timestamp}"
+          outputGroup: "reduced,{runNumber},{timestamp}"
           pixelMask: "pixelmask,{runNumber},{timestamp}"
           # the user pixel mask name token is case sensitive
           userPixelMask: "MaskWorkspace,{numberTag}"

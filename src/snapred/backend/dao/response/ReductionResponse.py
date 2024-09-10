@@ -1,12 +1,13 @@
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 class ReductionResponse(BaseModel):
-    workspaces: List[WorkspaceName]
+    record: ReductionRecord
     unfocusedData: Optional[WorkspaceName] = None
 
     model_config = ConfigDict(

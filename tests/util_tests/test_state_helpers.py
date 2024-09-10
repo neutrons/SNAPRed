@@ -36,7 +36,7 @@ def initPVFileMock():
 
 
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
-@mock.patch.object(LocalDataService, "_generateStateId")
+@mock.patch.object(LocalDataService, "generateStateId")
 @mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
@@ -132,13 +132,13 @@ def test_state_root_override_exit_no_delete(
 
 def test_state_root_redirect_no_stateid():
     localDataService = LocalDataService()
-    oldSelf = localDataService._constructCalibrationStateRoot
+    oldSelf = localDataService.constructCalibrationStateRoot
     with state_root_redirect(localDataService) as tmpRoot:
         # make sure the path exists
         assert tmpRoot.path().exists()
         # make sure the data service's path points to the tmp directory
-        assert localDataService._constructCalibrationStateRoot() == tmpRoot.path()
-        assert localDataService._generateStateId()[0] == tmpRoot.path().parts[-1]
+        assert localDataService.constructCalibrationStateRoot() == tmpRoot.path()
+        assert localDataService.generateStateId()[0] == tmpRoot.path().parts[-1]
         # make sure a file can be added inside the directory -- can be any file
         # verify it can be found by data services and equals the value written
         localDataService.calibrationExists = mock.Mock(return_value=True)
@@ -153,7 +153,7 @@ def test_state_root_redirect_no_stateid():
     # make sure the directory is deleted at exit
     assert not tmpRoot.path().exists()
     # make sure the construct state root method is restored on exit
-    assert oldSelf == localDataService._constructCalibrationStateRoot
+    assert oldSelf == localDataService.constructCalibrationStateRoot
 
 
 def test_state_root_redirect_with_stateid():
@@ -161,9 +161,9 @@ def test_state_root_redirect_with_stateid():
     localDataService = LocalDataService()
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         # make sure the root is pointing to this state ID
-        assert localDataService._generateStateId() == (stateId, None)
-        assert localDataService._constructCalibrationStateRoot() == tmpRoot.path()
-        assert stateId == localDataService._constructCalibrationStateRoot().parts[-1]
+        assert localDataService.generateStateId() == (stateId, None)
+        assert localDataService.constructCalibrationStateRoot() == tmpRoot.path()
+        assert stateId == localDataService.constructCalibrationStateRoot().parts[-1]
 
 
 def test_reduction_root_redirect_no_stateid():
@@ -174,7 +174,7 @@ def test_reduction_root_redirect_no_stateid():
         assert tmpRoot.path().exists()
         # make sure the data service's path points to the tmp directory
         assert localDataService._constructReductionStateRoot() == tmpRoot.path()
-        assert localDataService._generateStateId()[0] == tmpRoot.path().parts[-1]
+        assert localDataService.generateStateId()[0] == tmpRoot.path().parts[-1]
     # make sure the directory is deleted at exit
     assert not tmpRoot.path().exists()
     # make sure the construct state root method is restored on exit
@@ -186,6 +186,6 @@ def test_reduction_root_redirect_with_stateid():
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         # make sure the root is pointing to this state ID
-        assert localDataService._generateStateId() == (stateId, None)
+        assert localDataService.generateStateId() == (stateId, None)
         assert localDataService._constructReductionStateRoot() == tmpRoot.path()
         assert stateId == localDataService._constructReductionStateRoot().parts[-1]
