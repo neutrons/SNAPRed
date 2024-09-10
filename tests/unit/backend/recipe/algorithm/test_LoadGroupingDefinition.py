@@ -253,7 +253,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=outputWorkspace,
             Workspace2=self.localReferenceWorkspace,
-            atol=1e-10,
+            atol=0.0,
         )
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
@@ -279,7 +279,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=outputWorkspace,
             Workspace2=self.localReferenceWorkspace,
-            atol=1e-10,
+            atol=0.0,
         )
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
@@ -300,7 +300,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         assert_wksp_almost_equal(
             Workspace1=outputWorkspace,
             Workspace2=self.localReferenceWorkspace,
-            atol=1e-10,
+            atol=0.0,
         )
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]

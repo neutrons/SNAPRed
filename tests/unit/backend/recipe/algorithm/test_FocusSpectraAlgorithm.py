@@ -140,7 +140,6 @@ class TestFocusSpectra(unittest.TestCase):
         assert_almost_equal(
             Workspace1=outputWs,
             Workspace2=outputWs + "_loaded",
-            atol=1e-10,
             CheckAllData=True,
         )
 

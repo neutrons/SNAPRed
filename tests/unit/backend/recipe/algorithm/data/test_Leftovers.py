@@ -65,7 +65,7 @@ def test_saveLoad():
     assert_almost_equal(
         Workspace1=mtd["expected"],
         Workspace2=mtd["reheated"],
-        atol=1e-10,
+        atol=0.0,
     )
     DeleteWorkspace("raw")
     DeleteWorkspace("expected")

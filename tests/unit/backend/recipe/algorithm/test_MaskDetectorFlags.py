@@ -135,7 +135,7 @@ class TestMaskDetectorFlags:
         assert_almost_equal(
             Workspace1=self.testInstrumentWS,
             Workspace2=self.instrumentWS,
-            atol=1e-10,
+            atol=0.0,
             CheckInstrument=False,
         )
 
@@ -200,7 +200,7 @@ class TestMaskDetectorFlags:
         assert_almost_equal(
             Workspace1=self.testGroupingWS,
             Workspace2=self.groupingWS,
-            atol=1e-10,
+            atol=0.0,
             CheckInstrument=False,
         )
 
@@ -279,6 +279,6 @@ class TestMaskDetectorFlags:
         assert_almost_equal(
             Workspace1=testOtherMaskWS,
             Workspace2=self.maskWS,
-            atol=1e-10,
+            atol=0.0,
             CheckInstrument=False,
         )
