@@ -811,6 +811,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     ):
         FarmFreshIngredients.return_value = mock.Mock(runNumber="123")
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
         self.instance.sousChef = SculleryBoy()
 
         DiffractionCalibrationRecipe().executeRecipe.return_value = {"calibrationTable": "fake"}
@@ -822,10 +824,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"maskWorkspace": self.sampleMaskWS})
 
         # Call the method with the provided parameters
-        request = mock.Mock(
+        # Call the method with the provided parameters
+        request = DiffractionCalibrationRequest(
             runNumber="123",
             useLiteMode=True,
             calibrantSamplePath="bundt/cake_egg.py",
+            removeBackground=True,
+            focusGroup=FocusGroup(name="all", definition="path/to/all"),
+            continueFlags=ContinueWarning.Type.UNSET,
             skipPixelCalibration=False,
         )
         with pytest.raises(Exception, match=r".*pixels failed calibration*"):
