@@ -155,12 +155,11 @@ class PixelDiffractionCalibration(PythonAlgorithm):
                 OutputWorkspace=self.wsBG,
                 GroupingWorkspace=self.getPropertyValue("GroupingWorkspace"),
                 DetectorPeaks=self.detectorPeaksJson,
-                dSpaceParams=self.dSpaceParams,
             )
-            self.mantidSnapper.ConvertToMatrixWorkspace(
+            self.mantidSnapper.ConvertToEventWorkspace(
                 "Converting TOF data to MatrixWorkspace...",
-                InputWorkspace=self.wsTOF,
-                OutputWorkspace=self.wsTOF,
+                InputWorkspace=self.wsBG,
+                OutputWorkspace=self.wsBG,
             )
             self.mantidSnapper.Minus(
                 "Subtracting background from input data",

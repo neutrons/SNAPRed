@@ -55,12 +55,6 @@ class RemoveEventBackground(PythonAlgorithm):
             validator=StringMandatoryValidator(),
             direction=Direction.Input,
         )
-        self.declareProperty(
-            "dSpaceParams",
-            defaultValue="",
-            validator=StringMandatoryValidator(),
-            direction=Direction.Input,
-        )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
@@ -128,7 +122,6 @@ class RemoveEventBackground(PythonAlgorithm):
             Params=self.dSpaceParams,
             PreserveEvents=False,
         )
-
         self.mantidSnapper.ConvertToMatrixWorkspace(
             "Converting EventWorkspace to MatrixWorkspace...",
             InputWorkspace=self.outputBackgroundWorkspaceName,
