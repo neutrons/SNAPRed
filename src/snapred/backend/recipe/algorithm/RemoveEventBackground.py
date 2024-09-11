@@ -9,7 +9,7 @@ from mantid.api import (
     PythonAlgorithm,
     WorkspaceUnitValidator,
 )
-from mantid.kernel import Direction, StringMandatoryValidator
+from mantid.kernel import Direction
 from pydantic import TypeAdapter
 from scipy.interpolate import make_smoothing_spline
 
@@ -46,13 +46,11 @@ class RemoveEventBackground(PythonAlgorithm):
         self.declareProperty(
             "DetectorPeaks",
             defaultValue="",
-            validator=StringMandatoryValidator(),
             direction=Direction.Input,
         )
         self.declareProperty(
             "SmoothingParameter",
             defaultValue=Config["calibration.diffraction.smoothingParameter"],
-            validator=StringMandatoryValidator(),
             direction=Direction.Input,
         )
         self.setRethrows(True)
@@ -83,7 +81,6 @@ class RemoveEventBackground(PythonAlgorithm):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
         self.outputBackgroundWorkspaceName = self.getPropertyValue("OutputWorkspace")
         self.smoothingParameter = float(self.getPropertyValue("SmoothingParameter"))
-        self.dSpaceParams = self.getPropertyValue("dSpaceParams")
 
     def PyExec(self):
         """
@@ -114,13 +111,6 @@ class RemoveEventBackground(PythonAlgorithm):
             "Creating copy of initial d-spacing data",
             InputWorkspace=self.outputBackgroundWorkspaceName,
             OutputWorkspace=self.outputBackgroundWorkspaceName + "_extractDSP",
-        )
-        self.mantidSnapper.Rebin(
-            "Rebinning to match peak windows",
-            InputWorkspace=self.outputBackgroundWorkspaceName,
-            OutputWorkspace=self.outputBackgroundWorkspaceName,
-            Params=self.dSpaceParams,
-            PreserveEvents=False,
         )
         self.mantidSnapper.ConvertToMatrixWorkspace(
             "Converting EventWorkspace to MatrixWorkspace...",
