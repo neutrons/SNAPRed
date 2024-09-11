@@ -65,8 +65,6 @@ class FarmFreshIngredients(BaseModel):
 
     focusGroups: Optional[List[FocusGroup]] = None
 
-    skipPixelCalibration: bool = False
-
     # Allow 'focusGroups' to be accessed as a single 'focusGroup'
     @property
     def focusGroup(self) -> FocusGroup:

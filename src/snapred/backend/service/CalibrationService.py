@@ -117,7 +117,6 @@ class CalibrationService(Service):
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
             fwhmMultipliers=request.fwhmMultipliers,
             maxChiSq=request.maxChiSq,
-            skipPixelCalibration=request.skipPixelCalibration,
         )
         return self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
 
@@ -161,7 +160,7 @@ class CalibrationService(Service):
         if request.skipPixelCalibration is False:
             maskWS = groceries.get("maskWorkspace", "")
             percentMasked = mtd[maskWS].getNumberMasked() / mtd[maskWS].getNumberHistograms()
-            threshold = 0.15
+            threshold = Config["constants.maskedPixelThreshold"]
             if percentMasked > threshold:
                 raise Exception(
                     (
