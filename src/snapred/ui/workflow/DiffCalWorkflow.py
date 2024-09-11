@@ -153,6 +153,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         # Enable pixel calibration skip only if not using lite mode
         if useLiteMode is False:
             self._tweakPeakView.skipPixelCalToggle.setEnabled(True)
+            self._tweakPeakView.skipPixelCalToggle.field.setState(True)
 
         self._requestView.groupingFileDropdown.setEnabled(False)
         # TODO: Use threads, account for fail cases

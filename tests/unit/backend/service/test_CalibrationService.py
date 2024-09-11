@@ -684,6 +684,35 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert res == {"calibrationTable": "fake"}
 
     @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @mock.patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
+    def test_diffractionCalibration_with_bad_masking(
+        self,
+        DiffractionCalibrationRecipe,
+        FarmFreshIngredients,
+    ):
+        FarmFreshIngredients.return_value = mock.Mock(runNumber="123")
+        self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
+        self.instance.sousChef = SculleryBoy()
+
+        DiffractionCalibrationRecipe().executeRecipe.return_value = {"calibrationTable": "fake"}
+
+        numHistograms = mtd[self.sampleMaskWS].getNumberHistograms()
+        for pixel in range(numHistograms):
+            mtd[self.sampleMaskWS].setY(pixel, [1.0])
+        self.instance.groceryClerk = mock.Mock()
+        self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"maskWorkspace": self.sampleMaskWS})
+
+        # Call the method with the provided parameters
+        request = mock.Mock(
+            runNumber="123",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+            skipPixelCalibration=False,
+        )
+        with pytest.raises(Exception, match=r".*pixels failed calibration*"):
+            self.instance.diffractionCalibration(request)
+
+    @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     @mock.patch(thisService + "FocusSpectraRecipe")
     def test_focusSpectra_not_exist(
         self,

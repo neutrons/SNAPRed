@@ -153,21 +153,19 @@ class CalibrationService(Service):
         # now have all ingredients and groceries, run recipe
         res = DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
 
-        if request.useLiteMode is False:
-            if request.skipPixelCalibration is False:
-                maskWS = groceries.get("maskWorkspace", "")
-                print(maskWS)
-                percentMasked = mtd[maskWS].getNumberMasked() / mtd[maskWS].getNumberHistograms()
-                threshold = 0.15
-                if percentMasked > threshold:
-                    raise Exception(
-                        (
-                            "WARNING: More than 15% of pixels failed calibration. Please check your input data. If "
-                            "input data has poor statistics, you may get better results by disabling Cross "
-                            "Correlation. You can also improve statistics by activating Lite mode if this is not "
-                            "already activated."
-                        ),
-                    )
+        if request.skipPixelCalibration is False:
+            maskWS = groceries.get("maskWorkspace", "")
+            percentMasked = mtd[maskWS].getNumberMasked() / mtd[maskWS].getNumberHistograms()
+            threshold = 0.15
+            if percentMasked > threshold:
+                raise Exception(
+                    (
+                        f"WARNING: More than {threshold*100}% of pixels failed calibration. Please check your input "
+                        "data. If input data has poor statistics, you may get better results by disabling Cross "
+                        "Correlation. You can also improve statistics by activating Lite mode if this is not "
+                        "already activated."
+                    ),
+                )
 
         return res
 
