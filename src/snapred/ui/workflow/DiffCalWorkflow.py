@@ -160,6 +160,7 @@ class DiffCalWorkflow(WorkflowImplementer):
     def _switchLiteNativeGroups(self):
         # when the run number is updated, freeze the drop down to populate it
         useLiteMode = self._requestView.litemodeToggle.field.getState()
+        self._tweakPeakView.litemodeToggle.field.setState(useLiteMode)
 
         # Enable pixel calibration skip only if not using lite mode
         if useLiteMode is False:
