@@ -2,10 +2,10 @@ import socket
 import unittest.mock as mock
 
 import pytest
+from mantid.testing import assert_almost_equal
 from snapred.backend.dao import CrystallographicPeak, DetectorPeak, GroupPeakList
 from snapred.meta.redantic import list_to_raw
 from util.diffraction_calibration_synthetic_data import SyntheticData
-from util.helpers import workspacesEqual
 
 with mock.patch.dict(
     "sys.modules",
@@ -94,9 +94,9 @@ with mock.patch.dict(
         algo.unbagGroceries()
 
         # verify result
-        assert workspacesEqual(
-            input_ws_name,
-            weight_ws_name,
+        assert_almost_equal(
+            Workspace1=input_ws_name,
+            Workspace2=weight_ws_name,
         )
 
     def test_unbag_ingredients_converts_events():
@@ -130,9 +130,9 @@ with mock.patch.dict(
         algo.unbagGroceries()
 
         # verify result: the weight ws should converted back to histogram data
-        assert workspacesEqual(
-            input_ws_name,
-            weight_ws_name,
+        assert_almost_equal(
+            Workspace1=input_ws_name,
+            Workspace2=weight_ws_name,
         )
 
     def test_validate_fail_wrong_sizes():
@@ -254,7 +254,10 @@ with mock.patch.dict(
         assert weightCalculatorAlgo.execute()
 
         # verify the weight workspace matches expectations
-        assert workspacesEqual(output_ws_name, weight_ws_name)
+        assert_almost_equal(
+            Workspace1=output_ws_name,
+            Workspace2=weight_ws_name,
+        )
 
     def test_with_predicted_peaks():
         """
@@ -292,7 +295,7 @@ with mock.patch.dict(
         assert weightCalculatorAlgo.execute()
 
         # assert the weights are as expected
-        assert workspacesEqual(
+        assert_almost_equal(
             Workspace1=weight_ws_name,
             Workspace2=ref_weight_ws_name,
             CheckInstrument=False,

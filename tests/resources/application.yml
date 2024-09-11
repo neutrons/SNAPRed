@@ -88,6 +88,7 @@ calibration:
     peakFunction: GAUSSIAN
     minimumPeaksPerGroup: 2
     preferredPeaksPerGroup: 4
+    smoothingParameter: 0.0001
   parameters:
     default:
       # degrees
@@ -122,7 +123,7 @@ mantid:
             smoothedFocusedRawVanadium: "_{unit},{group},fitted_van_corr,{runNumber},{version}"
           reduction:
             output: "_reduced,{unit},{group},{runNumber},{timestamp}"
-            outputGroup: "_reduced,{stateId},{timestamp}"
+            outputGroup: "_reduced,{runNumber},{timestamp}"
             pixelMask: "_pixelmask,{runNumber},{timestamp}"
             # the user pixel mask name token is case sensitive
             userPixelMask: "MaskWorkspace,{numberTag}"

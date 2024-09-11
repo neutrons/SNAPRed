@@ -49,6 +49,9 @@ class DataExportService:
     def checkFileandPermission(self, filePath: Path) -> Tuple[bool, bool]:
         return self.dataService.checkFileandPermission(filePath)
 
+    def checkWritePermissions(self, path: Path) -> bool:
+        return self.dataService.checkWritePermissions(path)
+
     ##### CALIBRATION METHODS #####
 
     @validate_call
@@ -78,6 +81,10 @@ class DataExportService:
         Calibration must have correct version set.
         """
         self.dataService.writeCalibrationState(calibration)
+
+    def getCalibrationStateRoot(self, runNumber: str) -> Path:
+        stateId, _ = self.dataService.generateStateId(runNumber)
+        return self.dataService.constructCalibrationStateRoot(stateId)
 
     ##### NORMALIZATION METHODS #####
 
@@ -120,6 +127,9 @@ class DataExportService:
         - 'exportReductionRecord' must have been called previously.
         """
         self.dataService.writeReductionData(record)
+
+    def getReductionStateRoot(self, runNumber: str) -> Path:
+        return self.dataService._constructReductionStateRoot(runNumber)
 
     ##### WORKSPACE METHODS #####
 

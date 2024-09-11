@@ -1,8 +1,10 @@
 import json
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Any, Dict, List
 
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
+from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
     ReductionExportRequest,
@@ -67,6 +69,9 @@ class ReductionService(Service):
         self.registerPath("hasState", self.hasState)
         self.registerPath("getCompatibleMasks", self.getCompatibleMasks)
         self.registerPath("getUniqueTimestamp", self.getUniqueTimestamp)
+        self.registerPath("checkWritePermissions", self.checkWritePermissions)
+        self.registerPath("getSavePath", self.getSavePath)
+        self.registerPath("getStateIds", self.getStateIds)
         return
 
     @staticmethod
@@ -90,11 +95,31 @@ class ReductionService(Service):
 
         # remove any continue flags that are present in the request by xor-ing with the flags
         if request.continueFlags:
-            continueFlags = continueFlags ^ request.continueFlags
+            continueFlags = continueFlags ^ (request.continueFlags & continueFlags)
 
         if continueFlags:
             raise ContinueWarning(
                 "Reduction is missing calibration data, continue in uncalibrated mode?", continueFlags
+            )
+
+        # ... ensure separate continue warnings ...
+        continueFlags = ContinueWarning.Type.UNSET
+
+        # check that the user has write permissions to the save directory
+        if not self.checkWritePermissions(request.runNumber):
+            continueFlags |= ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+        # remove any continue flags that are present in the request by xor-ing with the flags
+        if request.continueFlags:
+            continueFlags = continueFlags ^ (request.continueFlags & continueFlags)
+
+        if continueFlags:
+            raise ContinueWarning(
+                f"<p>It looks like you don't have permissions to write to "
+                f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
+                + "but you can still save using the workbench tools.</p>"
+                + "<p>Would you like to continue anyway?</p>",
+                continueFlags,
             )
 
     @FromString
@@ -116,7 +141,37 @@ class ReductionService(Service):
         groceries["groupingWorkspaces"] = groupingResults["groupingWorkspaces"]
 
         data = ReductionRecipe().cook(ingredients, groceries)
-        return ReductionResponse(workspaces=data["outputs"], unfocusedData=data.get("unfocusedWS", None))
+        record = self._createReductionRecord(request, ingredients, data["outputs"])
+        return ReductionResponse(record=record, unfocusedData=data.get("unfocusedWS", None))
+
+    def _createReductionRecord(
+        self, request: ReductionRequest, ingredients: ReductionIngredients, workspaceNames: List[WorkspaceName]
+    ) -> ReductionRecord:
+        calibration = None
+        normalization = None
+        if request.continueFlags is not None:
+            if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
+                # If a diffraction calibration exists,
+                #   its version will have been filled in by `fetchReductionGroceries`.
+                calibration = self.dataFactoryService.getCalibrationRecord(
+                    request.runNumber, request.useLiteMode, request.versions.calibration
+                )
+            if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
+                normalization = self.dataFactoryService.getNormalizationRecord(
+                    request.runNumber, request.useLiteMode, request.versions.normalization
+                )
+
+        return ReductionRecord(
+            runNumber=request.runNumber,
+            useLiteMode=request.useLiteMode,
+            timestamp=request.timestamp,
+            calibration=calibration,
+            normalization=normalization,
+            pixelGroupingParameters={
+                pg.focusGroup.name: [pg[gid] for gid in pg.groupIDs] for pg in ingredients.pixelGroups
+            },
+            workspaceNames=workspaceNames,
+        )
 
     @FromString
     def fetchReductionGroupings(self, request: ReductionRequest) -> Dict[str, Any]:
@@ -315,9 +370,8 @@ class ReductionService(Service):
         )
 
     def saveReduction(self, request: ReductionExportRequest):
-        record = request.reductionRecord
-        self.dataExportService.exportReductionRecord(record)
-        self.dataExportService.exportReductionData(record)
+        self.dataExportService.exportReductionRecord(request.record)
+        self.dataExportService.exportReductionData(request.record)
 
     def loadReduction(self, stateId: str, timestamp: float):
         # How to implement:
@@ -333,6 +387,20 @@ class ReductionService(Service):
 
     def getUniqueTimestamp(self):
         return self.dataExportService.getUniqueTimestamp()
+
+    def checkWritePermissions(self, runNumber: str) -> bool:
+        path = self.dataExportService.getReductionStateRoot(runNumber)
+        return self.dataExportService.checkWritePermissions(path)
+
+    def getSavePath(self, runNumber: str) -> Path:
+        return self.dataExportService.getReductionStateRoot(runNumber)
+
+    def getStateIds(self, runNumbers: List[str]) -> List[str]:
+        stateIds = []
+        for runNumber in runNumbers:
+            stateId, _ = self.dataFactoryService.constructStateId(runNumber)
+            stateIds.append(stateId)
+        return stateIds
 
     def _groupByStateId(self, requests: List[SNAPRequest]):
         stateIDs = {}

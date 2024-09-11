@@ -7,6 +7,7 @@ from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
+    CalibrationWritePermissionsRequest,
     CreateCalibrationRecordRequest,
     CreateIndexEntryRequest,
     DiffractionCalibrationRequest,
@@ -15,6 +16,7 @@ from snapred.backend.dao.request import (
     HasStateRequest,
 )
 from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
@@ -60,10 +62,13 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
         self.groupingMap = self.defaultGroupingMap
         self.focusGroups = self.groupingMap.lite
+        self.removeBackground = True  # NOTE: this will NOT subtract the background, this needs to
+        # be false in order for background subtraction to occur.
 
         self.addResetHook(self._resetSaveView)
 
         self._requestView = DiffCalRequestView(
+            removeBackgroundToggle=Config["cis_mode"],
             samples=self.samplePaths,
             groups=list(self.focusGroups.keys()),
             parent=parent,
@@ -98,7 +103,12 @@ class DiffCalWorkflow(WorkflowImplementer):
                 resetLambda=self.reset,
                 parent=parent,
             )
-            .addNode(self._specifyRun, self._requestView, "Diffraction Calibration")
+            .addNode(
+                self._specifyRun,
+                self._requestView,
+                "Diffraction Calibration",
+                continueAnywayHandler=self._continueAnywayHandler,
+            )
             .addNode(
                 self._triggerDiffractionCalibration,
                 self._tweakPeakView,
@@ -110,7 +120,8 @@ class DiffCalWorkflow(WorkflowImplementer):
             .build()
         )
 
-    def _continueAnywayHandlerTweak(self, continueInfo):  # noqa: ARG002
+    def _continueAnywayHandlerTweak(self, continueInfo: ContinueWarning.Model):  # noqa: ARG002
+        self._continueAnywayHandler(continueInfo)
         self._tweakPeakView.updateContinueAnyway(True)
 
     @ExceptionToErrLog
@@ -177,6 +188,15 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.peakFunction = view.peakFunctionDropdown.currentText()
         self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
 
+        if Config["cis_mode"]:
+            self.removeBackground = not view.removeBackgroundCheckBox.isChecked()
+
+        # Validate that the user has write permissions as early as possible in the workflow.
+        permissionsRequest = CalibrationWritePermissionsRequest(
+            runNumber=self.runNumber, continueFlags=self.continueAnywayFlags
+        )
+        self.request(path="calibration/validateWritePermissions", payload=permissionsRequest)
+
         self._tweakPeakView.updateRunNumber(self.runNumber)
         self._saveView.updateRunNumber(self.runNumber)
 
@@ -204,6 +224,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             fwhmMultipliers=self.prevFWHM,
             maxChiSq=self.maxChiSq,
             skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
+            removeBackground=self.removeBackground,
         )
 
         self.ingredients = self.request(path="calibration/ingredients", payload=payload.json()).data
@@ -287,6 +308,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             fwhmMultipliers=fwhm,
             maxChiSq=maxChiSq,
             skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
+            removeBackground=self.removeBackground,
         )
         response = self.request(path="calibration/ingredients", payload=payload.json())
         self.ingredients = response.data
@@ -338,6 +360,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             fwhmMultipliers=self.prevFWHM,
             maxChiSq=self.maxChiSq,
             skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
+            removeBackground=self.removeBackground,
         )
 
         response = self.request(path="calibration/diffraction", payload=payload.json())

@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -24,8 +24,8 @@ class ReductionRecord(BaseModel):
     timestamp: float = Field(frozen=True, default=None)
 
     # specific to reduction records
-    calibration: CalibrationRecord
-    normalization: NormalizationRecord
+    calibration: Optional[CalibrationRecord] = None
+    normalization: Optional[NormalizationRecord] = None
     pixelGroupingParameters: Dict[str, List[PixelGroupingParameters]]
 
     workspaceNames: List[WorkspaceName]
