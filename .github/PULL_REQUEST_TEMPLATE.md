@@ -21,6 +21,16 @@ As needed, use
 to paste code blocks.
 -->
 
+## Acceptance Criteria
+
+<!-- COPY/PASTE here the acceptance criteria from the EWM story item.
+These should come from the TAB and not the description, unless they are given in a specific section of the description.
+If none were given, ask the owner what they are.
+Make sure they format as a checklist in your PR description.
+-->
+- [ ] acceptance criterion 1
+- [ ] acceptance criterion 2
+
 ## To test
 
 ### Dev testing
