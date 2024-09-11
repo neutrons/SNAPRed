@@ -21,16 +21,6 @@ As needed, use
 to paste code blocks.
 -->
 
-## Acceptance Criteria
-
-<!-- COPY/PASTE here the acceptance criteria from the EWM story item.
-These should come from the TAB and not the description, unless they are given in a specific section of the description.
-If none were given, ask the owner what they are.
-Make sure they format as a checklist in your PR description.
--->
-- [ ] acceptance criterion 1
-- [ ] acceptance criterion 2
-
 ## To test
 
 ### Dev testing
@@ -70,3 +60,13 @@ If testing should instead be done from the GUI, explain
 Inside the EWM, paste a link to this PR in a comment there
 Link to any other relevant context, such as related mantid PRs, related SNAPRed PRs, related issues, etc.
 -->
+
+## Acceptance Criteria
+
+<!-- COPY/PASTE here the acceptance criteria from the EWM story item.
+These should come from the TAB and not the description, unless they are given in a specific section of the description.
+If none were given, ask the owner what they are.
+Make sure they format as a checklist in your PR description.
+-->
+- [ ] acceptance criterion 1
+- [ ] acceptance criterion 2
