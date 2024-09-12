@@ -68,5 +68,7 @@ These should come from the TAB and not the description, unless they are given in
 If none were given, ask the owner what they are.
 Make sure they format as a checklist in your PR description.
 -->
+
+**NOTE TO THE REVIEWER** This list is for ease of reference, and does not replace reading the EWM story as part of the review.  Verify this list matches the EWM story before reviewing.
 - [ ] acceptance criterion 1
 - [ ] acceptance criterion 2
