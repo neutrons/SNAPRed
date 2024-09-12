@@ -56,12 +56,18 @@ If testing should instead be done from the GUI, explain
 
 [EWM#<ticket_number>](https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20(Change%20Management)#action=com.ibm.team.workitem.viewWorkItem&id=<ticket_number>)
 
+### Verification
+
+- [ ] the author has read the EWM story and acceptance critera
+- [ ] the reviewer has read the EWM story and acceptance criteria
+- [ ] the reviewer certifies the acceptance criteria below reflect the criteria in EWM
+
 <!--
 Inside the EWM, paste a link to this PR in a comment there
 Link to any other relevant context, such as related mantid PRs, related SNAPRed PRs, related issues, etc.
 -->
 
-## Acceptance Criteria
+### Acceptance Criteria
 
 <!-- COPY/PASTE here the acceptance criteria from the EWM story item.
 These should come from the TAB and not the description, unless they are given in a specific section of the description.
@@ -69,6 +75,7 @@ If none were given, ask the owner what they are.
 Make sure they format as a checklist in your PR description.
 -->
 
-**NOTE TO THE REVIEWER** This list is for ease of reference, and does not replace reading the EWM story as part of the review.  Verify this list matches the EWM story before reviewing.
+This list is for ease of reference, and does not replace reading the EWM story as part of the review.  Verify this list matches the EWM story before reviewing.
+
 - [ ] acceptance criterion 1
 - [ ] acceptance criterion 2
