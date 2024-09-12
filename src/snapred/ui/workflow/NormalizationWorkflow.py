@@ -161,6 +161,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=self.focusGroups[self.focusGroupPath],
             crystalDBounds={"minimum": self.prevXtalDMin, "maximum": self.prevXtalDMax},
+            continueFlags=self.continueAnywayFlags,
         )
         # take the default smoothing param from the default payload value
         self.prevSmoothingParameter = payload.smoothingParameter

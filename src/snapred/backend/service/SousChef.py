@@ -264,7 +264,7 @@ class SousChef(Service):
             convertUnitsTo=ingredients_.convertUnitsTo,
         )
 
-    def _verifyCalibrationExists(self, runNumber: str, useLiteMode: bool) -> bool:
+    def verifyCalibrationExists(self, runNumber: str, useLiteMode: bool) -> bool:
         if not self.dataFactoryService.calibrationExists(runNumber, useLiteMode):
             recoveryData = {
                 "runNumber": runNumber,
@@ -277,7 +277,8 @@ class SousChef(Service):
             )
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
-        self._verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
+        # The calibration folder at the very least should be initialized with a default calibration
+        self.verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
 
         return NormalizationIngredients(
             pixelGroup=self.prepPixelGroup(ingredients),
@@ -288,7 +289,7 @@ class SousChef(Service):
     def prepDiffractionCalibrationIngredients(
         self, ingredients: FarmFreshIngredients
     ) -> DiffractionCalibrationIngredients:
-        self._verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
+        self.verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
 
         return DiffractionCalibrationIngredients(
             runConfig=self.prepRunConfig(ingredients.runNumber),

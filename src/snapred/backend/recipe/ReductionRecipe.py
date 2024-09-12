@@ -126,11 +126,20 @@ class ReductionRecipe(Recipe[Ingredients]):
     def _applyRecipe(self, recipe: Type[Recipe], ingredients_, **kwargs):
         if "inputWorkspace" in kwargs:
             inputWorkspace = kwargs["inputWorkspace"]
+            if not inputWorkspace:
+                self.logger().debug(f"{recipe.__name__} :: Skipping recipe with default empty input workspace")
+                return
             if self.mantidSnapper.mtd.doesExist(inputWorkspace):
                 self.groceries.update(kwargs)
                 recipe().cook(ingredients_, self.groceries)
             else:
-                self.logger().warning(f"Skipping {type(recipe)} as {inputWorkspace} does not exist.")
+                raise RuntimeError(
+                    (
+                        f"{recipe.__name__} ::"
+                        " Missing non-default input workspace with groceries:"
+                        f" {self.groceries} and kwargs: {kwargs}"
+                    )
+                )
 
     def _prepGroupingWorkspaces(self, groupingIndex: int):
         # TODO:  We need the wng to be able to deconstruct the workspace name

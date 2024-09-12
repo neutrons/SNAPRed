@@ -17,6 +17,7 @@ from pydantic import validate_call
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
+from snapred.backend.dao.WorkspaceMetadata import WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -461,6 +462,19 @@ class GroceryService:
         else:
             ws = None
         return ws
+
+    def writeWorkspaceMetadataAsTags(self, workspaceName: WorkspaceName, workspaceMetadata: WorkspaceMetadata):
+        """
+        Write workspace metadata to the workspace as tags.
+
+        :param workspaceName: the name of the workspace to write the metadata to
+        :type workspaceName: WorkspaceName
+        :param workspaceMetadata: the metadata to write to the workspace
+        :type workspaceMetadata: WorkspaceMetadata
+        """
+        metadata = workspaceMetadata.dict()
+        for logname in metadata.keys():
+            self.setWorkspaceTag(workspaceName, logname, metadata[logname])
 
     def getWorkspaceTag(self, workspaceName: str, logname: str):
         """
