@@ -28,6 +28,8 @@ from snapred.backend.recipe.GenericRecipe import (
     RawVanadiumCorrectionRecipe,
     SmoothDataExcludingPeaksRecipe,
 )
+from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
+from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
@@ -112,6 +114,17 @@ class NormalizationService(Service):
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(groupingScheme).useLiteMode(
             request.useLiteMode
         ).add()
+
+        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
+        if calVersion is None:
+            raise ValueError("No calibration version found for run number: " + request.runNumber)
+        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
+            request.useLiteMode
+        ).add()
+        self.groceryClerk.name("maskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
+            request.useLiteMode
+        ).add()
+
         groceries = self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
         )
@@ -126,13 +139,21 @@ class NormalizationService(Service):
             Ingredients=ingredients,
             OutputWorkspace=correctedVanadium,
         )
-        # 2. focus
-        FocusSpectraRecipe().executeRecipe(
-            InputWorkspace=correctedVanadium,
-            GroupingWorkspace=groceries["groupingWorkspace"],
-            Ingredients=ingredients.pixelGroup,
-            OutputWorkspace=focusedVanadium,
+        # 1.5 Apply latest calibration before focussing, if unable to mark it as uncalibrated?
+        # Apply diffcal and mask
+        groceries["inputWorkspace"] = correctedVanadium
+        groceries["outputWorkspace"] = focusedVanadium
+        PreprocessReductionRecipe().cook(PreprocessReductionRecipe.Ingredients(), groceries)
+        # focus and normalize by current
+        groceries["inputWorkspace"] = focusedVanadium
+        groceries["outputWorkspace"] = focusedVanadium
+        ReductionGroupProcessingRecipe().cook(
+            ReductionGroupProcessingRecipe.Ingredients(pixelGroup=ingredients.pixelGroup), groceries
         )
+
+        # NOTE: This stuff is trying to mimic what is done in reduction so why not just use that?
+        #       Lets refactor this to use preprocess and reduction group processing recipes
+        # 2. focus
         # 3. smooth
         SmoothDataExcludingPeaksRecipe().executeRecipe(
             InputWorkspace=focusedVanadium,

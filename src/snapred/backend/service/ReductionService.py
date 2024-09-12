@@ -307,6 +307,17 @@ class ReductionService(Service):
 
         :rtype: Dict[str, Any]
         """
+        calVersion = None
+        normVersion = None
+        if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
+            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
+                request.runNumber, request.useLiteMode
+            )
+        if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
+            normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
+                request.runNumber, request.useLiteMode
+            )
+
         # Fetch pixel masks
         residentMasks = {}
         combinedMask = None
@@ -325,7 +336,10 @@ class ReductionService(Service):
                         raise RuntimeError(
                             f"reduction pixel mask '{mask}' has unexpected workspace-type '{mask.tokens('workspaceType')}'"  # noqa: E501
                         )
-
+            if calVersion:
+                self.groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
+                    request.useLiteMode
+                ).add()
             # Load any non-resident pixel masks
             maskGroceries = self.groceryService.fetchGroceryDict(
                 self.groceryClerk.buildDict(),
@@ -344,14 +358,14 @@ class ReductionService(Service):
         calVersion = None
         normVersion = None
         calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
-        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
-            request.useLiteMode
-        ).add()
+        
+        if calVersion:
+            self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
+                request.useLiteMode
+            ).add()
+            # TODO: I dont think the loaded diffcal mask was ever combined with the pixel masks above^^
 
-        if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
-            normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
-                request.runNumber, request.useLiteMode
-            )
+        if normVersion:
             self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, normVersion).useLiteMode(
                 request.useLiteMode
             ).add()

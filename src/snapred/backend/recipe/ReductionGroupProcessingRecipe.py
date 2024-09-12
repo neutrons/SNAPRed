@@ -5,7 +5,6 @@ from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -70,8 +69,11 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
         )
         self.outputWS = self.rawInput
 
-    def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
-        pass
+    def _validateGrocery(self, key, ws):
+        # Skip validation for outputWorkspace
+        # It is either the inputWorkspace or a new workspace created here
+        if key != "outputWorkspace":
+            super()._validateGrocery(key, ws)
 
     def execute(self):
         """
