@@ -19,7 +19,7 @@ def Singleton(orig_cls):
         orig_init(self, *args, **kwargs)
 
     @wraps(orig_cls.__new__)
-    def __new__(cls, *args, **kwargs): # noqa: ARG001
+    def __new__(cls, *args, **kwargs):  # noqa: ARG001
         nonlocal instance
         if instance is None:
             # this needs to work with object.__new__, which only has only the `cls` arg

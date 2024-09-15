@@ -21,7 +21,7 @@ def _cleanup_directories():
 
 
 @pytest.mark.skip(
-    reason="TODO: integrate treatment of state-root directory with "\
+    reason="TODO: integrate treatment of state-root directory with "
     + "that used by 'tests/integration/test_workflow_panels_happy_path.py'"
 )
 @pytest.mark.golden_data(

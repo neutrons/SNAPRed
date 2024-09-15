@@ -138,7 +138,7 @@ def reduction_home_from_mirror():
 
 @pytest.mark.integration()
 class TestGUIPanels:
-    @pytest.fixture(scope="function", autouse=True) # noqa: PT003 
+    @pytest.fixture(scope="function", autouse=True)  # noqa: PT003
     def _setup_gui(self, qapp):
         # ---------------------------------------------------------------------------
         # DEFAULT PATCHES:
@@ -206,11 +206,11 @@ class TestGUIPanels:
         self.exitStack.close()
 
     @staticmethod
-    def _actionPromptContinue(title, message, action, parent=None, match=r".*"): # noqa: ARG004
+    def _actionPromptContinue(title, message, action, parent=None, match=r".*"):  # noqa: ARG004
         _pattern = re.compile(match)
         if not _pattern.match(message):
             pytest.fail(
-                f"unexpected: ActionPrompt.prompt('{title}', '{message}'...)\n"\
+                f"unexpected: ActionPrompt.prompt('{title}', '{message}'...)\n"
                 + f"    expecting:  ActionPrompt.prompt(...'{message}'...)"
             )
 
@@ -225,11 +225,11 @@ class TestGUIPanels:
 
         # Override the mirror with a new calibration-home directory, omitting any existing
         #   calibration or normalization data.
-        tmpCalibrationHomeDirectory = calibration_home_from_mirror() # noqa: F841
+        tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841
 
         # Override the standard reduction-output location, using a temporary directory
         #   under the existing location within the mirror.
-        tmpReductionHomeDirectory = reduction_home_from_mirror(reductionRunNumber) # noqa: F841
+        tmpReductionHomeDirectory = reduction_home_from_mirror(reductionRunNumber)  # noqa: F841
 
         with (
             qtbot.captureExceptions() as exceptions,
@@ -327,8 +327,9 @@ class TestGUIPanels:
                 # ---------------------------------------------------------------------------
                 # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
                 #   therefore, we cannot patch using a `with` clause!
-                questionMessageBox = mock.patch( # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.question", lambda *args, **kwargs: QMessageBox.Yes # noqa: ARG005
+                questionMessageBox = mock.patch(  # noqa: PT008
+                    "qtpy.QtWidgets.QMessageBox.question",
+                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
                 )
                 questionMessageBox.start()
                 successPrompt = mock.patch(
@@ -376,8 +377,9 @@ class TestGUIPanels:
             # Required patch for "TweakPeakView": ensure continuation if only two peaks are found.
             # IMPORTANT: "greater than two peaks" warning is triggered by an exception throw:
             #   => do _not_ patch using a with clause!
-            warningMessageBox = mock.patch( # noqa: PT008
-                "qtpy.QtWidgets.QMessageBox.warning", lambda *args, **kwargs: QMessageBox.Yes # noqa: ARG005
+            warningMessageBox = mock.patch(  # noqa: PT008
+                "qtpy.QtWidgets.QMessageBox.warning",
+                lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
             )
             warningMessageBox.start()
             # ---------------------------------------------------------------------------
@@ -411,7 +413,7 @@ class TestGUIPanels:
             #   ("Tweak peaks" view should have definitely completed by this point.)
             warningMessageBox.stop()
 
-            assessmentView = workflowNodeTabs.currentWidget().view # noqa: F841
+            assessmentView = workflowNodeTabs.currentWidget().view  # noqa: F841
             #    nothing to do here, for this test
 
             #    continue to the next panel
@@ -497,8 +499,9 @@ class TestGUIPanels:
                 # ---------------------------------------------------------------------------
                 # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
                 #   => do _not_ patch using a with clause!
-                questionMessageBox = mock.patch( # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.question", lambda *args, **kwargs: QMessageBox.Yes # noqa: ARG005
+                questionMessageBox = mock.patch(  # noqa: PT008
+                    "qtpy.QtWidgets.QMessageBox.question",
+                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
                 )
                 questionMessageBox.start()
                 successPrompt = mock.patch(
@@ -635,8 +638,9 @@ class TestGUIPanels:
                 # ---------------------------------------------------------------------------
                 # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
                 #   => do _not_ patch using a with clause!
-                questionMessageBox = mock.patch( # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.question", lambda *args, **kwargs: QMessageBox.Yes # noqa: ARG005
+                questionMessageBox = mock.patch(  # noqa: PT008
+                    "qtpy.QtWidgets.QMessageBox.question",
+                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
                 )
                 questionMessageBox.start()
                 successPrompt = mock.patch(
@@ -717,7 +721,7 @@ class TestGUIPanels:
     def test_diffraction_calibration_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
-        tmpCalibrationHomeDirectory = calibration_home_from_mirror() # noqa: F841
+        tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841
 
         with (
             qtbot.captureExceptions() as exceptions,
@@ -817,8 +821,9 @@ class TestGUIPanels:
                 # ---------------------------------------------------------------------------
                 # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
                 #   therefore, we cannot patch using a `with` clause!
-                questionMessageBox = mock.patch( # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.question", lambda *args, **kwargs: QMessageBox.Yes # noqa: ARG005
+                questionMessageBox = mock.patch(  # noqa: PT008
+                    "qtpy.QtWidgets.QMessageBox.question",
+                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
                 )
                 questionMessageBox.start()
                 successPrompt = mock.patch(
@@ -866,8 +871,9 @@ class TestGUIPanels:
             # Required patch for "TweakPeakView": ensure continuation if only two peaks are found.
             # IMPORTANT: "greater than two peaks" warning is triggered by an exception throw:
             #   => do _not_ patch using a with clause!
-            warningMessageBox = mock.patch( # noqa: PT008
-                "qtpy.QtWidgets.QMessageBox.warning", lambda *args, **kwargs: QMessageBox.Yes # noqa: ARG005
+            warningMessageBox = mock.patch(  # noqa: PT008
+                "qtpy.QtWidgets.QMessageBox.warning",
+                lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
             )
             warningMessageBox.start()
             # ---------------------------------------------------------------------------
@@ -901,7 +907,7 @@ class TestGUIPanels:
             # ("Tweak peaks" view should have definitely completed by this point.)
             warningMessageBox.stop()
 
-            assessmentView = workflowNodeTabs.currentWidget().view # noqa: F841
+            assessmentView = workflowNodeTabs.currentWidget().view  # noqa: F841
             #    nothing to do here, for this test
 
             #    continue to the next panel
@@ -949,7 +955,7 @@ class TestGUIPanels:
     def test_normalization_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
-        tmpCalibrationHomeDirectory = calibration_home_from_mirror() # noqa: F841
+        tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841
 
         with (
             qtbot.captureExceptions() as exceptions,
@@ -1050,8 +1056,9 @@ class TestGUIPanels:
                 # ---------------------------------------------------------------------------
                 # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
                 #   => do _not_ patch using a with clause!
-                questionMessageBox = mock.patch( # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.question", lambda *args, **kwargs: QMessageBox.Yes # noqa: ARG005
+                questionMessageBox = mock.patch(  # noqa: PT008
+                    "qtpy.QtWidgets.QMessageBox.question",
+                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
                 )
                 questionMessageBox.start()
                 successPrompt = mock.patch(
@@ -1167,7 +1174,7 @@ class TestGUIPanels:
 
         # Override the standard reduction-output location, using a temporary directory
         #   under the existing location within the mirror.
-        tmpReductionHomeDirectory = reduction_home_from_mirror(reductionRunNumber) # noqa: F841
+        tmpReductionHomeDirectory = reduction_home_from_mirror(reductionRunNumber)  # noqa: F841
 
         with (
             qtbot.captureExceptions() as exceptions,
@@ -1257,15 +1264,16 @@ class TestGUIPanels:
                 # raise RuntimeError(
                 #           f"The state root directory for '{reductionStateId}' already exists! "\
                 #           + "Please move it out of the way."
-                #)
+                # )
                 waitForStateInit = False
 
             if waitForStateInit:
                 # ---------------------------------------------------------------------------
                 # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
                 #   => do _not_ patch using a with clause!
-                questionMessageBox = mock.patch( # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.question", lambda *args, **kwargs: QMessageBox.Yes # noqa: ARG005
+                questionMessageBox = mock.patch(  # noqa: PT008
+                    "qtpy.QtWidgets.QMessageBox.question",
+                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
                 )
                 questionMessageBox.start()
                 successPrompt = mock.patch(
@@ -1304,7 +1312,7 @@ class TestGUIPanels:
             with qtbot.waitSignal(actionCompleted, timeout=120000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
             qtbot.waitUntil(lambda: isinstance(workflowNodeTabs.currentWidget().view, ReductionSaveView), timeout=60000)
-            saveView = workflowNodeTabs.currentWidget().view # noqa: F841
+            saveView = workflowNodeTabs.currentWidget().view  # noqa: F841
 
             """
             #    set "author" and "comment"

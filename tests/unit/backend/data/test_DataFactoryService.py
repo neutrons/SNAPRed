@@ -1,4 +1,6 @@
 import hashlib
+import unittest
+import unittest.mock as mock
 from pathlib import Path
 from random import randint
 
@@ -11,10 +13,6 @@ from snapred.backend.dao.state import InstrumentState
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
-
-import unittest
-import unittest.mock as mock
-import pytest
 
 
 class TestDataFactoryService(unittest.TestCase):
