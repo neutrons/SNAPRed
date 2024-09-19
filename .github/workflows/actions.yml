@@ -52,6 +52,46 @@ jobs:
         python -m pip install -e . # install the application in editable mode
         env=tests/resources/headcheck.yml xvfb-run --server-args="-screen 0 1280x1024x16" --auto-servernum snapred --headcheck
 
+  integration-tests:
+    runs-on: refred-builder
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up MicroMamaba
+      uses: mamba-org/setup-micromamba@v1
+      with:
+        environment-file: environment.yml
+        condarc: |
+          channels:
+            - conda-forge
+            - default
+            - mantid/label/nightly
+        cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
+        cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
+    - name: Apt install deps
+      run: |
+        sudo apt update
+        sudo apt-get install xvfb
+    - name: Start xvfb daemon
+      run: |
+        /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16
+    - name: Test with pytest
+      run: |
+        xvfb-run --server-args="-screen 0 1280x1024x16" -a env=integration_test python -m pytest -m datarepo --cov=src --cov-report=xml --cov-report=term
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      if:
+        github.actor != 'dependabot[bot]'
+      with:
+        fail_ci_if_error: true
+        token: ${{ secrets.CODECOV_TOKEN }} # required
+    - name: Gui tests
+      run: |
+        python -m pip install -e . # install the application in editable mode
+        env=tests/resources/headcheck.yml xvfb-run --server-args="-screen 0 1280x1024x16" --auto-servernum snapred --headcheck
+
   conda-build:
     runs-on: ${{ matrix.os }}
     strategy:
