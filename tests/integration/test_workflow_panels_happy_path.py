@@ -136,6 +136,7 @@ def reduction_home_from_mirror():
     _stack.close()
 
 
+@pytest.mark.datarepo()
 @pytest.mark.integration()
 class TestGUIPanels:
     @pytest.fixture(scope="function", autouse=True)  # noqa: PT003
