@@ -243,7 +243,7 @@ class LocalDataService:
     def stateExists(self, runId: str) -> bool:
         stateId, _ = self.generateStateId(runId)
         statePath = self.constructCalibrationStateRoot(stateId)
-        # Shouldnt need to check lite as we init both at the same time
+        # Shouldn't need to check lite as we init both at the same time
         return statePath.exists()
 
     def workspaceIsInstance(self, wsName: str, wsType: Any) -> bool:
@@ -382,7 +382,7 @@ class LocalDataService:
     @validate_call
     def _constructReductionDataFilePath(self, runNumber: str, useLiteMode: bool, timestamp: float) -> Path:
         fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
-        fileName += Config["nexus.file.extension"]
+        fileName += Config["reduction.output.extension"]
         filePath = self._constructReductionDataPath(runNumber, useLiteMode, timestamp) / fileName
         return filePath
 
@@ -649,6 +649,29 @@ class LocalDataService:
         -- `writeReductionRecord` must have been called prior to this method.
         """
 
+        # Implementation notes:
+        #
+        # 1) For SNAPRed's current reduction-workflow output implementation:
+        #
+        #      * In case an effective instrument has been substituted,
+        #        `SaveNexusESS` _must_ be used, `SaveNexus` by itself won't work;
+        #
+        #      * ONLY a simplified instrument geometry can be saved,
+        #        for example, as produced by `EditInstrumentGeometry`:
+        #          this geometry includes no monitors, only a single non-nested detector bank, and no parameter map.
+        #
+        #      * `LoadNexus` should work with all of this _automatically_.
+        #
+        #    Hopefully this will eventually be fixed, but right now this is a limitation of Mantid's
+        #    instrument-I/O implementation (for non XML-based instruments).
+        #
+        # 2) For SNAPRed internal use:
+        #        if `reduction.output.useEffectiveInstrument` is set to false in "application.yml",
+        #    output workspaces will be saved without converting their instruments to the reduced form.
+        #    Both of these alternatives are retained to allow some flexibility in what specifically 
+        #    is saved with the reduction data.
+        #
+
         runNumber, useLiteMode, timestamp = record.runNumber, record.useLiteMode, record.timestamp
 
         filePath = self._constructReductionDataFilePath(runNumber, useLiteMode, timestamp)
@@ -659,14 +682,40 @@ class LocalDataService:
             # WARNING: `writeReductionRecord` must be called before `writeReductionData`.
             raise RuntimeError(f"reduction version directories {filePath.parent} do not exist")
 
+        useEffectiveInstrument = Config["reduction.output.useEffectiveInstrument"]
+
         for ws in record.workspaceNames:
             # Append workspaces to hdf5 file, in order of the `workspaces` list
-            self.writeWorkspace(filePath.parent, Path(filePath.name), ws, append=True)
 
             if ws.tokens("workspaceType") == wngt.REDUCTION_PIXEL_MASK:
+                # The mask workspace always uses the non-reduced instrument.
+                self.mantidSnapper.SaveNexus(
+                    f"Append workspace '{ws}' to reduction output",
+                    InputWorkspace=ws,
+                    Filename=str(filePath),
+                    Append=True,
+                )
+                self.mantidSnapper.executeQueue()
+
                 # Write an additional copy of the combined pixel mask as a separate `SaveDiffCal`-format file
                 maskFilename = ws + ".h5"
                 self.writePixelMask(filePath.parent, Path(maskFilename), ws)
+            else:
+                if useEffectiveInstrument:
+                    self.mantidSnapper.SaveNexusESS(
+                        f"Append workspace '{ws}' to reduction output",
+                        InputWorkspace=ws,
+                        Filename=str(filePath),
+                        Append=True,
+                    )
+                else:
+                    self.mantidSnapper.SaveNexus(
+                        f"Append workspace '{ws}' to reduction output",
+                        InputWorkspace=ws,
+                        Filename=str(filePath),
+                        Append=True,
+                    )
+                self.mantidSnapper.executeQueue()
 
         # Append the "metadata" group, containing the `ReductionRecord` metadata
         with h5py.File(filePath, "a") as h5:

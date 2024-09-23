@@ -15,6 +15,7 @@ from random import randint, shuffle
 from typing import List, Literal, Set
 
 import h5py
+import numpy as np
 import pydantic
 import pytest
 from mantid.api import ITableWorkspace, MatrixWorkspace
@@ -25,8 +26,8 @@ from mantid.simpleapi import (
     CompareWorkspaces,
     CreateGroupingWorkspace,
     CreateSampleWorkspace,
-    DeleteWorkspace,
     DeleteWorkspaces,
+    EditInstrumentGeometry,
     GroupWorkspaces,
     LoadEmptyInstrument,
     LoadInstrument,
@@ -530,6 +531,14 @@ def test_stateExists():
     localDataService.constructCalibrationStateRoot = mock.Mock(return_value=Path("."))
     localDataService.generateStateId = mock.Mock(return_value=(ENDURING_STATE_ID, None))
     assert localDataService.stateExists("12345")
+
+
+def test_stateExists_not():
+    # Test that the 'stateExists' method returns False when the state doesn't exist.
+    localDataService = LocalDataService()
+    localDataService.constructCalibrationStateRoot = mock.Mock(return_value=Path("a/non-existent/path"))
+    localDataService.generateStateId = mock.Mock(return_value=(ENDURING_STATE_ID, None))
+    assert not localDataService.stateExists("12345")
 
 
 @mock.patch(ThisService + "GetIPTS")
@@ -1567,8 +1576,8 @@ def createReductionWorkspaces(cleanup_workspace_at_exit):
             OutputWorkspace=src,
             Function="One Peak",
             NumBanks=1,
-            NumMonitors=1,
-            BankPixelWidth=5,
+            NumMonitors=0,
+            BankPixelWidth=4,
             NumEvents=500,
             Random=True,
             XUnit="DSP",
@@ -1581,18 +1590,49 @@ def createReductionWorkspaces(cleanup_workspace_at_exit):
             Filename=fakeInstrumentFilePath,
             RewriteSpectraMap=True,
         )
+
+        # Mask workspace uses legacy instrument
+        mask = mtd.unique_hidden_name()
+        createCompatibleMask(mask, src)
+
+        if Config["reduction.output.useEffectiveInstrument"]:
+            # Convert the source workspace's instrument to the reduced form:
+            #   * no monitors;
+            #   * only one bank of detectors;
+            #   * no parameter map.
+
+            detectorInfo = mtd[src].detectorInfo()
+            l2s, twoThetas, azimuths = [], [], []
+            for n in range(detectorInfo.size()):
+                if detectorInfo.isMonitor(n):
+                    continue
+
+                l2 = detectorInfo.l2(n)
+                twoTheta = detectorInfo.twoTheta(n)
+
+                # See: defect EWM#7384
+                try:
+                    azimuth = detectorInfo.azimuthal(n)
+                except RuntimeError as e:
+                    if not str(e).startswith("Failed to create up axis"):
+                        raise
+                    azimuth = 0.0
+                l2s.append(l2)
+                twoThetas.append(twoTheta)
+                azimuths.append(azimuth)
+
+            EditInstrumentGeometry(Workspace=src, L2=l2s, Polar=np.rad2deg(twoThetas), Azimuthal=np.rad2deg(azimuths))
         assert mtd.doesExist(src)
+
         for ws in wss:
-            wsType = ws.tokens("workspaceType")
-            match wsType:
-                case wngt.REDUCTION_PIXEL_MASK:
-                    createCompatibleMask(ws, src)
-                case _:
-                    CloneWorkspace(OutputWorkspace=ws, InputWorkspace=src)
+            CloneWorkspace(
+                OutputWorkspace=ws,
+                InputWorkspace=src if ws.tokens("workspaceType") != wngt.REDUCTION_PIXEL_MASK else mask,
+            )
             assert mtd.doesExist(ws)
             cleanup_workspace_at_exit(ws)
 
-        DeleteWorkspace(Workspace=src)
+        DeleteWorkspaces([src, mask])
         return wss
 
     yield _createWorkspaces
@@ -1628,6 +1668,70 @@ def test_writeReductionData(readSyntheticReductionRecord, createReductionWorkspa
         localDataService.writeReductionData(testRecord)
 
         assert reductionFilePath.exists()
+
+
+def test_writeReductionData_legacy_instrument(readSyntheticReductionRecord, createReductionWorkspaces):
+    # Test that the special `Config` setting allows the saving of workspaces with non-reduced instruments
+
+    # In order to facilitate parallel testing: any workspace name used by this test should be unique.
+    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
+    _uniqueTimestamp = 1731518208.172797
+    testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
+
+    # Temporarily use a single run number
+    runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
+    stateId = ENDURING_STATE_ID
+    fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
+    fileName += Config["nexus.file.extension"]
+
+    with Config_override("reduction.output.useEffectiveInstrument", False):
+        wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
+        localDataService = LocalDataService()
+        with reduction_root_redirect(localDataService, stateId=stateId):
+            localDataService.instrumentConfig = mock.Mock()
+            localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+
+            # Important to this test: use a path that doesn't already exist
+            reductionFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
+            assert not reductionFilePath.exists()
+
+            # `writeReductionRecord` must be called first
+            localDataService.writeReductionRecord(testRecord)
+            localDataService.writeReductionData(testRecord)
+
+            assert reductionFilePath.exists()
+
+
+def test_writeReductionData_effective_instrument(readSyntheticReductionRecord, createReductionWorkspaces):
+    # Test that the special `Config` setting allows the saving of workspaces with effective instruments
+
+    # In order to facilitate parallel testing: any workspace name used by this test should be unique.
+    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
+    _uniqueTimestamp = 1733189687.0684218
+    testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
+
+    # Temporarily use a single run number
+    runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
+    stateId = ENDURING_STATE_ID
+    fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
+    fileName += Config["nexus.file.extension"]
+
+    with Config_override("reduction.output.useEffectiveInstrument", True):
+        wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
+        localDataService = LocalDataService()
+        with reduction_root_redirect(localDataService, stateId=stateId):
+            localDataService.instrumentConfig = mock.Mock()
+            localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+
+            # Important to this test: use a path that doesn't already exist
+            reductionFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
+            assert not reductionFilePath.exists()
+
+            # `writeReductionRecord` must be called first
+            localDataService.writeReductionRecord(testRecord)
+            localDataService.writeReductionData(testRecord)
+
+            assert reductionFilePath.exists()
 
 
 def test_writeReductionData_no_directories(readSyntheticReductionRecord, createReductionWorkspaces):  # noqa: ARG001
@@ -1668,7 +1772,7 @@ def test_writeReductionData_metadata(readSyntheticReductionRecord, createReducti
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = ENDURING_STATE_ID
     fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
-    fileName += Config["nexus.file.extension"]
+    fileName += Config["reduction.output.extension"]
 
     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
     localDataService = LocalDataService()
@@ -1702,7 +1806,7 @@ def test_readWriteReductionData(readSyntheticReductionRecord, createReductionWor
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = ENDURING_STATE_ID
     fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
-    fileName += Config["nexus.file.extension"]
+    fileName += Config["reduction.output.extension"]
 
     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
     localDataService = LocalDataService()
@@ -1737,11 +1841,62 @@ def test_readWriteReductionData(readSyntheticReductionRecord, createReductionWor
         #   please do _not_ replace this with one of the `assert_almost_equal` methods:
         #   -- they do not necessarily do what you think they should do...
         for ws in actualRecord.workspaceNames:
-            equal, _ = CompareWorkspaces(
-                Workspace1=ws,
-                Workspace2=_uniquePrefix + ws,
-            )
+            equal, _ = CompareWorkspaces(Workspace1=ws, Workspace2=_uniquePrefix + ws, CheckAllData=True)
             assert equal
+
+
+def test_readWriteReductionData_legacy_instrument(
+    readSyntheticReductionRecord, createReductionWorkspaces, cleanup_workspace_at_exit
+):
+    # In order to facilitate parallel testing: any workspace name used by this test should be unique.
+    _uniquePrefix = "_test_RWRD_"
+    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
+    _uniqueTimestamp = 1731519071.6706867
+    testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
+
+    runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
+    stateId = ENDURING_STATE_ID
+    fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
+    fileName += Config["reduction.output.extension"]
+
+    with Config_override("reduction.output.useEffectiveInstrument", False):
+        wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
+        localDataService = LocalDataService()
+        with reduction_root_redirect(localDataService, stateId=stateId):
+            localDataService.instrumentConfig = mock.Mock()
+            localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+
+            # Important to this test: use a path that doesn't already exist
+            reductionRecordFilePath = localDataService._constructReductionRecordFilePath(
+                runNumber, useLiteMode, timestamp
+            )
+            assert not reductionRecordFilePath.exists()
+
+            # `writeReductionRecord` needs to be called first
+            localDataService.writeReductionRecord(testRecord)
+            localDataService.writeReductionData(testRecord)
+
+            filePath = reductionRecordFilePath.parent / fileName
+            assert filePath.exists()
+
+            # move the existing test workspaces out of the way:
+            #   * this just adds the `_uniquePrefix` one more time.
+            RenameWorkspaces(InputWorkspaces=wss, Prefix=_uniquePrefix)
+            # append to the cleanup list
+            for ws in wss:
+                cleanup_workspace_at_exit(_uniquePrefix + ws)
+
+            actualRecord = localDataService.readReductionData(runNumber, useLiteMode, timestamp)
+            assert actualRecord == testRecord
+
+            # workspaces should have been reloaded with their original names
+            # Implementation note:
+            #   * the workspaces must match _exactly_ here, so `CompareWorkspaces` must be used;
+            #   please do _not_ replace this with one of the `assert_almost_equal` methods:
+            #   -- they do not necessarily do what you think they should do...
+            for ws in actualRecord.workspaceNames:
+                equal, _ = CompareWorkspaces(Workspace1=ws, Workspace2=_uniquePrefix + ws, CheckAllData=True)
+                assert equal
 
 
 def test_readWriteReductionData_pixel_mask(
@@ -1756,7 +1911,7 @@ def test_readWriteReductionData_pixel_mask(
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = ENDURING_STATE_ID
     fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
-    fileName += Config["nexus.file.extension"]
+    fileName += Config["reduction.output.extension"]
     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
@@ -1810,7 +1965,7 @@ def test__constructReductionDataFilePath():
     stateId = ENDURING_STATE_ID
     testIPTS = "IPTS-12345"
     fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
-    fileName += Config["nexus.file.extension"]
+    fileName += Config["reduction.output.extension"]
 
     expectedFilePath = (
         Path(Config["instrument.reduction.home"].format(IPTS=testIPTS))

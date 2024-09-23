@@ -1,4 +1,5 @@
 import hashlib
+import time
 import unittest
 import unittest.mock as mock
 from pathlib import Path
@@ -80,6 +81,7 @@ class TestDataFactoryService(unittest.TestCase):
 
     def setUp(self):
         self.version = randint(2, 120)
+        self.timestamp = time.time()
         self.instance = DataFactoryService()
         self.instance.lookupService = self.mockLookupService
         assert isinstance(self.instance, DataFactoryService)
@@ -274,18 +276,18 @@ class TestDataFactoryService(unittest.TestCase):
 
     def test_getReductionDataPath(self):
         for useLiteMode in [True, False]:
-            actual = self.instance.getReductionDataPath("12345", useLiteMode, self.version)
-            assert actual == self.expected("12345", useLiteMode, self.version)
+            actual = self.instance.getReductionDataPath("12345", useLiteMode, self.timestamp)
+            assert actual == self.expected("12345", useLiteMode, self.timestamp)
 
     def test_getReductionRecord(self):
         for useLiteMode in [True, False]:
-            actual = self.instance.getReductionRecord("12345", useLiteMode, self.version)
-            assert actual == self.expected("12345", useLiteMode, self.version)
+            actual = self.instance.getReductionRecord("12345", useLiteMode, self.timestamp)
+            assert actual == self.expected("12345", useLiteMode, self.timestamp)
 
     def test_getReductionData(self):
         for useLiteMode in [True, False]:
-            actual = self.instance.getReductionData("12345", useLiteMode, self.version)
-            assert actual == self.expected("12345", useLiteMode, self.version)
+            actual = self.instance.getReductionData("12345", useLiteMode, self.timestamp)
+            assert actual == self.expected("12345", useLiteMode, self.timestamp)
 
     ##### TEST WORKSPACE METHODS ####
 
