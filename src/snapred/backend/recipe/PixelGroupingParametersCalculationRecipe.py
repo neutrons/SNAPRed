@@ -36,7 +36,7 @@ class PixelGroupingParametersCalculationRecipe:
             "Calling algorithm",
             Ingredients=ingredients.json(),
             GroupingWorkspace=groceries["groupingWorkspace"],
-            MaskWorkspace=groceries.get("MaskWorkspace", ""),
+            MaskWorkspace=groceries.get("maskWorkspace", ""),
         )
         self.mantidSnapper.executeQueue()
         # NOTE contradictory issues with Callbacks between GUI and unit tests

@@ -523,7 +523,7 @@ class TestReductionServiceMasks:
                 request.runNumber, request.versions.normalization
             ).useLiteMode(request.useLiteMode).add()
             loadableOtherGroceryItems = groceryClerk.buildDict()
-            residentOtherGroceryKwargs = {"maskWorkspace": combinedMaskName}
+            residentOtherGroceryKwargs = {"combinedPixelMask": combinedMaskName}
 
             self.service.fetchReductionGroceries(request)
             mockFetchGroceryDict.assert_any_call(loadableMaskGroceryItems, **residentMaskGroceryKwargs)

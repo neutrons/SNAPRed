@@ -1,11 +1,10 @@
 import time
-from unittest import TestCase, mock
 
-import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.ReductionRecipe import (
     ApplyNormalizationRecipe,
+    EffectiveInstrumentRecipe,
     GenerateFocussedVanadiumRecipe,
     PreprocessReductionRecipe,
     ReductionGroupProcessingRecipe,
@@ -14,6 +13,8 @@ from snapred.backend.recipe.ReductionRecipe import (
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from util.SculleryBoy import SculleryBoy
 
+from unittest import TestCase, mock
+import pytest
 
 class ReductionRecipeTest(TestCase):
     sculleryBoy = SculleryBoy()
@@ -304,6 +305,9 @@ class ReductionRecipeTest(TestCase):
         recipe.ingredients.applyNormalization = mock.Mock(
             return_value=lambda groupingIndex: f"applyNormalization_{groupingIndex}"
         )
+        recipe.ingredients.effectiveInstrument = mock.Mock(
+            return_value=lambda groupingIndex: f"unmaskedPixelGroup_{groupingIndex}"
+        )
 
         recipe._applyRecipe = mock.Mock()
         recipe._cloneIntermediateWorkspace = mock.Mock()
@@ -362,6 +366,17 @@ class ReductionRecipeTest(TestCase):
             recipe.ingredients.applyNormalization(1),
             inputWorkspace="sample_grouped",
             normalizationWorkspace="norm_grouped",
+        )
+
+        recipe._applyRecipe.assert_any_call(
+            EffectiveInstrumentRecipe,
+            recipe.ingredients.effectiveInstrument(0),
+            inputWorkspace="sample_grouped",
+        )
+        recipe._applyRecipe.assert_any_call(
+            EffectiveInstrumentRecipe,
+            recipe.ingredients.effectiveInstrument(1),
+            inputWorkspace="sample_grouped",
         )
 
         recipe._deleteWorkspace.assert_called_with("norm_grouped")

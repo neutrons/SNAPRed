@@ -42,7 +42,7 @@ class Recipe(ABC, Generic[Ingredients]):
     @abstractmethod
     def queueAlgos(self):
         """
-        Queues up the procesing algorithms for the recipe.
+        Queues up the processing algorithms for the recipe.
         Requires: unbagged groceries and chopped ingredients.
         """
 
@@ -80,7 +80,7 @@ class Recipe(ABC, Generic[Ingredients]):
 
     def prep(self, ingredients: Ingredients, groceries: Dict[str, str]):
         """
-        Convinience method to prepare the recipe for execution.
+        Convenience method to prepare the recipe for execution.
         """
         self.validateInputs(ingredients, groceries)
         self.unbagGroceries(groceries)
