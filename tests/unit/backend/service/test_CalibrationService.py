@@ -719,7 +719,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         DiffractionCalibrationRecipe().executeRecipe.return_value = {"calibrationTable": "fake"}
 
         self.instance.groceryClerk = mock.Mock()
-        self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
+        self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"maskWorkspace": self.sampleMaskWS})
 
         # Call the method with the provided parameters
         request = DiffractionCalibrationRequest(
@@ -801,6 +801,41 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         with pytest.raises(RuntimeError, match=r".*you don't have permissions to write.*"):
             self.instance.validateWritePermissions(permissionsRequest)
+
+    @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @mock.patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
+    def test_diffractionCalibration_with_bad_masking(
+        self,
+        DiffractionCalibrationRecipe,
+        FarmFreshIngredients,
+    ):
+        FarmFreshIngredients.return_value = mock.Mock(runNumber="123")
+        self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
+        self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
+        self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
+        self.instance.sousChef = SculleryBoy()
+
+        DiffractionCalibrationRecipe().executeRecipe.return_value = {"calibrationTable": "fake"}
+
+        numHistograms = mtd[self.sampleMaskWS].getNumberHistograms()
+        for pixel in range(numHistograms):
+            mtd[self.sampleMaskWS].setY(pixel, [1.0])
+        self.instance.groceryClerk = mock.Mock()
+        self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"maskWorkspace": self.sampleMaskWS})
+
+        # Call the method with the provided parameters
+        # Call the method with the provided parameters
+        request = DiffractionCalibrationRequest(
+            runNumber="123",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+            removeBackground=True,
+            focusGroup=FocusGroup(name="all", definition="path/to/all"),
+            continueFlags=ContinueWarning.Type.UNSET,
+            skipPixelCalibration=False,
+        )
+        with pytest.raises(Exception, match=r".*pixels failed calibration*"):
+            self.instance.diffractionCalibration(request)
 
     @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     @mock.patch(thisService + "FocusSpectraRecipe")

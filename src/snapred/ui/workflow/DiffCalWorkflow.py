@@ -160,6 +160,13 @@ class DiffCalWorkflow(WorkflowImplementer):
     def _switchLiteNativeGroups(self):
         # when the run number is updated, freeze the drop down to populate it
         useLiteMode = self._requestView.litemodeToggle.field.getState()
+        self._tweakPeakView.litemodeToggle.field.setState(useLiteMode)
+
+        # Enable pixel calibration skip only if not using lite mode
+        if useLiteMode is False:
+            self._tweakPeakView.skipPixelCalToggle.field.setState(True)
+        else:
+            self._tweakPeakView.skipPixelCalToggle.field.setState(False)
 
         self._requestView.groupingFileDropdown.setEnabled(False)
         # TODO: Use threads, account for fail cases
@@ -218,6 +225,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
             maxChiSq=self.maxChiSq,
+            skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
             removeBackground=self.removeBackground,
         )
 
@@ -301,6 +309,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             crystalDMax=xtalDMax,
             fwhmMultipliers=fwhm,
             maxChiSq=maxChiSq,
+            skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
             removeBackground=self.removeBackground,
         )
         response = self.request(path="calibration/ingredients", payload=payload.json())
@@ -352,6 +361,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
             maxChiSq=self.maxChiSq,
+            skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
             removeBackground=self.removeBackground,
         )
 
