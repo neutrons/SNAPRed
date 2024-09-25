@@ -73,10 +73,10 @@ jobs:
             - mantid/label/nightly
         cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
         cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
-    - name: Apt install deps
+    - name: DNF install deps
       run: |
-        sudo apt update
-        sudo apt-get install xvfb
+        sudo dnf update
+        sudo dnf install xvfb
     - name: Start xvfb daemon
       run: |
         /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16
