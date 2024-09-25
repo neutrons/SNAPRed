@@ -111,6 +111,7 @@ class SyntheticData(object):
             maxOffset=100.0,  # bins: '100.0' seems to work
             pixelGroup=self.fakePixelGroup,
             maxChiSq=100.0,
+            skipPixelCalibration=False,
         )
 
     @staticmethod

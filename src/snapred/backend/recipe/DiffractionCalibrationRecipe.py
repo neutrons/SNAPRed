@@ -35,6 +35,7 @@ class DiffractionCalibrationRecipe:
         self.runNumber = ingredients.runConfig.runNumber
         self.threshold = ingredients.convergenceThreshold
         self.maxIterations = Config["calibration.diffraction.maximumIterations"]
+        self.skipPixelCalibration = ingredients.skipPixelCalibration
         self.removeBackground = ingredients.removeBackground
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
@@ -64,42 +65,43 @@ class DiffractionCalibrationRecipe:
         dataSteps: List[Dict[str, Any]] = []
         medianOffsets: List[float] = []
 
-        logger.info("Calibrating by cross-correlation and adjusting offsets...")
-        pixelAlgo = PixelDiffractionCalibration()
-        pixelAlgo.initialize()
-        pixelAlgo.setProperty("InputWorkspace", self.rawInput)
-        pixelAlgo.setProperty("GroupingWorkspace", self.groupingWS)
-        pixelAlgo.setProperty("Ingredients", ingredients.json())
-        pixelAlgo.setProperty("CalibrationTable", self.calTable)
-        pixelAlgo.setProperty("MaskWorkspace", self.maskWS)
-        try:
-            pixelAlgo.execute()
-            dataSteps.append(json.loads(pixelAlgo.getPropertyValue("data")))
-            medianOffsets.append(dataSteps[-1]["medianOffset"])
-        except RuntimeError as e:
-            errorString = str(e)
-            raise RuntimeError(errorString) from e
-        counter = 1
-        while abs(medianOffsets[-1]) > self.threshold and counter < self.maxIterations:
-            counter = counter + 1
-            logger.info(f"... converging to answer; step {counter}, {medianOffsets[-1]} > {self.threshold}")
+        if self.skipPixelCalibration is not True:
+            logger.info("Calibrating by cross-correlation and adjusting offsets...")
+            pixelAlgo = PixelDiffractionCalibration()
+            pixelAlgo.initialize()
+            pixelAlgo.setProperty("InputWorkspace", self.rawInput)
+            pixelAlgo.setProperty("GroupingWorkspace", self.groupingWS)
+            pixelAlgo.setProperty("Ingredients", ingredients.json())
+            pixelAlgo.setProperty("CalibrationTable", self.calTable)
+            pixelAlgo.setProperty("MaskWorkspace", self.maskWS)
             try:
                 pixelAlgo.execute()
-                newDataStep = json.loads(pixelAlgo.getPropertyValue("data"))
+                dataSteps.append(json.loads(pixelAlgo.getPropertyValue("data")))
+                medianOffsets.append(dataSteps[-1]["medianOffset"])
             except RuntimeError as e:
                 errorString = str(e)
                 raise RuntimeError(errorString) from e
-            # ensure monotonic decrease in the median offset
-            if newDataStep["medianOffset"] < dataSteps[-1]["medianOffset"]:
-                dataSteps.append(newDataStep)
-                medianOffsets.append(newDataStep["medianOffset"])
-            else:
-                logger.warning("Offsets failed to converge monotonically")
-                break
-        if counter >= self.maxIterations:
-            logger.warning("Offset convergence reached max iterations without convergning")
-        data["steps"] = dataSteps
-        logger.info(f"Initial calibration converged.  Offsets: {medianOffsets}")
+            counter = 1
+            while abs(medianOffsets[-1]) > self.threshold and counter < self.maxIterations:
+                counter = counter + 1
+                logger.info(f"... converging to answer; step {counter}, {medianOffsets[-1]} > {self.threshold}")
+                try:
+                    pixelAlgo.execute()
+                    newDataStep = json.loads(pixelAlgo.getPropertyValue("data"))
+                except RuntimeError as e:
+                    errorString = str(e)
+                    raise RuntimeError(errorString) from e
+                # ensure monotonic decrease in the median offset
+                if newDataStep["medianOffset"] < dataSteps[-1]["medianOffset"]:
+                    dataSteps.append(newDataStep)
+                    medianOffsets.append(newDataStep["medianOffset"])
+                else:
+                    logger.warning("Offsets failed to converge monotonically")
+                    break
+            if counter >= self.maxIterations:
+                logger.warning("Offset convergence reached max iterations without convergning")
+            data["steps"] = dataSteps
+            logger.info(f"Initial calibration converged.  Offsets: {medianOffsets}")
 
         logger.info("Beginning group-by-group fitting calibration")
         groupedAlgo = GroupDiffractionCalibration()
