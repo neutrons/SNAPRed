@@ -53,7 +53,7 @@ jobs:
         env=tests/resources/headcheck.yml xvfb-run --server-args="-screen 0 1280x1024x16" --auto-servernum snapred --headcheck
 
   integration-tests:
-    runs-on: ubuntu-latest
+    runs-on: snapred-builder
     defaults:
       run:
         shell: bash -l {0}
