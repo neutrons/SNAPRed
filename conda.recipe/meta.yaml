@@ -42,7 +42,7 @@ requirements:
 
   run:
     - {{ pin_compatible("pydantic", min_pin="2.7.3", max_pin="3") }}
-    - mantidworkbench>=6.10.20240909
+    - mantidworkbench
 
 about:
   home: {{ url }}
