@@ -17,7 +17,7 @@ dependencies:
 - erdantic>=1.0.3
 - versioningit
 - anaconda-client
-- conda-build < 24
+- conda-build<24
 - conda-verify
 - check-wheel-contents>=0.6.0
 - setuptools
