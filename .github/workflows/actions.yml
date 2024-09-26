@@ -59,6 +59,9 @@ jobs:
       run:
         shell: bash -l {0}
     steps:
+    - name: Cleanup MicroMamba
+      run: |
+        sudo rm -rf /home/cloud/micromamba-bin/micromamba
     - uses: actions/checkout@v4
       with:
         submodules: true
