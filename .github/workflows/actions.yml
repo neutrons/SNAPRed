@@ -81,8 +81,8 @@ jobs:
         post-cleanup: all
     - name: DNF install deps
       run: |
-        sudo dnf update
-        sudo dnf install xvfb
+        sudo dnf makecache --refresh
+        sudo yum -y install xorg-x11-server-Xvfb
     - name: Start xvfb daemon
       run: |
         /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16
