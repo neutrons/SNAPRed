@@ -83,6 +83,7 @@ jobs:
       run: |
         sudo dnf makecache --refresh
         sudo yum -y install xorg-x11-server-Xvfb
+        sudo dnf install dpkg
     - name: Start xvfb daemon
       run: |
         /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16
