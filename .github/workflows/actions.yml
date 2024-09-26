@@ -65,6 +65,7 @@ jobs:
     - name: Set up MicroMamaba
       uses: mamba-org/setup-micromamba@v1
       with:
+        micromamba-version: '1.5.10'
         environment-file: environment.yml
         condarc: |
           channels:
