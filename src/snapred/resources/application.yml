@@ -195,6 +195,9 @@ constants:
     crystalDMin: 0.4
     crystalDMax: 100.0
 
+  ArtificialNormalization:
+    peakWindowClippingSize: 10
+
   CalibrationReduction:
     tofMin: 2000
     tofMax: 14500
