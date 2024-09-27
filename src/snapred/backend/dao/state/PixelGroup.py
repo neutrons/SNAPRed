@@ -10,7 +10,7 @@ from snapred.meta.Config import Config
 
 
 class PixelGroup(BaseModel):
-    # allow initializtion from either dictionary or list
+    # allow initialization from either dictionary or list
     pixelGroupingParameters: Union[List[PixelGroupingParameters], Dict[int, PixelGroupingParameters]] = {}
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     focusGroup: FocusGroup
