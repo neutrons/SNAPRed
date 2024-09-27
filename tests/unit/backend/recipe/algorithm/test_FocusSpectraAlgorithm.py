@@ -141,6 +141,7 @@ class TestFocusSpectra(unittest.TestCase):
             Workspace1=outputWs,
             Workspace2=outputWs + "_loaded",
             CheckAllData=True,
+            rtol=1.0e-10,
         )
 
     def test_chopIngredients(self):
