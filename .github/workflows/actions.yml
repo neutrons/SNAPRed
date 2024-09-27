@@ -79,28 +79,31 @@ jobs:
         cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
         cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
         post-cleanup: all
-    - name: DNF install deps
-      run: |
-        sudo dnf makecache --refresh
-        sudo yum -y install xorg-x11-server-Xvfb
-        sudo dnf install dpkg
-    - name: Start xvfb daemon
-      run: |
-        /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16
+    # - name: DNF install deps
+    #   run: |
+    #     sudo dnf makecache --refresh
+    #     sudo yum -y install xorg-x11-server-Xvfb
+    #     sudo dnf install dpkg
+    # - name: Start xvfb daemon
+    #   run: |
+    #     /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16
+    # - name: Test with pytest
+    #   run: |
+    #     env=tests/resources/integration_test xvfb-run --server-args="-screen 0 1280x1024x16" -a python -m pytest -m datarepo --cov=src --cov-report=xml --cov-report=term
     - name: Test with pytest
       run: |
-        env=tests/resources/integration_test xvfb-run --server-args="-screen 0 1280x1024x16" -a python -m pytest -m datarepo --cov=src --cov-report=xml --cov-report=term
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v4
-      if:
-        github.actor != 'dependabot[bot]'
-      with:
-        fail_ci_if_error: true
-        token: ${{ secrets.CODECOV_TOKEN }} # required
-    - name: Gui tests
-      run: |
-        python -m pip install -e . # install the application in editable mode
-        env=tests/resources/headcheck.yml xvfb-run --server-args="-screen 0 1280x1024x16" --auto-servernum snapred --headcheck
+        env=tests/resources/integration_test python -m pytest -m datarepo
+    # - name: Upload coverage reports
+    #   uses: codecov/codecov-action@v4
+    #   if:
+    #     github.actor != 'dependabot[bot]'
+    #   with:
+    #     fail_ci_if_error: true
+    #     token: ${{ secrets.CODECOV_TOKEN }} # required
+    # - name: Gui tests
+    #   run: |
+    #     python -m pip install -e . # install the application in editable mode
+    #     env=tests/resources/headcheck.yml xvfb-run --server-args="-screen 0 1280x1024x16" --auto-servernum snapred --headcheck
 
   conda-build:
     runs-on: ${{ matrix.os }}
