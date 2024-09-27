@@ -17,7 +17,7 @@ class EffectiveInstrumentRecipe(Recipe[Ingredients]):
     def unbagGroceries(self, groceries: Dict[str, Any]):
         self.inputWS = groceries["inputWorkspace"]
         self.outputWS = groceries.get("outputWorkspace", groceries["inputWorkspace"])
- 
+
     def chopIngredients(self, ingredients):
         self.unmaskedPixelGroup = ingredients.unmaskedPixelGroup
 
@@ -32,7 +32,7 @@ class EffectiveInstrumentRecipe(Recipe[Ingredients]):
             L2=self.unmaskedPixelGroup.L2,
             Polar=self.unmaskedPixelGroup.twoTheta,
             Azimuthal=self.unmaskedPixelGroup.azimuth,
-            InstrumentName=f"SNAP_{self.unmaskedPixelGroup.focusGroup.name}"
+            InstrumentName=f"SNAP_{self.unmaskedPixelGroup.focusGroup.name}",
         )
         self.outputWS = self.inputWS
 

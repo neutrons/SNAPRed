@@ -1,5 +1,7 @@
 import time
+from unittest import TestCase, mock
 
+import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.ReductionRecipe import (
@@ -13,8 +15,6 @@ from snapred.backend.recipe.ReductionRecipe import (
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from util.SculleryBoy import SculleryBoy
 
-from unittest import TestCase, mock
-import pytest
 
 class ReductionRecipeTest(TestCase):
     sculleryBoy = SculleryBoy()

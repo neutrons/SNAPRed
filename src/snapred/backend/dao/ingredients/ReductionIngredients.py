@@ -6,12 +6,11 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 
 # These are from the same `__init__` module, so for the moment, we require the full import specifications.
 # (That is, not just "from snapred.backend.dao.ingredients import ...".)
-
 from snapred.backend.dao.ingredients.ApplyNormalizationIngredients import ApplyNormalizationIngredients
+from snapred.backend.dao.ingredients.EffectiveInstrumentIngredients import EffectiveInstrumentIngredients
 from snapred.backend.dao.ingredients.GenerateFocussedVanadiumIngredients import GenerateFocussedVanadiumIngredients
 from snapred.backend.dao.ingredients.PreprocessReductionIngredients import PreprocessReductionIngredients
 from snapred.backend.dao.ingredients.ReductionGroupProcessingIngredients import ReductionGroupProcessingIngredients
-from snapred.backend.dao.ingredients.EffectiveInstrumentIngredients import EffectiveInstrumentIngredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 
@@ -61,12 +60,10 @@ class ReductionIngredients(BaseModel):
         return ApplyNormalizationIngredients(
             pixelGroup=self.pixelGroups[groupingIndex],
         )
-    
+
     def effectiveInstrument(self, groupingIndex: int) -> EffectiveInstrumentIngredients:
-        return EffectiveInstrumentIngredients(
-            unmaskedPixelGroup=self.unmaskedPixelGroups[groupingIndex]
-        )
-        
+        return EffectiveInstrumentIngredients(unmaskedPixelGroup=self.unmaskedPixelGroups[groupingIndex])
+
     model_config = ConfigDict(
         extra="forbid",
     )

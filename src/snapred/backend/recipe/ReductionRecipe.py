@@ -3,9 +3,9 @@ from typing import Any, Dict, List, Tuple, Type
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe
+from snapred.backend.recipe.EffectiveInstrumentRecipe import EffectiveInstrumentRecipe
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe
 from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
-from snapred.backend.recipe.EffectiveInstrumentRecipe import EffectiveInstrumentRecipe
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -213,7 +213,7 @@ class ReductionRecipe(Recipe[Ingredients]):
                 self.ingredients.effectiveInstrument(groupingIndex),
                 inputWorkspace=sampleClone,
             )
-            
+
             # Cleanup
             outputs.append(sampleClone)
 

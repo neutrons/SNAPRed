@@ -194,7 +194,12 @@ class TestSousChef(unittest.TestCase):
 
     @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
     def test_prepPixelGroup_cache(self, PixelGroupingParametersCalculationRecipe):
-        key = (self.ingredients.runNumber, self.ingredients.useLiteMode, self.ingredients.focusGroup.name, self.pixelMask)
+        key = (
+            self.ingredients.runNumber,
+            self.ingredients.useLiteMode,
+            self.ingredients.focusGroup.name,
+            self.pixelMask,
+        )
         # ensure the cache is prepared
         self.instance._pixelGroupCache[key] = mock.Mock()
 
@@ -396,14 +401,14 @@ class TestSousChef(unittest.TestCase):
         ingredients_.peakIntensityThreshold = self.instance._getThresholdFromCalibrantSample(
             "calibrationCalibrantSamplePath"
         )
-        
+
         combinedMask = mock.Mock()
         result = self.instance.prepReductionIngredients(ingredients_, combinedMask)
 
         assert self.instance.prepManyPixelGroups.call_count == 2
         self.instance.prepManyPixelGroups.assert_any_call(ingredients_)
         self.instance.prepManyPixelGroups.assert_any_call(ingredients_, combinedMask)
-        
+
         self.instance.dataFactoryService.getCifFilePath.assert_called_once_with("sample")
         ReductionIngredients.assert_called_once_with(
             runNumber=ingredients_.runNumber,

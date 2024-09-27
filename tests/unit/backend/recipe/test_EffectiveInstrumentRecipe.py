@@ -1,13 +1,14 @@
-from snapred.backend.recipe.algorithm.Utensils import Utensils
-from snapred.backend.recipe.EffectiveInstrumentRecipe import EffectiveInstrumentRecipe
+from unittest import mock
+
+import pytest
 from snapred.backend.dao.ingredients import EffectiveInstrumentIngredients as Ingredients
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
+from snapred.backend.recipe.algorithm.Utensils import Utensils
+from snapred.backend.recipe.EffectiveInstrumentRecipe import EffectiveInstrumentRecipe
 from snapred.meta.Config import Resource
 from util.SculleryBoy import SculleryBoy
 
-from unittest import mock
-import pytest
 
 class TestEffectiveInstrumentRecipe:
     fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
@@ -22,11 +23,8 @@ class TestEffectiveInstrumentRecipe:
                 L2=mock.Mock(),
                 twoTheta=mock.Mock(),
                 azimuth=mock.Mock(),
-                focusGroup=FocusGroup(
-                    name="a_grouping",
-                    definition="a/grouping/path"
-                )
-            )
+                focusGroup=FocusGroup(name="a_grouping", definition="a/grouping/path"),
+            ),
         )
         self.ingredients1 = mock.Mock(
             spec=Ingredients,
@@ -35,20 +33,16 @@ class TestEffectiveInstrumentRecipe:
                 L2=mock.Mock(),
                 twoTheta=mock.Mock(),
                 azimuth=mock.Mock(),
-                focusGroup=FocusGroup(
-                    name="another_grouping",
-                    definition="another/grouping/path"
-                )
-            )
+                focusGroup=FocusGroup(name="another_grouping", definition="another/grouping/path"),
+            ),
         )
         self.ingredientss = [self.ingredients, self.ingredients1]
-        
-        
+
         yield
-        
+
         # teardown follows ...
         pass
-        
+
     def test_chopIngredients(self):
         recipe = EffectiveInstrumentRecipe()
         ingredients = self.ingredients
@@ -78,7 +72,7 @@ class TestEffectiveInstrumentRecipe:
 
         queuedAlgos = recipe.mantidSnapper._algorithmQueue
         editInstrumentGeometryTuple = queuedAlgos[0]
- 
+
         assert editInstrumentGeometryTuple[0] == "EditInstrumentGeometry"
         assert editInstrumentGeometryTuple[2]["Workspace"] == groceries["inputWorkspace"]
 
@@ -101,7 +95,7 @@ class TestEffectiveInstrumentRecipe:
             L2=ingredients.unmaskedPixelGroup.L2,
             Polar=ingredients.unmaskedPixelGroup.twoTheta,
             Azimuthal=ingredients.unmaskedPixelGroup.azimuth,
-            InstrumentName=f"SNAP_{ingredients.unmaskedPixelGroup.focusGroup.name}"
+            InstrumentName=f"SNAP_{ingredients.unmaskedPixelGroup.focusGroup.name}",
         )
 
     def test_cater(self):
@@ -110,7 +104,7 @@ class TestEffectiveInstrumentRecipe:
         untensils.mantidSnapper = mockSnapper
         recipe = EffectiveInstrumentRecipe(utensils=untensils)
         ingredientss = self.ingredientss
-        
+
         groceriess = [{"inputWorkspace": mock.Mock()}, {"inputWorkspace": mock.Mock()}]
 
         output = recipe.cater(zip(ingredientss, groceriess))
@@ -122,7 +116,7 @@ class TestEffectiveInstrumentRecipe:
             L2=ingredientss[0].unmaskedPixelGroup.L2,
             Polar=ingredientss[0].unmaskedPixelGroup.twoTheta,
             Azimuthal=ingredientss[0].unmaskedPixelGroup.azimuth,
-            InstrumentName=f"SNAP_{ingredientss[0].unmaskedPixelGroup.focusGroup.name}"
+            InstrumentName=f"SNAP_{ingredientss[0].unmaskedPixelGroup.focusGroup.name}",
         )
         mockSnapper.EditInstrumentGeometry.assert_any_call(
             f"Editing instrument geometry for grouping '{ingredientss[1].unmaskedPixelGroup.focusGroup.name}'",
@@ -130,6 +124,5 @@ class TestEffectiveInstrumentRecipe:
             L2=ingredientss[1].unmaskedPixelGroup.L2,
             Polar=ingredientss[1].unmaskedPixelGroup.twoTheta,
             Azimuthal=ingredientss[1].unmaskedPixelGroup.azimuth,
-            InstrumentName=f"SNAP_{ingredientss[1].unmaskedPixelGroup.focusGroup.name}"
+            InstrumentName=f"SNAP_{ingredientss[1].unmaskedPixelGroup.focusGroup.name}",
         )
-        

@@ -1,7 +1,7 @@
-from typing import Any, Dict, List, Optional
 import json
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -257,7 +257,9 @@ class ReductionService(Service):
         return combinedMask
 
     @FromString
-    def prepReductionIngredients(self, request: ReductionRequest, combinedPixelMask: Optional[WorkspaceName] = None) -> ReductionIngredients:
+    def prepReductionIngredients(
+        self, request: ReductionRequest, combinedPixelMask: Optional[WorkspaceName] = None
+    ) -> ReductionIngredients:
         """
         Prepare the needed ingredients for calculating reduction.
         Requires:

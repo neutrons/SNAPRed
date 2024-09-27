@@ -1,17 +1,18 @@
+import unittest
+
 from mantid.simpleapi import (
     CreateEmptyTableWorkspace,
     CreateSampleWorkspace,
     LoadInstrument,
     mtd,
 )
+from snapred.backend.dao.ingredients import PreprocessReductionIngredients as Ingredients
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
-from snapred.backend.dao.ingredients import PreprocessReductionIngredients as Ingredients
 from snapred.meta.Config import Resource
 from util.helpers import createCompatibleMask
 from util.SculleryBoy import SculleryBoy
 
-import unittest
 
 class PreprocessReductionRecipeTest(unittest.TestCase):
     fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")

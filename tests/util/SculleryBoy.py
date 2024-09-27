@@ -15,8 +15,8 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.GenericRecipe import DetectorPeakPredictorRecipe
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.Config import Resource
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.redantic import parse_file_as
 from util.dao import DAOFactory
 
@@ -92,7 +92,9 @@ class SculleryBoy:
         except (TypeError, AttributeError):
             return [mock.Mock(spec_set=GroupPeakList)]
 
-    def prepReductionIngredients(self, ingredients: FarmFreshIngredients, combinedPixelMask: Optional[WorkspaceName] = None):  # noqa ARG002
+    def prepReductionIngredients(
+        self, ingredients: FarmFreshIngredients, combinedPixelMask: Optional[WorkspaceName] = None
+    ):  # noqa ARG002
         path = Resource.getPath("/inputs/calibration/ReductionIngredients.json")
         return parse_file_as(ReductionIngredients, path)
 
