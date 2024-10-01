@@ -1053,7 +1053,7 @@ class GroceryService:
                     res = self.fetchWorkspace(
                         self._createDiffcalOutputWorkspaceFilename(item),
                         self._createDiffcalOutputWorkspaceName(item),
-                        loader="ReheatLeftovers",
+                        loader="LoadNexus",
                     )
                 case "diffcal_diagnostic":
                     self.fetchWorkspace(

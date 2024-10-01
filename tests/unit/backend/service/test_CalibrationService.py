@@ -276,7 +276,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                         self.instance.dataExportService.exportWorkspace(path, filename, self.sampleDiagnosticWS)
                     case _:
                         filename = Path(wsName + ".nxs.h5")
-                        self.instance.dataExportService.exportRaggedWorkspace(path, filename, self.sampleWS)
+                        self.instance.dataExportService.exportWorkspace(path, filename, self.sampleWS)
 
         # Write the table and/or mask
         if tableWSName or maskWSName:

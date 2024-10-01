@@ -92,21 +92,21 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
 
         queuedAlgos = recipe.mantidSnapper._algorithmQueue
         divideTuple = queuedAlgos[0]
-        resampleTuple = queuedAlgos[1]
+        rebinRaggedTuple = queuedAlgos[1]
 
         assert divideTuple[0] == "Divide"
-        assert resampleTuple[0] == "ResampleX"
+        assert rebinRaggedTuple[0] == "RebinRagged"
         # Excessive testing maybe?
         assert divideTuple[1] == "Dividing out the normalization.."
-        assert resampleTuple[1] == "Resampling X-axis..."
+        assert rebinRaggedTuple[1] == "Resampling X-axis..."
         assert divideTuple[2]["LHSWorkspace"] == groceries["inputWorkspace"]
         assert divideTuple[2]["RHSWorkspace"] == groceries["normalizationWorkspace"]
-        assert resampleTuple[2]["InputWorkspace"] == groceries["inputWorkspace"]
+        assert rebinRaggedTuple[2]["InputWorkspace"] == groceries["inputWorkspace"]
         # Apply adjustment that happens in chopIngredients step
         dMin = [x + Config["constants.CropFactors.lowdSpacingCrop"] for x in ingredients.pixelGroup.dMin()]
         dMax = [x - Config["constants.CropFactors.highdSpacingCrop"] for x in ingredients.pixelGroup.dMax()]
-        assert resampleTuple[2]["XMin"] == dMin
-        assert resampleTuple[2]["XMax"] == dMax
+        assert rebinRaggedTuple[2]["XMin"] == dMin
+        assert rebinRaggedTuple[2]["XMax"] == dMax
 
     def test_cook(self):
         untensils = Utensils()
@@ -125,7 +125,7 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
 
         assert mockSnapper.executeQueue.called
         assert mockSnapper.Divide.called
-        assert mockSnapper.ResampleX.called
+        assert mockSnapper.RebinRagged.called
 
     def test_cater(self):
         untensils = Utensils()
@@ -144,7 +144,7 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
 
         assert mockSnapper.executeQueue.called
         assert mockSnapper.Divide.called
-        assert mockSnapper.ResampleX.called
+        assert mockSnapper.RebinRagged.called
 
     def test_badChopIngredients(self):
         recipe = ApplyNormalizationRecipe()

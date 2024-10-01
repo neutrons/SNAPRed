@@ -513,7 +513,7 @@ class LocalDataService:
             ws = mtd[workspace]
             if ws.isRaggedWorkspace():
                 filename = Path(workspace + ".nxs.h5")
-                self.writeRaggedWorkspace(normalizationDataPath, filename, workspace)
+                self.writeWorkspace(normalizationDataPath, filename, workspace)
             else:
                 filename = Path(workspace + ".nxs")
                 self.writeWorkspace(normalizationDataPath, filename, workspace)
@@ -574,7 +574,7 @@ class LocalDataService:
         ext = Config["calibration.diffraction.output.extension"]
         for wsName in wsNames:
             filename = Path(wsName + ext)
-            self.writeRaggedWorkspace(calibrationDataPath, filename, wsName)
+            self.writeWorkspace(calibrationDataPath, filename, wsName)
 
         # write the diagnostic output
         wsNames = record.workspaces.get(wngt.DIFFCAL_DIAG, [])
@@ -1133,28 +1133,6 @@ class LocalDataService:
             OutputWorkspace=workspaceName,
             Filename=str(path / filename),
             EntryNumber=entryNumber,
-        )
-        self.mantidSnapper.executeQueue()
-
-    def writeRaggedWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
-        """
-        Write a ragged workspace to disk in a .tar format.
-        """
-        self.mantidSnapper.WrapLeftovers(
-            "Store the ragged workspace",
-            InputWorkspace=workspaceName,
-            Filename=str(path / filename),
-        )
-        self.mantidSnapper.executeQueue()
-
-    def readRaggedWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
-        """
-        Read a ragged workspace from disk in a .tar format.
-        """
-        self.mantidSnapper.ReheatLeftovers(
-            "Load a ragged workspace",
-            Filename=str(path / filename),
-            OutputWorkspace=workspaceName,
         )
         self.mantidSnapper.executeQueue()
 
