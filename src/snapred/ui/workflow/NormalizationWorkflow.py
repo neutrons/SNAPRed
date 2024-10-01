@@ -5,7 +5,6 @@ from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.backend.dao.request import (
     CalibrationWritePermissionsRequest,
     CreateIndexEntryRequest,
-    CreateNormalizationRecordRequest,
     HasStateRequest,
     NormalizationExportRequest,
     NormalizationRequest,
@@ -227,21 +226,10 @@ class NormalizationWorkflow(WorkflowImplementer):
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
         )
-        createRecordRequest = CreateNormalizationRecordRequest(
-            runNumber=runNumber,
-            useLiteMode=self.useLiteMode,
-            version=version,
-            calculationParameters=normalizationRecord.calculationParameters,
-            backgroundRunNumber=normalizationRecord.backgroundRunNumber,
-            smoothingParameter=normalizationRecord.smoothingParameter,
-            workspaceNames=normalizationRecord.workspaceNames,
-            calibrationVersionUsed=normalizationRecord.calibrationVersionUsed,
-            crystalDBounds=normalizationRecord.crystalDBounds,
-        )
 
         payload = NormalizationExportRequest(
             createIndexEntryRequest=createIndexEntryRequest,
-            createRecordRequest=createRecordRequest,
+            record=normalizationRecord,
         )
         response = self.request(path="normalization/save", payload=payload.json())
         return response

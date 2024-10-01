@@ -5,12 +5,9 @@ from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
-from snapred.backend.dao.normalization import (
-    Normalization,
-)
+from snapred.backend.dao.normalization import Normalization, NormalizationMetadata
 from snapred.backend.dao.request import (
     CalibrationWritePermissionsRequest,
-    CreateNormalizationRecordRequest,
     FarmFreshIngredients,
     FocusSpectraRequest,
     NormalizationExportRequest,
@@ -211,16 +208,14 @@ class NormalizationService(Service):
         )
         normalization = parse_obj_as(Normalization, self.sousChef.prepCalibration(farmFresh))
 
-        createRecordRequest = CreateNormalizationRecordRequest(
-            runNumber=request.runNumber,
-            useLiteMode=request.useLiteMode,
+        data = NormalizationMetadata(
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
             normalizationCalibrantSamplePath=request.calibrantSamplePath,
             calculationParameters=normalization,
             crystalDBounds=request.crystalDBounds,
         )
-        return self.dataFactoryService.createNormalizationRecord(createRecordRequest)
+        return self.dataFactoryService.createNormalizationRecord(request.runNumber, request.useLiteMode, data)
 
     @FromString
     def saveNormalization(self, request: NormalizationExportRequest):

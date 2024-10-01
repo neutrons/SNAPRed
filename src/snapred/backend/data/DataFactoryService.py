@@ -7,7 +7,7 @@ from pydantic import validate_call
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
-from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.normalization import NormalizationMetadata, NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
@@ -133,8 +133,10 @@ class DataFactoryService:
     def createNormalizationIndexEntry(self, request: NormalizationExportRequest) -> IndexEntry:
         return self.lookupService.createNormalizationIndexEntry(request)
 
-    def createNormalizationRecord(self, request: NormalizationExportRequest) -> NormalizationRecord:
-        return self.lookupService.createNormalizationRecord(request)
+    def createNormalizationRecord(
+        self, runNumber: str, useLiteMode: bool, data: NormalizationMetadata
+    ) -> NormalizationRecord:
+        return self.lookupService.createNormalizationRecord(runNumber, useLiteMode, data)
 
     @validate_call
     def getNormalizationState(self, runId: str, useLiteMode: bool):

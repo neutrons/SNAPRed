@@ -1,14 +1,14 @@
-from typing import Any, List
+from typing import Any
 
-from pydantic import field_serializer, field_validator
+from pydantic import field_validator
 
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VersionedObject
-from snapred.backend.dao.Limit import Limit
-from snapred.backend.dao.normalization.Normalization import Normalization
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.backend.dao.indexing.Versioning import VersionedObject
+from snapred.backend.dao.normalization.NormalizationMetadata import NormalizationMetadata
 
 
+# TODO: Also make Record a wrapper for data, as to not complicate the inheritance chain
+#       by composing functinality via inheritance instead of composition.
 class NormalizationRecord(Record, extra="ignore"):
     """
 
@@ -23,29 +23,15 @@ class NormalizationRecord(Record, extra="ignore"):
     # - runNumber
     # - useLiteMode
     # - version
-    # override this to point at the correct daughter class
-    calculationParameters: Normalization
-
-    # specific to normalization records
-    backgroundRunNumber: str
-    smoothingParameter: float
-    # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
-    workspaceNames: List[WorkspaceName] = []
-    calibrationVersionUsed: int = VERSION_DEFAULT
-    crystalDBounds: Limit[float]
-    normalizationCalibrantSamplePath: str
+    data: NormalizationMetadata
 
     # must also parse integers as background run numbers
-    @field_validator("backgroundRunNumber", mode="before")
+    @field_validator("data", mode="before")
     @classmethod
     def validate_backgroundRunNumber(cls, v: Any) -> Any:
-        return cls.validate_runNumber(v)
+        return cls.validate_runNumber(v.backgroundRunNumber)
 
-    @field_validator("calibrationVersionUsed", mode="before")
+    @field_validator("data", mode="before")
     @classmethod
     def version_is_integer(cls, v: Any) -> Any:
-        return VersionedObject.parseVersion(v)
-
-    @field_serializer("calibrationVersionUsed", when_used="json")
-    def write_user_defaults(self, value: Any):  # noqa ARG002
-        return VersionedObject.writeVersion(self.calibrationVersionUsed)
+        return VersionedObject.parseVersion(v.calibrationVersionUsed)

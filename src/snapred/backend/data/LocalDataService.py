@@ -29,12 +29,11 @@ from snapred.backend.dao.calibration import Calibration, CalibrationDefaultRecor
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.Limit import Limit, Pair
-from snapred.backend.dao.normalization import Normalization, NormalizationRecord
+from snapred.backend.dao.normalization import Normalization, NormalizationMetadata, NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.request import (
     CreateCalibrationRecordRequest,
     CreateIndexEntryRequest,
-    CreateNormalizationRecordRequest,
 )
 from snapred.backend.dao.state import (
     DetectorState,
@@ -465,9 +464,13 @@ class LocalDataService:
         indexer = self.normalizationIndexer(request.runNumber, request.useLiteMode)
         return indexer.createIndexEntry(**request.model_dump())
 
-    def createNormalizationRecord(self, request: CreateNormalizationRecordRequest) -> NormalizationRecord:
-        indexer = self.normalizationIndexer(request.runNumber, request.useLiteMode)
-        return indexer.createRecord(**request.model_dump())
+    # TODO: Should we migrate 'runId, useLiteMode' to a single 'RunMetadata' object?
+    def createNormalizationRecord(
+        self, runNumber: str, useLiteMode: bool, data: NormalizationMetadata
+    ) -> NormalizationRecord:
+        indexer = self.normalizationIndexer(runNumber, useLiteMode)
+        # TODO: Should just submit data to create a record?
+        return indexer.createRecord(**{"data": data})
 
     def normalizationExists(self, runId: str, useLiteMode: bool) -> bool:
         version = self.normalizationIndexer(runId, useLiteMode).currentVersion()

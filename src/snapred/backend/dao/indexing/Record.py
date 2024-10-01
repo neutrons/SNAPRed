@@ -1,11 +1,12 @@
-from typing import Any
+from typing import Any, TypeVar
 
 from pydantic import ConfigDict, field_validator
-from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.Versioning import VersionedObject
 
+T = TypeVar("T")
 
-class Record(VersionedObject, extra="allow"):
+
+class Record(VersionedObject[T], extra="allow"):
     """
 
     This is the basic, bare-bones record of a workflow completion.
@@ -23,10 +24,8 @@ class Record(VersionedObject, extra="allow"):
     runNumber: str
     useLiteMode: bool
 
-    # NOTE calculationParameters is a VERSIONED object.
-    #   the version on the calculation parameters MUST match the version on this record.
-    # TODO (complicated): add a validator to enforce this.
-    calculationParameters: CalculationParameters
+    # NOTE: Dropping the versioned CalculationParameters field
+    #       Why did we need those to be versioned?
 
     @field_validator("runNumber", mode="before")
     @classmethod

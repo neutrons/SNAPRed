@@ -1,14 +1,14 @@
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Generic, List, Optional, Type, TypeVar, get_args
 
 from pydantic import validate_call
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
-from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry as IndexEntryData
 from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.indexing.Versioning import (
     VERSION_DEFAULT,
@@ -71,12 +71,33 @@ PARAMS_TYPE = {
     IndexerType.DEFAULT: CalculationParameters,
 }
 
+RecordData = TypeVar("RecordData")
+DefaultRecordData = TypeVar("DefaultRecordData")
 
-class Indexer:
+
+class Indexer(Generic[RecordData, DefaultRecordData]):
+    # Inner Classes
+
+    # This is an inner class so that at a later date if we need
+    # to add more functionality to the IndexEntry, we can do so Generically
+    class IndexEntry(VersionedObject[IndexEntryData]):
+        pass
+
+    class Record(VersionedObject[RecordData]):
+        pass
+
+    class DefaultRecord(VersionedObject[DefaultRecordData]):
+        pass
+
+    # Member Variables
+
     rootDirectory: Path
     index: Dict[int, IndexEntry]
 
     indexerType: IndexerType
+
+    RecordDataType: Type[RecordData]
+    DefaultRecordDataType: Type[DefaultRecordData]
 
     ## CONSTRUCTOR / DESTRUCTOR METHODS ##
 
@@ -87,6 +108,11 @@ class Indexer:
         self.index = self.readIndex()
         self.dirVersions = self.readDirectoryList()
         self.reconcileIndexToFiles()
+
+    def __init_subclass__(cls) -> None:
+        # This is fine because cls refers to a specific instantiation of a Generic class(?)
+        cls.RecordDataType = get_args(cls.__orig_bases__[0])[0]
+        return super().__init_subclass__()
 
     def __del__(self):
         # define the index to automatically write itself whenever the program closes
@@ -218,6 +244,7 @@ class Indexer:
 
     @validate_call
     def thisOrCurrentVersion(self, version: Optional[int]):
+        # TODO: Should fail if invalid version!!
         if self.isValidVersion(version):
             return version
         else:
@@ -225,6 +252,7 @@ class Indexer:
 
     @validate_call
     def thisOrNextVersion(self, version: Optional[int]):
+        # TODO: Should fail if invalid version!!
         if self.isValidVersion(version):
             return version
         else:
@@ -232,6 +260,7 @@ class Indexer:
 
     @validate_call
     def thisOrLatestApplicableVersion(self, runNumber: str, version: Optional[int]):
+        # TODO: Should fail if invalid version!!
         if self.isValidVersion(version) and self._isApplicableEntry(self.index[version], runNumber):
             return version
         else:
@@ -242,6 +271,7 @@ class Indexer:
             VersionedObject.parseVersion(version, exclude_none=True)
             return True
         except ValueError:
+            # TODO: Should fail if invalid version!! I thought thats what we settled on????
             return False
 
     ## VERSION COMPARISON METHODS ##
@@ -255,7 +285,7 @@ class Indexer:
         return self._compareRunNumbers(runNumber1, runNumber2, symbol)
 
     def _parseAppliesTo(self, appliesTo: str):
-        return IndexEntry.parseAppliesTo(appliesTo)
+        return IndexEntryData.parseAppliesTo(appliesTo)
 
     def _compareRunNumbers(self, runNumber1: str, runNumber2: str, symbol: str):
         expressions = {
@@ -307,10 +337,10 @@ class Indexer:
 
     ## INDEX MANIPULATION METHODS ##
 
-    def createIndexEntry(self, *, version, **other_arguments):
-        return IndexEntry(
+    def createIndexEntry(self, *, version, entry: IndexEntry):
+        return self.IndexEntry(
             version=self.thisOrNextVersion(version),
-            **other_arguments,
+            data=entry,
         )
 
     def getIndex(self) -> List[IndexEntry]:
@@ -325,9 +355,9 @@ class Indexer:
     def readIndex(self) -> Dict[int, IndexEntry]:
         # create the index from the index file
         indexPath: Path = self.indexPath()
-        indexList: List[IndexEntry] = []
+        indexList: List[self.IndexEntry] = []
         if indexPath.exists():
-            indexList = parse_file_as(List[IndexEntry], indexPath)
+            indexList = parse_file_as(List[self.IndexEntry], indexPath)
         return {entry.version: entry for entry in indexList}
 
     def writeIndex(self):
@@ -348,21 +378,20 @@ class Indexer:
 
     ## RECORD READ / WRITE METHODS ##
 
-    def createRecord(self, *, version, **other_arguments):
-        record = RECORD_TYPE[self.indexerType](
+    def createRecord(self, *, version, recordData: RecordData):
+        record = self.Record(
             version=self.thisOrNextVersion(version),
-            **other_arguments,
+            data=recordData,
         )
-        record.calculationParameters.version = record.version
         return record
 
     def _determineRecordType(self, version: Optional[int] = None):
         version = self.thisOrCurrentVersion(version)
         recordType = None
         if version == VERSION_DEFAULT:
-            recordType = DEFAULT_RECORD_TYPE.get(self.indexerType, None)
+            recordType = self.DefaultRecord
         if recordType is None:
-            recordType = RECORD_TYPE[self.indexerType]
+            recordType = self.Record
         return recordType
 
     def readRecord(self, version: Optional[int] = None) -> Record:
@@ -376,20 +405,31 @@ class Indexer:
             record = parse_file_as(self._determineRecordType(version), filePath)
         return record
 
+    def _writeVersionedObject(self, versionedObject: VersionedObject, filePath: Path):
+        if not self.isValidVersion(versionedObject.version):
+            raise RuntimeError(f"Invalid version {versionedObject.version} on VersionedObject.  Save failed.")
+
+        filePath.parent.mkdir(parents=True, exist_ok=True)
+        write_model_pretty(versionedObject, filePath)
+        self.dirVersions.add(versionedObject.version)
+
     def writeRecord(self, record: Record):
         """
         Will save at the version on the record.
         If the version is invalid, will throw an error and refuse to save.
         """
-        if not self.isValidVersion(record.version):
-            raise RuntimeError(f"Invalid version {record.version} on record.  Save failed.")
+        self._writeVersionedObject(record, self.recordPath(record.version))
 
-        filePath = self.recordPath(record.version)
-        filePath.parent.mkdir(parents=True, exist_ok=True)
-        write_model_pretty(record, filePath)
-        self.dirVersions.add(record.version)
+    def writeDefaultRecord(self, record: DefaultRecord):
+        """
+        Will save at the version on the record.
+        If the version is invalid, will throw an error and refuse to save.
+        """
+        self._writeVersionedObject(record, self.recordPath(VERSION_DEFAULT))
 
     ## STATE PARAMETER READ / WRITE METHODS ##
+    # TODO: We can just delete these, condense them into the 'record' object,
+    # or we can just instance a seperate indexer for them
 
     def createParameters(self, *, version, **other_arguments) -> CalculationParameters:
         return PARAMS_TYPE[self.indexerType](
@@ -427,3 +467,15 @@ class Indexer:
             parametersPath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(parameters, parametersPath)
         self.dirVersions.add(parameters.version)
+
+
+class CalibrationIndexer(Indexer[CalibrationRecord, CalibrationDefaultRecord]):
+    pass
+
+
+class NormalizationIndexer(Indexer[NormalizationRecord, None]):
+    pass
+
+
+class ReductionIndexer(Indexer[ReductionRecord, None]):
+    pass

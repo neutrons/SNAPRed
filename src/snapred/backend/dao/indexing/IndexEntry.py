@@ -1,11 +1,10 @@
 import time
 from typing import Any, Optional
 
-from pydantic import Field, field_validator, model_validator
-from snapred.backend.dao.indexing.Versioning import VersionedObject
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-class IndexEntry(VersionedObject, extra="ignore"):
+class IndexEntry(BaseModel, extra="ignore"):
     """
 
     This is the basic, bare-bones entry for workflow indices.
@@ -16,9 +15,6 @@ class IndexEntry(VersionedObject, extra="ignore"):
     This is meant to coordinate with the Indexer service object.
 
     """
-
-    # inherits from VersionedObject:
-    # - version: int
 
     runNumber: str
     useLiteMode: bool

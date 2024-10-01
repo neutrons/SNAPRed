@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Generic, Optional, TypeVar
 
 from numpy import integer
 from pydantic import BaseModel, computed_field, field_serializer
@@ -8,18 +8,21 @@ VERSION_START = Config["version.start"]
 VERSION_NONE_NAME = Config["version.friendlyName.error"]
 VERSION_DEFAULT_NAME = Config["version.friendlyName.default"]
 
+T = TypeVar("T")
+
 # VERSION_DEFAULT is a SNAPRed-internal "magic" integer:
 # * it is implicitely set during `Config` initialization.
 VERSION_DEFAULT = Config["version.default"]
 
 
-class VersionedObject(BaseModel):
-    # Base class for all versioned DAO
+class VersionedObject(BaseModel, Generic[T]):
+    # Wrapper class for all versioned DAO
 
     # In pydantic, a leading double underscore activates
     # the `__pydantic_private__` feature, which limits the visibility
     # of the attribute to the interior scope of its own class.
     __version: Optional[int] = None
+    data: T
 
     @classmethod
     def parseVersion(cls, version, *, exclude_none: bool = False, exclude_default: bool = False) -> int | None:
