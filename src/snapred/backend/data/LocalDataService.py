@@ -647,10 +647,6 @@ class LocalDataService:
 
         for ws in record.workspaceNames:
             # Append workspaces to hdf5 file, in order of the `workspaces` list
-            if mtd[ws].isRaggedWorkspace():
-                # Please do not remove this exception, unless you actually intend to implement this feature.
-                raise RuntimeError("not implemented: append ragged workspace to reduction data file")
-
             self.writeWorkspace(filePath.parent, Path(filePath.name), ws, append=True)
 
             if ws.tokens("workspaceType") == wngt.REDUCTION_PIXEL_MASK:
