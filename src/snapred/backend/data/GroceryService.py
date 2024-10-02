@@ -236,7 +236,7 @@ class GroceryService:
         if wsName != expectedWsName:
             raise ValueError(
                 f"Workspace name {wsName} does not match the expected diffcal table workspace name for run {runNumber}",
-                "(i.e. {expectedWsName})",
+                f"(i.e. {expectedWsName})",
             )
 
         return str(calibrationDataPath / (wsName + self.diffcalTableFileExtension))
