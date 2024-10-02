@@ -14,6 +14,7 @@ from mantid.simpleapi import (
 )
 from pydantic import validate_call
 
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -215,7 +216,7 @@ class GroceryService:
     def _createDiffcalOutputWorkspaceFilename(self, item: GroceryListItem) -> str:
         ext = Config["calibration.diffraction.output.extension"]
         return str(
-            Path(self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version))
+            self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version)
             / (self._createDiffcalOutputWorkspaceName(item) + ext)
         )
 
@@ -223,17 +224,22 @@ class GroceryService:
     def _createDiffcalDiagnosticWorkspaceFilename(self, item: GroceryListItem) -> str:
         ext = Config["calibration.diffraction.diagnostic.extension"]
         return str(
-            Path(self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version))
+            self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version)
             / (self._createDiffcalOutputWorkspaceName(item) + ext)
         )
 
     def _createDiffcalTableFilepathFromWsName(
         self, runNumber: str, useLiteMode: bool, version: Optional[int], wsName: WorkspaceName
     ) -> str:
-        return str(
-            Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
-            / (wsName + self.diffcalTableFileExtension)
-        )
+        calibrationDataPath = self._getCalibrationDataPath(runNumber, useLiteMode, version)
+        expectedWsName = self.createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
+        if wsName != expectedWsName:
+            raise ValueError(
+                f"Workspace name {wsName} does not match the expected diffcal table workspace name for run {runNumber}",
+                "(i.e. {expectedWsName})",
+            )
+
+        return str(calibrationDataPath / (wsName + self.diffcalTableFileExtension))
 
     @validate_call
     def _createDiffcalTableFilepath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
@@ -327,7 +333,13 @@ class GroceryService:
         useLiteMode: bool,  # noqa: ARG002
         version: Optional[int],
     ) -> WorkspaceName:
-        return wng.diffCalTable().runNumber(runNumber).version(version).build()
+        """
+        NOTE: This method will IGNORE runNumber if the provided version is VERSION_DEFAULT
+        """
+        wsName = wng.diffCalTable().runNumber(runNumber).version(version).build()
+        if version == VERSION_DEFAULT:
+            wsName = wsName = wng.diffCalTable().runNumber("default").version(VERSION_DEFAULT).build()
+        return wsName
 
     @validate_call
     def _createDiffcalMaskWorkspaceName(

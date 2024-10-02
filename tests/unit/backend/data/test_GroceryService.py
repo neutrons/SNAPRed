@@ -299,6 +299,23 @@ class TestGroceryService(unittest.TestCase):
         assert "some" in res
         assert ".nxs.h5" in res
 
+    def test_diffcal_table_filename_from_workspaceName(self):
+        workspaceName = wng.diffCalTable().runNumber(self.runNumber).version(self.version).build()
+        res = self.instance._createDiffcalTableFilepathFromWsName(
+            self.runNumber, self.useLiteMode, self.version, workspaceName
+        )
+        assert workspaceName in res
+        assert self.runNumber in res
+        assert wnvf.formatVersion(self.version) in res
+        assert ".h5" in res
+
+    def test_diffcal_table_filename_from_workspaceName_failure_name_mismatch(self):
+        workspaceName = "bogus_name_"
+        with pytest.raises(ValueError, match=r".*Workspace name .* does not match the expected *"):
+            self.instance._createDiffcalTableFilepathFromWsName(
+                self.runNumber, self.useLiteMode, self.version, workspaceName
+            )
+
     def test_diffcal_table_filename(self):
         # Test name generation for diffraction-calibration table filename
         res = self.instance._createDiffcalTableFilepath(self.runNumber, self.useLiteMode, self.version)

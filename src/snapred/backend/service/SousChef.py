@@ -209,7 +209,8 @@ class SousChef(Service):
         )
         if calibrationRecord is not None:
             ingredients.calibrantSamplePath = calibrationRecord.calculationParameters.calibrantSamplePath
-            ingredients.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients.calibrantSamplePath).stem)
+            if ingredients.calibrantSamplePath:
+                ingredients.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients.calibrantSamplePath).stem)
         return ingredients
 
     def _pullManyCalibrationDetectorPeaks(
