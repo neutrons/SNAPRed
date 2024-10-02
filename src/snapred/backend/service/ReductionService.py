@@ -3,7 +3,11 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Dict, List
 
-from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
+from snapred.backend.dao.ingredients import (
+    ArtificialNormalizationIngredients,
+    GroceryListItem,
+    ReductionIngredients,
+)
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
@@ -20,6 +24,7 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.ArtificialNormalizationRecipe import ArtificialNormalizationRecipe
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
@@ -308,8 +313,9 @@ class ReductionService(Service):
         :rtype: Dict[str, Any]
         """
         # Fetch pixel masks
-        residentMasks = {}
         combinedMask = None
+        residentMasks = {}
+        # Check for existing pixel masks
         if request.pixelMasks:
             for mask in request.pixelMasks:
                 match mask.tokens("workspaceType"):
@@ -358,6 +364,18 @@ class ReductionService(Service):
             self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, normVersion).useLiteMode(
                 request.useLiteMode
             ).add()
+        elif calVersion:
+            ingredients = ArtificialNormalizationIngredients(
+                peakWindowClippingSize=5,  # Replace with user input or default
+                smoothingParameter=0.5,  #
+                decreaseParameter=True,  #
+                lss=True,  #
+            )
+            groceries = {"inputWorkspace": "sample_WS"}
+            artificialNormRecipe = ArtificialNormalizationRecipe()
+            normWs = artificialNormRecipe.cook(ingredients, groceries)
+
+            self.groceryClerk.name("normalizationWorkspace").set(normWs)
 
         request.versions = Versions(
             calVersion,

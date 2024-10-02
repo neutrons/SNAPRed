@@ -1,8 +1,10 @@
 from typing import Any, Dict, List, Tuple, Type
 
+from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe
+from snapred.backend.recipe.ArtificialNormalizationRecipe import ArtificialNormalizationRecipe
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe
 from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
@@ -225,6 +227,16 @@ class ReductionRecipe(Recipe[Ingredients]):
         Given the ingredients and groceries, it prepares, executes and returns the final workspace.
         """
         self.prep(ingredients, groceries)
+        if not self.normalizationWs and self.sampleWs:
+            logger.info("Normalization is missing, applying artificial normalization...")
+            artificialIngredients = ArtificialNormalizationIngredients(
+                peakWindowClippingSize=5,  # Replace with appropriate value or user input
+                smoothingParameter=0.5,  # Replace with appropriate value or user input
+                decreaseParameter=True,
+                lss=True,
+            )
+            artificialNormRecipe = ArtificialNormalizationRecipe()
+            self.normalizationWs = artificialNormRecipe.cook(artificialIngredients, groceries)
         return self.execute()
 
     def cater(self, shipment: List[Pallet]) -> List[Dict[str, Any]]:
