@@ -510,13 +510,8 @@ class LocalDataService:
         if not normalizationDataPath.exists():
             normalizationDataPath.mkdir(parents=True, exist_ok=True)
         for workspace in record.workspaceNames:
-            ws = mtd[workspace]
-            if ws.isRaggedWorkspace():
-                filename = Path(workspace + ".nxs.h5")
-                self.writeWorkspace(normalizationDataPath, filename, workspace)
-            else:
-                filename = Path(workspace + ".nxs")
-                self.writeWorkspace(normalizationDataPath, filename, workspace)
+            filename = Path(workspace + ".nxs")
+            self.writeWorkspace(normalizationDataPath, filename, workspace)
 
     ##### CALIBRATION METHODS #####
 
