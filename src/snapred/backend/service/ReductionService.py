@@ -371,7 +371,12 @@ class ReductionService(Service):
                 decreaseParameter=True,  #
                 lss=True,  #
             )
-            groceries = {"inputWorkspace": "sample_WS"}
+            groceries = {
+                "inputWorkspace": self.groceryClerk.name("normalizationWorkspace")
+                .normalization(request.runNumber, normVersion)
+                .useLiteMode(request.useLiteMode)
+                .add()
+            }
             artificialNormRecipe = ArtificialNormalizationRecipe()
             normWs = artificialNormRecipe.cook(ingredients, groceries)
 

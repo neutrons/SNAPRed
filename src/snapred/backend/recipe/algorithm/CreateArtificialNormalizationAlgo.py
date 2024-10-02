@@ -9,6 +9,7 @@ from mantid.api import (
     WorkspaceUnitValidator,
 )
 from mantid.kernel import Direction
+from mantid.plots.axesfunctions import plot
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -135,7 +136,7 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
                 smoothing=self.smoothingParameter,
             )
             self.outputWorkspace.setY(i, clippedData)
-
+        ax = plot(self.outputWorkspace, distribution=True)  # noqa: F841
         # Set the output workspace property
         self.setProperty("OutputWorkspace", self.outputWorkspaceName)
 
