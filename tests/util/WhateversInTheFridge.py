@@ -100,7 +100,7 @@ class WhateversInTheFridge(LocalDataService):
             useLiteMode=useLiteMode,
             version=version,
             calculationParameters=self.calculationParameters_with_stateId("0xdeadbeef"),
-            normalizatinoCalibrantSamplePath="path/to/calibrant",
+            normalizationCalibrationSamplePath="path/to/calibrant",
         )
         return record
 
