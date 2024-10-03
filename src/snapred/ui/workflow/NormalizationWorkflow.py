@@ -237,6 +237,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             workspaceNames=normalizationRecord.workspaceNames,
             calibrationVersionUsed=normalizationRecord.calibrationVersionUsed,
             crystalDBounds=normalizationRecord.crystalDBounds,
+            normalizationCalibrantSamplePath=normalizationRecord.normalizationCalibrantSamplePath,
         )
 
         payload = NormalizationExportRequest(

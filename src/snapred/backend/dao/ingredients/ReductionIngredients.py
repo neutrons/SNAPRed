@@ -24,6 +24,8 @@ class ReductionIngredients(BaseModel):
 
     # these should come from calibration / normalization records
     # But will not exist if we proceed without calibration / normalization
+    # NOTE: These are peaks for normalization, and thus should use the
+    # Calibrant Sample for the Normalization
     detectorPeaksMany: Optional[List[List[GroupPeakList]]] = None
     smoothingParameter: Optional[float]
     calibrantSamplePath: Optional[str]

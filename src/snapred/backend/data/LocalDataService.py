@@ -25,9 +25,8 @@ from snapred.backend.dao import (
     StateConfig,
     StateId,
 )
-from snapred.backend.dao.calibration import Calibration, CalibrationRecord
+from snapred.backend.dao.calibration import Calibration, CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.normalization import Normalization, NormalizationRecord
@@ -57,6 +56,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
 )
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceName,
+    WorkspaceType,
 )
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceNameGenerator as wng,
@@ -845,7 +845,7 @@ class LocalDataService:
         indexer = self.calibrationIndexer(runNumber, useLiteMode)
         version = indexer.defaultVersion()
         grocer = GroceryService()
-        filename = Path(grocer._createDiffcalTableWorkspaceName("default", useLiteMode, version) + ".h5")
+        filename = Path(grocer.createDiffcalTableWorkspaceName("default", useLiteMode, version) + ".h5")
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
 
         calibrationDataPath = indexer.versionPath(version)
@@ -897,6 +897,9 @@ class LocalDataService:
     @ExceptionHandler(StateValidationException)
     # NOTE if you are debugging and got here, coment out the ExceptionHandler and try again
     def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
+        from snapred.backend.data.GroceryService import GroceryService
+
+        grocer = GroceryService()
         stateId, _ = self.generateStateId(runId)
 
         instrumentState = self.generateInstrumentStateFromRoot(runId)
@@ -922,12 +925,18 @@ class LocalDataService:
                 creationDate=datetime.datetime.now(),
                 version=version,
             )
+
             # NOTE: this creates a bare record without any other CalibrationRecord data
-            record = Record(
+            defaultDiffCalTableName = grocer.createDiffcalTableWorkspaceName("default", liteMode, version)
+            workspaces: Dict[WorkspaceType, List[WorkspaceName]] = {
+                wngt.DIFFCAL_TABLE: [defaultDiffCalTableName],
+            }
+            record = CalibrationDefaultRecord(
                 runNumber=runId,
                 useLiteMode=liteMode,
                 version=version,
                 calculationParameters=calibration,
+                workspaces=workspaces,
             )
             entry = indexer.createIndexEntry(
                 runNumber=runId,
