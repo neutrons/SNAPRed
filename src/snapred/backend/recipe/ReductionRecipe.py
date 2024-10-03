@@ -39,6 +39,13 @@ class ReductionRecipe(Recipe[Ingredients]):
             self.groupingWorkspaces = groceries["groupingWorkspaces"]
     """
 
+    def __init__(self):
+        super().__init__()
+        self.sampleWs = None
+        self.normalizationWs = None
+        self.maskWs = None
+        self.groupingWorkspaces = []
+
     def logger(self):
         return logger
 

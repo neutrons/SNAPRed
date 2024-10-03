@@ -3,7 +3,7 @@ from unittest import TestCase, mock
 
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
-from snapred.backend.dao.ingredients import ReductionIngredients
+from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients, ReductionIngredients
 from snapred.backend.recipe.ReductionRecipe import (
     ApplyNormalizationRecipe,
     GenerateFocussedVanadiumRecipe,
@@ -288,6 +288,27 @@ class ReductionRecipeTest(TestCase):
         recipe.mantidSnapper.MakeDirtyDish.assert_called_once_with(
             mock.ANY, InputWorkspace="input", OutputWorkspace="output"
         )
+
+    @mock.patch("snapred.backend.recipe.ReductionRecipe.ArtificialNormalizationRecipe")
+    def test_apply_artificial_normalization(self, artificialNorm):
+        recipe = ReductionRecipe()
+        recipe.prep = mock.Mock()
+        recipe.execute = mock.Mock()
+        recipe.sampleWs = "sample_ws"
+        recipe.normalizationWs = None
+        groceries = {"inputWorkspace": "sample_ws"}
+        recipe.groceries = groceries
+
+        artificialNorm().cook.return_value = "artificial_normalization_ws"
+        result = recipe.cook(mock.Mock(), groceries)  # noqa: F841
+        artificialNorm().cook.assert_called_once_with(
+            ArtificialNormalizationIngredients(
+                peakWindowClippingSize=5, smoothingParameter=0.5, decreaseParameter=True, lss=True
+            ),
+            groceries,
+        )
+        assert recipe.normalizationWs == "artificial_normalization_ws"
+        recipe.execute.assert_called_once()
 
     def test_execute(self):
         recipe = ReductionRecipe()

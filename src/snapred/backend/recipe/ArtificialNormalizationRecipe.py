@@ -19,10 +19,11 @@ class ArtificialNormalizationRecipe(Recipe[Ingredients]):
     """
 
     def chopIngredients(self, ingredients: Ingredients):
-        self.peakWindowClippingSize = ingredients.peakWindowClippingSize
-        self.smoothingParameter = ingredients.smoothingParameter
-        self.decreaseParameter = ingredients.decreaseParameter
-        self.lss = ingredients.lss
+        self.ingredients = ingredients.copy()
+        self.peakWindowClippingSize = self.ingredients.peakWindowClippingSize
+        self.smoothingParameter = self.ingredients.smoothingParameter
+        self.decreaseParameter = self.ingredients.decreaseParameter
+        self.lss = self.ingredients.lss
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
         self.inputWS = groceries["inputWorkspace"]
@@ -54,8 +55,8 @@ class ArtificialNormalizationRecipe(Recipe[Ingredients]):
         Given the ingredients and groceries, it prepares, executes, and returns the final workspace.
         """
         self.prep(ingredients, groceries)
-        self.execute()
-        return self.outputWS
+        return self.execute()
+        # return {"outputWorkspace": self.outputWS}
 
     def cater(self, shipment: List[Pallet]) -> List[Dict[str, Any]]:
         """
