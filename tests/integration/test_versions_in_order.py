@@ -220,6 +220,7 @@ class ImitationSousChef(SousChef):
 ###############################################################################
 
 
+# @pytest.mark.integration()  # TODO: why is this mark not used?!
 class TestVersioning(TestCase):
     def setUp(self):
         # NOTE the act of importing InterfaceController will cause test_APIService
@@ -259,6 +260,7 @@ class TestVersioning(TestCase):
     def tearDown(self):
         self.api.serviceFactory.getService = self.old_self
 
+    # @pytest.mark.integration()  # TODO: why is this mark not used?!
     def test_calibration_versioning(self):
         """
         After setting up the data services with the appropriate imitations,

@@ -44,10 +44,12 @@ class GroceryService:
     Just send me a list.
     """
 
-    dataService: "LocalDataService"
-
     def __init__(self, dataService: LocalDataService = None):
+        # 'LocalDataService' is a singleton:
+        #   declare it here as an instance attribute, rather than a class attribute,
+        #   to allow singleton reset during testing.
         self.dataService = self._defaultClass(dataService, LocalDataService)
+
         self.workspaceMetadataService = WorkspaceMetadataService()
 
         # _loadedRuns caches a count of the number of copies made from the neutron-data workspace
