@@ -215,7 +215,6 @@ class TestGUIPanels:
                 + f"    expecting:  ActionPrompt.prompt(...'{message}'...)"
             )
 
-    @pytest.mark.integration()
     @pytest.mark.skip(reason="each workflow panel now has a separate test")
     def test_calibration_and_reduction_panels_happy_path(
         self, qtbot, qapp, calibration_home_from_mirror, reduction_home_from_mirror
@@ -718,7 +717,6 @@ class TestGUIPanels:
         # Force a clean exit
         qtbot.wait(5000)
 
-    @pytest.mark.integration()
     def test_diffraction_calibration_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
@@ -952,7 +950,6 @@ class TestGUIPanels:
         # Force a clean exit
         qtbot.wait(5000)
 
-    @pytest.mark.integration()
     def test_normalization_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
@@ -1162,7 +1159,6 @@ class TestGUIPanels:
         # Force a clean exit
         qtbot.wait(5000)
 
-    @pytest.mark.integration()
     def test_reduction_panel_happy_path(self, qtbot, qapp, reduction_home_from_mirror):
         ##
         ## WARNING: this test requires EXISTING diffraction-calibration and normalization-calibration data!

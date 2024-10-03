@@ -97,6 +97,7 @@ with mock.patch.dict(
         assert_almost_equal(
             Workspace1=input_ws_name,
             Workspace2=weight_ws_name,
+            rtol=1.0e-10,
         )
 
     def test_unbag_ingredients_converts_events():
@@ -133,6 +134,7 @@ with mock.patch.dict(
         assert_almost_equal(
             Workspace1=input_ws_name,
             Workspace2=weight_ws_name,
+            rtol=1.0e-10,
         )
 
     def test_validate_fail_wrong_sizes():
@@ -257,6 +259,7 @@ with mock.patch.dict(
         assert_almost_equal(
             Workspace1=output_ws_name,
             Workspace2=weight_ws_name,
+            rtol=1.0e-10,
         )
 
     def test_with_predicted_peaks():
@@ -299,4 +302,5 @@ with mock.patch.dict(
             Workspace1=weight_ws_name,
             Workspace2=ref_weight_ws_name,
             CheckInstrument=False,
+            rtol=1.0e-10,
         )
