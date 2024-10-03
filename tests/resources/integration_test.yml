@@ -1,10 +1,14 @@
 # environment: integration_test
 # At present:
-#   * "integration_test" doesn't override anything except the "IPTS.root";
-#   * note that "module.root" will still be defined as for "test.yml".
+#   * this "integration_test.yml" overrides "IPTS.root", and "constants.maskedPixelThreshold";
+#   * "module.root" will still be defined as in "test.yml".
 
 IPTS:
   # Eventually, for SNAPRed's test framework:
   #   this should be a shared location on "analysis.sns.gov".
   # For the moment, each developer needs to set this individually to their local path.
-  root: /mnt/data0/workspaces/ORNL-work/SNAPRed/SNS_root
+  root: /SNS/users/ux0/workspaces/SNAPRed/SNS_root
+
+constants:
+  # For tests with '46680' this seems to be necessary.
+  maskedPixelThreshold: 1.0

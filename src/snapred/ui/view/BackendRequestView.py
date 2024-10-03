@@ -9,11 +9,15 @@ from snapred.ui.widget.SampleDropDown import SampleDropDown
 
 
 class BackendRequestView(QWidget):
-    interfaceController = InterfaceController()
-    worker_pool = WorkerPool()
-
     def __init__(self, parent=None):
         super(BackendRequestView, self).__init__(parent)
+
+        # `InterfaceController` and `WorkerPool` are singletons:
+        #   declaring them as instance attributes, rather than class attributes,
+        #   allows singleton reset during testing.
+        self.interfaceController = InterfaceController()
+        self.worker_pool = WorkerPool()
+
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 

@@ -77,6 +77,12 @@ def test_resource_packageMode(caplog):
         del sys.modules["snapred.meta.Config"]
         from snapred.meta.Config import _Resource
 
+        # `@Singleton` is now active for tests:
+        #    we need to reset it, so that we can recreate the class.
+        # In this case, we need to fully remove the decorator, so that the original `__init__` will be called.
+        # Otherwise, the applied mocks will have no effect during the initialization.
+        _Resource._reset_Singleton(fully_unwrap=True)
+
         with (
             mock.patch.object(_Resource, "_existsInPackage") as mockExistsInPackage,
             caplog.at_level(logging.DEBUG, logger="snapred.meta.Config.Resource"),
@@ -124,6 +130,12 @@ def test_resource_packageMode_exists():
         # Trigger a fresh import for the "Config" module.
         del sys.modules["snapred.meta.Config"]
         from snapred.meta.Config import _Resource
+
+        # `@Singleton` is now active for tests:
+        #    we need to reset it, so that we can recreate the class.
+        # In this case, we need to fully remove the decorator, so that the original `__init__` will be called.
+        # Otherwise, the applied mocks will have no effect during the initialization.
+        _Resource._reset_Singleton(fully_unwrap=True)
 
         with (
             mock.patch.object(_Resource, "_existsInPackage") as mockExistsInPackage,
