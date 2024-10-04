@@ -157,7 +157,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
                 DetectorPeaks=self.detectorPeaksJson,
             )
             self.mantidSnapper.ConvertToEventWorkspace(
-                "Converting TOF data to MatrixWorkspace...",
+                "Converting TOF data to EventWorkspace...",
                 InputWorkspace=self.wsBG,
                 OutputWorkspace=self.wsBG,
             )
