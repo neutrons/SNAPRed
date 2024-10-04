@@ -1859,7 +1859,7 @@ def test_readWriteCalibrationState():
         assert ans == calibration
 
 
-@mock.patch("snapred.backend.data.GroceryService.GroceryService._createDiffcalTableWorkspaceName")
+@mock.patch("snapred.backend.data.GroceryService.GroceryService.createDiffcalTableWorkspaceName")
 @mock.patch("snapred.backend.data.GroceryService.GroceryService._fetchInstrumentDonor")
 def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorkspaceName):
     # verify that the default diffcal table is being written to the default state directory

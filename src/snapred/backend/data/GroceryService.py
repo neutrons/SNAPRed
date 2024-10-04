@@ -14,6 +14,7 @@ from mantid.simpleapi import (
 )
 from pydantic import validate_call
 
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -26,6 +27,7 @@ from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     NameBuilder,
     WorkspaceName,
+    WorkspaceType,
 )
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceNameGenerator as wng,
@@ -43,6 +45,8 @@ class GroceryService:
 
     Just send me a list.
     """
+
+    diffcalTableFileExtension: str = ".h5"
 
     def __init__(self, dataService: LocalDataService = None):
         # 'LocalDataService' is a singleton:
@@ -212,7 +216,7 @@ class GroceryService:
     def _createDiffcalOutputWorkspaceFilename(self, item: GroceryListItem) -> str:
         ext = Config["calibration.diffraction.output.extension"]
         return str(
-            Path(self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version))
+            self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version)
             / (self._createDiffcalOutputWorkspaceName(item) + ext)
         )
 
@@ -220,15 +224,28 @@ class GroceryService:
     def _createDiffcalDiagnosticWorkspaceFilename(self, item: GroceryListItem) -> str:
         ext = Config["calibration.diffraction.diagnostic.extension"]
         return str(
-            Path(self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version))
+            self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version)
             / (self._createDiffcalOutputWorkspaceName(item) + ext)
         )
 
+    def _createDiffcalTableFilepathFromWsName(
+        self, runNumber: str, useLiteMode: bool, version: Optional[int], wsName: WorkspaceName
+    ) -> str:
+        calibrationDataPath = self._getCalibrationDataPath(runNumber, useLiteMode, version)
+        expectedWsName = self.createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
+        if wsName != expectedWsName:
+            raise ValueError(
+                f"Workspace name {wsName} does not match the expected diffcal table workspace name for run {runNumber}",
+                f"(i.e. {expectedWsName})",
+            )
+
+        return str(calibrationDataPath / (wsName + self.diffcalTableFileExtension))
+
     @validate_call
-    def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
+    def _createDiffcalTableFilepath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         return str(
             Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
-            / (self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version) + ".h5")
+            / (self.createDiffcalTableWorkspaceName(runNumber, useLiteMode, version) + self.diffcalTableFileExtension)
         )
 
     @validate_call
@@ -245,7 +262,10 @@ class GroceryService:
     def _createReductionPixelMaskWorkspaceFilename(self, runNumber: str, useLiteMode: bool, timestamp: float) -> str:
         return str(
             Path(self._getReductionDataPath(runNumber, useLiteMode, timestamp))
-            / (self._createReductionPixelMaskWorkspaceName(runNumber, useLiteMode, timestamp) + ".h5")
+            / (
+                self._createReductionPixelMaskWorkspaceName(runNumber, useLiteMode, timestamp)
+                + self.diffcalTableFileExtension
+            )
         )
 
     ## WORKSPACE NAME METHODS
@@ -285,14 +305,41 @@ class GroceryService:
             .build()
         )
 
+    def lookupDiffcalTableWorkspaceName(
+        self, runNumber: str, useLiteMode: bool, version: Optional[int]
+    ) -> WorkspaceName:
+        indexer = self.dataService.calibrationIndexer(runNumber, useLiteMode)
+        if not isinstance(version, int):
+            version = indexer.latestApplicableVersion(runNumber)
+
+        record = indexer.readRecord(version)
+        if record is None:
+            raise RuntimeError(f"Could not find calibration record for run {runNumber} and version {version}")
+
+        # find first difcal table in record
+        wsTableNameTuple = next(filter(lambda t: t[0] == WorkspaceType.DIFFCAL_TABLE, record.workspaces.items()), None)
+        if wsTableNameTuple is None:
+            raise RuntimeError(
+                f"Could not find diffcal table in record for run {runNumber} in workspaces: {record.workspaces}"
+            )
+        # grab first value in list value of tuple
+        tableWorkspaceName = wsTableNameTuple[1][0]
+        return tableWorkspaceName
+
     @validate_call
-    def _createDiffcalTableWorkspaceName(
+    def createDiffcalTableWorkspaceName(
         self,
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
         version: Optional[int],
     ) -> WorkspaceName:
-        return wng.diffCalTable().runNumber(runNumber).version(version).build()
+        """
+        NOTE: This method will IGNORE runNumber if the provided version is VERSION_DEFAULT
+        """
+        wsName = wng.diffCalTable().runNumber(runNumber).version(version).build()
+        if version == VERSION_DEFAULT:
+            wsName = wsName = wng.diffCalTable().runNumber("default").version(VERSION_DEFAULT).build()
+        return wsName
 
     @validate_call
     def _createDiffcalMaskWorkspaceName(
@@ -854,7 +901,7 @@ class GroceryService:
         :rtype: Dict[str, Any]
         """
         runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
-        tableWorkspaceName = self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
+        tableWorkspaceName = self.lookupDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
         maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, useLiteMode, version)
 
         if self.workspaceDoesExist(tableWorkspaceName):
@@ -865,7 +912,7 @@ class GroceryService:
             }
         else:
             # table + mask are in the same hdf5 file:
-            filename = self._createDiffcalTableFilename(runNumber, useLiteMode, version)
+            filename = self._createDiffcalTableFilepathFromWsName(runNumber, useLiteMode, version, tableWorkspaceName)
 
             # Unless overridden: use a cached workspace as the instrument donor.
             instrumentPropertySource, instrumentSource = (
@@ -888,9 +935,10 @@ class GroceryService:
 
         return data
 
+    # this isnt really a fetch method, this generates data
     @validate_call
     def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: int) -> WorkspaceName:
-        tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", useLiteMode, version)
+        tableWorkspaceName = self.createDiffcalTableWorkspaceName("default", useLiteMode, version)
         self.mantidSnapper.CalculateDiffCalTable(
             "Generate the default diffcal table",
             InputWorkspace=self._fetchInstrumentDonor(runNumber, useLiteMode),
@@ -1074,7 +1122,8 @@ class GroceryService:
                     # NOTE: fetchCalibrationWorkspaces will set the workspace name
                     # to that of the table workspace.  Because of possible confusion with
                     # the behavior of the mask workspace, the workspace name is overridden here.
-                    tableWorkspaceName = self._createDiffcalTableWorkspaceName(
+
+                    tableWorkspaceName = self.lookupDiffcalTableWorkspaceName(
                         item.runNumber, item.useLiteMode, item.version
                     )
                     res = self.fetchCalibrationWorkspaces(item)

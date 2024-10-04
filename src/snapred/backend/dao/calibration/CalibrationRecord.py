@@ -1,14 +1,12 @@
-from typing import Dict, List, Optional
+from typing import List, Optional
 
-from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.calibration.CalibrationDefaultRecord import CalibrationDefaultRecord
 from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.state.PixelGroup import PixelGroup
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CalibrationRecord(Record, extra="ignore"):
+class CalibrationRecord(CalibrationDefaultRecord, extra="ignore"):
     """
 
     The CalibrationRecord class, serves as a comprehensive log of the inputs and parameters employed
@@ -22,17 +20,7 @@ class CalibrationRecord(Record, extra="ignore"):
 
     """
 
-    # inherits from Record
-    # - runNumber
-    # - useLiteMode
-    # - version
-    # override this to point at the correct daughter class
-    # NOTE the version on the calculationParameters MUST match the version on the record
-    # this should be enforced by a validator
-    calculationParameters: Calibration
-
-    # specific to calibration records
+    # specific to full calibration records
     crystalInfo: CrystallographicInfo
     pixelGroups: Optional[List[PixelGroup]] = None  # TODO: really shouldn't be optional, will be when sns data fixed
     focusGroupCalibrationMetrics: FocusGroupMetric
-    workspaces: Dict[WorkspaceType, List[WorkspaceName]]

@@ -216,6 +216,7 @@ class NormalizationService(Service):
             useLiteMode=request.useLiteMode,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
+            normalizationCalibrantSamplePath=request.calibrantSamplePath,
             calculationParameters=normalization,
             crystalDBounds=request.crystalDBounds,
         )
