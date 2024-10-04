@@ -56,6 +56,7 @@ markers = [
   "mount_snap: mark a test as using /SNS/SNAP/ data mount",
   "golden_data(*, path=None, short_name=None, date=None): mark golden data to use with a test"
 ]
+# The following will be overridden by the commandline option "-m integration"
 addopts = "-m 'not integration'"
 
 

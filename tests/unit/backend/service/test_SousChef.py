@@ -32,22 +32,26 @@ class TestSousChef(unittest.TestCase):
         for ws in mtd.getObjectNames():
             DeleteWorkspace(ws)
 
+    def test_name(self):
+        assert SousChef.name() == "souschef"
+
     def test_prepManyDetectorPeaks(self):
         self.instance.prepDetectorPeaks = mock.Mock()
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
         res = self.instance.prepManyDetectorPeaks(self.ingredients)
         assert res[0] == self.instance.prepDetectorPeaks.return_value
         self.instance.prepDetectorPeaks.assert_called_once_with(self.ingredients, purgePeaks=False)
 
     def test_prepManyDetectorPeaks_no_calibration(self):
         self.instance.prepDetectorPeaks = mock.Mock()
-        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
+        self.ingredients.calibrantSamplePath = None
         self.instance.logger = mock.Mock()
         self.instance.logger.warning = mock.Mock()
 
         res = self.instance.prepManyDetectorPeaks(self.ingredients)
         assert res is None
-        self.instance.logger().warning.assert_called_once_with("No calibration record found for run 123 in lite mode.")
+        self.instance.logger().warning.assert_called_once_with("No calibrant sample found for run 123 in lite mode.")
 
     def test_prepManyPixelGroups(self):
         self.instance.prepPixelGroup = mock.Mock()
@@ -84,6 +88,7 @@ class TestSousChef(unittest.TestCase):
         mockCalibration = mock.Mock()
         self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
         self.instance.prepCalibrantSample = mock.Mock()
+        self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
 
         res = self.instance.prepCalibration(self.ingredients)
 
@@ -97,6 +102,7 @@ class TestSousChef(unittest.TestCase):
     def test_prepCalibration_userFWHM(self):
         mockCalibration = mock.Mock()
         self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
+        self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
         fakeLeft = 116
         fakeRight = 17
         self.ingredients.fwhmMultipliers = mock.Mock(left=fakeLeft, right=fakeRight)
@@ -302,6 +308,7 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepPeakIngredients = mock.Mock()
         self.instance.parseGroupPeakList = mock.Mock(side_effect=lambda y: [y])
+        self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
 
         res = self.instance.prepDetectorPeaks(self.ingredients, False)
 
@@ -336,6 +343,7 @@ class TestSousChef(unittest.TestCase):
 
         self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepPeakIngredients = mock.Mock()
+        self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
         self.instance.parseGroupPeakList = mock.Mock(side_effect=lambda y: [y])
 
         res = self.instance.prepDetectorPeaks(self.ingredients)
@@ -362,20 +370,23 @@ class TestSousChef(unittest.TestCase):
         # ensure the cache is prepared
         self.instance._peaksCache[key] = [mock.Mock()]
         self.instance.prepCalibrantSample = mock.Mock()
+        self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
 
         res = self.instance.prepDetectorPeaks(self.ingredients)
 
         assert not DetectorPeakPredictorRecipe.called
         assert res == self.instance._peaksCache[key]
 
+    @mock.patch("os.path.exists", return_value=True)
     @mock.patch(thisService + "ReductionIngredients")
-    def test_prepReductionIngredients(self, ReductionIngredients):
+    def test_prepReductionIngredients(self, ReductionIngredients, mockOS):  # noqa: ARG002
         calibrationCalibrantSamplePath = "a/sample.x"
         record = mock.Mock(
             smoothingParamter=1.0,
             calculationParameters=mock.Mock(
                 calibrantSamplePath=calibrationCalibrantSamplePath,
             ),
+            calibrantSamplePath=calibrationCalibrantSamplePath,
         )
         self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepRunConfig = mock.Mock()

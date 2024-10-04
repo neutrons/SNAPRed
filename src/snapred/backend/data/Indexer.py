@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 from pydantic import validate_call
 
 from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
@@ -59,6 +59,10 @@ RECORD_TYPE = {
     IndexerType.DEFAULT: Record,
 }
 
+DEFAULT_RECORD_TYPE = {
+    IndexerType.CALIBRATION: CalibrationDefaultRecord,
+}
+
 # the params type for each indexer type
 PARAMS_TYPE = {
     IndexerType.CALIBRATION: Calibration,
@@ -96,10 +100,12 @@ class Indexer:
         for fname in self.rootDirectory.glob("v_*"):
             if os.path.isdir(fname):
                 version = str(fname).split("_")[-1]
-                if version.isdigit():
-                    version = int(version)
-                if version == VERSION_DEFAULT_NAME:
+                # Warning: order matters here:
+                #   check VERSION_DEFAULT_NAME _before_ the `isdigit` check.
+                if str(version) == str(VERSION_DEFAULT_NAME):
                     version = VERSION_DEFAULT
+                elif version.isdigit():
+                    version = int(version)
                 versions.add(version)
         return versions
 
@@ -145,16 +151,16 @@ class Indexer:
         """
         The largest version found by the Indexer.
         """
-        currentVersion = None
+        version = None
         overlap = set.union(set(self.index.keys()), self.dirVersions)
         if len(overlap) == 0:
-            currentVersion = None
+            version = None
         elif len(overlap) == 1:
-            currentVersion = list(overlap)[0]
+            version = list(overlap)[0]
         else:
-            versions = [version for version in overlap if isinstance(version, int)]
-            currentVersion = max(versions)
-        return currentVersion
+            versions = [v for v in overlap if isinstance(v, int)]
+            version = max(versions)
+        return version
 
     def latestApplicableVersion(self, runNumber: str) -> int:
         """
@@ -352,6 +358,15 @@ class Indexer:
         record.calculationParameters.version = record.version
         return record
 
+    def _determineRecordType(self, version: Optional[int] = None):
+        version = self.thisOrCurrentVersion(version)
+        recordType = None
+        if version == VERSION_DEFAULT:
+            recordType = DEFAULT_RECORD_TYPE.get(self.indexerType, None)
+        if recordType is None:
+            recordType = RECORD_TYPE[self.indexerType]
+        return recordType
+
     def readRecord(self, version: Optional[int] = None) -> Record:
         """
         If no version given, defaults to current version
@@ -360,7 +375,7 @@ class Indexer:
         filePath = self.recordPath(version)
         record = None
         if filePath.exists():
-            record = parse_file_as(RECORD_TYPE[self.indexerType], filePath)
+            record = parse_file_as(self._determineRecordType(version), filePath)
         return record
 
     def writeRecord(self, record: Record):

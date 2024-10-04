@@ -9,11 +9,12 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class StateIdLookupService(Service):
-    dataFactoryService = "DataFactoryService"
-
     # register the service in ServiceFactory please!
     def __init__(self):
         super().__init__()
+        # 'DataFactoryService' is a singleton:
+        #  declaring it as an instance attribute, instead of a class attribute,
+        #  allows singleton reset during testing.
         self.dataFactoryService = DataFactoryService()
         self.registerPath("", self.getStateIds)
         return

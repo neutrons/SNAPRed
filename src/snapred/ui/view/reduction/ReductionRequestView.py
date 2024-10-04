@@ -34,7 +34,7 @@ class ReductionRequestView(BackendRequestView):
         self.populatePixelMaskDropdown = populatePixelMaskDropdown
         self.validateRunNumbers = validateRunNumbers
 
-        # Horizontal layout for run number input and butto  n
+        # Horizontal layout for run number input and button
         self.runNumberLayout = QHBoxLayout()
         self.runNumberInput = QLineEdit()
         self.enterRunNumberButton = QPushButton("Enter Run Number")

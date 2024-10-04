@@ -18,9 +18,9 @@ logger = snapredLogger.getLogger(__name__)
 class WorkflowPresenter(QObject):
     enableAllWorkflows = Signal()
     disableOtherWorkflows = Signal()
-    worker_pool = WorkerPool()
 
-    actionCompleted = Signal()  # Allow an observer (e.g. ``qtbot``) to monitor action completion.
+    # Allow an observer (e.g. `qtbot`) to monitor action completion.
+    actionCompleted = Signal()
 
     def __init__(
         self,
@@ -32,6 +32,12 @@ class WorkflowPresenter(QObject):
         parent=None,
     ):
         super().__init__()
+
+        # 'WorkerPool' is a singleton:
+        #    declaring it as an instance attribute, rather than a class attribute,
+        #    allows singleton reset during testing.
+        self.worker_pool = WorkerPool()
+
         self.view = WorkflowView(model, parent)
         self._iteration = 1
         self.model = model

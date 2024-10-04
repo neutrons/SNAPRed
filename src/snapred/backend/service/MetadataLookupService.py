@@ -13,12 +13,15 @@ logger = snapredLogger.getLogger(__name__)
 
 @Singleton
 class MetadataLookupService(Service):
-    dataFactoryService = "DataFactoryService"
-
     # register the service in ServiceFactory please!
     def __init__(self):
         super().__init__()
+
+        # 'DataFactoryService' is a singleton:
+        #   declaring it as an instance attribute, instead of a class attribute,
+        #   allows singleton reset during testing.
         self.dataFactoryService = DataFactoryService()
+
         self.registerPath("", self.verifyMultipleRuns)
         return
 

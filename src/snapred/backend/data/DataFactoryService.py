@@ -22,12 +22,13 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 @Singleton
 class DataFactoryService:
-    lookupService: "LocalDataService"  # Optional[LocalDataService]
-    groceryService: "GroceryService"
     # TODO: rules for busting cache
     cache: Dict[str, ReductionState] = {}
 
     def __init__(self, lookupService: LocalDataService = None, groceryService: GroceryService = None) -> None:
+        # 'LocalDataService' and 'GroceryService' are singletons:
+        #   declare them here as instance attributes, rather than class attributes,
+        #   to allow singleton reset during testing.
         self.lookupService = self._defaultClass(lookupService, LocalDataService)
         self.groceryService = self._defaultClass(groceryService, GroceryService)
 

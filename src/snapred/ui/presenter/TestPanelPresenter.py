@@ -1,3 +1,4 @@
+from qtpy.QtCore import QObject
 from qtpy.QtWidgets import QGridLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
@@ -10,11 +11,14 @@ from snapred.ui.workflow.ReductionWorkflow import ReductionWorkflow
 logger = snapredLogger.getLogger(__name__)
 
 
-class TestPanelPresenter(object):
-    interfaceController = InterfaceController()
-    worker_pool = WorkerPool()
-
+class TestPanelPresenter(QObject):
     def __init__(self, view):
+        # `InterfaceController` and `WorkerPool` are singletons:
+        #   declaring them as instance attributes, rather than class attributes,
+        #   allows singleton reset during testing.
+        self.interfaceController = InterfaceController()
+        self.worker_pool = WorkerPool()
+
         self.view = view
 
         # For testing purposes:

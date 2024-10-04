@@ -54,6 +54,9 @@ class InstaEats(GroceryService):
             path = self.groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
+    def lookupDiffcalTableWorkspaceName(self, runNumber: str, useLiteMode: bool, version: int = 0) -> WorkspaceName:
+        return self.createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
+
     ## FETCH METHODS
 
     def _fetchInstrumentDonor(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:

@@ -18,13 +18,19 @@ class _Spinner:
 
 
 class WorkflowNodePresenter(QObject):
-    worker_pool = WorkerPool()
+    # Allow an observer (e.g. `qtbot`) to monitor action completion.
+    actionCompleted = Signal()
 
     # Allow an observer (e.g. `qtbot`) to monitor action completion.
     actionCompleted = Signal()
 
     def __init__(self, view, model):
         super().__init__()
+
+        # WorkerPool is a singleton: declaring it as an instance attribute, instead of a class attribute,
+        #   allows singleton reset during testing.
+        self.worker_pool = WorkerPool()
+
         self.view = view
         self.model = model
 

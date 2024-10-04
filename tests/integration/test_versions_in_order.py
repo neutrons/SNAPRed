@@ -187,7 +187,7 @@ class ImitationGroceryService(GroceryService):
 
     def fetchCalibrationWorkspaces(self, item: Any) -> Dict[str, Any]:
         runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
-        tableWorkspaceName = self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
+        tableWorkspaceName = self.createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
         maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, useLiteMode, version)
 
         CloneWorkspace(InputWorkspace=self.diffcalTableWS, OutputWorkspace=tableWorkspaceName)
@@ -199,7 +199,7 @@ class ImitationGroceryService(GroceryService):
         }
 
     def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: int | Any) -> str:
-        tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", useLiteMode, version)
+        tableWorkspaceName = self.createDiffcalTableWorkspaceName("default", useLiteMode, version)
         CloneWorkspace(InputWorkspace=self.diffcalTableWS, OutputWorkspace=tableWorkspaceName)
         return tableWorkspaceName
 
@@ -220,6 +220,7 @@ class ImitationSousChef(SousChef):
 ###############################################################################
 
 
+# @pytest.mark.integration()  # TODO: why is this mark not used?!
 class TestVersioning(TestCase):
     def setUp(self):
         # NOTE the act of importing InterfaceController will cause test_APIService
@@ -259,6 +260,7 @@ class TestVersioning(TestCase):
     def tearDown(self):
         self.api.serviceFactory.getService = self.old_self
 
+    # @pytest.mark.integration()  # TODO: why is this mark not used?!
     def test_calibration_versioning(self):
         """
         After setting up the data services with the appropriate imitations,

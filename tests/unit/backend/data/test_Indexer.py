@@ -19,7 +19,7 @@ from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_START
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
-from snapred.backend.data.Indexer import Indexer, IndexerType
+from snapred.backend.data.Indexer import DEFAULT_RECORD_TYPE, Indexer, IndexerType
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
@@ -1008,3 +1008,7 @@ class TestIndexer(unittest.TestCase):
         res = indexer.readParameters()
         assert type(res) is CalculationParameters
         assert res == params
+
+    def test__determineRecordType(self):
+        indexer = self.initIndexer(IndexerType.CALIBRATION)
+        assert indexer._determineRecordType(VERSION_DEFAULT) == DEFAULT_RECORD_TYPE.get(IndexerType.CALIBRATION)

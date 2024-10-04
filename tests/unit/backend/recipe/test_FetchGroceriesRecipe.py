@@ -1,5 +1,4 @@
 # ruff: noqa: ARG001, E501, PT012
-
 import os
 import unittest
 from unittest import mock

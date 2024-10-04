@@ -21,9 +21,9 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 @Singleton
 class DataExportService:
-    dataService: "LocalDataService"
-
     def __init__(self, dataService: LocalDataService = None) -> None:
+        # 'LocalDataService' is a singleton: declare it as an instance attribute, rather than a class attribute,
+        #   to allow singleton reset during testing.
         self.dataService = self._defaultClass(dataService, LocalDataService)
 
     def _defaultClass(self, val, clazz):

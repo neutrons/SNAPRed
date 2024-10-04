@@ -6,10 +6,13 @@ from snapred.ui.threading.worker_pool import WorkerPool
 
 
 class LogTablePresenter(object):
-    interfaceController = InterfaceController()
-    worker_pool = WorkerPool()
-
     def __init__(self, view, model):
+        # `InterfaceController` and `WorkerPool` are singletons:
+        #   declaring them as instance attributes, rather than class attributes,
+        #   allows singleton reset during testing.
+        self.interfaceController = InterfaceController()
+        self.worker_pool = WorkerPool()
+
         self.view = view
         self.model = model
 

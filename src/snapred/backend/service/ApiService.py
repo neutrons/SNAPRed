@@ -32,11 +32,14 @@ def _convertToJsonSchema(parameterDic):
 
 @Singleton
 class ApiService(Service):
-    serviceDirectory: "ServiceDirectory"
-
     def __init__(self):
         super().__init__()
+
+        # 'ServiceDirectory' is a singletion:
+        #   declaring it as an instance attribute, rather than a class attribute,
+        #   allows singleton reset during testing.
         self.serviceDirectory = ServiceDirectory()
+
         self.registerPath("", self.getValidPaths)
         self.registerPath("parameters", self.getPathParameters)
         self.apiCache = None

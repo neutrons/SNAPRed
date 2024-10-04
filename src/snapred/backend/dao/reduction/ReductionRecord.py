@@ -2,6 +2,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from snapred.backend.dao.calibration import CalibrationDefaultRecord
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
@@ -24,7 +25,7 @@ class ReductionRecord(BaseModel):
     timestamp: float = Field(frozen=True, default=None)
 
     # specific to reduction records
-    calibration: Optional[CalibrationRecord] = None
+    calibration: Optional[CalibrationRecord | CalibrationDefaultRecord] = None
     normalization: Optional[NormalizationRecord] = None
     pixelGroupingParameters: Dict[str, List[PixelGroupingParameters]]
 

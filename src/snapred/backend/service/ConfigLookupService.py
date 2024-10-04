@@ -11,12 +11,15 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class ConfigLookupService(Service):
-    dataFactoryService: "DataFactoryService"
-
     # register the service in ServiceFactory
     def __init__(self):
         super().__init__()
+
+        # 'DataFactoryService' is a singleton:
+        #   declaring it as an instance attribute, instead of a class attribute,
+        #   allows singleton reset during testing.
         self.dataFactoryService = DataFactoryService()
+
         self.registerPath("", self.getConfigs)
         self.registerPath("samplePaths", self.getSampleFilePaths)
         self.registerPath("groupingMap", self.getGroupingMap)
