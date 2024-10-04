@@ -41,6 +41,6 @@ To simply get the data, just run ``git submodule update --init --recursive`` and
 ``tests/data/snapred-data``. You can now update the environmnet YAML file that you will use for tests and point to the
 test data using ``${module.root}/data/snapred-data``, assuming you are just running pytests. If you are just trying to
 run SNAPRed normally, you need to change the pathing to be ``${module.root}/../../data/snapred-data`` or use the full
-absolute path.
+absolute path. If you make any changes to the test repo, be sure to update the git LFS reference and commit it to this repo!
 
 For more info about the test data repo, go to the readme `here. <https://code.ornl.gov/sns-hfir-scse/infrastructure/test-data/snapred-data/-/blob/main/README.md?ref_type=heads>`_
