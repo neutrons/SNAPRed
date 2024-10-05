@@ -8,7 +8,7 @@ from unittest import mock
 
 import pytest
 import snapred.meta.Config as Config_module
-from snapred.meta.Config import Config, Resource, _find_root_dir
+from snapred.meta.Config import Config, Resource, _find_root_dir, python_log_level_from_Mantid_level
 
 
 def test_environment():
@@ -213,3 +213,24 @@ def test_key_substitution():
 def test_multi_level_substitution():
     assert Config["test.data.home.write"] == f'~/{Config["test.config.home"]}/data/{Config["test.config.name"]}'
     assert Config["test.data.home.read"] == f'{Config["test.config.home"]}/data/{Config["test.config.name"]}'
+
+
+def test_python_log_level_from_Mantid_level():
+    for level in ['none', 'fatal', 'critical', 'error', 'warning', 'notice', 'debug', 'trace']:
+        pythonLevel = python_log_level_from_Mantid_level(level)
+        assert isinstance(pythonLevel, int)
+        assert 0 <= pythonLevel
+        assert pythonLevel <= 100
+
+
+def test_python_log_level_from_Mantid_level__uppercase():
+    for level in ['none', 'fatal', 'critical', 'error', 'warning', 'notice', 'debug', 'trace']:
+        pythonLevel = python_log_level_from_Mantid_level(level.upper())
+        assert isinstance(pythonLevel, int)
+        assert 0 <= pythonLevel
+        assert pythonLevel <= 100
+
+
+def test_python_log_level_from_Mantid_level__unknown():
+    with pytest.raises(RuntimeError, match=r".*can't convert.* to a python\.logging level.*"):
+        pythonLevel = python_log_level_from_Mantid_level("not_a_log_level") # noqa: F841

@@ -30,16 +30,6 @@ def _bool_to_mtd_str(arg: bool) -> str:
     return "1" if arg else "0"
 
 
-def _prepend_datasearch_directories() -> Optional[List[str]]:
-    """data-search directories to prepend to
-    mantid.kernel.ConfigService 'datasearch.directories'
-    """
-    searchDirectories = None
-    if Config["IPTS.root"] != Config["IPTS.default"]:
-        searchDirectories = datasearch_directories(Path(Config["instrument.home"]))
-    return searchDirectories
-
-
 def _preloadImports():
     import qtpy.QtWebEngineWidgets as QWebEngineWidgets
 
@@ -99,7 +89,6 @@ def main(args=None):
     options.updateinstruments = _bool_to_mtd_str(options.updateinstruments)
     options.reportusage = _bool_to_mtd_str(options.reportusage)
     options.script = None
-    dataSearchDirectories = _prepend_datasearch_directories()
 
     # show the ascii splash screen
     _print_text_splash()
@@ -109,8 +98,6 @@ def main(args=None):
         "CheckMantidVersion.OnStartup": options.checkfornewmantid,
         "UpdateInstrumentDefinitions.OnStartup": options.updateinstruments,
         "usagereports.enabled": options.reportusage,
-        "data_dir": dataSearchDirectories,
-        "prepend_datadir": True,
     }
     with amend_config(**new_config):
         if options.workbench:
@@ -132,7 +119,7 @@ def main(args=None):
                 workbench_start(options)
         else:
             from snapred.ui.main import start
-
+            
             return start(options)
 
 

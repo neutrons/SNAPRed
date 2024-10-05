@@ -1,4 +1,6 @@
+from typing import List, Optional
 import logging
+from pathlib import Path
 import sys
 import traceback
 
@@ -17,9 +19,13 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 from workbench.plugins.workspacewidget import WorkspaceWidget
-
 from snapred.backend.log.logger import CustomFormatter, snapredLogger
-from snapred.meta.Config import Config, Resource
+from snapred.meta.Config import (
+    Config,
+    Resource,
+    datasearch_directories,
+    python_log_level_from_Mantid_level
+)
 from snapred.ui.widget.LogTable import LogTable
 from snapred.ui.widget.TestPanel import TestPanel
 from snapred.ui.widget.ToolBar import ToolBar
@@ -33,6 +39,18 @@ except ImportError:
 
 LOGGERCLASSKEY = "logging.channels.consoleChannel.class"
 LOGGERLEVELKEY = "logging.loggers.root.level"
+DATASEARCH_DIR_KEY = "datasearch.directories"
+
+
+# This method is also used by tests, so it's declared outside of the `SNAPRedGUI` class
+def prependDataSearchDirectories() -> List[str]:
+    """data-search directories to prepend to
+    mantid.kernel.ConfigService 'datasearch.directories'
+    """
+    searchDirectories = []
+    if Config["IPTS.root"] != Config["IPTS.default"]:
+        searchDirectories = datasearch_directories(Path(Config["instrument.home"]))
+    return searchDirectories
 
 
 class SNAPRedGUI(QMainWindow):
@@ -50,8 +68,15 @@ class SNAPRedGUI(QMainWindow):
         splitter = QSplitter(Qt.Vertical)
         splitter.addWidget(logTable.widget)
 
+        # Save any overridden Mantid ConfigService values
+        self._mantidConfig = ConfigService.Instance()
+        self._savedMantidConfigEntries = dict()
+        
+        # Redirect the IPTS search directories
+        self._redirectIPTSSearchDirectories()
+        
         # make sure mantid console logging is disabled
-        self.redirectMantidConsoleLog()
+        self._redirectMantidConsoleLog()
 
         # add button to open new window
         self.calibrationPanelButton = QPushButton("Open Calibration Panel")
@@ -115,7 +140,8 @@ class SNAPRedGUI(QMainWindow):
             )
 
     def closeEvent(self, event):
-        self.restartMantidConsoleLog()
+        self._restartMantidConsoleLog()
+        self._restoreIPTSSearchDirectories()
         event.accept()
 
     def changeEvent(self, event):
@@ -125,7 +151,19 @@ class SNAPRedGUI(QMainWindow):
     def resizeEvent(self, event):
         self.titleBar.presenter.resizeEvent(event)
 
-    def redirectMantidConsoleLog(self):
+    def _redirectIPTSSearchDirectories(self):
+        # Save the current data-search directories
+        self._savedMantidConfigEntries[DATASEARCH_DIR_KEY] = self._mantidConfig[DATASEARCH_DIR_KEY]
+        self._mantidConfig.setDataSearchDirs(prependDataSearchDirectories() + list(self._mantidConfig.getDataSearchDirs()))
+        
+    def _restoreIPTSSearchDirectories(self):
+        self._mantidConfig.setString(DATASEARCH_DIR_KEY, self._savedMantidConfigEntries[DATASEARCH_DIR_KEY])
+    
+    def _redirectMantidConsoleLog(self):
+        # Save the current Mantid logging configuration
+        self._savedMantidConfigEntries[LOGGERCLASSKEY] = self._mantidConfig[LOGGERCLASSKEY]
+        self._savedMantidConfigEntries[LOGGERLEVELKEY] = self._mantidConfig[LOGGERLEVELKEY]
+    
         # Configure Mantid to send messages to Python
         log_to_python()
         logger = logging.getLogger("Mantid")
@@ -147,12 +185,14 @@ class SNAPRedGUI(QMainWindow):
         logger.addHandler(file)
         logger.addHandler(ch)
 
-    def restartMantidConsoleLog(self):
+    def _restartMantidConsoleLog(self):
         # return logging to the stream
-        ConfigService.setString(LOGGERCLASSKEY, "PythonLoggingChannel")
-        ConfigService.setString(LOGGERLEVELKEY, "debug")
+        ConfigService.setString(LOGGERCLASSKEY, self._savedMantidConfigEntries[LOGGERCLASSKEY])
+        ConfigService.setString(LOGGERLEVELKEY, self._savedMantidConfigEntries[LOGGERLEVELKEY])
+        
+        # TODO: Question: Possibly 'ConfigService.setLogLevel()' should be used here instead?
         logger = logging.getLogger("Mantid")
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(python_log_level_from_Mantid_level(self._mantidConfig[LOGGERLEVELKEY]))
         logger.handlers.clear()
 
 
