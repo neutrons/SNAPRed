@@ -224,7 +224,9 @@ def datasearch_directories(instrumentHome: Path) -> List[str]:
     ]
     return dirs
 
-def python_log_level_from_Mantid_level(level: str):
+def fromMantidLoggingLevel(level: str) -> int:
+    # Python logging level from Mantid logging level
+    
     # Python levels:
     #   logging.NOTSET: 0, logging.DEBUG: 10, logging.INFO: 20,
     #     logging:WARNING: 30, logging.ERROR: 40, logging.CRITICAL: 50
@@ -253,6 +255,6 @@ def python_log_level_from_Mantid_level(level: str):
             # this level doesn't really exist in python
             pythonLevel = logging.DEBUG - 5
         case _:
-            raise RuntimeError(f"can't convert '{level}' to a python.logging level")
+            raise RuntimeError(f"can't convert '{level}' to a Python logging level")
     return pythonLevel
    

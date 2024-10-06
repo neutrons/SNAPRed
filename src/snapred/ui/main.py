@@ -24,7 +24,7 @@ from snapred.meta.Config import (
     Config,
     Resource,
     datasearch_directories,
-    python_log_level_from_Mantid_level
+    fromMantidLoggingLevel
 )
 from snapred.ui.widget.LogTable import LogTable
 from snapred.ui.widget.TestPanel import TestPanel
@@ -192,7 +192,7 @@ class SNAPRedGUI(QMainWindow):
         
         # TODO: Question: Possibly 'ConfigService.setLogLevel()' should be used here instead?
         logger = logging.getLogger("Mantid")
-        logger.setLevel(python_log_level_from_Mantid_level(self._mantidConfig[LOGGERLEVELKEY]))
+        logger.setLevel(fromMantidLoggingLevel(self._mantidConfig[LOGGERLEVELKEY]))
         logger.handlers.clear()
 
 
