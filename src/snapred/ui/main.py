@@ -1,8 +1,8 @@
-from typing import List, Optional
 import logging
-from pathlib import Path
 import sys
 import traceback
+from pathlib import Path
+from typing import List
 
 from mantid.kernel import ConfigService
 from mantid.utils.logging import log_to_python
@@ -19,13 +19,9 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 from workbench.plugins.workspacewidget import WorkspaceWidget
+
 from snapred.backend.log.logger import CustomFormatter, snapredLogger
-from snapred.meta.Config import (
-    Config,
-    Resource,
-    datasearch_directories,
-    fromMantidLoggingLevel
-)
+from snapred.meta.Config import Config, Resource, datasearch_directories, fromMantidLoggingLevel
 from snapred.ui.widget.LogTable import LogTable
 from snapred.ui.widget.TestPanel import TestPanel
 from snapred.ui.widget.ToolBar import ToolBar
@@ -71,10 +67,10 @@ class SNAPRedGUI(QMainWindow):
         # Save any overridden Mantid ConfigService values
         self._mantidConfig = ConfigService.Instance()
         self._savedMantidConfigEntries = dict()
-        
+
         # Redirect the IPTS search directories
         self._redirectIPTSSearchDirectories()
-        
+
         # make sure mantid console logging is disabled
         self._redirectMantidConsoleLog()
 
@@ -154,16 +150,18 @@ class SNAPRedGUI(QMainWindow):
     def _redirectIPTSSearchDirectories(self):
         # Save the current data-search directories
         self._savedMantidConfigEntries[DATASEARCH_DIR_KEY] = self._mantidConfig[DATASEARCH_DIR_KEY]
-        self._mantidConfig.setDataSearchDirs(prependDataSearchDirectories() + list(self._mantidConfig.getDataSearchDirs()))
-        
+        self._mantidConfig.setDataSearchDirs(
+            prependDataSearchDirectories() + list(self._mantidConfig.getDataSearchDirs())
+        )
+
     def _restoreIPTSSearchDirectories(self):
         self._mantidConfig.setString(DATASEARCH_DIR_KEY, self._savedMantidConfigEntries[DATASEARCH_DIR_KEY])
-    
+
     def _redirectMantidConsoleLog(self):
         # Save the current Mantid logging configuration
         self._savedMantidConfigEntries[LOGGERCLASSKEY] = self._mantidConfig[LOGGERCLASSKEY]
         self._savedMantidConfigEntries[LOGGERLEVELKEY] = self._mantidConfig[LOGGERLEVELKEY]
-    
+
         # Configure Mantid to send messages to Python
         log_to_python()
         logger = logging.getLogger("Mantid")
@@ -189,7 +187,7 @@ class SNAPRedGUI(QMainWindow):
         # return logging to the stream
         ConfigService.setString(LOGGERCLASSKEY, self._savedMantidConfigEntries[LOGGERCLASSKEY])
         ConfigService.setString(LOGGERLEVELKEY, self._savedMantidConfigEntries[LOGGERLEVELKEY])
-        
+
         # TODO: Question: Possibly 'ConfigService.setLogLevel()' should be used here instead?
         logger = logging.getLogger("Mantid")
         logger.setLevel(fromMantidLoggingLevel(self._mantidConfig[LOGGERLEVELKEY]))

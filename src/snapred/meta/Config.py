@@ -224,37 +224,37 @@ def datasearch_directories(instrumentHome: Path) -> List[str]:
     ]
     return dirs
 
+
 def fromMantidLoggingLevel(level: str) -> int:
     # Python logging level from Mantid logging level
-    
+
     # Python levels:
     #   logging.NOTSET: 0, logging.DEBUG: 10, logging.INFO: 20,
     #     logging:WARNING: 30, logging.ERROR: 40, logging.CRITICAL: 50
-    
+
     # Poco levels (implemented as Poco::Message::Priority enum):
     # 'none': , 'fatal', 'critical', 'error', 'warning', 'notice', 'information', 'debug', 'trace'
-    
+
     pythonLevel = logging.NOTSET
     match level.lower():
-        case 'none':
+        case "none":
             pythonLevel = logging.NOTSET
-        case 'fatal':
+        case "fatal":
             # this level doesn't really exist in python
             pythonLevel = logging.CRITICAL + 5
-        case 'critical':
+        case "critical":
             pythonLevel = logging.CRITICAL
-        case 'error':
+        case "error":
             pythonLevel = logging.ERROR
-        case 'warning':
+        case "warning":
             pythonLevel = logging.WARNING
-        case 'notice':
+        case "notice":
             pythonLevel = logging.INFO
-        case 'debug':
+        case "debug":
             pythonLevel = logging.DEBUG
-        case 'trace':
+        case "trace":
             # this level doesn't really exist in python
             pythonLevel = logging.DEBUG - 5
         case _:
             raise RuntimeError(f"can't convert '{level}' to a Python logging level")
     return pythonLevel
-   

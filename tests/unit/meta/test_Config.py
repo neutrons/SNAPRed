@@ -217,24 +217,38 @@ def test_multi_level_substitution():
 
 def test_fromMantidLoggingLevel():
     for mantidLevel, pythonLevel in zip(
-            ['none', 'fatal', 'critical', 'error', 'warning', 'notice', 'debug', 'trace'],
-            [logging.NOTSET, logging.CRITICAL + 5, logging.CRITICAL,
-             logging.ERROR, logging.WARNING, logging.INFO,
-             logging.DEBUG, logging.DEBUG - 5]
-        ):
+        ["none", "fatal", "critical", "error", "warning", "notice", "debug", "trace"],
+        [
+            logging.NOTSET,
+            logging.CRITICAL + 5,
+            logging.CRITICAL,
+            logging.ERROR,
+            logging.WARNING,
+            logging.INFO,
+            logging.DEBUG,
+            logging.DEBUG - 5,
+        ],
+    ):
         assert pythonLevel == fromMantidLoggingLevel(mantidLevel)
 
 
 def test_fromMantidLoggingLevel__uppercase():
     for mantidLevel, pythonLevel in zip(
-            ['none', 'fatal', 'critical', 'error', 'warning', 'notice', 'debug', 'trace'],
-            [logging.NOTSET, logging.CRITICAL + 5, logging.CRITICAL,
-             logging.ERROR, logging.WARNING, logging.INFO,
-             logging.DEBUG, logging.DEBUG - 5]
-        ):
+        ["none", "fatal", "critical", "error", "warning", "notice", "debug", "trace"],
+        [
+            logging.NOTSET,
+            logging.CRITICAL + 5,
+            logging.CRITICAL,
+            logging.ERROR,
+            logging.WARNING,
+            logging.INFO,
+            logging.DEBUG,
+            logging.DEBUG - 5,
+        ],
+    ):
         assert pythonLevel == fromMantidLoggingLevel(mantidLevel.upper())
 
 
 def test_fromMantidLoggingLevel__unknown():
     with pytest.raises(RuntimeError, match=r".*can't convert.* to a Python logging level.*"):
-        pythonLevel = fromMantidLoggingLevel("not_a_log_level") # noqa: F841
+        pythonLevel = fromMantidLoggingLevel("not_a_log_level")  # noqa: F841

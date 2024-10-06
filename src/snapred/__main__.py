@@ -1,12 +1,10 @@
 import sys
-from pathlib import Path
-from typing import List, Optional
 
 from mantid.kernel import amend_config
 
 from snapred import __version__ as snapred_version
 from snapred.backend.log.logger import snapredLogger
-from snapred.meta.Config import Config, Resource, datasearch_directories
+from snapred.meta.Config import Resource
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -119,7 +117,7 @@ def main(args=None):
                 workbench_start(options)
         else:
             from snapred.ui.main import start
-            
+
             return start(options)
 
 
