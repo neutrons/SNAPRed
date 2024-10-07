@@ -10,7 +10,7 @@ from mantid.simpleapi import (
 from snapred.meta.redantic import access_pointer
 
 
-class TestGOffsetStatistics(unittest.TestCase):
+class TestOffsetStatistics(unittest.TestCase):
     def tearDown(self) -> None:
         mtd.clear()
         assert len(mtd.getObjectNames()) == 0
