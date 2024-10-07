@@ -1,12 +1,13 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from snapred.backend.dao.request.CalibrationLoadAssessmentRequest import CalibrationLoadAssessmentRequest
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.ui.presenter.CalibrationAssessmentPresenter import CalibrationAssessmentPresenter
 
 
-@pytest.fixture()
+@pytest.fixture
 def calibrationAssessmentPresenter():
     view = MagicMock()
     return CalibrationAssessmentPresenter(view=view)

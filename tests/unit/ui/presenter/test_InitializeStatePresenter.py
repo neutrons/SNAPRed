@@ -3,10 +3,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from qtpy.QtWidgets import QApplication, QWidget
+from util.script_as_test import not_a_test
+
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.ui.presenter.InitializeStatePresenter import InitializeStatePresenter
 from snapred.ui.widget.LoadingCursor import LoadingCursor
-from util.script_as_test import not_a_test
 
 app = QApplication(sys.argv)
 
@@ -23,7 +24,7 @@ class TestableQWidget(QWidget):
         self.beginFlowButton = MagicMock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def setup_view_and_workflow():
     view = TestableQWidget()
     workflow = InitializeStatePresenter(view=view)

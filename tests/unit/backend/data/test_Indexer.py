@@ -11,6 +11,8 @@ from unittest import mock
 
 import pytest
 from pydantic import ValidationError
+from util.dao import DAOFactory
+
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
@@ -23,7 +25,6 @@ from snapred.backend.data.Indexer import DEFAULT_RECORD_TYPE, Indexer, IndexerTy
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
-from util.dao import DAOFactory
 
 IndexerModule = importlib.import_module(Indexer.__module__)
 

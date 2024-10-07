@@ -11,6 +11,7 @@ from mantid.simpleapi import (
     WrapLeftovers,
 )
 from mantid.testing import assert_almost_equal
+
 from snapred.meta.Config import Config
 
 NUM_BINS = Config["constants.ResampleX.NumberBins"]

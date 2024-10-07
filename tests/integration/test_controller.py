@@ -1,8 +1,9 @@
 import pytest
+
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 def test_executeRequest_noop():
     # import must be here or it will put things in a funny state and break other tests
     from snapred.backend.api.InterfaceController import InterfaceController

@@ -3,6 +3,7 @@ import unittest
 
 import pytest
 from mantid.simpleapi import CreateWorkspace, SetSample
+
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 
 

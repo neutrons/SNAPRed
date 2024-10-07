@@ -1,5 +1,6 @@
 import pytest
 from pydantic import ValidationError
+
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 
 

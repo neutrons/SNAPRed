@@ -4,9 +4,10 @@ from typing import Dict
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from pydantic import BaseModel, ConfigDict
+from util.SculleryBoy import SculleryBoy
+
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe
-from util.SculleryBoy import SculleryBoy
 
 
 class Ingredients(BaseModel):

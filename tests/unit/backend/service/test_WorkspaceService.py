@@ -2,6 +2,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, GroupWorkspaces, mtd
+
 from snapred.backend.dao.request import (
     ListWorkspacesRequest,
     RenameWorkspacesFromTemplateRequest,

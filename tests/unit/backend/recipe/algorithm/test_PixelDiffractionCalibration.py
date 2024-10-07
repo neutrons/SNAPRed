@@ -5,14 +5,14 @@ from itertools import permutations
 
 from mantid.api import MatrixWorkspace
 from mantid.simpleapi import mtd
+from util.diffraction_calibration_synthetic_data import SyntheticData
+from util.helpers import maskSpectra, setSpectraToZero
 
 # needed to make mocked ingredients
 # the algorithm to test
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import (
     PixelDiffractionCalibration as ThisAlgo,  # noqa: E402
 )
-from util.diffraction_calibration_synthetic_data import SyntheticData
-from util.helpers import maskSpectra, setSpectraToZero
 
 
 class TestPixelDiffractionCalibration(unittest.TestCase):

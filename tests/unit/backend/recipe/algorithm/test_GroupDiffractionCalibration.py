@@ -3,6 +3,8 @@ from collections.abc import Sequence
 
 from mantid.api import MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace
+from util.diffraction_calibration_synthetic_data import SyntheticData
+from util.helpers import deleteWorkspaceNoThrow, maskGroups, mutableWorkspaceClones, setGroupSpectraToZero
 
 # needed to make mocked ingredients
 from snapred.backend.log.logger import snapredLogger
@@ -12,8 +14,6 @@ from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiff
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import (
     GroupDiffractionCalibration as ThisAlgo,  # noqa: E402
 )
-from util.diffraction_calibration_synthetic_data import SyntheticData
-from util.helpers import deleteWorkspaceNoThrow, maskGroups, mutableWorkspaceClones, setGroupSpectraToZero
 
 logger = snapredLogger.getLogger(__name__)
 

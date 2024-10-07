@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from cis_tests.diffcal_integration_test_script import script as test_script
+
 from snapred.meta.Config import Config, Resource
 
 
@@ -27,7 +28,7 @@ def _cleanup_directories():
 @pytest.mark.golden_data(
     path=Resource.getPath("outputs/integration/diffcal/golden_data"), short_name="diffcal", date="2024-04-24"
 )
-@pytest.mark.integration()
+@pytest.mark.integration
 def test_diffcal(goldenData):
     # to launch, use either of:
     #   * `env=integration_test pytest -m integration`, or

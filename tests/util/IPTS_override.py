@@ -3,8 +3,9 @@ from pathlib import Path
 
 import pytest
 from mantid.kernel import amend_config
-from snapred.meta.Config import Config, datasearch_directories
 from util.Config_helpers import Config_override
+
+from snapred.meta.Config import Config, datasearch_directories
 
 # In order to allow convenient usage within CIS-test scripts,
 # `IPTS_override` is deliberately _not_ implemented as a test fixture.
@@ -54,7 +55,7 @@ def IPTS_override(basePath: str = Config["IPTS.root"], instrumentName: str = Con
     stack.close()
 
 
-@pytest.fixture()
+@pytest.fixture
 def IPTS_override_fixture():
     _stack = ExitStack()
 

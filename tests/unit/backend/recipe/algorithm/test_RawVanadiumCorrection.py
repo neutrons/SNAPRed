@@ -13,6 +13,7 @@ from mantid.simpleapi import (
     mtd,
 )
 from numpy import argmax
+from util.SculleryBoy import SculleryBoy
 
 # needed to make mocked ingredients
 # the algorithm to test
@@ -20,7 +21,6 @@ from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import (
     RawVanadiumCorrectionAlgorithm as Algo,  # noqa: E402
 )
 from snapred.meta.Config import Resource
-from util.SculleryBoy import SculleryBoy
 
 
 class TestRawVanadiumCorrection(unittest.TestCase):

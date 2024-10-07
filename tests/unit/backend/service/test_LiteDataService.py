@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from mantid.simpleapi import CloneWorkspace, CreateSingleValuedWorkspace
+
 from snapred.backend.service.LiteDataService import LiteDataService
 from snapred.meta.Config import Resource
 

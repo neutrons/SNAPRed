@@ -5,6 +5,7 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
+
 from snapred.meta.Config import Resource
 
 
