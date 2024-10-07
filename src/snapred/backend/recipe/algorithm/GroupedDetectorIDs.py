@@ -1,4 +1,3 @@
-import json
 from typing import Dict, List
 
 from mantid.api import (
@@ -8,7 +7,7 @@ from mantid.api import (
     PythonAlgorithm,
     mtd,
 )
-from mantid.kernel import Direction
+from mantid.kernel import Direction, ULongLongPropertyWithValue
 
 
 class GroupedDetectorIDs(PythonAlgorithm):
@@ -33,7 +32,10 @@ class GroupedDetectorIDs(PythonAlgorithm):
             MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the grouping information",
         )
-        self.declareProperty("GroupWorkspaceIndices", "", direction=Direction.Output)
+        self.declareProperty(
+            ULongLongPropertyWithValue("GroupWorkspaceIndices", 0, direction=Direction.Output),
+            doc="A pointer to the output dictionary (must be cast to object from memory address).",
+        )
         self.setRethrows(True)
 
     def PyExec(self):
@@ -43,7 +45,7 @@ class GroupedDetectorIDs(PythonAlgorithm):
         groupWorkspaceIndices: Dict[int, List[int]] = {}
         for groupID in [int(x) for x in focusWS.getGroupIDs()]:
             groupWorkspaceIndices[groupID] = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
-        self.setProperty("GroupWorkspaceIndices", json.dumps(groupWorkspaceIndices))
+        self.setProperty("GroupWorkspaceIndices", id(groupWorkspaceIndices))
 
 
 # Register algorithm with Mantid

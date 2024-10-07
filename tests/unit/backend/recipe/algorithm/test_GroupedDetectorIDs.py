@@ -1,12 +1,11 @@
 import unittest
-from typing import Dict, List
 
 from mantid.simpleapi import (
     CreateSingleValuedWorkspace,
     mtd,
 )
-from pydantic import TypeAdapter
 from snapred.backend.recipe.algorithm.GroupedDetectorIDs import GroupedDetectorIDs as Algo
+from snapred.meta.redantic import access_pointer
 from util.diffraction_calibration_synthetic_data import SyntheticData
 
 
@@ -44,5 +43,5 @@ class TestGroupedDetectorIDs(unittest.TestCase):
         algo.initialize()
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
         assert algo.execute()
-        data = TypeAdapter(Dict[int, List[int]]).validate_json(algo.getPropertyValue("GroupWorkspaceIndices"))
+        data = access_pointer(algo.getProperty("GroupWorkspaceIndices").value)
         assert data == {2: [2, 4, 11, 14], 3: [0, 5, 10, 15], 7: [1, 7, 8, 13], 11: [3, 6, 9, 12]}

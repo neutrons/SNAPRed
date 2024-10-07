@@ -1,14 +1,13 @@
 import unittest
 from random import random
-from typing import Dict
 
 import numpy as np
 from mantid.simpleapi import (
     CreateWorkspace,
+    OffsetStatistics,
     mtd,
 )
-from pydantic import TypeAdapter
-from snapred.backend.recipe.algorithm.OffsetStatistics import OffsetStatistics as Algo
+from snapred.meta.redantic import access_pointer
 
 
 class TestGOffsetStatistics(unittest.TestCase):
@@ -17,14 +16,7 @@ class TestGOffsetStatistics(unittest.TestCase):
         assert len(mtd.getObjectNames()) == 0
         return super().tearDown()
 
-    def test_init(self):
-        algo = Algo()
-        algo.initialize()
-
     def test_random(self):
-        algo = Algo()
-        algo.initialize()
-
         xVal = []
         yVal = []
         for i in range(100):
@@ -37,9 +29,8 @@ class TestGOffsetStatistics(unittest.TestCase):
             DataY=yVal,
         )
 
-        algo.setProperty("OffsetsWorkspace", wksp)
-        assert algo.execute()
-        data = TypeAdapter(Dict[str, float]).validate_json(algo.getPropertyValue("Data"))
+        data = OffsetStatistics(wksp)
+        data = access_pointer(data)
         assert data["medianOffset"] >= 0
         assert data["meanOffset"] >= 0
         assert data["medianOffset"] == abs(np.median(yVal))

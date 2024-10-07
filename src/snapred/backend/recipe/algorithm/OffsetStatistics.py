@@ -5,7 +5,7 @@ from mantid.api import (
     PropertyMode,
     PythonAlgorithm,
 )
-from mantid.kernel import Direction, PropertyManagerProperty
+from mantid.kernel import Direction, ULongLongPropertyWithValue
 
 
 class OffsetStatistics(PythonAlgorithm):
@@ -26,7 +26,10 @@ class OffsetStatistics(PythonAlgorithm):
             MatrixWorkspaceProperty(self.OFFSETWKSPPROP, "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the TOF neutron data",
         )
-        self.declareProperty(PropertyManagerProperty("Data", dict(), direction=Direction.Output))
+        self.declareProperty(
+            ULongLongPropertyWithValue("Data", 0, direction=Direction.Output),
+            doc="A pointer to the output dictionary (must be cast to object from memory address).",
+        )
         self.setRethrows(True)
         self._counts = 0
 
@@ -35,16 +38,16 @@ class OffsetStatistics(PythonAlgorithm):
         offsets = list(self.getProperty(self.OFFSETWKSPPROP).value.extractY().ravel())
         absOffsets = [abs(offset) for offset in offsets]
 
-        data = {}
+        self.data = {}
         # (Warning: `median(abs(offsets))` vs. `abs(median(offsets)`: the former introduces oscillation artifacts.)
-        data["medianOffset"] = float(abs(np.median(offsets)))
-        data["meanOffset"] = float(abs(np.mean(offsets)))
-        data["minOffset"] = float(np.min(offsets))
-        data["maxOffset"] = float(np.max(offsets))
-        data["maxAbsoluteOffset"] = float(np.max(absOffsets))
-        data["minAbsoluteOFfset"] = float(np.min(absOffsets))
+        self.data["medianOffset"] = float(abs(np.median(offsets)))
+        self.data["meanOffset"] = float(abs(np.mean(offsets)))
+        self.data["minOffset"] = float(np.min(offsets))
+        self.data["maxOffset"] = float(np.max(offsets))
+        self.data["maxAbsoluteOffset"] = float(np.max(absOffsets))
+        self.data["minAbsoluteOFfset"] = float(np.min(absOffsets))
 
-        self.setProperty("Data", data)
+        self.setProperty("Data", id(self.data))
 
 
 # Register algorithm with Mantid
