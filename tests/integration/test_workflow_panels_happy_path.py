@@ -14,13 +14,12 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QTabWidget,
 )
-from snapred.__main__ import _prepend_datasearch_directories
 
 # I would prefer not to access `LocalDataService` within an integration test,
 #   however, for the moment, the reduction-data output relocation fixture is defined in the current file.
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
-from snapred.ui.main import SNAPRedGUI
+from snapred.ui.main import SNAPRedGUI, prependDataSearchDirectories
 from snapred.ui.view import InitializeStateCheckView
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 from snapred.ui.view.DiffCalRequestView import DiffCalRequestView
@@ -196,7 +195,7 @@ class TestGUIPanels:
 
         # Establish context for each test: these normally run as part of `src/snapred/__main__.py`.
         self.exitStack = ExitStack()
-        self.exitStack.enter_context(amend_config(data_dir=_prepend_datasearch_directories(), prepend_datadir=True))
+        self.exitStack.enter_context(amend_config(data_dir=prependDataSearchDirectories(), prepend_datadir=True))
         yield
 
         # teardown...
