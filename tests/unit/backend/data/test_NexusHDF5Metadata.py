@@ -4,9 +4,10 @@ from enum import Enum
 from pathlib import Path
 
 import h5py
+from util.script_as_test import not_a_test
+
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.meta.Config import Resource
-from util.script_as_test import not_a_test
 
 # IMPLEMENTATION NOTES:
 # * The following reference was very useful during the design of this implementation

@@ -4,10 +4,11 @@ from mantid.simpleapi import (
     ConvertToEventWorkspace,
     mtd,
 )
+from util.diffraction_calibration_synthetic_data import SyntheticData
+
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.recipe.algorithm.RemoveEventBackground import RemoveEventBackground as Algo
 from snapred.meta.redantic import list_to_raw
-from util.diffraction_calibration_synthetic_data import SyntheticData
 
 
 class TestRemoveEventBackground(unittest.TestCase):

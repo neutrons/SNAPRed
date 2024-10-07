@@ -10,6 +10,7 @@ from mantid.kernel import Direction
 from mantid.simpleapi import CloneWorkspace, CreateSingleValuedWorkspace
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from pydantic import BaseModel
+
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.recipe.GenericRecipe import GenericRecipe

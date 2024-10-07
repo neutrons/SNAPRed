@@ -9,6 +9,7 @@ from mantid.simpleapi import (
     CreateSingleValuedWorkspace,
     mtd,
 )
+
 from snapred.backend.dao.request import CalibrationWritePermissionsRequest
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
@@ -25,6 +26,8 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
+    from util.SculleryBoy import SculleryBoy
+
     from snapred.backend.dao.indexing.IndexEntry import IndexEntry
     from snapred.backend.dao.request import (
         FocusSpectraRequest,
@@ -34,7 +37,6 @@ with mock.patch.dict(
     )
     from snapred.backend.dao.state import FocusGroup
     from snapred.backend.service.NormalizationService import NormalizationService
-    from util.SculleryBoy import SculleryBoy
 
     thisService = "snapred.backend.service.NormalizationService."
 

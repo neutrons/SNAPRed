@@ -23,14 +23,15 @@ from mantid.simpleapi import (
     ScaleX,
     mtd,
 )
+from util.dao import DAOFactory
+from util.helpers import *
+
 from snapred.backend.dao import CrystallographicInfo
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.meta.Config import Resource
-from util.dao import DAOFactory
-from util.helpers import *
 
 Peak = namedtuple("Peak", "centre sigma height")
 

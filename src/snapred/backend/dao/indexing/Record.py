@@ -1,6 +1,7 @@
 from typing import Any
 
 from pydantic import ConfigDict, field_validator
+
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.Versioning import VersionedObject
 

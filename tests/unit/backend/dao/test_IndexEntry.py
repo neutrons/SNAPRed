@@ -1,4 +1,5 @@
 import pytest
+
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 
 testData = {

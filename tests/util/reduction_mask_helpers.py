@@ -8,15 +8,16 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
-from snapred.backend.dao.state.DetectorState import DetectorState
-from snapred.meta.mantid.WorkspaceNameGenerator import (
-    WorkspaceName,
-)
 from util.helpers import (
     createCompatibleMask,
     initializeRandomMask,
 )
 from util.instrument_helpers import addInstrumentLogs, getInstrumentLogDescriptors
+
+from snapred.backend.dao.state.DetectorState import DetectorState
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceName,
+)
 
 # Import required test fixtures at the end of either the main `conftest.py`,
 #   or any `conftest.py` at the test-module directory.

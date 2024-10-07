@@ -3,9 +3,10 @@ import unittest.mock as mock
 
 import pytest
 from mantid.testing import assert_almost_equal
+from util.diffraction_calibration_synthetic_data import SyntheticData
+
 from snapred.backend.dao import CrystallographicPeak, DetectorPeak, GroupPeakList
 from snapred.meta.redantic import list_to_raw
-from util.diffraction_calibration_synthetic_data import SyntheticData
 
 with mock.patch.dict(
     "sys.modules",
