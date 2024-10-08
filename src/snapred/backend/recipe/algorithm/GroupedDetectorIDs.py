@@ -16,8 +16,6 @@ class GroupedDetectorIDs(PythonAlgorithm):
     as a dictionary {groupID: list_of_detector_IDs}
     """
 
-    NOTHING = 0
-
     def category(self):
         return "SNAPRed Diffraction Calibration"
 
@@ -35,7 +33,7 @@ class GroupedDetectorIDs(PythonAlgorithm):
             doc="Workspace containing the grouping information",
         )
         self.declareProperty(
-            ULongLongPropertyWithValue("GroupWorkspaceIndices", id(self.NOTHING), direction=Direction.Output),
+            ULongLongPropertyWithValue("GroupWorkspaceIndices", None, direction=Direction.Output),
             doc="A pointer to the output dictionary (must be cast to object from memory address).",
         )
         self.setRethrows(True)
