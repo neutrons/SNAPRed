@@ -33,6 +33,7 @@ class NormalizationRecord(Record, extra="ignore"):
     workspaceNames: List[WorkspaceName] = []
     calibrationVersionUsed: int = VERSION_DEFAULT
     crystalDBounds: Limit[float]
+    normalizationCalibrantSamplePath: str
 
     # must also parse integers as background run numbers
     @field_validator("backgroundRunNumber", mode="before")
