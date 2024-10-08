@@ -33,7 +33,7 @@ class GroupedDetectorIDs(PythonAlgorithm):
             doc="Workspace containing the grouping information",
         )
         self.declareProperty(
-            ULongLongPropertyWithValue("GroupWorkspaceIndices", None, direction=Direction.Output),
+            ULongLongPropertyWithValue("GroupWorkspaceIndices", id(None), direction=Direction.Output),
             doc="A pointer to the output dictionary (must be cast to object from memory address).",
         )
         self.setRethrows(True)

@@ -27,7 +27,7 @@ class OffsetStatistics(PythonAlgorithm):
             doc="Workspace containing the TOF neutron data",
         )
         self.declareProperty(
-            ULongLongPropertyWithValue("Data", None, direction=Direction.Output),
+            ULongLongPropertyWithValue("Data", id(None), direction=Direction.Output),
             doc="A pointer to the output dictionary (must be cast to object from memory address).",
         )
         self.setRethrows(True)
