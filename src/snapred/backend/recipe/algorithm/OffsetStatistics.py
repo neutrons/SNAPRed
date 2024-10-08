@@ -16,6 +16,7 @@ class OffsetStatistics(PythonAlgorithm):
     """
 
     OFFSETWKSPPROP = "OffsetsWorkspace"
+    NOTHING = 0
 
     def category(self):
         return "SNAPRed Diffraction Calibration"
@@ -27,7 +28,7 @@ class OffsetStatistics(PythonAlgorithm):
             doc="Workspace containing the TOF neutron data",
         )
         self.declareProperty(
-            ULongLongPropertyWithValue("Data", 0, direction=Direction.Output),
+            ULongLongPropertyWithValue("Data", id(self.NOTHING), direction=Direction.Output),
             doc="A pointer to the output dictionary (must be cast to object from memory address).",
         )
         self.setRethrows(True)
