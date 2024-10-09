@@ -408,11 +408,16 @@ class ReductionService(Service):
                     request.runNumber, normVersion
                 ).useLiteMode(request.useLiteMode).add()
             elif calVersion and normVersion is None:
-                self.groceryClerk.name("diffractionWorkspace").diffcal_output(
-                    request.runNumber, calVersion
-                ).useLiteMode(request.useLiteMode).add()
+                groceryList = (
+                    self.groceryClerk.name("diffractionWorkspace")
+                    .diffcal_output(request.runNumber, calVersion)
+                    .useLiteMode(request.useLiteMode)
+                    .setUnit(wng.UNITS.DSP)
+                    .setGroupingScheme("column")
+                    .buildDict()
+                )
 
-                groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
+                groceries = self.groceryService.fetchGroceryDict(groceryList)
 
                 return SNAPResponse(
                     code=ResponseCode.CONTINUE_WARNING,
