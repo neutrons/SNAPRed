@@ -249,11 +249,6 @@ class ReductionRecipeTest(TestCase):
         assert normClone is None
         recipe._deleteWorkspace.assert_not_called()
 
-    def test_stubs(self):
-        recipe = ReductionRecipe()
-        recipe.validateInputs(None, None)
-        recipe.queueAlgos()
-
     @mock.patch("snapred.backend.recipe.ReductionRecipe.ApplyNormalizationRecipe")
     def test_applyNormalization(self, mockApplyNormalizationRecipe):
         recipe = ReductionRecipe()

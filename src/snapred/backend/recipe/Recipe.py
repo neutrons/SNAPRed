@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Generic, List, Tuple, TypeVar, get_args
+from typing import Dict, Generic, List, Set, Tuple, TypeVar, get_args
 
 from pydantic import BaseModel, ValidationError
 
@@ -48,6 +48,12 @@ class Recipe(ABC, Generic[Ingredients]):
 
     # methods which MAY be kept as is
 
+    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+        """
+        A list of workspace names corresponding to mandatory inputs
+        """
+        return {}
+
     def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
         """
         Validate the input properties before chopping or unbagging
@@ -64,7 +70,10 @@ class Recipe(ABC, Generic[Ingredients]):
         # ensure all of the given workspaces exist
         # NOTE may need to be tweaked to ignore output workspaces...
         logger.info(f"Validating the given workspaces: {groceries.values()}")
-        for ws in groceries.values():
+        for key in self.mandatoryInputWorkspaces():
+            ws = groceries.get(key)
+            if ws is None:
+                raise RuntimeError(f"The workspace property {key} was not found in the groceries")
             if not isinstance(ws, list):
                 ws = [ws]
             for wsStr in ws:
@@ -80,7 +89,7 @@ class Recipe(ABC, Generic[Ingredients]):
 
     def prep(self, ingredients: Ingredients, groceries: Dict[str, str]):
         """
-        Convinience method to prepare the recipe for execution.
+        Convenience method to prepare the recipe for execution.
         """
         self.validateInputs(ingredients, groceries)
         self.unbagGroceries(groceries)

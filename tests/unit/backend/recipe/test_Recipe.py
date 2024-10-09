@@ -1,11 +1,12 @@
 import unittest
-from typing import Dict
+from typing import Dict, Set
 
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from pydantic import BaseModel, ConfigDict
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from util.SculleryBoy import SculleryBoy
 
 
@@ -18,6 +19,9 @@ class DummyRecipe(Recipe[Ingredients]):
     """
     An instantiation with no abstract classes
     """
+
+    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+        return {"ws"}
 
     def chopIngredients(self, ingredients: Ingredients):
         pass
