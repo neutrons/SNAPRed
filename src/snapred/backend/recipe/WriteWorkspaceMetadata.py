@@ -1,4 +1,4 @@
-from typing import Dict, Set, Tuple
+from typing import Dict, Tuple
 
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.log.logger import snapredLogger
@@ -17,9 +17,6 @@ Pallet = Tuple[WorkspaceMetadata, Dict[str, str]]
 class WriteWorkspaceMetadata(Recipe[WorkspaceMetadata]):
     TAG_PREFIX = Config["metadata.tagPrefix"]
 
-    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
-        return {"workspace"}
-
     def chopIngredients(self, ingredients: WorkspaceMetadata):
         prevMetadata = ReadWorkspaceMetadata().cook({"workspace": self.workspace})
 
@@ -33,6 +30,11 @@ class WriteWorkspaceMetadata(Recipe[WorkspaceMetadata]):
         # create the needed lists of logs to add
         self.metadataNames = [f"{self.TAG_PREFIX}{prop}" for prop in self.properties]
         self.metadataValues = [metadata[prop] for prop in self.properties]
+
+    def validateInputs(self, ingredients: WorkspaceMetadata, groceries: Dict[str, WorkspaceName]):
+        WorkspaceMetadata.model_validate(ingredients)
+        if not self.mantidSnapper.mtd.doesExist(groceries["workspace"]):
+            raise RuntimeError(f"The indicated workspace {groceries['workspace']} not found in Mantid ADS.")
 
     def unbagGroceries(self, groceries: Dict[str, WorkspaceName]):
         self.workspace = groceries["workspace"]
