@@ -6,8 +6,9 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
+from snapred.backend.dao.ingredients import PreprocessReductionIngredients as Ingredients
 from snapred.backend.recipe.algorithm.Utensils import Utensils
-from snapred.backend.recipe.PreprocessReductionRecipe import Ingredients, PreprocessReductionRecipe
+from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.meta.Config import Resource
 from util.helpers import createCompatibleMask
 from util.SculleryBoy import SculleryBoy
@@ -18,9 +19,9 @@ class PreprocessReductionRecipeTest(unittest.TestCase):
     sculleryBoy = SculleryBoy()
 
     def _make_groceries(self):
-        sampleWS = mtd.unique_name(prefix="test_applynorm")
-        calibWS = mtd.unique_name(prefix="test_applynorm")
-        maskWS = mtd.unique_name(prefix="test_applynorm")
+        sampleWS = mtd.unique_name(prefix="test_preprocess_reduction")
+        calibWS = mtd.unique_name(prefix="test_preprocess_reduction")
+        maskWS = mtd.unique_name(prefix="test_preprocess_reduction")
 
         # Create sample workspace:
         #   * warning: `createCompatibleMask` does not work correctly with
@@ -97,10 +98,10 @@ class PreprocessReductionRecipeTest(unittest.TestCase):
         assert applyDiffCalTuple[2]["CalibrationWorkspace"] == groceries["diffcalWorkspace"]
 
     def test_cook(self):
-        untensils = Utensils()
+        utensils = Utensils()
         mockSnapper = unittest.mock.Mock()
-        untensils.mantidSnapper = mockSnapper
-        recipe = PreprocessReductionRecipe(utensils=untensils)
+        utensils.mantidSnapper = mockSnapper
+        recipe = PreprocessReductionRecipe(utensils=utensils)
         ingredients = Ingredients()
         groceries = self._make_groceries()
         del groceries["maskWorkspace"]

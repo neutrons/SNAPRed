@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import pydantic
 
@@ -30,6 +30,7 @@ from snapred.backend.service.CrystallographicInfoService import Crystallographic
 from snapred.backend.service.Service import Service
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -93,9 +94,11 @@ class SousChef(Service):
             groupingMap = self.dataFactoryService.getGroupingMap(ingredients.runNumber)
             return groupingMap.getMap(ingredients.useLiteMode)[ingredients.focusGroup.name]
 
-    def prepPixelGroup(self, ingredients: FarmFreshIngredients) -> PixelGroup:
+    def prepPixelGroup(
+        self, ingredients: FarmFreshIngredients, pixelMask: Optional[WorkspaceName] = None
+    ) -> PixelGroup:
         groupingSchema = ingredients.focusGroup.name
-        key = (ingredients.runNumber, ingredients.useLiteMode, groupingSchema)
+        key = (ingredients.runNumber, ingredients.useLiteMode, groupingSchema, pixelMask)
         if key not in self._pixelGroupCache:
             focusGroup = self.prepFocusGroup(ingredients)
             instrumentState = self.prepInstrumentState(ingredients)
@@ -106,7 +109,7 @@ class SousChef(Service):
             self.groceryClerk.name("groupingWorkspace").fromRun(ingredients.runNumber).grouping(
                 focusGroup.name
             ).useLiteMode(ingredients.useLiteMode).add()
-            groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
+            groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict(), maskWorkspace=pixelMask)
             data = PixelGroupingParametersCalculationRecipe().executeRecipe(pixelIngredients, groceries)
 
             self._pixelGroupCache[key] = PixelGroup(
@@ -117,12 +120,14 @@ class SousChef(Service):
             )
         return self._pixelGroupCache[key]
 
-    def prepManyPixelGroups(self, ingredients: FarmFreshIngredients) -> List[PixelGroup]:
+    def prepManyPixelGroups(
+        self, ingredients: FarmFreshIngredients, pixelMask: Optional[WorkspaceName] = None
+    ) -> List[PixelGroup]:
         pixelGroups = []
         ingredients_ = ingredients.model_copy()
         for focusGroup in ingredients.focusGroups:
             ingredients_.focusGroup = focusGroup
-            pixelGroups.append(self.prepPixelGroup(ingredients_))
+            pixelGroups.append(self.prepPixelGroup(ingredients_, pixelMask))
         return pixelGroups
 
     def _getInstrumentDefinitionFilename(self, useLiteMode: bool) -> str:
@@ -243,7 +248,9 @@ class SousChef(Service):
         # TODO: Should smoothing parameter be an ingredient?
         return ingredients, smoothingParameter, calibrantSamplePath
 
-    def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
+    def prepReductionIngredients(
+        self, ingredients: FarmFreshIngredients, combinedPixelMask: Optional[WorkspaceName] = None
+    ) -> ReductionIngredients:
         ingredients_ = ingredients.model_copy()
         # some of the reduction ingredients MUST match those used in the calibration/normalization processes
         ingredients_ = self._pullCalibrationRecordFFI(ingredients_)
@@ -254,7 +261,8 @@ class SousChef(Service):
             runNumber=ingredients_.runNumber,
             useLiteMode=ingredients_.useLiteMode,
             timestamp=ingredients_.timestamp,
-            pixelGroups=self.prepManyPixelGroups(ingredients_),
+            pixelGroups=self.prepManyPixelGroups(ingredients_, combinedPixelMask),
+            unmaskedPixelGroups=self.prepManyPixelGroups(ingredients_),
             smoothingParameter=smoothingParameter,
             calibrantSamplePath=ingredients_.calibrantSamplePath,
             peakIntensityThreshold=self._getThresholdFromCalibrantSample(ingredients_.calibrantSamplePath),

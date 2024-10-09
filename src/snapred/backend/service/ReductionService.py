@@ -1,7 +1,7 @@
 import json
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -134,9 +134,10 @@ class ReductionService(Service):
 
         groupingResults = self.fetchReductionGroupings(request)
         request.focusGroups = groupingResults["focusGroups"]
-        ingredients = self.prepReductionIngredients(request)
 
         groceries = self.fetchReductionGroceries(request)
+        ingredients = self.prepReductionIngredients(request, groceries.get("combinedPixelMask"))
+
         # attach the list of grouping workspaces to the grocery dictionary
         groceries["groupingWorkspaces"] = groupingResults["groupingWorkspaces"]
 
@@ -256,7 +257,9 @@ class ReductionService(Service):
         return combinedMask
 
     @FromString
-    def prepReductionIngredients(self, request: ReductionRequest) -> ReductionIngredients:
+    def prepReductionIngredients(
+        self, request: ReductionRequest, combinedPixelMask: Optional[WorkspaceName] = None
+    ) -> ReductionIngredients:
         """
         Prepare the needed ingredients for calculating reduction.
         Requires:
@@ -268,6 +271,7 @@ class ReductionService(Service):
             - a smoothing parameter
             - a calibrant sample path
             - a peak threshold
+            - an optional combined mask workspace
 
         :param request: a reduction request
         :type request: ReductionRequest
@@ -284,7 +288,7 @@ class ReductionService(Service):
             versions=request.versions,
         )
         # TODO: Skip calibrant sample if there is no calibrant
-        return self.sousChef.prepReductionIngredients(farmFresh)
+        return self.sousChef.prepReductionIngredients(farmFresh, combinedPixelMask)
 
     @FromString
     def fetchReductionGroceries(self, request: ReductionRequest) -> Dict[str, Any]:
@@ -303,13 +307,13 @@ class ReductionService(Service):
             - "inputworkspace"
             - "diffcalWorkspace"
             - "normalizationWorkspace"
-            - "maskWorkspace"
+            - "combinedPixelMask"
 
         :rtype: Dict[str, Any]
         """
         # Fetch pixel masks
         residentMasks = {}
-        combinedMask = None
+        combinedPixelMask = None
         if request.pixelMasks:
             for mask in request.pixelMasks:
                 match mask.tokens("workspaceType"):
@@ -332,7 +336,7 @@ class ReductionService(Service):
                 **residentMasks,
             )
             # combine all of the pixel masks, for application and final output
-            combinedMask = self.prepCombinedMask(
+            combinedPixelMask = self.prepCombinedMask(
                 request.runNumber, request.useLiteMode, request.timestamp, maskGroceries.values()
             )
 
@@ -363,7 +367,7 @@ class ReductionService(Service):
 
         return self.groceryService.fetchGroceryDict(
             groceryDict=self.groceryClerk.buildDict(),
-            **({"maskWorkspace": combinedMask} if combinedMask else {}),
+            **({"combinedPixelMask": combinedPixelMask} if combinedPixelMask else {}),
         )
 
     def saveReduction(self, request: ReductionExportRequest):
