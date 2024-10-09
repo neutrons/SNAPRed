@@ -239,7 +239,7 @@ class SousChef(Service):
         calibrantSamplePath = None
         if normalizationRecord is not None:
             smoothingParameter = normalizationRecord.smoothingParameter
-            calibrantSamplePath = normalizationRecord.calibrantSamplePath
+            calibrantSamplePath = normalizationRecord.normalizationCalibrantSamplePath
         # TODO: Should smoothing parameter be an ingredient?
         return ingredients, smoothingParameter, calibrantSamplePath
 

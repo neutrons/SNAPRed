@@ -34,8 +34,8 @@ class BackendRequestView(QWidget):
     def _sampleDropDown(self, label, items=[]):
         return SampleDropDown(label, items, self)
 
-    def _trueFalseDropDown(self, label, items=[]):
-        return TrueFalseDropDown(label, items, self)
+    def _trueFalseDropDown(self, label):
+        return TrueFalseDropDown(label, self)
 
     def _multiSelectDropDown(self, label, items=[]):
         return MultiSelectDropDown(label, items, self)

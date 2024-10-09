@@ -27,7 +27,7 @@ class ArtificialNormalizationView(BackendRequestView):
         super().__init__(parent=parent)
 
         # create the run number fields
-        self.fieldRunNumber = self._labeledField("Run Number", " ")
+        self.fieldRunNumber = self._labeledField("Run Number", QLineEdit())
 
         # create the graph elements
         self.figure = plt.figure(constrained_layout=True)
@@ -40,7 +40,7 @@ class ArtificialNormalizationView(BackendRequestView):
 
         # disable run number
         for x in [self.fieldRunNumber]:
-            x.setEnable(False)
+            x.setEnabled(False)
 
         # create the adjustment controls
         self.smoothingSlider = self._labeledField("Smoothing", SmoothingSlider())
@@ -81,7 +81,7 @@ class ArtificialNormalizationView(BackendRequestView):
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
 
-    @Slot(int, int, float)
+    @Slot(float, bool, bool)
     def _updateFields(self, smoothingParameter, lss, decreaseParameter):
         self.smoothingSlider.field.setValue(smoothingParameter)
         self.lssDropdown.setCurrentIndex(lss)
