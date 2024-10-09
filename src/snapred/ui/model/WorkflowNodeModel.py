@@ -18,6 +18,14 @@ class WorkflowNodeModel(object):
     iterate: bool = False
     continueAnywayHandler: Callable[[ContinueWarning.Model], None] = None
 
+    def hide(self):
+        """Hide the node's view."""
+        self.view.setVisible(False)
+
+    def show(self):
+        """Show the node's view."""
+        self.view.setVisible(True)
+
     def __iter__(self):
         return _WorkflowModelIterator(self)
 

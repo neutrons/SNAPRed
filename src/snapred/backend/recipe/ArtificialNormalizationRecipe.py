@@ -26,8 +26,8 @@ class ArtificialNormalizationRecipe(Recipe[Ingredients]):
         self.lss = self.ingredients.lss
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
-        self.inputWS = groceries["inputWorkspace"]
-        self.outputWS = groceries.get("outputWorkspace", groceries["inputWorkspace"])
+        self.inputWS = groceries["diffractionWorkspace"]
+        self.outputWS = groceries["artificalNormWorkspace"]
 
     def queueAlgos(self):
         """
