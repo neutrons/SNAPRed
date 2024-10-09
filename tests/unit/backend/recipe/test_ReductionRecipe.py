@@ -53,6 +53,11 @@ class ReductionRecipeTest(TestCase):
         with pytest.raises(KeyError):
             recipe.unbagGroceries(groceries)
 
+    def test_mandatory_inputs(self):
+        inputs = ReductionRecipe().mandatoryInputWorkspaces()
+        assert inputs == {"inputWorkspace", "groupingWorkspace"}
+        ReductionRecipe().logger().notice("logged")
+
     def test_cloneWorkspace(self):
         recipe = ReductionRecipe()
         recipe.mantidSnapper = mock.Mock()

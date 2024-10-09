@@ -34,11 +34,6 @@ class WriteWorkspaceMetadata(Recipe[WorkspaceMetadata]):
         self.metadataNames = [f"{self.TAG_PREFIX}{prop}" for prop in self.properties]
         self.metadataValues = [metadata[prop] for prop in self.properties]
 
-    def validateInputs(self, ingredients: WorkspaceMetadata, groceries: Dict[str, WorkspaceName]):
-        WorkspaceMetadata.model_validate(ingredients)
-        if not self.mantidSnapper.mtd.doesExist(groceries["workspace"]):
-            raise RuntimeError(f"The indicated workspace {groceries['workspace']} not found in Mantid ADS.")
-
     def unbagGroceries(self, groceries: Dict[str, WorkspaceName]):
         self.workspace = groceries["workspace"]
 

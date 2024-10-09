@@ -60,8 +60,13 @@ class RecipeTest(unittest.TestCase):
         with pytest.raises(ValueError, match="Ingredients must be a Pydantic BaseModel."):
             recipe.validateInputs(badIngredients, groceries)
         badGroceries = {"ws": mtd.unique_name(prefix="bad")}
-        with pytest.raises(RuntimeError):
+        with pytest.raises(
+            RuntimeError, match=f"The indicated workspace {badGroceries['ws']} not found in Mantid ADS."
+        ):
             recipe.validateInputs(ingredients, badGroceries)
+        worseGroceries = {}
+        with pytest.raises(RuntimeError, match="The workspace property ws was not found in the groceries"):
+            recipe.validateInputs(ingredients, worseGroceries)
 
     def test_cook(self):
         untensils = Utensils()
