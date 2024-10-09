@@ -144,6 +144,7 @@ class NormalizationService(Service):
         groceries["inputWorkspace"] = correctedVanadium
         groceries["outputWorkspace"] = focusedVanadium
         PreprocessReductionRecipe().cook(PreprocessReductionRecipe.Ingredients(), groceries)
+
         # focus and normalize by current
         groceries["inputWorkspace"] = focusedVanadium
         groceries["outputWorkspace"] = focusedVanadium
@@ -151,8 +152,6 @@ class NormalizationService(Service):
             ReductionGroupProcessingRecipe.Ingredients(pixelGroup=ingredients.pixelGroup), groceries
         )
 
-        # NOTE: This stuff is trying to mimic what is done in reduction so why not just use that?
-        #       Lets refactor this to use preprocess and reduction group processing recipes
         # 2. focus
         # 3. smooth
         SmoothDataExcludingPeaksRecipe().executeRecipe(
