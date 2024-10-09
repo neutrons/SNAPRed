@@ -21,8 +21,8 @@ from mantid.simpleapi import (
     LoadEmptyInstrument,
     LoadInstrument,
     SaveDiffCal,
+    SaveNexus,
     SaveNexusProcessed,
-    WrapLeftovers,
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
@@ -89,8 +89,7 @@ class TestGroceryService(unittest.TestCase):
             Filename=cls.sampleWSFilePath,
         )
 
-        # call wrap leftovers
-        WrapLeftovers(
+        SaveNexus(
             InputWorkspace=cls.sampleWS,
             Filename=cls.sampleTarWsFilePath,
         )
@@ -1096,7 +1095,7 @@ class TestGroceryService(unittest.TestCase):
                 .buildList()
             )
             diffCalOutputFilename = self.instance._createDiffcalOutputWorkspaceFilename(groceryList[0])
-            WrapLeftovers(
+            SaveNexus(
                 InputWorkspace=self.sampleWS,
                 Filename=self.sampleTarWsFilePath,
             )
