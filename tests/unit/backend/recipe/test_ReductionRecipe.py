@@ -56,7 +56,7 @@ class ReductionRecipeTest(TestCase):
     def test_mandatory_inputs(self):
         inputs = ReductionRecipe().mandatoryInputWorkspaces()
         assert inputs == {"inputWorkspace", "groupingWorkspaces"}
-        ReductionRecipe().logger().notice("logged")
+        ReductionRecipe().logger()
 
     def test_cloneWorkspace(self):
         recipe = ReductionRecipe()
