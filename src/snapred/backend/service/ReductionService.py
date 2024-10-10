@@ -307,6 +307,8 @@ class ReductionService(Service):
 
         :rtype: Dict[str, Any]
         """
+        # As an interim solution: set the request "versions" field to the latest calibration and normalization versions.
+        #   TODO: set these when the request is initially generated.
         calVersion = None
         normVersion = None
         if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
@@ -353,12 +355,6 @@ class ReductionService(Service):
         # gather the input workspace and the diffcal table
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
 
-        # As an interim solution: set the request "versions" field to the latest calibration and normalization versions.
-        #   TODO: set these when the request is initially generated.
-        calVersion = None
-        normVersion = None
-        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
-        
         if calVersion:
             self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
                 request.useLiteMode

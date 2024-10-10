@@ -218,12 +218,14 @@ class TestNormalizationService(unittest.TestCase):
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "RawVanadiumCorrectionRecipe")
-    @patch(thisService + "FocusSpectraRecipe")
+    @patch(thisService + "PreprocessReductionRecipe")
+    @patch(thisService + "ReductionGroupProcessingRecipe")
     @patch(thisService + "SmoothDataExcludingPeaksRecipe")
     def test_normalization(
         self,
         mockSmoothDataExcludingPeaks,
-        mockFocusSpectra,
+        mockReductionGroupProcessing,  # noqa: ARG002
+        mockPreprocessReduction,
         mockVanadiumCorrection,
         FarmFreshIngredients,
     ):
@@ -237,7 +239,7 @@ class TestNormalizationService(unittest.TestCase):
         }
         mockGroceryService.workspaceDoesExist.return_value = False
         mockVanadiumCorrection.executeRecipe.return_value = "corrected_vanadium_ws"
-        mockFocusSpectra.executeRecipe.return_value = "focussed_vanadium_ws"
+        mockPreprocessReduction.executeRecipe.return_value = "focussed_vanadium_ws"
         mockSmoothDataExcludingPeaks.executeRecipe.return_value = "smoothed_output_ws"
 
         self.instance = NormalizationService()
@@ -245,6 +247,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.sousChef = SculleryBoy()
         self.instance.groceryService = mockGroceryService
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
 
@@ -256,7 +259,7 @@ class TestNormalizationService(unittest.TestCase):
         self.assertIn("smoothedVanadium", result)  # noqa: PT009
         mockGroceryService.fetchGroceryDict.assert_called_once()
         mockVanadiumCorrection.assert_called_once()
-        mockFocusSpectra.assert_called_once()
+        mockPreprocessReduction.assert_called_once()
         mockSmoothDataExcludingPeaks.assert_called_once()
 
     def test_validateRequest(self):

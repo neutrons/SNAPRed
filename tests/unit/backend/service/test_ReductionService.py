@@ -492,6 +492,14 @@ class TestReductionServiceMasks:
             mock.patch.object(self.service, "prepCombinedMask") as mockPrepCombinedMask,
         ):
             # timestamp must be unique: see comment at `test_prepCombinedMask`.
+            fetchGroceryCallArgs = []
+
+            def trackFetchGroceryDict(*args, **kwargs):
+                fetchGroceryCallArgs.append((args, kwargs))
+                return mock.Mock()
+
+            mockFetchGroceryDict.side_effect = trackFetchGroceryDict
+
             timestamp = self.service.getUniqueTimestamp()
             request = ReductionRequest(
                 runNumber=self.runNumber1,
@@ -510,6 +518,9 @@ class TestReductionServiceMasks:
                 groceryClerk.name(mask).reduction_pixel_mask(runNumber, timestamp).useLiteMode(
                     request.useLiteMode
                 ).add()
+            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, 1).useLiteMode(
+                request.useLiteMode
+            ).add()
             loadableMaskGroceryItems = groceryClerk.buildDict()
             residentMaskGroceryKwargs = {self.maskWS5.toString(): self.maskWS5}
             combinedMaskName = wng.reductionPixelMask().runNumber(request.runNumber).build()
@@ -526,6 +537,11 @@ class TestReductionServiceMasks:
             residentOtherGroceryKwargs = {"maskWorkspace": combinedMaskName}
 
             self.service.fetchReductionGroceries(request)
+
+            realArgs = fetchGroceryCallArgs[0][0][0]
+            realKwargs = fetchGroceryCallArgs[0][1]
+            assert realArgs == loadableMaskGroceryItems
+            assert realKwargs == residentMaskGroceryKwargs
             mockFetchGroceryDict.assert_any_call(loadableMaskGroceryItems, **residentMaskGroceryKwargs)
             mockFetchGroceryDict.assert_any_call(groceryDict=loadableOtherGroceryItems, **residentOtherGroceryKwargs)
 

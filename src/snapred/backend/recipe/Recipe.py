@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Generic, List, Set, Tuple, TypeVar, get_args, Any
+from typing import Any, Dict, Generic, List, Set, Tuple, TypeVar, get_args
 
 from pydantic import BaseModel, ValidationError
 
@@ -58,6 +58,7 @@ class Recipe(ABC, Generic[Ingredients]):
         A list of workspace names corresponding to mandatory inputs
         """
         return {}
+
     @classmethod
     def Ingredients(cls, **kwargs):
         return cls._Ingredients(**kwargs)
@@ -68,20 +69,20 @@ class Recipe(ABC, Generic[Ingredients]):
         """
         if ws is None:
             raise RuntimeError(f"The workspace property {key} was not found in the groceries")
-        
+
         if not isinstance(key, str):
             raise ValueError("The key for the grocery must be a string.")
 
         if not isinstance(ws, list):
             ws = [ws]
-        
+
         for wsStr in ws:
             if isinstance(wsStr, str) and not self.mantidSnapper.mtd.doesExist(wsStr):
                 raise RuntimeError(f"The indicated workspace {wsStr} not found in Mantid ADS.")
 
-    def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
+    def _validateIngredients(self, ingredients: Ingredients):
         """
-        Validate the input properties before chopping or unbagging
+        Validate the ingredients before chopping
         """
         if ingredients is not None and not isinstance(ingredients, BaseModel):
             raise ValueError("Ingredients must be a Pydantic BaseModel.")
@@ -92,14 +93,18 @@ class Recipe(ABC, Generic[Ingredients]):
                 self._Ingredients.model_validate(ingredients.dict())
         except ValidationError as e:
             raise e
+
+    def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
+        """
+        Validate the input properties before chopping or unbagging
+        """
+        self._validateIngredients(ingredients)
         # ensure all of the given workspaces exist
         # NOTE may need to be tweaked to ignore output workspaces...
         logger.info(f"Validating the given workspaces: {groceries.values()}")
         for key in self.mandatoryInputWorkspaces():
             ws = groceries.get(key)
             self._validateGrocery(key, ws)
-                
-            
 
     def stirInputs(self):
         """
