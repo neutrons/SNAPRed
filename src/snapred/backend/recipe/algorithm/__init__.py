@@ -18,7 +18,15 @@ for x in all_module_names:
         # but it also is dead code and never used
         continue
 
-    module = importlib.import_module(f"{__name__}.{x}", x)
+    while True:
+        try:
+            module = importlib.import_module(f"{__name__}.{x}", x)
+            break
+        except ImportError as e:
+            print(f"{x} : {e.name}")
+            if e.name in all_module_names:
+                import e.name
+            break
 
     # for the leftovers algos, this gets just the class name
     x = x.split(".")[-1]
