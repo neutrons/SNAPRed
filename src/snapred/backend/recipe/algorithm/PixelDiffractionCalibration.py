@@ -39,7 +39,11 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # declare properties
         self.declareProperty(
             MatrixWorkspaceProperty(
-                "InputWorkspace", "", Direction.Input, PropertyMode.Mandatory, validator=WorkspaceUnitValidator("TOF")
+                "InputWorkspace",
+                "",
+                Direction.Input,
+                PropertyMode.Mandatory,
+                validator=WorkspaceUnitValidator("TOF"),
             ),
             doc="Workspace containing the TOF neutron data",
         )
@@ -156,11 +160,15 @@ class PixelDiffractionCalibration(PythonAlgorithm):
                 GroupingWorkspace=self.getPropertyValue("GroupingWorkspace"),
                 DetectorPeaks=self.detectorPeaksJson,
             )
-            self.mantidSnapper.ConvertToEventWorkspace(
-                "Converting TOF data to EventWorkspace...",
-                InputWorkspace=self.wsBG,
-                OutputWorkspace=self.wsBG,
-            )
+
+            # Only convert to event workspace if the original input workspace is an event workspace
+            if self.mantidSnapper.mtd[self.wsTOF].isEventWorkspace():
+                self.mantidSnapper.ConvertToEventWorkspace(
+                    "Converting TOF data to EventWorkspace...",
+                    InputWorkspace=self.wsBG,
+                    OutputWorkspace=self.wsBG,
+                )
+
             self.mantidSnapper.Minus(
                 "Subtracting background from input data",
                 LHSWorkspace=self.wsTOF,
@@ -185,24 +193,24 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             )
         else:
             pass
-        # get handle to group focusing workspace and retrieve workspace indices for all detectors in each group
-        focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
-        focusWS = self.mantidSnapper.mtd[focusWSname]
-        self.groupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
-        self.groupWorkspaceIndices: Dict[int, List[int]] = {}
-        for groupID in self.groupIDs:
-            groupDetectorIDs = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
-            self.groupWorkspaceIndices[groupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
+            # get handle to group focusing workspace and retrieve workspace indices for all detectors in each group
+            focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
+            focusWS = self.mantidSnapper.mtd[focusWSname]
+            self.groupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
+            self.groupWorkspaceIndices: Dict[int, List[int]] = {}
+            for groupID in self.groupIDs:
+                groupDetectorIDs = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
+                self.groupWorkspaceIndices[groupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
 
-        # create the initial table of DIFC values
-        self.mantidSnapper.CalculateDiffCalTable(
-            "Calculate initial table of DIFC values",
-            InputWorkspace=self.wsTOF,
-            CalibrationTable=self.DIFCpixel,
-            OffsetMode="Signed",
-            BinWidth=self.dBin,
-        )
-        self.mantidSnapper.executeQueue()
+            # create the initial table of DIFC values
+            self.mantidSnapper.CalculateDiffCalTable(
+                "Calculate initial table of DIFC values",
+                InputWorkspace=self.wsTOF,
+                CalibrationTable=self.DIFCpixel,
+                OffsetMode="Signed",
+                BinWidth=self.dBin,
+            )
+            self.mantidSnapper.executeQueue()
 
     def convertUnitsAndRebin(self, inputWS: str, outputWS: str) -> None:
         """
