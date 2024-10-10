@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Set, Tuple
 
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.log.logger import snapredLogger
@@ -15,6 +15,9 @@ Pallet = Tuple[WorkspaceMetadata, Dict[str, WorkspaceName]]
 @Singleton
 class ReadWorkspaceMetadata(Recipe[WorkspaceMetadata]):
     TAG_PREFIX = Config["metadata.tagPrefix"]
+
+    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+        return {"workspace"}
 
     def chopIngredients(self, ingredients):  # noqa ARG002
         """

@@ -1,9 +1,10 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 from snapred.backend.dao.ingredients import PreprocessReductionIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -17,6 +18,9 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
         Chops off the needed elements of the ingredients.
         """
         pass
+
+    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+        return {"inputWorkspace"}
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
         """

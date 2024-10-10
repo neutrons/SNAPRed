@@ -17,6 +17,9 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
     NUM_BINS = Config["constants.ResampleX.NumberBins"]
     LOG_BINNING = True
 
+    def mandatoryInputWorkspaces(self):
+        return {"inputWorkspace"}
+
     def chopIngredients(self, ingredients: Ingredients):
         """
         Chops off the needed elements of the ingredients.
@@ -68,14 +71,12 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
                 RHSWorkspace=self.normalizationWs,
                 OutputWorkspace=self.sampleWs,
             )
-        # NOTE: ResampleX is considered a workaround until Mantid can handle ragged workspaces.
-        self.mantidSnapper.ResampleX(
+        self.mantidSnapper.RebinRagged(
             "Resampling X-axis...",
             InputWorkspace=self.sampleWs,
             XMin=self.dMin,
             XMax=self.dMax,
-            NumberBins=self.NUM_BINS,
-            LogBinning=self.LOG_BINNING,
+            Delta=self.pixelGroup.dBin(),
             OutputWorkspace=self.sampleWs,
             PreserveEvents=False,
         )

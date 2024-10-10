@@ -55,7 +55,6 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     "LoadNexus",
                     "LoadEventNexus",
                     "LoadNexusProcessed",
-                    "ReheatLeftovers",
                 ]
             ),
             direction=Direction.InOut,

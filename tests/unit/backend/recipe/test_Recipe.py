@@ -1,11 +1,12 @@
 import unittest
-from typing import Dict
+from typing import Dict, Set
 
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from pydantic import BaseModel, ConfigDict
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from util.SculleryBoy import SculleryBoy
 
 
@@ -18,6 +19,9 @@ class DummyRecipe(Recipe[Ingredients]):
     """
     An instantiation with no abstract classes
     """
+
+    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+        return {"ws"}
 
     def chopIngredients(self, ingredients: Ingredients):
         pass
@@ -56,8 +60,13 @@ class RecipeTest(unittest.TestCase):
         with pytest.raises(ValueError, match="Ingredients must be a Pydantic BaseModel."):
             recipe.validateInputs(badIngredients, groceries)
         badGroceries = {"ws": mtd.unique_name(prefix="bad")}
-        with pytest.raises(RuntimeError):
+        with pytest.raises(
+            RuntimeError, match=f"The indicated workspace {badGroceries['ws']} not found in Mantid ADS."
+        ):
             recipe.validateInputs(ingredients, badGroceries)
+        worseGroceries = {}
+        with pytest.raises(RuntimeError, match="The workspace property ws was not found in the groceries"):
+            recipe.validateInputs(ingredients, worseGroceries)
 
     def test_cook(self):
         untensils = Utensils()

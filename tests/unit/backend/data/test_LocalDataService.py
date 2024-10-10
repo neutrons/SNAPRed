@@ -2339,7 +2339,7 @@ def test_writeRaggedWorkspace(cleanup_workspace_at_exit):
     with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
         workspaceName = "test_ragged"
         basePath = Path(tmpPath)
-        filename = Path(workspaceName + ".tar")
+        filename = Path(workspaceName + ".nxs")
         # Create a test ragged workspace to write.
         CreateSampleWorkspace(
             OutputWorkspace=workspaceName,
@@ -2357,9 +2357,9 @@ def test_writeRaggedWorkspace(cleanup_workspace_at_exit):
         cleanup_workspace_at_exit(workspaceName)
         cleanup_workspace_at_exit("test_out")
         assert mtd.doesExist(workspaceName)
-        localDataService.writeRaggedWorkspace(basePath, filename, workspaceName)
+        localDataService.writeWorkspace(basePath, filename, workspaceName)
         assert (basePath / filename).exists()
-        localDataService.readRaggedWorkspace(basePath, filename, "test_out")
+        localDataService.readWorkspace(basePath, filename, "test_out")
         assert mtd.doesExist("test_out")
 
 
