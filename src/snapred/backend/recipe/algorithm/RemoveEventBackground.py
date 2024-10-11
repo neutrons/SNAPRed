@@ -9,7 +9,8 @@ from mantid.api import (
     PythonAlgorithm,
     WorkspaceUnitValidator,
 )
-from mantid.kernel import Direction, ULongLongPropertyWithValue
+from mantid.kernel import Direction
+from mantid.kernel import ULongLongPropertyWithValue as PointerProperty
 from mantid.simpleapi import (
     ConvertToMatrixWorkspace,
     ConvertUnits,
@@ -50,7 +51,7 @@ class RemoveEventBackground(PythonAlgorithm):
             doc="Histogram workspace representing the extracted background",
         )
         self.declareProperty(
-            ULongLongPropertyWithValue("DetectorPeaks", id(None)),
+            PointerProperty("DetectorPeaks", id(None)),
             "The memory adress pointing to the list of grouped peaks.",
         )
         self.declareProperty(
@@ -77,7 +78,8 @@ class RemoveEventBackground(PythonAlgorithm):
         # get handle to group focusing workspace and retrieve all detector IDs in each group
         focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
         # get a list of the detector IDs in each group
-        self.groupDetectorIDs = access_pointer(GroupedDetectorIDs(focusWSname))
+        result_ptr: PointerProperty = GroupedDetectorIDs(focusWSname)
+        self.groupDetectorIDs = access_pointer(result_ptr)
         self.groupIDs: List[int] = list(self.groupDetectorIDs.keys())
         peakgroupIDs = [peakList.groupID for peakList in predictedPeaksList]
         if self.groupIDs != peakgroupIDs:
@@ -96,7 +98,8 @@ class RemoveEventBackground(PythonAlgorithm):
         self.log().notice("Extracting background")
 
         # get the peak predictions from user input
-        predictedPeaksList = access_pointer(self.getProperty("DetectorPeaks").value)
+        peak_ptr: PointerProperty = self.getProperty("DetectorPeaks").value
+        predictedPeaksList = access_pointer(peak_ptr)
         self.chopIngredients(predictedPeaksList)
         self.unbagGroceries()
 

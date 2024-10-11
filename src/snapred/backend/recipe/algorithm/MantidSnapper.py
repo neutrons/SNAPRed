@@ -144,7 +144,9 @@ class MantidSnapper:
                     val = val.get()
                 if val is None:
                     continue
-                # turn pydantic objects into pointers
+                # for pointer property, set via its pointer
+                # allows for "pass-by-reference"-like behavior
+                # this is safe even if the memory address is directly passed
                 if isinstance(algorithm.getProperty(prop), PointerProperty):
                     val = create_pointer(val)
                 algorithm.setProperty(prop, val)

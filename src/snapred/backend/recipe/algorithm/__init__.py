@@ -12,7 +12,7 @@ def loadModule(x):
     from mantid.api import AlgorithmFactory
     from mantid.simpleapi import _create_algorithm_function
 
-    for i in range(30):
+    for i in range(len(all_module_names)):
         try:
             module = importlib.import_module(f"{__name__}.{x}", x)
             break
