@@ -58,7 +58,7 @@ markers = [
   "datarepo: mark a test as using snapred-data repo"
 ]
 # The following will be overridden by the commandline option "-m integration"
-addopts = "-m 'not integration or datarepo'"
+addopts = "-m 'not (integration or datarepo)'"
 
 
 [tool.ruff]
