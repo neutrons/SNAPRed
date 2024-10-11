@@ -16,9 +16,9 @@ from snapred.backend.dao.request import (
     ReductionRequest,
 )
 from snapred.backend.dao.request.ReductionRequest import Versions
+from snapred.backend.dao.response.ArtificialNormResponse import ArtificialNormResponse
 from snapred.backend.dao.response.ReductionResponse import ReductionResponse
 from snapred.backend.dao.SNAPRequest import SNAPRequest
-from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
@@ -26,7 +26,9 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.backend.recipe.ArtificialNormalizationRecipe import ArtificialNormalizationRecipe
+from snapred.backend.recipe.GenericRecipe import (
+    ArtificialNormalizationRecipe,
+)
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
@@ -170,6 +172,9 @@ class ReductionService(Service):
         ingredients = self.prepReductionIngredients(request)
 
         groceries = self.fetchReductionGroceries(request)
+        if isinstance(groceries, ArtificialNormResponse):
+            return groceries
+
         # attach the list of grouping workspaces to the grocery dictionary
         groceries["groupingWorkspaces"] = groupingResults["groupingWorkspaces"]
 
@@ -412,18 +417,14 @@ class ReductionService(Service):
                     self.groceryClerk.name("diffractionWorkspace")
                     .diffcal_output(request.runNumber, calVersion)
                     .useLiteMode(request.useLiteMode)
-                    .setUnit(wng.UNITS.DSP)
-                    .setGroupingScheme("column")
+                    .unit(wng.Units.DSP)
+                    .group("column")
                     .buildDict()
                 )
 
                 groceries = self.groceryService.fetchGroceryDict(groceryList)
-
-                return SNAPResponse(
-                    code=ResponseCode.CONTINUE_WARNING,
-                    message="missing normalization",
-                    data=groceries,
-                )
+                diffractionWorkspace = groceries.get("diffractionWorkspace")
+                return ArtificialNormResponse(diffractionWorkspace=diffractionWorkspace)
 
             request.versions = Versions(
                 calVersion,
@@ -501,12 +502,8 @@ class ReductionService(Service):
             decreaseParameter=request.decreaseParameter,
             lss=request.lss,
         )
-        self.groceryClerk.name("artificalNormWorkspace").ingredients(ingredients).useLiteMode(request.useLiteMode).add()
-        groceryList = self.groceryClerk.buildDict()
-        groceries = self.groceryService.fetchGroceryDict(
-            groceryList,
-            inputWorkspace=request.diffractionWorkspace,
+        artificialNormWorkspace = ArtificialNormalizationRecipe().executeRecipe(
+            InputWorkspace=request.diffractionWorkspace,
+            Ingredients=ingredients,
         )
-
-        data = ArtificialNormalizationRecipe().cook(ingredients, groceries)
-        return data
+        return artificialNormWorkspace

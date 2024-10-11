@@ -36,7 +36,7 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
                 "OutputWorkspace",
                 "",
                 Direction.Output,
-                PropertyMode.Mandatory,
+                PropertyMode.Optional,
                 validator=WorkspaceUnitValidator("dSpacing"),
             ),
             doc="Workspace that contains artificial normalization.",
@@ -58,7 +58,9 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
-        self.outputWorkspaceName = self.getPropertyValue("OutputWorkspace")
+        self.outputWorkspaceName = (
+            self.getPropertyValue("OutputWorkspace") or self.inputWorkspaceName + "_artificial_norm"
+        )
 
     def peakClip(self, data, winSize: int, decrese: bool, LLS: bool, smoothing: float):
         # Clipping peaks from the data with optional smoothing and transformations
