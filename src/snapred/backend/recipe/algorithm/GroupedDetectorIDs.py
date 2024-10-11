@@ -9,6 +9,8 @@ from mantid.api import (
 )
 from mantid.kernel import Direction, ULongLongPropertyWithValue
 
+from snapred.meta.pointer import create_pointer
+
 
 class GroupedDetectorIDs(PythonAlgorithm):
     """
@@ -45,7 +47,7 @@ class GroupedDetectorIDs(PythonAlgorithm):
         groupWorkspaceIndices: Dict[int, List[int]] = {}
         for groupID in [int(x) for x in focusWS.getGroupIDs()]:
             groupWorkspaceIndices[groupID] = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
-        self.setProperty("GroupWorkspaceIndices", id(groupWorkspaceIndices))
+        self.setProperty("GroupWorkspaceIndices", create_pointer(groupWorkspaceIndices))
 
 
 # Register algorithm with Mantid

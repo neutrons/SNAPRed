@@ -9,13 +9,19 @@ from mantid.api import (
     PythonAlgorithm,
     WorkspaceUnitValidator,
 )
-from mantid.kernel import Direction
-from pydantic import TypeAdapter
+from mantid.kernel import Direction, ULongLongPropertyWithValue
+from mantid.simpleapi import (
+    ConvertToMatrixWorkspace,
+    ConvertUnits,
+    GroupedDetectorIDs,
+    MakeDirtyDish,
+    mtd,
+)
 from scipy.interpolate import make_smoothing_spline
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
+from snapred.meta.pointer import access_pointer
 
 
 class RemoveEventBackground(PythonAlgorithm):
@@ -44,9 +50,8 @@ class RemoveEventBackground(PythonAlgorithm):
             doc="Histogram workspace representing the extracted background",
         )
         self.declareProperty(
-            "DetectorPeaks",
-            defaultValue="",
-            direction=Direction.Input,
+            ULongLongPropertyWithValue("DetectorPeaks", id(None)),
+            "The memory adress pointing to the list of grouped peaks.",
         )
         self.declareProperty(
             "SmoothingParameter",
@@ -54,7 +59,12 @@ class RemoveEventBackground(PythonAlgorithm):
             direction=Direction.Input,
         )
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, __name__)
+
+    def validateInputs(self) -> Dict[str, str]:
+        err = {}
+        if self.getProperty("DetectorPeaks").isDefault:
+            err["DetectorPeaks"] = "You must pass a pointer to a DetectorPeaks object"
+        return err
 
     def chopIngredients(self, predictedPeaksList: List[GroupPeakList]):
         # for each group, create a list of regions to mask (i.e., the peak regions)
@@ -64,18 +74,14 @@ class RemoveEventBackground(PythonAlgorithm):
             self.maskRegions[peakList.groupID] = []
             for peak in peakList.peaks:
                 self.maskRegions[peakList.groupID].append((peak.minimum, peak.maximum))
-
         # get handle to group focusing workspace and retrieve all detector IDs in each group
         focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
-        focusWS = self.mantidSnapper.mtd[focusWSname]
-        self.groupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
+        # get a list of the detector IDs in each group
+        self.groupDetectorIDs = access_pointer(GroupedDetectorIDs(focusWSname))
+        self.groupIDs: List[int] = list(self.groupDetectorIDs.keys())
         peakgroupIDs = [peakList.groupID for peakList in predictedPeaksList]
         if self.groupIDs != peakgroupIDs:
             raise RuntimeError(f"Groups IDs in workspace and peak list do not match: {self.groupIDs} vs {peakgroupIDs}")
-        # get a list of the detector IDs in each group
-        self.groupDetectorIDs: Dict[int, List[int]] = {}
-        for groupID in self.groupIDs:
-            self.groupDetectorIDs[groupID] = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
@@ -90,38 +96,35 @@ class RemoveEventBackground(PythonAlgorithm):
         self.log().notice("Extracting background")
 
         # get the peak predictions from user input
-        detectorPeaksJson = self.getPropertyValue("DetectorPeaks")
-        typeAdapter = TypeAdapter(List[GroupPeakList])
-        predictedPeaksList = typeAdapter.validate_json(detectorPeaksJson)
+        predictedPeaksList = access_pointer(self.getProperty("DetectorPeaks").value)
         self.chopIngredients(predictedPeaksList)
         self.unbagGroceries()
 
-        self.mantidSnapper.MakeDirtyDish(
-            "Creating copy of initial TOF data",
+        # Creating copy of initial TOF data
+        MakeDirtyDish(
             InputWorkspace=self.inputWorkspaceName,
             OutputWorkspace=self.inputWorkspaceName + "_extractBegin",
         )
-        self.mantidSnapper.ConvertUnits(
-            "Convert to d-spacing to match peak windows",
+        # Convert to d-spacing to match peak windows
+        ConvertUnits(
             InputWorkspace=self.inputWorkspaceName,
             OutputWorkspace=self.outputBackgroundWorkspaceName,
             Target="dSpacing",
         )
-        self.mantidSnapper.MakeDirtyDish(
-            "Creating copy of initial d-spacing data",
+        # Creating copy of initial d-spacing data
+        MakeDirtyDish(
             InputWorkspace=self.outputBackgroundWorkspaceName,
             OutputWorkspace=self.outputBackgroundWorkspaceName + "_extractDSP",
         )
 
-        self.mantidSnapper.ConvertToMatrixWorkspace(
-            "Converting EventWorkspace to MatrixWorkspace...",
+        # Converting EventWorkspace to MatrixWorkspace...
+        ConvertToMatrixWorkspace(
             InputWorkspace=self.outputBackgroundWorkspaceName,
             OutputWorkspace=self.outputBackgroundWorkspaceName,
         )
-        self.mantidSnapper.executeQueue()
 
         # Replace peak regions with interpolated values from surrounding data
-        ws = self.mantidSnapper.mtd[self.outputBackgroundWorkspaceName]
+        ws = mtd[self.outputBackgroundWorkspaceName]
         for groupID in self.groupIDs:
             for detid in self.groupDetectorIDs[groupID]:
                 y_data = ws.readY(detid).copy()
@@ -142,13 +145,11 @@ class RemoveEventBackground(PythonAlgorithm):
         self.applySmoothing(ws)
 
         # Convert back to TOF
-        self.mantidSnapper.ConvertUnits(
-            "Convert units back to TOF",
+        ConvertUnits(
             InputWorkspace=self.outputBackgroundWorkspaceName,
             OutputWorkspace=self.outputBackgroundWorkspaceName,
             Target="TOF",
         )
-        self.mantidSnapper.executeQueue()
 
         self.setPropertyValue("OutputWorkspace", self.outputBackgroundWorkspaceName)
 

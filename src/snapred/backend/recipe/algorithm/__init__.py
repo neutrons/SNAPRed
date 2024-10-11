@@ -3,7 +3,7 @@ from glob import glob
 
 moduleDir = os.path.dirname(os.path.abspath(__file__))
 modules = glob(f"{moduleDir}/*.py")
-all_module_names = [module[:-3].split("/")[-1] for module in modules if not module.endswith("__init__.py")]
+all_module_names = {module[:-3].split("/")[-1] for module in modules if not module.endswith("__init__.py")}
 
 
 def loadModule(x):
@@ -12,13 +12,16 @@ def loadModule(x):
     from mantid.api import AlgorithmFactory
     from mantid.simpleapi import _create_algorithm_function
 
-    while True:
+    for i in range(30):
         try:
             module = importlib.import_module(f"{__name__}.{x}", x)
             break
         except ImportError as e:
-            if e.name in all_module_names:
-                loadModule(e.name)
+            y = str(e).split("'")[1]
+            if y in all_module_names:
+                loadModule(y)
+            else:
+                importlib.import_module(e.name)
             continue
 
     # get just the class name

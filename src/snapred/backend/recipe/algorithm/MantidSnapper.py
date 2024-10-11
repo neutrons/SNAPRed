@@ -2,6 +2,7 @@ from collections import namedtuple
 
 from mantid.api import AlgorithmManager, Progress, mtd
 from mantid.kernel import Direction
+from mantid.kernel import ULongLongPropertyWithValue as PointerProperty
 
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
@@ -9,6 +10,7 @@ from snapred.backend.log.logger import snapredLogger
 # must import to register with AlgorithmManager
 from snapred.meta.Callback import callback
 from snapred.meta.Config import Resource
+from snapred.meta.pointer import access_pointer, create_pointer
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -37,36 +39,30 @@ class MantidSnapper:
 
     def __init__(self, parentAlgorithm, name):
         """
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWMWNXWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWNNOdOkllxkkKNWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMMW0ol:;:::::;:lodO0KWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMN0o;;;;;::;;:::::::lxO0XNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMWOc:;;;;::;;:;:::::::;:clldO0XNNNNWWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-        MMMMMMMMMMMMMMMMMMMMMMMWNXKOo;;,,,,,,,;;;;;;::::::::::::clcclddxk0XWMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWNW
-        MMMMMMMMMMMMMMMMMMMNKOxdlcc:::cccccccccc::::;;:;;:::;;;;,,,,;;;,,;cdk0KNWMMMMMMMMMMMMMMMMMMWNX0kxlo0
-        MMMMMMMMMMMMMMMNKOxl:;:cllooddxxxkkkOkkxxxddooollccc::;,,,,,,,,,,;;;;::ldOXWMMMMMMMMMMMMWXOxol::;,oX
-        MMMMMMMMMMMMN0dlccccclodxxxxkkxkxxkkkxxkkkkkkkkkkxxxdoolc:;,,,,,,,,,,;;;;:dXWMMMMMMMMWXOdlcccc:;,:OW
-        MMMMMMMMMWKxl;,;:clodxxkkkkxkkkkkkkkkkkkkkkkxxkkkkkkkkxxddollc:;;,,,,;;;:oONMMMMMMMN0dcccllcccc:,dNM
-        MMMMMMWXko:;,,;:cloodxxkkkkOOOOOOOOOOOOkkkkkkOOOOOOOkkkkkkkxxxdolcc:;:cdOKNWWWWWNKOo:;:cccllccc;,xWM
-        MMMWNOo::c:,..',cooooddkOOOOOOOOOOOOOOOOkOOOOOOOOOOOOOOOOOOOOkkkxxxdolclloddddddolcc::::clllccc;;kWM
-        MNKxc;;:odo;'..;dxxxkOO0K000000000000000OOOOOOOO00000OO000000OOOOOkkkxxxxdddddxxxxdolc:cccccc::,,xWM
-        0o:cloodxkkxoodk0OkO0KKKK000KKKKKK00OOOkkkkxxxkkxxkkk0KKKKKKKKKKKKK000000000OOOOOOkxdllcclllc:;..xWM
-        0doodxkkkkkkOO00kkkO0K00K00OOOkkxdoooooooolllllodxOO0KXXXXXXXXXXXXXXKXKKKKKKKKKKK000Odlcccccc:,..kMM
-        0xxdoodk0OkxxkkkxkkO0KXK00OdolccccllloooolllodkO0KXXXXXXXXXXXXXXXK0OkkxxxxxxxxxxkkOOkdlcccc:c:;';0MM
-        WXKOkdddxkxxxxxkOOOO0000KKKOdllllloooooooodk0KXXNNNXXXXXKKXXKK00kxdodxO0KKKXXXK0Oxdooolccccc::;';0MM
-        MMMWWXK0Okxxxxxkkkkkkk0XXXXKklccloodddddkOKKXXXXXXKXXKK00OOOkxdoollodxOXWMMMMMMMMWXOxoolcccc::;';OMM
-        MMMMMMMMWNNXKOkxddoddk0000K0OdoooooddxkO00KK0000000OOkkddooolllllooodxxkXWMMMMMMMMMMWKkdlcc:::;,'dWM
-        MMMMMMMMMMMMMMWNXKK00OOkkxxxxxddddddddxxxxxxxxddxxxxxxdollllllllloddxxddkXWMMMMMMMMMMMWN0xl:;;;,':0M
-        MMMMMMMMMMMMMMMMMMMMMMWWWNXXKxlllldkOOO00000KKKXXNNNNWNKkdooooddooddxxdddkXWMMMMMMMMMMMMMMN0xo:,''oN
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMWXxlllodkXWMMMMMMMMMMMMMMMMMWNKO0K000OOOOOOO0KXNMMMMMMMMMMMMMMMMMWX0OxkX
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMXkollloONMMMMMMMMMMMMMMMMMMMMMMMMMMWMMMWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNkolloOWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMN0dlo0WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWXOOXMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-        MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+                                        :;:::::;:
+                                      ;;;;;::;;:::::::
+                                     :;;;;::;;:;:::::::;:
+                                   ;;,,,,,,,;;;;;;::::::::::::
+                               cc:::cccccccccc::::;;:;;:::;;;;,,,,;;;,,;                             kxl
+                          l:;:cllooddxxxkkkOkkxxxddooollccc::;,,,,,,,,,,;;;;::                    xol::;,
+                     dlccccclodxxxxkkxkxxkkkxxkkkkkkkkkkxxxdoolc:;,,,,,,,,,,;;;;:              dlcccc:;,:
+                   l;,;:clodxxkkkkxkkkkkkkkkkkkkkkkxxkkkkkkkkxxddollc:;;,,,,;;;:            dcccllcccc:,
+                o:;,,;:cloodxxkkkkOOOOOOOOOOOOkkkkkkOOOOOOOkkkkkkkxxxdolcc:;:             o:;:cccllccc;,
+             o::c:,..',cooooddkOOOOOOOOOOOOOOOOkOOOOOOOOOOOOOOOOOOOOkkkxxxdolclloddddddolcc::::clllccc;;
+           c;;:odo;'..;dxxxkOO0K000000000000000OOOOOOOO00000OO000000OOOOOkkkxxxxdddddxxxxdolc:cccccc::,,
+         :cloodxkkxoodk0OkO0KKKK000KKKKKK00OOOkkkkxxxkkxxkkk0KKKKKKKKKKKKK000000000OOOOOOkxdllcclllc:;..
+        doodxkkkkkkOO00kkkO0K00K00OOOkkxdoooooooolllllodxOO0KXXXXXXXXXXXXXXKXKKKKKKKKKKK000Odlcccccc:,..
+        xxdoodk0OkxxkkkxkkO0KXK00OdolccccllloooolllodkO0KXXXXXXXXXXXXXXXK0OkkxxxxxxxxxxkkOOkdlcccc:c:;';
+           kdddxkxxxxxkOOOO0000KKKOdllllloooooooodk0KXXNNNXXXXXKKXXKK00kxdodxO0         xdooolccccc::;';
+                kxxxxxkkkkkkk0XXXXKklccloodddddkOKKXXXXXXKXXKK00OOOkxdoollodxO             xoolcccc::;';
+                     kxddoddk0000K0OdoooooddxkO00KK0000000OOkkddooolllllooodxxk              kdlcc:::;,'
+                            OOkkxxxxxddddddddxxxxxxxxddxxxxxxdollllllllloddxxddk                xl:;;;,':
+                                    xlllldkOOO00000            kdooooddooddxxdddk                  xo:,''
+                                     xlllodk
+                                      kollloO
+                                       kolloO
+                                        0dlo0
+                                          OO
         """
         self.parentAlgorithm = parentAlgorithm
         self._name = name
@@ -148,7 +144,9 @@ class MantidSnapper:
                     val = val.get()
                 if val is None:
                     continue
-
+                # turn pydantic objects into pointers
+                if isinstance(algorithm.getProperty(prop), PointerProperty):
+                    val = create_pointer(val)
                 algorithm.setProperty(prop, val)
             if not algorithm.execute():
                 raise RuntimeError(f"{name} failed to execute")
@@ -160,6 +158,8 @@ class MantidSnapper:
                 returnVal = getattr(algorithm.getProperty(prop), "value", None)
                 if returnVal is None:
                     returnVal = getattr(algorithm.getProperty(prop), "valueAsStr", None)
+                if isinstance(algorithm.getProperty(prop), PointerProperty):
+                    returnVal = access_pointer(returnVal)
                 val.update(returnVal)
         except (RuntimeError, TypeError) as e:
             logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")

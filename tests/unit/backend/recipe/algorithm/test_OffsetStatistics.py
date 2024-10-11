@@ -7,7 +7,8 @@ from mantid.simpleapi import (
     OffsetStatistics,
     mtd,
 )
-from snapred.meta.redantic import access_pointer
+from snapred.backend.recipe.algorithm.Utensils import Utensils
+from snapred.meta.pointer import access_pointer
 
 
 class TestOffsetStatistics(unittest.TestCase):
@@ -37,3 +38,24 @@ class TestOffsetStatistics(unittest.TestCase):
         assert data["meanOffset"] == abs(np.mean(yVal))
         assert data["minOffset"] >= -1
         assert data["maxOffset"] <= 1
+
+    def test_execute_from_mantidSnapper(self):
+        xVal = [1, 2, 3, 4, 5]
+        yVal = [2, 2, 3, 4, 4]
+        wksp = mtd.unique_name(5, "offset_stats_")
+        CreateWorkspace(
+            OutputWorkspace=wksp,
+            DataX=xVal,
+            DataY=yVal,
+        )
+        utensils = Utensils()
+        utensils.PyInit()
+        data = utensils.mantidSnapper.OffsetStatistics(
+            "Run in mantid snapper",
+            OffsetsWorkspace=wksp,
+        )
+        utensils.mantidSnapper.executeQueue()
+        assert data["medianOffset"] == 3
+        assert data["meanOffset"] == 3
+        assert data["minOffset"] == 2
+        assert data["maxOffset"] == 4
