@@ -262,6 +262,11 @@ class TestNormalizationService(unittest.TestCase):
         mockPreprocessReduction.assert_called_once()
         mockSmoothDataExcludingPeaks.assert_called_once()
 
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=None)
+
+        with pytest.raises(ValueError, match=r".*No calibration version found for run number:*"):
+            self.instance.normalization(self.request)
+
     def test_validateRequest(self):
         # test `validateRequest` internal calls
         self.instance._sameStates = mock.Mock(return_value=True)

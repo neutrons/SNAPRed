@@ -92,7 +92,7 @@ class Recipe(ABC, Generic[Ingredients]):
             if ingredients is not None:
                 self._Ingredients.model_validate(ingredients.dict())
         except ValidationError as e:
-            raise e
+            raise ValueError(f"Invalid ingredients: {e}")
 
     def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
         """
