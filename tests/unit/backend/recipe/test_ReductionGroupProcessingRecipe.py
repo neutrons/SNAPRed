@@ -39,6 +39,7 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
     def test_queueAlgos(self):
         recipe = ReductionGroupProcessingRecipe()
         recipe._validateIngredients = unittest.mock.Mock(return_value=True)
+        recipe._validateGrocery = unittest.mock.Mock(return_value=True)
         groceries = {
             "inputWorkspace": "input",
             "groupingWorkspace": "groupingWS",
