@@ -6,6 +6,7 @@ from mantid.simpleapi import (
 )
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.recipe.algorithm.RemoveEventBackground import RemoveEventBackground as Algo
+from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.pointer import create_pointer
 from util.diffraction_calibration_synthetic_data import SyntheticData
 
@@ -172,3 +173,21 @@ class TestRemoveEventBackground(unittest.TestCase):
 
         assert "output_test_ws" in mtd, "Output workspace not found in the Mantid workspace dictionary"
         output_ws = mtd["output_test_ws"]  # noqa: F841
+
+    def test_execute_from_mantidSnapper(self):
+        peaks = self.create_test_peaks()
+        ConvertToEventWorkspace(
+            InputWorkspace=self.fakeData,
+            OutputWorkspace=self.fakeData,
+        )
+        utensils = Utensils()
+        utensils.PyInit()
+        utensils.mantidSnapper.RemoveEventBackground(
+            "Run in mantid snapper",
+            InputWorkspace=self.fakeData,
+            GroupingWorkspace=self.fakeGroupingWorkspace,
+            DetectorPeaks=peaks,  # NOTE passed as object, not pointer
+            OutputWorkspace="output_test_ws",
+        )
+        utensils.mantidSnapper.executeQueue()
+        assert "output_test_ws" in mtd
