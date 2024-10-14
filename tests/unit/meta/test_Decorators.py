@@ -147,6 +147,21 @@ def test_stateValidationExceptionNoTracebackDetails():
         logger_mock.error.assert_called_with("Test Exception without valid traceback")
 
 
+def test_stateValidationExceptionWithPartialTracebackDetails():
+    exception = Exception("Test Exception with incomplete traceback")
+
+    mock_tb_info = [traceback.FrameSummary(filename=None, lineno=42, name="testFunction")]
+
+    with patch("snapred.backend.error.StateValidationException.logger") as logger_mock:
+        with patch("traceback.extract_tb", return_value=mock_tb_info):
+            with pytest.raises(StateValidationException) as excinfo:
+                raise StateValidationException(exception)
+
+            assert str(excinfo.value) == "Instrument State for given Run Number is invalid! (see logs for details.)"
+
+        logger_mock.error.assert_called_with("Test Exception with incomplete traceback")
+
+
 @ExceptionHandler(StateValidationException)
 def throwsStateException():
     raise RuntimeError("I love exceptions!!! Ah ha ha!")
