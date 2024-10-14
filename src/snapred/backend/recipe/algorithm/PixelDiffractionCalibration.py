@@ -1,25 +1,33 @@
-import json
-from typing import Dict, List
+from typing import Any, Dict, List, Set
 
 import numpy as np
-from mantid.api import (
-    AlgorithmFactory,
-    ITableWorkspaceProperty,
-    MatrixWorkspaceProperty,
-    PropertyMode,
-    PythonAlgorithm,
-    WorkspaceUnitValidator,
-)
-from mantid.dataobjects import MaskWorkspaceProperty
-from mantid.kernel import Direction, StringMandatoryValidator
+from pydantic import BaseModel
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.algorithm.Utensils import Utensils
+from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
+logger = snapredLogger.getLogger(__name__)
 
-class PixelDiffractionCalibration(PythonAlgorithm):
+
+"""
+NOTE this file in fact defines a RECIPE.  It needs to be renamed to PixelDiffCalRecipe.py
+and moved into the recipe folder as soon as it has been reviewed.  It is being temporarily
+stored in the wrong location to make reviewing this story easier, to ensure nothing is
+missing from the former algorithm implementation.
+"""
+
+
+class PixelDiffCalServing(BaseModel):
+    result: bool
+    medianOffsets: List[float]
+    calibrationTable: str
+
+
+class PixelDiffCalRecipe(Recipe[Ingredients]):
     """
     Calculate the offset-corrected DIFC associated with a given workspace.
     One part of diffraction calibration.
@@ -32,46 +40,18 @@ class PixelDiffractionCalibration(PythonAlgorithm):
 
     MAX_DSPACE_SHIFT_FACTOR = Config["calibration.diffraction.maxDSpaceShiftFactor"]
 
-    def category(self):
-        return "SNAPRed Diffraction Calibration"
-
-    def PyInit(self):
-        # declare properties
-        self.declareProperty(
-            MatrixWorkspaceProperty(
-                "InputWorkspace", "", Direction.Input, PropertyMode.Mandatory, validator=WorkspaceUnitValidator("TOF")
-            ),
-            doc="Workspace containing the TOF neutron data",
-        )
-        self.declareProperty(
-            MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory),
-            doc="Workspace containing the grouping information",
-        )
-        self.declareProperty(
-            ITableWorkspaceProperty("CalibrationTable", "", Direction.Output, PropertyMode.Optional),
-            doc="Workspace containing the corrected calibration constants",
-        )
-        self.declareProperty(
-            MaskWorkspaceProperty("MaskWorkspace", "", Direction.Output, PropertyMode.Optional),
-            doc="if mask workspace exists: incoming values will be used (1.0 => dead-pixel, 0.0 => live-pixel)",
-        )
-        self.declareProperty(
-            "Ingredients", defaultValue="", validator=StringMandatoryValidator(), direction=Direction.Input
-        )
-        self.declareProperty("data", defaultValue="", direction=Direction.Output)
-        self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, __name__)
+    def __init__(self, utensils: Utensils = None):
+        if utensils is None:
+            utensils = Utensils()
+            utensils.PyInit()
+        self.mantidSnapper = utensils.mantidSnapper
         self._counts = 0
 
-    # TODO: ensure all ingredients loaded elsewhere, no superfluous ingredients
+    def logger(self):
+        return logger
 
-    def convertDetectorPeaks(self, detectorPeaks):
-        if isinstance(detectorPeaks, list) and hasattr(detectorPeaks[0], "dict"):
-            return json.dumps([peak.dict() for peak in detectorPeaks])
-        elif hasattr(detectorPeaks, "dict"):
-            return json.dumps(detectorPeaks.dict())
-        else:
-            raise TypeError("The provided object is not compatible with JSON serialization")
+    def mandatoryInputWorkspaces(self) -> Set[str]:
+        return {"inputWorkspace", "groupingWorkspace"}
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
@@ -86,115 +66,57 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.dBin: float = max([abs(d) for d in dBin])
         self.dSpaceParams = (self.overallDMin, self.dBin, self.overallDMax)
         self.removeBackground = ingredients.removeBackground
-        self.detectorPeaksJson = self.convertDetectorPeaks(ingredients.groupedPeakLists)
+        self.detectorPeaks = ingredients.groupedPeakLists
+        self.threshold = ingredients.convergenceThreshold
+        self.maxIterations = Config["calibration.diffraction.maximumIterations"]
         # from the grouped peak lists, find the maximum shift in d-spacing
         self.maxDSpaceShifts: Dict[int, float] = {}
         for peakList in ingredients.groupedPeakLists:
             self.maxDSpaceShifts[peakList.groupID] = self.MAX_DSPACE_SHIFT_FACTOR * peakList.maxfwhm
 
-        # create a default name for output calibration table
-        self.DIFCpixel: str = ""
-        if self.getProperty("CalibrationTable").isDefault:
-            self.DIFCpixel = wng.diffCalTable().runNumber(self.runNumber).build()
-            self.setProperty("CalibrationTable", self.DIFCpixel)
-        else:
-            self.DIFCpixel = self.getPropertyValue("CalibrationTable")
-
-        # create a default name for output mask workspace
-        self.maskWS: str = ""
-        if self.getProperty("MaskWorkspace").isDefault:
-            self.maskWS = wng.diffCalMask().runNumber(self.runNumber).build()
-            self.setProperty("MaskWorkspace", self.maskWS)
-        else:
-            self.maskWS = self.getPropertyValue("MaskWorkspace")
-
         # set the max offset
         self.maxOffset: float = ingredients.maxOffset
         # keep track of previous median offsets
-        self._prevMedianOffset = self.maxOffset * 10
+        self.medianOffsets = []
 
-    def unbagGroceries(self, ingredients: Ingredients) -> None:  # noqa ARG002
+    def unbagGroceries(self, groceries: Dict[str, WorkspaceName]) -> None:  # noqa ARG002
         """
         Process input neutron data
         """
-        self.wsTOF: str = self.getPropertyValue("InputWorkspace")
-        # TODO: use workspace namer
-        self.wsDSP: str = self.wsTOF + "_dsp"
+        self.wsTOF = groceries["inputWorkspace"]
+        self.groupingWS = groceries["groupingWorkspace"]
+        self.maskWS = groceries["maskWorkspace"]
+        # the name of the output calibration table
+        self.DIFCpixel = groceries["calibrationTable"]
 
+        # the input data converted to d-spacing
+        self.wsDSP = wng.diffCalInputDSP().runNumber(self.runNumber).build()
         self.mantidSnapper.ConvertUnits(
             "Convert to d-spacing to diffraction focus",
             InputWorkspace=self.wsTOF,
             OutPutWorkspace=self.wsDSP,
             Target="dSpacing",
         )
-
-        # for inspection, make a copy of initial data
-        self.mantidSnapper.MakeDirtyDish(
-            "Creating copy of initial TOF data",
-            InputWorkspace=self.wsTOF,
-            OutputWorkspace=self.wsTOF + "_pixelBegin",
-        )
         self.mantidSnapper.MakeDirtyDish(
             "Creating copy of initial d-spacing data",
             InputWorkspace=self.wsDSP,
-            OutputWorkspace=self.wsDSP + "_pixelBegin",
+            OutputWorkspace=self.wsDSP + "_startOfPixelDiffCal",
         )
 
-        # if the data is event data, extract the background before cross-correlation
         if not self.removeBackground:
-            self.wsBG: str = self.wsTOF + "_bg"
-
-            self.mantidSnapper.CloneWorkspace(
-                "Cloning input workspace for background subtraction",
-                InputWorkspace=self.wsTOF,
-                OutPutWorkspace=self.wsBG,
-            )
-            self.mantidSnapper.RemoveEventBackground(
-                "Extracting background events...",
-                InputWorkspace=self.wsBG,
-                OutputWorkspace=self.wsBG,
-                GroupingWorkspace=self.getPropertyValue("GroupingWorkspace"),
-                DetectorPeaks=self.detectorPeaksJson,
-            )
-            self.mantidSnapper.ConvertToMatrixWorkspace(
-                "Converting TOF data to MatrixWorkspace...",
-                InputWorkspace=self.wsTOF,
-                OutputWorkspace=self.wsTOF,
-            )
-            self.mantidSnapper.Minus(
-                "Subtracting background from input data",
-                LHSWorkspace=self.wsTOF,
-                RHSWorkspace=self.wsBG,
-                OutputWorkspace=self.wsTOF,
-            )
+            self.stripBackground(self.detectorPeaks, self.wsTOF, self.groupingWS)
             self.mantidSnapper.ConvertUnits(
-                "Convert to d-spacing",
+                "Convert background-subtracted TOF to d-spacing",
                 InputWorkspace=self.wsTOF,
-                OutputWorkspace=self.wsDSP,
+                OutPutWorkspace=self.wsDSP,
                 Target="dSpacing",
             )
             self.mantidSnapper.MakeDirtyDish(
-                "Creating copy of background-subtracted TOF data",
-                InputWorkspace=self.wsTOF,
-                OutputWorkspace=self.wsTOF + "_pixelStripped",
-            )
-            self.mantidSnapper.MakeDirtyDish(
-                "Creating copy of background-subtracted d-spacing data",
+                "Creating copy of background-subtracted d-spacing",
                 InputWorkspace=self.wsDSP,
-                OutputWorkspace=self.wsDSP + "_pixelStripped",
+                OutputWorkspace=self.wsDSP + "_withoutBackground",
             )
-        else:
-            pass
-        # get handle to group focusing workspace and retrieve workspace indices for all detectors in each group
-        focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
-        focusWS = self.mantidSnapper.mtd[focusWSname]
-        self.groupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
-        self.groupWorkspaceIndices: Dict[int, List[int]] = {}
-        for groupID in self.groupIDs:
-            groupDetectorIDs = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
-            self.groupWorkspaceIndices[groupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
 
-        # create the initial table of DIFC values
         self.mantidSnapper.CalculateDiffCalTable(
             "Calculate initial table of DIFC values",
             InputWorkspace=self.wsTOF,
@@ -202,7 +124,44 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             OffsetMode="Signed",
             BinWidth=self.dBin,
         )
+
+    def stirInputs(self):
+        self.groupWorkspaceIndices = self.mantidSnapper.GroupedDetectorIDs(
+            "Extract the detector IDs for each group",
+            GroupingWorkspace=self.groupingWS,
+        )
         self.mantidSnapper.executeQueue()
+
+    def stripBackground(self, peaks: List[Any], inputWS: WorkspaceName, groupingWS: WorkspaceName):
+        wsBG: str = inputWS + "_bg"
+
+        self.mantidSnapper.CloneWorkspace(
+            "Cloning input workspace for background subtraction",
+            InputWorkspace=inputWS,
+            OutPutWorkspace=wsBG,
+        )
+        self.mantidSnapper.RemoveEventBackground(
+            "Extracting background events...",
+            InputWorkspace=wsBG,
+            OutputWorkspace=wsBG,
+            GroupingWorkspace=groupingWS,
+            DetectorPeaks=peaks,
+        )
+        self.mantidSnapper.ConvertToMatrixWorkspace(
+            "Converting TOF data to MatrixWorkspace...",
+            InputWorkspace=inputWS,
+            OutputWorkspace=inputWS,
+        )
+        self.mantidSnapper.Minus(
+            "Subtracting background from input data",
+            LHSWorkspace=inputWS,
+            RHSWorkspace=wsBG,
+            OutputWorkspace=inputWS,
+        )
+        self.mantidSnapper.WashDishes(
+            "Delete the background after subtraction",
+            Workspace=wsBG,
+        )
 
     def convertUnitsAndRebin(self, inputWS: str, outputWS: str) -> None:
         """
@@ -223,7 +182,6 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             PreserveEvents=self.removeBackground,
             BinningMode="Logarithmic",
         )
-        self.mantidSnapper.executeQueue()
 
     # TODO: replace the median with some better method, to be determined
     #   for choosing a reference pixel (and not using brightest pixel)
@@ -238,7 +196,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # For the present method: either detector-ids or detector workspace indices may be used as input.
         return sorted(detectorIDs)[int(np.round((len(detectorIDs) - 1) / 2.0))]
 
-    def reexecute(self) -> None:
+    def queueAlgos(self):
         """
         Execute the main algorithm, in a way that can be iteratively called.
         First the initial DIFC values must be calculated.  Then, group-by-group,
@@ -250,15 +208,15 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         - CalibrationTable: str -- the final table of DIFC values
         """
 
-        self.log().notice(f"Executing pixel calibration iteration {self._counts}")
+        self.logger().info(f"Executing pixel calibration iteration {self._counts}")
         # convert to d-spacing and rebin logarithmically
         self.convertUnitsAndRebin(self.wsTOF, self.wsDSP)
 
-        data: Dict[str, float] = {}
-        totalOffsetWS: str = f"offsets_{self.runNumber}_{self._counts}"
+        self.totalOffsetWS: str = f"offsets_{self.runNumber}_{self._counts}"
         wsoff: str = f"_{self.runNumber}_tmp_group_offset_{self._counts}"
         wscc: str = f"_{self.runNumber}_tmp_group_CC_{self._counts}"
-        for groupID, workspaceIndices in self.groupWorkspaceIndices.items():
+
+        for i, (groupID, workspaceIndices) in enumerate(self.groupWorkspaceIndices.items()):
             workspaceIndices = list(workspaceIndices)
             refID: int = self.getRefID(workspaceIndices)
 
@@ -286,37 +244,60 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             )
 
             # add in group offsets to total, or begin the sum if none
-            if not self.mantidSnapper.mtd.doesExist(totalOffsetWS):
+            # NOTE wsoff has all spectra, with value 0 in those not used in CrossCorrelate
+            if i == 0:
                 self.mantidSnapper.CloneWorkspace(
                     f"Starting summation with offset workspace {wsoff}",
                     InputWorkspace=wsoff,
-                    OutputWorkspace=totalOffsetWS,
+                    OutputWorkspace=self.totalOffsetWS,
                 )
             else:
                 self.mantidSnapper.Plus(
                     f"Adding in offset workspace {wsoff}",
-                    LHSWorkspace=totalOffsetWS,
+                    LHSWorkspace=self.totalOffsetWS,
                     RHSWorkspace=wsoff,
-                    OutputWorkspace=totalOffsetWS,
+                    OutputWorkspace=self.totalOffsetWS,
                 )
             self.mantidSnapper.WashDishes(
                 "Remove the temporary cross-correlation workspace",
-                Workspace=wscc + f"_group{groupID}",
+                WorkspaceList=[wscc + f"_group{groupID}", wsoff],
             )
-            self.mantidSnapper.executeQueue()
 
+        # cleanup memory usage
+
+        self.mantidSnapper.WashDishes(
+            "Deleting temporary workspaces",
+            Workspace=self.wsDSP,
+        )
+
+    def prep(self, ingredients: Ingredients, groceries: Dict[str, str]):
+        """
+        Convenience method to prepare the recipe for execution.
+        """
+        self.validateInputs(ingredients, groceries)
+        self.chopIngredients(ingredients)
+        self.unbagGroceries(groceries)
+        self.stirInputs()
+
+        self.queueAlgos()
+
+    def execute(self):
         # Offsets should converge to zero with re-execution of the process.
         # Testing uses the median, to avoid issues with possible pathologic pixels.
-        # (Warning: `median(abs(offsets))` vs. `abs(median(offsets)`: the former introduces oscillation artifacts.)
-        offsets = list(self.mantidSnapper.mtd[totalOffsetWS].extractY().ravel())
-        data["medianOffset"] = abs(np.median(offsets))
-        data["meanOffset"] = abs(np.mean(offsets))
+        offsetStats = self.mantidSnapper.OffsetStatistics(
+            "Get the median, mean, etc. for the offsets",
+            OffsetsWorkspace=self.totalOffsetWS,
+        )
+        self.mantidSnapper.executeQueue()
 
-        if data["medianOffset"] <= self._prevMedianOffset:
+        newOffset = offsetStats["medianOffset"]
+
+        if newOffset <= (self.medianOffsets[-1:] or (self.maxOffset * 10,))[0]:
+            self.medianOffsets.append(newOffset)
             # get difcal corrected by offsets
             self.mantidSnapper.ConvertDiffCal(
                 "Correct previous calibration constants by offsets",
-                OffsetsWorkspace=totalOffsetWS,
+                OffsetsWorkspace=self.totalOffsetWS,
                 PreviousCalibration=self.DIFCpixel,
                 OutputWorkspace=self.DIFCpixel,
                 OffsetMode="Signed",
@@ -329,50 +310,39 @@ class PixelDiffractionCalibration(PythonAlgorithm):
                 InstrumentWorkspace=self.wsTOF,
                 CalibrationWorkspace=self.DIFCpixel,
             )
-            self._prevMedianOffset = data["medianOffset"]
+        else:
+            logger.warning("Offsets failed to converge monotonically")
 
         self.mantidSnapper.MakeDirtyDish(
             f"Store d-spacing data at {self._counts} iterations",
             InputWorkspace=self.wsDSP,
             OutputWorkspace=self.wsDSP + f"_pixel{self._counts}",
         )
-
-        # cleanup memory usage
         self.mantidSnapper.WashDishes(
-            "Deleting temporary workspaces",
-            WorkspaceList=[wsoff, totalOffsetWS, self.wsDSP],
+            "Clean up memory usage",
+            WorkspaceList=[self.wsDSP, self.totalOffsetWS],
         )
-        # now execute the queue
         self.mantidSnapper.executeQueue()
-        self.setProperty("data", json.dumps(data))
+        # return
+        return self.medianOffsets[-1] > self.threshold and newOffset <= self.medianOffsets[-1]
 
-    def PyExec(self) -> None:
+    def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         """
-        Calculate pixel calibration DIFC values on each spectrum group.
-        inputs:
-        - Ingredients: DiffractionCalibrationIngredients -- the DAO holding data needed to run the algorithm
-        - InputWorkspace: str -- the raw neutron data to be processed
-        - GroupingWorkspace: str -- a pixel grouping workspace
-        outputs:
-        - data: dict -- several statistics of the offsets, for testing convergence
-        - OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
-        - CalibrationTable: str -- the final table of DIFC values
+        Main interface for the recipe.
+        Will call the execution iteratively until convergence is reached.
         """
-        # run the algo
-        self.log().notice("Execution of pixel diffraction calibration START!")
+        self.prep(ingredients, groceries)
+        while self.execute():
+            self._counts = self._counts + 1
+            if self._counts >= self.maxIterations:
+                logger.warning("Offset convergence reached max iterations without converging")
+                break
+            logger.info(f"... converging to answer; step {self._counts}, {self.medianOffsets[-1]} > {self.threshold}")
+            self.queueAlgos()
+        logger.info(f"Pixel calibration converged.  Offsets: {self.medianOffsets}")
 
-        if self._counts == 0:
-            self.log().notice("Extraction of calibration constants START!")
-            # get the ingredients
-            ingredients = Ingredients.model_validate_json(self.getPropertyValue("Ingredients"))
-            self.chopIngredients(ingredients)
-            # load and process the input data for algorithm
-            self.unbagGroceries(ingredients)
-        # now calculate and correct by offsets
-        self.reexecute()
-        self._counts += 1
-        self.setPropertyValue("CalibrationTable", self.DIFCpixel)
-
-
-# Register algorithm with Mantid
-AlgorithmFactory.subscribe(PixelDiffractionCalibration)
+        return PixelDiffCalServing(
+            result=True,
+            medianOffsets=self.medianOffsets,
+            calibrationTable=self.DIFCpixel,
+        )

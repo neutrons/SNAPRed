@@ -140,14 +140,6 @@ snapred.backend.recipe.algorithm.MantidSnapper module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.PixelDiffractionCalibration module
----------------------------------------------------------------------
-
-.. automodule:: snapred.backend.recipe.algorithm.PixelDiffractionCalibration
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm module
 -----------------------------------------------------------------------------------
 
