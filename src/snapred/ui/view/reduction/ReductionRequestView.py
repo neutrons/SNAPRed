@@ -136,6 +136,10 @@ class ReductionRequestView(BackendRequestView):
     def verify(self):
         currentText = self.runNumberDisplay.toPlainText()
         runNumbers = [num.strip() for num in currentText.split("\n") if num.strip()]
+
+        if not runNumbers:
+            raise ValueError("Please enter at least one run number.")
+
         for runNumber in runNumbers:
             if not runNumber.isdigit():
                 raise ValueError(

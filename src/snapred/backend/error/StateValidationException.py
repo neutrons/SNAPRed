@@ -11,9 +11,14 @@ logger = snapredLogger.getLogger(__name__)
 class StateValidationException(Exception):
     "Raised when an Instrument State is invalid"
 
-    def __init__(self, exception: Exception):
-        exceptionStr = str(exception)
-        tb = exception.__traceback__
+    def __init__(self, exception):
+        # Handle both string and Exception types for 'exception'
+        if isinstance(exception, Exception):
+            exceptionStr = str(exception)
+            tb = exception.__traceback__
+        else:
+            exceptionStr = str(exception)
+            tb = None
 
         if tb is not None:
             tb_info = traceback.extract_tb(tb)
@@ -22,9 +27,9 @@ class StateValidationException(Exception):
                 lineNumber = tb_info[-1].lineno
                 functionName = tb_info[-1].name
             else:
-                filePath, lineNumber, functionName = None, lineNumber, functionName
+                filePath, lineNumber, functionName = None, None, None
         else:
-            filePath, lineNumber, functionName = None, None, None
+            filePath, lineNumber, functionName = None, None, None  # noqa: F841
 
         doesFileExist, hasWritePermission = self._checkFileAndPermissions(filePath)
 

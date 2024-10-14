@@ -7,6 +7,8 @@ import numpy as np
 import pydantic
 import pytest
 from mantid.simpleapi import (
+    ConvertUnits,
+    CreateWorkspace,
     DeleteWorkspace,
     mtd,
 )
@@ -14,6 +16,7 @@ from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
+    CreateArtificialNormalizationRequest,
     ReductionExportRequest,
     ReductionRequest,
 )
@@ -21,6 +24,7 @@ from snapred.backend.dao.request.ReductionRequest import Versions
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.FocusGroup import FocusGroup
+from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.service.ReductionService import ReductionService
@@ -349,6 +353,157 @@ class TestReductionService(unittest.TestCase):
         # Note: this tests re-entry for the _first_ continue-anyway check,
         #   and in addition, re-entry for the second continue-anyway check.
         self.instance.validateReduction(self.request)
+
+    def test_validateReduction_with_continueFlags(self):
+        self.request.continueFlags = None
+
+        self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.checkWritePermissions = mock.Mock(return_value=False)
+
+        with pytest.raises(ContinueWarning) as excInfo:
+            self.instance.validateReduction(self.request)
+
+        assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+    def test_validateReduction_with_warningMessages(self):
+        self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=False)
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
+
+        with pytest.raises(ContinueWarning) as excInfo:
+            self.instance.validateReduction(self.request)
+
+        assert "Normalization is missing" in str(excInfo.value)
+        assert "Diffraction calibration is missing" in str(excInfo.value)
+
+    def test_artificialNormalization(self):
+        mockAlgo = mock.Mock()
+        len_wksp = 6
+        input_ws_name = mtd.unique_name(prefix="input_ws_")
+
+        mockAlgo.executeRecipe.return_value = input_ws_name + "_artificial_norm"
+        CreateWorkspace(
+            OutputWorkspace=input_ws_name,
+            DataX=[1] * len_wksp,
+            DataY=[1] * len_wksp,
+            NSpec=len_wksp,
+            UnitX="dSpacing",
+        )
+        ConvertUnits(
+            InputWorkspace=input_ws_name,
+            OutputWorkspace=input_ws_name,
+            Target="dSpacing",
+        )
+        with mock.patch(
+            "snapred.backend.service.ReductionService.ArtificialNormalizationRecipe", return_value=mockAlgo
+        ):
+            request = CreateArtificialNormalizationRequest(
+                runNumber="12345",
+                useLiteMode=True,
+                peakWindowClippingSize=1.0,
+                smoothingParameter=0.5,
+                decreaseParameter=True,
+                lss=True,
+                diffractionWorkspace=input_ws_name,
+            )
+
+            response = self.instance.artificialNormalization(request)
+
+        assert response == input_ws_name + "_artificial_norm"
+
+        mockAlgo.executeRecipe.assert_called_once_with(InputWorkspace=input_ws_name, Ingredients=mock.ANY)
+
+    def test_loadAllGroupings_with_exception(self):
+        mock_grouping_map = mock.Mock()
+        mock_grouping_map.getMap.return_value = {}
+
+        self.instance.dataFactoryService.getGroupingMap = mock.Mock(
+            side_effect=StateValidationException("Invalid State")
+        )
+
+        self.instance.dataFactoryService.getDefaultGroupingMap = mock.Mock(return_value=mock_grouping_map)
+
+        result = self.instance.loadAllGroupings(self.request.runNumber, self.request.useLiteMode)
+
+        mock_grouping_map.getMap.assert_called_once_with(self.request.useLiteMode)
+
+        assert result == {"focusGroups": [], "groupingWorkspaces": []}
+
+    def test_saveReductionPath(self):
+        mockPixelGroupingParams = {
+            "group1": [mock.Mock(spec=PixelGroupingParameters), mock.Mock(spec=PixelGroupingParameters)]
+        }
+
+        mockRecord = ReductionRecord(
+            runNumber="123456",
+            useLiteMode=True,
+            timestamp=123456.789,
+            pixelGroupingParameters=mockPixelGroupingParams,
+            workspaceNames=["workspace1", "workspace2"],
+        )
+
+        mockRequest = ReductionExportRequest(record=mockRecord)
+
+        with (
+            mock.patch.object(self.instance.dataExportService, "exportReductionRecord") as mockExportRecord,
+            mock.patch.object(self.instance.dataExportService, "exportReductionData") as mockExportData,
+        ):
+            self.instance.saveReduction(mockRequest)
+
+            mockExportRecord.assert_called_once_with(mockRecord)
+            mockExportData.assert_called_once_with(mockRecord)
+
+    def test_loadReductionPath(self):
+        with pytest.raises(NotImplementedError):
+            self.instance.loadReduction("someState", 123456.789)
+
+    def test_prepCombinedMask(self):
+        self.maskWS1 = mock.Mock()
+        self.maskWS2 = mock.Mock()
+
+        masks = [self.maskWS1, self.maskWS2]
+
+        combinedMaskName = (  # noqa: F841
+            wng.reductionPixelMask()
+            .runNumber(self.request.runNumber)
+            .timestamp(self.instance.getUniqueTimestamp())
+            .build()
+        )
+
+        with mock.patch.object(self.instance.mantidSnapper, "BinaryOperateMasks") as mockBinaryOperateMasks:
+            self.instance.prepCombinedMask(
+                self.request.runNumber, self.request.useLiteMode, self.request.timestamp, masks
+            )
+
+            assert mockBinaryOperateMasks.call_count == len(masks)
+
+    def test_checkWritePermissions_fails(self):
+        with mock.patch.object(self.instance.dataExportService, "checkWritePermissions", return_value=False):
+            assert not self.instance.checkWritePermissions("123456")
+
+    def test_createReductionRecord_missing_normalization_and_calibration(self):
+        self.request.continueFlags = (
+            ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
+        )
+
+        mockIngredients = ReductionIngredients(
+            runNumber="12345",
+            useLiteMode=True,
+            timestamp=123456789.0,
+            pixelGroups=[],
+            smoothingParameter=0.1,
+            calibrantSamplePath="path/to/calibrant",
+            peakIntensityThreshold=0.05,
+            keepUnfocused=True,
+            convertUnitsTo="TOF",
+        )
+        mockWorkspaceNames = ["ws1", "ws2"]
+
+        result = self.instance._createReductionRecord(self.request, mockIngredients, mockWorkspaceNames)
+
+        assert result.normalization is None
+        assert result.calibration is None
+        assert result.workspaceNames == mockWorkspaceNames
 
 
 class TestReductionServiceMasks:
