@@ -1,7 +1,0 @@
-{
-  "mockService": {
-    "": {
-      "mockObject": "{\n  \"properties\": {\n    \"m_list\": {\n      \"items\": {\n        \"type\": \"number\"\n      },\n      \"title\": \"M List\",\n      \"type\": \"array\"\n    },\n    \"m_float\": {\n      \"title\": \"M Float\",\n      \"type\": \"number\"\n    },\n    \"m_int\": {\n      \"title\": \"M Int\",\n      \"type\": \"integer\"\n    },\n    \"m_string\": {\n      \"title\": \"M String\",\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"m_list\",\n    \"m_float\",\n    \"m_int\",\n    \"m_string\"\n  ],\n  \"title\": \"<class 'test_APIService.TestAPIService.test_getValidPaths.<locals>.MockObject'>\",\n  \"type\": \"object\"\n}"
-    }
-  }
-}
