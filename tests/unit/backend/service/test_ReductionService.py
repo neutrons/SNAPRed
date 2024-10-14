@@ -157,6 +157,34 @@ class TestReductionService(unittest.TestCase):
                 mockExportRecord.assert_called_once_with(record)
                 mockExportData.assert_called_once_with(record)
 
+    def test_validateReduction_with_artificialNormalization_and_no_permissions(self):
+        self.request.artificialNormalization = mock.Mock()
+        self.instance.checkWritePermissions = mock.Mock(return_value=False)
+
+        with pytest.raises(ContinueWarning) as excInfo:
+            self.instance.validateReduction(self.request)
+
+        assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+    def test_validateReduction_with_continueFlags_xor_operation(self):
+        self.request.artificialNormalization = mock.Mock()
+        self.request.continueFlags = ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+        self.instance.checkWritePermissions = mock.Mock(return_value=True)
+
+        self.instance.validateReduction(self.request)
+
+    def test_fetchReductionGroceries_with_artificialNormalization(self):
+        self.request.artificialNormalization = "artificial_norm_ws"
+
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+
+        self.instance.fetchReductionGroceries(self.request)
+
+        self.instance.groceryClerk.name("diffcalWorkspace").diffcal_table.assert_called_once_with(
+            self.request.runNumber, 1
+        )
+
     def test_loadReduction(self):
         ## this makes codecov happy
         with pytest.raises(NotImplementedError):
