@@ -632,6 +632,18 @@ class TestReductionService(unittest.TestCase):
         assert self.request.versions.calibration == 1
         assert self.request.versions.normalization == 2
 
+    def test_reduction_with_artificial_norm_response(self):
+        artificial_response = ArtificialNormResponse(diffractionWorkspace="mock_diffraction_ws")
+        self.instance.fetchReductionGroceries = mock.Mock(return_value=artificial_response)
+
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
+
+        result = self.instance.reduction(self.request)
+
+        assert result == artificial_response
+        self.instance.fetchReductionGroceries.assert_called_once_with(self.request)
+
 
 class TestReductionServiceMasks:
     @pytest.fixture(autouse=True, scope="class")

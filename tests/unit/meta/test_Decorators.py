@@ -134,6 +134,19 @@ def test_stateValidationExceptionWritePerms():
         assert "The following error occurred:Test Exception\n\nPlease contact your CIS." in str(excinfo.value)
 
 
+def test_stateValidationExceptionNoTraceback():
+    exception = Exception("Test Exception without traceback")
+
+    with patch("snapred.backend.error.StateValidationException.logger") as logger_mock:
+        with patch("traceback.extract_tb", return_value=None):
+            with pytest.raises(StateValidationException) as excinfo:
+                raise StateValidationException(exception)
+
+            assert "Instrument State for given Run Number is invalid! (see logs for details.)" in str(excinfo.value)
+
+        logger_mock.error.assert_called_once_with("Test Exception without traceback")
+
+
 @ExceptionHandler(StateValidationException)
 def throwsStateException():
     raise RuntimeError("I love exceptions!!! Ah ha ha!")
