@@ -138,7 +138,7 @@ def test_stateValidationExceptionNoTracebackDetails():
     exception = Exception("Test Exception without valid traceback")
 
     with patch("snapred.backend.error.StateValidationException.logger") as logger_mock:
-        with patch("traceback.extract_tb", return_value=[]):
+        with patch("traceback.extract_tb", return_value=None):
             with pytest.raises(StateValidationException) as excinfo:
                 raise StateValidationException(exception)
 
