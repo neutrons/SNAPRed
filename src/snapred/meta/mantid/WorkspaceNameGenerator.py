@@ -319,6 +319,15 @@ class _WorkspaceNameGenerator:
             unit=self.Units.TOF,
         )
 
+    def diffCalInputDSP(self):
+        return NameBuilder(
+            WorkspaceType.DIFFCAL_INPUT,
+            self._diffCalInputTemplate,
+            self._diffCalInputTemplateKeys,
+            self._delimiter,
+            unit=self.Units.DSP,
+        )
+
     def diffCalTable(self):
         return NameBuilder(
             WorkspaceType.DIFFCAL_TABLE,
