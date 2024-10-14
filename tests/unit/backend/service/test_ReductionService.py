@@ -21,6 +21,7 @@ from snapred.backend.dao.request import (
     ReductionRequest,
 )
 from snapred.backend.dao.request.ReductionRequest import Versions
+from snapred.backend.dao.response.ArtificialNormResponse import ArtificialNormResponse
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -547,6 +548,89 @@ class TestReductionService(unittest.TestCase):
         mock_grocery_clerk.diffcal_table.assert_called_once_with(self.request.runNumber, 1)
         mock_grocery_clerk.useLiteMode.assert_called_once_with(self.request.useLiteMode)
         mock_grocery_clerk.add.assert_called_once()
+
+    def test_fetchReductionGroceries_with_missing_normalization(self):
+        self.request.continueFlags = ContinueWarning.Type.UNSET
+        self.request.artificialNormalization = None
+
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=2)
+
+        mock_grocery_clerk = mock.Mock()
+        self.instance.groceryClerk = mock_grocery_clerk
+        mock_grocery_clerk.name.return_value = mock_grocery_clerk
+        mock_grocery_clerk.normalization.return_value = mock_grocery_clerk
+        mock_grocery_clerk.useLiteMode.return_value = mock_grocery_clerk
+        mock_grocery_clerk.add.return_value = mock_grocery_clerk
+        mock_grocery_clerk.buildDict.return_value = {"key1": "value1"}
+
+        mock_grocery_service = mock.Mock()
+        self.instance.groceryService = mock_grocery_service
+        mock_grocery_service.fetchGroceryDict.return_value = {"inputWorkspace": "workspace1"}
+
+        self.instance.fetchReductionGroceries(self.request)
+
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion.assert_called_once_with(
+            self.request.runNumber, self.request.useLiteMode
+        )
+
+        mock_grocery_clerk.name.assert_any_call("normalizationWorkspace")
+        mock_grocery_clerk.normalization.assert_called_once_with(self.request.runNumber, 2)
+        mock_grocery_clerk.useLiteMode.assert_called_once_with(self.request.useLiteMode)
+        mock_grocery_clerk.add.assert_called_once()
+
+    def test_fetchReductionGroceries_with_calibration_and_missing_normalization(self):
+        self.request.continueFlags = ContinueWarning.Type.MISSING_NORMALIZATION
+        self.request.artificialNormalization = None
+
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=None)
+
+        mock_grocery_clerk = mock.Mock()
+        self.instance.groceryClerk = mock_grocery_clerk
+        mock_grocery_clerk.name.return_value = mock_grocery_clerk
+        mock_grocery_clerk.diffcal_output.return_value = mock_grocery_clerk
+        mock_grocery_clerk.useLiteMode.return_value = mock_grocery_clerk
+        mock_grocery_clerk.unit.return_value = mock_grocery_clerk
+        mock_grocery_clerk.group.return_value = mock_grocery_clerk
+        mock_grocery_clerk.buildDict.return_value = {"key1": "value1"}
+
+        mock_grocery_service = mock.Mock()
+        self.instance.groceryService = mock_grocery_service
+        mock_grocery_service.fetchGroceryDict.return_value = {"diffractionWorkspace": "diffraction_ws"}
+        result = self.instance.fetchReductionGroceries(self.request)
+
+        mock_grocery_clerk.name.assert_called_with("diffractionWorkspace")
+        mock_grocery_clerk.diffcal_output.assert_called_once_with(self.request.runNumber, 1)
+        mock_grocery_clerk.unit.assert_called_once_with(wng.Units.DSP)
+        mock_grocery_clerk.group.assert_called_once_with("column")
+        mock_grocery_clerk.buildDict.assert_called_once()
+
+        assert isinstance(result, ArtificialNormResponse)
+        assert result.diffractionWorkspace == "diffraction_ws"
+
+    def test_fetchReductionGroceries_creates_versions(self):
+        self.request.continueFlags = ContinueWarning.Type.UNSET
+        self.request.artificialNormalization = None
+
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=2)
+
+        mock_grocery_clerk = mock.Mock()
+        self.instance.groceryClerk = mock_grocery_clerk
+        mock_grocery_clerk.name.return_value = mock_grocery_clerk
+        mock_grocery_clerk.useLiteMode.return_value = mock_grocery_clerk
+        mock_grocery_clerk.add.return_value = mock_grocery_clerk
+        mock_grocery_clerk.buildDict.return_value = {"key1": "value1"}
+
+        mock_grocery_service = mock.Mock()
+        self.instance.groceryService = mock_grocery_service
+        mock_grocery_service.fetchGroceryDict.return_value = {"inputWorkspace": "workspace1"}
+
+        self.instance.fetchReductionGroceries(self.request)
+
+        assert self.request.versions.calibration == 1
+        assert self.request.versions.normalization == 2
 
 
 class TestReductionServiceMasks:
