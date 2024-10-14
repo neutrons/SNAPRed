@@ -20,6 +20,14 @@ snapred.backend.recipe.CrystallographicInfoRecipe module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.recipe.algorithm.PixelDiffractionCalibration module
+---------------------------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.algorithm.PixelDiffractionCalibration
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.recipe.DiffractionCalibrationRecipe module
 ----------------------------------------------------------
 
