@@ -1,4 +1,3 @@
-import ctypes
 import json
 from pathlib import Path
 from typing import Any, List, Type, TypeVar, Union
@@ -41,10 +40,6 @@ def list_from_raw(type_: Any, src: str) -> List[BaseModel]:
     ):
         raise TypeError(f"target type must derive from 'List[BaseModel]' not {type_}")
     return TypeAdapter(type_).validate_json(src)
-
-
-def access_pointer(pointer: int) -> Any:
-    return ctypes.cast(pointer, ctypes.py_object).value
 
 
 def write_model(baseModel: BaseModel, path):
