@@ -195,8 +195,8 @@ class ReductionWorkflow(WorkflowImplementer):
         #   _before_ transitioning to the "save" panel.
         # TODO: make '_clearWorkspaces' a public method (i.e make this combination a special `cleanup` method).
         self._clearWorkspaces(exclude=self.outputs, clearCachedWorkspaces=True)
-
-        return self.responses[-2]
+        workflowPresenter.advanceWorkflow()
+        return self.responses[-1]
 
     def _artificialNormalization(self, workflowPresenter, responseData, runNumber):
         view = workflowPresenter.widget.tabView  # noqa: F841

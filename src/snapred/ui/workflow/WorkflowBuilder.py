@@ -39,16 +39,6 @@ class WorkflowBuilder:
             )
         return self
 
-    def makeNodeVisible(self, nodeName):
-        """
-        Makes an invisible node visible by name.
-        """
-        for node in self._invisibleNodes:
-            if node.name == nodeName:
-                node.view.setVisible(True)  # Set the node's view to be visible
-                self._invisibleNodes.remove(node)  # Remove from the invisible list
-                break
-
     def build(self):
         return Workflow(
             self._workflow,
