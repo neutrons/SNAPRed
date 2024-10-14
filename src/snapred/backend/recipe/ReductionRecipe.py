@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Set, Tuple, Type
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
@@ -39,6 +39,9 @@ class ReductionRecipe(Recipe[Ingredients]):
 
     def logger(self):
         return logger
+
+    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+        return {"inputWorkspace", "groupingWorkspaces"}
 
     def chopIngredients(self, ingredients: Ingredients):
         """
@@ -139,9 +142,6 @@ class ReductionRecipe(Recipe[Ingredients]):
             )
             self.groceries["normalizationWorkspace"] = normalizationClone
         return sampleClone, normalizationClone
-
-    def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
-        pass
 
     def queueAlgos(self):
         pass

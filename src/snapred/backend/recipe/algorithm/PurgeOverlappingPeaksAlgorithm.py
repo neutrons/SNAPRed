@@ -97,7 +97,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             groupPeakList.peaks = [
                 detectorPeak
                 for detectorPeak in detectorPeaks
-                if detectorPeak.peak.dSpacing >= self.crystalDMin and detectorPeak.peak.dSpacing <= self.crystalDMax
+                if detectorPeak.minimum > self.crystalDMin and detectorPeak.maximum < self.crystalDMax
             ]
             self.log().notice(
                 (

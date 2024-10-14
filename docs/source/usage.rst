@@ -33,3 +33,16 @@ This file can be supplied via command line injection
 .. code-block:: sh
 
    env=myenv.yml snapred
+
+Using the Test Data Repo
+------------------------
+
+When using the data repo for the very first time, be sure to run ``git lfs install`` outside the repo, otherwise the data
+will not show up correctly. You should not have to run this again later.
+To simply get the data, just run ``git submodule update --init --recursive`` and the data will appear under
+``tests/data/snapred-data``. You can now update the environmnet YAML file that you will use for tests and point to the
+test data using ``${module.root}/data/snapred-data``, assuming you are just running pytests. If you are just trying to
+run SNAPRed normally, you need to change the pathing to be ``${module.root}/../../data/snapred-data`` or use the full
+absolute path. If you make any changes to the test repo, be sure to update the git LFS reference and commit it to this repo!
+
+For more info about the test data repo, go to the readme `here. <https://code.ornl.gov/sns-hfir-scse/infrastructure/test-data/snapred-data/-/blob/main/README.md?ref_type=heads>`_

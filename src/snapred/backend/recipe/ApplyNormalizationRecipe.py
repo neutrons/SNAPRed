@@ -17,6 +17,9 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
     NUM_BINS = Config["constants.ResampleX.NumberBins"]
     LOG_BINNING = True
 
+    def mandatoryInputWorkspaces(self):
+        return {"inputWorkspace"}
+
     def chopIngredients(self, ingredients: Ingredients):
         """
         Chops off the needed elements of the ingredients.

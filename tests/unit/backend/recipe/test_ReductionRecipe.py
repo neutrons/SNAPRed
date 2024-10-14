@@ -53,6 +53,11 @@ class ReductionRecipeTest(TestCase):
         with pytest.raises(KeyError):
             recipe.unbagGroceries(groceries)
 
+    def test_mandatory_inputs(self):
+        inputs = ReductionRecipe().mandatoryInputWorkspaces()
+        assert inputs == {"inputWorkspace", "groupingWorkspaces"}
+        ReductionRecipe().logger()
+
     def test_cloneWorkspace(self):
         recipe = ReductionRecipe()
         recipe.mantidSnapper = mock.Mock()
@@ -248,11 +253,6 @@ class ReductionRecipeTest(TestCase):
         assert sampleClone == "cloned"
         assert normClone is None
         recipe._deleteWorkspace.assert_not_called()
-
-    def test_stubs(self):
-        recipe = ReductionRecipe()
-        recipe.validateInputs(None, None)
-        recipe.queueAlgos()
 
     @mock.patch("snapred.backend.recipe.ReductionRecipe.ApplyNormalizationRecipe")
     def test_applyNormalization(self, mockApplyNormalizationRecipe):
