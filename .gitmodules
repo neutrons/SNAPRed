@@ -1,0 +1,3 @@
+[submodule "tests/data/snapred-data"]
+	path = tests/data/snapred-data
+	url = https://code.ornl.gov/sns-hfir-scse/infrastructure/test-data/snapred-data.git

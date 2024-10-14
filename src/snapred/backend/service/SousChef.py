@@ -239,7 +239,7 @@ class SousChef(Service):
         calibrantSamplePath = None
         if normalizationRecord is not None:
             smoothingParameter = normalizationRecord.smoothingParameter
-            calibrantSamplePath = normalizationRecord.calibrantSamplePath
+            calibrantSamplePath = normalizationRecord.normalizationCalibrantSamplePath
         # TODO: Should smoothing parameter be an ingredient?
         return ingredients, smoothingParameter, calibrantSamplePath
 
@@ -303,6 +303,9 @@ class SousChef(Service):
         if calibrantSamplePath is None:
             return Config["constants.PeakIntensityFractionThreshold"]
         else:
+            if not Path(calibrantSamplePath).is_absolute():
+                samplePath: str = Config["samples.home"]
+                calibrantSamplePath = os.path.join(samplePath, calibrantSamplePath)
             if not os.path.exists(calibrantSamplePath):
                 raise FileNotFoundError(f"Calibrant sample file {calibrantSamplePath} does not exist.")
             calibrantSample = self.prepCalibrantSample(calibrantSamplePath)
