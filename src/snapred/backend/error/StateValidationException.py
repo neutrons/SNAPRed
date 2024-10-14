@@ -27,7 +27,7 @@ class StateValidationException(Exception):
                 lineNumber = tb_info[-1].lineno
                 functionName = tb_info[-1].name
             else:
-                filePath, lineNumber, functionName = None, None, None
+                filePath, lineNumber, functionName = None, lineNumber, functionName
         else:
             filePath, lineNumber, functionName = None, None, None  # noqa: F841
 
