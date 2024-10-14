@@ -105,7 +105,6 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         rx.mantidSnapper = mock.Mock()
         rx.mantidSnapper.GroupedDetectorIDs.return_value = {}
         rx.mantidSnapper.OffsetStatistics.side_effect = [{"medianOffset": x} for x in [2, 1, 2, 0]]
-        print(rx.mantidSnapper.side_effect)
         result = rx.cook(self.ingredients, self.groceries)
         assert result.result
         assert result.medianOffsets == [2, 1]

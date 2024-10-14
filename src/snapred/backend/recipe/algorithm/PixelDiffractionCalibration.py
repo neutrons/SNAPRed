@@ -216,8 +216,6 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         wsoff: str = f"_{self.runNumber}_tmp_group_offset_{self._counts}"
         wscc: str = f"_{self.runNumber}_tmp_group_CC_{self._counts}"
 
-        print(self.groupWorkspaceIndices)
-
         for i, (groupID, workspaceIndices) in enumerate(self.groupWorkspaceIndices.items()):
             workspaceIndices = list(workspaceIndices)
             refID: int = self.getRefID(workspaceIndices)
