@@ -157,34 +157,6 @@ class TestReductionService(unittest.TestCase):
                 mockExportRecord.assert_called_once_with(record)
                 mockExportData.assert_called_once_with(record)
 
-    def test_validateReduction_with_artificialNormalization_and_no_permissions(self):
-        self.request.artificialNormalization = mock.Mock()
-        self.instance.checkWritePermissions = mock.Mock(return_value=False)
-
-        with pytest.raises(ContinueWarning) as excInfo:
-            self.instance.validateReduction(self.request)
-
-        assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
-
-    def test_validateReduction_with_continueFlags_xor_operation(self):
-        self.request.artificialNormalization = mock.Mock()
-        self.request.continueFlags = ContinueWarning.Type.NO_WRITE_PERMISSIONS
-
-        self.instance.checkWritePermissions = mock.Mock(return_value=True)
-
-        self.instance.validateReduction(self.request)
-
-    def test_fetchReductionGroceries_with_artificialNormalization(self):
-        self.request.artificialNormalization = "artificial_norm_ws"
-
-        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
-
-        self.instance.fetchReductionGroceries(self.request)
-
-        self.instance.groceryClerk.name("diffcalWorkspace").diffcal_table.assert_called_once_with(
-            self.request.runNumber, 1
-        )
-
     def test_loadReduction(self):
         ## this makes codecov happy
         with pytest.raises(NotImplementedError):
@@ -532,6 +504,49 @@ class TestReductionService(unittest.TestCase):
         assert result.normalization is None
         assert result.calibration is None
         assert result.workspaceNames == mockWorkspaceNames
+
+    def test_validateReduction_with_artificialNormalization_and_no_permissions(self):
+        self.request.artificialNormalization = mock.Mock()
+        self.instance.checkWritePermissions = mock.Mock(return_value=False)
+
+        with pytest.raises(ContinueWarning) as excInfo:
+            self.instance.validateReduction(self.request)
+
+        assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+    def test_validateReduction_with_continueFlags_xor_operation(self):
+        self.request.artificialNormalization = mock.Mock()
+        self.request.continueFlags = ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+        self.instance.checkWritePermissions = mock.Mock(return_value=True)
+
+        self.instance.validateReduction(self.request)
+
+    def test_fetchReductionGroceries_with_artificialNormalization(self):
+        self.request.artificialNormalization = "artificial_norm_ws"
+
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+
+        mock_grocery_clerk = mock.Mock()
+        self.instance.groceryClerk = mock_grocery_clerk
+
+        mock_grocery_clerk.name.return_value = mock_grocery_clerk
+        mock_grocery_clerk.diffcal_table.return_value = mock_grocery_clerk
+        mock_grocery_clerk.useLiteMode.return_value = mock_grocery_clerk
+        mock_grocery_clerk.add.return_value = mock_grocery_clerk
+        mock_grocery_clerk.buildDict.return_value = {"key1": "value1"}
+
+        mock_grocery_service = mock.Mock()
+        self.instance.groceryService = mock_grocery_service
+        mock_grocery_service.fetchGroceryList.return_value = ["workspace1"]
+
+        self.instance.fetchReductionGroceries(self.request)
+
+        mock_grocery_clerk.name.assert_any_call("inputWorkspace")
+        mock_grocery_clerk.name.assert_any_call("diffcalWorkspace")
+        mock_grocery_clerk.diffcal_table.assert_called_once_with(self.request.runNumber, 1)
+        mock_grocery_clerk.useLiteMode.assert_called_once_with(self.request.useLiteMode)
+        mock_grocery_clerk.add.assert_called_once()
 
 
 class TestReductionServiceMasks:
