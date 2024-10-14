@@ -7,6 +7,8 @@ from mantid.api import (
 )
 from mantid.kernel import Direction, ULongLongPropertyWithValue
 
+from snapred.meta.pointer import create_pointer
+
 
 class OffsetStatistics(PythonAlgorithm):
     """
@@ -38,16 +40,16 @@ class OffsetStatistics(PythonAlgorithm):
         offsets = list(self.getProperty(self.OFFSETWKSPPROP).value.extractY().ravel())
         absOffsets = [abs(offset) for offset in offsets]
 
-        self.data = {}
+        data = {}
         # (Warning: `median(abs(offsets))` vs. `abs(median(offsets)`: the former introduces oscillation artifacts.)
-        self.data["medianOffset"] = float(abs(np.median(offsets)))
-        self.data["meanOffset"] = float(abs(np.mean(offsets)))
-        self.data["minOffset"] = float(np.min(offsets))
-        self.data["maxOffset"] = float(np.max(offsets))
-        self.data["maxAbsoluteOffset"] = float(np.max(absOffsets))
-        self.data["minAbsoluteOFfset"] = float(np.min(absOffsets))
+        data["medianOffset"] = float(abs(np.median(offsets)))
+        data["meanOffset"] = float(abs(np.mean(offsets)))
+        data["minOffset"] = float(np.min(offsets))
+        data["maxOffset"] = float(np.max(offsets))
+        data["maxAbsoluteOffset"] = float(np.max(absOffsets))
+        data["minAbsoluteOFfset"] = float(np.min(absOffsets))
 
-        self.setProperty("Data", id(self.data))
+        self.setProperty("Data", create_pointer(data))
 
 
 # Register algorithm with Mantid
