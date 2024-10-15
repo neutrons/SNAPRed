@@ -119,8 +119,6 @@ class RemoveEventBackground(PythonAlgorithm):
             InputWorkspace=self.outputBackgroundWorkspaceName,
             OutputWorkspace=self.outputBackgroundWorkspaceName + "_extractDSP",
         )
-
-        # Converting EventWorkspace to MatrixWorkspace...
         ConvertToMatrixWorkspace(
             InputWorkspace=self.outputBackgroundWorkspaceName,
             OutputWorkspace=self.outputBackgroundWorkspaceName,
