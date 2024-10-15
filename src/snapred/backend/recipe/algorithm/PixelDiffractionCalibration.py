@@ -147,11 +147,11 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             GroupingWorkspace=groupingWS,
             DetectorPeaks=peaks,
         )
-        if self.mantidSnapper.mtd[self.wsTOF].isEventWorkspace():
+        if self.mantidSnapper.mtd[inputWS].isEventWorkspace():
             self.mantidSnapper.ConvertToEventWorkspace(
                 "Converting TOF data to EventWorkspace...",
-                InputWorkspace=inputWS,
-                OutputWorkspace=inputWS,
+                InputWorkspace=wsBG,
+                OutputWorkspace=wsBG,
             )
         self.mantidSnapper.Minus(
             "Subtracting background from input data",
