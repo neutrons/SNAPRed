@@ -12,6 +12,7 @@ from mantid.api import (
 from mantid.kernel import Direction
 from mantid.kernel import ULongLongPropertyWithValue as PointerProperty
 from mantid.simpleapi import (
+    ConvertToMatrixWorkspace,
     ConvertUnits,
     GroupedDetectorIDs,
     MakeDirtyDish,
@@ -118,8 +119,7 @@ class RemoveEventBackground(PythonAlgorithm):
             InputWorkspace=self.outputBackgroundWorkspaceName,
             OutputWorkspace=self.outputBackgroundWorkspaceName + "_extractDSP",
         )
-        self.mantidSnapper.ConvertToMatrixWorkspace(
-            "Converting EventWorkspace to MatrixWorkspace...",
+        ConvertToMatrixWorkspace(
             InputWorkspace=self.outputBackgroundWorkspaceName,
             OutputWorkspace=self.outputBackgroundWorkspaceName,
         )
