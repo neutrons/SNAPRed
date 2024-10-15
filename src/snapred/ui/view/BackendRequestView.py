@@ -6,6 +6,7 @@ from snapred.ui.widget.LabeledCheckBox import LabeledCheckBox
 from snapred.ui.widget.LabeledField import LabeledField
 from snapred.ui.widget.MultiSelectDropDown import MultiSelectDropDown
 from snapred.ui.widget.SampleDropDown import SampleDropDown
+from snapred.ui.widget.TrueFalseDropDown import TrueFalseDropDown
 
 
 class BackendRequestView(QWidget):
@@ -32,6 +33,9 @@ class BackendRequestView(QWidget):
 
     def _sampleDropDown(self, label, items=[]):
         return SampleDropDown(label, items, self)
+
+    def _trueFalseDropDown(self, label):
+        return TrueFalseDropDown(label, self)
 
     def _multiSelectDropDown(self, label, items=[]):
         return MultiSelectDropDown(label, items, self)
