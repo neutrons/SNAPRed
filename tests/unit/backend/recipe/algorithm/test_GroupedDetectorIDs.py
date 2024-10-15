@@ -5,7 +5,8 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.recipe.algorithm.GroupedDetectorIDs import GroupedDetectorIDs as Algo
-from snapred.meta.redantic import access_pointer
+from snapred.backend.recipe.algorithm.Utensils import Utensils
+from snapred.meta.pointer import access_pointer
 from util.diffraction_calibration_synthetic_data import SyntheticData
 
 
@@ -44,4 +45,14 @@ class TestGroupedDetectorIDs(unittest.TestCase):
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
         assert algo.execute()
         data = access_pointer(algo.getProperty("GroupWorkspaceIndices").value)
+        assert data == {2: [2, 4, 11, 14], 3: [0, 5, 10, 15], 7: [1, 7, 8, 13], 11: [3, 6, 9, 12]}
+
+    def test_execute_from_mantidSnapper(self):
+        utensils = Utensils()
+        utensils.PyInit()
+        data = utensils.mantidSnapper.GroupedDetectorIDs(
+            "Run in mantid snapper",
+            GroupingWorkspace=self.fakeGroupingWorkspace,
+        )
+        utensils.mantidSnapper.executeQueue()
         assert data == {2: [2, 4, 11, 14], 3: [0, 5, 10, 15], 7: [1, 7, 8, 13], 11: [3, 6, 9, 12]}

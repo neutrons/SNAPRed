@@ -7,7 +7,7 @@ IPTS:
   # Eventually, for SNAPRed's test framework:
   #   this should be a shared location on "analysis.sns.gov".
   # For the moment, each developer needs to set this individually to their local path.
-  root: /SNS/users/ux0/workspaces/SNAPRed/SNS_root
+  root: ${module.root}/data/snapred-data/SNS
 
 constants:
   # For tests with '46680' this seems to be necessary.

@@ -15,7 +15,7 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 
 ## the code to test
-from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration as PixelAlgo
+from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffCalRecipe as PixelDiffCalRx
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration as GroupAlgo
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 
@@ -57,27 +57,14 @@ clerk.fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
 groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 ### RUN PIXEL CALIBRATION ##########
-pixelAlgo = PixelAlgo()
-pixelAlgo.initialize()
-pixelAlgo.setPropertyValue("Ingredients", ingredients.json())
-pixelAlgo.setPropertyValue("InputWorkspace",groceries[0])
-pixelAlgo.setPropertyValue("GroupingWorkspace", groceries[1])
-pixelAlgo.execute()
+
+pixelRes = PixelDiffCalRx().cook(ingredients, groceries)
 
 assert False
-
-median = json.loads(pixelAlgo.getPropertyValue("data"))["medianOffset"]
-print(median)
-
-count = 0
-while median > offsetConvergenceLimit or count < 5:
-    pixelAlgo.execute()
-    median = json.loads(pixelAlgo.getPropertyValue("data"))["medianOffset"]
-    count += 1
     
 ### RUN GROUP CALIBRATION
 
-DIFCprev = pixelAlgo.getPropertyValue("CalibrationTable")
+DIFCprev = pixelRes.calibrationTable
 
 outputWS = mtd.unique_name(prefix="output_")
 groupAlgo = GroupAlgo()

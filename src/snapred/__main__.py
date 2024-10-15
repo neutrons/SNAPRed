@@ -2,6 +2,7 @@ import sys
 
 from mantid.kernel import amend_config
 
+import snapred.backend.recipe.algorithm  # noqa: F401
 from snapred import __version__ as snapred_version
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Resource

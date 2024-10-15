@@ -119,8 +119,8 @@ class SyntheticData(object):
         fakePixelGroup = DAOFactory.synthetic_pixel_group.copy()
 
         # Place all peaks within the _minimum_ d-space range of any pixel group.
-        dMin = max(fakePixelGroup.dMin())
-        dMax = min(fakePixelGroup.dMax())
+        dMin = min(fakePixelGroup.dMin())
+        dMax = max(fakePixelGroup.dMax())
 
         # The pixel group's TOF-domain will be used to convert the original `CreateSampleWorkspace` 'Powder Diffraction'
         #   predefined function: this allows peak widths to be properly scaled to generate data for a d-spacing domain.

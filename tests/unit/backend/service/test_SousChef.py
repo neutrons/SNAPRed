@@ -388,13 +388,20 @@ class TestSousChef(unittest.TestCase):
             ),
             calibrantSamplePath=calibrationCalibrantSamplePath,
         )
+        normalRecord = mock.Mock(
+            smoothingParamter=1.0,
+            calculationParameters=mock.Mock(
+                calibrantSamplePath=calibrationCalibrantSamplePath,
+            ),
+            normalizationCalibrantSamplePath=calibrationCalibrantSamplePath,
+        )
         self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepRunConfig = mock.Mock()
         self.instance.prepManyPixelGroups = mock.Mock()
         self.instance.prepManyDetectorPeaks = mock.Mock()
         self.instance.dataFactoryService.getCifFilePath = mock.Mock()
         self.instance.dataFactoryService.getReductionState = mock.Mock()
-        self.instance.dataFactoryService.getNormalizationRecord = mock.Mock(return_value=record)
+        self.instance.dataFactoryService.getNormalizationRecord = mock.Mock(return_value=normalRecord)
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=record)
 
         ingredients_ = self.ingredients.model_copy()
@@ -414,7 +421,7 @@ class TestSousChef(unittest.TestCase):
             useLiteMode=ingredients_.useLiteMode,
             timestamp=ingredients_.timestamp,
             pixelGroups=self.instance.prepManyPixelGroups.return_value,
-            smoothingParameter=record.smoothingParameter,
+            smoothingParameter=normalRecord.smoothingParameter,
             calibrantSamplePath=ingredients_.calibrantSamplePath,
             peakIntensityThreshold=ingredients_.peakIntensityThreshold,
             detectorPeaksMany=self.instance.prepManyDetectorPeaks.return_value,

@@ -6,7 +6,8 @@ from mantid.simpleapi import (
 )
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.recipe.algorithm.RemoveEventBackground import RemoveEventBackground as Algo
-from snapred.meta.redantic import list_to_raw
+from snapred.backend.recipe.algorithm.Utensils import Utensils
+from snapred.meta.pointer import create_pointer
 from util.diffraction_calibration_synthetic_data import SyntheticData
 
 
@@ -41,7 +42,7 @@ class TestRemoveEventBackground(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("DetectorPeaks", list_to_raw(peaks))
+        algo.setProperty("DetectorPeaks", create_pointer(peaks))
 
         algo.chopIngredients(peaks)
 
@@ -75,7 +76,7 @@ class TestRemoveEventBackground(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeData)
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("DetectorPeaks", list_to_raw(peaks))
+        algo.setProperty("DetectorPeaks", create_pointer(peaks))
         algo.setProperty("OutputWorkspace", "output_test_ws")
         assert algo.execute()
 
@@ -87,7 +88,7 @@ class TestRemoveEventBackground(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("DetectorPeaks", list_to_raw(peaks))
+        algo.setProperty("DetectorPeaks", create_pointer(peaks))
 
         with self.assertRaises(RuntimeError) as context:  # noqa: PT027
             algo.chopIngredients(peaks)
@@ -98,8 +99,9 @@ class TestRemoveEventBackground(unittest.TestCase):
         algo = Algo()
         algo.initialize()
 
+        noPeaks = []
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("DetectorPeaks", list_to_raw([]))
+        algo.setProperty("DetectorPeaks", create_pointer(noPeaks))
 
         with self.assertRaises(RuntimeError):  # noqa: PT027
             algo.execute()
@@ -112,7 +114,7 @@ class TestRemoveEventBackground(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeData)
-        algo.setProperty("DetectorPeaks", list_to_raw([]))
+        algo.setProperty("DetectorPeaks", create_pointer(noPeaks))
 
         with self.assertRaises(RuntimeError):  # noqa: PT027
             algo.execute()
@@ -135,7 +137,7 @@ class TestRemoveEventBackground(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeData)
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("DetectorPeaks", list_to_raw(peaks))
+        algo.setProperty("DetectorPeaks", create_pointer(peaks))
         algo.setProperty("SmoothingParameter", 0)
         algo.setProperty("OutputWorkspace", "output_test_ws_no_smoothing")
 
@@ -164,10 +166,28 @@ class TestRemoveEventBackground(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeData)
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("DetectorPeaks", list_to_raw(peaks))
+        algo.setProperty("DetectorPeaks", create_pointer(peaks))
         algo.setProperty("OutputWorkspace", "output_test_ws")
 
         assert algo.execute()
 
         assert "output_test_ws" in mtd, "Output workspace not found in the Mantid workspace dictionary"
         output_ws = mtd["output_test_ws"]  # noqa: F841
+
+    def test_execute_from_mantidSnapper(self):
+        peaks = self.create_test_peaks()
+        ConvertToEventWorkspace(
+            InputWorkspace=self.fakeData,
+            OutputWorkspace=self.fakeData,
+        )
+        utensils = Utensils()
+        utensils.PyInit()
+        utensils.mantidSnapper.RemoveEventBackground(
+            "Run in mantid snapper",
+            InputWorkspace=self.fakeData,
+            GroupingWorkspace=self.fakeGroupingWorkspace,
+            DetectorPeaks=peaks,  # NOTE passed as object, not pointer
+            OutputWorkspace="output_test_ws",
+        )
+        utensils.mantidSnapper.executeQueue()
+        assert "output_test_ws" in mtd
