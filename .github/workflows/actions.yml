@@ -16,7 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up MicroMamaba
-      uses: mamba-org/setup-micromamba@v1
+      uses: mamba-org/setup-micromamba@v2
       with:
         micromamba-version: '1.5.10-0'
         environment-file: environment.yml
@@ -67,7 +67,7 @@ jobs:
         submodules: true
         lfs: true
     - name: Set up MicroMamaba
-      uses: mamba-org/setup-micromamba@v1
+      uses: mamba-org/setup-micromamba@v2
       with:
         micromamba-version: '1.5.10-0'
         environment-file: environment.yml
@@ -107,7 +107,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up MicroMamaba
-      uses: mamba-org/setup-micromamba@v1
+      uses: mamba-org/setup-micromamba@v2
       with:
         micromamba-version: '1.5.10-0'
         environment-file: environment.yml
