@@ -13,6 +13,7 @@ from snapred.backend.dao.request import (
 from snapred.backend.dao.request.ReductionRequest import Versions
 from snapred.backend.dao.response.ReductionResponse import ReductionResponse
 from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
@@ -370,11 +371,29 @@ class ReductionService(Service):
             calVersion,
             normVersion,
         )
-
-        return self.groceryService.fetchGroceryDict(
+        groceries = self.groceryService.fetchGroceryDict(
             groceryDict=self.groceryClerk.buildDict(),
             **({"maskWorkspace": combinedMask} if combinedMask else {}),
         )
+
+        self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
+
+        return groceries
+
+    def _markWorkspaceMetadata(self, request: ReductionRequest, workspace: WorkspaceName):
+        calibrationState = (
+            DiffcalStateMetadata.NONE
+            if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION in request.continueFlags
+            else DiffcalStateMetadata.EXISTS
+        )
+        # The reduction workflow will automatically create a "fake" vanadium, so it shouldnt ever be None?
+        normalizationState = (
+            NormalizationStateMetadata.FAKE
+            if ContinueWarning.Type.MISSING_NORMALIZATION in request.continueFlags
+            else NormalizationStateMetadata.EXISTS
+        )
+        metadata = WorkspaceMetadata(diffcalState=calibrationState, normalizationState=normalizationState)
+        self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
 
     def saveReduction(self, request: ReductionExportRequest):
         self.dataExportService.exportReductionRecord(request.record)

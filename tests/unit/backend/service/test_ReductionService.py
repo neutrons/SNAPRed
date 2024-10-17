@@ -106,6 +106,7 @@ class TestReductionService(unittest.TestCase):
     def test_fetchReductionGroceries(self):
         self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
+        self.instance._markWorkspaceMetadata = mock.Mock()
         self.request.continueFlags = ContinueWarning.Type.UNSET
         res = self.instance.fetchReductionGroceries(self.request)
         assert "inputWorkspace" in res
@@ -124,6 +125,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
+        self.instance._markWorkspaceMetadata = mock.Mock()
 
         result = self.instance.reduction(self.request)
         groupings = self.instance.fetchReductionGroupings(self.request)
@@ -496,7 +498,7 @@ class TestReductionServiceMasks:
 
             def trackFetchGroceryDict(*args, **kwargs):
                 fetchGroceryCallArgs.append((args, kwargs))
-                return mock.Mock()
+                return mock.MagicMock()
 
             mockFetchGroceryDict.side_effect = trackFetchGroceryDict
 
@@ -511,6 +513,7 @@ class TestReductionServiceMasks:
             )
             self.service.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
             self.service.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=2)
+            self.service._markWorkspaceMetadata = mock.Mock()
 
             groceryClerk = self.service.groceryClerk
             for mask in (self.maskWS1, self.maskWS2):

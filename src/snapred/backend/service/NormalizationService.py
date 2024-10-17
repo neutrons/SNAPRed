@@ -19,9 +19,11 @@ from snapred.backend.dao.request import (
     VanadiumCorrectionRequest,
 )
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
+from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.GenericRecipe import (
     FocusSpectraRecipe,
@@ -36,6 +38,9 @@ from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceName,
+)
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import parse_obj_as
 
@@ -115,20 +120,22 @@ class NormalizationService(Service):
             request.useLiteMode
         ).add()
 
-        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
-        if calVersion is None:
-            raise ValueError("No calibration version found for run number: " + request.runNumber)
-        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
-            request.useLiteMode
-        ).add()
-        self.groceryClerk.name("maskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
-            request.useLiteMode
-        ).add()
+        if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
+            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
+                request.runNumber, request.useLiteMode
+            )
+
+            self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
+                request.useLiteMode
+            ).add()
+            self.groceryClerk.name("maskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
+                request.useLiteMode
+            ).add()
 
         groceries = self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
         )
-
+        self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
         # NOTE: This used to point at other methods in this service to accomplish the same thing
         #       It looks like it got reverted accidentally?
         #       I'm leaving them as is but this should be fixed.
@@ -168,6 +175,15 @@ class NormalizationService(Service):
             detectorPeaks=ingredients.detectorPeaks,
         ).dict()
 
+    def _markWorkspaceMetadata(self, request: NormalizationRequest, workspace: WorkspaceName):
+        calibrationState = (
+            DiffcalStateMetadata.NONE
+            if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION in request.continueFlags
+            else DiffcalStateMetadata.EXISTS
+        )
+        metadata = WorkspaceMetadata(diffcalState=calibrationState, normalizationState=NormalizationStateMetadata.UNSET)
+        self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
+
     def validateRequest(self, request: NormalizationRequest):
         """
         Validate the normalization request.
@@ -183,6 +199,22 @@ class NormalizationService(Service):
             runNumber=request.runNumber, continueFlags=request.continueFlags
         )
         self.validateWritePermissions(permissionsRequest)
+        self._validateDiffractionCalibrationExists(request)
+
+    def _validateDiffractionCalibrationExists(self, request: NormalizationRequest):
+        continueFlags = ContinueWarning.Type.UNSET
+
+        if not self.dataFactoryService.calibrationExists(request.runNumber, request.useLiteMode):
+            continueFlags |= ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
+
+        if request.continueFlags:
+            continueFlags = continueFlags ^ (request.continueFlags & continueFlags)
+
+        if continueFlags:
+            raise ContinueWarning(
+                "Normalization is missing applicable Diffraction Calibration data, continue in uncalibrated mode?",
+                continueFlags,
+            )
 
     def validateWritePermissions(self, request: CalibrationWritePermissionsRequest):
         """

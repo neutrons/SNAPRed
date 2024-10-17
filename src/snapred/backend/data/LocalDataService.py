@@ -335,6 +335,9 @@ class LocalDataService:
         mode = "lite" if useLiteMode else "native"
         return self.constructCalibrationStateRoot(stateId) / mode / "normalization"
 
+    def _hasWritePermissionsCalibrationStateRoot(self) -> bool:
+        return self.checkWritePermissions(Path(Config["instrument.calibration.powder.home"]))
+
     # reduction paths #
 
     @validate_call
@@ -745,7 +748,12 @@ class LocalDataService:
     @validate_call
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         if not self.calibrationExists(runId, useLiteMode):
-            raise RecoverableException.stateUninitialized(runId, useLiteMode)
+            if self._hasWritePermissionsCalibrationStateRoot():
+                raise RecoverableException.stateUninitialized(runId, useLiteMode)
+            else:
+                raise RuntimeError(
+                    "No calibration exists, and you lack permissions to create one, please contact your CIS."
+                )
 
         indexer = self.calibrationIndexer(runId, useLiteMode)
         # NOTE if we prefer latest version in index, uncomment below

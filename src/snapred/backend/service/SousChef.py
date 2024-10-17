@@ -276,7 +276,7 @@ class SousChef(Service):
             )
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
-        self._verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
+        # self._verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
 
         return NormalizationIngredients(
             pixelGroup=self.prepPixelGroup(ingredients),

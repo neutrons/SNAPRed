@@ -249,6 +249,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
 
         result = self.instance.normalization(self.request)
@@ -262,14 +263,10 @@ class TestNormalizationService(unittest.TestCase):
         mockPreprocessReduction.assert_called_once()
         mockSmoothDataExcludingPeaks.assert_called_once()
 
-        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=None)
-
-        with pytest.raises(ValueError, match=r".*No calibration version found for run number:*"):
-            self.instance.normalization(self.request)
-
     def test_validateRequest(self):
         # test `validateRequest` internal calls
         self.instance._sameStates = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         permissionsRequest = CalibrationWritePermissionsRequest(
             runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
         )
@@ -320,6 +317,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.groceryService.workSpaceDoesExist = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="path/to/cif")
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
         result = self.instance.normalization(self.request)
 
