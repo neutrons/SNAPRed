@@ -92,14 +92,6 @@ snapred.backend.recipe.algorithm.GenerateTableWorkspaceFromListOfDict module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.GroupDiffractionCalibration module
---------------------------------------------------------------------
-
-.. automodule:: snapred.backend.recipe.algorithm.GroupDiffractionCalibration
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.recipe.algorithm.LiteDataCreationAlgo module
 ------------------------------------------------------------
 
