@@ -275,6 +275,16 @@ class TestNormalizationService(unittest.TestCase):
             self.instance._sameStates.assert_called_once_with(self.request.runNumber, self.request.backgroundRunNumber)
             mockValidateWritePermissions.assert_called_once_with(permissionsRequest)
 
+    def test_validateDiffractionCalibrationExists_failure(self):
+        request = mock.Mock(runNumber="12345", backgroundRunNumber="67890", continueFlags=ContinueWarning.Type.UNSET)
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
+
+        with pytest.raises(
+            ContinueWarning,
+            match=r"Normalization is missing applicable Diffraction Calibration data, continue in uncalibrated mode?",
+        ):
+            self.instance._validateDiffractionCalibrationExists(request)
+
     def test_validateRequest_different_states(self):
         # test `validateRequest` raises `ValueError`
         self.instance._sameStates = mock.Mock(return_value=False)

@@ -11,6 +11,7 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.api.RequestScheduler import RequestScheduler
+from snapred.backend.dao import WorkspaceMetadata
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
@@ -135,6 +136,30 @@ class TestReductionService(unittest.TestCase):
         mockReductionRecipe.assert_called()
         mockReductionRecipe.return_value.cook.assert_called_once_with(ingredients, groceries)
         assert result.record.workspaceNames == mockReductionRecipe.return_value.cook.return_value["outputs"]
+
+    def test_markWorkspaceMetadata(self):
+        request = mock.Mock(continueFlags=ContinueWarning.Type.UNSET)
+        metadata = WorkspaceMetadata(diffcalState="exists", normalizationState="exists")
+        wsName = "test"
+        self.instance.groceryService = mock.Mock()
+        self.instance._markWorkspaceMetadata(request, wsName)
+        self.instance.groceryService.writeWorkspaceMetadataAsTags.assert_called_once_with(wsName, metadata)
+
+    def test_markWorkspaceMetadata_continue(self):
+        request = mock.Mock(continueFlags=ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION)
+        metadata = WorkspaceMetadata(diffcalState="none", normalizationState="exists")
+        wsName = "test"
+        self.instance.groceryService = mock.Mock()
+        self.instance._markWorkspaceMetadata(request, wsName)
+        self.instance.groceryService.writeWorkspaceMetadataAsTags.assert_called_once_with(wsName, metadata)
+
+    def test_markWorkspaceMetadata_continueNormalization(self):
+        request = mock.Mock(continueFlags=ContinueWarning.Type.MISSING_NORMALIZATION)
+        metadata = WorkspaceMetadata(diffcalState="exists", normalizationState="fake")
+        wsName = "test"
+        self.instance.groceryService = mock.Mock()
+        self.instance._markWorkspaceMetadata(request, wsName)
+        self.instance.groceryService.writeWorkspaceMetadataAsTags.assert_called_once_with(wsName, metadata)
 
     def test_saveReduction(self):
         with (

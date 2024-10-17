@@ -708,6 +708,14 @@ class TestGroceryService(unittest.TestCase):
             tagResult = self.instance.getWorkspaceTag(workspaceName=wsname, logname=logName)
             assert tagResult == tag
 
+    def test_writeWorkspaceMetadataAsTags(self):
+        self.instance.setWorkspaceTag = mock.Mock()
+        wsName = "testWsName"
+        metadata = WorkspaceMetadata()
+        self.instance.writeWorkspaceMetadataAsTags(wsName, metadata)
+        assert self.instance.setWorkspaceTag.call_count == len(metadata.dict().keys())
+        self.instance.setWorkspaceTag.assert_called_with(wsName, "normalizationState", "unset")
+
     ## TEST CLEANUP METHODS
 
     def test_deleteWorkspace(self):
