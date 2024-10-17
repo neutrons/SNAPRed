@@ -31,6 +31,13 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
         self.sampleWs = groceries["inputWorkspace"]
         self.diffcalWs = groceries.get("diffcalWorkspace", "")
         self.maskWs = groceries.get("maskWorkspace", "")
+        self.outputWs = groceries.get("outputWorkspace", groceries["inputWorkspace"])
+
+    def _validateGrocery(self, key, ws):
+        # Skip validation for outputWorkspace
+        # It is either the inputWorkspace or a new workspace created he
+        if key != "outputWorkspace":
+            super()._validateGrocery(key, ws)
 
     def queueAlgos(self):
         """
@@ -38,16 +45,23 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
         Requires: unbagged groceries and chopped ingredients.
         """
 
+        if self.outputWs != self.sampleWs:
+            self.mantidSnapper.CloneWorkspace(
+                "Cloning workspace...",
+                InputWorkspace=self.sampleWs,
+                OutputWorkspace=self.outputWs,
+            )
+
         if self.maskWs:
             self.mantidSnapper.MaskDetectorFlags(
                 "Applying pixel mask...",
                 MaskWorkspace=self.maskWs,
-                OutputWorkspace=self.sampleWs,
+                OutputWorkspace=self.outputWs,
             )
 
         if self.diffcalWs:
             self.mantidSnapper.ApplyDiffCal(
-                "Applying diffcal..", InstrumentWorkspace=self.sampleWs, CalibrationWorkspace=self.diffcalWs
+                "Applying diffcal..", InstrumentWorkspace=self.outputWs, CalibrationWorkspace=self.diffcalWs
             )
 
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:

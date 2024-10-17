@@ -1058,6 +1058,11 @@ class TestGUIPanels:
                     lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
                 )
                 questionMessageBox.start()
+                warningMessageBox = mock.patch(  # noqa: PT008
+                    "qtpy.QtWidgets.QMessageBox.warning",
+                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
+                )
+                warningMessageBox.start()
                 successPrompt = mock.patch(
                     "snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt",
                     lambda parent: parent.close() if parent is not None else None,
@@ -1088,6 +1093,7 @@ class TestGUIPanels:
 
                 # State initialization dialog is "application modal" => no need to explicitly wait
                 questionMessageBox.stop()
+                warningMessageBox.stop()
                 successPrompt.stop()
 
             #    (2) execute the normalization workflow

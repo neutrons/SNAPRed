@@ -38,6 +38,8 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
 
     def test_queueAlgos(self):
         recipe = ReductionGroupProcessingRecipe()
+        recipe._validateIngredients = unittest.mock.Mock(return_value=True)
+        recipe._validateGrocery = unittest.mock.Mock(return_value=True)
         groceries = {
             "inputWorkspace": "input",
             "groupingWorkspace": "groupingWS",
@@ -64,6 +66,7 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
         mockSnapper = unittest.mock.Mock()
         untensils.mantidSnapper = mockSnapper
         recipe = ReductionGroupProcessingRecipe(utensils=untensils)
+        recipe._validateIngredients = unittest.mock.Mock(return_value=True)
         groceries = {
             "inputWorkspace": "input",
             "outputWorkspace": "output",
@@ -88,6 +91,7 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
         mockSnapper = unittest.mock.Mock()
         untensils.mantidSnapper = mockSnapper
         recipe = ReductionGroupProcessingRecipe(utensils=untensils)
+        recipe._validateIngredients = unittest.mock.Mock(return_value=True)
         groceries = {
             "inputWorkspace": "input",
             "outputWorkspace": "output",
