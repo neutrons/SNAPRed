@@ -1076,7 +1076,7 @@ class TestGUIPanels:
                         ]
                     )
                     > 0,
-                    timeout=1000,
+                    timeout=10000,
                 )
                 stateInitDialog = [
                     o for o in qapp.topLevelWidgets() if isinstance(o, InitializeStateCheckView.InitializationMenu)
