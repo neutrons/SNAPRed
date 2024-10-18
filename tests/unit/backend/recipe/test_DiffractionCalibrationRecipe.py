@@ -51,7 +51,8 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
     def test_execute_successful(self, mockGroupRx, mockPixelRx):
         # produce 4, 2, 1, 0.5
         mockPixelRx.return_value.cook.return_value = mock.Mock(
-            result=True, medianOffsets=[0],
+            result=True,
+            medianOffsets=[0],
         )
         mockGroupRx.return_value.cook.return_value = mock.Mock(
             result=True,

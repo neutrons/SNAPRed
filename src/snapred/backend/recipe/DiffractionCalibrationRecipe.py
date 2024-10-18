@@ -1,7 +1,5 @@
 from typing import Any, Dict, List
 
-from pydantic import BaseModel
-
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffCalRecipe
@@ -13,8 +11,8 @@ logger = snapredLogger.getLogger(__name__)
 
 """
 NOTE this recipe will no longer serve any purpose following EWM 7388
-It is only remaining to ensure continuity of test coverage during 
-the PR review process.  It can be reliably removed once the new service 
+It is only remaining to ensure continuity of test coverage during
+the PR review process.  It can be reliably removed once the new service
 endpoints are setup.
 """
 

@@ -10,7 +10,6 @@ from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
-
 logger = snapredLogger.getLogger(__name__)
 
 
@@ -40,7 +39,7 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
     MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     GROCERIES = {
-        # NOTE this would be better as a StrEnum, which requires python 3.11 
+        # NOTE this would be better as a StrEnum, which requires python 3.11
         "inputWorkspace",
         "groupingWorkspace",
         "maskWorkspace",
