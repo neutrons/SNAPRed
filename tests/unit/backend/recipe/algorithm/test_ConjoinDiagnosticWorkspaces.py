@@ -142,6 +142,65 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
         # for some reason the spectrum numbers do not correspond...
         assert_almost_equal(wksp, bigwksp, CheckSpectraMap=False)
 
+    def test_simple_success_workspace_single_spectra(self):
+        bigwksp = CreateWorkspace(
+            DataX=[0, 1, 2, 0, 1, 2],
+            DataY=[2, 2, 3, 3],
+            NSpec=2,
+        )
+        # group 1
+        name1 = mtd.unique_name(prefix="group1_")
+        group1 = WorkspaceGroup()
+        wksp1 = ExtractSingleSpectrum(
+            InputWorkspace=bigwksp,
+            OutputWorkspace=f"{name1}_dspacing",
+            WorkspaceIndex=0,
+        )
+        group1.addWorkspace(wksp1)
+        mtd.add(name1, group1)
+
+        # group 2
+        name2 = mtd.unique_name(prefix="group2_")
+        group2 = WorkspaceGroup()
+        wksp2 = ExtractSingleSpectrum(
+            InputWorkspace=bigwksp,
+            OutputWorkspace=f"{name2}_dspacing",
+            WorkspaceIndex=1,
+        )
+        group2.addWorkspace(wksp2)
+        mtd.add(name2, group2)
+
+        finalname = mtd.unique_name(prefix="final_")
+
+        # add in the first workspace
+
+        algo = Algo()
+        algo.initialize()
+        algo.diagnosticSuffix = {0: "_dspacing"}
+        algo.setProperty("DiagnosticWorkspace", name1)
+        algo.setProperty("TotalDiagnosticWorkspace", finalname)
+        algo.setProperty("AddAtIndex", 0)
+        algo.execute()
+
+        finalGroup = mtd[finalname]
+        wksp = finalGroup.getItem(0)
+        assert_almost_equal(wksp, wksp1)
+
+        # add in the second workspace
+
+        algo = Algo()
+        algo.initialize()
+        algo.diagnosticSuffix = {0: "_dspacing"}
+        algo.setProperty("DiagnosticWorkspace", name2)
+        algo.setProperty("TotalDiagnosticWorkspace", finalname)
+        algo.setProperty("AddAtIndex", 1)
+        algo.execute()
+
+        finalGroup = mtd[finalname]
+        wksp = finalGroup.getItem(0)
+        # for some reason the spectrum numbers do not correspond...
+        assert_almost_equal(wksp, bigwksp, CheckSpectraMap=False)
+
     def test_success(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         syntheticInputs = SyntheticData()
@@ -216,10 +275,10 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
                 StopWorkspaceIndex=index,
             )
             tempGroup = mtd[diagnosticWSgroup]
-            ref_col_names_position.update(tempGroup.getItem(2).getColumnNames())
-            ref_col_names_fitparam.update(tempGroup.getItem(0).getColumnNames())
-            print(ref_col_names_fitparam)
-            ref_peak_num_fitparam.update(tempGroup.getItem(0).column("centre"))
+            tempGroup.sortByName()
+            ref_col_names_position.update(tempGroup.getItem(0).getColumnNames())
+            ref_col_names_fitparam.update(tempGroup.getItem(1).getColumnNames())
+            ref_peak_num_fitparam.update(tempGroup.getItem(1).column("centre"))
             ConjoinDiagnosticWorkspaces(
                 DiagnosticWorkspace=diagnosticWSgroup,
                 TotalDiagnosticWorkspace=finalname,
