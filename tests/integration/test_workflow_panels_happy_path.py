@@ -1072,6 +1072,7 @@ class TestGUIPanels:
                 #    (1) respond to the "initialize state" request
                 with qtbot.waitSignal(actionCompleted, timeout=60000):
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+
                 qtbot.waitUntil(
                     lambda: len(
                         [

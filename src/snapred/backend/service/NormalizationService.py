@@ -2,6 +2,7 @@ from pathlib import Path
 
 from snapred.backend.dao import Limit
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
@@ -120,17 +121,14 @@ class NormalizationService(Service):
             request.useLiteMode
         ).add()
 
-        if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
-            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
-                request.runNumber, request.useLiteMode
-            )
+        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
 
-            self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
-                request.useLiteMode
-            ).add()
-            self.groceryClerk.name("maskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
-                request.useLiteMode
-            ).add()
+        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
+            request.useLiteMode
+        ).add()
+        self.groceryClerk.name("maskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
+            request.useLiteMode
+        ).add()
 
         groceries = self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
@@ -177,8 +175,8 @@ class NormalizationService(Service):
 
     def _markWorkspaceMetadata(self, request: NormalizationRequest, workspace: WorkspaceName):
         calibrationState = (
-            DiffcalStateMetadata.NONE
-            if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION in request.continueFlags
+            DiffcalStateMetadata.DEFAULT
+            if ContinueWarning.Type.DEFAULT_DIFFRACTION_CALIBRATION in request.continueFlags
             else DiffcalStateMetadata.EXISTS
         )
         metadata = WorkspaceMetadata(diffcalState=calibrationState, normalizationState=NormalizationStateMetadata.UNSET)
@@ -204,15 +202,20 @@ class NormalizationService(Service):
     def _validateDiffractionCalibrationExists(self, request: NormalizationRequest):
         continueFlags = ContinueWarning.Type.UNSET
 
-        if not self.dataFactoryService.calibrationExists(request.runNumber, request.useLiteMode):
-            continueFlags |= ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
+        self.sousChef.verifyCalibrationExists(request.runNumber, request.useLiteMode)
+
+        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
+        if calVersion == VERSION_DEFAULT:
+            continueFlags = continueFlags | ContinueWarning.Type.DEFAULT_DIFFRACTION_CALIBRATION
 
         if request.continueFlags:
             continueFlags = continueFlags ^ (request.continueFlags & continueFlags)
 
         if continueFlags:
             raise ContinueWarning(
-                "Normalization is missing applicable Diffraction Calibration data, continue in uncalibrated mode?",
+                "Only the default Diffraction Calibration data is available for this run.\n"
+                "Normalizations may not be accurate to true state of the instrument, and will be marked as such.\n"
+                "Continue anyway?",
                 continueFlags,
             )
 

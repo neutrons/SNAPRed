@@ -267,6 +267,7 @@ class TestNormalizationService(unittest.TestCase):
         # test `validateRequest` internal calls
         self.instance._sameStates = mock.Mock(return_value=True)
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         permissionsRequest = CalibrationWritePermissionsRequest(
             runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
         )
@@ -277,11 +278,12 @@ class TestNormalizationService(unittest.TestCase):
 
     def test_validateDiffractionCalibrationExists_failure(self):
         request = mock.Mock(runNumber="12345", backgroundRunNumber="67890", continueFlags=ContinueWarning.Type.UNSET)
-        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
+        self.instance.sousChef = SculleryBoy()
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=-1)
 
         with pytest.raises(
             ContinueWarning,
-            match=r"Normalization is missing applicable Diffraction Calibration data, continue in uncalibrated mode?",
+            match=r".*Continue anyway*",
         ):
             self.instance._validateDiffractionCalibrationExists(request)
 
@@ -328,6 +330,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="path/to/cif")
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
         result = self.instance.normalization(self.request)
 
