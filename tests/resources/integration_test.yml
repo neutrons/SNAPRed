@@ -7,23 +7,7 @@ IPTS:
   # Eventually, for SNAPRed's test framework:
   #   this should be a shared location on "analysis.sns.gov".
   # For the moment, each developer needs to set this individually to their local path.
-  root: /SNS/users/wqp/SNAP/integration/SNS_root
-
-logging:
-  # log levels are NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
-  mantid:
-    stream:
-      level: "WARNING"
-      format: 'MANTID %(levelname)-8s - %(asctime)s - %(message)s'
-    file:
-      level: "INFO"
-      format: ${logging.SNAP.stream.format}
-      output: "mantidlog.txt"
-  SNAP:
-    stream:
-      level: "INFO"
-      format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
-
+  root: /SNS/users/ux0/workspaces/SNAPRed/SNS_root
 
 constants:
   # For tests with '46680' this seems to be necessary.
