@@ -128,6 +128,19 @@ class PreprocessReductionRecipeTest(unittest.TestCase):
         assert mockSnapper.ApplyDiffCal.called
         assert mockSnapper.MaskDetectorFlags.called
 
+        groceries["outputWorkspace"] = "output"
+        output = recipe.cook(ingredients, groceries)
+
+        assert recipe.sampleWs == groceries["inputWorkspace"]
+        assert recipe.diffcalWs == groceries["diffcalWorkspace"]
+        assert recipe.maskWs == groceries["maskWorkspace"]
+        assert recipe.outputWs == groceries["outputWorkspace"]
+
+        assert mockSnapper.executeQueue.called
+        assert mockSnapper.ApplyDiffCal.called
+        assert mockSnapper.MaskDetectorFlags.called
+        assert mockSnapper.CloneWorkspace.called
+
     def test_cater(self):
         untensils = Utensils()
         mockSnapper = unittest.mock.Mock()

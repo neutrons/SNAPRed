@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Generic, List, Set, Tuple, TypeVar, get_args
+from typing import Any, Dict, Generic, List, Set, Tuple, TypeVar, get_args
 
 from pydantic import BaseModel, ValidationError
 
@@ -15,6 +15,8 @@ Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
 class Recipe(ABC, Generic[Ingredients]):
+    _Ingredients: Any
+
     def __init__(self, utensils: Utensils = None):
         """
         Sets up the recipe with the necessary utensils.
@@ -24,6 +26,9 @@ class Recipe(ABC, Generic[Ingredients]):
             utensils = Utensils()
             utensils.PyInit()
         self.mantidSnapper = utensils.mantidSnapper
+
+    def __init_subclass__(cls) -> None:
+        cls._Ingredients = get_args(cls.__orig_bases__[0])[0]  # type: ignore
 
     ## Abstract methods which MUST be implemented
 
@@ -54,9 +59,30 @@ class Recipe(ABC, Generic[Ingredients]):
         """
         return {}
 
-    def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
+    @classmethod
+    def Ingredients(cls, **kwargs):
+        return cls._Ingredients(**kwargs)
+
+    def _validateGrocery(self, key, ws):
         """
-        Validate the input properties before chopping or unbagging
+        Validate the given grocery
+        """
+        if ws is None:
+            raise RuntimeError(f"The workspace property {key} was not found in the groceries")
+
+        if not isinstance(key, str):
+            raise ValueError("The key for the grocery must be a string.")
+
+        if not isinstance(ws, list):
+            ws = [ws]
+
+        for wsStr in ws:
+            if isinstance(wsStr, str) and not self.mantidSnapper.mtd.doesExist(wsStr):
+                raise RuntimeError(f"The indicated workspace {wsStr} not found in Mantid ADS.")
+
+    def _validateIngredients(self, ingredients: Ingredients):
+        """
+        Validate the ingredients before chopping
         """
         if ingredients is not None and not isinstance(ingredients, BaseModel):
             raise ValueError("Ingredients must be a Pydantic BaseModel.")
@@ -64,21 +90,21 @@ class Recipe(ABC, Generic[Ingredients]):
         try:
             # to run the same as Ingredients.model_validate(ingredients)
             if ingredients is not None:
-                get_args(self.__orig_bases__[0])[0].model_validate(ingredients.dict())
+                self._Ingredients.model_validate(ingredients.dict())
         except ValidationError as e:
-            raise e
+            raise ValueError(f"Invalid ingredients: {e}")
+
+    def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
+        """
+        Validate the input properties before chopping or unbagging
+        """
+        self._validateIngredients(ingredients)
         # ensure all of the given workspaces exist
         # NOTE may need to be tweaked to ignore output workspaces...
         logger.info(f"Validating the given workspaces: {groceries.values()}")
         for key in self.mandatoryInputWorkspaces():
             ws = groceries.get(key)
-            if ws is None:
-                raise RuntimeError(f"The workspace property {key} was not found in the groceries")
-            if not isinstance(ws, list):
-                ws = [ws]
-            for wsStr in ws:
-                if isinstance(wsStr, str) and not self.mantidSnapper.mtd.doesExist(wsStr):
-                    raise RuntimeError(f"The indicated workspace {wsStr} not found in Mantid ADS.")
+            self._validateGrocery(key, ws)
 
     def stirInputs(self):
         """
