@@ -21,7 +21,7 @@ def loadModule(x):
             if y in all_module_names:
                 loadModule(y)
             else:
-                importlib.import_module(e.name)
+                raise e
             continue
 
     # get just the class name

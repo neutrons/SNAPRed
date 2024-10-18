@@ -4,11 +4,9 @@ from typing import Dict, List
 import numpy as np
 import pydantic
 from mantid.api import (
-    AlgorithmFactory,
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
-    WorkspaceFactory,
     WorkspaceGroup,
     mtd,
 )
@@ -26,9 +24,9 @@ logger = snapredLogger.getLogger(__name__)
 
 class FitOutputEnum(Enum):
     PeakPosition = 0
-    Parameters = 1
-    Workspace = 2
-    ParameterError = 3
+    ParameterError = 1
+    Parameters = 2
+    Workspace = 3
 
 
 class FitMultiplePeaksAlgorithm(PythonAlgorithm):
@@ -56,13 +54,6 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
-    def listToWorkspace(self, aList, name):
-        ws = WorkspaceFactory.create("Workspace2D", NVectors=1, XLength=len(aList), YLength=len(aList))
-        ws.setX(0, np.asarray(aList))
-        # register ws in mtd
-        mtd.addOrReplace(name, ws)
-        return ws
-
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
         return errors
@@ -75,7 +66,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             self.reducedList[groupPeakList.groupID] = groupPeakList.peaks
         # suffixes to name diagnostic output
         self.outputSuffix = [None] * len(FitOutputEnum)
-        self.outputSuffix[FitOutputEnum.PeakPosition.value] = "_peakpos"
+        self.outputSuffix[FitOutputEnum.PeakPosition.value] = "_dspacing"
         self.outputSuffix[FitOutputEnum.Parameters.value] = "_fitparam"
         self.outputSuffix[FitOutputEnum.Workspace.value] = "_fitted"
         self.outputSuffix[FitOutputEnum.ParameterError.value] = "_fiterror"
@@ -96,14 +87,12 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         self.chopIngredients(reducedPeakList)
         self.unbagGroceries()
 
-        outputNames = [None] * len(FitOutputEnum)
-        for x in FitOutputEnum:
-            outputNames[x.value] = f"{self.outputWorkspaceName}{self.outputSuffix[x.value]}"
-
         for index, groupID in enumerate(self.groupIDs):
+            tmpSpecName = mtd.unique_name(prefix=f"tmp_fitspec_{index}_")
+            outputNameTmp = mtd.unique_name(prefix=f"tmp_fitdiag_{index}_")
             outputNamesTmp = [None] * len(FitOutputEnum)
             for x in FitOutputEnum:
-                outputNamesTmp[x.value] = f"{self.outputWorkspaceName}{self.outputSuffix[x.value]}_{index}"
+                outputNamesTmp[x.value] = f"{outputNameTmp}{self.outputSuffix[x.value]}_{index}"
 
             peakCenters = []
             peakLimits = []
@@ -114,14 +103,14 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             self.mantidSnapper.ExtractSingleSpectrum(
                 "Extract Single Spectrum...",
                 InputWorkspace=self.inputWorkspaceName,
-                OutputWorkspace="ws2fit",
+                OutputWorkspace=tmpSpecName,
                 WorkspaceIndex=index,
             )
 
             self.mantidSnapper.FitPeaks(
                 "Fit Peaks...",
                 # in common with PDCalibration
-                InputWorkspace="ws2fit",
+                InputWorkspace=tmpSpecName,
                 PeakFunction=peakFunction,
                 PeakCenters=",".join(np.array(peakCenters).astype("str")),
                 FitWindowBoundaryList=",".join(np.array(peakLimits).astype("str")),
@@ -135,50 +124,22 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
                 OutputPeakParametersWorkspace=outputNamesTmp[FitOutputEnum.Parameters.value],
                 OutputParameterFitErrorsWorkspace=outputNamesTmp[FitOutputEnum.ParameterError.value],
             )
-            if index == 0:
-                self.cloneWorkspaces(outputNamesTmp, outputNames)
-            else:
-                self.conjoinWorkspaces(outputNames, outputNamesTmp)
+            self.mantidSnapper.GroupWorkspaces(
+                "Group diagnosis workspaces for output",
+                InputWorkspaces=outputNamesTmp,
+                OutputWorkspace=outputNameTmp,
+            )
+            self.mantidSnapper.ConjoinDiagnosticWorkspaces(
+                "Conjoin the diagnostic group workspaces",
+                DiagnosticWorkspace=outputNameTmp,
+                TotalDiagnosticWorkspace=self.outputWorkspaceName,
+                AddAtIndex=index,
+                AutoDelete=True,
+            )
             self.mantidSnapper.WashDishes(
                 "Deleting fitting workspace...",
                 Workspace="ws2fit",
             )
 
         self.mantidSnapper.executeQueue()
-        for output in outputNames:
-            self.outputWorkspace.add(output)
-
-        self.mantidSnapper.executeQueue()
         self.setProperty("OutputWorkspaceGroup", self.outputWorkspace.name())
-
-    def cloneWorkspaces(self, inputs: List[str], outputs: List[str]):
-        self.mantidSnapper.RenameWorkspaces(
-            "Copying tmp workspace data",
-            InputWorkspaces=inputs,
-            WorkspaceNames=outputs,
-        )
-
-    def conjoinWorkspaces(self, input1: List[str], input2: List[str]):
-        # combine the matrix workspaces
-        for x in [FitOutputEnum.Workspace.value, FitOutputEnum.PeakPosition.value]:
-            self.mantidSnapper.ConjoinWorkspaces(
-                "Conjoin peak position workspaces",
-                InputWorkspace1=input1[x],
-                InputWorkspace2=input2[x],
-                CheckOverlapping=False,
-            )
-            self.mantidSnapper.WashDishes(
-                "Clear temporary workspace",
-                Workspace=input2[x],
-            )
-        # combine the table workspaces
-        for x in [FitOutputEnum.Parameters.value, FitOutputEnum.ParameterError.value]:
-            self.mantidSnapper.ConjoinTableWorkspaces(
-                "Conjoin peak fit parameter workspaces",
-                InputWorkspace1=input1[x],
-                InputWorkspace2=input2[x],
-                AutoDelete=True,
-            )
-
-
-AlgorithmFactory.subscribe(FitMultiplePeaksAlgorithm)
