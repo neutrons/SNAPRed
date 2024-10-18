@@ -9,6 +9,7 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     ExtractSingleSpectrum,
     GroupWorkspaces,
+    RenameWorkspace,
     mtd,
 )
 
@@ -40,8 +41,10 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
         )
         self.declareProperty("AutoDelete", False)
         self.setRethrows(True)
+        # NOTE must be in alphabetical order
         self.diagnosticSuffix = {
             FitOutputEnum.PeakPosition.value: "_dspacing",
+            FitOutputEnum.ParameterError.value: "_fiterror",
             FitOutputEnum.Parameters.value: "_fitparam",
             FitOutputEnum.Workspace.value: "_fitted",
         }
@@ -52,16 +55,26 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
         diag1 = self.getPropertyValue(self.INPUTGRPPROP1)
         outws = self.getPropertyValue(self.OUTPUTGRPPROP)
 
-        oldNames = [f"{diag1}{suffix}" for suffix in self.diagnosticSuffix.values()]
-        newNames = [f"{outws}{suffix}" for suffix in self.diagnosticSuffix.values()]
+        # sort by name to pevent bad things from happening
+        mtd[diag1].sortByName()
+
+        oldNames = mtd[diag1].getNames()
+        toInclude = [suffix for suffix in self.diagnosticSuffix.values() if suffix in (" ").join(oldNames)]
+        newNames = [f"{outws}{suffix}" for suffix in toInclude]
 
         if index == 0:
             for old, new in zip(oldNames, newNames):
-                CloneWorkspace(
-                    InputWorkspace=old,
-                    OutputWorkspace=new,
-                )
-                if isinstance(mtd[new], MatrixWorkspace):
+                if self.autoDelete:
+                    RenameWorkspace(
+                        InputWorkspace=old,
+                        OutputWorkspace=new,
+                    )
+                else:
+                    CloneWorkspace(
+                        InputWorkspace=old,
+                        OutputWorkspace=new,
+                    )
+                if isinstance(mtd[new], MatrixWorkspace) and index < mtd[new].getNumberHistograms():
                     ExtractSingleSpectrum(
                         InputWorkspace=new,
                         OutputWorkspace=new,
@@ -84,17 +97,24 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
         self.setProperty(self.OUTPUTGRPPROP, mtd[outws])
 
     def conjoinMatrixWorkspaces(self, inws, outws, index):
-        ExtractSingleSpectrum(
-            InputWorkspace=inws,
-            Outputworkspace=inws,
-            WorkspaceIndex=index,
-        )
+        tmpws = f"{inws}_{index}"
+        if index < mtd[inws].getNumberHistograms():
+            ExtractSingleSpectrum(
+                InputWorkspace=inws,
+                Outputworkspace=tmpws,
+                WorkspaceIndex=index,
+            )
+        else:
+            CloneWorkspace(
+                InputWorkspace=inws,
+                OutputWorkspace=tmpws,
+            )
         ConjoinWorkspaces(
             InputWorkspace1=outws,
-            InputWorkspace2=inws,
+            InputWorkspace2=tmpws,
             CheckOverlapping=False,
         )
-        if self.autoDelete:
+        if self.autoDelete and inws in mtd:
             DeleteWorkspace(inws)
         assert outws in mtd
 
