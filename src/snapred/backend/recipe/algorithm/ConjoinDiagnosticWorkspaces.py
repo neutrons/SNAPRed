@@ -10,6 +10,7 @@ from mantid.simpleapi import (
     ExtractSingleSpectrum,
     GroupWorkspaces,
     RenameWorkspace,
+    UnGroupWorkspace,
     mtd,
 )
 
@@ -61,6 +62,10 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
         oldNames = mtd[diag1].getNames()
         toInclude = [suffix for suffix in self.diagnosticSuffix.values() if suffix in (" ").join(oldNames)]
         newNames = [f"{outws}{suffix}" for suffix in toInclude]
+
+        # if the input is expected to autodelete, it must be ungrouped first
+        if self.autoDelete:
+            UnGroupWorkspace(diag1)
 
         if index == 0:
             for old, new in zip(oldNames, newNames):
