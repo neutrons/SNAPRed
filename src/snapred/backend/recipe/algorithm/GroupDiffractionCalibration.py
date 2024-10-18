@@ -66,7 +66,6 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         super().validateInputs(ingredients, groceries)
 
         for key in groceries.keys():
-            print(f"KEY = {key}")
             assert key in self.GROCERIES
 
         pixelGroupIDs = ingredients.pixelGroup.groupIDs
