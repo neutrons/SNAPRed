@@ -21,7 +21,7 @@ def loadModule(x):
             if y in all_module_names:
                 loadModule(y)
             else:
-                importlib.import_module(e.name)
+                raise e
             continue
 
     # get just the class name
@@ -47,6 +47,14 @@ for x in all_module_names:
     if x == "PixelDiffractionCalibration":
         # this is actually a recipe being temporarily stored here
         # move it to recipe folder and delete this once review passes
+        continue
+
+    if x == "GroupDiffractionCalibration":
+        # this is actually a recipe being temporarily stored here
+        # move it to recipe folder and delete this once review passes
+        continue
+
+    if x == "GroupDiffractionCalibrationold":
         continue
 
     loadModule(x)

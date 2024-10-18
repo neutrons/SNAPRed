@@ -3,14 +3,14 @@ from collections.abc import Sequence
 
 from mantid.api import MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace
+from mantid.simpleapi import CalculateDiffCalTable, mtd
 
 # needed to make mocked ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import (
-    GroupDiffractionCalibration as ThisAlgo,  # noqa: E402
+    GroupDiffCalRecipe as Recipe,  # noqa: E402
 )
 from util.diffraction_calibration_synthetic_data import SyntheticData
 from util.helpers import deleteWorkspaceNoThrow, maskGroups, mutableWorkspaceClones, setGroupSpectraToZero
@@ -18,7 +18,7 @@ from util.helpers import deleteWorkspaceNoThrow, maskGroups, mutableWorkspaceClo
 logger = snapredLogger.getLogger(__name__)
 
 
-class TestGroupDiffractionCalibration(unittest.TestCase):
+class TestGroupDiffCalRecipe(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
@@ -34,13 +34,12 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         syntheticInputs.generateWorkspaces(cls.fakeRawData, cls.fakeGroupingWorkspace, cls.fakeMaskWorkspace)
 
         # create the DIFCprev table
-        cc = CalculateDiffCalTable()
-        cc.initialize()
-        cc.setProperty("InputWorkspace", cls.fakeRawData)
-        cc.setProperty("CalibrationTable", cls.difcWS)
-        cc.setProperty("OffsetMode", "Signed")
-        cc.setProperty("BinWidth", fakeDBin)
-        cc.execute()
+        CalculateDiffCalTable(
+            InputWorkspace=cls.fakeRawData,
+            CalibrationTable=cls.difcWS,
+            OffsetMode="Signed",
+            BinWidth=fakeDBin,
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -53,43 +52,32 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         return super().tearDownClass()
 
     def test_chop_ingredients(self):
-        """Test that ingredients for algo are properly processed"""
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.chopIngredients(self.fakeIngredients)
-        assert algo.runNumber == self.fakeIngredients.runConfig.runNumber
-        assert algo.TOF.minimum == self.fakeIngredients.pixelGroup.timeOfFlight.minimum
-        assert algo.TOF.maximum == self.fakeIngredients.pixelGroup.timeOfFlight.maximum
-        assert algo.dBin == self.fakeIngredients.pixelGroup.dBin()
-
-    def test_init_properties(self):
-        """Test that the properties of the algorithm can be initialized"""
-        difcWS = f"_{self.fakeIngredients.runConfig.runNumber}_difcs_test"
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("PreviousCalibrationTable", difcWS)
-        assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
-        assert algo.getPropertyValue("PreviousCalibrationTable") == difcWS
+        """Test that ingredients for rx are properly processed"""
+        rx = Recipe()
+        rx.chopIngredients(self.fakeIngredients)
+        assert rx.runNumber == self.fakeIngredients.runConfig.runNumber
+        assert rx.TOF.minimum == self.fakeIngredients.pixelGroup.timeOfFlight.minimum
+        assert rx.TOF.maximum == self.fakeIngredients.pixelGroup.timeOfFlight.maximum
+        assert rx.dBin == self.fakeIngredients.pixelGroup.dBin()
 
     def test_execute(self):
-        """Test that the algorithm executes"""
-        from mantid.simpleapi import mtd
+        """Test that the recipe xecutes"""
 
         uniquePrefix = "test_e_"
         (maskWS,) = mutableWorkspaceClones((self.fakeMaskWorkspace,), uniquePrefix)
         (maskWSName,) = mutableWorkspaceClones((self.fakeMaskWorkspace,), uniquePrefix, name_only=True)
 
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("FinalCalibrationTable", "_final_DIFC_table")
-        algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("PreviousCalibrationTable", self.difcWS)
-        assert algo.execute()
+        groceries = {
+            "inputWorkspace": self.fakeRawData,
+            "groupingWorkspace": self.fakeGroupingWorkspace,
+            "calibrationTable": "_final_DIFC_table",
+            "maskWorkspace": maskWSName,
+            "outputWorkspace": f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}",
+            "previousCalibration": self.difcWS,
+        }
+        res = Recipe().cook(self.fakeIngredients, groceries)
+
+        assert res.result
         assert maskWSName in mtd
         assert maskWS.getNumberMasked() == 0
         deleteWorkspaceNoThrow(maskWSName)
@@ -98,7 +86,6 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         """Test that a mask workspace is created if it doesn't already exist:
         -- this method also verifies that none of the spectra in the synthetic data will be masked.
         """
-        from mantid.simpleapi import mtd
 
         uniquePrefix = "test_mic_"
         maskWSName = uniquePrefix + "_mask"
@@ -106,18 +93,17 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         # Ensure that the mask workspace doesn't already exist
         assert maskWSName not in mtd
 
-        # now run the algorithm
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
-        algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("PreviousCalibrationTable", self.difcWS)
+        groceries = {
+            "inputWorkspace": self.fakeRawData,
+            "groupingWorkspace": self.fakeGroupingWorkspace,
+            "calibrationTable": "_final_DIFc_table",
+            "maskWorkspace": maskWSName,
+            "outputWorkspace": f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}",
+            "previousCalibration": self.difcWS,
+        }
+        res = Recipe().cook(self.fakeIngredients, groceries)
 
-        algo.execute()
+        assert res.result
         assert maskWSName in mtd
         mask = mtd[maskWSName]
         assert mask.getNumberMasked() == 0
@@ -125,30 +111,29 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
 
     def test_existing_mask_is_used(self):
         """Test that an existing mask workspace is not overwritten"""
-        from mantid.simpleapi import mtd
 
         uniquePrefix = "test_miu_"
         (maskWS,) = mutableWorkspaceClones((self.fakeMaskWorkspace,), uniquePrefix)
         (maskWSName,) = mutableWorkspaceClones((self.fakeMaskWorkspace,), uniquePrefix, name_only=True)
         maskTitle = "d35b4aae-93fe-421b-95f4-5eec635a70d1"
 
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
-        algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("PreviousCalibrationTable", self.difcWS)
         assert maskWSName in mtd
-
         # Note: for some reason using 'id' for this test does not work:
         #   the 'id' of the mask workspace handle changes.
         maskWS.setTitle(maskTitle)
         assert maskWS.getTitle() == maskTitle
 
-        algo.execute()
+        groceries = {
+            "inputWorkspace": self.fakeRawData,
+            "groupingWorkspace": self.fakeGroupingWorkspace,
+            "calibrationTable": "_final_DIFc_table",
+            "maskWorkspace": maskWSName,
+            "outputWorkspace": f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}",
+            "previousCalibration": self.difcWS,
+        }
+        res = Recipe().cook(self.fakeIngredients, groceries)
+
+        assert res.result
         assert maskWSName in mtd
         maskWS = mtd[maskWSName]
         assert maskWS.getTitle() == maskTitle
@@ -167,23 +152,12 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
 
     def test_failures_are_masked(self):
         """Test that failing spectra are masked"""
-        from mantid.simpleapi import mtd
 
         uniquePrefix = "test_fam_"
         inputWS, maskWS = mutableWorkspaceClones((self.fakeRawData, self.fakeMaskWorkspace), uniquePrefix)
         inputWSName, maskWSName = mutableWorkspaceClones(
             (self.fakeRawData, self.fakeMaskWorkspace), uniquePrefix, name_only=True
         )
-
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("InputWorkspace", inputWSName)
-        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
-        algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("PreviousCalibrationTable", self.difcWS)
 
         assert maskWS.getNumberMasked() == 0
         groupsToFail = (3,)
@@ -192,7 +166,17 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         # Verify that at least some spectra have been modified.
         assert self.countDetectorsForGroups(groupingWS, groupsToFail) > 0
 
-        algo.execute()
+        groceries = {
+            "inputWorkspace": inputWSName,
+            "groupingWorkspace": self.fakeGroupingWorkspace,
+            "calibrationTable": "_final_DIFc_table",
+            "maskWorkspace": maskWSName,
+            "outputWorkspace": f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}",
+            "previousCalibration": self.difcWS,
+        }
+        res = Recipe().cook(self.fakeIngredients, groceries)
+
+        assert res.result
         assert maskWS.getNumberMasked() == self.countDetectorsForGroups(groupingWS, groupsToFail)
         for gid in groupsToFail:
             dets = groupingWS.getDetectorIDsOfGroup(gid)
@@ -203,23 +187,12 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
 
     def test_masks_stay_masked(self):
         """Test that incoming masked spectra are still masked at output"""
-        from mantid.simpleapi import mtd
 
         uniquePrefix = "test_msm_"
         inputWS, maskWS = mutableWorkspaceClones((self.fakeRawData, self.fakeMaskWorkspace), uniquePrefix)
         inputWSName, maskWSName = mutableWorkspaceClones(
             (self.fakeRawData, self.fakeMaskWorkspace), uniquePrefix, name_only=True
         )
-
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("InputWorkspace", inputWSName)
-        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
-        algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("PreviousCalibrationTable", self.difcWS)
 
         assert maskWS.getNumberMasked() == 0
         groupsToMask = (11,)
@@ -229,7 +202,17 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         # Verify that at least some detectors have been masked.
         assert self.countDetectorsForGroups(groupingWS, groupsToMask) > 0
 
-        algo.execute()
+        groceries = {
+            "inputWorkspace": inputWSName,
+            "groupingWorkspace": self.fakeGroupingWorkspace,
+            "calibrationTable": "_final_DIFc_table",
+            "maskWorkspace": maskWSName,
+            "outputWorkspace": f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}",
+            "previousCalibration": self.difcWS,
+        }
+        res = Recipe().cook(self.fakeIngredients, groceries)
+
+        assert res.result
         assert maskWS.getNumberMasked() == self.countDetectorsForGroups(groupingWS, groupsToMask)
         for gid in groupsToMask:
             dets = groupingWS.getDetectorIDsOfGroup(gid)
@@ -240,23 +223,12 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
 
     def test_masks_are_combined(self):
         """Test that masks for failing spectra are combined with any input mask"""
-        from mantid.simpleapi import mtd
 
         uniquePrefix = "test_mac_"
         inputWS, maskWS = mutableWorkspaceClones((self.fakeRawData, self.fakeMaskWorkspace), uniquePrefix)
         inputWSName, maskWSName = mutableWorkspaceClones(
             (self.fakeRawData, self.fakeMaskWorkspace), uniquePrefix, name_only=True
         )
-
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("InputWorkspace", inputWSName)
-        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
-        algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("PreviousCalibrationTable", self.difcWS)
 
         assert maskWS.getNumberMasked() == 0
         groupingWS = mtd[self.fakeGroupingWorkspace]
@@ -270,7 +242,17 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         # Verify that at least some detectors have been masked.
         assert self.countDetectorsForGroups(groupingWS, groupsToMask) > 0
 
-        algo.execute()
+        groceries = {
+            "inputWorkspace": inputWSName,
+            "groupingWorkspace": self.fakeGroupingWorkspace,
+            "calibrationTable": "_final_DIFc_table",
+            "maskWorkspace": maskWSName,
+            "outputWorkspace": f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}",
+            "previousCalibration": self.difcWS,
+        }
+        res = Recipe().cook(self.fakeIngredients, groceries)
+
+        assert res.result
         assert maskWS.getNumberMasked() == self.countDetectorsForGroups(
             groupingWS, groupsToFail
         ) + self.countDetectorsForGroups(groupingWS, groupsToMask)
@@ -294,17 +276,17 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             (self.fakeRawData, self.fakeMaskWorkspace), uniquePrefix, name_only=True
         )
 
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("InputWorkspace", inputWSName)
-        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
-        algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("PreviousCalibrationTable", self.difcWS)
+        groceries = {
+            "inputWorkspace": inputWSName,
+            "groupingWorkspace": self.fakeGroupingWorkspace,
+            "calibrationTable": "_final_DIFc_table",
+            "maskWorkspace": maskWSName,
+            "outputWorkspace": f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}",
+            "previousCalibration": self.difcWS,
+        }
+        res = Recipe().cook(self.fakeIngredients, groceries)
 
-        algo.execute()
-        assert algo.DIFCfinal == algo.getPropertyValue("FinalCalibrationTable")
+        assert res.result
+        assert res.calibrationTable == groceries["calibrationTable"]
         deleteWorkspaceNoThrow(inputWSName)
         deleteWorkspaceNoThrow(maskWSName)

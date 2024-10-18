@@ -13,7 +13,7 @@ from snapred.backend.recipe.algorithm.ConjoinTableWorkspaces import (
 )
 
 
-class TestConjoinWorkspaces(unittest.TestCase):
+class TestConjoinTableWorkspaces(unittest.TestCase):
     def setUp(self):
         self.correct_ints = [1, 2]
         self.correct_doubles = [1.0, 2.0]

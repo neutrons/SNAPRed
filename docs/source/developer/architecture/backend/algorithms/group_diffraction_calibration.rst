@@ -1,4 +1,4 @@
-Algorithm: `GroupDiffractionCalibration`
+Recipe: `GroupDiffCalRecipe`
 ========================================
 
 Description:
