@@ -1,14 +1,14 @@
-from mantid.api import PythonAlgorithm, WorkspaceGroupProperty
+from mantid.api import MatrixWorkspace, PythonAlgorithm, WorkspaceGroupProperty
+from mantid.dataobjects import TableWorkspace
 from mantid.kernel import Direction, IntPropertyWithValue
 from mantid.simpleapi import (
     BufferMissingColumnsAlgo,
+    CloneWorkspace,
     ConjoinTableWorkspaces,
     ConjoinWorkspaces,
     DeleteWorkspace,
     ExtractSingleSpectrum,
     GroupWorkspaces,
-    RenameWorkspaces,
-    UnGroupWorkspace,
     mtd,
 )
 
@@ -52,19 +52,21 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
         diag1 = self.getPropertyValue(self.INPUTGRPPROP1)
         outws = self.getPropertyValue(self.OUTPUTGRPPROP)
 
-        # on first index, clone the diagnostic workspace group
-        UnGroupWorkspace(
-            InputWorkspace=diag1,
-        )
-
         oldNames = [f"{diag1}{suffix}" for suffix in self.diagnosticSuffix.values()]
         newNames = [f"{outws}{suffix}" for suffix in self.diagnosticSuffix.values()]
 
         if index == 0:
-            RenameWorkspaces(
-                InputWorkspaces=oldNames,
-                WorkspaceNames=newNames,
-            )
+            for old, new in zip(oldNames, newNames):
+                CloneWorkspace(
+                    InputWorkspace=old,
+                    OutputWorkspace=new,
+                )
+                if isinstance(mtd[new], MatrixWorkspace):
+                    ExtractSingleSpectrum(
+                        InputWorkspace=new,
+                        OutputWorkspace=new,
+                        WorkspaceIndex=index,
+                    )
             GroupWorkspaces(
                 InputWorkspaces=newNames,
                 OutputWorkspace=outws,
@@ -72,10 +74,13 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
         else:
             for old, new in zip(oldNames, newNames):
                 ws = mtd[old]
-                if ws.id() == "MatrixWorkspace":
+                if isinstance(ws, MatrixWorkspace):
                     self.conjoinMatrixWorkspaces(old, new, index)
-                elif ws.id() == "TableWorkspace":
+                elif isinstance(ws, TableWorkspace):
                     self.conjoinTableWorkspaces(old, new, index)
+                else:
+                    raise RuntimeError(f"Unrecognized workspace type {type(ws)}")
+
         self.setProperty(self.OUTPUTGRPPROP, mtd[outws])
 
     def conjoinMatrixWorkspaces(self, inws, outws, index):
@@ -85,12 +90,13 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
             WorkspaceIndex=index,
         )
         ConjoinWorkspaces(
-            InputWorkspace1=inws,
-            InputWorkspace2=outws,
+            InputWorkspace1=outws,
+            InputWorkspace2=inws,
             CheckOverlapping=False,
         )
         if self.autoDelete:
             DeleteWorkspace(inws)
+        assert outws in mtd
 
     def conjoinTableWorkspaces(self, inws, outws, index):  # noqa: ARG002
         BufferMissingColumnsAlgo(
