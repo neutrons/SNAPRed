@@ -143,6 +143,19 @@ class ReductionRecipe(Recipe[Ingredients]):
             self.groceries["normalizationWorkspace"] = normalizationClone
         return sampleClone, normalizationClone
 
+    def _isGroupFullyMasked(self, groupingWorkspace: str) -> bool:
+        self.mantidSnapper.ExtractMask(
+            "Extracting mask from grouping workspace...",
+            InputWorkspace=groupingWorkspace,
+            OutputWorkspace="extractedMask",
+        )
+        self.mantidSnapper.executeQueue()
+        extractedMask = self.mantidSnapper.mtd["extractedMask"]
+        totalMaskedPixels = sum(extractedMask.readY(0))  # Summing the mask Y values (1 = masked, 0 = unmasked)
+
+        totalNumOfGroups = extractedMask.getNumberHistograms()
+        return totalMaskedPixels == totalNumOfGroups
+
     def queueAlgos(self):
         pass
 
@@ -171,6 +184,14 @@ class ReductionRecipe(Recipe[Ingredients]):
 
         for groupingIndex, groupingWs in enumerate(self.groupingWorkspaces):
             self.groceries["groupingWorkspace"] = groupingWs
+
+            # Check if the entire pixel group is masked
+            if self._isGroupFullyMasked(groupingWs):
+                self.logger().warning(
+                    f"Pixel group {groupingIndex} is fully masked. Skipping all algorithm execution for this group."
+                    " This will impact future reductions using this normalization calibration."
+                )
+                continue
 
             # Clone
             sampleClone, normalizationClone = self._prepGroupingWorkspaces(groupingIndex)
