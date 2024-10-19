@@ -1,3 +1,5 @@
+from typing import List
+
 from mantid.api import MatrixWorkspace, PythonAlgorithm, WorkspaceGroupProperty
 from mantid.dataobjects import TableWorkspace
 from mantid.kernel import Direction, IntPropertyWithValue
@@ -14,7 +16,7 @@ from mantid.simpleapi import (
     mtd,
 )
 
-from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
+from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX
 
 
 class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
@@ -28,6 +30,16 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
 
     def category(self):
         return "SNAPRed Diffraction Calibration"
+
+    def newNamesFromOld(self, oldNames: List[str], newName: str) -> List[str]:
+        selectedNames = set(self.diagnosticSuffix.values())
+        suffixes = []
+        for oldName in oldNames:
+            elements = oldName.split("_")
+            suffix = next((f"_{x}" for x in elements if f"_{x}" in selectedNames), None)
+            if suffix is not None:
+                suffixes.append(suffix)
+        return [f"{newName}{suffix}" for suffix in suffixes]
 
     def PyInit(self):
         # declare properties
@@ -43,12 +55,7 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
         self.declareProperty("AutoDelete", False)
         self.setRethrows(True)
         # NOTE must be in alphabetical order
-        self.diagnosticSuffix = {
-            FitOutputEnum.PeakPosition.value: "_dspacing",
-            FitOutputEnum.ParameterError.value: "_fiterror",
-            FitOutputEnum.Parameters.value: "_fitparam",
-            FitOutputEnum.Workspace.value: "_fitted",
-        }
+        self.diagnosticSuffix = FIT_PEAK_DIAG_SUFFIX.copy()
 
     def PyExec(self) -> None:
         self.autoDelete = self.getProperty("AutoDelete").value
@@ -58,10 +65,8 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
 
         # sort by name to pevent bad things from happening
         mtd[diag1].sortByName()
-
         oldNames = mtd[diag1].getNames()
-        toInclude = [suffix for suffix in self.diagnosticSuffix.values() if suffix in (" ").join(oldNames)]
-        newNames = [f"{outws}{suffix}" for suffix in toInclude]
+        newNames = self.newNamesFromOld(oldNames, outws)
 
         # if the input is expected to autodelete, it must be ungrouped first
         if self.autoDelete:

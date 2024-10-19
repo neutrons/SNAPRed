@@ -33,6 +33,13 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
             deleteWorkspaceNoThrow(ws)
         return super().tearDownClass()
 
+    def test_naming(self):
+        oldNames = ["xyz_d4_dspacing_2", "not_in_list", "feg_abc_fitted_fx"]
+        expNames = ["fun_dspacing", "fun_fitted"]
+        algo = Algo()
+        algo.initialize()
+        assert expNames == algo.newNamesFromOld(oldNames, "fun")
+
     def test_simple_success_table(self):
         # make group 1
         name1 = mtd.unique_name()

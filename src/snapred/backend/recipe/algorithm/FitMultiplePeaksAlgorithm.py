@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Dict, List
 
 import numpy as np
@@ -18,15 +17,9 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import allowed_peak_type_list
+from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEnum
 
 logger = snapredLogger.getLogger(__name__)
-
-
-class FitOutputEnum(Enum):
-    PeakPosition = 0
-    ParameterError = 1
-    Parameters = 2
-    Workspace = 3
 
 
 class FitMultiplePeaksAlgorithm(PythonAlgorithm):
@@ -65,11 +58,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             self.groupIDs.append(groupPeakList.groupID)
             self.reducedList[groupPeakList.groupID] = groupPeakList.peaks
         # suffixes to name diagnostic output
-        self.outputSuffix = [None] * len(FitOutputEnum)
-        self.outputSuffix[FitOutputEnum.PeakPosition.value] = "_dspacing"
-        self.outputSuffix[FitOutputEnum.Parameters.value] = "_fitparam"
-        self.outputSuffix[FitOutputEnum.Workspace.value] = "_fitted"
-        self.outputSuffix[FitOutputEnum.ParameterError.value] = "_fiterror"
+        self.outputSuffix = FIT_PEAK_DIAG_SUFFIX.copy()
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("Inputworkspace")
@@ -90,9 +79,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         for index, groupID in enumerate(self.groupIDs):
             tmpSpecName = mtd.unique_name(prefix=f"tmp_fitspec_{index}_")
             outputNameTmp = mtd.unique_name(prefix=f"tmp_fitdiag_{index}_")
-            outputNamesTmp = [None] * len(FitOutputEnum)
-            for x in FitOutputEnum:
-                outputNamesTmp[x.value] = f"{outputNameTmp}{self.outputSuffix[x.value]}_{index}"
+            outputNamesTmp = {x: f"{outputNameTmp}{self.outputSuffix[x]}_{index}" for x in FitOutputEnum}
 
             peakCenters = []
             peakLimits = []
@@ -119,14 +106,14 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
                 ConstrainPeakPositions=True,
                 HighBackground=True,  # vanadium must use high background
                 # outputs -- in PDCalibration combined in workspace group
-                FittedPeaksWorkspace=outputNamesTmp[FitOutputEnum.Workspace.value],
-                OutputWorkspace=outputNamesTmp[FitOutputEnum.PeakPosition.value],
-                OutputPeakParametersWorkspace=outputNamesTmp[FitOutputEnum.Parameters.value],
-                OutputParameterFitErrorsWorkspace=outputNamesTmp[FitOutputEnum.ParameterError.value],
+                FittedPeaksWorkspace=outputNamesTmp[FitOutputEnum.Workspace],
+                OutputWorkspace=outputNamesTmp[FitOutputEnum.PeakPosition],
+                OutputPeakParametersWorkspace=outputNamesTmp[FitOutputEnum.Parameters],
+                OutputParameterFitErrorsWorkspace=outputNamesTmp[FitOutputEnum.ParameterError],
             )
             self.mantidSnapper.GroupWorkspaces(
                 "Group diagnosis workspaces for output",
-                InputWorkspaces=outputNamesTmp,
+                InputWorkspaces=list(outputNamesTmp.values()),
                 OutputWorkspace=outputNameTmp,
             )
             self.mantidSnapper.ConjoinDiagnosticWorkspaces(

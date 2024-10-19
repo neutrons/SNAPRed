@@ -4,6 +4,7 @@ from typing import List
 
 import pydantic
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX
 
 with mock.patch.dict(
     "sys.modules",
@@ -56,12 +57,7 @@ with mock.patch.dict(
         wsGroupName = fmpAlgo.getProperty("OutputWorkspaceGroup").value
         assert wsGroupName == "fitPeaksWSGroup"
         wsGroup = list(mtd[wsGroupName].getNames())
-        expected = [
-            "fitPeaksWSGroup_dspacing",
-            "fitPeaksWSGroup_fiterror",
-            "fitPeaksWSGroup_fitparam",
-            "fitPeaksWSGroup_fitted",
-        ]
+        expected = [f"{wsGroupName}{suffix}" for suffix in FIT_PEAK_DIAG_SUFFIX.values()]
         assert wsGroup == expected
         assert not mtd.doesExist("fitPeaksWSGroup_fitted_1")
         assert not mtd.doesExist("fitPeaksWSGroup_fitparam_1")
