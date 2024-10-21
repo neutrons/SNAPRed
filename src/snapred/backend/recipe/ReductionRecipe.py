@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Set, Tuple, Type
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe
@@ -143,18 +144,30 @@ class ReductionRecipe(Recipe[Ingredients]):
             self.groceries["normalizationWorkspace"] = normalizationClone
         return sampleClone, normalizationClone
 
-    def _isGroupFullyMasked(self, groupingWorkspace: str) -> bool:
-        self.mantidSnapper.ExtractMask(
-            "Extracting mask from grouping workspace...",
-            InputWorkspace=groupingWorkspace,
-            OutputWorkspace="extractedMask",
-        )
-        self.mantidSnapper.executeQueue()
-        extractedMask = self.mantidSnapper.mtd["extractedMask"]
-        totalMaskedPixels = sum(extractedMask.readY(0))  # Summing the mask Y values (1 = masked, 0 = unmasked)
+    def _isGroupFullyMasked(self, groupingIndex: int, groupingWorkspace: str) -> bool:
+        """
+        Check if the entire group (groupingWorkspace) is fully masked by evaluating the mask workspace.
+        """
+        maskWorkspace = self.mantidSnapper.mtd[self.maskWs]
+        groupWorkspace = self.mantidSnapper.mtd[groupingWorkspace]
 
-        totalNumOfGroups = extractedMask.getNumberHistograms()
-        return totalMaskedPixels == totalNumOfGroups
+        totalMaskedPixels = 0
+        totalGroupPixels = 0
+
+        for i in range(groupWorkspace.getNumberHistograms()):
+            group_spectra = groupWorkspace.readY(i)
+            for spectrumIndex in group_spectra:
+                if maskWorkspace.readY(int(spectrumIndex))[0] == 1:
+                    totalMaskedPixels += 1
+                totalGroupPixels += 1
+
+        if totalMaskedPixels == totalGroupPixels:
+            raise ContinueWarning(
+                f"Pixel group {groupingIndex} within {groupingWorkspace} is fully masked. Skipping all algorithm execution for this group.",  # noqa: E501
+                ContinueWarning.Type.FULLY_MASKED_GROUP,
+            )
+
+        return totalMaskedPixels == totalGroupPixels
 
     def queueAlgos(self):
         pass
@@ -185,15 +198,14 @@ class ReductionRecipe(Recipe[Ingredients]):
         for groupingIndex, groupingWs in enumerate(self.groupingWorkspaces):
             self.groceries["groupingWorkspace"] = groupingWs
 
-            # Check if the entire pixel group is masked
-            if self._isGroupFullyMasked(groupingWs):
-                self.logger().warning(
-                    f"Pixel group {groupingIndex} is fully masked. Skipping all algorithm execution for this group."
-                    " This will impact future reductions using this normalization calibration."
-                )
+            try:
+                self._isGroupFullyMasked(groupingIndex, groupingWs)
+            except ContinueWarning as warning:
+                self.logger().warning(f"Warning occurred for group {groupingIndex}: {str(warning)}")
+                if warning.flags == ContinueWarning.Type.FULLY_MASKED_GROUP:
+                    self.logger().info(f"Skipping group {groupingIndex} due to full masking.")
                 continue
 
-            # Clone
             sampleClone, normalizationClone = self._prepGroupingWorkspaces(groupingIndex)
 
             # 2. ReductionGroupProcessingRecipe

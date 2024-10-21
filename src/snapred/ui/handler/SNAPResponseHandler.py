@@ -96,6 +96,16 @@ class SNAPResponseHandler(QWidget):
 
         traceback.print_stack()
 
+        if ContinueWarning.Type.FULLY_MASKED_GROUP in continueInfo.flags:
+            QMessageBox.information(
+                view,
+                "Warning",
+                continueInfo.message,
+                buttons=QMessageBox.Ok,
+                defaultButton=QMessageBox.Ok,
+            )
+            return True
+
         continueAnyway = QMessageBox.warning(
             view,
             "Warning",
