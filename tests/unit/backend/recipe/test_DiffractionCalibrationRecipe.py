@@ -100,7 +100,7 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
             print(res)
         assert res["result"]
 
-        assert res.maskWorkspace
-        mask = mtd[res.maskWorkspace]
+        assert res["maskWorkspace"]
+        mask = mtd[res["maskWorkspace"]]
         assert mask.getNumberMasked() == 0
         assert res["steps"][-1] <= self.fakeIngredients.convergenceThreshold
