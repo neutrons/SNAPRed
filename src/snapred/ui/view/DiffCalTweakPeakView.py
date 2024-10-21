@@ -17,10 +17,10 @@ from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 from snapred.backend.dao import GroupPeakList
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.error.ContinueWarning import ContinueWarning
-from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
+from snapred.meta.mantid.FitPeaksOutput import FitOutputEnum
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.Toggle import Toggle
 
