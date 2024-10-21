@@ -125,7 +125,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             )
             self.mantidSnapper.WashDishes(
                 "Deleting fitting workspace...",
-                Workspace="ws2fit",
+                Workspace=tmpSpecName,
             )
 
         self.mantidSnapper.executeQueue()

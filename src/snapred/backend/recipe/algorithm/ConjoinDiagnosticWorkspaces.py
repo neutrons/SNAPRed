@@ -104,6 +104,11 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
                 else:
                     raise RuntimeError(f"Unrecognized workspace type {type(ws)}")
 
+        if self.autoDelete:
+            for oldName in oldNames:
+                if oldName in mtd:
+                    DeleteWorkspace(oldName)
+
         self.setProperty(self.OUTPUTGRPPROP, mtd[outws])
 
     def conjoinMatrixWorkspaces(self, inws, outws, index):
