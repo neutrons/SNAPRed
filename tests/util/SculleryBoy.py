@@ -2,6 +2,8 @@ from typing import Dict, List
 from unittest import mock
 
 import pydantic
+from util.dao import DAOFactory
+
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
@@ -17,7 +19,6 @@ from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParam
 from snapred.backend.recipe.GenericRecipe import DetectorPeakPredictorRecipe
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import parse_file_as
-from util.dao import DAOFactory
 
 
 class SculleryBoy:

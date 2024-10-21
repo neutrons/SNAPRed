@@ -4,6 +4,7 @@ from random import randint
 
 import pytest
 from numpy import int64
+
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record

@@ -3,8 +3,9 @@ import datetime
 import unittest
 
 from mantid.simpleapi import CreateWorkspace, DeleteWorkspace, SetSample
-from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
 from util.dao import DAOFactory
+
+from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
 
 
 class TestCalibrantSample(unittest.TestCase):

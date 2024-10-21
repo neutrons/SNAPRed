@@ -1,5 +1,6 @@
 import pytest
 from pydantic import ValidationError
+
 from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
 from snapred.meta.mantid.AllowedPeakTypes import allowed_peak_type_list
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName as wngn

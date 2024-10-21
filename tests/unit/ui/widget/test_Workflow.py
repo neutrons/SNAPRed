@@ -3,11 +3,12 @@ from unittest.mock import MagicMock
 import pytest
 from qtpy.QtCore import Qt, Slot
 from qtpy.QtWidgets import QGridLayout, QPushButton, QWidget
+
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 
 
-@pytest.fixture()
+@pytest.fixture
 def qtbot(qtbot):
     return qtbot
 

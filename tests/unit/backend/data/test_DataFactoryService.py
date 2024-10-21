@@ -5,6 +5,7 @@ from pathlib import Path
 from random import randint
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, DeleteWorkspace, mtd
+
 from snapred.backend.dao.calibration import Calibration
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState

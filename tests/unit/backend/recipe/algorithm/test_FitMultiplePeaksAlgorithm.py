@@ -3,6 +3,7 @@ import unittest.mock as mock
 from typing import List
 
 import pydantic
+
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
 from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX
 
@@ -14,13 +15,14 @@ with mock.patch.dict(
     },
 ):
     from mantid.simpleapi import CreateSingleValuedWorkspace, CreateWorkspace, LoadNexusProcessed, mtd
+    from util.SculleryBoy import SculleryBoy
+
     from snapred.backend.dao.GroupPeakList import GroupPeakList
     from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import (
         FitMultiplePeaksAlgorithm,  # noqa: E402
     )
     from snapred.meta.Config import Resource
     from snapred.meta.redantic import list_to_raw
-    from util.SculleryBoy import SculleryBoy
 
     def test_init():
         """Test ability to initialize fit multiple peaks algo"""

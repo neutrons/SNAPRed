@@ -8,6 +8,7 @@ import pydantic
 import pytest
 from mantid.api import WorkspaceGroup
 from mantid.simpleapi import CreateSingleValuedWorkspace, CreateWorkspace, GenerateTableWorkspaceFromListOfDict, mtd
+
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
 from snapred.backend.dao.state import PixelGroup, PixelGroupingParameters
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import (

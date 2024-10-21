@@ -4,6 +4,7 @@ from unittest import TestCase
 
 import pytest
 from pydantic import BaseModel
+
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import (
     list_from_raw,

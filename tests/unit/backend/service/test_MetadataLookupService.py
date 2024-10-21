@@ -3,6 +3,7 @@ import logging
 import unittest
 
 import pytest
+
 from snapred.backend.service.MetadataLookupService import MetadataLookupService
 from snapred.meta.Config import Config
 

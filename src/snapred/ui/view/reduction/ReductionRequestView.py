@@ -9,6 +9,7 @@ from qtpy.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
 )
+
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView

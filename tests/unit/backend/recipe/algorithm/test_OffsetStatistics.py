@@ -7,6 +7,7 @@ from mantid.simpleapi import (
     OffsetStatistics,
     mtd,
 )
+
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.pointer import access_pointer
 

@@ -12,14 +12,14 @@ from mantid.simpleapi import (
     mtd,
 )
 from mantid.testing import assert_almost_equal
+from util.diffraction_calibration_synthetic_data import SyntheticData
+from util.helpers import deleteWorkspaceNoThrow
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.ConjoinDiagnosticWorkspaces import (
     ConjoinDiagnosticWorkspaces as Algo,  # noqa: E402
 )
 from snapred.meta.pointer import create_pointer
-from util.diffraction_calibration_synthetic_data import SyntheticData
-from util.helpers import deleteWorkspaceNoThrow
 
 
 class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
