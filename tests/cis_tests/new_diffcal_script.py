@@ -16,7 +16,7 @@ from snapred.backend.data.GroceryService import GroceryService
 
 ## the code to test
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffCalRecipe as PixelDiffCalRx
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration as GroupAlgo
+from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffCalRecipe as GroupDiffCalRx
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 
 # for running through service layer
@@ -75,6 +75,11 @@ groupAlgo.setPropertyValue("GroupingWorkspace", groceries[1])
 groupAlgo.setPropertyValue("PreviousCalibrationTable", DIFCprev)
 groupAlgo.setPropertyValue("OutputWorkspaceDSpacing", outputWS)
 groupAlgo.execute()
+
+groupGroceries = groceries.copy()
+groupGroceries["previousCalTable"] = DIFCprev
+groupGroceries["calibrationTable"] = DIFCprev
+groupRes = GroupDiffCalRx().cook(ingredients, groceries)
 
 ### PAUSE
 """

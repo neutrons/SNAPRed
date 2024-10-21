@@ -110,7 +110,8 @@ def script(goldenData):
 
         DIFCprev = pixelRes.calibrationTable
         groupGroceries = groceries.copy()
-        groupGroceries["previousCalibration"] = DIFCprev
+        groupGroceries["previousCalTable"] = DIFCprev
+        groupGroceries["calibrationTable"] = DIFCprev
         groupRes = GroupDiffCalRx().cook(ingredients, groupGroceries)
         assert groupRes.result
 

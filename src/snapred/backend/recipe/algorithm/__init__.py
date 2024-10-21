@@ -54,9 +54,6 @@ for x in all_module_names:
         # move it to recipe folder and delete this once review passes
         continue
 
-    if x == "GroupDiffractionCalibrationold":
-        continue
-
     loadModule(x)
 
 # cleanup

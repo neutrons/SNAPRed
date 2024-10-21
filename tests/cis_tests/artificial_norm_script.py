@@ -59,7 +59,6 @@ groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 ### RUN PIXEL CALIBRATION ##########
 pixelRes = PixelRx().cook(ingredients, groceries)
-assert False
 
 ### RUN GROUP CALIBRATION
 
@@ -67,16 +66,11 @@ DIFCprev = pixelRes.calibrationTable
 
 outputWS = mtd.unique_name(prefix="output_")
 
-
-
-groupAlgo = GroupAlgo()
-groupAlgo.initialize()
-groupAlgo.setPropertyValue("Ingredients", ingredients.json())
-groupAlgo.setPropertyValue("InputWorkspace", groceries[0])
-groupAlgo.setPropertyValue("GroupingWorkspace", groceries[1])
-groupAlgo.setPropertyValue("PreviousCalibrationTable", DIFCprev)
-groupAlgo.setPropertyValue("OutputWorkspace", outputWS)
-groupAlgo.execute()
+groupGroceries = groceries.copy()
+groupGroceries["previousCalTable"] = DIFCprev
+groupGroceries["calibrationTable"] = DIFCprev
+groupRes = GroupRx().cook(ingredients, groupGroceries)
+assert groupRes.result
 
 ### PAUSE
 """

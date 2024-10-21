@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
+from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffCalRecipe as GroupRx
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
@@ -148,15 +149,14 @@ ConvertUnits(
 print(fakeIngredients.groupedPeakLists)
 
 # now run the algorithm
-GroupDiffractionCalibration(
-    Ingredients = fakeIngredients.json(),
-    InputWorkspace = inputWStof,
-    GroupingWorkspace = groupingWS,
-    FinalCalibrationTable = "_final_DIFc_table",
-    OutputWorkspaceTOF = f"_test_out_{fakeRunNumber}_tof",
-    OutputWorkspacedSpacing = f"_test_out_{fakeRunNumber}_dsp",
-    PreviousCalibrationTable = DIFCpixel,
-)
+groceries = {
+    "inputWorkspace": inputWStof,
+    "groupingWorkspace": groupingWS,
+    "calibrationTable": "_final_DIFc_table",
+    "previousCalTable": DIFCpixel,
+    "outputWorkspace": f"_test_out_{fakeRunNumber}_tof",
+}
+res = GroupRx.cook(fakeIngredients, groceries)
 
 ## print graph, check all groups fit the peak
 fig, ax = plt.subplots(subplot_kw={'projection':'mantid'})
