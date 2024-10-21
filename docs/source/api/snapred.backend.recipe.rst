@@ -28,6 +28,14 @@ snapred.backend.recipe.algorithm.PixelDiffractionCalibration module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.recipe.algorithm.GroupDiffractionCalibration module
+---------------------------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.algorithm.GroupDiffractionCalibration
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.recipe.DiffractionCalibrationRecipe module
 ----------------------------------------------------------
 
