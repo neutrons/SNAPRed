@@ -17,7 +17,7 @@ from snapred.backend.data.GroceryService import GroceryService
 
 ## the code to test
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffCalRecipe as PixelRx
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration as GroupAlgo
+from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffCalRecipe as GroupRx
 from snapred.backend.recipe.algorithm.CreateArtificialNormalizationAlgo import CreateArtificialNormalizationAlgo as FakeNormAlgo
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 
@@ -66,6 +66,9 @@ assert False
 DIFCprev = pixelRes.calibrationTable
 
 outputWS = mtd.unique_name(prefix="output_")
+
+
+
 groupAlgo = GroupAlgo()
 groupAlgo.initialize()
 groupAlgo.setPropertyValue("Ingredients", ingredients.json())

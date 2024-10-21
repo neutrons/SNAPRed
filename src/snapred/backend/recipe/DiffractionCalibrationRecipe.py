@@ -2,12 +2,19 @@ from typing import Any, Dict, List
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
+from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffCalRecipe
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffCalRecipe
-from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
+
+
+"""
+NOTE this recipe will no longer serve any purpose following EWM 7388
+It is only remaining to ensure continuity of test coverage during
+the PR review process.  It can be reliably removed once the new service
+endpoints are setup.
+"""
 
 
 @Singleton
@@ -32,10 +39,7 @@ class DiffractionCalibrationRecipe:
         Chops off the needed elements of the diffraction calibration ingredients.
         """
         self.runNumber = ingredients.runConfig.runNumber
-        self.threshold = ingredients.convergenceThreshold
-        self.maxIterations = Config["calibration.diffraction.maximumIterations"]
         self.skipPixelCalibration = ingredients.skipPixelCalibration
-        self.removeBackground = ingredients.removeBackground
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
         """
@@ -73,22 +77,20 @@ class DiffractionCalibrationRecipe:
                 raise RuntimeError("Pixel Calibration failed")
 
         logger.info("Beginning group-by-group fitting calibration")
-        groupedAlgo = GroupDiffractionCalibration()
-        groupedAlgo.initialize()
-        groupedAlgo.setProperty("InputWorkspace", self.rawInput)
-        groupedAlgo.setProperty("OutputWorkspace", self.outputDSPWS)
-        groupedAlgo.setProperty("DiagnosticWorkspace", self.diagnosticWS)
-        groupedAlgo.setProperty("GroupingWorkspace", self.groupingWS)
-        groupedAlgo.setProperty("Ingredients", ingredients.json())
-        groupedAlgo.setProperty("PreviousCalibrationTable", self.calTable)
-        groupedAlgo.setProperty("MaskWorkspace", self.maskWS)
-        groupedAlgo.setProperty("FinalCalibrationTable", self.calTable)
-        groupedAlgo.execute()
-        data["calibrationTable"] = groupedAlgo.getPropertyValue("FinalCalibrationTable")
-        data["diagnosticWorkspace"] = groupedAlgo.getPropertyValue("DiagnosticWorkspace")
-        data["outputWorkspace"] = groupedAlgo.getPropertyValue("OutputWorkspace")
-        data["maskWorkspace"] = groupedAlgo.getPropertyValue("MaskWorkspace")
 
+        groupGroceries = groceries.copy()
+        groupGroceries["previousCalibration"] = groceries.get("calibrationTable", "")
+        groupGroceries["calibrationTable"] = groceries.get("calibrationTable")
+        groupRes = GroupDiffCalRecipe().cook(ingredients, groupGroceries)
+        if not groupRes.result:
+            raise RuntimeError("Group Calibration failed")
+
+        logger.info(f"Finished executing diffraction calibration for runId: {self.runNumber}")
+
+        data["calibrationTable"] = groupRes.calibrationTable
+        data["diagnosticWorkspace"] = groupRes.diagnosticWorkspace
+        data["outputWorkspace"] = groupRes.outputWorkspace
+        data["maskWorkspace"] = groupRes.maskWorkspace
         logger.info(f"Finished executing diffraction calibration for runId: {self.runNumber}")
         data["steps"] = medianOffsets
         data["result"] = True
