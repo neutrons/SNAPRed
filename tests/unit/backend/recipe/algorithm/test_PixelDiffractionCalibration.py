@@ -88,9 +88,9 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         assert allOffsets[-1] <= self.ingredients.convergenceThreshold
 
     def test_execute_ordered(self):
-        # Mock workspace and isHistogramData method
+        # Mock workspace and check for event workspace using id()
         mockWorkspace = mock.MagicMock()
-        mockWorkspace.isHistogramData.return_value = True
+        mockWorkspace.id.return_value = "EventWorkspace"
 
         # Use MagicMock to allow item assignment
         rx = Recipe()
@@ -126,9 +126,9 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         assert result.medianOffsets == [2, 1]
 
     def test_hard_cap_at_five(self):
-        # Mock workspace and isHistogramData method
+        # Mock workspace and check for event workspace using id()
         mockWorkspace = mock.MagicMock()
-        mockWorkspace.isHistogramData.return_value = True
+        mockWorkspace.id.return_value = "EventWorkspace"
 
         # Mock mtd and ensure it returns the mockWorkspace when accessed
         rx = Recipe()
