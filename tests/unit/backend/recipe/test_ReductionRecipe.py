@@ -130,11 +130,25 @@ class ReductionRecipeTest(TestCase):
         with pytest.raises(ValueError, match=r"cannot convert to unit.*"):
             recipe._cloneAndConvertWorkspace(workspace, units)
 
-    def test_keepUnfocusedData(self):
-        # Prepare recipe for testing
-        recipe = ReductionRecipe()
-        recipe.groceries = {}
+    @mock.patch("mantid.simpleapi.mtd", create=True)
+    def test_keepUnfocusedData(self, mockMtd):
+        mockMantidSnapper = mock.Mock()
 
+        mockMaskWorkspace = mock.Mock()
+        mockGroupWorkspace = mock.Mock()
+
+        mockGroupWorkspace.getNumberHistograms.return_value = 10
+        mockGroupWorkspace.readY.return_value = [0] * 10
+        mockMaskWorkspace.readY.return_value = [0] * 10
+
+        # Mock mtd to return mask and group workspaces
+        mockMtd.__getitem__.side_effect = lambda ws_name: mockMaskWorkspace if ws_name == "mask" else mockGroupWorkspace
+        recipe = ReductionRecipe()
+        recipe.mantidSnapper = mockMantidSnapper
+        recipe.mantidSnapper.mtd = mockMtd
+
+        # Set up ingredients and other variables for the recipe
+        recipe.groceries = {}
         recipe.ingredients = mock.Mock()
         recipe.ingredients.groupProcessing = mock.Mock(
             return_value=lambda groupingIndex: f"groupProcessing_{groupingIndex}"
@@ -146,22 +160,26 @@ class ReductionRecipeTest(TestCase):
             return_value=lambda groupingIndex: f"applyNormalization_{groupingIndex}"
         )
 
+        # Mock internal methods of recipe
         recipe._applyRecipe = mock.Mock()
         recipe._cloneIntermediateWorkspace = mock.Mock()
         recipe._deleteWorkspace = mock.Mock()
         recipe._cloneAndConvertWorkspace = mock.Mock()
         recipe._prepGroupingWorkspaces = mock.Mock()
         recipe._prepGroupingWorkspaces.return_value = ("sample_grouped", "norm_grouped")
+
+        # Set up other recipe variables
         recipe.sampleWs = "sample"
         recipe.maskWs = "mask"
         recipe.normalizationWs = "norm"
         recipe.groupingWorkspaces = ["group1", "group2"]
         recipe.keepUnfocused = True
-
-        # Test keeping unfocused data in dSpacing units
         recipe.convertUnitsTo = "dSpacing"
+
+        # Execute the recipe
         result = recipe.execute()
 
+        # Assertions
         recipe._cloneAndConvertWorkspace.assert_called_once_with("sample", "dSpacing")
         assert recipe._deleteWorkspace.call_count == len(recipe._prepGroupingWorkspaces.return_value)
         recipe._deleteWorkspace.assert_called_with("norm_grouped")
@@ -289,12 +307,26 @@ class ReductionRecipeTest(TestCase):
             mock.ANY, InputWorkspace="input", OutputWorkspace="output"
         )
 
-    def test_execute(self):
-        recipe = ReductionRecipe()
-        recipe.groceries = {}
+    @mock.patch("mantid.simpleapi.mtd", create=True)
+    def test_execute(self, mockMtd):
+        mockMantidSnapper = mock.Mock()
 
+        mockMaskworkspace = mock.Mock()
+        mockGroupWorkspace = mock.Mock()
+
+        mockGroupWorkspace.getNumberHistograms.return_value = 10
+        mockGroupWorkspace.readY.return_value = [0] * 10
+        mockMaskworkspace.readY.return_value = [0] * 10
+
+        mockMtd.__getitem__.side_effect = lambda ws_name: mockMaskworkspace if ws_name == "mask" else mockGroupWorkspace
+
+        recipe = ReductionRecipe()
+        recipe.mantidSnapper = mockMantidSnapper
+        recipe.mantidSnapper.mtd = mockMtd
+
+        # Set up ingredients and other variables for the recipe
+        recipe.groceries = {}
         recipe.ingredients = mock.Mock()
-        # recipe.ingredients.preprocess = mock.Mock()
         recipe.ingredients.groupProcessing = mock.Mock(
             return_value=lambda groupingIndex: f"groupProcessing_{groupingIndex}"
         )
@@ -305,12 +337,15 @@ class ReductionRecipeTest(TestCase):
             return_value=lambda groupingIndex: f"applyNormalization_{groupingIndex}"
         )
 
+        # Mock internal methods of recipe
         recipe._applyRecipe = mock.Mock()
         recipe._cloneIntermediateWorkspace = mock.Mock()
         recipe._deleteWorkspace = mock.Mock()
         recipe._cloneAndConvertWorkspace = mock.Mock()
         recipe._prepGroupingWorkspaces = mock.Mock()
         recipe._prepGroupingWorkspaces.return_value = ("sample_grouped", "norm_grouped")
+
+        # Set up other recipe variables
         recipe.sampleWs = "sample"
         recipe.maskWs = "mask"
         recipe.normalizationWs = "norm"
@@ -318,8 +353,10 @@ class ReductionRecipeTest(TestCase):
         recipe.keepUnfocused = True
         recipe.convertUnitsTo = "TOF"
 
+        # Execute the recipe
         result = recipe.execute()
 
+        # Perform assertions
         recipe._applyRecipe.assert_any_call(
             PreprocessReductionRecipe,
             recipe.ingredients.preprocess(),

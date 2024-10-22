@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Set, Tuple, Type
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
-from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe
@@ -144,10 +143,7 @@ class ReductionRecipe(Recipe[Ingredients]):
             self.groceries["normalizationWorkspace"] = normalizationClone
         return sampleClone, normalizationClone
 
-    def _isGroupFullyMasked(self, groupingIndex: int, groupingWorkspace: str) -> bool:
-        """
-        Check if the entire group (groupingWorkspace) is fully masked by evaluating the mask workspace.
-        """
+    def _isGroupFullyMasked(self, groupingWorkspace: str) -> bool:
         maskWorkspace = self.mantidSnapper.mtd[self.maskWs]
         groupWorkspace = self.mantidSnapper.mtd[groupingWorkspace]
 
@@ -160,13 +156,6 @@ class ReductionRecipe(Recipe[Ingredients]):
                 if maskWorkspace.readY(int(spectrumIndex))[0] == 1:
                     totalMaskedPixels += 1
                 totalGroupPixels += 1
-
-        if totalMaskedPixels == totalGroupPixels:
-            raise ContinueWarning(
-                f"Pixel group {groupingIndex} within {groupingWorkspace} is fully masked. Skipping all algorithm execution for this group.",  # noqa: E501
-                ContinueWarning.Type.FULLY_MASKED_GROUP,
-            )
-
         return totalMaskedPixels == totalGroupPixels
 
     def queueAlgos(self):
@@ -198,12 +187,13 @@ class ReductionRecipe(Recipe[Ingredients]):
         for groupingIndex, groupingWs in enumerate(self.groupingWorkspaces):
             self.groceries["groupingWorkspace"] = groupingWs
 
-            try:
-                self._isGroupFullyMasked(groupingIndex, groupingWs)
-            except ContinueWarning as warning:
-                self.logger().warning(f"Warning occurred for group {groupingIndex}: {str(warning)}")
-                if warning.flags == ContinueWarning.Type.FULLY_MASKED_GROUP:
-                    self.logger().info(f"Skipping group {groupingIndex} due to full masking.")
+            if self.maskWs and self._isGroupFullyMasked(groupingWs):
+                # Notify the user of a fully masked group, but continue with the workflow
+                self.logger().warning(
+                    f"\nAll pixels masked within {groupingWs} schema.\n"
+                    + "Skipping all algorithm execution for this group.\n"
+                    + "This will affect future reductions."
+                )
                 continue
 
             sampleClone, normalizationClone = self._prepGroupingWorkspaces(groupingIndex)
