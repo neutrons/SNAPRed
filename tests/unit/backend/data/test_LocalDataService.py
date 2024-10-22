@@ -523,6 +523,14 @@ def test_writeGroupingMap_relative_paths():
     assert relativePathCount > 0
 
 
+def test_stateExists():
+    # Test that the 'stateExists' method returns True when the state exists.
+    localDataService = LocalDataService()
+    localDataService.constructCalibrationStateRoot = mock.Mock(return_value=Path("."))
+    localDataService.generateStateId = mock.Mock(return_value=(ENDURING_STATE_ID, None))
+    assert localDataService.stateExists("12345")
+
+
 @mock.patch(ThisService + "GetIPTS")
 def test_calibrationFileExists(GetIPTS):  # noqa ARG002
     localDataService = LocalDataService()

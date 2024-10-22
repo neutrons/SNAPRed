@@ -287,6 +287,16 @@ class TestNormalizationService(unittest.TestCase):
         ):
             self.instance._validateDiffractionCalibrationExists(request)
 
+    def test_validateDiffractionCalibrationExists_success_contineuAnyway(self):
+        request = mock.Mock(
+            runNumber="12345",
+            backgroundRunNumber="67890",
+            continueFlags=ContinueWarning.Type.DEFAULT_DIFFRACTION_CALIBRATION,
+        )
+        self.instance.sousChef = SculleryBoy()
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=-1)
+        self.instance._validateDiffractionCalibrationExists(request)
+
     def test_validateRequest_different_states(self):
         # test `validateRequest` raises `ValueError`
         self.instance._sameStates = mock.Mock(return_value=False)

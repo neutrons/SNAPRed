@@ -107,6 +107,11 @@ class TestDataFactoryService(unittest.TestCase):
         actual = self.instance.constructStateId(arg)
         assert actual == self.expected(arg)
 
+    def test_stateExists(self):
+        self.instance.lookupService.stateExists = mock.Mock(return_value=True)
+        actual = self.instance.stateExists("123")
+        assert actual
+
     def test_getGroupingMap(self):
         arg = mock.Mock()
         actual = self.instance.getGroupingMap(arg)
