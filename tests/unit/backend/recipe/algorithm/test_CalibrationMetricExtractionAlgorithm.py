@@ -7,16 +7,14 @@ import numpy as np
 import pydantic
 import pytest
 from mantid.api import WorkspaceGroup
-from mantid.simpleapi import CreateSingleValuedWorkspace, CreateWorkspace, mtd
+from mantid.simpleapi import CreateSingleValuedWorkspace, CreateWorkspace, GenerateTableWorkspaceFromListOfDict, mtd
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
 from snapred.backend.dao.state import PixelGroup, PixelGroupingParameters
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import (
     CalibrationMetricExtractionAlgorithm as Algo,
 )
-from snapred.backend.recipe.algorithm.GenerateTableWorkspaceFromListOfDict import (
-    GenerateTableWorkspaceFromListOfDict as Table,
-)
 from snapred.meta.Config import Resource
+from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEnum
 
 
 def _removeWhitespace(string):
@@ -28,33 +26,40 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
         # Mock input data
         fakeInputWorkspace = "mock_input_workspace"
         vals = np.array([[1.0], [2.0], [3.0]])
+        suffix = FIT_PEAK_DIAG_SUFFIX.copy()
+
         fakeInputWorkspaceData = {
-            "PeakPosition": MagicMock(readY=MagicMock(return_value=vals), readX=MagicMock(return_value=vals)),
-            "Parameters": MagicMock(
+            suffix[FitOutputEnum.PeakPosition]: MagicMock(
+                readY=MagicMock(return_value=vals), readX=MagicMock(return_value=vals)
+            ),
+            suffix[FitOutputEnum.Parameters]: MagicMock(
                 rowCount=MagicMock(return_value=3),
                 row=MagicMock(side_effect=np.array([{"Sigma": 0.1}, {"Sigma": 0.2}, {"Sigma": 0.3}])),
             ),
-            "Workspace": np.array(["ws1", "ws2", "ws3"]),
-            "ParameterError": np.array([{}, {}, {}]),
+            suffix[FitOutputEnum.Workspace]: np.array(["ws1", "ws2", "ws3"]),
+            suffix[FitOutputEnum.ParameterError]: np.array([{}, {}, {}]),
         }
         fitPeaksDiagnosis = WorkspaceGroup()
         mtd.addOrReplace(fakeInputWorkspace, fitPeaksDiagnosis)
+        # the peak positions workspace
         CreateWorkspace(
-            OutputWorkspace="PeakPosition",
+            OutputWorkspace=suffix[FitOutputEnum.PeakPosition],
             DataX=vals,
             DataY=vals,
         )
-        fitPeaksDiagnosis.add("PeakPosition")
-        table = Table()
-        table.initialize()
-        table.setProperty("ListOfDict", json.dumps([{"wsindex": x, "Sigma": (x + 1.0) / 10.0} for x in [0, 1, 2]]))
-        table.setProperty("OutputWorkspace", "Parameters")
-        table.execute()
-        fitPeaksDiagnosis.add("Parameters")
-        CreateSingleValuedWorkspace(Outputworkspace="Workspace")
-        fitPeaksDiagnosis.add("Workspace")
-        CreateSingleValuedWorkspace(OutputWorkspace="ParameterError")
-        fitPeaksDiagnosis.add("ParameterError")
+        fitPeaksDiagnosis.add(suffix[FitOutputEnum.PeakPosition])
+        # the fit parameters workspace
+        GenerateTableWorkspaceFromListOfDict(
+            ListOfDict=json.dumps([{"wsindex": x, "Sigma": (x + 1.0) / 10.0} for x in [0, 1, 2]]),
+            OutputWorkspace=suffix[FitOutputEnum.Parameters],
+        )
+        fitPeaksDiagnosis.add(suffix[FitOutputEnum.Parameters])
+        # the fitted peaks workspace
+        CreateSingleValuedWorkspace(Outputworkspace=suffix[FitOutputEnum.Workspace])
+        fitPeaksDiagnosis.add(suffix[FitOutputEnum.Workspace])
+        # the parameter error workspace
+        CreateSingleValuedWorkspace(OutputWorkspace=suffix[FitOutputEnum.ParameterError])
+        fitPeaksDiagnosis.add(suffix[FitOutputEnum.ParameterError])
 
         fakePixelGroupingParameterss = [
             PixelGroupingParameters(

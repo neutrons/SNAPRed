@@ -7,8 +7,8 @@ from mantid.kernel import Direction
 
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
 from snapred.backend.dao.state import PixelGroup
-from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.mantid.FitPeaksOutput import FitOutputEnum
 
 
 class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
@@ -54,6 +54,7 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
         pixelGroup = PixelGroup.model_validate_json(self.getPropertyValue("PixelGroup"))
         pixelGroupingParameters = list(pixelGroup.pixelGroupingParameters.values())
         # collect all params and peak positions
+        inputWorkspace.sortByName()
         peakPos = inputWorkspace.getItem(FitOutputEnum.PeakPosition.value)
         parameters = inputWorkspace.getItem(FitOutputEnum.Parameters.value)
         workspace = inputWorkspace.getItem(FitOutputEnum.Workspace.value)  # noqa: F841
