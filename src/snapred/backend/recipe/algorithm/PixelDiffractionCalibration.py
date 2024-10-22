@@ -88,7 +88,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         self.maskWS = groceries["maskWorkspace"]
         # the name of the output calibration table
         self.DIFCpixel = groceries["calibrationTable"]
-        self.isHisto = self.mantidSnapper.mtd[self.wsTOF].isHistogramData()
+        self.isEventWs = self.mantidSnapper.mtd[self.wsTOF].id() == "EventWorkspace"
         # the input data converted to d-spacing
         self.wsDSP = wng.diffCalInputDSP().runNumber(self.runNumber).build()
         self.mantidSnapper.ConvertUnits(
@@ -147,7 +147,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             GroupingWorkspace=groupingWS,
             DetectorPeaks=peaks,
         )
-        if not self.isHisto:
+        if self.isEventWs:
             self.mantidSnapper.ConvertToEventWorkspace(
                 "Converting TOF data to EventWorkspace...",
                 InputWorkspace=wsBG,
