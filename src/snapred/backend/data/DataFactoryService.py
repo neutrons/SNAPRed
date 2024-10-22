@@ -54,6 +54,9 @@ class DataFactoryService:
     def constructStateId(self, runId: str):
         return self.lookupService.generateStateId(runId)
 
+    def stateExists(self, runId: str):
+        return self.lookupService.stateExists(runId)
+
     def getCalibrantSample(self, filePath):
         return self.lookupService.readCalibrantSample(filePath)
 

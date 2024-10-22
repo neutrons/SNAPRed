@@ -23,6 +23,7 @@ from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.meta.Config import Resource
@@ -123,6 +124,7 @@ class TestReductionService(unittest.TestCase):
         }
         mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
         self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.stateExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
@@ -136,6 +138,21 @@ class TestReductionService(unittest.TestCase):
         mockReductionRecipe.assert_called()
         mockReductionRecipe.return_value.cook.assert_called_once_with(ingredients, groceries)
         assert result.record.workspaceNames == mockReductionRecipe.return_value.cook.return_value["outputs"]
+
+    def test_reduction_noState_withWritePerms(self):
+        mockRequest = mock.Mock()
+        self.instance.dataFactoryService.stateExists = mock.Mock(return_value=False)
+        self.instance.checkWritePermissions = mock.Mock(return_value=True)
+        with pytest.raises(RecoverableException, match="State uninitialized"):
+            self.instance.reduction(mockRequest)
+
+    def test_reduction_noState_noWritePerms(self):
+        mockRequest = mock.Mock()
+        self.instance.dataFactoryService.stateExists = mock.Mock(return_value=False)
+        self.instance.checkWritePermissions = mock.Mock(return_value=False)
+        self.instance.getSavePath = mock.Mock(return_value="path")
+        with pytest.raises(RuntimeError, match=r".*It looks like you don't have permissions to write to*"):
+            self.instance.reduction(mockRequest)
 
     def test_markWorkspaceMetadata(self):
         request = mock.Mock(continueFlags=ContinueWarning.Type.UNSET)

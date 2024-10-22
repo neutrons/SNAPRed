@@ -18,6 +18,7 @@ from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -86,6 +87,23 @@ class ReductionService(Service):
         :param request: a reduction request
         :type request: ReductionRequest
         """
+        if not self.dataFactoryService.stateExists(request.runNumber):
+            if self.checkWritePermissions(request.runNumber):
+                raise RecoverableException.stateUninitialized(request.runNumber, request.useLiteMode)
+            else:
+                # TODO: Centralize these exception strings or handling.
+                raise RuntimeError(
+                    "<font size = "
+                    "2"
+                    " >"
+                    + "<p>It looks like you don't have permissions to write to "
+                    + f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
+                    + "which is a requirement in order to run the diffraction-calibration workflow.</p>"
+                    + "<p>If this is something that you need to do, then you may need to change the "
+                    + "<br><b>instrument.calibration.powder.home</b> entry in SNAPRed's <b>application.yml</b> file.</p>"  # noqa: E501
+                    + "</font>"
+                )
+
         continueFlags = ContinueWarning.Type.UNSET
         # check if a normalization is present
         if not self.dataFactoryService.normalizationExists(request.runNumber, request.useLiteMode):

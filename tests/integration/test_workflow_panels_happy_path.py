@@ -1057,11 +1057,6 @@ class TestGUIPanels:
                     lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
                 )
                 questionMessageBox.start()
-                warningMessageBox = mock.patch(  # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.warning",
-                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
-                )
-                warningMessageBox.start()
                 successPrompt = mock.patch(
                     "snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt",
                     lambda parent: parent.close() if parent is not None else None,
@@ -1093,8 +1088,13 @@ class TestGUIPanels:
 
                 # State initialization dialog is "application modal" => no need to explicitly wait
                 questionMessageBox.stop()
-                warningMessageBox.stop()
                 successPrompt.stop()
+
+            warningMessageBox = mock.patch(  # noqa: PT008
+                "qtpy.QtWidgets.QMessageBox.warning",
+                lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
+            )
+            warningMessageBox.start()
 
             #    (2) execute the normalization workflow
             with qtbot.waitSignal(actionCompleted, timeout=60000):
@@ -1102,7 +1102,7 @@ class TestGUIPanels:
             qtbot.waitUntil(
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationTweakPeakView), timeout=60000
             )
-
+            warningMessageBox.stop()
             tweakPeakView = workflowNodeTabs.currentWidget().view
 
             #    set "Smoothing", "xtal dMin", "xtal dMax", "intensity threshold", and "groupingDropDown"
@@ -1278,6 +1278,11 @@ class TestGUIPanels:
                     lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
                 )
                 questionMessageBox.start()
+                warningMessageBox = mock.patch(  # noqa: PT008
+                    "qtpy.QtWidgets.QMessageBox.warning",
+                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
+                )
+                warningMessageBox.start()
                 successPrompt = mock.patch(
                     "snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt",
                     lambda parent: parent.close() if parent is not None else None,
@@ -1309,13 +1314,13 @@ class TestGUIPanels:
                 # State initialization dialog is "application modal" => no need to explicitly wait
                 questionMessageBox.stop()
                 successPrompt.stop()
-
             #    (2) execute the reduction workflow
             with qtbot.waitSignal(actionCompleted, timeout=120000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
             qtbot.waitUntil(lambda: isinstance(workflowNodeTabs.currentWidget().view, ReductionSaveView), timeout=60000)
             saveView = workflowNodeTabs.currentWidget().view  # noqa: F841
 
+            warningMessageBox.stop()
             """
             #    set "author" and "comment"
             saveView.fieldAuthor.setText("kat")
