@@ -378,7 +378,6 @@ class ReductionService(Service):
             self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
                 request.useLiteMode
             ).add()
-            # TODO: I dont think the loaded diffcal mask was ever combined with the pixel masks above^^
 
         if normVersion:
             self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, normVersion).useLiteMode(
