@@ -156,7 +156,7 @@ class CalibrationService(Service):
             groceries=self.fetchDiffractionCalibrationGroceries(request),
             skipPixelCalibration=request.skipPixelCalibration,
         )
-        self.calibrate(payload.json())
+        return self.calibrate(payload.json())
 
     @FromString
     def calibrate(self, request: SimpleDiffCalRequest):

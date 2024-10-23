@@ -1,5 +1,8 @@
 from mantid.simpleapi import mtd
 from qtpy.QtCore import Slot
+from qtpy.QtWidgets import (
+    QMessageBox,
+)
 
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
@@ -360,11 +363,21 @@ class DiffCalWorkflow(WorkflowImplementer):
                 peaks = groupPeaks.peaks
                 # collect the fit chi-sq parameters for this spectrum, and the fits
                 chi2 = [x2 for i, x2 in zip(index, allChi2) if i == wkspIndex]
-                goodPeaks = [peak for x2, peak in zip(chi2, peaks) if x2 < maxChiSq]
-                groupPeaks.peaks = goodPeaks
+                goodPeaks.append([peak for x2, peak in zip(chi2, peaks) if x2 < maxChiSq])
+            too_fews = [goodPeak for goodPeak in goodPeaks if len(goodPeak) < 2]
+            if too_fews != []:
+                QMessageBox.error(
+                    self,
+                    "Too Few Peaks",
+                    "Purging would result in fewer than the required 2 peaks for calibration.",
+                    QMessageBox.Ok,
+                )
+            else:
+                for wkspIndex, groupPeaks in enumerate(allPeaks):
+                    groupPeaks.peaks = goodPeaks[wkspIndex]
 
             # NOTE cannot renew fit peaks here, as an empty peak list causes error
-            # self._renewFitPeaks(self.peakFunction)
+            self._renewFitPeaks(self.peakFunction)
 
             self._tweakPeakView.updateGraphs(
                 self.focusedWorkspace,
