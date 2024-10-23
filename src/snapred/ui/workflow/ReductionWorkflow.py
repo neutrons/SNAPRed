@@ -42,6 +42,9 @@ class ReductionWorkflow(WorkflowImplementer):
                 startLambda=self.start,
                 # Retain reduction-output workspaces.
                 resetLambda=lambda: self.reset(True),
+                completionMessage=(
+                    "Reduction has completed successfully.\n" "Your workspaces are available in the workspace list."
+                ),
                 parent=parent,
             )
             .addNode(
@@ -50,7 +53,7 @@ class ReductionWorkflow(WorkflowImplementer):
                 "Reduction",
                 continueAnywayHandler=self._continueAnywayHandler,
             )
-            .addNode(self._nothing, self._reductionSaveView, "Save")
+            # .addNode(self._nothing, self._reductionSaveView, "Save")
             .build()
         )
 

@@ -11,6 +11,7 @@ class Workflow:
         iterateLambda=None,
         resetLambda=None,
         cancelLambda=None,
+        completionMessage=None,
         parent=None,
     ):
         # default loading subview
@@ -20,6 +21,7 @@ class Workflow:
             iterateLambda=iterateLambda,
             resetLambda=resetLambda,
             cancelLambda=cancelLambda,
+            completionMessage=completionMessage,
             parent=parent,
         )
 

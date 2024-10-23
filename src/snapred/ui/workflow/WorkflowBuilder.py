@@ -1,14 +1,25 @@
+from snapred.meta.Config import Config
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.widget.Workflow import Workflow
 
 
 class WorkflowBuilder:
-    def __init__(self, *, startLambda=None, iterateLambda=None, resetLambda=None, cancelLambda=None, parent=None):
+    def __init__(
+        self,
+        *,
+        startLambda=None,
+        iterateLambda=None,
+        resetLambda=None,
+        cancelLambda=None,
+        parent=None,
+        completionMessage=Config["ui.default.workflow.completionMessage"],
+    ):
         self.parent = parent
         self._startLambda = startLambda
         self._iterateLambda = iterateLambda
         self._resetLambda = resetLambda
         self._cancelLambda = cancelLambda
+        self._completionMessage = completionMessage
         self._workflow = None
 
     def addNode(
@@ -46,5 +57,6 @@ class WorkflowBuilder:
             iterateLambda=self._iterateLambda,
             resetLambda=self._resetLambda,
             cancelLambda=self._cancelLambda,
+            completionMessage=self._completionMessage,
             parent=self.parent,
         )
