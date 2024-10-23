@@ -264,7 +264,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
     def do_test_load_with_instrument_name(self, ext: str):
         outputWorkspace = "test_ext"
         with amend_config(**{"instrumentDefinition.directory": Resource.getPath("inputs/testInstrument/")}):
-            ConfigService.updateFacilities("inputs/testInstrument/Facilities.xml")
+            ConfigService.updateFacilities(Resource.getPath("inputs/testInstrument/Facilities.xml"))
             ConfigService.setFacility("TestSNAP")
             loadingAlgo = LoadingAlgo()
             loadingAlgo.initialize()
