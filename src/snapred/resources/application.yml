@@ -31,15 +31,18 @@ instrument:
 
   config: ${instrument.calibration.home}/SNAPInstPrm.json
   native:
-    pixelResolution: 1179648
+    pixelResolution: 72
     definition:
-      file: ${module.root}/resources/SNAP_Definition.xml
+      file: ${instrument.calibration.home}/Powder/CRACKLE_Definition.xml
+      # file: ${module.root}/resources/SNAP_Definition.xml
   lite:
-    pixelResolution: 18432
+    pixelResolution: 18
     definition:
-      file: ${module.root}/resources/SNAPLite_Definition.xml
+      file: ${instrument.calibration.home}/Powder/CRACKLELite_Definition.xml
+      # file: ${module.root}/resources/SNAPLite_Definition.xml
     map:
-      file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
+      file: ${instrument.calibration.home}/Powder/CRACKLELiteDataMap.xml
+      # file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000
   minimumRunNumber: 46342
   maxNumberOfRuns: 10
@@ -190,6 +193,8 @@ constants:
   PeakIntensityFractionThreshold: 0.05
   m2cm: 10000.0 # conversion factor for m^2 to cm^2
   maskedPixelThreshold: 0.15
+  logsLocation: "/mantid_workspace_1/logs"
+  # logsLocation: "entry/DASlogs"
 
   CrystallographicInfo:
     crystalDMin: 0.4

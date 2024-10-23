@@ -272,6 +272,8 @@ class LocalDataService:
     def _readPVFile(self, runId: str):
         fileName: Path = self._constructPVFilePath(runId)
 
+        print(f"READ PV FILE NAME: {fileName}")
+
         if fileName.exists():
             h5 = h5py.File(fileName, "r")
         else:
@@ -779,8 +781,9 @@ class LocalDataService:
         detectorState = None
         pvFile = self._readPVFile(runId)
         wav_value = None
-        wav_key_1 = "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value"
-        wav_key_2 = "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value"
+        logsLocation = Config["constants.logsLocation"]
+        wav_key_1 = f"{logsLocation}/BL3:Chop:Gbl:WavelengthReq/value"
+        wav_key_2 = f"{logsLocation}/BL3:Chop:Skf1:WavelengthUserReq/value"
 
         if wav_key_1 in pvFile:
             wav_value = pvFile.get(wav_key_1)[0]
@@ -791,11 +794,11 @@ class LocalDataService:
 
         try:
             detectorState = DetectorState(
-                arc=[pvFile.get("entry/DASlogs/det_arc1/value")[0], pvFile.get("entry/DASlogs/det_arc2/value")[0]],
+                arc=[pvFile.get(f"{logsLocation}/det_arc1/value")[0], pvFile.get(f"{logsLocation}/det_arc2/value")[0]],
                 wav=wav_value,
-                freq=pvFile.get("entry/DASlogs/BL3:Det:TH:BL:Frequency/value")[0],
-                guideStat=pvFile.get("entry/DASlogs/BL3:Mot:OpticsPos:Pos/value")[0],
-                lin=[pvFile.get("entry/DASlogs/det_lin1/value")[0], pvFile.get("entry/DASlogs/det_lin2/value")[0]],
+                freq=pvFile.get(f"{logsLocation}/BL3:Det:TH:BL:Frequency/value")[0],
+                guideStat=pvFile.get(f"{logsLocation}/BL3:Mot:OpticsPos:Pos/value")[0],
+                lin=[pvFile.get(f"{logsLocation}/det_lin1/value")[0], pvFile.get(f"{logsLocation}/det_lin2/value")[0]],
             )
         except (TypeError, KeyError) as e:
             raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}': {e}")
