@@ -1269,6 +1269,12 @@ class TestGUIPanels:
                 # )
                 waitForStateInit = False
 
+            warningMessageBox = mock.patch(  # noqa: PT008
+                "qtpy.QtWidgets.QMessageBox.warning",
+                lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
+            )
+            warningMessageBox.start()
+
             if waitForStateInit:
                 # ---------------------------------------------------------------------------
                 # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
@@ -1278,11 +1284,6 @@ class TestGUIPanels:
                     lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
                 )
                 questionMessageBox.start()
-                warningMessageBox = mock.patch(  # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.warning",
-                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
-                )
-                warningMessageBox.start()
                 successPrompt = mock.patch(
                     "snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt",
                     lambda parent: parent.close() if parent is not None else None,
