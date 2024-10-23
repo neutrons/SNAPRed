@@ -71,12 +71,11 @@ from util.helpers import (
     maskSpectra,
     setGroupSpectraToZero,
     maskGroups,
-    pause
 )
 from util.IPTS_override import datasearch_directories
 
 ## If required: override the IPTS search directories: ##
-instrumentHome = "/mnt/R5_data1/data1/workspaces/ORNL-work/SNAPRed/SNS_root/SNAP"
+instrumentHome = "/SNS/SNAP"
 ConfigService.Instance().setDataSearchDirs(datasearch_directories(instrumentHome))
 Config._config["instrument"]["home"] = instrumentHome + os.sep
 ########################################################
@@ -105,7 +104,6 @@ farmFresh = FarmFreshIngredients(
     focusGroups=[{"name": groupingScheme, "definition": ""}],
     cifPath=cifPath,
     calibrantSamplePath=calibrantSamplePath,
-    peakIntensityThresold=peakThreshold,
     convergenceThreshold=offsetConvergenceLimit,
     maxOffset=100.0,
 )
@@ -127,10 +125,12 @@ createCompatibleMask(maskWSName, inputWSName)
 
 ### Here any specific spectra or isolated detectors can be masked in the input, if required for testing...
 # ---
-# maskWS = mtd[maskWSName]
-# inputWS = mtd[inputWSName]
-# groupingWS = mtd[groupingWSName]
+maskWS = mtd[maskWSName]
+inputWS = mtd[inputWSName]
+groupingWS = mtd[groupingWSName]
 
+allSpectra = list(range(inputWS.getNumberHistograms()))
+maskSpectra(maskWS, inputWS, allSpectra)
 # # mask all detectors contributing to spectra 10, 20, and 30:
 # spectraToMask = (10, 20, 30)
 # maskSpectra(maskWS, inputWS, spectraToMask)
