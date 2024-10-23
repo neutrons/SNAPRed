@@ -11,6 +11,7 @@ from snapred.backend.dao.request import (
 )
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.Config import Config
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.widget.Workflow import Workflow
 
@@ -116,6 +117,9 @@ class WorkflowImplementer(QObject):
     def complete(self):
         for hook in self.resetHooks:
             hook()
+
+    def completionMessage(self):
+        return Config["ui.default.workflow.completionMessage"]
 
     def _request(self, request: SNAPRequest):
         response = self.interfaceController.executeRequest(request)

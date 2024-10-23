@@ -29,7 +29,7 @@ class WorkflowPresenter(QObject):
         iterateLambda=None,
         resetLambda=None,
         cancelLambda=None,
-        completionMessage=None,
+        completionMessageLambda=None,
         parent=None,
     ):
         super().__init__()
@@ -37,7 +37,7 @@ class WorkflowPresenter(QObject):
         # 'WorkerPool' is a singleton:
         #    declaring it as an instance attribute, rather than a class attribute,
         #    allows singleton reset during testing.
-        self.completionMessage = completionMessage
+        self.completionMessageLambda = completionMessageLambda
 
         self.worker_pool = WorkerPool()
 
@@ -144,7 +144,7 @@ class WorkflowPresenter(QObject):
             QMessageBox.information(
                 self.view,
                 "‧₊Workflow Complete‧₊",
-                self.completionMessage,
+                self.completionMessageLambda(),
             )
             self.reset()
         else:

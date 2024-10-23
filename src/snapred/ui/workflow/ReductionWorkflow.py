@@ -42,9 +42,7 @@ class ReductionWorkflow(WorkflowImplementer):
                 startLambda=self.start,
                 # Retain reduction-output workspaces.
                 resetLambda=lambda: self.reset(True),
-                completionMessage=(
-                    "Reduction has completed successfully.\n" "Your workspaces are available in the workspace list."
-                ),
+                completionMessageLambda=self.completionMessage,
                 parent=parent,
             )
             .addNode(
@@ -53,7 +51,6 @@ class ReductionWorkflow(WorkflowImplementer):
                 "Reduction",
                 continueAnywayHandler=self._continueAnywayHandler,
             )
-            # .addNode(self._nothing, self._reductionSaveView, "Save")
             .build()
         )
 
@@ -65,6 +62,27 @@ class ReductionWorkflow(WorkflowImplementer):
 
     def _nothing(self, workflowPresenter):  # noqa: ARG002
         return SNAPResponse(code=200)
+
+    def completionMessage(self):
+        panelText = ""
+        if (
+            self.continueAnywayFlags is not None
+            and ContinueWarning.Type.NO_WRITE_PERMISSIONS in self.continueAnywayFlags
+        ):
+            panelText = (
+                "<p>You didn't have permissions to write to "
+                + f"<br><b>{self.savePath}</b>,<br>"
+                + "but you can still save using the workbench tools.</p>"
+                + "<p>Please remember to save your output workspaces!</p>"
+            )
+        else:
+            panelText = (
+                "<p>Reduction has completed successfully!"
+                + "<br>Reduction workspaces have been saved to "
+                + f"<br><b>{self.savePath}</b>.<br></p>"
+                + "<p>If required later, these can be reloaded into Mantid workbench using 'LoadNexus'.</p>"
+            )
+        return panelText
 
     @ExceptionToErrLog
     def _populatePixelMaskDropdown(self):
@@ -156,10 +174,7 @@ class ReductionWorkflow(WorkflowImplementer):
                 record, unfocusedData = response.data.record, response.data.unfocusedData
 
                 # .. update "save" panel message:
-                savePath = self.request(path="reduction/getSavePath", payload=record.runNumber).data
-                self._reductionSaveView.updateContinueAnyway(self.continueAnywayFlags)
-                #    Warning: 'updateSavePath' uses the current 'continueAnywayFlags'
-                self._reductionSaveView.updateSavePath(savePath)
+                self.savePath = self.request(path="reduction/getSavePath", payload=record.runNumber).data
 
                 # Save the reduced data. (This is automatic: it happens before the "save" panel opens.)
                 if ContinueWarning.Type.NO_WRITE_PERMISSIONS not in self.continueAnywayFlags:

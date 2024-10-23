@@ -12,14 +12,14 @@ class WorkflowBuilder:
         resetLambda=None,
         cancelLambda=None,
         parent=None,
-        completionMessage=Config["ui.default.workflow.completionMessage"],
+        completionMessageLambda=lambda: Config["ui.default.workflow.completionMessage"],
     ):
         self.parent = parent
         self._startLambda = startLambda
         self._iterateLambda = iterateLambda
         self._resetLambda = resetLambda
         self._cancelLambda = cancelLambda
-        self._completionMessage = completionMessage
+        self._completionMessageLambda = completionMessageLambda
         self._workflow = None
 
     def addNode(
@@ -57,6 +57,6 @@ class WorkflowBuilder:
             iterateLambda=self._iterateLambda,
             resetLambda=self._resetLambda,
             cancelLambda=self._cancelLambda,
-            completionMessage=self._completionMessage,
+            completionMessageLambda=self._completionMessageLambda,
             parent=self.parent,
         )
