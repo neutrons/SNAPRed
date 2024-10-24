@@ -31,7 +31,7 @@ from snapred.meta.Config import Config
 runNumber = "58882"
 groupingScheme = "Column"
 cifPath = "/SNS/users/dzj/Calibration_next/CalibrantSamples/cif/Silicon_NIST_640d.cif"
-calibrantSamplePath = "/SNS/users/dzj/Calibration_next/CalibrantSamples/Silicon_NIST_640D_001.json"
+calibrantSamplePath = "Silicon_NIST_640D_001.json"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True

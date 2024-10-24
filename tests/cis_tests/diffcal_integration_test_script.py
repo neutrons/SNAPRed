@@ -97,7 +97,13 @@ def script(goldenData):
         clerk = GroceryListItem.builder()
         clerk.neutron(runNumber).useLiteMode(isLite).add()
         clerk.fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
-        groceries = GroceryService().fetchGroceryList(clerk.buildList())
+        groceries = GroceryService().fetchGroceryDict(
+            clerk.buildDict(),
+            outputWorkspace="_out_",
+            diagnosticWorkspace="_diag",
+            maskWorkspace="_mask_",
+            calibrationTable="_DIFC_",    
+        )
 
         ### RUN PIXEL CALIBRATION ##########
 
