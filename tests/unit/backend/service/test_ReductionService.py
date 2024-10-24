@@ -7,6 +7,8 @@ import numpy as np
 import pydantic
 import pytest
 from mantid.simpleapi import (
+    ConvertUnits,
+    CreateWorkspace,
     DeleteWorkspace,
     mtd,
 )
@@ -14,13 +16,16 @@ from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
+    CreateArtificialNormalizationRequest,
     ReductionExportRequest,
     ReductionRequest,
 )
 from snapred.backend.dao.request.ReductionRequest import Versions
+from snapred.backend.dao.response.ArtificialNormResponse import ArtificialNormResponse
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.FocusGroup import FocusGroup
+from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.service.ReductionService import ReductionService
@@ -349,6 +354,295 @@ class TestReductionService(unittest.TestCase):
         # Note: this tests re-entry for the _first_ continue-anyway check,
         #   and in addition, re-entry for the second continue-anyway check.
         self.instance.validateReduction(self.request)
+
+    def test_validateReduction_with_continueFlags(self):
+        self.request.continueFlags = None
+
+        self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.checkWritePermissions = mock.Mock(return_value=False)
+
+        with pytest.raises(ContinueWarning) as excInfo:
+            self.instance.validateReduction(self.request)
+
+        assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+    def test_validateReduction_with_warningMessages(self):
+        self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=False)
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
+
+        with pytest.raises(ContinueWarning) as excInfo:
+            self.instance.validateReduction(self.request)
+
+        assert "Normalization is missing" in str(excInfo.value)
+        assert "Diffraction calibration is missing" in str(excInfo.value)
+
+    def test_artificialNormalization(self):
+        mockAlgo = mock.Mock()
+        len_wksp = 6
+        input_ws_name = mtd.unique_name(prefix="input_ws_")
+
+        mockAlgo.executeRecipe.return_value = input_ws_name + "_artificial_norm"
+        CreateWorkspace(
+            OutputWorkspace=input_ws_name,
+            DataX=[1] * len_wksp,
+            DataY=[1] * len_wksp,
+            NSpec=len_wksp,
+            UnitX="dSpacing",
+        )
+        ConvertUnits(
+            InputWorkspace=input_ws_name,
+            OutputWorkspace=input_ws_name,
+            Target="dSpacing",
+        )
+        with mock.patch(
+            "snapred.backend.service.ReductionService.ArtificialNormalizationRecipe", return_value=mockAlgo
+        ):
+            request = CreateArtificialNormalizationRequest(
+                runNumber="12345",
+                useLiteMode=True,
+                peakWindowClippingSize=1.0,
+                smoothingParameter=0.5,
+                decreaseParameter=True,
+                lss=True,
+                diffractionWorkspace=input_ws_name,
+            )
+
+            response = self.instance.artificialNormalization(request)
+
+        assert response == input_ws_name + "_artificial_norm"
+
+        mockAlgo.executeRecipe.assert_called_once_with(InputWorkspace=input_ws_name, Ingredients=mock.ANY)
+
+    def test_loadAllGroupings_with_exception(self):
+        mock_grouping_map = mock.Mock()
+        mock_grouping_map.getMap.return_value = {}
+
+        self.instance.dataFactoryService.getGroupingMap = mock.Mock(
+            side_effect=StateValidationException("Invalid State")
+        )
+
+        self.instance.dataFactoryService.getDefaultGroupingMap = mock.Mock(return_value=mock_grouping_map)
+
+        result = self.instance.loadAllGroupings(self.request.runNumber, self.request.useLiteMode)
+
+        mock_grouping_map.getMap.assert_called_once_with(self.request.useLiteMode)
+
+        assert result == {"focusGroups": [], "groupingWorkspaces": []}
+
+    def test_saveReductionPath(self):
+        mockPixelGroupingParams = {
+            "group1": [mock.Mock(spec=PixelGroupingParameters), mock.Mock(spec=PixelGroupingParameters)]
+        }
+
+        mockRecord = ReductionRecord(
+            runNumber="123456",
+            useLiteMode=True,
+            timestamp=123456.789,
+            pixelGroupingParameters=mockPixelGroupingParams,
+            workspaceNames=["workspace1", "workspace2"],
+        )
+
+        mockRequest = ReductionExportRequest(record=mockRecord)
+
+        with (
+            mock.patch.object(self.instance.dataExportService, "exportReductionRecord") as mockExportRecord,
+            mock.patch.object(self.instance.dataExportService, "exportReductionData") as mockExportData,
+        ):
+            self.instance.saveReduction(mockRequest)
+
+            mockExportRecord.assert_called_once_with(mockRecord)
+            mockExportData.assert_called_once_with(mockRecord)
+
+    def test_loadReductionPath(self):
+        with pytest.raises(NotImplementedError):
+            self.instance.loadReduction("someState", 123456.789)
+
+    def test_prepCombinedMask(self):
+        self.maskWS1 = mock.Mock()
+        self.maskWS2 = mock.Mock()
+
+        masks = [self.maskWS1, self.maskWS2]
+
+        combinedMaskName = (  # noqa: F841
+            wng.reductionPixelMask()
+            .runNumber(self.request.runNumber)
+            .timestamp(self.instance.getUniqueTimestamp())
+            .build()
+        )
+
+        with mock.patch.object(self.instance.mantidSnapper, "BinaryOperateMasks") as mockBinaryOperateMasks:
+            self.instance.prepCombinedMask(
+                self.request.runNumber, self.request.useLiteMode, self.request.timestamp, masks
+            )
+
+            assert mockBinaryOperateMasks.call_count == len(masks)
+
+    def test_checkWritePermissions_fails(self):
+        with mock.patch.object(self.instance.dataExportService, "checkWritePermissions", return_value=False):
+            assert not self.instance.checkWritePermissions("123456")
+
+    def test_createReductionRecord_missing_normalization_and_calibration(self):
+        self.request.continueFlags = (
+            ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
+        )
+
+        mockIngredients = ReductionIngredients(
+            runNumber="12345",
+            useLiteMode=True,
+            timestamp=123456789.0,
+            pixelGroups=[],
+            smoothingParameter=0.1,
+            calibrantSamplePath="path/to/calibrant",
+            peakIntensityThreshold=0.05,
+            keepUnfocused=True,
+            convertUnitsTo="TOF",
+        )
+        mockWorkspaceNames = ["ws1", "ws2"]
+
+        result = self.instance._createReductionRecord(self.request, mockIngredients, mockWorkspaceNames)
+
+        assert result.normalization is None
+        assert result.calibration is None
+        assert result.workspaceNames == mockWorkspaceNames
+
+    def test_validateReduction_with_artificialNormalization_and_no_permissions(self):
+        self.request.artificialNormalization = mock.Mock()
+        self.instance.checkWritePermissions = mock.Mock(return_value=False)
+
+        with pytest.raises(ContinueWarning) as excInfo:
+            self.instance.validateReduction(self.request)
+
+        assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+    def test_validateReduction_with_continueFlags_xor_operation(self):
+        self.request.artificialNormalization = mock.Mock()
+        self.request.continueFlags = ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+        self.instance.checkWritePermissions = mock.Mock(return_value=True)
+
+        self.instance.validateReduction(self.request)
+
+    def test_fetchReductionGroceries_with_artificialNormalization(self):
+        self.request.artificialNormalization = "artificial_norm_ws"
+
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+
+        mock_grocery_clerk = mock.Mock()
+        self.instance.groceryClerk = mock_grocery_clerk
+
+        mock_grocery_clerk.name.return_value = mock_grocery_clerk
+        mock_grocery_clerk.diffcal_table.return_value = mock_grocery_clerk
+        mock_grocery_clerk.useLiteMode.return_value = mock_grocery_clerk
+        mock_grocery_clerk.add.return_value = mock_grocery_clerk
+        mock_grocery_clerk.buildDict.return_value = {"key1": "value1"}
+
+        mock_grocery_service = mock.Mock()
+        self.instance.groceryService = mock_grocery_service
+        mock_grocery_service.fetchGroceryList.return_value = ["workspace1"]
+
+        self.instance.fetchReductionGroceries(self.request)
+
+        mock_grocery_clerk.name.assert_any_call("inputWorkspace")
+        mock_grocery_clerk.name.assert_any_call("diffcalWorkspace")
+        mock_grocery_clerk.diffcal_table.assert_called_once_with(self.request.runNumber, 1)
+        mock_grocery_clerk.useLiteMode.assert_called_once_with(self.request.useLiteMode)
+        mock_grocery_clerk.add.assert_called_once()
+
+    def test_fetchReductionGroceries_with_missing_normalization(self):
+        self.request.continueFlags = ContinueWarning.Type.UNSET
+        self.request.artificialNormalization = None
+
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=2)
+
+        mock_grocery_clerk = mock.Mock()
+        self.instance.groceryClerk = mock_grocery_clerk
+        mock_grocery_clerk.name.return_value = mock_grocery_clerk
+        mock_grocery_clerk.normalization.return_value = mock_grocery_clerk
+        mock_grocery_clerk.useLiteMode.return_value = mock_grocery_clerk
+        mock_grocery_clerk.add.return_value = mock_grocery_clerk
+        mock_grocery_clerk.buildDict.return_value = {"key1": "value1"}
+
+        mock_grocery_service = mock.Mock()
+        self.instance.groceryService = mock_grocery_service
+        mock_grocery_service.fetchGroceryDict.return_value = {"inputWorkspace": "workspace1"}
+
+        self.instance.fetchReductionGroceries(self.request)
+
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion.assert_called_once_with(
+            self.request.runNumber, self.request.useLiteMode
+        )
+
+        mock_grocery_clerk.name.assert_any_call("normalizationWorkspace")
+        mock_grocery_clerk.normalization.assert_called_once_with(self.request.runNumber, 2)
+        mock_grocery_clerk.useLiteMode.assert_called_once_with(self.request.useLiteMode)
+        mock_grocery_clerk.add.assert_called_once()
+
+    def test_fetchReductionGroceries_with_calibration_and_missing_normalization(self):
+        self.request.continueFlags = ContinueWarning.Type.MISSING_NORMALIZATION
+        self.request.artificialNormalization = None
+
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=None)
+
+        mock_grocery_clerk = mock.Mock()
+        self.instance.groceryClerk = mock_grocery_clerk
+        mock_grocery_clerk.name.return_value = mock_grocery_clerk
+        mock_grocery_clerk.diffcal_output.return_value = mock_grocery_clerk
+        mock_grocery_clerk.useLiteMode.return_value = mock_grocery_clerk
+        mock_grocery_clerk.unit.return_value = mock_grocery_clerk
+        mock_grocery_clerk.group.return_value = mock_grocery_clerk
+        mock_grocery_clerk.buildDict.return_value = {"key1": "value1"}
+
+        mock_grocery_service = mock.Mock()
+        self.instance.groceryService = mock_grocery_service
+        mock_grocery_service.fetchGroceryDict.return_value = {"diffractionWorkspace": "diffraction_ws"}
+        result = self.instance.fetchReductionGroceries(self.request)
+
+        mock_grocery_clerk.name.assert_called_with("diffractionWorkspace")
+        mock_grocery_clerk.diffcal_output.assert_called_once_with(self.request.runNumber, 1)
+        mock_grocery_clerk.unit.assert_called_once_with(wng.Units.DSP)
+        mock_grocery_clerk.group.assert_called_once_with("column")
+        mock_grocery_clerk.buildDict.assert_called_once()
+
+        assert isinstance(result, ArtificialNormResponse)
+        assert result.diffractionWorkspace == "diffraction_ws"
+
+    def test_fetchReductionGroceries_creates_versions(self):
+        self.request.continueFlags = ContinueWarning.Type.UNSET
+        self.request.artificialNormalization = None
+
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=2)
+
+        mock_grocery_clerk = mock.Mock()
+        self.instance.groceryClerk = mock_grocery_clerk
+        mock_grocery_clerk.name.return_value = mock_grocery_clerk
+        mock_grocery_clerk.useLiteMode.return_value = mock_grocery_clerk
+        mock_grocery_clerk.add.return_value = mock_grocery_clerk
+        mock_grocery_clerk.buildDict.return_value = {"key1": "value1"}
+
+        mock_grocery_service = mock.Mock()
+        self.instance.groceryService = mock_grocery_service
+        mock_grocery_service.fetchGroceryDict.return_value = {"inputWorkspace": "workspace1"}
+
+        self.instance.fetchReductionGroceries(self.request)
+
+        assert self.request.versions.calibration == 1
+        assert self.request.versions.normalization == 2
+
+    def test_reduction_with_artificial_norm_response(self):
+        artificial_response = ArtificialNormResponse(diffractionWorkspace="mock_diffraction_ws")
+        self.instance.fetchReductionGroceries = mock.Mock(return_value=artificial_response)
+
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
+
+        result = self.instance.reduction(self.request)
+
+        assert result == artificial_response
+        self.instance.fetchReductionGroceries.assert_called_once_with(self.request)
 
 
 class TestReductionServiceMasks:
