@@ -13,10 +13,12 @@ from snapred.backend.dao.request import (
 from snapred.backend.dao.request.ReductionRequest import Versions
 from snapred.backend.dao.response.ReductionResponse import ReductionResponse
 from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -85,6 +87,23 @@ class ReductionService(Service):
         :param request: a reduction request
         :type request: ReductionRequest
         """
+        if not self.dataFactoryService.stateExists(request.runNumber):
+            if self.checkWritePermissions(request.runNumber):
+                raise RecoverableException.stateUninitialized(request.runNumber, request.useLiteMode)
+            else:
+                # TODO: Centralize these exception strings or handling.
+                raise RuntimeError(
+                    "<font size = "
+                    "2"
+                    " >"
+                    + "<p>It looks like you don't have permissions to write to "
+                    + f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
+                    + "which is a requirement in order to run the diffraction-calibration workflow.</p>"
+                    + "<p>If this is something that you need to do, then you may need to change the "
+                    + "<br><b>instrument.calibration.powder.home</b> entry in SNAPRed's <b>application.yml</b> file.</p>"  # noqa: E501
+                    + "</font>"
+                )
+
         continueFlags = ContinueWarning.Type.UNSET
         # check if a normalization is present
         if not self.dataFactoryService.normalizationExists(request.runNumber, request.useLiteMode):
@@ -307,6 +326,19 @@ class ReductionService(Service):
 
         :rtype: Dict[str, Any]
         """
+        # As an interim solution: set the request "versions" field to the latest calibration and normalization versions.
+        #   TODO: set these when the request is initially generated.
+        calVersion = None
+        normVersion = None
+        if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
+            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
+                request.runNumber, request.useLiteMode
+            )
+        if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
+            normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
+                request.runNumber, request.useLiteMode
+            )
+
         # Fetch pixel masks
         residentMasks = {}
         combinedMask = None
@@ -325,7 +357,10 @@ class ReductionService(Service):
                         raise RuntimeError(
                             f"reduction pixel mask '{mask}' has unexpected workspace-type '{mask.tokens('workspaceType')}'"  # noqa: E501
                         )
-
+            if calVersion:
+                self.groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
+                    request.useLiteMode
+                ).add()
             # Load any non-resident pixel masks
             maskGroceries = self.groceryService.fetchGroceryDict(
                 self.groceryClerk.buildDict(),
@@ -339,19 +374,12 @@ class ReductionService(Service):
         # gather the input workspace and the diffcal table
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
 
-        # As an interim solution: set the request "versions" field to the latest calibration and normalization versions.
-        #   TODO: set these when the request is initially generated.
-        calVersion = None
-        normVersion = None
-        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
-        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
-            request.useLiteMode
-        ).add()
+        if calVersion:
+            self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
+                request.useLiteMode
+            ).add()
 
-        if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
-            normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
-                request.runNumber, request.useLiteMode
-            )
+        if normVersion:
             self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, normVersion).useLiteMode(
                 request.useLiteMode
             ).add()
@@ -360,11 +388,29 @@ class ReductionService(Service):
             calVersion,
             normVersion,
         )
-
-        return self.groceryService.fetchGroceryDict(
+        groceries = self.groceryService.fetchGroceryDict(
             groceryDict=self.groceryClerk.buildDict(),
             **({"maskWorkspace": combinedMask} if combinedMask else {}),
         )
+
+        self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
+
+        return groceries
+
+    def _markWorkspaceMetadata(self, request: ReductionRequest, workspace: WorkspaceName):
+        calibrationState = (
+            DiffcalStateMetadata.NONE
+            if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION in request.continueFlags
+            else DiffcalStateMetadata.EXISTS
+        )
+        # The reduction workflow will automatically create a "fake" vanadium, so it shouldnt ever be None?
+        normalizationState = (
+            NormalizationStateMetadata.FAKE
+            if ContinueWarning.Type.MISSING_NORMALIZATION in request.continueFlags
+            else NormalizationStateMetadata.EXISTS
+        )
+        metadata = WorkspaceMetadata(diffcalState=calibrationState, normalizationState=normalizationState)
+        self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
 
     def saveReduction(self, request: ReductionExportRequest):
         self.dataExportService.exportReductionRecord(request.record)

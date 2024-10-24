@@ -2,6 +2,7 @@ from pathlib import Path
 
 from snapred.backend.dao import Limit
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
@@ -19,21 +20,28 @@ from snapred.backend.dao.request import (
     VanadiumCorrectionRequest,
 )
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
+from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.GenericRecipe import (
     FocusSpectraRecipe,
     RawVanadiumCorrectionRecipe,
     SmoothDataExcludingPeaksRecipe,
 )
+from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
+from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceName,
+)
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import parse_obj_as
 
@@ -112,10 +120,20 @@ class NormalizationService(Service):
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(groupingScheme).useLiteMode(
             request.useLiteMode
         ).add()
+
+        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
+
+        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
+            request.useLiteMode
+        ).add()
+        self.groceryClerk.name("maskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
+            request.useLiteMode
+        ).add()
+
         groceries = self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
         )
-
+        self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
         # NOTE: This used to point at other methods in this service to accomplish the same thing
         #       It looks like it got reverted accidentally?
         #       I'm leaving them as is but this should be fixed.
@@ -126,13 +144,20 @@ class NormalizationService(Service):
             Ingredients=ingredients,
             OutputWorkspace=correctedVanadium,
         )
-        # 2. focus
-        FocusSpectraRecipe().executeRecipe(
-            InputWorkspace=correctedVanadium,
-            GroupingWorkspace=groceries["groupingWorkspace"],
-            Ingredients=ingredients.pixelGroup,
-            OutputWorkspace=focusedVanadium,
+        # 1.5 Apply latest calibration before focussing, if unable to mark it as uncalibrated?
+        # Apply diffcal and mask
+        groceries["inputWorkspace"] = correctedVanadium
+        groceries["outputWorkspace"] = focusedVanadium
+        PreprocessReductionRecipe().cook(PreprocessReductionRecipe.Ingredients(), groceries)
+
+        # focus and normalize by current
+        groceries["inputWorkspace"] = focusedVanadium
+        groceries["outputWorkspace"] = focusedVanadium
+        ReductionGroupProcessingRecipe().cook(
+            ReductionGroupProcessingRecipe.Ingredients(pixelGroup=ingredients.pixelGroup), groceries
         )
+
+        # 2. focus
         # 3. smooth
         SmoothDataExcludingPeaksRecipe().executeRecipe(
             InputWorkspace=focusedVanadium,
@@ -147,6 +172,15 @@ class NormalizationService(Service):
             smoothedVanadium=smoothedVanadium,
             detectorPeaks=ingredients.detectorPeaks,
         ).dict()
+
+    def _markWorkspaceMetadata(self, request: NormalizationRequest, workspace: WorkspaceName):
+        calibrationState = (
+            DiffcalStateMetadata.DEFAULT
+            if ContinueWarning.Type.DEFAULT_DIFFRACTION_CALIBRATION in request.continueFlags
+            else DiffcalStateMetadata.EXISTS
+        )
+        metadata = WorkspaceMetadata(diffcalState=calibrationState, normalizationState=NormalizationStateMetadata.UNSET)
+        self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
 
     def validateRequest(self, request: NormalizationRequest):
         """
@@ -163,6 +197,27 @@ class NormalizationService(Service):
             runNumber=request.runNumber, continueFlags=request.continueFlags
         )
         self.validateWritePermissions(permissionsRequest)
+        self._validateDiffractionCalibrationExists(request)
+
+    def _validateDiffractionCalibrationExists(self, request: NormalizationRequest):
+        continueFlags = ContinueWarning.Type.UNSET
+
+        self.sousChef.verifyCalibrationExists(request.runNumber, request.useLiteMode)
+
+        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
+        if calVersion == VERSION_DEFAULT:
+            continueFlags = continueFlags | ContinueWarning.Type.DEFAULT_DIFFRACTION_CALIBRATION
+
+        if request.continueFlags:
+            continueFlags = continueFlags ^ (request.continueFlags & continueFlags)
+
+        if continueFlags:
+            raise ContinueWarning(
+                "Only the default Diffraction Calibration data is available for this run.\n"
+                "Normalizations may not be accurate to true state of the instrument, and will be marked as such.\n"
+                "Continue anyway?",
+                continueFlags,
+            )
 
     def validateWritePermissions(self, request: CalibrationWritePermissionsRequest):
         """

@@ -1068,6 +1068,7 @@ class TestGUIPanels:
                 #    (1) respond to the "initialize state" request
                 with qtbot.waitSignal(actionCompleted, timeout=60000):
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+
                 qtbot.waitUntil(
                     lambda: len(
                         [
@@ -1090,13 +1091,19 @@ class TestGUIPanels:
                 questionMessageBox.stop()
                 successPrompt.stop()
 
+            warningMessageBox = mock.patch(  # noqa: PT008
+                "qtpy.QtWidgets.QMessageBox.warning",
+                lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
+            )
+            warningMessageBox.start()
+
             #    (2) execute the normalization workflow
             with qtbot.waitSignal(actionCompleted, timeout=60000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
             qtbot.waitUntil(
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationTweakPeakView), timeout=60000
             )
-
+            warningMessageBox.stop()
             tweakPeakView = workflowNodeTabs.currentWidget().view
 
             #    set "Smoothing", "xtal dMin", "xtal dMax", "intensity threshold", and "groupingDropDown"
@@ -1263,6 +1270,12 @@ class TestGUIPanels:
                 # )
                 waitForStateInit = False
 
+            warningMessageBox = mock.patch(  # noqa: PT008
+                "qtpy.QtWidgets.QMessageBox.warning",
+                lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
+            )
+            warningMessageBox.start()
+
             if waitForStateInit:
                 # ---------------------------------------------------------------------------
                 # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
@@ -1303,13 +1316,13 @@ class TestGUIPanels:
                 # State initialization dialog is "application modal" => no need to explicitly wait
                 questionMessageBox.stop()
                 successPrompt.stop()
-
             #    (2) execute the reduction workflow
             with qtbot.waitSignal(actionCompleted, timeout=120000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
             qtbot.waitUntil(lambda: isinstance(workflowNodeTabs.currentWidget().view, ReductionSaveView), timeout=60000)
             saveView = workflowNodeTabs.currentWidget().view  # noqa: F841
 
+            warningMessageBox.stop()
             """
             #    set "author" and "comment"
             saveView.fieldAuthor.setText("kat")

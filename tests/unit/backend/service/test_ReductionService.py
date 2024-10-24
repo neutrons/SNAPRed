@@ -11,6 +11,7 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.api.RequestScheduler import RequestScheduler
+from snapred.backend.dao import WorkspaceMetadata
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
@@ -22,6 +23,7 @@ from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.meta.Config import Resource
@@ -106,6 +108,7 @@ class TestReductionService(unittest.TestCase):
     def test_fetchReductionGroceries(self):
         self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
+        self.instance._markWorkspaceMetadata = mock.Mock()
         self.request.continueFlags = ContinueWarning.Type.UNSET
         res = self.instance.fetchReductionGroceries(self.request)
         assert "inputWorkspace" in res
@@ -121,9 +124,11 @@ class TestReductionService(unittest.TestCase):
         }
         mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
         self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.stateExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
+        self.instance._markWorkspaceMetadata = mock.Mock()
 
         result = self.instance.reduction(self.request)
         groupings = self.instance.fetchReductionGroupings(self.request)
@@ -133,6 +138,45 @@ class TestReductionService(unittest.TestCase):
         mockReductionRecipe.assert_called()
         mockReductionRecipe.return_value.cook.assert_called_once_with(ingredients, groceries)
         assert result.record.workspaceNames == mockReductionRecipe.return_value.cook.return_value["outputs"]
+
+    def test_reduction_noState_withWritePerms(self):
+        mockRequest = mock.Mock()
+        self.instance.dataFactoryService.stateExists = mock.Mock(return_value=False)
+        self.instance.checkWritePermissions = mock.Mock(return_value=True)
+        with pytest.raises(RecoverableException, match="State uninitialized"):
+            self.instance.reduction(mockRequest)
+
+    def test_reduction_noState_noWritePerms(self):
+        mockRequest = mock.Mock()
+        self.instance.dataFactoryService.stateExists = mock.Mock(return_value=False)
+        self.instance.checkWritePermissions = mock.Mock(return_value=False)
+        self.instance.getSavePath = mock.Mock(return_value="path")
+        with pytest.raises(RuntimeError, match=r".*It looks like you don't have permissions to write to*"):
+            self.instance.reduction(mockRequest)
+
+    def test_markWorkspaceMetadata(self):
+        request = mock.Mock(continueFlags=ContinueWarning.Type.UNSET)
+        metadata = WorkspaceMetadata(diffcalState="exists", normalizationState="exists")
+        wsName = "test"
+        self.instance.groceryService = mock.Mock()
+        self.instance._markWorkspaceMetadata(request, wsName)
+        self.instance.groceryService.writeWorkspaceMetadataAsTags.assert_called_once_with(wsName, metadata)
+
+    def test_markWorkspaceMetadata_continue(self):
+        request = mock.Mock(continueFlags=ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION)
+        metadata = WorkspaceMetadata(diffcalState="none", normalizationState="exists")
+        wsName = "test"
+        self.instance.groceryService = mock.Mock()
+        self.instance._markWorkspaceMetadata(request, wsName)
+        self.instance.groceryService.writeWorkspaceMetadataAsTags.assert_called_once_with(wsName, metadata)
+
+    def test_markWorkspaceMetadata_continueNormalization(self):
+        request = mock.Mock(continueFlags=ContinueWarning.Type.MISSING_NORMALIZATION)
+        metadata = WorkspaceMetadata(diffcalState="exists", normalizationState="fake")
+        wsName = "test"
+        self.instance.groceryService = mock.Mock()
+        self.instance._markWorkspaceMetadata(request, wsName)
+        self.instance.groceryService.writeWorkspaceMetadataAsTags.assert_called_once_with(wsName, metadata)
 
     def test_saveReduction(self):
         with (
@@ -492,6 +536,14 @@ class TestReductionServiceMasks:
             mock.patch.object(self.service, "prepCombinedMask") as mockPrepCombinedMask,
         ):
             # timestamp must be unique: see comment at `test_prepCombinedMask`.
+            fetchGroceryCallArgs = []
+
+            def trackFetchGroceryDict(*args, **kwargs):
+                fetchGroceryCallArgs.append((args, kwargs))
+                return mock.MagicMock()
+
+            mockFetchGroceryDict.side_effect = trackFetchGroceryDict
+
             timestamp = self.service.getUniqueTimestamp()
             request = ReductionRequest(
                 runNumber=self.runNumber1,
@@ -503,6 +555,7 @@ class TestReductionServiceMasks:
             )
             self.service.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
             self.service.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=2)
+            self.service._markWorkspaceMetadata = mock.Mock()
 
             groceryClerk = self.service.groceryClerk
             for mask in (self.maskWS1, self.maskWS2):
@@ -510,6 +563,9 @@ class TestReductionServiceMasks:
                 groceryClerk.name(mask).reduction_pixel_mask(runNumber, timestamp).useLiteMode(
                     request.useLiteMode
                 ).add()
+            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, 1).useLiteMode(
+                request.useLiteMode
+            ).add()
             loadableMaskGroceryItems = groceryClerk.buildDict()
             residentMaskGroceryKwargs = {self.maskWS5.toString(): self.maskWS5}
             combinedMaskName = wng.reductionPixelMask().runNumber(request.runNumber).build()
@@ -526,6 +582,11 @@ class TestReductionServiceMasks:
             residentOtherGroceryKwargs = {"maskWorkspace": combinedMaskName}
 
             self.service.fetchReductionGroceries(request)
+
+            realArgs = fetchGroceryCallArgs[0][0][0]
+            realKwargs = fetchGroceryCallArgs[0][1]
+            assert realArgs == loadableMaskGroceryItems
+            assert realKwargs == residentMaskGroceryKwargs
             mockFetchGroceryDict.assert_any_call(loadableMaskGroceryItems, **residentMaskGroceryKwargs)
             mockFetchGroceryDict.assert_any_call(groceryDict=loadableOtherGroceryItems, **residentOtherGroceryKwargs)
 

@@ -102,6 +102,9 @@ class SculleryBoy:
             detectorPeaks=self.prepDetectorPeaks(ingredients),
         )
 
+    def verifyCalibrationExists(self, runNumber: str, useLiteMode: bool) -> bool:  # noqa ARG002
+        return True
+
     def prepDiffractionCalibrationIngredients(
         self, ingredients: FarmFreshIngredients
     ) -> DiffractionCalibrationIngredients:
