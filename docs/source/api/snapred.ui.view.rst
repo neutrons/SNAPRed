@@ -52,7 +52,7 @@ snapred.ui.view.DiffCalTweakPeakView module
 .. automodule:: snapred.ui.view.DiffCalTweakPeakView
    :members:
    :undoc-members:
-   :exclude-members: signalRunNumberUpdate, signalValueChanged, signalUpdateRecalculationButton, signalPeakThresholdUpdate, signalMaxChiSqUpdate, signalContinueAnyway
+   :exclude-members: signalRunNumberUpdate, signalValueChanged, signalUpdateRecalculationButton, signalPeakThresholdUpdate, signalMaxChiSqUpdate, signalContinueAnyway, signalPurgeBadPeaks
    :show-inheritance:
 
 
