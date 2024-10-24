@@ -8,6 +8,7 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
+
 from snapred.backend.dao.state.DetectorState import DetectorState
 
 

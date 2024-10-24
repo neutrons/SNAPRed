@@ -2,6 +2,7 @@ from pathlib import Path
 
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import QLabel
+
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView

@@ -1,4 +1,5 @@
 import pytest
+
 from snapred.__main__ import main
 
 

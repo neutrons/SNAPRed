@@ -1,6 +1,7 @@
 import unittest
 
 import pytest
+
 from snapred.meta.Callback import callback
 
 

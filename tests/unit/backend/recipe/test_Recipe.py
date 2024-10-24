@@ -4,10 +4,11 @@ from typing import Dict, Set
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from pydantic import BaseModel, ConfigDict
+from util.SculleryBoy import SculleryBoy
+
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
-from util.SculleryBoy import SculleryBoy
 
 
 class Ingredients(BaseModel):

@@ -5,15 +5,16 @@ from mantid.simpleapi import (
     mtd,
 )
 from mantid.testing import assert_almost_equal
+from util.helpers import (
+    createCompatibleMask,
+    deleteWorkspaceNoThrow,
+)
+
 from snapred.backend.log.logger import snapredLogger
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.MaskDetectorFlags import MaskDetectorFlags
 from snapred.meta.Config import Resource
-from util.helpers import (
-    createCompatibleMask,
-    deleteWorkspaceNoThrow,
-)
 
 logger = snapredLogger.getLogger(__name__)
 

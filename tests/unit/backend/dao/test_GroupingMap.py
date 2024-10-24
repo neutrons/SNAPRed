@@ -4,9 +4,10 @@ from pathlib import Path
 
 # Important: this is a *pure* pytest module: no `unittest` imports should be used.
 import pytest
+from util.groupingMapUtil import GroupingMapTestFactory
+
 from snapred.backend.dao.state import GroupingMap as GroupingMapModule
 from snapred.meta.Config import Resource
-from util.groupingMapUtil import GroupingMapTestFactory
 
 GroupingMap = importlib.import_module(GroupingMapModule.__module__)
 
@@ -21,7 +22,7 @@ def _capture_logging(monkeypatch):
     monkeypatch.setattr(GroupingMap, "logger", defaultLogger)
 
 
-@pytest.fixture()
+@pytest.fixture
 def groupingMapFactory():
     return GroupingMapTestFactory()
 

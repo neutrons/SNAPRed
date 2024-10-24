@@ -7,6 +7,7 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     LoadEmptyInstrument,
 )
+
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Resource

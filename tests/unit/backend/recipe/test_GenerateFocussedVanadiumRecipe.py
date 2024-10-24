@@ -6,12 +6,13 @@ from mantid.simpleapi import (
     LoadNexusProcessed,
     mtd,
 )
+from util.helpers import deleteWorkspaceNoThrow
+from util.SculleryBoy import SculleryBoy
+
 from snapred.backend.dao.ingredients import GenerateFocussedVanadiumIngredients as Ingredients
 from snapred.backend.dao.request import FarmFreshIngredients
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe as Recipe
 from snapred.meta.Config import Resource
-from util.helpers import deleteWorkspaceNoThrow
-from util.SculleryBoy import SculleryBoy
 
 ThisRecipe: str = "snapred.backend.recipe.GenerateFocussedVanadiumRecipe"
 

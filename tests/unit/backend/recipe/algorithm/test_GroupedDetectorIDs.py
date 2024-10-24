@@ -4,10 +4,11 @@ from mantid.simpleapi import (
     CreateSingleValuedWorkspace,
     mtd,
 )
+from util.diffraction_calibration_synthetic_data import SyntheticData
+
 from snapred.backend.recipe.algorithm.GroupedDetectorIDs import GroupedDetectorIDs as Algo
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.pointer import access_pointer
-from util.diffraction_calibration_synthetic_data import SyntheticData
 
 
 class TestGroupedDetectorIDs(unittest.TestCase):

@@ -1,8 +1,9 @@
 import unittest.mock as mock
 
-from snapred.backend.dao import GroupPeakList
 from util.dao import DAOFactory
 from util.diffraction_calibration_synthetic_data import SyntheticData
+
+from snapred.backend.dao import GroupPeakList
 
 with mock.patch.dict(
     "sys.modules",

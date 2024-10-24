@@ -3,6 +3,8 @@ from unittest import TestCase, mock
 
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
+from util.SculleryBoy import SculleryBoy
+
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.ReductionRecipe import (
     ApplyNormalizationRecipe,
@@ -12,7 +14,6 @@ from snapred.backend.recipe.ReductionRecipe import (
     ReductionRecipe,
 )
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from util.SculleryBoy import SculleryBoy
 
 
 class ReductionRecipeTest(TestCase):

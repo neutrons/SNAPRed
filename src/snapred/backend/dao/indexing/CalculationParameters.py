@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from pydantic import field_validator
+
 from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 

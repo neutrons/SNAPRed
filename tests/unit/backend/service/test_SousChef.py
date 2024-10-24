@@ -4,6 +4,7 @@ import unittest
 from unittest import mock
 
 from mantid.simpleapi import DeleteWorkspace, mtd
+
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config

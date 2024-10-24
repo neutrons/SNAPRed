@@ -1,4 +1,5 @@
 import pytest
+
 from snapred.meta.Config import Resource
 
 
@@ -35,6 +36,6 @@ class GroupingMapTestFactory:
         return {"stateId": "deadbeef00000003", "liteFocusGroups": [], "nativeFocusGroups": []}
 
 
-@pytest.fixture()
+@pytest.fixture
 def groupingMapFactory():
     return GroupingMapTestFactory()
