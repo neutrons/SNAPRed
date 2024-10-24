@@ -148,8 +148,10 @@ class TestGUIPanels:
         self._warningMessageBox = mock.patch(
             "qtpy.QtWidgets.QMessageBox.warning",
             lambda *args, **kwargs: pytest.fail(
-                "WARNING messagebox:\n" + f"    args: {args}\n" + f"    kwargs: {kwargs}", pytrace=False
-            ),
+                "WARNING This test seems to be missing expected calibration and/or normalization data", pytrace=False
+            )
+            if "Reduction is missing calibration data," in args[2]
+            else pytest.fail("WARNING messagebox:\n" + f"    args: {args}\n" + f"    kwargs: {kwargs}", pytrace=False),
         )
         self._warningMessageBox.start()
 
@@ -182,10 +184,8 @@ class TestGUIPanels:
 
         # Automatically continue at the end of each workflow.
         self._actionPrompt = mock.patch(
-            "snapred.ui.presenter.WorkflowPresenter.ActionPrompt.prompt",
-            lambda *args: TestGUIPanels._actionPromptContinue(
-                *args, match=r".*The workflow has been completed successfully.*"
-            ),
+            "qtpy.QtWidgets.QMessageBox.information",
+            lambda *args: TestGUIPanels._actionPromptContinue(*args, match=r".*has been completed successfully.*"),
         )
         self._actionPrompt.start()
         # ---------------------------------------------------------------------------
@@ -206,12 +206,12 @@ class TestGUIPanels:
         self.exitStack.close()
 
     @staticmethod
-    def _actionPromptContinue(title, message, action, parent=None, match=r".*"):  # noqa: ARG004
+    def _actionPromptContinue(parent, title, message, match=r".*"):  # noqa: ARG004
         _pattern = re.compile(match)
         if not _pattern.match(message):
             pytest.fail(
-                f"unexpected: ActionPrompt.prompt('{title}', '{message}'...)\n"
-                + f"    expecting:  ActionPrompt.prompt(...'{message}'...)"
+                f"unexpected: QMessageBox.information('{title}', '{message}'...)\n"
+                + f"    expecting:  QMessageBox.information(...'{message}'...)"
             )
 
     @pytest.mark.skip(reason="each workflow panel now has a separate test")
@@ -1160,7 +1160,7 @@ class TestGUIPanels:
 
     def test_reduction_panel_happy_path(self, qtbot, qapp, reduction_home_from_mirror):
         ##
-        ## WARNING: this test requires EXISTING diffraction-calibration and normalization-calibration data!
+        ## NOTE: WARNING: this test requires EXISTING diffraction-calibration and normalization-calibration data!
         ##   As an alternative `test_calibration_and_reduction_panels_happy_path`, now skipped, could be run instead.
         ##
 
@@ -1171,6 +1171,20 @@ class TestGUIPanels:
         # Override the standard reduction-output location, using a temporary directory
         #   under the existing location within the mirror.
         tmpReductionHomeDirectory = reduction_home_from_mirror(reductionRunNumber)  # noqa: F841
+
+        self.completionMessageHasAppeared = False
+
+        def completionMessageBoxAssert(*args, **kwargs):  # noqa: ARG001
+            self.completionMessageHasAppeared = True
+            assert "Reduction has completed successfully!" in args[2]
+            return QMessageBox.Ok
+
+        self._actionPrompt.stop()
+        completionMessageBox = mock.patch(
+            "qtpy.QtWidgets.QMessageBox.information",
+            completionMessageBoxAssert,  # noqa: ARG005
+        )
+        completionMessageBox.start()
 
         with (
             qtbot.captureExceptions() as exceptions,
@@ -1307,25 +1321,20 @@ class TestGUIPanels:
             #    (2) execute the reduction workflow
             with qtbot.waitSignal(actionCompleted, timeout=120000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-            qtbot.waitUntil(lambda: isinstance(workflowNodeTabs.currentWidget().view, ReductionSaveView), timeout=60000)
-            saveView = workflowNodeTabs.currentWidget().view  # noqa: F841
-
             """
             #    set "author" and "comment"
             saveView.fieldAuthor.setText("kat")
             saveView.fieldComments.setText("calibration-panel integration test")
             """
 
-            #    continue in order to save workspaces and to finish the workflow
-            with qtbot.waitSignal(actionCompleted, timeout=60000):
-                qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-
             #   `ActionPrompt.prompt("..The workflow has completed successfully..)` gives immediate mocked response:
             #      Here we still need to wait until the ADS cleanup has occurred,
             #      or else it will happen in the middle of the next workflow. :(
             qtbot.waitUntil(
-                lambda: isinstance(workflowNodeTabs.currentWidget().view, ReductionRequestView), timeout=5000
+                lambda: self.completionMessageHasAppeared,
+                timeout=60000,
             )
+            completionMessageBox.stop()
 
             ###############################
             ########### END OF TEST #######

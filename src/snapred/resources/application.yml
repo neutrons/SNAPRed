@@ -223,3 +223,8 @@ docs:
 
 metadata:
   tagPrefix: SNAPRed_
+
+ui:
+  default:
+    workflow:
+      completionMessage: "‧₊‧₊The workflow has been completed successfully!‧₊‧₊"
