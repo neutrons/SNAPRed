@@ -23,7 +23,7 @@ snapred.backend.recipe.CrystallographicInfoRecipe module
 snapred.backend.recipe.PixelDiffCalRecipe module
 ---------------------------------------------------------------------
 
-.. automodule:: snapred.backend.recipe.algorithm.PixelDiffCalRecipe
+.. automodule:: snapred.backend.recipe.PixelDiffCalRecipe
    :members:
    :undoc-members:
    :show-inheritance:
@@ -31,7 +31,7 @@ snapred.backend.recipe.PixelDiffCalRecipe module
 snapred.backend.recipe.algorithm.GroupDiffCalRecipe module
 ---------------------------------------------------------------------
 
-.. automodule:: snapred.backend.recipe.algorithm.GroupDiffCalRecipe
+.. automodule:: snapred.backend.recipe.GroupDiffCalRecipe
    :members:
    :undoc-members:
    :show-inheritance:
