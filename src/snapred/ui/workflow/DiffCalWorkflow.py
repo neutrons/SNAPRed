@@ -377,9 +377,10 @@ class DiffCalWorkflow(WorkflowImplementer):
                 for wkspIndex, groupPeaks in enumerate(allPeaks):
                     groupPeaks.peaks = goodPeaks[wkspIndex]
 
-            # NOTE cannot renew fit peaks here, as an empty peak list causes error
+            # renew the fits to the peaks
             self._renewFitPeaks(self.peakFunction)
 
+            # update graph with reduced peak list
             self._tweakPeakView.updateGraphs(
                 self.focusedWorkspace,
                 self.ingredients.groupedPeakLists,
