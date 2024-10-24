@@ -52,18 +52,21 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         # produce 4, 2, 1, 0.5
         mockPixelRx.return_value.cook.return_value = mock.Mock(
             result=True,
-            medianOffsets=[0],
+            medianOffsets=mock.sentinel.offsets,
         )
         mockGroupRx.return_value.cook.return_value = mock.Mock(
             result=True,
-            diagnosticWorkspace="",
-            outputWorkspace="",
-            calibrationTable="",
-            maskWorkspace="",
+            diagnosticWorkspace=mock.sentinel.group,
+            outputWorkspace=mock.sentinel.group,
+            calibrationTable=mock.sentinel.group,
+            maskWorkspace=mock.sentinel.group,
         )
         result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         assert result["result"]
-        assert result["steps"] == [0]
+        assert result["steps"] == mock.sentinel.offsets
+        assert result["calibrationTable"] == mock.sentinel.group
+        assert result["outputWorkspace"] == mock.sentinel.group
+        assert result["maskWorkspace"] == mock.sentinel.group
 
     @mock.patch(PixelCalRx)
     def test_execute_unsuccessful_pixel_cal(self, mockPixelRx):
