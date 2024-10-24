@@ -9,7 +9,7 @@ from util.helpers import deleteWorkspaceNoThrow
 
 ThisRecipe: str = "snapred.backend.recipe.DiffractionCalibrationRecipe"
 PixelCalRx: str = ThisRecipe + ".PixelDiffCalRecipe"
-GroupCalAlgo: str = ThisRecipe + ".GroupDiffractionCalibration"
+GroupCalRx: str = ThisRecipe + ".GroupDiffCalRecipe"
 
 
 class TestDiffractionCalibrationRecipe(unittest.TestCase):
@@ -45,18 +45,22 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
     def test_chop_ingredients(self):
         self.recipe.chopIngredients(self.fakeIngredients)
         assert self.recipe.runNumber == self.fakeIngredients.runConfig.runNumber
-        assert self.recipe.threshold == self.fakeIngredients.convergenceThreshold
-        self.recipe.unbagGroceries(self.groceryList)
-        assert self.recipe.rawInput == self.fakeRawData
-        assert self.recipe.groupingWS == self.fakeGroupingWorkspace
-        assert self.recipe.maskWS == self.fakeMaskWorkspace
 
     @mock.patch(PixelCalRx)
-    @mock.patch(GroupCalAlgo)
-    def test_execute_successful(self, mockGroupCalAlgo, mockPixelRx):
+    @mock.patch(GroupCalRx)
+    def test_execute_successful(self, mockGroupRx, mockPixelRx):
         # produce 4, 2, 1, 0.5
-        mockPixelRx.return_value.cook.return_value = mock.Mock(result=True, medianOffsets=mock.sentinel.offsets)
-        mockGroupCalAlgo.return_value.getPropertyValue.return_value = mock.sentinel.group
+        mockPixelRx.return_value.cook.return_value = mock.Mock(
+            result=True,
+            medianOffsets=mock.sentinel.offsets,
+        )
+        mockGroupRx.return_value.cook.return_value = mock.Mock(
+            result=True,
+            diagnosticWorkspace=mock.sentinel.group,
+            outputWorkspace=mock.sentinel.group,
+            calibrationTable=mock.sentinel.group,
+            maskWorkspace=mock.sentinel.group,
+        )
         result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         assert result["result"]
         assert result["steps"] == mock.sentinel.offsets
@@ -72,18 +76,18 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         assert str(e.value) == "Pixel Calibration failed"
 
     @mock.patch(PixelCalRx)
-    @mock.patch(GroupCalAlgo)
-    def test_execute_unsuccessful_group_cal(self, mockGroupCalAlgo, mockPixelRx):
+    @mock.patch(GroupCalRx)
+    def test_execute_unsuccessful_group_cal(self, mockGroupRx, mockPixelRx):
         mockPixelRx.return_value.cook.return_value = mock.Mock(result=True, medianOffsets=[0])
-        mockGroupAlgo = mock.Mock()
-        mockGroupAlgo.execute.side_effect = RuntimeError(mock.sentinel.group)
-        mockGroupCalAlgo.return_value = mockGroupAlgo
+        mockGroupRx.return_value.cook.return_value = mock.Mock(result=False)
         with pytest.raises(RuntimeError) as e:
             self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
-        assert e.value.args == (mock.sentinel.group,)
+        assert str(e.value) == "Group Calibration failed"
 
     def test_execute_with_algos(self):
-        # create sample data
+        """
+        Run the recipe with no mocks, to ensure both calculations can work.
+        """
 
         rawWS = "_test_diffcal_rx_data"
         groupingWS = "_test_diffcal_grouping"

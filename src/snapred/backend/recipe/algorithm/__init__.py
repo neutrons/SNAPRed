@@ -49,6 +49,11 @@ for x in all_module_names:
         # move it to recipe folder and delete this once review passes
         continue
 
+    if x == "GroupDiffractionCalibration":
+        # this is actually a recipe being temporarily stored here
+        # move it to recipe folder and delete this once review passes
+        continue
+
     loadModule(x)
 
 # cleanup

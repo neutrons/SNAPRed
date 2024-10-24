@@ -1,19 +1,11 @@
-from typing import Dict, List
+from typing import Dict, List, Set
 
-from mantid.api import (
-    AlgorithmFactory,
-    ITableWorkspaceProperty,
-    MatrixWorkspaceProperty,
-    PropertyMode,
-    PythonAlgorithm,
-    WorkspaceUnitValidator,
-)
-from mantid.dataobjects import MaskWorkspaceProperty
-from mantid.kernel import Direction, StringMandatoryValidator
+from pydantic import BaseModel
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.algorithm.Utensils import Utensils
+from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.meta.Config import Config
 from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -21,7 +13,23 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as
 logger = snapredLogger.getLogger(__name__)
 
 
-class GroupDiffractionCalibration(PythonAlgorithm):
+"""
+NOTE this file in fact defines a RECIPE.  It needs to be renamed to GroupDiffCalRecipe.py
+and moved into the recipe folder as soon as it has been reviewed.  It is being temporarily
+stored in the wrong location to make reviewing this story easier, to ensure nothing is
+missing from the former algorithm implementation.
+"""
+
+
+class GroupDiffCalServing(BaseModel):
+    result: bool
+    diagnosticWorkspace: str
+    outputWorkspace: str
+    calibrationTable: str
+    maskWorkspace: str
+
+
+class GroupDiffCalRecipe(Recipe[Ingredients]):
     """
     Calculate the group-aligned DIFC associated with a given workspace.
     One part of diffraction calibration.
@@ -30,70 +38,57 @@ class GroupDiffractionCalibration(PythonAlgorithm):
     NOYZE_2_MIN = Config["calibration.fitting.minSignal2Noise"]
     MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
-    def category(self):
-        return "SNAPRed Diffraction Calibration"
+    GROCERIES = {
+        # NOTE this would be better as a StrEnum, which requires python 3.11
+        "inputWorkspace",
+        "groupingWorkspace",
+        "maskWorkspace",
+        "outputWorkspace",
+        "diagnosticWorkspace",
+        "previousCalibration",
+        "calibrationTable",
+    }
 
-    def PyInit(self):
-        # declare properties
-        self.declareProperty(
-            MatrixWorkspaceProperty(
-                "InputWorkspace",
-                "",
-                Direction.Input,
-                PropertyMode.Mandatory,
-                validator=WorkspaceUnitValidator("TOF"),
-            ),
-            doc="Workspace containing TOF neutron data.",
-        )
-        self.declareProperty(
-            MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory),
-            doc="Workspace containing the grouping information.",
-        )
-        self.declareProperty(
-            ITableWorkspaceProperty("PreviousCalibrationTable", "", Direction.Input, PropertyMode.Optional),
-            doc="Table workspace with previous pixel-calibrated DIFC values; if none given, will be calculated.",
-        )
-        self.declareProperty(
-            MatrixWorkspaceProperty(
-                "OutputWorkspace",
-                "",
-                Direction.Output,
-                PropertyMode.Optional,
-                validator=WorkspaceUnitValidator("dSpacing"),
-            ),
-            doc="A diffraction-focused workspace in dSpacing, after calibration constants have been adjusted.",
-        )
-        self.declareProperty(
-            MatrixWorkspaceProperty("DiagnosticWorkspace", "", Direction.Output, PropertyMode.Optional),
-            doc="A workspace group containing the fitted peaks, fit parameters, and the TOF-focused data for comparison to fits.",  # noqa E501
-        )
-        self.declareProperty(
-            MaskWorkspaceProperty("MaskWorkspace", "", Direction.Output, PropertyMode.Optional),
-            doc="if mask workspace exists: incoming mask values will be used (1.0 => dead-pixel, 0.0 => live-pixel)",
-        )
-        self.declareProperty(
-            ITableWorkspaceProperty("FinalCalibrationTable", "", Direction.Output, PropertyMode.Optional),
-            doc="Table workspace with group-corrected DIFC values",
-        )
-        self.declareProperty(
-            "Ingredients", defaultValue="", validator=StringMandatoryValidator(), direction=Direction.Input
-        )
-        self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, __name__)
+    def __init__(self, utensils: Utensils = None):
+        if utensils is None:
+            utensils = Utensils()
+            utensils.PyInit()
+        self.mantidSnapper = utensils.mantidSnapper
+        self._counts = 0
+
+    def logger(self):
+        return logger
+
+    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+        return {"inputWorkspace", "groupingWorkspace"}
+
+    def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
+        super().validateInputs(ingredients, groceries)
+
+        for key in groceries.keys():
+            assert key in self.GROCERIES
+
+        pixelGroupIDs = ingredients.pixelGroup.groupIDs
+        groupIDs = [peakList.groupID for peakList in ingredients.groupedPeakLists]
+        if groupIDs != pixelGroupIDs:
+            raise RuntimeError(
+                f"Group IDs do not match between peak list and the pixel group: {groupIDs} vs {pixelGroupIDs}"
+            )
+
+        diffocWS = self.mantidSnapper.mtd[groceries["groupingWorkspace"]]
+        if groupIDs != list(diffocWS.getGroupIDs()):
+            raise RuntimeError(
+                f"Group IDs do not match between peak list and focus WS: {groupIDs} vs {diffocWS.getGroupIDs()}"
+            )
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
-        """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
-
-        """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
+        """Process the needed ingredients for use in recipe"""
         self.runNumber: str = ingredients.runConfig.runNumber
 
         # from grouping parameters, read the overall min/max d-spacings
-        # NOTE these MUST be in order of increasing grouping ID
-        # later work associating each with a group ID can relax this requirement
         self.dMin = ingredients.pixelGroup.dMin()
         self.dMax = ingredients.pixelGroup.dMax()
         self.dBin = ingredients.pixelGroup.dBin()
-        pixelGroupIDs = ingredients.pixelGroup.groupIDs
 
         # used to be a constant pulled from application.yml
         self.maxChiSq = ingredients.maxChiSq
@@ -119,89 +114,71 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             self.groupedPeakBoundaries[peakList.groupID] = allPeakBoundaries
         # NOTE: this sort is necessary to correspond to the sort inside mantid's GroupingWorkspace
         self.groupIDs = sorted(self.groupIDs)
-        # TODO put in a validateInputs method
-        assert self.groupIDs == pixelGroupIDs
 
-        if len(self.groupIDs) != len(ingredients.pixelGroup.pixelGroupingParameters):
-            raise RuntimeError(
-                f"Group IDs do not match between peak list and focus group: {self.groupIDs} vs {len(ingredients.pixelGroup.pixelGroupingParameters)}"  # noqa: E501
-            )
-
-        self.diagnosticSuffix = FIT_PEAK_DIAG_SUFFIX.copy()
-
-    def unbagGroceries(self):
+    def unbagGroceries(self, groceries: Dict[str, WorkspaceName]) -> None:
         """
         Process input neutron data
         """
 
-        self.originalWStof: str = self.getPropertyValue("InputWorkspace")
-        self.focusWS: str = str(self.getPropertyValue("GroupingWorkspace"))
+        self.diagnosticSuffix = FIT_PEAK_DIAG_SUFFIX.copy()
 
-        # create string names of workspaces that will be used by algorithm
-        self.outputWStof: str = wng.diffCalOutput().runNumber(self.runNumber).build()
-        self.diagnosticWS: str = ""
-        if self.getProperty("DiagnosticWorkspace").isDefault:
-            self.diagnosticWS = f"group_diffcal_{self.runNumber}_diagnostic"
-            self.setPropertyValue("DiagnosticWorkspace", self.diagnosticWS)
-        else:
-            self.diagnosticWS = self.getPropertyValue("DiagnosticWorkspace")
+        self.originalWStof = groceries["inputWorkspace"]
+        self.focusWS = groceries["groupingWorkspace"]
+        self.outputWStof = wng.diffCalOutput().runNumber(self.runNumber).build()
+        self.outputWSdSpacing = groceries.get(
+            "outputWorkspace", wng.diffCalOutput().runNumber(self.runNumber).unit("DSP").build()
+        )
+        self.diagnosticWS = groceries.get("diagnosticWorkspace", f"group_diffcal_{self.runNumber}_diagnostic")
 
-        self.outputWSdSpacing: str = ""
-        if self.getProperty("OutputWorkspace").isDefault:
-            self.outputWSdSpacing = wng.diffCalOutputdSpacing().runNumber(self.runNumber).build()
-            self.setPropertyValue("OutputWorkspace", self.outputWSdSpacing)
-        else:
-            self.outputWSdSpacing = self.getPropertyValue("OutputWorkspace")
-
-        self.maskWS: str = ""
-        if self.getProperty("MaskWorkspace").isDefault:
-            self.maskWS = wng.diffCalMask().runNumber(self.runNumber).build()
-            self.setProperty("MaskWorkspace", self.maskWS)
-        else:
-            self.maskWS = self.getPropertyValue("MaskWorkspace")
+        self.maskWS = groceries.get("maskWorkspace", wng.diffCalMask().runNumber(self.runNumber).build())
 
         # set the previous calibration table, or create if none given
         # TODO: use workspace namer
-        self.DIFCprev: str = ""
-        if self.getProperty("PreviousCalibrationTable").isDefault:
-            self.DIFCprev = f"diffract_consts_prev_{self.runNumber}"
+        DIFCprev: str = groceries.get("previousCalibration", "")
+        if DIFCprev == "":
+            DIFCprev = f"diffract_consts_prev_{self.runNumber}"
             self.mantidSnapper.CalculateDiffCalTable(
                 "Initialize the DIFC table from input",
                 InputWorkspace=self.originalWStof,
-                CalibrationTable=self.DIFCprev,
+                CalibrationTable=DIFCprev,
                 OffsetMode="Signed",
                 BinWidth=self.TOF.binWidth,
             )
-        else:
-            self.DIFCprev = self.getPropertyValue("PreviousCalibrationTable")
+
+        # set the final calibration table, to be the output
+        self.DIFCfinal: str = groceries.get("calibrationTable", DIFCprev)
+        if self.DIFCfinal != DIFCprev:
+            self.mantidSnapper.CloneWorkspace(
+                "Make copy of previous calibration table to use as first input",
+                InputWorkspace=DIFCprev,
+                OutputWorkspace=self.DIFCfinal,
+            )
 
         self.mantidSnapper.ApplyDiffCal(
             "Apply the diffraction calibration table to the input workspace",
             InstrumentWorkspace=self.originalWStof,
-            CalibrationWorkspace=self.DIFCprev,
+            CalibrationWorkspace=self.DIFCfinal,
         )
-
-        # set the final calibration table, to be the output
-        self.DIFCfinal: str = ""
-        if self.getProperty("FinalCalibrationTable").isDefault:
-            self.DIFCfinal = self.DIFCprev
-            self.setProperty("FinalCalibrationTable", self.DIFCfinal)
-        else:
-            self.DIFCfinal = str(self.getPropertyValue("PreviousCalibrationTable"))
-            self.mantidSnapper.CloneWorkspace(
-                "Make copy of previous calibration table to use as first input",
-                InputWorkspace=self.DIFCprev,
-                OutputWorkspace=self.DIFCfinal,
-            )
         self.mantidSnapper.MakeDirtyDish(
             "Make a copy of initial DIFC prev",
-            InputWorkspace=self.DIFCprev,
-            OutputWorkspace=self.DIFCprev + "_before",
+            InputWorkspace=self.DIFCfinal,
+            OutputWorkspace=self.DIFCfinal + "_before",
         )
 
         # process and diffraction focus the input data
         # must convert to d-spacing, diffraction focus, ragged rebin, then convert back to TOF
         self.convertAndFocusAndReturn(self.originalWStof, self.outputWStof, "before", "TOF")
+
+    def prep(self, ingredients: Ingredients, groceries: Dict[str, str]):
+        """
+        Convenience method to prepare the recipe for execution.
+        """
+        self.validateInputs(ingredients, groceries)
+        self.chopIngredients(ingredients)
+        self.unbagGroceries(groceries)
+        self.stirInputs()
+
+        self.queueAlgos()
 
     def verifyChiSq(self, diagnosticWSName):
         peakFitParamWSName = f"{diagnosticWSName}{self.diagnosticSuffix[FitOutputEnum.Parameters]}"
@@ -212,7 +189,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             LogResults=True,
         )
 
-    def PyExec(self) -> None:
+    def queueAlgos(self):
         """
         Execute the group-by-group calibration algorithm.
         First a table of previous pixel calibrations must be loaded.
@@ -232,20 +209,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         - FinalCalibrationTable: str -- the name of the final table of DIFC values
         """
 
-        # run the algo
-        self.log().notice("Execution of group diffraction calibration START!")
-
-        # get the ingredients
-        ingredients = Ingredients.model_validate_json(self.getProperty("Ingredients").value)
-        self.chopIngredients(ingredients)
-        self.unbagGroceries()
-
-        diffocWS = self.mantidSnapper.mtd[self.outputWStof]
-        nHist = diffocWS.getNumberHistograms()
-        if nHist != len(self.groupIDs):
-            raise RuntimeError("error, the number of spectra in focused workspace, and number of groups, do not match")
-
-        for index in range(nHist):
+        for index in range(len(self.groupIDs)):
             groupID: int = self.groupIDs[index]
             DIFCpd: str = f"_tmp_DIFCgroup_{groupID}"
             diagnosticWSgroup: str = f"_pdcal_diag_{groupID}"
@@ -273,7 +237,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 StopWorkspaceIndex=index,
             )
             self.mantidSnapper.ConjoinDiagnosticWorkspaces(
-                "Combine the diagnostic output to a single output",
+                "Combine the diagnostic outputs",
                 DiagnosticWorkspace=diagnosticWSgroup,
                 TotalDiagnosticWorkspace=self.diagnosticWS,
                 AddAtIndex=index,
@@ -281,7 +245,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             )
             self.mantidSnapper.CombineDiffCal(
                 "Combine the new calibration values",
-                PixelCalibration=self.DIFCprev,  # previous calibration values, DIFCprev
+                PixelCalibration=self.DIFCfinal,  # previous calibration values, DIFCprev
                 GroupedCalibration=DIFCpd,  # values from PDCalibrate, DIFCpd
                 CalibrationWorkspace=self.outputWStof,  # input WS to PDCalibrate, source for DIFCarb
                 OutputWorkspace=self.DIFCfinal,  # resulting corrected calibration values, DIFCeff
@@ -289,21 +253,14 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             # use the corrected workspace as starting point of next iteration
             self.mantidSnapper.MakeDirtyDish(
                 f"Create record of how DIFC looks at group {index}",
-                InputWorkspace=self.DIFCprev,
-                OutputWorkspace=self.DIFCprev + f"_{index}",
+                InputWorkspace=self.DIFCfinal,
+                OutputWorkspace=self.DIFCfinal + f"_{index}",
             )
-            if self.DIFCfinal != self.DIFCprev:
-                self.mantidSnapper.RenameWorkspace(
-                    "Use the corrected diffcal workspace as starting point in next iteration",
-                    InputWorkspace=self.DIFCfinal,
-                    OutputWorkspace=self.DIFCprev,
-                )
-            self.mantidSnapper.executeQueue()
-            self.verifyChiSq(self.diagnosticWS)
             self.mantidSnapper.WashDishes(
                 "Cleanup leftover workspaces",
                 WorkspaceList=[DIFCpd],
             )
+            self.verifyChiSq(self.diagnosticWS)
 
         # apply the calibration table to input data, then re-focus
         self.mantidSnapper.ApplyDiffCal(
@@ -325,17 +282,26 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             OutputWorkspace=self.outputWStof,
             Target="TOF",
         )
+
+    def execute(self):
         self.mantidSnapper.executeQueue()
         diagnostic = self.mantidSnapper.mtd[self.diagnosticWS]
         diagnostic.add(self.outputWStof)
 
+    def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> GroupDiffCalServing:
+        self.prep(ingredients, groceries)
+        self.execute()
         # set the outputs
-        self.setPropertyValue("DiagnosticWorkspace", self.diagnosticWS)
-        self.setPropertyValue("OutputWorkspace", self.outputWSdSpacing)
-        self.setPropertyValue("FinalCalibrationTable", self.DIFCfinal)
+        return GroupDiffCalServing(
+            result=True,
+            diagnosticWorkspace=self.diagnosticWS,
+            outputWorkspace=self.outputWSdSpacing,
+            calibrationTable=self.DIFCfinal,
+            maskWorkspace=self.maskWS,
+        )
 
     def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str, units: str, keepEvents: bool = True):
-        # Use workspace name generator
+        # TODO use workspace name generator
         tmpWStof = f"_TOF_{self.runNumber}_diffoc_{note}"
         tmpWSdsp = f"_DSP_{self.runNumber}_diffoc_{note}"
 
@@ -393,9 +359,3 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 InputWorkspace=tmpWSdsp,
                 OutputWorkspace=outputWS,
             )
-
-        # Execute queued Mantid algorithms
-        self.mantidSnapper.executeQueue()
-
-
-AlgorithmFactory.subscribe(GroupDiffractionCalibration)
