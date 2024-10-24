@@ -366,10 +366,11 @@ class DiffCalWorkflow(WorkflowImplementer):
                 goodPeaks.append([peak for x2, peak in zip(chi2, peaks) if x2 < maxChiSq])
             too_fews = [goodPeak for goodPeak in goodPeaks if len(goodPeak) < 2]
             if too_fews != []:
-                QMessageBox.error(
-                    self,
+                QMessageBox.critical(
+                    self._tweakPeakView,
                     "Too Few Peaks",
-                    "Purging would result in fewer than the required 2 peaks for calibration.",
+                    "Purging would result in fewer than the required 2 peaks for calibration.  "
+                    "The current set of peaks will be retained.",
                     QMessageBox.Ok,
                 )
             else:
