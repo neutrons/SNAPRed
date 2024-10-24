@@ -9,7 +9,7 @@ from mantid.simpleapi import CalculateDiffCalTable, mtd
 from snapred.backend.log.logger import snapredLogger
 
 # the algorithm to test
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import (
+from snapred.backend.recipe.GroupDiffCalRecipe import (
     GroupDiffCalRecipe as Recipe,  # noqa: E402
 )
 from util.diffraction_calibration_synthetic_data import SyntheticData

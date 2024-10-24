@@ -2,8 +2,8 @@ from typing import Any, Dict, List
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffCalRecipe
-from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffCalRecipe
+from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe
+from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)

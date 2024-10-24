@@ -14,8 +14,8 @@ import snapred
 SNAPRed_module_root = Path(snapred.__file__).parent.parent
 
 
-from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffCalRecipe as PixelRx
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffCalRecipe as GroupRx
+from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as PixelRx
+from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe as GroupRx
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.service.CalibrationService import CalibrationService
