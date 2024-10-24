@@ -8,7 +8,7 @@ from mantid.simpleapi import mtd
 
 # needed to make mocked ingredients
 # the algorithm to test
-from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffCalRecipe as Recipe
+from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as Recipe
 from snapred.meta.Config import Config
 from util.diffraction_calibration_synthetic_data import SyntheticData
 from util.helpers import maskSpectra, setSpectraToZero
@@ -22,7 +22,7 @@ renamed to `test_PixelDiffCalReipe.py` and moved to the recipe tests folder
 """
 
 
-class TestPixelDiffractionCalibration(unittest.TestCase):
+class TestPixelDiffCalRecipe(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         inputs = SyntheticData()

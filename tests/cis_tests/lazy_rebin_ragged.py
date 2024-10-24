@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffCalRecipe as GroupRx
+from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe as GroupRx
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig

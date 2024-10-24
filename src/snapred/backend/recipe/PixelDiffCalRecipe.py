@@ -13,14 +13,6 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as
 logger = snapredLogger.getLogger(__name__)
 
 
-"""
-NOTE this file in fact defines a RECIPE.  It needs to be renamed to PixelDiffCalRecipe.py
-and moved into the recipe folder as soon as it has been reviewed.  It is being temporarily
-stored in the wrong location to make reviewing this story easier, to ensure nothing is
-missing from the former algorithm implementation.
-"""
-
-
 class PixelDiffCalServing(BaseModel):
     result: bool
     medianOffsets: List[float]

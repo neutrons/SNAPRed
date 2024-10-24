@@ -16,8 +16,8 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 
 ## the code to test
-from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffCalRecipe as PixelRx
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffCalRecipe as GroupRx
+from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as PixelRx
+from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe as GroupRx
 from snapred.backend.recipe.algorithm.CreateArtificialNormalizationAlgo import CreateArtificialNormalizationAlgo as FakeNormAlgo
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 
