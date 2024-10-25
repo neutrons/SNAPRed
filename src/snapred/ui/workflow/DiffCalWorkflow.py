@@ -1,4 +1,8 @@
+from mantid.simpleapi import mtd
 from qtpy.QtCore import Slot
+from qtpy.QtWidgets import (
+    QMessageBox,
+)
 
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
@@ -14,10 +18,12 @@ from snapred.backend.dao.request import (
     FitMultiplePeaksRequest,
     FocusSpectraRequest,
     HasStateRequest,
+    SimpleDiffCalRequest,
 )
 from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
@@ -87,10 +93,13 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._requestView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
         self._tweakPeakView.signalValueChanged.connect(self.onValueChange)
+        self._tweakPeakView.signalPurgeBadPeaks.connect(self.purgeBadPeaks)
 
         self.prevFWHM = DiffCalTweakPeakView.FWHM
         self.prevXtalDMin = DiffCalTweakPeakView.XTAL_DMIN
         self.prevXtalDMax = DiffCalTweakPeakView.XTAL_DMAX
+
+        self.peaksWerePurged = False
 
         # 1. input run number and other basic parameters
         # 2. display peak graphs, allow adjustments to view
@@ -272,9 +281,17 @@ class DiffCalWorkflow(WorkflowImplementer):
             peakFunctionChanged = peakFunction != self.peakFunction
             fwhmChanged = fwhm != self.prevFWHM
             maxChiSqChanged = maxChiSq != self.maxChiSq
-            if xtalDMinValueChanged or xtalDMaxValueChanged or peakFunctionChanged or fwhmChanged or maxChiSqChanged:
+            if (
+                xtalDMinValueChanged
+                or xtalDMaxValueChanged
+                or peakFunctionChanged
+                or fwhmChanged
+                or maxChiSqChanged
+                or self.peaksWerePurged
+            ):
                 self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
                 self._renewFitPeaks(peakFunction)
+                self.peaksWerePurged = False
 
             # if the grouping file changes, load new grouping and refocus
             if groupingIndex != self.prevGroupingIndex:
@@ -344,6 +361,54 @@ class DiffCalWorkflow(WorkflowImplementer):
         )
         return self.request(path="calibration/fitpeaks", payload=payload.json())
 
+    @ExceptionToErrLog
+    @Slot(float)
+    def purgeBadPeaks(self, maxChiSq):
+        self._tweakPeakView.disableRecalculateButton()
+        try:
+            # update the max chi sq
+            self.maxChiSq = maxChiSq
+            allPeaks = self.ingredients.groupedPeakLists
+            param_table = mtd[self.fitPeaksDiagnostic].getItem(FitOutputEnum.Parameters.value).toDict()
+            index = param_table["wsindex"]
+            allChi2 = param_table["chi2"]
+            goodPeaks = []
+            for wkspIndex, groupPeaks in enumerate(allPeaks):
+                peaks = groupPeaks.peaks
+                # collect the fit chi-sq parameters for this spectrum, and the fits
+                chi2 = [x2 for i, x2 in zip(index, allChi2) if i == wkspIndex]
+                goodPeaks.append([peak for x2, peak in zip(chi2, peaks) if x2 < maxChiSq])
+            too_fews = [goodPeak for goodPeak in goodPeaks if len(goodPeak) < 2]
+            if too_fews != []:
+                QMessageBox.critical(
+                    self._tweakPeakView,
+                    "Too Few Peaks",
+                    "Purging would result in fewer than the required 2 peaks for calibration.  "
+                    "The current set of peaks will be retained.",
+                    QMessageBox.Ok,
+                )
+            else:
+                for wkspIndex, groupPeaks in enumerate(allPeaks):
+                    groupPeaks.peaks = goodPeaks[wkspIndex]
+                self.peaksWerePurged = True
+
+            # renew the fits to the peaks
+            self._renewFitPeaks(self.peakFunction)
+
+            # update graph with reduced peak list
+            self._tweakPeakView.updateGraphs(
+                self.focusedWorkspace,
+                self.ingredients.groupedPeakLists,
+                self.fitPeaksDiagnostic,
+            )
+
+        except Exception as e:  # noqa BLE001
+            # NOTE this has the same issue as onValueChange
+            print(e)
+
+        # renable button when graph is updated
+        self._tweakPeakView.enableRecalculateButton()
+
     @Slot(WorkflowPresenter, result=SNAPResponse)
     def _triggerDiffractionCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
@@ -352,24 +417,13 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._saveView.updateRunNumber(self.runNumber)
         self.focusGroupPath = view.groupingFileDropdown.currentText()
 
-        payload = DiffractionCalibrationRequest(
-            runNumber=self.runNumber,
-            calibrantSamplePath=self.calibrantSamplePath,
-            focusGroup=self.focusGroups[self.focusGroupPath],
-            useLiteMode=self.useLiteMode,
-            # fiddly bits
-            peakFunction=self.peakFunction,
-            crystalDMin=self.prevXtalDMin,
-            crystalDMax=self.prevXtalDMax,
-            convergenceThreshold=self.convergenceThreshold,
-            nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
-            fwhmMultipliers=self.prevFWHM,
-            maxChiSq=self.maxChiSq,
+        payload = SimpleDiffCalRequest(
+            ingredients=self.ingredients,
+            groceries=self.groceries,
             skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
-            removeBackground=self.removeBackground,
         )
 
-        response = self.request(path="calibration/diffraction", payload=payload.json())
+        response = self.request(path="calibration/calibrate", payload=payload.json())
 
         payload = CalibrationAssessmentRequest(
             run=RunConfig(runNumber=self.runNumber),

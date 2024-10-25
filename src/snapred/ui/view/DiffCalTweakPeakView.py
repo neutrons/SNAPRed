@@ -50,6 +50,7 @@ class DiffCalTweakPeakView(BackendRequestView):
     signalUpdateRecalculationButton = Signal(bool)
     signalMaxChiSqUpdate = Signal(float)
     signalContinueAnyway = Signal(bool)
+    signalPurgeBadPeaks = Signal(float)
 
     def __init__(self, samples=[], groups=[], parent=None):
         super().__init__(parent=parent)
@@ -94,6 +95,10 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.recalculationButton = QPushButton("Recalculate")
         self.recalculationButton.clicked.connect(self.emitValueChange)
 
+        # a little ol purge bad peaks button
+        self.purgePeaksButton = QPushButton("Purge Bad Peaks")
+        self.purgePeaksButton.clicked.connect(self.emitPurge)
+
         # skip pixel calibration button
         self.skipPixelCalToggle = self._labeledField("Skip Pixel Calibration", Toggle(parent=self, state=False))
 
@@ -103,11 +108,12 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.layout.addWidget(self.navigationBar, 1, 0)
         self.layout.addWidget(self.canvas, 2, 0, 1, -1)
         self.layout.addLayout(peakControlLayout, 3, 0, 1, 2)
+        self.layout.addWidget(self.skipPixelCalToggle, 3, 2, 1, 2)
         self.layout.addWidget(self.sampleDropdown, 4, 0)
         self.layout.addWidget(self.groupingFileDropdown, 4, 1)
         self.layout.addWidget(self.peakFunctionDropdown, 4, 2)
-        self.layout.addWidget(self.recalculationButton, 5, 0, 1, 2)
-        self.layout.addWidget(self.skipPixelCalToggle, 3, 2, 1, 2)
+        self.layout.addWidget(self.purgePeaksButton, 4, 3)
+        self.layout.addWidget(self.recalculationButton, 5, 0, 1, 4)
 
         self.layout.setRowStretch(2, 10)
 
@@ -182,6 +188,20 @@ class DiffCalTweakPeakView(BackendRequestView):
             )
             return
         self.signalValueChanged.emit(groupingIndex, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+
+    @Slot()
+    def emitPurge(self):
+        try:
+            maxChiSq = float(self.maxChiSqField.text())
+        except ValueError:
+            QMessageBox.warning(
+                self,
+                "Invalid Chi-Squared Maximum",
+                "Enter a valid value for the maximum chi-squared before purging.",
+                QMessageBox.Ok,
+            )
+            return
+        self.signalPurgeBadPeaks.emit(maxChiSq)
 
     def updateGraphs(self, workspace, peaks, diagnostic):
         # get the updated workspaces and optimal graph grid

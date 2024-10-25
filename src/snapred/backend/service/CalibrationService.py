@@ -28,6 +28,7 @@ from snapred.backend.dao.request import (
     FocusSpectraRequest,
     HasStateRequest,
     InitializeStateRequest,
+    SimpleDiffCalRequest,
 )
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.data.DataExportService import DataExportService
@@ -91,6 +92,7 @@ class CalibrationService(Service):
         self.registerPath("loadQualityAssessment", self.loadQualityAssessment)
         self.registerPath("index", self.getCalibrationIndex)
         self.registerPath("diffraction", self.diffractionCalibration)
+        self.registerPath("calibrate", self.calibrate)
         self.registerPath("validateWritePermissions", self.validateWritePermissions)
         return
 
@@ -118,7 +120,9 @@ class CalibrationService(Service):
             fwhmMultipliers=request.fwhmMultipliers,
             maxChiSq=request.maxChiSq,
         )
-        return self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
+        ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
+        ingredients.removeBackground = request.removeBackground
+        return ingredients
 
     @FromString
     def fetchDiffractionCalibrationGroceries(self, request: DiffractionCalibrationRequest) -> Dict[str, str]:
@@ -147,18 +151,20 @@ class CalibrationService(Service):
     @FromString
     def diffractionCalibration(self, request: DiffractionCalibrationRequest):
         self.validateRequest(request)
+        payload = SimpleDiffCalRequest(
+            ingredients=self.prepDiffractionCalibrationIngredients(request),
+            groceries=self.fetchDiffractionCalibrationGroceries(request),
+            skipPixelCalibration=request.skipPixelCalibration,
+        )
+        return self.calibrate(payload.json())
 
-        # ingredients
-        ingredients = self.prepDiffractionCalibrationIngredients(request)
-        ingredients.removeBackground = request.removeBackground
-        # groceries
-        groceries = self.fetchDiffractionCalibrationGroceries(request)
-
+    @FromString
+    def calibrate(self, request: SimpleDiffCalRequest):
         # now have all ingredients and groceries, run recipe
-        res = DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
+        res = DiffractionCalibrationRecipe().executeRecipe(request.ingredients, request.groceries)
 
         if request.skipPixelCalibration is False:
-            maskWS = groceries.get("maskWorkspace", "")
+            maskWS = request.groceries.get("maskWorkspace", "")
             percentMasked = mtd[maskWS].getNumberMasked() / mtd[maskWS].getNumberHistograms()
             threshold = Config["constants.maskedPixelThreshold"]
             if percentMasked > threshold:
