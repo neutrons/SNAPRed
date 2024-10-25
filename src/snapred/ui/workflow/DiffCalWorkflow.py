@@ -89,6 +89,8 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._tweakPeakView.signalValueChanged.connect(self.onValueChange)
 
         self.prevFWHM = DiffCalTweakPeakView.FWHM
+        self.prevXtalDMin = DiffCalTweakPeakView.XTAL_DMIN
+        self.prevXtalDMax = DiffCalTweakPeakView.XTAL_DMAX
 
         # 1. input run number and other basic parameters
         # 2. display peak graphs, allow adjustments to view
@@ -224,6 +226,8 @@ class DiffCalWorkflow(WorkflowImplementer):
             convergenceThreshold=self.convergenceThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
+            crystalDMin=self.prevXtalDMin,
+            crystalDMax=self.prevXtalDMax,
             maxChiSq=self.maxChiSq,
             skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
             removeBackground=self.removeBackground,
@@ -234,8 +238,8 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # set "previous" values -- this is their initialization
         # these are used to compare if the values have changed
-        self.prevXtalDMin = payload.crystalDMin
-        self.prevXtalDMax = payload.crystalDMax
+        self.prevXtalDMin = payload.crystalDMin  # NOTE set in __init__ to defaults
+        self.prevXtalDMax = payload.crystalDMax  # NOTE set in __init__ to defaults
         self.prevFWHM = payload.fwhmMultipliers  # NOTE set in __init__ to defaults
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
         self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}_pre"
