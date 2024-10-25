@@ -3,6 +3,7 @@ from typing import Dict, List
 from qtpy.QtCore import Slot
 
 from snapred.backend.dao.request import (
+    CreateArtificialNormalizationRequest,
     ReductionExportRequest,
     ReductionRequest,
 )
@@ -11,6 +12,7 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.ui.view.reduction.ArtificialNormalizationView import ArtificialNormalizationView
 from snapred.ui.view.reduction.ReductionRequestView import ReductionRequestView
 from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
@@ -33,9 +35,8 @@ class ReductionWorkflow(WorkflowImplementer):
         self._reductionRequestView.enterRunNumberButton.clicked.connect(lambda: self._populatePixelMaskDropdown())
         self._reductionRequestView.pixelMaskDropdown.dropDown.view().pressed.connect(self._onPixelMaskSelection)
 
-        self._reductionSaveView = ReductionSaveView(
-            parent=parent,
-        )
+        self._artificialNormalizationView = ArtificialNormalizationView(parent=parent)
+        self._reductionSaveView = ReductionSaveView(parent=parent)
 
         self.workflow = (
             WorkflowBuilder(
@@ -51,10 +52,16 @@ class ReductionWorkflow(WorkflowImplementer):
                 "Reduction",
                 continueAnywayHandler=self._continueAnywayHandler,
             )
+            .addNode(
+                self._continueWithNormalization,
+                self._artificialNormalizationView,
+                "Artificial Normalization",
+            )
             .build()
         )
 
         self._reductionRequestView.retainUnfocusedDataCheckbox.checkedChanged.connect(self._enableConvertToUnits)
+        self._artificialNormalizationView.signalValueChanged.connect(self.onArtificialNormalizationValueChange)
 
     def _enableConvertToUnits(self):
         state = self._reductionRequestView.retainUnfocusedDataCheckbox.isChecked()
@@ -130,11 +137,8 @@ class ReductionWorkflow(WorkflowImplementer):
             stateIds = self.request(path="reduction/getStateIds", payload=runNumbers).data
         except Exception as e:  # noqa: BLE001
             raise ValueError(f"Unable to get instrument state for {runNumbers}: {e}")
-        if len(stateIds) > 1:
-            stateId = stateIds[0]
-            for id_ in stateIds[1:]:
-                if id_ != stateId:
-                    raise ValueError("all run numbers must be from the same state")
+        if len(stateIds) > 1 and len(set(stateIds)) > 1:
+            raise ValueError("All run numbers must be from the same state")
 
     def _reconstructPixelMaskNames(self, pixelMasks: List[str]) -> List[WorkspaceName]:
         return [self._compatibleMasks[name] for name in pixelMasks]
@@ -169,26 +173,101 @@ class ReductionWorkflow(WorkflowImplementer):
                 convertUnitsTo=self._reductionRequestView.convertUnitsDropdown.currentText(),
             )
 
-            response = self.request(path="reduction/", payload=request_)
-            if response.code == ResponseCode.OK:
-                record, unfocusedData = response.data.record, response.data.unfocusedData
+            # Validate reduction; if artificial normalization is needed, handle it
+            response = self.request(path="reduction/validateReduction", payload=request_)
+            if response.data:
+                response = self.request(path="reduction/grabDiffractionWorkspaceforArtificialNorm", payload=request_)
 
-                # .. update "save" panel message:
-                self.savePath = self.request(path="reduction/getSavePath", payload=record.runNumber).data
+                # Prepare artificial normalization request
+                request = CreateArtificialNormalizationRequest(  # noqa: F841
+                    runNumber=str(runNumber),
+                    useLiteMode=self._reductionRequestView.liteModeToggle.field.getState(),
+                    peakWindowClippingSize=int(self._artificialNormalizationView.peakWindowClippingSize.field.text()),
+                    smoothingParameter=self._artificialNormalizationView.smoothingSlider.field.value(),
+                    diffractionWorkspace=request.data,  # noqa: F821
+                )
+                response = self.request(path="reduction/artificialNormalization", payload=request_)
+                self._continueWithNormalization(workflowPresenter)
+            else:
+                # Proceed with reduction if artificial normalization is not needed
+                response = self.request(path="reduction/", payload=request_)
+                if response.code == ResponseCode.OK:
+                    record, unfocusedData = response.data.record, response.data.unfocusedData
+                    self._finalizeReduction(record, unfocusedData)
 
-                # Save the reduced data. (This is automatic: it happens before the "save" panel opens.)
-                if ContinueWarning.Type.NO_WRITE_PERMISSIONS not in self.continueAnywayFlags:
-                    self.request(path="reduction/save", payload=ReductionExportRequest(record=record))
+    def _artificialNormalization(self, workflowPresenter, responseData, runNumber):
+        """Handles artificial normalization for the workflow."""
+        view = workflowPresenter.widget.tabView  # noqa: F841
+        request_ = CreateArtificialNormalizationRequest(
+            runNumber=runNumber,
+            useLiteMode=self._reductionRequestView.liteModeToggle.field.getState(),
+            peakWindowClippingSize=int(self._artificialNormalizationView.peakWindowClippingSize.field.text()),
+            smoothingParameter=self._artificialNormalizationView.smoothingSlider.field.value(),
+            decreaseParameter=self._artificialNormalizationView.decreaseParameterDropdown.currentIndex() == 1,
+            lss=self._artificialNormalizationView.lssDropdown.currentIndex() == 1,
+            diffractionWorkspace=responseData.diffractionWorkspace,
+        )
+        response = self.request(path="reduction/artificialNormalization", payload=request_)
+        # Update artificial normalization view with the response
+        if response.code == ResponseCode.OK:
+            self._artificialNormalizationView.updateWorkspaces(responseData.diffractionWorkspace, response.data)
 
-                # Retain the output workspaces after the workflow is complete.
-                self.outputs.extend(record.workspaceNames)
+    @Slot(float, bool, bool, int)
+    def onArtificialNormalizationValueChange(self, smoothingValue, lss, decreaseParameter, peakWindowClippingSize):
+        """Updates artificial normalization based on user input."""
+        self._artificialNormalizationView.disableRecalculateButton()
+        runNumber = self._artificialNormalizationView.fieldRunNumber.text()
+        diffractionWorkspace = self._artificialNormalizationView.diffractionWorkspace
 
-                # Also retain the unfocused data after the workflow is complete (if the box was checked),
-                #   but do not actually save it as part of the reduction-data file.
-                # The unfocused data does not get added to the response.workspaces list.
-                if unfocusedData is not None:
-                    self.outputs.append(unfocusedData)
+        request_ = CreateArtificialNormalizationRequest(
+            runNumber=runNumber,
+            useLiteMode=self._reductionRequestView.liteModeToggle.field.getState(),
+            peakWindowClippingSize=peakWindowClippingSize,
+            smoothingParameter=smoothingValue,
+            decreaseParameter=decreaseParameter,
+            lss=lss,
+            diffractionWorkspace=diffractionWorkspace,
+        )
 
+        response = self.request(path="reduction/artificialNormalization", payload=request_)
+        self._artificialNormalizationView.updateWorkspaces(diffractionWorkspace, response.data)
+        self._artificialNormalizationView.enableRecalculateButton()
+
+    def _continueWithNormalization(self, workflowPresenter):  # noqa: ARG002
+        """Continues the workflow using the artificial normalization workspace."""
+        artificialNormWorkspace = self._artificialNormalizationView.artificialNormWorkspace
+        pixelMasks = self._reconstructPixelMaskNames(self._reductionRequestView.getPixelMasks())
+        timestamp = self.request(path="reduction/getUniqueTimestamp").data
+
+        request_ = ReductionRequest(
+            runNumber=str(self._artificialNormalizationView.fieldRunNumber.text()),
+            useLiteMode=self._reductionRequestView.liteModeToggle.field.getState(),
+            timestamp=timestamp,
+            continueFlags=self.continueAnywayFlags,
+            pixelMasks=pixelMasks,
+            keepUnfocused=self._reductionRequestView.retainUnfocusedDataCheckbox.isChecked(),
+            convertUnitsTo=self._reductionRequestView.convertUnitsDropdown.currentText(),
+            normalizationWorkspace=artificialNormWorkspace,
+        )
+
+        response = self.request(path="reduction/", payload=request_)
+        if response.code == ResponseCode.OK:
+            record, unfocusedData = response.data.record, response.data.unfocusedData
+            self._finalizeReduction(record, unfocusedData)
+
+    def _finalizeReduction(self, record, unfocusedData):
+        """Handles post-reduction tasks, including saving and workspace management."""
+        self.savePath = self.request(path="reduction/getSavePath", payload=record.runNumber).data
+        # Save the reduced data. (This is automatic: it happens before the "save" panel opens.)
+        if ContinueWarning.Type.NO_WRITE_PERMISSIONS not in self.continueAnywayFlags:
+            self.request(path="reduction/save", payload=ReductionExportRequest(record=record))
+            # Retain the output workspaces after the workflow is complete.
+        self.outputs.extend(record.workspaceNames)
+        # Also retain the unfocused data after the workflow is complete (if the box was checked),
+        #   but do not actually save it as part of the reduction-data file.
+        # The unfocused data does not get added to the response.workspaces list.
+        if unfocusedData:
+            self.outputs.append(unfocusedData)
             # Note that the run number is deliberately not deleted from the run numbers list.
             # Almost certainly it should be moved to a "completed run numbers" list.
 
@@ -196,8 +275,6 @@ class ReductionWorkflow(WorkflowImplementer):
         #   _before_ transitioning to the "save" panel.
         # TODO: make '_clearWorkspaces' a public method (i.e make this combination a special `cleanup` method).
         self._clearWorkspaces(exclude=self.outputs, clearCachedWorkspaces=True)
-
-        return self.responses[-1]
 
     @property
     def widget(self):
