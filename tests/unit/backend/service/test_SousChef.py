@@ -4,7 +4,10 @@ import unittest
 from unittest import mock
 
 from mantid.simpleapi import DeleteWorkspace, mtd
+from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
+from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
 
@@ -201,12 +204,24 @@ class TestSousChef(unittest.TestCase):
     def test_prepPixelGroup_cache(self, PixelGroupingParametersCalculationRecipe):
         key = (self.ingredients.runNumber, self.ingredients.useLiteMode, self.ingredients.focusGroup.name)
         # ensure the cache is prepared
-        self.instance._pixelGroupCache[key] = mock.Mock()
+        self.instance._pixelGroupCache[key] = mock.sentinel.pixel
 
         res = self.instance.prepPixelGroup(self.ingredients)
 
         assert not PixelGroupingParametersCalculationRecipe.called
         assert res == self.instance._pixelGroupCache[key]
+
+    def test_prepPixelGroup_cache_not_altered(self):
+        key = (self.ingredients.runNumber, self.ingredients.useLiteMode, self.ingredients.focusGroup.name)
+        # ensure the cache is prepared
+        self.instance._pixelGroupCache[key] = PixelGroup.construct(timeOfFlight={"minimum": 0})
+
+        res = self.instance.prepPixelGroup(self.ingredients)
+        res.timeOfFlight["minimum"] = 2
+
+        another = self.instance.prepPixelGroup(self.ingredients)
+        assert another != res
+        assert another == self.instance._pixelGroupCache[key]
 
     def test_getInstrumentDefinitionFilename(self):
         assert Config["instrument.lite.definition.file"] == self.instance._getInstrumentDefinitionFilename(True)
@@ -236,12 +251,28 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.crystalDBounds.maximum,
         )
         # ensure the cache is preped
-        self.instance._xtalCache[key] = mock.Mock()
+        self.instance._xtalCache[key] = mock.sentinel.xtal
 
         res = self.instance.prepCrystallographicInfo(self.ingredients)
 
         assert not XtalService.called
         assert res == self.instance._xtalCache[key]
+
+    def test_prepXtalInfo_cache_not_altered(self):
+        key = (
+            self.ingredients.cifPath,
+            self.ingredients.crystalDBounds.minimum,
+            self.ingredients.crystalDBounds.maximum,
+        )
+        # ensure the cache is preped
+        self.instance._xtalCache[key] = CrystallographicInfo.construct(peaks=[2])
+
+        res = self.instance.prepCrystallographicInfo(self.ingredients)
+        res.peaks = [3]
+
+        another = self.instance.prepCrystallographicInfo(self.ingredients)
+        assert another != res
+        assert another == self.instance._xtalCache[key]
 
     @mock.patch(thisService + "CrystallographicInfoService")
     def test_prepXtalInfo_noCif(self, XtalService):
@@ -251,7 +282,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.crystalDBounds.maximum,
         )
         # ensure the cache is preped
-        self.instance._xtalCache[key] = mock.Mock()
+        self.instance._xtalCache[key] = mock.sentinel.xtal
 
         # make ingredients with no CIF path
         incompleteIngredients = self.ingredients.model_copy()
@@ -368,7 +399,7 @@ class TestSousChef(unittest.TestCase):
             True,
         )
         # ensure the cache is prepared
-        self.instance._peaksCache[key] = [mock.Mock()]
+        self.instance._peaksCache[key] = mock.sentinel.detectorPeaks
         self.instance.prepCalibrantSample = mock.Mock()
         self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
 
@@ -376,6 +407,33 @@ class TestSousChef(unittest.TestCase):
 
         assert not DetectorPeakPredictorRecipe.called
         assert res == self.instance._peaksCache[key]
+
+    def test_prepDetectorPeaks_cache_not_altered(self):
+        key = (
+            self.ingredients.runNumber,
+            self.ingredients.useLiteMode,
+            self.ingredients.focusGroup.name,
+            self.ingredients.crystalDBounds.minimum,
+            self.ingredients.crystalDBounds.maximum,
+            self.ingredients.fwhmMultipliers.left,
+            self.ingredients.fwhmMultipliers.right,
+            True,
+        )
+        # ensure the cache is prepared
+        self.instance._peaksCache[key] = [GroupPeakList.construct(groupId=2, peaks=[2])]
+        self.instance.prepCalibrantSample = mock.Mock()
+        self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
+
+        res = self.instance.prepDetectorPeaks(self.ingredients)
+
+        # alter the returned object
+        for groupPeakList in res:
+            groupPeakList.groupID = 100
+            groupPeakList.peaks = []
+
+        another = self.instance.prepDetectorPeaks(self.ingredients)
+        assert another != res
+        assert another == self.instance._peaksCache[key]
 
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch(thisService + "ReductionIngredients")
