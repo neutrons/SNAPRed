@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Set, Tuple, Type
+from typing import Any, Dict, List, Optional, Set, Tuple, Type
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
@@ -87,7 +87,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         )
         self.mantidSnapper.executeQueue()
 
-    def _cloneAndConvertWorkspace(self, workspace: WorkspaceName, units: str) -> WorkspaceName:
+    def _prepareUnfocusedData(self, workspace: WorkspaceName, mask: Optional[WorkspaceName], units: str) -> WorkspaceName:
         unitsAbrev = ""
         match units:
             case "Wavelength":
@@ -102,17 +102,24 @@ class ReductionRecipe(Recipe[Ingredients]):
                 raise ValueError(f"cannot convert to unit '{units}'")
 
         runNumber, liteMode = workspace.tokens("runNumber", "lite")
-        self.unfocWS = wng.run().runNumber(runNumber).lite(liteMode).unit(unitsAbrev).group(wng.Groups.UNFOC).build()
-        self._cloneWorkspace(workspace, self.unfocWS)
+        self.unfocWs = wng.run().runNumber(runNumber).lite(liteMode).unit(unitsAbrev).group(wng.Groups.UNFOC).build()
+        self._cloneWorkspace(workspace, self.unfocWs)
 
+        if mask:
+            self.mantidSnapper.MaskDetectorFlags(
+                "Applying pixel mask to unfocused data",
+                MaskWorkspace=mask,
+                OutputWorkspace=self.unfocWs,
+            )
+        
         self.mantidSnapper.ConvertUnits(
-            f"Convert unfocused workspace to {units} units",
-            InputWorkspace=workspace,
-            OutputWorkspace=self.unfocWS,
+            f"Converting unfocused data to {units} units",
+            InputWorkspace=self.unfocWs,
+            OutputWorkspace=self.unfocWs,
             Target=units,
         )
         self.mantidSnapper.executeQueue()
-        return self.unfocWS
+        return self.unfocWs
 
     def _applyRecipe(self, recipe: Type[Recipe], ingredients_, **kwargs):
         if "inputWorkspace" in kwargs:
@@ -164,8 +171,9 @@ class ReductionRecipe(Recipe[Ingredients]):
     def execute(self):
         data: Dict[str, Any] = {"result": False}
 
+        # Retain unfocused data for comparison.
         if self.keepUnfocused:
-            data["unfocusedWS"] = self._cloneAndConvertWorkspace(self.sampleWs, self.convertUnitsTo)
+            data["unfocusedWS"] = self._prepareUnfocusedData(self.sampleWs, self.maskWs, self.convertUnitsTo)
 
         # 1. PreprocessReductionRecipe
         outputs = []
