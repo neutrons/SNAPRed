@@ -9,6 +9,7 @@ from snapred.backend.dao.calibration import (
     FocusGroupMetric,
 )
 from snapred.backend.dao.indexing import IndexEntry
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.ingredients import (
     CalibrationMetricsWorkspaceIngredients,
     DiffractionCalibrationIngredients,
@@ -122,6 +123,8 @@ class CalibrationService(Service):
         )
         ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
         ingredients.removeBackground = request.removeBackground
+        ingredients.skipPixelCalibration = request.skipPixelCalibration
+
         return ingredients
 
     @FromString
@@ -182,6 +185,13 @@ class CalibrationService(Service):
     def pixelCalibration(self, request: SimpleDiffCalRequest) -> PixelDiffCalServing:
         # cook recipe
         if request.skipPixelCalibration:
+            self.groceryClerk.name("defaultCalibrationTable").diffcal_table(
+                request.ingredients.runConfig.runNumber, VERSION_DEFAULT
+            ).useLiteMode(request.ingredients.runConfig.useLiteMode).add()
+            defaultCalibrationTable = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())[
+                "defaultCalibrationTable"
+            ]
+            request.groceries["calibrationTable"] = defaultCalibrationTable
             res = PixelDiffCalServing(
                 result=True,
                 medianOffsets=[],

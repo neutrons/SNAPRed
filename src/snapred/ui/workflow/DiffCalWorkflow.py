@@ -413,12 +413,9 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.runNumber = view.runNumberField.text()
         self._saveView.updateRunNumber(self.runNumber)
         self.focusGroupPath = view.groupingFileDropdown.currentText()
-
-        payload = SimpleDiffCalRequest(
-            ingredients=self.ingredients,
-            groceries=self.groceries,
-            skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
-        )
+        self.ingredients.skipPixelCalibration = self._tweakPeakView.skipPixelCalToggle.field.getState()
+        self.ingredients.runConfig.useLiteMode = self.useLiteMode
+        payload = SimpleDiffCalRequest(ingredients=self.ingredients, groceries=self.groceries)
 
         response = self.request(path="calibration/diffractionWithIngredients", payload=payload.json())
 
