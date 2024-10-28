@@ -14,6 +14,7 @@ from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
+    CreateArtificialNormalizationRequest,
     ReductionExportRequest,
     ReductionRequest,
 )
@@ -346,6 +347,58 @@ class TestReductionService(unittest.TestCase):
         # Note: this tests re-entry for the _first_ continue-anyway check,
         #   and in addition, re-entry for the second continue-anyway check.
         self.instance.validateReduction(self.request)
+
+    @mock.patch(thisService + "ArtificialNormalizationRecipe")
+    def test_artificialNormalization(self, mockArtificialNormalizationRecipe):
+        mockArtificialNormalizationRecipe.return_value = mock.Mock()
+        mockResult = mock.Mock()
+        mockArtificialNormalizationRecipe.return_value.executeRecipe.return_value = mockResult
+
+        request = CreateArtificialNormalizationRequest(
+            runNumber="123",
+            useLiteMode=False,
+            peakWindowClippingSize=5,
+            smoothingParameter=0.1,
+            decreaseParameter=True,
+            lss=True,
+            diffractionWorkspace="mock_diffraction_workspace",
+            outputWorkspace="mock_output_workspace",
+        )
+
+        result = self.instance.artificialNormalization(request)
+
+        mockArtificialNormalizationRecipe.return_value.executeRecipe.assert_called_once_with(
+            InputWorkspace=request.diffractionWorkspace,
+            Ingredients=mock.ANY,
+            OutputWorkspace=request.outputWorkspace,
+        )
+        assert result == mockResult
+
+    @mock.patch(thisService + "GroceryService")
+    def test_grabDiffractionWorkspaceforArtificialNorm(self, mockGroceryService):
+        self.instance.groceryService = mockGroceryService
+
+        request = ReductionRequest(
+            runNumber="123",
+            useLiteMode=False,
+            timestamp=self.instance.getUniqueTimestamp(),
+            versions=(1, 2),
+            pixelMasks=[],
+            focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
+        )
+
+        mockCalVersion = 1
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=mockCalVersion)
+
+        groceryList = {
+            "diffractionWorkspace": "mock_diffraction_workspace",
+        }
+        mockGroceryService.fetchGroceryDict.return_value = groceryList
+
+        result = self.instance.grabDiffractionWorkspaceforArtificialNorm(request)
+
+        mockGroceryService.fetchGroceryDict.assert_called_once()
+        assert result == "mock_diffraction_workspace"
 
 
 class TestReductionServiceMasks:
