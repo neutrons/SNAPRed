@@ -176,15 +176,16 @@ class ReductionWorkflow(WorkflowImplementer):
             # Validate reduction; if artificial normalization is needed, handle it
             response = self.request(path="reduction/validateReduction", payload=request_)
             if response.data:
+                self._artificialNormalizationView.updateRunNumber(runNumber)
                 response = self.request(path="reduction/grabDiffractionWorkspaceforArtificialNorm", payload=request_)
                 self._artificialNormalization(workflowPresenter, response.data, runNumber)
-                self._continueWithNormalization(workflowPresenter)
             else:
                 # Proceed with reduction if artificial normalization is not needed
                 response = self.request(path="reduction/", payload=request_)
                 if response.code == ResponseCode.OK:
                     record, unfocusedData = response.data.record, response.data.unfocusedData
                     self._finalizeReduction(record, unfocusedData)
+                    self.workflowPresenter._completeWorkflow()
         return self.responses[-1]
 
     def _artificialNormalization(self, workflowPresenter, responseData, runNumber):
@@ -202,9 +203,11 @@ class ReductionWorkflow(WorkflowImplementer):
         response = self.request(path="reduction/artificialNormalization", payload=request_)
         # Update artificial normalization view with the response
         if response.code == ResponseCode.OK:
-            self._artificialNormalizationView.updateWorkspaces(responseData.diffractionWorkspace, response.data)
+            self._artificialNormalizationView.updateWorkspaces(responseData, response.data)
         else:
             raise RuntimeError("Failed to run artificial normalization.")
+
+        return self.responses[-1]
 
     @Slot(float, bool, bool, int)
     def onArtificialNormalizationValueChange(self, smoothingValue, lss, decreaseParameter, peakWindowClippingSize):
@@ -241,7 +244,7 @@ class ReductionWorkflow(WorkflowImplementer):
             pixelMasks=pixelMasks,
             keepUnfocused=self._reductionRequestView.retainUnfocusedDataCheckbox.isChecked(),
             convertUnitsTo=self._reductionRequestView.convertUnitsDropdown.currentText(),
-            normalizationWorkspace=artificialNormWorkspace,
+            artificialNormalization=artificialNormWorkspace,
         )
 
         response = self.request(path="reduction/", payload=request_)

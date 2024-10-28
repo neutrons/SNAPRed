@@ -73,6 +73,7 @@ class ArtificialNormalizationView(BackendRequestView):
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
         self.signalUpdateFields.connect(self._updateFields)
+        self.signalRunNumberUpdate.connect(self._updateRunNumber)
 
     @Slot(str)
     def _updateRunNumber(self, runNumber):

@@ -141,12 +141,7 @@ class WorkflowPresenter(QObject):
 
     def advanceWorkflow(self):
         if self.view.currentTab >= self.view.totalNodes - 1:
-            QMessageBox.information(
-                self.view,
-                "‧₊Workflow Complete‧₊",
-                self.completionMessageLambda(),
-            )
-            self.reset()
+            self.completeWorkflow()
         else:
             self.view.advanceWorkflow()
 
@@ -196,3 +191,12 @@ class WorkflowPresenter(QObject):
         else:
             raise NotImplementedError(f"Continue anyway handler not implemented: {self.view.tabModel}")
         self.handleContinueButtonClicked(self.view.tabModel)
+
+    def completeWorkflow(self):
+        # Directly show the completion message and reset the workflow
+        QMessageBox.information(
+            self.view,
+            "‧₊Workflow Complete‧₊",
+            self.completionMessageLambda(),
+        )
+        self.reset()
