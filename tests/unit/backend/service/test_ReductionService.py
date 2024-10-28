@@ -300,17 +300,16 @@ class TestReductionService(unittest.TestCase):
         fakeDataService.calibrationExists.return_value = False
         fakeDataService.normalizationExists.return_value = False
         self.instance.dataFactoryService = fakeDataService
+
         fakeExportService = mock.Mock()
         fakeExportService.checkWritePermissions.return_value = False
         self.instance.dataExportService = fakeExportService
+
         with pytest.raises(ContinueWarning) as excInfo:
             self.instance.validateReduction(self.request)
 
-        # Note: this tests the _first_ continue-anyway check,
-        #   which _only_ deals with the calibrations.
-        assert (
-            excInfo.value.model.flags
-            == ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
+        assert excInfo.value.model.flags == (
+            ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
         )
 
     def test_validateReduction_no_permissions_and_no_calibrations_first_reentry(self):
@@ -328,8 +327,6 @@ class TestReductionService(unittest.TestCase):
         with pytest.raises(ContinueWarning) as excInfo:
             self.instance.validateReduction(self.request)
 
-        # Note: this tests re-entry for the _first_ continue-anyway check,
-        #   but with no re-entry for the second continue-anyway check.
         assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
 
     def test_validateReduction_no_permissions_and_no_calibrations_second_reentry(self):

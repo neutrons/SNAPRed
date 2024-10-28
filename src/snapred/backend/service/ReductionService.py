@@ -106,13 +106,10 @@ class ReductionService(Service):
         calibrationExists = self.dataFactoryService.calibrationExists(request.runNumber, request.useLiteMode)
 
         # Determine the action based on missing components
-        if not calibrationExists and not normalizationExists:
-            # Case: No calibration and no normalization
-            continueFlags |= ContinueWarning.Type.MISSING_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
-            message = (
-                "Reduction is missing both normalization and calibration data. "
-                "Would you like to continue in uncalibrated mode?"
-            )
+        if not calibrationExists and normalizationExists:
+            # Case: No calibration but normalization exists
+            continueFlags |= ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
+            message = "Reduction is missing calibration data. " "Would you like to continue in uncalibrated mode?"
         elif calibrationExists and not normalizationExists:
             # Case: Calibration exists but normalization is missing
             continueFlags |= ContinueWarning.Type.MISSING_NORMALIZATION
@@ -121,6 +118,15 @@ class ReductionService(Service):
                 "Reduction is missing normalization data. "
                 "Artificial normalization will be created in place of actual normalization. "
                 "Would you like to continue?"
+            )
+        elif not calibrationExists and not normalizationExists:
+            # Case: No calibration and no normalization
+            continueFlags |= (
+                ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
+            )
+            message = (
+                "Reduction is missing both normalization and calibration data. "
+                "Would you like to continue in uncalibrated mode?"
             )
 
         # Remove any continue flags that are present in the request by XOR-ing with the flags
@@ -150,6 +156,7 @@ class ReductionService(Service):
                 "<p>Would you like to continue anyway?</p>",
                 continueFlags,
             )
+
         return useArtificialNorm
 
     @FromString
