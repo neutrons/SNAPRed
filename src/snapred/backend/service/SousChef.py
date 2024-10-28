@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -115,7 +116,7 @@ class SousChef(Service):
                 timeOfFlight=data["tof"],
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
             )
-        return self._pixelGroupCache[key]
+        return deepcopy(self._pixelGroupCache[key])
 
     def prepManyPixelGroups(self, ingredients: FarmFreshIngredients) -> List[PixelGroup]:
         pixelGroups = []
@@ -138,7 +139,7 @@ class SousChef(Service):
         key = (ingredients.cifPath, ingredients.crystalDBounds.minimum, ingredients.crystalDBounds.maximum)
         if key not in self._xtalCache:
             self._xtalCache[key] = CrystallographicInfoService().ingest(*key)["crystalInfo"]
-        return self._xtalCache[key]
+        return deepcopy(self._xtalCache[key])
 
     def prepPeakIngredients(self, ingredients: FarmFreshIngredients) -> PeakIngredients:
         return PeakIngredients(
@@ -183,7 +184,7 @@ class SousChef(Service):
                 )
             self._peaksCache[key] = self.parseGroupPeakList(res)
 
-        return self._peaksCache[key]
+        return deepcopy(self._peaksCache[key])
 
     def prepManyDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[List[GroupPeakList]]:
         # this also needs to check if it is in fact the default calibration
