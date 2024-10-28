@@ -177,16 +177,7 @@ class ReductionWorkflow(WorkflowImplementer):
             response = self.request(path="reduction/validateReduction", payload=request_)
             if response.data:
                 response = self.request(path="reduction/grabDiffractionWorkspaceforArtificialNorm", payload=request_)
-
-                # Prepare artificial normalization request
-                request = CreateArtificialNormalizationRequest(  # noqa: F841
-                    runNumber=str(runNumber),
-                    useLiteMode=self._reductionRequestView.liteModeToggle.field.getState(),
-                    peakWindowClippingSize=int(self._artificialNormalizationView.peakWindowClippingSize.field.text()),
-                    smoothingParameter=self._artificialNormalizationView.smoothingSlider.field.value(),
-                    diffractionWorkspace=request.data,  # noqa: F821
-                )
-                response = self.request(path="reduction/artificialNormalization", payload=request_)
+                self._artificialNormalization(workflowPresenter, response.data, runNumber)
                 self._continueWithNormalization(workflowPresenter)
             else:
                 # Proceed with reduction if artificial normalization is not needed
@@ -194,6 +185,7 @@ class ReductionWorkflow(WorkflowImplementer):
                 if response.code == ResponseCode.OK:
                     record, unfocusedData = response.data.record, response.data.unfocusedData
                     self._finalizeReduction(record, unfocusedData)
+        return self.responses[-1]
 
     def _artificialNormalization(self, workflowPresenter, responseData, runNumber):
         """Handles artificial normalization for the workflow."""
@@ -205,12 +197,14 @@ class ReductionWorkflow(WorkflowImplementer):
             smoothingParameter=self._artificialNormalizationView.smoothingSlider.field.value(),
             decreaseParameter=self._artificialNormalizationView.decreaseParameterDropdown.currentIndex() == 1,
             lss=self._artificialNormalizationView.lssDropdown.currentIndex() == 1,
-            diffractionWorkspace=responseData.diffractionWorkspace,
+            diffractionWorkspace=responseData,
         )
         response = self.request(path="reduction/artificialNormalization", payload=request_)
         # Update artificial normalization view with the response
         if response.code == ResponseCode.OK:
             self._artificialNormalizationView.updateWorkspaces(responseData.diffractionWorkspace, response.data)
+        else:
+            raise RuntimeError("Failed to run artificial normalization.")
 
     @Slot(float, bool, bool, int)
     def onArtificialNormalizationValueChange(self, smoothingValue, lss, decreaseParameter, peakWindowClippingSize):
@@ -254,6 +248,8 @@ class ReductionWorkflow(WorkflowImplementer):
         if response.code == ResponseCode.OK:
             record, unfocusedData = response.data.record, response.data.unfocusedData
             self._finalizeReduction(record, unfocusedData)
+
+        return self.responses[-1]
 
     def _finalizeReduction(self, record, unfocusedData):
         """Handles post-reduction tasks, including saving and workspace management."""
