@@ -185,7 +185,9 @@ class ReductionWorkflow(WorkflowImplementer):
                 if response.code == ResponseCode.OK:
                     record, unfocusedData = response.data.record, response.data.unfocusedData
                     self._finalizeReduction(record, unfocusedData)
-                    self.workflowPresenter._completeWorkflow()
+                    self._artificialNormalizationView.updateRunNumber(runNumber)
+                    self._artificialNormalizationView.showMessage("Artificial Normalization not Needed")
+                    workflowPresenter.advanceWorkflow()
         return self.responses[-1]
 
     def _artificialNormalization(self, workflowPresenter, responseData, runNumber):

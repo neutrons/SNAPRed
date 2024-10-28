@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
-from qtpy.QtCore import Signal, Slot
+from qtpy.QtCore import Qt, Signal, Slot
 from qtpy.QtWidgets import (
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
@@ -74,6 +75,12 @@ class ArtificialNormalizationView(BackendRequestView):
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
         self.signalUpdateFields.connect(self._updateFields)
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
+
+        self.messageLabel = QLabel("")
+        self.messageLabel.setStyleSheet("font-size: 24px; font-weight: bold; color: black;")
+        self.messageLabel.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(self.messageLabel, 0, 0, 1, 2)
+        self.messageLabel.hide()
 
     @Slot(str)
     def _updateRunNumber(self, runNumber):
@@ -171,3 +178,15 @@ class ArtificialNormalizationView(BackendRequestView):
     def verify(self):
         # TODO what needs to be verified?
         return True
+
+    def showMessage(self, message: str):
+        self.clearView()
+        self.messageLabel.setText(message)
+        self.messageLabel.show()
+
+    def clearView(self):
+        # Remove all existing widgets except the layout
+        for i in reversed(range(self.layout.count())):
+            widget = self.layout.itemAt(i).widget()
+            if widget is not None and widget != self.messageLabel:
+                widget.deleteLater()  # Delete the widget
