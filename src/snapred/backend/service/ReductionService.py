@@ -464,6 +464,7 @@ class ReductionService(Service):
         artificialNormWorkspace = ArtificialNormalizationRecipe().executeRecipe(
             InputWorkspace=request.diffractionWorkspace,
             Ingredients=ingredients,
+            OutputWorkspace=request.outputWorkspace,
         )
         return artificialNormWorkspace
 
