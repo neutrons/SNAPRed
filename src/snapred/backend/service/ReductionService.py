@@ -109,13 +109,16 @@ class ReductionService(Service):
         if not calibrationExists and normalizationExists:
             # Case: No calibration but normalization exists
             continueFlags |= ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
-            message = "Reduction is missing calibration data. " "Would you like to continue in uncalibrated mode?"
+            message = (
+                "Warning: diffraction calibration is missing."
+                "If you continue, default instrument geometry will be used."
+            )
         elif calibrationExists and not normalizationExists:
             # Case: Calibration exists but normalization is missing
             continueFlags |= ContinueWarning.Type.MISSING_NORMALIZATION
             useArtificialNorm = True
             message = (
-                "Reduction is missing normalization data. "
+                "Warning: Reduction is missing normalization data. "
                 "Artificial normalization will be created in place of actual normalization. "
                 "Would you like to continue?"
             )
@@ -125,8 +128,8 @@ class ReductionService(Service):
                 ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
             )
             message = (
-                "Reduction is missing both normalization and calibration data. "
-                "Would you like to continue in uncalibrated mode?"
+                "Warning: Reduction is missing both normalization and calibration data. "
+                "If you continue, default instrument geometry will be used and data will not be normalized."
             )
 
         # Remove any continue flags that are present in the request by XOR-ing with the flags
