@@ -87,7 +87,9 @@ class ReductionRecipe(Recipe[Ingredients]):
         )
         self.mantidSnapper.executeQueue()
 
-    def _prepareUnfocusedData(self, workspace: WorkspaceName, mask: Optional[WorkspaceName], units: str) -> WorkspaceName:
+    def _prepareUnfocusedData(
+        self, workspace: WorkspaceName, mask: Optional[WorkspaceName], units: str
+    ) -> WorkspaceName:
         unitsAbrev = ""
         match units:
             case "Wavelength":
@@ -111,7 +113,7 @@ class ReductionRecipe(Recipe[Ingredients]):
                 MaskWorkspace=mask,
                 OutputWorkspace=self.unfocWs,
             )
-        
+
         self.mantidSnapper.ConvertUnits(
             f"Converting unfocused data to {units} units",
             InputWorkspace=self.unfocWs,

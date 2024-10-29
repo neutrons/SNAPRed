@@ -142,19 +142,17 @@ class ReductionRecipeTest(TestCase):
         recipe._prepareUnfocusedData(workspace, None, units)
         recipe.mantidSnapper.MaskDetectorFlags.assert_not_called()
         recipe.mantidSnapper.reset_mock()
-        
+
         recipe._prepareUnfocusedData(workspace, maskWs, units)
 
         recipe.mantidSnapper.MaskDetectorFlags.assert_called_once_with(
-            "Applying pixel mask to unfocused data",
-            MaskWorkspace=maskWs,
-            OutputWorkspace=outputWs
+            "Applying pixel mask to unfocused data", MaskWorkspace=maskWs, OutputWorkspace=outputWs
         )
         recipe.mantidSnapper.ConvertUnits.assert_called_once_with(
             f"Converting unfocused data to {units} units",
             InputWorkspace=outputWs,
             OutputWorkspace=outputWs,
-            Target=units
+            Target=units,
         )
         recipe.mantidSnapper.executeQueue.assert_called()
         recipe.mantidSnapper.reset_mock()
