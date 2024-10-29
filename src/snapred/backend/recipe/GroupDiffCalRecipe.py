@@ -61,7 +61,6 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         # NOTE this is for safer refactor, but not necessary for proper functioning
         diff = set(groceries.keys()).difference(self.GROCERIES)
         if bool(diff):
-            print(f"{diff} : {bool(diff)}")
             raise RuntimeError(f"The following invalid keys were found in the input groceries: {diff}")
 
         pixelGroupIDs = ingredients.pixelGroup.groupIDs
