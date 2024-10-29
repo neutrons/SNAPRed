@@ -16,6 +16,7 @@ logger = snapredLogger.getLogger(__name__)
 class PixelDiffCalServing(BaseModel):
     result: bool
     medianOffsets: List[float]
+    maskWorkspace: str
     calibrationTable: str
 
 
@@ -338,4 +339,5 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             result=True,
             medianOffsets=self.medianOffsets,
             calibrationTable=self.DIFCpixel,
+            maskWorkspace=self.maskWS,
         )

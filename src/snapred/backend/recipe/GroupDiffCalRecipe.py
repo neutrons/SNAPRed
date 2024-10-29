@@ -57,8 +57,11 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
     def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
         super().validateInputs(ingredients, groceries)
 
-        for key in groceries.keys():
-            assert key in self.GROCERIES
+        # make sure no invalid keys were passed
+        # NOTE this is for safer refactor, but not necessary for proper functioning
+        diff = set(groceries.keys()).difference(self.GROCERIES)
+        if bool(diff):
+            raise RuntimeError(f"The following invalid keys were found in the input groceries: {diff}")
 
         pixelGroupIDs = ingredients.pixelGroup.groupIDs
         groupIDs = [peakList.groupID for peakList in ingredients.groupedPeakLists]

@@ -19,7 +19,6 @@ from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as PixelRx
 from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe as GroupRx
 from snapred.backend.recipe.algorithm.CreateArtificialNormalizationAlgo import CreateArtificialNormalizationAlgo as FakeNormAlgo
-from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 
 # for running through service layer
 from snapred.backend.service.CalibrationService import CalibrationService
@@ -67,7 +66,7 @@ DIFCprev = pixelRes.calibrationTable
 outputWS = mtd.unique_name(prefix="output_")
 
 groupGroceries = groceries.copy()
-groupGroceries["previousCalTable"] = DIFCprev
+groupGroceries["previousCalibration"] = DIFCprev
 groupGroceries["calibrationTable"] = DIFCprev
 groupRes = GroupRx().cook(ingredients, groupGroceries)
 assert groupRes.result

@@ -423,7 +423,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
         )
 
-        response = self.request(path="calibration/calibrate", payload=payload.json())
+        response = self.request(path="calibration/diffractionWithIngredients", payload=payload.json())
 
         payload = CalibrationAssessmentRequest(
             run=RunConfig(runNumber=self.runNumber),

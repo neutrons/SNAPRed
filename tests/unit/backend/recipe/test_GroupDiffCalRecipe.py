@@ -1,6 +1,8 @@
 import unittest
 from collections.abc import Sequence
+from unittest import mock
 
+import pytest
 from mantid.api import MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace
 from mantid.simpleapi import CalculateDiffCalTable, mtd
@@ -290,3 +292,13 @@ class TestGroupDiffCalRecipe(unittest.TestCase):
         assert res.calibrationTable == groceries["calibrationTable"]
         deleteWorkspaceNoThrow(inputWSName)
         deleteWorkspaceNoThrow(maskWSName)
+
+    def test_validateInputs_bad_workspaces(self):
+        groceries = {
+            "inputWorkspace": self.fakeRawData,
+            "groupingWorkspace": self.fakeGroupingWorkspace,
+            "notInTheList": str(mock.sentinel.bad),
+        }
+
+        with pytest.raises(RuntimeError, match=r".*input groceries: \{'notInTheList'\}"):
+            Recipe().validateInputs(self.fakeIngredients, groceries)
