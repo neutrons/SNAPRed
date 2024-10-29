@@ -30,6 +30,7 @@ from snapred.backend.dao.request import (
     CreateIndexEntryRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
+    SimpleDiffCalRequest,
 )
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -65,7 +66,8 @@ with mock.patch.dict(
     from snapred.backend.dao.request.HasStateRequest import HasStateRequest
     from snapred.backend.dao.state import PixelGroup
     from snapred.backend.dao.state.FocusGroup import FocusGroup
-    from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
+    from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe
+    from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe, PixelDiffCalServing
     from snapred.backend.service.CalibrationService import CalibrationService
     from snapred.backend.service.SousChef import SousChef
     from snapred.meta.Config import Resource
@@ -232,9 +234,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         createCompatibleMask(cls.sampleMaskWS, cls.sampleWS)
 
         # cleanup at per-test teardown
-        cls.excludeAtTeardown = [cls.sampleWS, cls.sampleTableWS, cls.sampleMaskWS, cls.sampleDiagnosticWS, ws]
+        cls.excludeAtTeardown = [cls.sampleWS, cls.sampleTableWS, cls.sampleDiagnosticWS, ws]
 
     def setUp(self):
+        createCompatibleMask(self.sampleMaskWS, self.sampleWS)
         self.localDataService = LocalDataService()
         self.instance = CalibrationService()
         # it is necessary to coordinate these to all point to the same data service for redirect to work
@@ -703,23 +706,16 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         assert result == self.instance.groceryService.fetchGroceryDict.return_value
 
-    @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
-    @mock.patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
-    def test_diffractionCalibration(
-        self,
-        DiffractionCalibrationRecipe,
-        FarmFreshIngredients,
-    ):
-        FarmFreshIngredients.return_value = mock.Mock(runNumber="123")
+    @mock.patch(thisService + "SimpleDiffCalRequest", spec_set=SimpleDiffCalRequest)
+    def test_diffractionCalibration_calls_with_ingredients(self, SimpleDiffCalRequest):
+        # mock out external functionalties
+        SimpleDiffCalRequest.return_value = mock.sentinel.payload
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
-        self.instance.sousChef = SculleryBoy()
-
-        DiffractionCalibrationRecipe().executeRecipe.return_value = {"calibrationTable": "fake"}
-
-        self.instance.groceryClerk = mock.Mock()
-        self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"maskWorkspace": self.sampleMaskWS})
+        self.instance.prepDiffractionCalibrationIngredients = mock.Mock(return_value=mock.sentinel.ingredients)
+        self.instance.fetchDiffractionCalibrationGroceries = mock.Mock(return_value=mock.sentinel.groceries)
+        self.instance.diffractionCalibrationWithIngredients = mock.Mock(return_value=mock.sentinel.result)
 
         # Call the method with the provided parameters
         request = DiffractionCalibrationRequest(
@@ -733,17 +729,206 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         result = self.instance.diffractionCalibration(request)
 
         # Perform assertions to check the result and method calls
-        assert FarmFreshIngredients.call_count == 1
-        prepared_ingredients = self.instance.sousChef.prepDiffractionCalibrationIngredients(FarmFreshIngredients())
-        prepared_ingredients.removeBackground = request.removeBackground
-        DiffractionCalibrationRecipe().executeRecipe.assert_called_once_with(
-            prepared_ingredients,
-            self.instance.groceryService.fetchGroceryDict.return_value,
+        self.instance.prepDiffractionCalibrationIngredients.assert_called_once_with(request)
+        self.instance.fetchDiffractionCalibrationGroceries.assert_called_once_with(request)
+        SimpleDiffCalRequest.assert_called_once_with(
+            ingredients=mock.sentinel.ingredients,
+            groceries=mock.sentinel.groceries,
+            skipPixelCalibration=request.skipPixelCalibration,
         )
-        assert result == {"calibrationTable": "fake"}
+        self.instance.diffractionCalibrationWithIngredients.assert_called_once_with(mock.sentinel.payload)
+        assert result == mock.sentinel.result
         self.instance.dataExportService.getCalibrationStateRoot.assert_called_once_with(request.runNumber)
         self.instance.dataExportService.checkWritePermissions.assert_called_once_with(
             self.instance.dataExportService.getCalibrationStateRoot.return_value
+        )
+
+    def test_diffractionCalibrationWithIngredients_success(self):
+        mockPixelRxServing = mock.Mock(
+            result=True,
+            calibrationTable=mock.sentinel.oldCalTable,
+            medianOffsets=mock.sentinel.offsets,
+        )
+        mockGroupRxServing = mock.Mock(
+            result=True,
+            calibrationTable=mock.sentinel.newCalTable,
+            diagnosticWorkspace=mock.sentinel.diagnostic,
+            outputWorkspace=mock.sentinel.output,
+            maskWorkspace=mock.sentinel.mask,
+        )
+        self.instance.pixelCalibration = mock.Mock(return_value=mockPixelRxServing)
+        self.instance.groupCalibration = mock.Mock(return_value=mockGroupRxServing)
+
+        # Call the method with the provided parameters
+        request = SimpleDiffCalRequest.construct(
+            ingredients=mock.sentinel.ingredients,
+            groceries={},
+            skipPixelCalibration=False,
+        )
+        result = self.instance.diffractionCalibrationWithIngredients(request)
+
+        # Perform assertions to check the result and method calls
+        self.instance.pixelCalibration.assert_called_once_with(request)
+        self.instance.groupCalibration.assert_called_once_with(request)
+        assert result == {
+            "calibrationTable": mock.sentinel.newCalTable,
+            "diagnosticWorkspace": mock.sentinel.diagnostic,
+            "outputWorkspace": mock.sentinel.output,
+            "maskWorkspace": mock.sentinel.mask,
+            "steps": mock.sentinel.offsets,
+            "result": True,
+        }
+
+    def test_diffractionCalibrationWithIngredients_pixel_fail(self):
+        mockPixelRxServing = mock.Mock(
+            result=False,
+            calibrationTable=mock.sentinel.oldCalTable,
+            medianOffsets=mock.sentinel.offsets,
+        )
+        self.instance.pixelCalibration = mock.Mock(return_value=mockPixelRxServing)
+
+        # Call the method with the provided parameters
+        request = SimpleDiffCalRequest.construct()
+        with pytest.raises(RuntimeError) as e:
+            self.instance.diffractionCalibrationWithIngredients(request)
+        assert str(e.value) == "Pixel Calibration failed"
+
+    @mock.patch(thisService + "PixelDiffCalRecipe")
+    def test_diffractionCalibrationWithIngredients_pixel_skip(self, PixelRx):
+        mockGroupRxServing = mock.Mock(
+            result=True,
+            calibrationTable=mock.sentinel.newCal,
+            diagnosticWorkspace=mock.sentinel.diagnostic,
+            outputWorkspace=mock.sentinel.out,
+            maskWorkspace=mock.sentinel.mask,
+        )
+        self.instance.groupCalibration = mock.Mock(return_value=mockGroupRxServing)
+        # Call the method with the provided parameters
+        request = SimpleDiffCalRequest.construct(
+            ingredients=mock.sentinel.ingredients,
+            groceries={"maskWorkspace": str(mock.sentinel.mask), "calibrationTable": str(mock.sentinel.cal)},
+            skipPixelCalibration=True,
+        )
+        res = self.instance.diffractionCalibrationWithIngredients(request)
+        assert res == {
+            "calibrationTable": mock.sentinel.newCal,
+            "diagnosticWorkspace": mock.sentinel.diagnostic,
+            "outputWorkspace": mock.sentinel.out,
+            "maskWorkspace": mock.sentinel.mask,
+            "steps": [],
+            "result": True,
+        }
+        PixelRx.assert_not_called()
+        self.instance.groupCalibration.assert_called_once_with(request)
+
+    def test_diffractionCalibrationWithIngredients_group_fail(self):
+        mockPixelRxServing = mock.Mock(
+            result=True,
+            calibrationTable=mock.sentinel.oldCalTable,
+            medianOffsets=mock.sentinel.offsets,
+        )
+        mockGroupRxServing = mock.Mock(
+            result=False,
+            calibrationTable=mock.sentinel.newCalTable,
+            diagnosticWorkspace=mock.sentinel.diagnostic,
+            outputWorkspace=mock.sentinel.output,
+            maskWorkspace=mock.sentinel.mask,
+        )
+        self.instance.pixelCalibration = mock.Mock(return_value=mockPixelRxServing)
+        self.instance.groupCalibration = mock.Mock(return_value=mockGroupRxServing)
+
+        # Call the method with the provided parameters
+        request = SimpleDiffCalRequest.construct(groceries={"previousCalibration": ""})
+        with pytest.raises(RuntimeError) as e:
+            self.instance.diffractionCalibrationWithIngredients(request)
+        assert str(e.value) == "Group Calibration failed"
+
+    def test_pixelCalibration_skip(self):
+        # Call the method with the provided parameters
+        request = SimpleDiffCalRequest.construct(
+            ingredients=mock.sentinel.ingredients,
+            groceries={"maskWorkspace": str(mock.sentinel.mask), "calibrationTable": str(mock.sentinel.cal)},
+            skipPixelCalibration=True,
+        )
+        result = self.instance.pixelCalibration(request)
+
+        # Perform assertions to check the result and method calls
+        assert result.result
+        assert result.medianOffsets == []
+        assert result.maskWorkspace == str(mock.sentinel.mask)
+        assert result.calibrationTable == str(mock.sentinel.cal)
+
+    @mock.patch(thisService + "PixelDiffCalRecipe", spec_set=PixelDiffCalRecipe)
+    def test_pixelCalibration_noskip_success(
+        self,
+        PixelRx,
+    ):
+        mock.sentinel.result = PixelDiffCalServing.construct(
+            maskWorkspace=self.sampleMaskWS,
+        )
+        PixelRx().cook.return_value = mock.sentinel.result
+
+        # Call the method with the provided parameters
+        request = SimpleDiffCalRequest.construct(
+            ingredients=mock.sentinel.ingredients,
+            groceries=mock.sentinel.groceries,
+            skipPixelCalibration=False,
+        )
+        result = self.instance.pixelCalibration(request)
+
+        # Perform assertions to check the result and method calls
+        assert result == mock.sentinel.result
+        PixelRx().cook.assert_called_once_with(
+            mock.sentinel.ingredients,
+            mock.sentinel.groceries,
+        )
+
+    @mock.patch(thisService + "PixelDiffCalRecipe", spec_set=PixelDiffCalRecipe)
+    def test_pixelCalibration_with_bad_masking(
+        self,
+        PixelRx,
+    ):
+        # muck up the mask workspace
+        maskWS = mtd[self.sampleMaskWS]
+        numHistograms = maskWS.getNumberHistograms()
+        for pixel in range(numHistograms):
+            maskWS.setY(pixel, [1.0])
+
+        # mock out the return
+        mock.sentinel.result = PixelDiffCalServing.construct(
+            maskWorkspace=self.sampleMaskWS,
+        )
+        PixelRx().cook.return_value = mock.sentinel.result
+
+        # Call the method with the provided parameters
+        request = SimpleDiffCalRequest.construct(
+            ingredients=mock.sentinel.ingredients,
+            groceries=mock.sentinel.groceries,
+            skipPixelCalibration=False,
+        )
+        with pytest.raises(Exception, match=r".*pixels failed calibration*"):
+            self.instance.pixelCalibration(request)
+
+    @mock.patch(thisService + "GroupDiffCalRecipe", spec_set=GroupDiffCalRecipe)
+    def test_groupCalibration(
+        self,
+        GroupRx,
+    ):
+        # mock out the return
+        GroupRx().cook.return_value = mock.sentinel.result
+
+        # Call the method with the provided parameters
+        request = SimpleDiffCalRequest.construct(
+            ingredients=mock.sentinel.ingredients,
+            groceries=mock.sentinel.groceries,
+            skipPixelCalibration=False,
+        )
+        result = self.instance.groupCalibration(request)
+
+        assert result == mock.sentinel.result
+        GroupRx().cook.assert_called_once_with(
+            mock.sentinel.ingredients,
+            mock.sentinel.groceries,
         )
 
     def test_validateRequest(self):
@@ -803,10 +988,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.instance.validateWritePermissions(permissionsRequest)
 
     @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
-    @mock.patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
+    @mock.patch(thisService + "GroupDiffCalRecipe", spec_set=GroupDiffCalRecipe)
+    @mock.patch(thisService + "PixelDiffCalRecipe", spec_set=PixelDiffCalRecipe)
     def test_diffractionCalibration_with_bad_masking(
         self,
-        DiffractionCalibrationRecipe,
+        PixelRx,
+        GroupRx,
         FarmFreshIngredients,
     ):
         FarmFreshIngredients.return_value = mock.Mock(runNumber="123")
@@ -815,15 +1002,17 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
         self.instance.sousChef = SculleryBoy()
 
-        DiffractionCalibrationRecipe().executeRecipe.return_value = {"calibrationTable": "fake"}
+        PixelRx().cook.return_value = mock.Mock(result=True, calibrationTable="fake")
+        GroupRx().cook.return_value = mock.Mock(result=True)
 
-        numHistograms = mtd[self.sampleMaskWS].getNumberHistograms()
+        maskWS = mtd[self.sampleMaskWS]
+        numHistograms = maskWS.getNumberHistograms()
         for pixel in range(numHistograms):
-            mtd[self.sampleMaskWS].setY(pixel, [1.0])
+            maskWS.setY(pixel, [1.0])
         self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"maskWorkspace": self.sampleMaskWS})
+        self.instance.groceryService.getWorkspaceForName = mock.Mock(return_value=mtd[self.sampleMaskWS])
 
-        # Call the method with the provided parameters
         # Call the method with the provided parameters
         request = DiffractionCalibrationRequest(
             runNumber="123",
@@ -836,6 +1025,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         with pytest.raises(Exception, match=r".*pixels failed calibration*"):
             self.instance.diffractionCalibration(request)
+        GroupRx().cook.assert_not_called()
 
     @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     @mock.patch(thisService + "FocusSpectraRecipe")

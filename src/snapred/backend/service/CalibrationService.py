@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import pydantic
-from mantid.api import mtd
 
 from snapred.backend.dao import Limit, RunConfig
 from snapred.backend.dao.calibration import (
@@ -35,13 +34,14 @@ from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
 from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
     FitMultiplePeaksRecipe,
     FocusSpectraRecipe,
 )
+from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe, GroupDiffCalServing
+from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe, PixelDiffCalServing
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
@@ -92,7 +92,7 @@ class CalibrationService(Service):
         self.registerPath("loadQualityAssessment", self.loadQualityAssessment)
         self.registerPath("index", self.getCalibrationIndex)
         self.registerPath("diffraction", self.diffractionCalibration)
-        self.registerPath("calibrate", self.calibrate)
+        self.registerPath("diffractionWithIngredients", self.diffractionCalibrationWithIngredients)
         self.registerPath("validateWritePermissions", self.validateWritePermissions)
         return
 
@@ -149,25 +149,52 @@ class CalibrationService(Service):
         )
 
     @FromString
-    def diffractionCalibration(self, request: DiffractionCalibrationRequest):
+    def diffractionCalibration(self, request: DiffractionCalibrationRequest) -> Dict[str, Any]:
         self.validateRequest(request)
         payload = SimpleDiffCalRequest(
             ingredients=self.prepDiffractionCalibrationIngredients(request),
             groceries=self.fetchDiffractionCalibrationGroceries(request),
             skipPixelCalibration=request.skipPixelCalibration,
         )
-        return self.calibrate(payload.json())
+        return self.diffractionCalibrationWithIngredients(payload)
 
     @FromString
-    def calibrate(self, request: SimpleDiffCalRequest):
-        # now have all ingredients and groceries, run recipe
-        res = DiffractionCalibrationRecipe().executeRecipe(request.ingredients, request.groceries)
+    def diffractionCalibrationWithIngredients(self, request: SimpleDiffCalRequest) -> Dict[str, Any]:
+        pixelRes = self.pixelCalibration(request)
+        if not pixelRes.result:
+            raise RuntimeError("Pixel Calibration failed")
 
-        if request.skipPixelCalibration is False:
-            maskWS = request.groceries.get("maskWorkspace", "")
-            percentMasked = mtd[maskWS].getNumberMasked() / mtd[maskWS].getNumberHistograms()
+        request.groceries["previousCalibration"] = pixelRes.calibrationTable
+        groupRes = self.groupCalibration(request)
+        if not groupRes.result:
+            raise RuntimeError("Group Calibration failed")
+
+        return {
+            "calibrationTable": groupRes.calibrationTable,
+            "diagnosticWorkspace": groupRes.diagnosticWorkspace,
+            "outputWorkspace": groupRes.outputWorkspace,
+            "maskWorkspace": groupRes.maskWorkspace,
+            "steps": pixelRes.medianOffsets,
+            "result": True,
+        }
+
+    @FromString
+    def pixelCalibration(self, request: SimpleDiffCalRequest) -> PixelDiffCalServing:
+        # cook recipe
+        if request.skipPixelCalibration:
+            res = PixelDiffCalServing(
+                result=True,
+                medianOffsets=[],
+                maskWorkspace=request.groceries.get("maskWorkspace", ""),
+                calibrationTable=request.groceries["calibrationTable"],
+            )
+        else:
+            res = PixelDiffCalRecipe().cook(request.ingredients, request.groceries)
+            maskWS = self.groceryService.getWorkspaceForName(res.maskWorkspace)
+            percentMasked = maskWS.getNumberMasked() / maskWS.getNumberHistograms()
             threshold = Config["constants.maskedPixelThreshold"]
             if percentMasked > threshold:
+                res.result = False
                 raise Exception(
                     (
                         f"WARNING: More than {threshold*100}% of pixels failed calibration. Please check your input "
@@ -176,8 +203,12 @@ class CalibrationService(Service):
                         "already activated."
                     ),
                 )
-
         return res
+
+    @FromString
+    def groupCalibration(self, request: SimpleDiffCalRequest) -> GroupDiffCalServing:
+        # cook recipe
+        return GroupDiffCalRecipe().cook(request.ingredients, request.groceries)
 
     def validateRequest(self, request: DiffractionCalibrationRequest):
         """

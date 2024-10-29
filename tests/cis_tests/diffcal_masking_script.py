@@ -16,7 +16,6 @@ SNAPRed_module_root = Path(snapred.__file__).parent.parent
 
 from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as PixelRx
 from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe as GroupRx
-from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
@@ -171,7 +170,7 @@ pause("End of PIXEL CALIBRATION section")
 DIFCprev = pixelRes.calibrationTable
 
 groupGroceries = groceries.copy()
-groupGroceries["previousCalTable"] = DIFCprev
+groupGroceries["previousCalibration"] = DIFCprev
 groupGroceries["calibrationTable"] = DIFCprev
 groupRes = GroupRx().cook(ingredients, groupGroceries)
 assert groupRes.result
@@ -238,9 +237,10 @@ createCompatibleMask(maskWSName, inputWSName)
 # setGroupSpectraToZero(inputWS, groupingWS, groupsToFail)
 # ---
 
-rx = Recipe()
 groceries['maskWorkspace'] = maskWSName
-rx.executeRecipe(ingredients, groceries)
+
+PixelRx().cook(ingredients, groceries)
+GroupRx().cook(ingredients, groceries)
 
 ### PAUSE
 """
