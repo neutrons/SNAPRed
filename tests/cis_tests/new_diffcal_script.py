@@ -17,7 +17,6 @@ from snapred.backend.data.GroceryService import GroceryService
 ## the code to test
 from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as PixelDiffCalRx
 from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe as GroupDiffCalRx
-from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 
 # for running through service layer
 from snapred.backend.service.CalibrationService import CalibrationService
@@ -71,7 +70,7 @@ pixelRes = PixelDiffCalRx().cook(ingredients, groceries)
 DIFCprev = pixelRes.calibrationTable
 
 groupGroceries = groceries.copy()
-groupGroceries["previousCalTable"] = DIFCprev
+groupGroceries["previousCalibration"] = DIFCprev
 groupGroceries["calibrationTable"] = DIFCprev
 groupRes = GroupDiffCalRx().cook(ingredients, groceries)
 
@@ -81,31 +80,6 @@ Stop here and examine the fits.
 Make sure the diffraction focused TOF workspace looks as expected.
 Make sure the offsets workspace has converged, the DIFCpd only fit pixels inside the group,
 and that the fits match with the TOF diffraction focused workspace.
-"""
-assert False
-
-
-### RUN RECIPE
-
-clerk = GroceryListItem.builder()
-clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
-clerk.name("groupingWorkspace").fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
-
-groceries = GroceryService().fetchGroceryDict(
-    groceryDict=clerk.buildDict(),
-    outputWorkspace="_out_",
-    diagnosticWorkspace="_diag",
-    maskWorkspace="_mask_",
-    calibrationTable="_DIFC_",
-)
-
-rx = Recipe()
-rx.executeRecipe(ingredients, groceries)
-
-
-### PAUSE
-"""
-Stop here and make sure everything still looks good.
 """
 assert False
 

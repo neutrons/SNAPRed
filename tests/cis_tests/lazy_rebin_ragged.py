@@ -153,7 +153,7 @@ groceries = {
     "inputWorkspace": inputWStof,
     "groupingWorkspace": groupingWS,
     "calibrationTable": "_final_DIFc_table",
-    "previousCalTable": DIFCpixel,
+    "previousCalibration": DIFCpixel,
     "outputWorkspace": f"_test_out_{fakeRunNumber}_tof",
 }
 res = GroupRx.cook(fakeIngredients, groceries)

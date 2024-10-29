@@ -28,7 +28,7 @@ snapred.backend.recipe.PixelDiffCalRecipe module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.GroupDiffCalRecipe module
+snapred.backend.recipe.GroupDiffCalRecipe module
 ---------------------------------------------------------------------
 
 .. automodule:: snapred.backend.recipe.GroupDiffCalRecipe
@@ -36,13 +36,6 @@ snapred.backend.recipe.algorithm.GroupDiffCalRecipe module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.DiffractionCalibrationRecipe module
-----------------------------------------------------------
-
-.. automodule:: snapred.backend.recipe.DiffractionCalibrationRecipe
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 snapred.backend.recipe.FetchGroceriesRecipe module
 --------------------------------------------------
