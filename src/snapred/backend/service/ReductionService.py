@@ -97,7 +97,6 @@ class ReductionService(Service):
         :type request: ReductionRequest
         """
         continueFlags = ContinueWarning.Type.UNSET
-        useArtificialNorm = False
         message = ""
 
         # Check if a normalization is present
@@ -116,7 +115,6 @@ class ReductionService(Service):
         elif calibrationExists and not normalizationExists:
             # Case: Calibration exists but normalization is missing
             continueFlags |= ContinueWarning.Type.MISSING_NORMALIZATION
-            useArtificialNorm = True
             message = (
                 "Warning: Reduction is missing normalization data. "
                 "Artificial normalization will be created in place of actual normalization. "
@@ -159,8 +157,6 @@ class ReductionService(Service):
                 "<p>Would you like to continue anyway?</p>",
                 continueFlags,
             )
-
-        return useArtificialNorm
 
     @FromString
     def reduction(self, request: ReductionRequest):

@@ -14,7 +14,6 @@ from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.ui.view.reduction.ArtificialNormalizationView import ArtificialNormalizationView
 from snapred.ui.view.reduction.ReductionRequestView import ReductionRequestView
-from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
@@ -36,7 +35,6 @@ class ReductionWorkflow(WorkflowImplementer):
         self._reductionRequestView.pixelMaskDropdown.dropDown.view().pressed.connect(self._onPixelMaskSelection)
 
         self._artificialNormalizationView = ArtificialNormalizationView(parent=parent)
-        self._reductionSaveView = ReductionSaveView(parent=parent)
 
         self.workflow = (
             WorkflowBuilder(
@@ -175,7 +173,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
             # Validate reduction; if artificial normalization is needed, handle it
             response = self.request(path="reduction/validateReduction", payload=request_)
-            if response.data:
+            if ContinueWarning.Type.MISSING_NORMALIZATION in self.continueAnywayFlags:
                 self._artificialNormalizationView.updateRunNumber(runNumber)
                 response = self.request(path="reduction/grabDiffractionWorkspaceforArtificialNorm", payload=request_)
                 self._artificialNormalization(workflowPresenter, response.data, runNumber)
