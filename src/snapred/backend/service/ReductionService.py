@@ -127,9 +127,7 @@ class ReductionService(Service):
             )
             message = (
                 "Warning: Reduction is missing both normalization and calibration data. "
-                "If you continue, default instrument geometry will be used and data will not be normalized."
-                "Artificial normalization cannot currently be made for uncalibrated data as we are missing peak positions."  # noqa: E501
-                "We are working on a solution to this problem."
+                "If you continue, default instrument geometry will be used and data will be artificially normalized. "
             )
 
         # Remove any continue flags that are present in the request by XOR-ing with the flags
@@ -477,13 +475,26 @@ class ReductionService(Service):
         return artificialNormWorkspace
 
     def grabDiffractionWorkspaceforArtificialNorm(self, request: ReductionRequest):
-        calVersion = None
-        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
-        calRecord = self.dataFactoryService.getCalibrationRecord(request.runNumber, request.useLiteMode, calVersion)
-        filePath = self.dataFactoryService.getCalibrationDataPath(request.runNumber, request.useLiteMode, calVersion)
-        diffCalOutput = calRecord.workspaces[wngt.DIFFCAL_OUTPUT][0]
-        diffcalOutputFilePath = str(filePath) + "/" + str(diffCalOutput) + ".nxs.h5"
+        try:
+            calVersion = None
+            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
+                request.runNumber, request.useLiteMode
+            )
+            calRecord = self.dataFactoryService.getCalibrationRecord(request.runNumber, request.useLiteMode, calVersion)
+            filePath = self.dataFactoryService.getCalibrationDataPath(
+                request.runNumber, request.useLiteMode, calVersion
+            )
+            diffCalOutput = calRecord.workspaces[wngt.DIFFCAL_OUTPUT][0]
+            diffcalOutputFilePath = str(filePath) + "/" + str(diffCalOutput) + ".nxs.h5"
 
-        groceries = self.groceryService.fetchWorkspace(diffcalOutputFilePath, "diffractionWorkspace")
-        diffractionWorkspace = groceries.get("workspace")
+            groceries = self.groceryService.fetchWorkspace(diffcalOutputFilePath, "diffractionWorkspace")
+            diffractionWorkspace = groceries.get("workspace")
+        except:  # noqa: E722
+            raise RuntimeError(
+                "This feature is not yet implemented. "
+                "Artificial normalization cannot currently be made for uncalibrated data as we are missing peak positions. "  # noqa: E501
+                "We are working on a solution to this problem.\n\n "
+                f"No calibration record found for run number: {request.runNumber}.\n"
+                "Please create calibration data for this run number and try again."
+            )
         return diffractionWorkspace
