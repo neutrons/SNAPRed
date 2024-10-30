@@ -23,6 +23,7 @@ class ReductionRequest(BaseModel):
     versions: Versions = Versions(None, None)
 
     pixelMasks: List[WorkspaceName] = []
+    artificialNormalization: Optional[str] = None
 
     # TODO: Move to SNAPRequest
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET

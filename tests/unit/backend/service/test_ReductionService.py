@@ -14,6 +14,7 @@ from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
+    CreateArtificialNormalizationRequest,
     ReductionExportRequest,
     ReductionRequest,
 )
@@ -300,17 +301,16 @@ class TestReductionService(unittest.TestCase):
         fakeDataService.calibrationExists.return_value = False
         fakeDataService.normalizationExists.return_value = False
         self.instance.dataFactoryService = fakeDataService
+
         fakeExportService = mock.Mock()
         fakeExportService.checkWritePermissions.return_value = False
         self.instance.dataExportService = fakeExportService
+
         with pytest.raises(ContinueWarning) as excInfo:
             self.instance.validateReduction(self.request)
 
-        # Note: this tests the _first_ continue-anyway check,
-        #   which _only_ deals with the calibrations.
-        assert (
-            excInfo.value.model.flags
-            == ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
+        assert excInfo.value.model.flags == (
+            ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
         )
 
     def test_validateReduction_no_permissions_and_no_calibrations_first_reentry(self):
@@ -328,8 +328,6 @@ class TestReductionService(unittest.TestCase):
         with pytest.raises(ContinueWarning) as excInfo:
             self.instance.validateReduction(self.request)
 
-        # Note: this tests re-entry for the _first_ continue-anyway check,
-        #   but with no re-entry for the second continue-anyway check.
         assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
 
     def test_validateReduction_no_permissions_and_no_calibrations_second_reentry(self):
@@ -349,6 +347,67 @@ class TestReductionService(unittest.TestCase):
         # Note: this tests re-entry for the _first_ continue-anyway check,
         #   and in addition, re-entry for the second continue-anyway check.
         self.instance.validateReduction(self.request)
+
+    @mock.patch(thisService + "ArtificialNormalizationRecipe")
+    def test_artificialNormalization(self, mockArtificialNormalizationRecipe):
+        mockArtificialNormalizationRecipe.return_value = mock.Mock()
+        mockResult = mock.Mock()
+        mockArtificialNormalizationRecipe.return_value.executeRecipe.return_value = mockResult
+
+        request = CreateArtificialNormalizationRequest(
+            runNumber="123",
+            useLiteMode=False,
+            peakWindowClippingSize=5,
+            smoothingParameter=0.1,
+            decreaseParameter=True,
+            lss=True,
+            diffractionWorkspace="mock_diffraction_workspace",
+            outputWorkspace="mock_output_workspace",
+        )
+
+        result = self.instance.artificialNormalization(request)
+
+        mockArtificialNormalizationRecipe.return_value.executeRecipe.assert_called_once_with(
+            InputWorkspace=request.diffractionWorkspace,
+            Ingredients=mock.ANY,
+            OutputWorkspace=request.outputWorkspace,
+        )
+        assert result == mockResult
+
+    @mock.patch(thisService + "GroceryService")
+    @mock.patch(thisService + "DataFactoryService")
+    def test_grabDiffractionWorkspaceforArtificialNorm(self, mockDataFactoryService, mockGroceryService):
+        self.instance.groceryService = mockGroceryService
+        self.instance.dataFactoryService = mockDataFactoryService
+
+        request = ReductionRequest(
+            runNumber="123",
+            useLiteMode=False,
+            timestamp=self.instance.getUniqueTimestamp(),
+            versions=(1, 2),
+            pixelMasks=[],
+            focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
+        )
+
+        mockCalVersion = 1
+        mockDataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=mockCalVersion)
+
+        mockCalRecord = mock.Mock()
+        mockCalRecord.workspaces = {"diffCalOutput": ["mock_diffraction_workspace"]}
+
+        mockDataFactoryService.getCalibrationRecord = mock.Mock(return_value=mockCalRecord)
+
+        mockDataFactoryService.getCalibrationDataPath = mock.Mock(return_value="mock/path/to/calibration")
+
+        mockGroceryService.fetchWorkspace = mock.Mock(return_value={"workspace": "mock_diffraction_workspace"})
+
+        result = self.instance.grabDiffractionWorkspaceforArtificialNorm(request)
+
+        expected_file_path = "mock/path/to/calibration/mock_diffraction_workspace.nxs.h5"
+        mockGroceryService.fetchWorkspace.assert_called_once_with(expected_file_path, "diffractionWorkspace")
+
+        # Verify the result
+        assert result == "mock_diffraction_workspace"
 
 
 class TestReductionServiceMasks:

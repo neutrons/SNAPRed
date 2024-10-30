@@ -3,9 +3,14 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Dict, List
 
-from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
+from snapred.backend.dao.ingredients import (
+    ArtificialNormalizationIngredients,
+    GroceryListItem,
+    ReductionIngredients,
+)
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
+    CreateArtificialNormalizationRequest,
     FarmFreshIngredients,
     ReductionExportRequest,
     ReductionRequest,
@@ -20,6 +25,7 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
@@ -72,6 +78,9 @@ class ReductionService(Service):
         self.registerPath("checkWritePermissions", self.checkWritePermissions)
         self.registerPath("getSavePath", self.getSavePath)
         self.registerPath("getStateIds", self.getStateIds)
+        self.registerPath("validateReduction", self.validateReduction)
+        self.registerPath("artificialNormalization", self.artificialNormalization)
+        self.registerPath("grabDiffractionWorkspaceforArtificialNorm", self.grabDiffractionWorkspaceforArtificialNorm)
         return
 
     @staticmethod
@@ -80,45 +89,72 @@ class ReductionService(Service):
 
     def validateReduction(self, request: ReductionRequest):
         """
-        Validate the reduction request.
+        Validate the reduction request, providing specific messages if normalization
+        or calibration data is missing. Notify the user if artificial normalization
+        will be created when normalization is absent.
 
         :param request: a reduction request
         :type request: ReductionRequest
         """
         continueFlags = ContinueWarning.Type.UNSET
-        # check if a normalization is present
-        if not self.dataFactoryService.normalizationExists(request.runNumber, request.useLiteMode):
-            continueFlags |= ContinueWarning.Type.MISSING_NORMALIZATION
-        # check if a diffraction calibration is present
-        if not self.dataFactoryService.calibrationExists(request.runNumber, request.useLiteMode):
+        message = ""
+
+        # Check if a normalization is present
+        normalizationExists = self.dataFactoryService.normalizationExists(request.runNumber, request.useLiteMode)
+        # Check if a diffraction calibration is present
+        calibrationExists = self.dataFactoryService.calibrationExists(request.runNumber, request.useLiteMode)
+
+        # Determine the action based on missing components
+        if not calibrationExists and normalizationExists:
+            # Case: No calibration but normalization exists
             continueFlags |= ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
-
-        # remove any continue flags that are present in the request by xor-ing with the flags
-        if request.continueFlags:
-            continueFlags = continueFlags ^ (request.continueFlags & continueFlags)
-
-        if continueFlags:
-            raise ContinueWarning(
-                "Reduction is missing calibration data, continue in uncalibrated mode?", continueFlags
+            message = (
+                "Warning: diffraction calibration is missing."
+                "If you continue, default instrument geometry will be used."
+            )
+        elif calibrationExists and not normalizationExists:
+            # Case: Calibration exists but normalization is missing
+            continueFlags |= ContinueWarning.Type.MISSING_NORMALIZATION
+            message = (
+                "Warning: Reduction is missing normalization data. "
+                "Artificial normalization will be created in place of actual normalization. "
+                "Would you like to continue?"
+            )
+        elif not calibrationExists and not normalizationExists:
+            # Case: No calibration and no normalization
+            continueFlags |= (
+                ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
+            )
+            message = (
+                "Warning: Reduction is missing both normalization and calibration data. "
+                "If you continue, default instrument geometry will be used and data will be artificially normalized. "
             )
 
-        # ... ensure separate continue warnings ...
+        # Remove any continue flags that are present in the request by XOR-ing with the flags
+        if request.continueFlags:
+            continueFlags ^= request.continueFlags & continueFlags
+
+        # If there are any continue flags set, raise a ContinueWarning with the appropriate message
+        if continueFlags and message:
+            raise ContinueWarning(message, continueFlags)
+
+        # Ensure separate continue warnings for permission check
         continueFlags = ContinueWarning.Type.UNSET
 
-        # check that the user has write permissions to the save directory
+        # Check that the user has write permissions to the save directory
         if not self.checkWritePermissions(request.runNumber):
             continueFlags |= ContinueWarning.Type.NO_WRITE_PERMISSIONS
 
-        # remove any continue flags that are present in the request by xor-ing with the flags
+        # Remove any continue flags that are present in the request by XOR-ing with the flags
         if request.continueFlags:
-            continueFlags = continueFlags ^ (request.continueFlags & continueFlags)
+            continueFlags ^= request.continueFlags & continueFlags
 
         if continueFlags:
             raise ContinueWarning(
                 f"<p>It looks like you don't have permissions to write to "
                 f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
-                + "but you can still save using the workbench tools.</p>"
-                + "<p>Would you like to continue anyway?</p>",
+                "but you can still save using the workbench tools.</p>"
+                "<p>Would you like to continue anyway?</p>",
                 continueFlags,
             )
 
@@ -130,7 +166,6 @@ class ReductionService(Service):
         :param request: a ReductionRequest object holding needed information
         :type request: ReductionRequest
         """
-        self.validateReduction(request)
 
         groupingResults = self.fetchReductionGroupings(request)
         request.focusGroups = groupingResults["focusGroups"]
@@ -424,3 +459,42 @@ class ReductionService(Service):
     def getCompatibleMasks(self, request: ReductionRequest) -> List[WorkspaceName]:
         runNumber, useLiteMode = request.runNumber, request.useLiteMode
         return self.dataFactoryService.getCompatibleReductionMasks(runNumber, useLiteMode)
+
+    def artificialNormalization(self, request: CreateArtificialNormalizationRequest):
+        ingredients = ArtificialNormalizationIngredients(
+            peakWindowClippingSize=request.peakWindowClippingSize,
+            smoothingParameter=request.smoothingParameter,
+            decreaseParameter=request.decreaseParameter,
+            lss=request.lss,
+        )
+        artificialNormWorkspace = ArtificialNormalizationRecipe().executeRecipe(
+            InputWorkspace=request.diffractionWorkspace,
+            Ingredients=ingredients,
+            OutputWorkspace=request.outputWorkspace,
+        )
+        return artificialNormWorkspace
+
+    def grabDiffractionWorkspaceforArtificialNorm(self, request: ReductionRequest):
+        try:
+            calVersion = None
+            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
+                request.runNumber, request.useLiteMode
+            )
+            calRecord = self.dataFactoryService.getCalibrationRecord(request.runNumber, request.useLiteMode, calVersion)
+            filePath = self.dataFactoryService.getCalibrationDataPath(
+                request.runNumber, request.useLiteMode, calVersion
+            )
+            diffCalOutput = calRecord.workspaces[wngt.DIFFCAL_OUTPUT][0]
+            diffcalOutputFilePath = str(filePath) + "/" + str(diffCalOutput) + ".nxs.h5"
+
+            groceries = self.groceryService.fetchWorkspace(diffcalOutputFilePath, "diffractionWorkspace")
+            diffractionWorkspace = groceries.get("workspace")
+        except:  # noqa: E722
+            raise RuntimeError(
+                "This feature is not yet implemented. "
+                "Artificial normalization cannot currently be made for uncalibrated data as we are missing peak positions. "  # noqa: E501
+                "We are working on a solution to this problem.\n\n "
+                f"No calibration record found for run number: {request.runNumber}.\n"
+                "Please create calibration data for this run number and try again."
+            )
+        return diffractionWorkspace
