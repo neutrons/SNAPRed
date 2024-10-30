@@ -375,8 +375,10 @@ class TestReductionService(unittest.TestCase):
         assert result == mockResult
 
     @mock.patch(thisService + "GroceryService")
-    def test_grabDiffractionWorkspaceforArtificialNorm(self, mockGroceryService):
+    @mock.patch(thisService + "DataFactoryService")
+    def test_grabDiffractionWorkspaceforArtificialNorm(self, mockDataFactoryService, mockGroceryService):
         self.instance.groceryService = mockGroceryService
+        self.instance.dataFactoryService = mockDataFactoryService
 
         request = ReductionRequest(
             runNumber="123",
@@ -388,16 +390,23 @@ class TestReductionService(unittest.TestCase):
         )
 
         mockCalVersion = 1
-        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=mockCalVersion)
+        mockDataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=mockCalVersion)
 
-        groceryList = {
-            "diffractionWorkspace": "mock_diffraction_workspace",
-        }
-        mockGroceryService.fetchGroceryDict.return_value = groceryList
+        mockCalRecord = mock.Mock()
+        mockCalRecord.workspaces = {"diffCalOutput": ["mock_diffraction_workspace"]}
+
+        mockDataFactoryService.getCalibrationRecord = mock.Mock(return_value=mockCalRecord)
+
+        mockDataFactoryService.getCalibrationDataPath = mock.Mock(return_value="mock/path/to/calibration")
+
+        mockGroceryService.fetchWorkspace = mock.Mock(return_value={"workspace": "mock_diffraction_workspace"})
 
         result = self.instance.grabDiffractionWorkspaceforArtificialNorm(request)
 
-        mockGroceryService.fetchGroceryDict.assert_called_once()
+        expected_file_path = "mock/path/to/calibration/mock_diffraction_workspace.nxs.h5"
+        mockGroceryService.fetchWorkspace.assert_called_once_with(expected_file_path, "diffractionWorkspace")
+
+        # Verify the result
         assert result == "mock_diffraction_workspace"
 
 

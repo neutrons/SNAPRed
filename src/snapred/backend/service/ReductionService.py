@@ -128,6 +128,8 @@ class ReductionService(Service):
             message = (
                 "Warning: Reduction is missing both normalization and calibration data. "
                 "If you continue, default instrument geometry will be used and data will not be normalized."
+                "Artificial normalization cannot currently be made for uncalibrated data as we are missing peak positions."  # noqa: E501
+                "We are working on a solution to this problem."
             )
 
         # Remove any continue flags that are present in the request by XOR-ing with the flags
@@ -477,15 +479,11 @@ class ReductionService(Service):
     def grabDiffractionWorkspaceforArtificialNorm(self, request: ReductionRequest):
         calVersion = None
         calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
-        groceryList = (
-            self.groceryClerk.name("diffractionWorkspace")
-            .diffcal_output(request.runNumber, calVersion)
-            .useLiteMode(request.useLiteMode)
-            .unit(wng.Units.DSP)
-            .group("column")
-            .buildDict()
-        )
+        calRecord = self.dataFactoryService.getCalibrationRecord(request.runNumber, request.useLiteMode, calVersion)
+        filePath = self.dataFactoryService.getCalibrationDataPath(request.runNumber, request.useLiteMode, calVersion)
+        diffCalOutput = calRecord.workspaces[wngt.DIFFCAL_OUTPUT][0]
+        diffcalOutputFilePath = str(filePath) + "/" + str(diffCalOutput) + ".nxs.h5"
 
-        groceries = self.groceryService.fetchGroceryDict(groceryList)
-        diffractionWorkspace = groceries.get("diffractionWorkspace")
+        groceries = self.groceryService.fetchWorkspace(diffcalOutputFilePath, "diffractionWorkspace")
+        diffractionWorkspace = groceries.get("workspace")
         return diffractionWorkspace
