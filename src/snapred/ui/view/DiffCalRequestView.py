@@ -35,8 +35,6 @@ class DiffCalRequestView(BackendRequestView):
 
         # checkbox for removing background
         self.removeBackgroundToggle = self._labeledField("RemoveBackground", Toggle(parent=self, state=False))
-        # self.removeBackgroundCheckBox = self._labeledCheckBox("Remove Background?")
-        # self.removeBackgroundCheckBox.setChecked(False)
 
         # set field properties
         self.litemodeToggle.setEnabled(True)
