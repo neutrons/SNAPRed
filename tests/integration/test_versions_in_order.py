@@ -368,7 +368,7 @@ class TestVersioning(TestCase):
             "focusGroup": groupingMap["Natural"].model_dump(),
             "calibrantSamplePath": Resource.getPath("inputs/calibrantSamples/Silicon_NIST_640D_001.json"),
             "fwhmMultipliers": {"left": 0.5, "right": 0.5},
-            "removeBackground": True,
+            "removeBackground": False,
         }
         request = SNAPRequest(path="calibration/diffraction", payload=json.dumps(payload))
         response = self.api.executeRequest(request)

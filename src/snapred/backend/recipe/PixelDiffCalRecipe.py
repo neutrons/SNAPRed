@@ -96,7 +96,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             OutputWorkspace=self.wsDSP + "_startOfPixelDiffCal",
         )
 
-        if not self.removeBackground:
+        if self.removeBackground:
             self.stripBackground(self.detectorPeaks, self.wsTOF, self.groupingWS)
             self.mantidSnapper.ConvertUnits(
                 "Convert background-subtracted TOF to d-spacing",
@@ -173,7 +173,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             InputWorkspace=outputWS,
             OutputWorkspace=outputWS,
             Params=self.dSpaceParams,
-            PreserveEvents=self.removeBackground,
+            PreserveEvents=not self.removeBackground,
             BinningMode="Logarithmic",
         )
 
