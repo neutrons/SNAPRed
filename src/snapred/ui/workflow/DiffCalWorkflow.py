@@ -199,7 +199,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.peakFunction = view.peakFunctionDropdown.currentText()
         self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
 
-        self.removeBackground = view.removeBackgroundCheckBox.isChecked()
+        self.removeBackground = view.getRemoveBackground()
 
         # Validate that the user has write permissions as early as possible in the workflow.
         permissionsRequest = CalibrationWritePermissionsRequest(
