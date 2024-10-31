@@ -4,6 +4,7 @@ from typing import Any, Optional
 from pydantic import BaseModel
 
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.decorators.ExceptionHandler import extractTrueStacktrace
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class RecoverableException(Exception):
         RecoverableException.Model.update_forward_refs()
         RecoverableException.Model.model_rebuild(force=True)
         self.model = RecoverableException.Model(message=message, flags=flags, data=data)
+        logger.error(f"{extractTrueStacktrace()}")
         super().__init__(message)
 
     def parse_raw(raw):

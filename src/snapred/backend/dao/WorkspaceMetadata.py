@@ -1,38 +1,34 @@
-from typing import Literal, get_args
-
 from pydantic import BaseModel, ConfigDict
 
-# possible states for diffraction calibration
+from snapred.meta.Enum import StrEnum
 
 UNSET: str = "unset"
 
-DIFFCAL_METADATA_STATE = Literal[
-    UNSET,  # the default condition before any settings
-    "exists",  # the state exists and the corresponding .h5 file located
-    "alternate",  # the user supplied an alternate .h5 that they believe is usable.
-    "none",  # proceed using the defaul (IDF) geometry.
-]
 
-diffcal_metadata_state_list = list(get_args(DIFFCAL_METADATA_STATE))
+class DiffcalStateMetadata(StrEnum):
+    """Class to hold tags related to a workspace"""
+
+    UNSET: str = UNSET  # the default condition before any settings
+    DEFAULT: str = "default"  # the default condition before any settings
+    EXISTS: str = "exists"  # the state exists and the corresponding .h5 file located
+    ALTERNATE: str = "alternate"  # the user supplied an alternate .h5 that they believe is usable.
+    NONE: str = "none"  # proceed using the defaul (IDF) geometry.
 
 
-# possible states for normalization
+class NormalizationStateMetadata(StrEnum):
+    """Class to hold tags related to a workspace"""
 
-NORMCAL_METADATA_STATE = Literal[
-    UNSET,  # the default condition before any settings
-    "exists",  # the state exists and the corresponding .h5 file located
-    "alternate",  # the user supplied an alternate .h5 that they believe is usable
-    "none",  # proceed without applying any normalization
-    "fake",  # proceed by creating a "fake vanadium"
-]
-
-normcal_metadata_state_list = list(get_args(NORMCAL_METADATA_STATE))
+    UNSET: str = UNSET  # the default condition before any settings
+    EXISTS: str = "exists"  # the state exists and the corresponding .h5 file located
+    ALTERNATE: str = "alternate"  # the user supplied an alternate .h5 that they believe is usable
+    NONE: str = "none"  # proceed without applying any normalization
+    FAKE: str = "fake"  # proceed by creating a "fake vanadium"
 
 
 class WorkspaceMetadata(BaseModel):
     """Class to hold tags related to a workspace"""
 
-    diffcalState: DIFFCAL_METADATA_STATE = UNSET
-    normalizationState: NORMCAL_METADATA_STATE = UNSET
+    diffcalState: DiffcalStateMetadata = UNSET
+    normalizationState: NormalizationStateMetadata = UNSET
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", use_enum_values=True)

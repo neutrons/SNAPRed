@@ -240,9 +240,24 @@ class ReductionRecipeTest(TestCase):
         recipe.logger.return_value = mock.Mock()
         recipe.logger().warning = mock.Mock()
 
-        recipe._applyRecipe(mock.Mock(), recipe.ingredients, inputWorkspace="input")
+        with pytest.raises(RuntimeError, match=r".*Missing non-default input workspace.*"):
+            recipe._applyRecipe(mock.MagicMock(__name__="SomeRecipe"), recipe.ingredients, inputWorkspace="input")
 
-        recipe.logger().warning.assert_called_once()
+    def test_applyRecipe_default_empty_input_workspace(self):
+        recipe = ReductionRecipe()
+        recipe.groceries = {}
+        recipe.ingredients = mock.Mock()
+        recipe.mantidSnapper = mock.Mock()
+        recipe.mantidSnapper.mtd = mock.Mock()
+        recipe.mantidSnapper.mtd.doesExist = mock.Mock()
+        recipe.mantidSnapper.mtd.doesExist.return_value = False
+        recipe.logger = mock.Mock()
+        recipe.logger.return_value = mock.Mock()
+        recipe.logger().warning = mock.Mock()
+
+        recipe._applyRecipe(mock.MagicMock(__name__="SomeRecipe"), recipe.ingredients, inputWorkspace="")
+
+        recipe.logger().debug.assert_called_once()
 
     def test_prepGroupingWorkspaces(self):
         recipe = ReductionRecipe()

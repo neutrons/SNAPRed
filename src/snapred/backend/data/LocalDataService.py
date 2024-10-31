@@ -239,6 +239,12 @@ class LocalDataService:
         ipts = GetIPTS(RunNumber=runNumber, Instrument=instrumentName)
         return str(ipts)
 
+    def stateExists(self, runId: str) -> bool:
+        stateId, _ = self.generateStateId(runId)
+        statePath = self.constructCalibrationStateRoot(stateId)
+        # Shouldnt need to check lite as we init both at the same time
+        return statePath.exists()
+
     def workspaceIsInstance(self, wsName: str, wsType: Any) -> bool:
         # Is the workspace an instance of the specified type.
         if not mtd.doesExist(wsName):
@@ -327,13 +333,19 @@ class LocalDataService:
     def constructCalibrationStateRoot(self, stateId) -> Path:
         return Path(Config["instrument.calibration.powder.home"], str(stateId))
 
+    def _getLiteModeString(self, useLiteMode: bool) -> str:
+        return "lite" if useLiteMode else "native"
+
     def _constructCalibrationStatePath(self, stateId, useLiteMode) -> Path:
-        mode = "lite" if useLiteMode else "native"
+        mode = self._getLiteModeString(useLiteMode)
         return self.constructCalibrationStateRoot(stateId) / mode / "diffraction"
 
     def _constructNormalizationStatePath(self, stateId, useLiteMode) -> Path:
-        mode = "lite" if useLiteMode else "native"
+        mode = self._getLiteModeString(useLiteMode)
         return self.constructCalibrationStateRoot(stateId) / mode / "normalization"
+
+    def _hasWritePermissionsCalibrationStateRoot(self) -> bool:
+        return self.checkWritePermissions(Path(Config["instrument.calibration.powder.home"]))
 
     # reduction paths #
 
@@ -745,7 +757,13 @@ class LocalDataService:
     @validate_call
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         if not self.calibrationExists(runId, useLiteMode):
-            raise RecoverableException.stateUninitialized(runId, useLiteMode)
+            if self._hasWritePermissionsCalibrationStateRoot():
+                raise RecoverableException.stateUninitialized(runId, useLiteMode)
+            else:
+                raise RuntimeError(
+                    "No calibration exists, and you lack permissions to create one."  # fmt: skip
+                    " Please contact your CIS."  # fmt: skip
+                )
 
         indexer = self.calibrationIndexer(runId, useLiteMode)
         # NOTE if we prefer latest version in index, uncomment below
