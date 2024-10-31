@@ -144,7 +144,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.stateExists = mock.Mock(return_value=False)
         self.instance.checkWritePermissions = mock.Mock(return_value=True)
         with pytest.raises(RecoverableException, match="State uninitialized"):
-            self.instance.reduction(mockRequest)
+            self.instance.validateReduction(mockRequest)
 
     def test_reduction_noState_noWritePerms(self):
         mockRequest = mock.Mock()
@@ -152,7 +152,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.checkWritePermissions = mock.Mock(return_value=False)
         self.instance.getSavePath = mock.Mock(return_value="path")
         with pytest.raises(RuntimeError, match=r".*It looks like you don't have permissions to write to*"):
-            self.instance.reduction(mockRequest)
+            self.instance.validateReduction(mockRequest)
 
     def test_markWorkspaceMetadata(self):
         request = mock.Mock(continueFlags=ContinueWarning.Type.UNSET)
