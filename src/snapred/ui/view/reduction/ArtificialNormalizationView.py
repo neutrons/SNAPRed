@@ -12,7 +12,6 @@ from qtpy.QtWidgets import (
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.widget.SmoothingSlider import SmoothingSlider
 from workbench.plotting.figuremanager import MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
@@ -44,7 +43,9 @@ class ArtificialNormalizationView(BackendRequestView):
             x.setEnabled(False)
 
         # create the adjustment controls
-        self.smoothingSlider = self._labeledField("Smoothing", SmoothingSlider())
+        self.smoothingSlider = self._labeledField("Smoothing", QLineEdit())
+        self.smoothingSlider.field.setText(str(Config["ui.default.reduction.smoothing"]))
+
         self.peakWindowClippingSize = self._labeledField(
             "Peak Window Clipping Size",
             QLineEdit(str(Config["constants.ArtificialNormalization.peakWindowClippingSize"])),
@@ -102,7 +103,7 @@ class ArtificialNormalizationView(BackendRequestView):
     def emitValueChange(self):
         # verify the fields before recalculation
         try:
-            smoothingValue = self.smoothingSlider.field.value()
+            smoothingValue = float(self.smoothingSlider.field.text())
             lss = self.lssDropdown.currentIndex() == "True"
             decreaseParameter = self.decreaseParameterDropdown.currentIndex == "True"
             peakWindowClippingSize = int(self.peakWindowClippingSize.field.text())
@@ -190,3 +191,15 @@ class ArtificialNormalizationView(BackendRequestView):
             widget = self.layout.itemAt(i).widget()
             if widget is not None and widget != self.messageLabel:
                 widget.deleteLater()  # Delete the widget
+
+    def getPeakWindowClippingSize(self):
+        return int(self.peakWindowClippingSize.field.text())
+
+    def getSmoothingParameter(self):
+        return float(self.smoothingSlider.field.text())
+
+    def getLSS(self):
+        return self.lssDropdown.currentIndex() == 1
+
+    def getDecreaseParameter(self):
+        return self.decreaseParameterDropdown.currentIndex() == 1

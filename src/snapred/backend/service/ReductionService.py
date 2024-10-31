@@ -28,6 +28,7 @@ from snapred.backend.error.StateValidationException import StateValidationExcept
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe
+from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
@@ -82,7 +83,7 @@ class ReductionService(Service):
         self.registerPath("getStateIds", self.getStateIds)
         self.registerPath("validateReduction", self.validateReduction)
         self.registerPath("artificialNormalization", self.artificialNormalization)
-        self.registerPath("grabDiffractionWorkspaceforArtificialNorm", self.grabDiffractionWorkspaceforArtificialNorm)
+        self.registerPath("grabWorkspaceforArtificialNorm", self.grabWorkspaceforArtificialNorm)
         return
 
     @staticmethod
@@ -189,6 +190,7 @@ class ReductionService(Service):
         groupingResults = self.fetchReductionGroupings(request)
         request.focusGroups = groupingResults["focusGroups"]
         ingredients = self.prepReductionIngredients(request)
+        ingredients.artificialNormalizationIngredients = request.artificialNormalizationIngredients
 
         groceries = self.fetchReductionGroceries(request)
         # attach the list of grouping workspaces to the grocery dictionary
@@ -520,27 +522,23 @@ class ReductionService(Service):
         )
         return artificialNormWorkspace
 
-    def grabDiffractionWorkspaceforArtificialNorm(self, request: ReductionRequest):
-        try:
-            calVersion = None
-            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
-                request.runNumber, request.useLiteMode
-            )
-            calRecord = self.dataFactoryService.getCalibrationRecord(request.runNumber, request.useLiteMode, calVersion)
-            filePath = self.dataFactoryService.getCalibrationDataPath(
-                request.runNumber, request.useLiteMode, calVersion
-            )
-            diffCalOutput = calRecord.workspaces[wngt.DIFFCAL_OUTPUT][0]
-            diffcalOutputFilePath = str(filePath) + "/" + str(diffCalOutput) + ".nxs.h5"
-
-            groceries = self.groceryService.fetchWorkspace(diffcalOutputFilePath, "diffractionWorkspace")
-            diffractionWorkspace = groceries.get("workspace")
-        except:  # noqa: E722
-            raise RuntimeError(
-                "This feature is not yet implemented. "
-                "Artificial normalization cannot currently be made for uncalibrated data as we are missing peak positions. "  # noqa: E501
-                "We are working on a solution to this problem.\n\n "
-                f"No calibration record found for run number: {request.runNumber}.\n"
-                "Please create calibration data for this run number and try again."
-            )
-        return diffractionWorkspace
+    def grabWorkspaceforArtificialNorm(self, request: ReductionRequest):
+        # 1. Load raw run data
+        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        runWorkspace = self.groceryService.fetchGroceryList(self.groceryClerk.buildList())[0]
+        # 2. Load Column group TODO: Future work to apply a more general approach
+        groups = self.loadAllGroupings(request.runNumber, request.useLiteMode)
+        # find column group
+        columnGroup = next((group for group in groups["focusGroups"] if "column" in group.name.lower()), None)
+        columnGroupWorkspace = next(
+            (group for group in groups["groupingWorkspaces"] if "column" in group.lower()), None
+        )
+        request.focusGroups = [columnGroup]
+        # 2.5. get ingredients
+        ingredients = self.prepReductionIngredients(request)
+        groceries = {
+            "inputWorkspace": runWorkspace,
+            "groupingWorkspace": columnGroupWorkspace,
+        }
+        # 3. Diffraction Focus Spectra
+        return ReductionGroupProcessingRecipe().cook(ingredients.groupProcessing(0), groceries)

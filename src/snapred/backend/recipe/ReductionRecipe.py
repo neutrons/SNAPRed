@@ -4,6 +4,7 @@ from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe
+from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe
 from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
@@ -123,6 +124,22 @@ class ReductionRecipe(Recipe[Ingredients]):
         self.mantidSnapper.executeQueue()
         return self.unfocWs
 
+    def _prepareArtificialNormalization(self, inputWorkspace: str, groupIndex: int) -> str:
+        """
+        After the real data has been group processed, we can generate a fake normalization workspace
+
+        :param inputWorkspace: The real data workspace that has been group processed
+        :return: The artificial normalization workspace
+        """
+        normalizationWorkspace = self._getNormalizationWorkspaceName(groupIndex)
+        normalizationWorkspace = ArtificialNormalizationRecipe().executeRecipe(
+            InputWorkspace=inputWorkspace,
+            Ingredients=self.ingredients.artificialNormalizationIngredients,
+            OutputWorkspace=normalizationWorkspace,
+        )
+        self.groceries["normalizationWorkspace"] = normalizationWorkspace
+        return normalizationWorkspace
+
     def _applyRecipe(self, recipe: Type[Recipe], ingredients_, **kwargs):
         if "inputWorkspace" in kwargs:
             inputWorkspace = kwargs["inputWorkspace"]
@@ -141,6 +158,9 @@ class ReductionRecipe(Recipe[Ingredients]):
                     )
                 )
 
+    def _getNormalizationWorkspaceName(self, groupingIndex: int):
+        return f"reduced_normalization_{groupingIndex}_{wnvf.formatTimestamp(self.ingredients.timestamp)}"
+
     def _prepGroupingWorkspaces(self, groupingIndex: int):
         # TODO:  We need the wng to be able to deconstruct the workspace name
         # so that we can appropriately name the cloned workspaces
@@ -156,7 +176,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         if self.normalizationWs:
             normalizationClone = self._cloneWorkspace(
                 self.normalizationWs,
-                f"reduced_normalization_{groupingName}_{wnvf.formatTimestamp(timestamp)}",
+                self._getNormalizationWorkspaceName(groupingIndex),
             )
             self.groceries["normalizationWorkspace"] = normalizationClone
         return sampleClone, normalizationClone
@@ -238,6 +258,12 @@ class ReductionRecipe(Recipe[Ingredients]):
                 inputWorkspace=normalizationClone,
             )
             self._cloneIntermediateWorkspace(normalizationClone, f"normalization_FoocussedVanadium_{groupingIndex}")
+
+            # if there was no normalization and the user elected to use artificial normalization
+            # generate one given the params and the processed sample data
+            # Skipping the above steps as they are accounted for in generating the artificial normalization
+            if self.ingredients.artificialNormalizationIngredients:
+                normalizationClone = self._prepareArtificialNormalization(sampleClone, groupingIndex)
 
             # 4. ApplyNormalizationRecipe
             self._applyRecipe(

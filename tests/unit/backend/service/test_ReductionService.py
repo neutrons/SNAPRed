@@ -420,7 +420,7 @@ class TestReductionService(unittest.TestCase):
 
     @mock.patch(thisService + "GroceryService")
     @mock.patch(thisService + "DataFactoryService")
-    def test_grabDiffractionWorkspaceforArtificialNorm(self, mockDataFactoryService, mockGroceryService):
+    def test_grabWorkspaceforArtificialNorm(self, mockDataFactoryService, mockGroceryService):
         self.instance.groceryService = mockGroceryService
         self.instance.dataFactoryService = mockDataFactoryService
 
@@ -445,7 +445,7 @@ class TestReductionService(unittest.TestCase):
 
         mockGroceryService.fetchWorkspace = mock.Mock(return_value={"workspace": "mock_diffraction_workspace"})
 
-        result = self.instance.grabDiffractionWorkspaceforArtificialNorm(request)
+        result = self.instance.grabWorkspaceforArtificialNorm(request)
 
         expected_file_path = "mock/path/to/calibration/mock_diffraction_workspace.nxs.h5"
         mockGroceryService.fetchWorkspace.assert_called_once_with(expected_file_path, "diffractionWorkspace")
