@@ -418,12 +418,15 @@ class TestReductionService(unittest.TestCase):
         )
         assert result == mockResult
 
+    @mock.patch(thisService + "ReductionGroupProcessingRecipe")
     @mock.patch(thisService + "GroceryService")
     @mock.patch(thisService + "DataFactoryService")
-    def test_grabWorkspaceforArtificialNorm(self, mockDataFactoryService, mockGroceryService):
+    def test_grabWorkspaceforArtificialNorm(
+        self, mockDataFactoryService, mockGroceryService, mockReductionGroupProcessingRecipe
+    ):
         self.instance.groceryService = mockGroceryService
         self.instance.dataFactoryService = mockDataFactoryService
-
+        self.instance.groceryClerk = mock.Mock()
         request = ReductionRequest(
             runNumber="123",
             useLiteMode=False,
@@ -432,26 +435,26 @@ class TestReductionService(unittest.TestCase):
             pixelMasks=[],
             focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
         )
+        mockIngredients = mock.Mock()
+        runWorkspaceName = "runworkspace"
+        columnGroupingWS = "columnGroupingWS"
+        self.instance.groceryService.fetchGroceryList.return_value = [runWorkspaceName]
+        self.instance.loadAllGroupings = mock.Mock(
+            return_value={
+                "groupingWorkspaces": [columnGroupingWS],
+                "focusGroups": [mock.MagicMock(name="columnFocusGroup")],
+            }
+        )
+        self.instance.prepReductionIngredients = mock.Mock(return_value=mockIngredients)
 
-        mockCalVersion = 1
-        mockDataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=mockCalVersion)
+        self.instance.grabWorkspaceforArtificialNorm(request)
 
-        mockCalRecord = mock.Mock()
-        mockCalRecord.workspaces = {"diffCalOutput": ["mock_diffraction_workspace"]}
+        groceries = {
+            "inputWorkspace": runWorkspaceName,
+            "groupingWorkspace": columnGroupingWS,
+        }
 
-        mockDataFactoryService.getCalibrationRecord = mock.Mock(return_value=mockCalRecord)
-
-        mockDataFactoryService.getCalibrationDataPath = mock.Mock(return_value="mock/path/to/calibration")
-
-        mockGroceryService.fetchWorkspace = mock.Mock(return_value={"workspace": "mock_diffraction_workspace"})
-
-        result = self.instance.grabWorkspaceforArtificialNorm(request)
-
-        expected_file_path = "mock/path/to/calibration/mock_diffraction_workspace.nxs.h5"
-        mockGroceryService.fetchWorkspace.assert_called_once_with(expected_file_path, "diffractionWorkspace")
-
-        # Verify the result
-        assert result == "mock_diffraction_workspace"
+        mockReductionGroupProcessingRecipe().cook.assert_called_once_with(mockIngredients.groupProcessing(0), groceries)
 
 
 class TestReductionServiceMasks:
