@@ -177,6 +177,7 @@ class ReductionRecipeTest(TestCase):
         # Set up ingredients and other variables for the recipe
         recipe.groceries = {}
         recipe.ingredients = mock.Mock()
+        recipe.ingredients.artificialNormalizationIngredients = None
         recipe.ingredients.groupProcessing = mock.Mock(
             return_value=lambda groupingIndex: f"groupProcessing_{groupingIndex}"
         )
@@ -369,6 +370,7 @@ class ReductionRecipeTest(TestCase):
         # Set up ingredients and other variables for the recipe
         recipe.groceries = {}
         recipe.ingredients = mock.Mock()
+        recipe.ingredients.artificialNormalizationIngredients = None
         recipe.ingredients.groupProcessing = mock.Mock(
             return_value=lambda groupingIndex: f"groupProcessing_{groupingIndex}"
         )
