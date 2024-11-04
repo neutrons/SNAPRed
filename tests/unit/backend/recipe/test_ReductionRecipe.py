@@ -381,11 +381,13 @@ class ReductionRecipeTest(TestCase):
         recipe = ReductionRecipe()
         recipe.mantidSnapper = mockMantidSnapper
         recipe.mantidSnapper.mtd = mockMtd
+        recipe._prepareArtificialNormalization = mock.Mock()
+        recipe._prepareArtificialNormalization.return_value = "norm_grouped"
 
         # Set up ingredients and other variables for the recipe
         recipe.groceries = {}
         recipe.ingredients = mock.Mock()
-        recipe.ingredients.artificialNormalizationIngredients = None
+        recipe.ingredients.artificialNormalizationIngredients = "test"
         recipe.ingredients.groupProcessing = mock.Mock(
             return_value=lambda groupingIndex: f"groupProcessing_{groupingIndex}"
         )
@@ -459,6 +461,14 @@ class ReductionRecipeTest(TestCase):
             inputWorkspace="sample_grouped",
             normalizationWorkspace="norm_grouped",
         )
+
+        artNormCalls = recipe._prepareArtificialNormalization.call_args_list
+        anCall1 = artNormCalls[0]
+        anCall2 = artNormCalls[1]
+        assert anCall1[0][0] == "sample_grouped"
+        assert anCall2[0][0] == "sample_grouped"
+        assert anCall1[0][1] == 0
+        assert anCall2[0][1] == 1
 
         recipe._deleteWorkspace.assert_called_with("norm_grouped")
         assert recipe._deleteWorkspace.call_count == len(recipe._prepGroupingWorkspaces.return_value)
