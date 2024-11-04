@@ -10,6 +10,7 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
 )
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.service.MetadataLookupService import MetadataLookupService
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.Toggle import Toggle
@@ -102,15 +103,8 @@ class ReductionRequestView(BackendRequestView):
     def parseInputRunNumbers(self) -> List[str]:
         # WARNING: run numbers are strings.
         #   For now, it's OK to parse them as integer, but they should not be passed around that way.
-        runNumberString = self.runNumberInput.text().strip()
-        if runNumberString:
-            runNumberList = [num.strip() for num in runNumberString.split(",") if num.strip()]
-            for runNumber in runNumberList:
-                if not runNumber.isdigit():
-                    raise ValueError(
-                        "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
-                    )
-            return runNumberList
+        runs = MetadataLookupService().verifyMultipleRuns(self.runNumberInput.text())
+        return [str(num) for num in runs]
 
     @Slot()
     def removeRunNumber(self, runNumber):
