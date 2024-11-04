@@ -286,6 +286,21 @@ class ReductionRecipeTest(TestCase):
         assert sampleClone == "cloned"
         assert normClone == "cloned"
 
+    @mock.patch("snapred.backend.recipe.ReductionRecipe.ArtificialNormalizationRecipe")
+    def test_prepareArtificialNormalization(self, mockArtificialNormalizationRecipe):
+        recipe = ReductionRecipe()
+        recipe.groceries = {}
+        recipe.ingredients = mock.Mock()
+        recipe.ingredients.timestamp = time.time()
+        artificialNormalizationIngredients = mock.Mock()
+        recipe.ingredients.artificialNormalizationIngredients = artificialNormalizationIngredients
+        executeRecipeMock = mock.Mock(return_value="norm")
+        mockArtificialNormalizationRecipe().executeRecipe = executeRecipeMock
+        artNormWorkspace = recipe._prepareArtificialNormalization("sample", 1)
+        assert artNormWorkspace == "norm"
+        executeRecipeMock.assert_called_once()
+        assert recipe.groceries["normalizationWorkspace"] == "norm"
+
     def test_prepGroupingWorkspaces_no_normalization(self):
         recipe = ReductionRecipe()
         recipe.groupingWorkspaces = ["group1", "group2"]
