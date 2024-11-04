@@ -2,11 +2,12 @@ import unittest
 
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
+from util.Config_helpers import Config_override
+from util.SculleryBoy import SculleryBoy
+
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe, Ingredients
 from snapred.meta.Config import Config
-from util.Config_helpers import Config_override
-from util.SculleryBoy import SculleryBoy
 
 
 class ApplyNormalizationRecipeTest(unittest.TestCase):

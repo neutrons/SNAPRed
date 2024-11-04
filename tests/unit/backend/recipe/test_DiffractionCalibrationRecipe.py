@@ -3,10 +3,11 @@ from unittest import mock
 
 import pytest
 from mantid.simpleapi import mtd
-from snapred.backend.dao.request.SimpleDiffCalRequest import SimpleDiffCalRequest
-from snapred.backend.service.CalibrationService import CalibrationService
 from util.diffraction_calibration_synthetic_data import SyntheticData
 from util.helpers import deleteWorkspaceNoThrow
+
+from snapred.backend.dao.request.SimpleDiffCalRequest import SimpleDiffCalRequest
+from snapred.backend.service.CalibrationService import CalibrationService
 
 ThisService: str = "snapred.backend.service.CalibrationService"
 PixelCalRx: str = ThisService + ".PixelDiffCalRecipe"

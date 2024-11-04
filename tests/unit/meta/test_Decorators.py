@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import BaseModel
 from qtpy.QtWidgets import QWidget
+
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException

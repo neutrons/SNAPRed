@@ -5,13 +5,13 @@ from unittest import mock
 
 from mantid.api import MatrixWorkspace
 from mantid.simpleapi import mtd
+from util.diffraction_calibration_synthetic_data import SyntheticData
+from util.helpers import maskSpectra, setSpectraToZero
 
 # needed to make mocked ingredients
 # the algorithm to test
 from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as Recipe
 from snapred.meta.Config import Config
-from util.diffraction_calibration_synthetic_data import SyntheticData
-from util.helpers import maskSpectra, setSpectraToZero
 
 """
 NOTE this is in fact a test of a recipe.  Its location and name are a

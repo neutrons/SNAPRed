@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 
 import pytest
 from pydantic import BaseModel
+
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import write_model_pretty
@@ -44,7 +45,7 @@ def state_root_override(runNumber: str, name: str, useLiteMode: bool = False, de
         shutil.rmtree(stateRoot)
 
 
-@pytest.fixture()
+@pytest.fixture
 def state_root_fixture():
     _stack = ExitStack()
 

@@ -5,8 +5,9 @@ from typing import List
 
 from mantid.kernel import ConfigService
 from mantid.simpleapi import GetIPTS
-from snapred.meta.Config import Config, Resource
 from util.IPTS_override import IPTS_override
+
+from snapred.meta.Config import Config, Resource
 
 
 def touch(path):

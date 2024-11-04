@@ -65,7 +65,7 @@ def cleanup_class_workspace_at_exit():
         pass
 
 
-@pytest.fixture()
+@pytest.fixture
 def get_unique_timestamp():
     """
     This method re-uses code from `LocalDataService.getUniqueTimestamp`.

@@ -14,6 +14,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QTabWidget,
 )
+from util.Config_helpers import Config_override
 
 # I would prefer not to access `LocalDataService` within an integration test,
 #   however, for the moment, the reduction-data output relocation fixture is defined in the current file.
@@ -30,7 +31,6 @@ from snapred.ui.view.NormalizationSaveView import NormalizationSaveView
 from snapred.ui.view.NormalizationTweakPeakView import NormalizationTweakPeakView
 from snapred.ui.view.reduction.ReductionRequestView import ReductionRequestView
 from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
-from util.Config_helpers import Config_override
 
 # TODO: WorkflowNodeComplete signal, at end of each node!
 
@@ -39,7 +39,7 @@ class InterruptWithBlock(BaseException):
     pass
 
 
-@pytest.fixture()
+@pytest.fixture
 def calibration_home_from_mirror():
     # Test fixture to create a copy of the calibration home directory from an existing mirror:
     # * creates a temporary calibration home directory under the optional `prefix` path;
@@ -86,7 +86,7 @@ def calibration_home_from_mirror():
     LocalDataService()._indexer.cache_clear()
 
 
-@pytest.fixture()
+@pytest.fixture
 def reduction_home_from_mirror():
     # Test fixture to write reduction data to a temporary directory under `Config["instrument.reduction.home"]`.
     # * creates a temporary reduction state root directory under the optional `prefix` path;
@@ -135,8 +135,8 @@ def reduction_home_from_mirror():
     _stack.close()
 
 
-@pytest.mark.datarepo()
-@pytest.mark.integration()
+@pytest.mark.datarepo
+@pytest.mark.integration
 class TestGUIPanels:
     @pytest.fixture(scope="function", autouse=True)  # noqa: PT003
     def _setup_gui(self, qapp):

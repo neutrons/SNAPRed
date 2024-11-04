@@ -12,6 +12,7 @@ from mantid.simpleapi import (
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
+
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition as LoadingAlgo
 from snapred.meta.Config import Resource
 

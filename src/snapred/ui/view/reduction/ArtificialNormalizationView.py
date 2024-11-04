@@ -9,12 +9,13 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QPushButton,
 )
+from workbench.plotting.figuremanager import MantidFigureCanvas
+from workbench.plotting.toolbar import WorkbenchNavigationToolbar
+
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.SmoothingSlider import SmoothingSlider
-from workbench.plotting.figuremanager import MantidFigureCanvas
-from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 
 @Resettable

@@ -20,6 +20,9 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
+from util.dao import DAOFactory
+from util.state_helpers import state_root_redirect
+
 from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
@@ -42,8 +45,6 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceT
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import parse_file_as
-from util.dao import DAOFactory
-from util.state_helpers import state_root_redirect
 
 # Mock out of scope modules before importing DataExportService
 
@@ -58,6 +59,12 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
+    from util.helpers import (
+        createCompatibleDiffCalTable,
+        createCompatibleMask,
+    )
+    from util.SculleryBoy import SculleryBoy
+
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
     from snapred.backend.dao.indexing.IndexEntry import IndexEntry
@@ -71,11 +78,6 @@ with mock.patch.dict(
     from snapred.backend.service.CalibrationService import CalibrationService
     from snapred.backend.service.SousChef import SousChef
     from snapred.meta.Config import Resource
-    from util.helpers import (
-        createCompatibleDiffCalTable,
-        createCompatibleMask,
-    )
-    from util.SculleryBoy import SculleryBoy
 
     thisService = "snapred.backend.service.CalibrationService."
 

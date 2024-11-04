@@ -2,6 +2,7 @@ import time
 from typing import Any, Optional
 
 from pydantic import Field, field_validator, model_validator
+
 from snapred.backend.dao.indexing.Versioning import VersionedObject
 
 

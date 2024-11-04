@@ -33,6 +33,9 @@ from mantid.simpleapi import (
     LoadEmptyInstrument,
     mtd,
 )
+from util.dao import DAOFactory
+from util.diffraction_calibration_synthetic_data import SyntheticData
+
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_START
@@ -48,8 +51,6 @@ from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import parse_file_as, write_model_pretty
-from util.dao import DAOFactory
-from util.diffraction_calibration_synthetic_data import SyntheticData
 
 dataSynthesizer = SyntheticData()
 

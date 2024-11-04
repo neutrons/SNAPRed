@@ -10,6 +10,14 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
+from util.helpers import (
+    arrayFromMask,
+    createCompatibleMask,
+)
+from util.InstaEats import InstaEats
+from util.SculleryBoy import SculleryBoy
+from util.state_helpers import reduction_root_redirect
+
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import WorkspaceMetadata
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
@@ -29,13 +37,6 @@ from snapred.backend.error.StateValidationException import StateValidationExcept
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from util.helpers import (
-    arrayFromMask,
-    createCompatibleMask,
-)
-from util.InstaEats import InstaEats
-from util.SculleryBoy import SculleryBoy
-from util.state_helpers import reduction_root_redirect
 
 localMock = mock.Mock()
 

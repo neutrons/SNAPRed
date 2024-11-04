@@ -2,6 +2,7 @@ from typing import Any, Optional
 
 from numpy import integer
 from pydantic import BaseModel, computed_field, field_serializer
+
 from snapred.meta.Config import Config
 
 VERSION_START = Config["version.start"]
