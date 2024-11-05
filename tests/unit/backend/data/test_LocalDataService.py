@@ -1880,7 +1880,7 @@ def test_readWriteCalibrationState_noWritePermissions():
 
     with pytest.raises(
         RuntimeError,
-        match=r".*No calibration exists, and you lack permissions to create one. Please contact your CIS.*",
+        match=r".*No calibration exists, and you lack permissions to create one. Please contact your IS or CIS.*",
     ):
         localDataService.readCalibrationState("123", True)
 

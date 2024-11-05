@@ -53,6 +53,13 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
         # )
         # self.rawInput = self.geometryOutputWS
 
+        self.mantidSnapper.ConvertUnits(
+            "Converting to TOF...",
+            InputWorkspace=self.rawInput,
+            Target="TOF",
+            OutputWorkspace=self.rawInput,
+        )
+
         self.mantidSnapper.FocusSpectraAlgorithm(
             "Focusing Spectra...",
             InputWorkspace=self.rawInput,

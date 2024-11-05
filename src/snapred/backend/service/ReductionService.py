@@ -28,6 +28,7 @@ from snapred.backend.error.StateValidationException import StateValidationExcept
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe
+from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
@@ -77,12 +78,12 @@ class ReductionService(Service):
         self.registerPath("hasState", self.hasState)
         self.registerPath("getCompatibleMasks", self.getCompatibleMasks)
         self.registerPath("getUniqueTimestamp", self.getUniqueTimestamp)
-        self.registerPath("checkWritePermissions", self.checkWritePermissions)
+        self.registerPath("checkWritePermissions", self.checkReductionWritePermissions)
         self.registerPath("getSavePath", self.getSavePath)
         self.registerPath("getStateIds", self.getStateIds)
         self.registerPath("validateReduction", self.validateReduction)
         self.registerPath("artificialNormalization", self.artificialNormalization)
-        self.registerPath("grabDiffractionWorkspaceforArtificialNorm", self.grabDiffractionWorkspaceforArtificialNorm)
+        self.registerPath("grabWorkspaceforArtificialNorm", self.grabWorkspaceforArtificialNorm)
         return
 
     @staticmethod
@@ -99,20 +100,14 @@ class ReductionService(Service):
         :type request: ReductionRequest
         """
         if not self.dataFactoryService.stateExists(request.runNumber):
-            if self.checkWritePermissions(request.runNumber):
+            if self.checkCalibrationWritePermissions(request.runNumber):
                 raise RecoverableException.stateUninitialized(request.runNumber, request.useLiteMode)
             else:
                 # TODO: Centralize these exception strings or handling.
                 raise RuntimeError(
-                    "<font size = "
-                    "2"
-                    " >"
-                    + "<p>It looks like you don't have permissions to write to "
-                    + f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
-                    + "which is a requirement in order to run the diffraction-calibration workflow.</p>"
-                    + "<p>If this is something that you need to do, then you may need to change the "
-                    + "<br><b>instrument.calibration.powder.home</b> entry in SNAPRed's <b>application.yml</b> file.</p>"  # noqa: E501
-                    + "</font>"
+                    " This run has not been initialized for reduction"
+                    + " and you lack the necessary permissions to do so."
+                    + " Please contact your IS or CIS."  # noqa: E501
                 )
 
         continueFlags = ContinueWarning.Type.UNSET
@@ -161,7 +156,7 @@ class ReductionService(Service):
         continueFlags = ContinueWarning.Type.UNSET
 
         # Check that the user has write permissions to the save directory
-        if not self.checkWritePermissions(request.runNumber):
+        if not self.checkReductionWritePermissions(request.runNumber):
             continueFlags |= ContinueWarning.Type.NO_WRITE_PERMISSIONS
 
         # Remove any continue flags that are present in the request by XOR-ing with the flags
@@ -189,6 +184,7 @@ class ReductionService(Service):
         groupingResults = self.fetchReductionGroupings(request)
         request.focusGroups = groupingResults["focusGroups"]
         ingredients = self.prepReductionIngredients(request)
+        ingredients.artificialNormalizationIngredients = request.artificialNormalizationIngredients
 
         groceries = self.fetchReductionGroceries(request)
         # attach the list of grouping workspaces to the grocery dictionary
@@ -466,8 +462,12 @@ class ReductionService(Service):
     def getUniqueTimestamp(self):
         return self.dataExportService.getUniqueTimestamp()
 
-    def checkWritePermissions(self, runNumber: str) -> bool:
+    def checkReductionWritePermissions(self, runNumber: str) -> bool:
         path = self.dataExportService.getReductionStateRoot(runNumber)
+        return self.dataExportService.checkWritePermissions(path)
+
+    def checkCalibrationWritePermissions(self, runNumber: str) -> bool:
+        path = self.dataExportService.getCalibrationStateRoot(runNumber)
         return self.dataExportService.checkWritePermissions(path)
 
     def getSavePath(self, runNumber: str) -> Path:
@@ -520,27 +520,23 @@ class ReductionService(Service):
         )
         return artificialNormWorkspace
 
-    def grabDiffractionWorkspaceforArtificialNorm(self, request: ReductionRequest):
-        try:
-            calVersion = None
-            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
-                request.runNumber, request.useLiteMode
-            )
-            calRecord = self.dataFactoryService.getCalibrationRecord(request.runNumber, request.useLiteMode, calVersion)
-            filePath = self.dataFactoryService.getCalibrationDataPath(
-                request.runNumber, request.useLiteMode, calVersion
-            )
-            diffCalOutput = calRecord.workspaces[wngt.DIFFCAL_OUTPUT][0]
-            diffcalOutputFilePath = str(filePath) + "/" + str(diffCalOutput) + ".nxs.h5"
-
-            groceries = self.groceryService.fetchWorkspace(diffcalOutputFilePath, "diffractionWorkspace")
-            diffractionWorkspace = groceries.get("workspace")
-        except:  # noqa: E722
-            raise RuntimeError(
-                "This feature is not yet implemented. "
-                "Artificial normalization cannot currently be made for uncalibrated data as we are missing peak positions. "  # noqa: E501
-                "We are working on a solution to this problem.\n\n "
-                f"No calibration record found for run number: {request.runNumber}.\n"
-                "Please create calibration data for this run number and try again."
-            )
-        return diffractionWorkspace
+    def grabWorkspaceforArtificialNorm(self, request: ReductionRequest):
+        # 1. Load raw run data
+        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        runWorkspace = self.groceryService.fetchGroceryList(self.groceryClerk.buildList())[0]
+        # 2. Load Column group TODO: Future work to apply a more general approach
+        groups = self.loadAllGroupings(request.runNumber, request.useLiteMode)
+        # find column group
+        columnGroup = next((group for group in groups["focusGroups"] if "column" in group.name.lower()), None)
+        columnGroupWorkspace = next(
+            (group for group in groups["groupingWorkspaces"] if "column" in group.lower()), None
+        )
+        request.focusGroups = [columnGroup]
+        # 2.5. get ingredients
+        ingredients = self.prepReductionIngredients(request)
+        groceries = {
+            "inputWorkspace": runWorkspace,
+            "groupingWorkspace": columnGroupWorkspace,
+        }
+        # 3. Diffraction Focus Spectra
+        return ReductionGroupProcessingRecipe().cook(ingredients.groupProcessing(0), groceries)
