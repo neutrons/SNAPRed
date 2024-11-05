@@ -143,16 +143,19 @@ class TestReductionService(unittest.TestCase):
     def test_reduction_noState_withWritePerms(self):
         mockRequest = mock.Mock()
         self.instance.dataFactoryService.stateExists = mock.Mock(return_value=False)
-        self.instance.checkWritePermissions = mock.Mock(return_value=True)
+        self.instance.checkReductionWritePermissions = mock.Mock(return_value=True)
         with pytest.raises(RecoverableException, match="State uninitialized"):
             self.instance.validateReduction(mockRequest)
 
     def test_reduction_noState_noWritePerms(self):
         mockRequest = mock.Mock()
         self.instance.dataFactoryService.stateExists = mock.Mock(return_value=False)
-        self.instance.checkWritePermissions = mock.Mock(return_value=False)
+        self.instance.checkCalibrationWritePermissions = mock.Mock(return_value=False)
         self.instance.getSavePath = mock.Mock(return_value="path")
-        with pytest.raises(RuntimeError, match=r".*It looks like you don't have permissions to write to*"):
+        with pytest.raises(
+            RuntimeError,
+            match=r".*This run has not been initialized for reduction and you lack the necessary permissions*",
+        ):
             self.instance.validateReduction(mockRequest)
 
     def test_markWorkspaceMetadata(self):
@@ -216,16 +219,16 @@ class TestReductionService(unittest.TestCase):
             mockTimestamp.return_value = 123.456
             assert self.instance.getUniqueTimestamp() == mockTimestamp.return_value
 
-    def test_checkWritePermissions(self):
+    def test_checkReductionWritePermissions(self):
         with (
-            mock.patch.object(self.instance.dataExportService, "checkWritePermissions") as mockCheckWritePermissions,
+            mock.patch.object(self.instance.dataExportService, "checkWritePermissions") as mockcheckWritePermissions,
             mock.patch.object(self.instance.dataExportService, "getReductionStateRoot") as mockGetReductionStateRoot,
         ):
             runNumber = "12345"
-            mockCheckWritePermissions.return_value = True
+            mockcheckWritePermissions.return_value = True
             mockGetReductionStateRoot.return_value = Path("/reduction/state/root")
-            assert self.instance.checkWritePermissions(runNumber)
-            mockCheckWritePermissions.assert_called_once_with(mockGetReductionStateRoot.return_value)
+            assert self.instance.checkReductionWritePermissions(runNumber)
+            mockcheckWritePermissions.assert_called_once_with(mockGetReductionStateRoot.return_value)
             mockGetReductionStateRoot.assert_called_once_with(runNumber)
 
     def test_getSavePath(self):
@@ -334,7 +337,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService.normalizationExists.return_value = True
         self.instance.dataFactoryService = fakeDataService
         fakeExportService = mock.Mock()
-        fakeExportService.checkWritePermissions.return_value = False
+        fakeExportService.checkReductionWritePermissions.return_value = False
         self.instance.dataExportService = fakeExportService
         self.request.continueFlags = ContinueWarning.Type.NO_WRITE_PERMISSIONS
         self.instance.validateReduction(self.request)
@@ -347,7 +350,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService = fakeDataService
 
         fakeExportService = mock.Mock()
-        fakeExportService.checkWritePermissions.return_value = False
+        fakeExportService.checkReductionWritePermissions.return_value = False
         self.instance.dataExportService = fakeExportService
 
         with pytest.raises(ContinueWarning) as excInfo:
@@ -381,7 +384,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService.normalizationExists.return_value = False
         self.instance.dataFactoryService = fakeDataService
         fakeExportService = mock.Mock()
-        fakeExportService.checkWritePermissions.return_value = False
+        fakeExportService.checkReductionWritePermissions.return_value = False
         self.instance.dataExportService = fakeExportService
         self.request.continueFlags = (
             ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION

@@ -78,7 +78,7 @@ class ReductionService(Service):
         self.registerPath("hasState", self.hasState)
         self.registerPath("getCompatibleMasks", self.getCompatibleMasks)
         self.registerPath("getUniqueTimestamp", self.getUniqueTimestamp)
-        self.registerPath("checkWritePermissions", self.checkWritePermissions)
+        self.registerPath("checkWritePermissions", self.checkReductionWritePermissions)
         self.registerPath("getSavePath", self.getSavePath)
         self.registerPath("getStateIds", self.getStateIds)
         self.registerPath("validateReduction", self.validateReduction)
@@ -100,20 +100,14 @@ class ReductionService(Service):
         :type request: ReductionRequest
         """
         if not self.dataFactoryService.stateExists(request.runNumber):
-            if self.checkWritePermissions(request.runNumber):
+            if self.checkCalibrationWritePermissions(request.runNumber):
                 raise RecoverableException.stateUninitialized(request.runNumber, request.useLiteMode)
             else:
                 # TODO: Centralize these exception strings or handling.
                 raise RuntimeError(
-                    "<font size = "
-                    "2"
-                    " >"
-                    + "<p>It looks like you don't have permissions to write to "
-                    + f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
-                    + "which is a requirement in order to run the diffraction-calibration workflow.</p>"
-                    + "<p>If this is something that you need to do, then you may need to change the "
-                    + "<br><b>instrument.calibration.powder.home</b> entry in SNAPRed's <b>application.yml</b> file.</p>"  # noqa: E501
-                    + "</font>"
+                    " This run has not been initialized for reduction"
+                    + " and you lack the necessary permissions to do so."
+                    + " Please contact your IS or CIS."  # noqa: E501
                 )
 
         continueFlags = ContinueWarning.Type.UNSET
@@ -162,7 +156,7 @@ class ReductionService(Service):
         continueFlags = ContinueWarning.Type.UNSET
 
         # Check that the user has write permissions to the save directory
-        if not self.checkWritePermissions(request.runNumber):
+        if not self.checkReductionWritePermissions(request.runNumber):
             continueFlags |= ContinueWarning.Type.NO_WRITE_PERMISSIONS
 
         # Remove any continue flags that are present in the request by XOR-ing with the flags
@@ -468,8 +462,12 @@ class ReductionService(Service):
     def getUniqueTimestamp(self):
         return self.dataExportService.getUniqueTimestamp()
 
-    def checkWritePermissions(self, runNumber: str) -> bool:
+    def checkReductionWritePermissions(self, runNumber: str) -> bool:
         path = self.dataExportService.getReductionStateRoot(runNumber)
+        return self.dataExportService.checkWritePermissions(path)
+
+    def checkCalibrationWritePermissions(self, runNumber: str) -> bool:
+        path = self.dataExportService.getCalibrationStateRoot(runNumber)
         return self.dataExportService.checkWritePermissions(path)
 
     def getSavePath(self, runNumber: str) -> Path:
