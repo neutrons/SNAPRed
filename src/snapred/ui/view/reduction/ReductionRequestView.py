@@ -20,6 +20,7 @@ logger = snapredLogger.getLogger(__name__)
 
 @Resettable
 class ReductionRequestView(BackendRequestView):
+
     def __init__(
         self,
         parent=None,

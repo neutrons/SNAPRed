@@ -1,7 +1,5 @@
 from random import randint
-from unittest.mock import MagicMock, patch
 
-import pytest
 from mantid.simpleapi import (
     CreateSingleValuedWorkspace,
     CreateTableWorkspace,
@@ -13,6 +11,11 @@ from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEn
 from snapred.meta.pointer import create_pointer
 from snapred.ui.workflow.DiffCalWorkflow import DiffCalWorkflow
 
+##
+## Place the test imports at the end, so that the normal non-test import order is unmodified.
+##
+from unittest.mock import MagicMock, patch
+import pytest
 
 @patch("snapred.ui.workflow.DiffCalWorkflow.WorkflowImplementer.request")
 def test_purge_bad_peaks(workflowRequest, qtbot):  # noqa: ARG001

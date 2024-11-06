@@ -61,7 +61,7 @@ class FetchGroceriesRecipe:
 
             if data["loader"] == "LoadEventNexus":
                 self.dataService = LocalDataService()
-                config = self.dataService.readInstrumentConfig()
+                config = self.dataService.getInstrumentConfig()
                 width = config.width
                 frequency = config.frequency
                 self.mantidSnapper.RemovePromptPulse(

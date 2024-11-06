@@ -1,8 +1,5 @@
-from typing import Dict, List, Optional
-from unittest import mock
-
+from typing import Dict, List
 import pydantic
-from util.dao import DAOFactory
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import (
@@ -18,10 +15,17 @@ from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.GenericRecipe import DetectorPeakPredictorRecipe
 from snapred.meta.Config import Resource
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.redantic import parse_file_as
 
+##
+## Put test-related imports at the end, so that the normal non-test import sequence is unmodified.
+##
+from util.dao import DAOFactory
+from util.mock_util import mock_instance_methods
 
+from unittest import mock
+
+@mock_instance_methods
 class SculleryBoy:
     """
     The scullery boy is a poor substitute for a sous chef,
@@ -29,6 +33,7 @@ class SculleryBoy:
 
     Should be able to mock out the SousChef.
     """
+    # TODO: Why isn't this `class SculleryBoy(SousChef)`?!
 
     def __init__(
         self,

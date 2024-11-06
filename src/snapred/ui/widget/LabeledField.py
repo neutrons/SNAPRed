@@ -1,11 +1,11 @@
-from qtpy.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QWidget
+from qtpy.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
 
 
 class LabeledField(QWidget):
-    def __init__(self, label, field=None, text=None, parent=None):
+    def __init__(self, label, field=None, text=None, parent=None, horizontalLayout=True):
         super(LabeledField, self).__init__(parent)
         self.setStyleSheet("background-color: #F5E9E2;")
-        layout = QHBoxLayout()
+        layout = QHBoxLayout() if horizontalLayout else QVBoxLayout()
         self.setLayout(layout)
 
         self._label = QLabel(label)

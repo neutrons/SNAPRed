@@ -55,7 +55,7 @@ class Toggle(QWidget):
         painter.drawRoundedRect(self.rect(), self.width(), self.height() / 2)
         # add gradient to background
         gradient = QLinearGradient(self.rect().topLeft(), self.rect().bottomLeft())
-        gradient.setColorAt(1, Qt.darkCyan)
+        gradient.setColorAt(1.0, Qt.darkCyan)
         gradient.setColorAt(0.3, Qt.gray if not self._state else Qt.green)
         painter.setBrush(gradient)
         painter.drawRoundedRect(self.rect(), self.width(), self.height() / 2)

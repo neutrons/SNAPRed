@@ -17,6 +17,8 @@ class ResponseCode(IntEnum):
     OK = 200
     MAX_OK = 300
     CONTINUE_WARNING = 301
+    USER_CANCELLATION = 326
+    LIVE_DATA_STATE = 351
     RECOVERABLE = 400
     ERROR = 500
 

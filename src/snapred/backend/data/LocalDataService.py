@@ -1,20 +1,26 @@
+from collections.abc import Mapping
+from contextlib import contextmanager
 import datetime
 import glob
 import json
+import numpy as np
 import os
 import re
+import socket
 import stat
 import time
 from errno import ENOENT as NOT_FOUND
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import h5py
 from mantid.dataobjects import MaskWorkspace
-from mantid.kernel import PhysicalConstants
+from mantid.kernel import ConfigService, PhysicalConstants
+from mantid.api import Run
 from mantid.simpleapi import GetIPTS, mtd
-from pydantic import validate_call
+from pydantic import validate_call, ValidationError
 
 from snapred.backend.dao import (
     GSASParameters,
@@ -42,6 +48,10 @@ from snapred.backend.dao.state import (
     InstrumentState,
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
+from snapred.backend.data.util.mapping_util import (
+    mappingFromRun,
+    mappingFromNeXusLogs
+)
 from snapred.backend.data.Indexer import Indexer, IndexerType
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.backend.error.RecoverableException import RecoverableException
@@ -82,37 +92,38 @@ def _createFileNotFoundError(msg, filename):
 
 @Singleton
 class LocalDataService:
-    instrumentConfig: "InstrumentConfig"
-    verifyPaths: bool = True
 
     # conversion factor from microsecond/Angstrom to meters
     # (TODO: FIX THIS COMMENT! Obviously `m2cm` doesn't convert from 1.0 / Angstrom to 1.0 / meters.)
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
     def __init__(self) -> None:
-        self.verifyPaths = Config["localdataservice.config.verifypaths"]
-        self.instrumentConfig = self.readInstrumentConfig()
+        self._verifyPaths = Config["localdataservice.config.verifypaths"]
+        self._instrumentConfig = self._readInstrumentConfig()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
 
     ##### MISCELLANEOUS METHODS #####
 
+    def getInstrumentConfig(self):
+        return self._instrumentConfig
+        
     def fileExists(self, path):
         return os.path.isfile(path)
 
     def _determineInstrConfigPaths(self) -> None:
         """This method locates the instrument configuration path and
-        sets the instance variable ``instrumentConfigPath``."""
+        sets the instance variable ``_instrumentConfigPath``."""
         # verify parent directory exists
         self.dataPath = Path(Config["instrument.home"])
-        if self.verifyPaths and not self.dataPath.exists():
+        if self._verifyPaths and not self.dataPath.exists():
             raise _createFileNotFoundError(Config["instrument.home"], self.dataPath)
 
         # look for the config file and verify it exists
-        self.instrumentConfigPath = Config["instrument.config"]
-        if self.verifyPaths and not Path(self.instrumentConfigPath).exists():
+        self._instrumentConfigPath = Config["instrument.config"]
+        if self._verifyPaths and not Path(self._instrumentConfigPath).exists():
             raise _createFileNotFoundError("Missing Instrument Config", Config["instrument.config"])
 
-    def readInstrumentConfig(self) -> InstrumentConfig:
+    def _readInstrumentConfig(self) -> InstrumentConfig:
         self._determineInstrConfigPaths()
 
         instrumentParameterMap = self._readInstrumentParameters()
@@ -124,10 +135,10 @@ class LocalDataService:
             instrumentParameterMap["version"] = str(instrumentParameterMap["version"])
             instrumentConfig = InstrumentConfig(**instrumentParameterMap)
         except KeyError as e:
-            raise KeyError(f"{e}: while reading instrument configuration '{self.instrumentConfigPath}'") from e
+            raise KeyError(f"{e}: while reading instrument configuration '{self._instrumentConfigPath}'") from e
         if self.dataPath:
             instrumentConfig.calibrationDirectory = Path(Config["instrument.calibration.home"])
-            if self.verifyPaths and not instrumentConfig.calibrationDirectory.exists():
+            if self._verifyPaths and not instrumentConfig.calibrationDirectory.exists():
                 raise _createFileNotFoundError("[calibration directory]", instrumentConfig.calibrationDirectory)
 
         return instrumentConfig
@@ -135,11 +146,11 @@ class LocalDataService:
     def _readInstrumentParameters(self) -> Dict[str, Any]:
         instrumentParameterMap: Dict[str, Any] = {}
         try:
-            with open(self.instrumentConfigPath, "r") as json_file:
+            with open(self._instrumentConfigPath, "r") as json_file:
                 instrumentParameterMap = json.load(json_file)
             return instrumentParameterMap
         except FileNotFoundError as e:
-            raise _createFileNotFoundError("Instrument configuration file", self.instrumentConfigPath) from e
+            raise _createFileNotFoundError("Instrument configuration file", self._instrumentConfigPath) from e
 
     def readStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
         diffCalibration = self.calibrationIndexer(runId, useLiteMode).readParameters()
@@ -237,8 +248,13 @@ class LocalDataService:
 
     @lru_cache
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
-        ipts = GetIPTS(RunNumber=runNumber, Instrument=instrumentName)
-        return str(ipts)
+        IPTS = GetIPTS(RunNumber=runNumber, Instrument=instrumentName)
+        
+        # WARNING: 
+        #   When successful, `GetIPTS` returns the _likely_ user-data directory for this run number.
+        # It does _not_ actually check whether any input-data file for this run number exists.
+
+        return str(IPTS)
 
     def stateExists(self, runId: str) -> bool:
         stateId, _ = self.generateStateId(runId)
@@ -263,8 +279,8 @@ class LocalDataService:
             IPTS=iptsPath,
             runNumber=runId,
             maskFileName="",
-            maskFileDirectory=iptsPath + self.instrumentConfig.sharedDirectory,
-            gsasFileDirectory=iptsPath + self.instrumentConfig.reducedDataDirectory,
+            maskFileDirectory=iptsPath + self._instrumentConfig.sharedDirectory,
+            gsasFileDirectory=iptsPath + self._instrumentConfig.reducedDataDirectory,
             calibrationState=None,
         )  # TODO: where to find case? "before" "after"
 
@@ -272,8 +288,8 @@ class LocalDataService:
         runConfig = self._readRunConfig(runId)
         return Path(
             runConfig.IPTS,
-            self.instrumentConfig.nexusDirectory,
-            f"SNAP_{str(runConfig.runNumber)}{self.instrumentConfig.nexusFileExtension}",
+            self._instrumentConfig.nexusDirectory,
+            f"SNAP_{str(runConfig.runNumber)}{self._instrumentConfig.nexusFileExtension}",
         )
 
     def _readPVFile(self, runId: str):
@@ -288,13 +304,10 @@ class LocalDataService:
     # NOTE `lru_cache` decorator needs to be on the outside
     @lru_cache
     @ExceptionHandler(StateValidationException)
-    def generateStateId(self, runId: str) -> Tuple[str, str]:
-        if runId in ReservedRunNumber.values():
-            SHA = ObjectSHA(hex=ReservedStateId.forRun(runId))
-        else:
-            detectorState = self.readDetectorState(runId)
-            SHA = self._stateIdFromDetectorState(detectorState)
-        return SHA.hex, SHA.decodedKey
+    def generateStateId(self, runId: str) -> Tuple[str, DetectorState]:
+        detectorState = self.readDetectorState(runId)
+        SHA = self._stateIdFromDetectorState(detectorState)
+        return SHA.hex, detectorState
 
     def _stateIdFromDetectorState(self, detectorState: DetectorState) -> ObjectSHA:
         stateID = StateId(
@@ -303,17 +316,18 @@ class LocalDataService:
             WavelengthUserReq=detectorState.wav,
             Frequency=detectorState.freq,
             Pos=detectorState.guideStat,
-            # TODO: these should probably be added:
-            #   if they change with the runId, there will be a potential hash collision.
+            
+            # TODO: these next could possibly be added:
+            #   but they're never supposed to change.
             # det_lin1=detectorState.lin[0],
             # det_lin2=detectorState.lin[1],
         )
         return ObjectSHA.fromObject(stateID)
 
-    def stateIdFromWorkspace(self, wsName: WorkspaceName) -> Tuple[str, str]:
+    def stateIdFromWorkspace(self, wsName: WorkspaceName) -> Tuple[str, DetectorState]:
         detectorState = self.detectorStateFromWorkspace(wsName)
         SHA = self._stateIdFromDetectorState(detectorState)
-        return SHA.hex, SHA.decodedKey
+        return SHA.hex, detectorState
 
     def _findMatchingFileList(self, pattern, throws=True) -> List[str]:
         """
@@ -846,61 +860,43 @@ class LocalDataService:
         indexer = self.normalizationIndexer(normalization.seedRun, normalization.useLiteMode)
         indexer.writeParameters(normalization)
 
-    def readDetectorState(self, runId: str) -> DetectorState:
+    def _detectorStateFromMapping(self, logs: Mapping) -> DetectorState:
         detectorState = None
-        pvFile = self._readPVFile(runId)
-        wav_value = None
-        logsLocation = Config["constants.logsLocation"]
-        wav_key_1 = f"{logsLocation}/BL3:Chop:Gbl:WavelengthReq/value"
-        wav_key_2 = f"{logsLocation}/BL3:Chop:Skf1:WavelengthUserReq/value"
-
-        if wav_key_1 in pvFile:
-            wav_value = pvFile.get(wav_key_1)[0]
-        elif wav_key_2 in pvFile:
-            wav_value = pvFile.get(wav_key_2)[0]
-        else:
-            raise ValueError(f"Could not find wavelength logs in file '{self._constructPVFilePath(runId)}'")
-
+        wav_key_1 = "BL3:Chop:Gbl:WavelengthReq"
+        wav_key_2 = "BL3:Chop:Skf1:WavelengthUserReq"
         try:
-            detectorState = DetectorState(
-                arc=[pvFile.get(f"{logsLocation}/det_arc1/value")[0], pvFile.get(f"{logsLocation}/det_arc2/value")[0]],
-                wav=wav_value,
-                freq=pvFile.get(f"{logsLocation}/BL3:Det:TH:BL:Frequency/value")[0],
-                guideStat=pvFile.get(f"{logsLocation}/BL3:Mot:OpticsPos:Pos/value")[0],
-                lin=[pvFile.get(f"{logsLocation}/det_lin1/value")[0], pvFile.get(f"{logsLocation}/det_lin2/value")[0]],
-            )
-        except (TypeError, KeyError) as e:
-            raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}': {e}")
+            try:
+                detectorState = DetectorState(
+                    arc=[logs["det_arc1"][0], logs["det_arc2"][0]],
+                    wav=logs["BL3:Chop:Gbl:WavelengthReq"][0] if wav_key_1 in logs\
+                        else logs[wav_key_2][0],
+                    freq=logs["BL3:Det:TH:BL:Frequency"][0],
+                    guideStat=logs["BL3:Mot:OpticsPos:Pos"][0],
+                    lin=[logs["det_lin1"][0], logs["det_lin2"][0]]
+                )
+            except (KeyError, TypeError) as e:
+                raise RuntimeError("Some required logs are not present. Cannot assemble a DetectorState") from e            
+        except ValidationError as e:
+            raise RuntimeError("Logs have an unexpected format.  Cannot assemble a DetectorState.") from e
         return detectorState
-
-    def detectorStateFromWorkspace(self, wsName: WorkspaceName) -> DetectorState:
+        
+    def readDetectorState(self, runNumber: str) -> DetectorState:
         detectorState = None
         try:
-            logs = mtd[wsName].getRun()
-
-            # Check for the wavelength logs
-            wav_value = None
-            if logs.hasProperty("BL3:Chop:Gbl:WavelengthReq"):
-                wav_value = logs.getProperty("BL3:Chop:Gbl:WavelengthReq").value[0]
-            elif logs.hasProperty("BL3:Chop:Skf1:WavelengthUserReq"):
-                wav_value = logs.getProperty("BL3:Chop:Skf1:WavelengthUserReq").value[0]
+            detectorState = self._detectorStateFromMapping(mappingFromNeXusLogs(self._readPVFile(runNumber)))
+        except FileNotFoundError as e:
+            if not self.hasLiveDataConnection():
+                raise # the existing exception is sufficient
+            metadata = self.readLiveMetadata()
+            if metadata.runNumber == runNumber:
+                detectorState = metadata.detectorState
             else:
-                raise ValueError(f"Workspace '{wsName}' does not have the required wavelength logs")
-
-            # Assemble DetectorState using the logs
-            detectorState = DetectorState(
-                arc=[logs.getProperty("det_arc1").value[0], logs.getProperty("det_arc2").value[0]],
-                wav=wav_value,
-                freq=logs.getProperty("BL3:Det:TH:BL:Frequency").value[0],
-                guideStat=logs.getProperty("BL3:Mot:OpticsPos:Pos").value[0],
-                lin=[logs.getProperty("det_lin1").value[0], logs.getProperty("det_lin2").value[0]],
-            )
-        except Exception as e:  # noqa: E722
-            raise RuntimeError(
-                f"Workspace '{wsName}' does not have all required logs to assemble a DetectorState"
-            ) from e
+                raise RuntimeError(f"No PVFile exists for run {runNumber}, and it isn't a live run.")
         return detectorState
-
+                
+    def detectorStateFromWorkspace(self, wsName: WorkspaceName) -> DetectorState:
+        return self._detectorStateFromMapping(mappingFromRun(mtd[wsName].getRun()))
+        
     @validate_call
     def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool):
         from snapred.backend.data.GroceryService import GroceryService
@@ -918,27 +914,25 @@ class LocalDataService:
         #   and delete its workspaces after completion.
         grocer.deleteWorkspaceUnconditional(outWS)
 
-    def generateInstrumentStateFromRoot(self, runId: str):
-        stateId, _ = self.generateStateId(runId)
-
-        # Read the detector state from the pv data file
-        detectorState = self.readDetectorState(runId)
-
-        # then read data from the common calibration state parameters stored at root of calibration directory
-        instrumentConfig = self.readInstrumentConfig()
-        # then pull static values specified by Malcolm from resources
+    def generateInstrumentState(self, runId: str):
+        # Read the detector state from the PV data file,
+        #   and generate the stateID SHA.
+        stateId, detectorState = self.generateStateId(runId)
+        
+        # Pull static values from resources
         defaultGroupSliceValue = Config["calibration.parameters.default.groupSliceValue"]
         fwhmMultipliers = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
         peakTailCoefficient = Config["calibration.parameters.default.peakTailCoefficient"]
         gsasParameters = GSASParameters(
             alpha=Config["calibration.parameters.default.alpha"], beta=Config["calibration.parameters.default.beta"]
         )
-        # then calculate the derived values
+        
+        # Calculate the derived values
         lambdaLimit = Limit(
-            minimum=detectorState.wav - (instrumentConfig.bandwidth / 2) + instrumentConfig.lowWavelengthCrop,
-            maximum=detectorState.wav + (instrumentConfig.bandwidth / 2),
+            minimum=detectorState.wav - (self._instrumentConfig.bandwidth / 2) + self._instrumentConfig.lowWavelengthCrop,
+            maximum=detectorState.wav + (self._instrumentConfig.bandwidth / 2),
         )
-        L = instrumentConfig.L1 + instrumentConfig.L2
+        L = self._instrumentConfig.L1 + self._instrumentConfig.L2
         tofLimit = Limit(
             minimum=lambdaLimit.minimum * L / self.CONVERSION_FACTOR,
             maximum=lambdaLimit.maximum * L / self.CONVERSION_FACTOR,
@@ -947,7 +941,7 @@ class LocalDataService:
 
         return InstrumentState(
             id=stateId,
-            instrumentConfig=instrumentConfig,
+            instrumentConfig=self._instrumentConfig,
             detectorState=detectorState,
             gsasParameters=gsasParameters,
             particleBounds=particleBounds,
@@ -963,9 +957,8 @@ class LocalDataService:
         from snapred.backend.data.GroceryService import GroceryService
 
         grocer = GroceryService()
-        stateId, _ = self.generateStateId(runId)
-
-        instrumentState = self.generateInstrumentStateFromRoot(runId)
+        instrumentState = self.generateInstrumentState(runId)
+        stateId = instrumentState.id
 
         calibrationReturnValue = None
 
@@ -1039,6 +1032,8 @@ class LocalDataService:
         self._writeGroupingMap(stateId, groupingMap)
 
     def checkCalibrationFileExists(self, runId: str):
+        # TODO: run number format validation does not belong here!
+        
         # first perform some basic validation of the run ID
         # - it must be a string of only digits
         # - it must be greater than some minimal run number
@@ -1046,15 +1041,15 @@ class LocalDataService:
             return False
         # then make sure the run number has a valid IPTS
         try:
-            self.getIPTS(runId)
-        # if no IPTS found, return false
-        except RuntimeError:
-            return False
-        # if found, try to construct the path and test if the path exists
-        else:
+            # The existence of a calibration state root does not necessarily have anything to do with
+            #   whether or not the run has an existing IPTS directory.
+            
             stateID, _ = self.generateStateId(runId)
             calibrationStatePath: Path = self.constructCalibrationStateRoot(stateID)
             return calibrationStatePath.exists()
+        except (FileNotFoundError, RuntimeError):
+            return False
+            
 
     ##### GROUPING MAP METHODS #####
 
@@ -1252,3 +1247,95 @@ class LocalDataService:
         # At present, this method is just a wrapper for 'writeDiffCalWorkspaces':
         #   its existence allows for the separation of pixel-mask I/O from diffraction-calibration workspace I/O.
         self.writeDiffCalWorkspaces(path, filename, maskWorkspaceName=maskWorkspaceName)
+
+    ## LIVE-DATA SUPPORT METHODS
+
+    @contextmanager
+    def _useFacility(self, facility: str):
+        _facilitySave: str = ConfigManager.getFacility()
+        ConfigManager.setFacility(facility)
+        yield facility
+        
+        # exit
+        ConfigManager.setFacility(_facilitySave)
+        
+    def hasLiveDataConnection(self, facility: str = Config["facility.name"], instrument: str = Config["instrument.name"]):
+        """For 'live data' methods: test if there is a listener connection to the instrument."""
+        
+        # In addition to 'analysis.sns.gov', other nodes on the subnet should be OK as well.
+        #   So this check should also return True on those nodes.
+        # If this method returns True, then the `SNSLiveEventDataListener` should be able to function.
+        
+        # Normalize to an actual "URL" and then strip off the protocol (not actually "http") and port:
+        #   `liveDataAddress` returns a string similar to "bl3-daq1.sns.gov:31415".
+        hostname = urlparse("http://" + ConfigService.getFacility(facility).instrument(instrument).liveDataAddress()).hostname
+        status = True
+        try:
+            socket.gethostbyaddr(hostname)
+        except Exception: 
+            # specifically: expecting a `socket.gaierror`, but any exception will indicate that there's no connection
+            status = False
+        return status
+    
+    def _liveMetadataFromRun(self, run: Run) -> LiveMetadata:
+        """Construct a 'LiveMetadata' instance from a 'mantid.api.Run' instance."""
+        
+        logs = mappingFromRun(run)
+        metadata = None
+        try:
+            run_number: str = str(logs['run_number'])
+            
+            # See comment at `snapred.backend.data.util.mapping_util.mappingFromRun` about this conversion.
+            start_time: datetime = np.datetime64(logs['start_time'], "us").astype(datetime)
+            end_time: datetime = np.datetime64(logs['end_time'], "us").astype(datetime)
+
+            # Many required log values will not be present if a run is inactive.
+            detector_state=self._detectorStateFromMapping(logs) if run_number != str(LiveMetadata.INACTIVE_RUN) else None
+
+            proton_charge = logs['proton_charge']
+            
+            metadata = LiveMetadata(
+                runNumber=run_number,
+                startTime=start_time,
+                endTime=end_time,
+                detectorState=detector_state,
+                protonCharge=proton_charge
+            )
+        except (KeyError, RuntimeError, ValidationError) as e:
+            raise RuntimeError("unable to extract LiveMetadata from Run") from e
+        return metadata
+
+    def _readLiveData(self, ws: WorkspaceName, duration: int, facility: str, instrument: str):
+        if duration < 1:
+            raise RuntimeError(f"duration must be in seconds and >= 1, not {duration}")
+            
+        with self._useFacility(facility):
+            self.mantidsnapper.LoadLiveData(
+                OutputWorkspace=ws,
+                Instrument=instrument,
+                AccumulationMethod='Replace',
+                StartTime=(datetime.utcnow() + timedelta(seconds=-duration)).isoformat()
+            )
+            self.mantidsnapper.executeQueue()
+        
+        return ws
+
+    def readLiveMetadata(self, facility: str = Config["facility.name"], instrument: str = Config["instrument.name"]) -> LiveMetadata:
+        ws = self.mantidsnapper.mtd.unique_hidden_name()
+        
+        # Retrieve the smallest possible data increment, in order to read the logs:
+        ws = self._readLiveData(ws, duration=1, facility=facility, instrument=instrument)
+        metadata = self._liveMetadataFromRun(mtd[ws].getRun())
+        
+        self.mantidsnapper.DeleteWorkspace(ws)
+        self.mantidsnapper.executeQueue()
+        return metadata
+        
+    def readLiveData(
+        self,
+        ws: WorkspaceName,
+        duration: int,
+        facility: str = Config["facility.name"],
+        instrument: str = Config["instrument.name"]
+    ) -> WorkspaceName:
+        return self._readLiveData(ws, duration, facility, instrument)

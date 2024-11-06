@@ -8,6 +8,9 @@ orchestration:
   path:
     delimiter: /
 
+facility:
+  name: SNS
+
 instrument:
   name: SNAP
   # "instrument.home" is overridden in "test.yml":

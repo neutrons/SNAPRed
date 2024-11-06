@@ -2,11 +2,10 @@
 import json
 import os
 from pathlib import Path
+from pydantic import validate_call
 from typing import Any, Dict, Optional, Tuple
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
-from pydantic import validate_call
-from util.dao import DAOFactory
 
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
@@ -25,10 +24,17 @@ from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
+##
+## Put test-related imports at the end, so that the normal non-test import sequence is unmodified.
+##
+from util.dao import DAOFactory
+from util.mock_util import mock_instance_methods
+
 logger = snapredLogger.getLogger(__name__)
 
 
 @Singleton
+@mock_instance_methods
 class WhateversInTheFridge(LocalDataService):
     """
     Yeah, it'd be nice to go to the LocalDataService to get all this...
@@ -42,8 +48,8 @@ class WhateversInTheFridge(LocalDataService):
     iptsCache: Dict[Tuple[str, str], Any] = {}
 
     def __init__(self) -> None:
-        self.verifyPaths = False
-        self.instrumentConfig = self.readInstrumentConfig()
+        self._verifyPaths = False
+        self._instrumentConfig = self._readInstrumentConfig()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
         self.latestVersion = Config["version.start"]
 
@@ -64,9 +70,10 @@ class WhateversInTheFridge(LocalDataService):
         return str(self.iptsCache[key])
 
     @ExceptionHandler(StateValidationException)
-    def generateStateId(self, runId: str) -> Tuple[str, str]:
-        stateId = DAOFactory.magical_state_id.copy()
-        return stateId.hex, stateId.decodedKey
+    def generateStateId(self, runId: str) -> Tuple[str, DetectorState]:
+        stateId = DAOFactory.real_state_id.copy()
+        detectorState = DAOFactory.real_detector_state.copy()
+        return stateId.hex, detectorState
 
     ### CALIBRATION METHODS ###
 

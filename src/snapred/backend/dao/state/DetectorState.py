@@ -1,7 +1,8 @@
+from collections.abc import Mapping
 from enum import IntEnum
+import h5py
 from numbers import Number
 from typing import Literal, Tuple
-
 from pydantic import BaseModel, field_validator
 
 
@@ -17,7 +18,7 @@ class DetectorState(BaseModel):
     guideStat: Literal[1, 2]
     # two additional values that don't define state, but are useful
     lin: Tuple[float, float]
-
+            
     @field_validator("guideStat", mode="before")
     @classmethod
     def validate_int(cls, v):

@@ -1,17 +1,22 @@
 # Unit tests for `tests/util/state_helpers.py`
-import shutil
-import unittest.mock as mock
+import h5py
 from pathlib import Path
+import shutil
 from shutil import rmtree
-
-import pytest
-from util.dao import DAOFactory
-from util.state_helpers import reduction_root_redirect, state_root_override, state_root_redirect
 
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
+
+##
+## Put test-related imports at the end, so that the normal non-test import sequence is unmodified.
+##
+from util.dao import DAOFactory
+from util.state_helpers import reduction_root_redirect, state_root_override, state_root_redirect
+
+import unittest.mock as mock
+import pytest
 
 
 @pytest.fixture(autouse=True)
@@ -23,44 +28,68 @@ def _cleanup_directories():
     if stateRootPath.exists():
         shutil.rmtree(stateRootPath)
 
+def mockPVFile(detectorState: DetectorState) -> mock.Mock:
+    # See also: `tests/unit/backend/data/util/test_mapping_util.py`.
+    
+    # Note: `mapping_util.mappingFromNeXusLogs` will open the 'entry/DASlogs' group,
+    #   so this `dict` mocks the HDF5 group, not the PV-file itself.
 
-def initPVFileMock():
-    return {
-        "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value": [1.1],
-        "entry/DASlogs/det_arc1/value": [1.0],
-        "entry/DASlogs/det_arc2/value": [2.0],
-        "entry/DASlogs/BL3:Det:TH:BL:Frequency/value": [1.2],
-        "entry/DASlogs/BL3:Mot:OpticsPos:Pos/value": [1],
-        "entry/DASlogs/det_lin1/value": [1.0],
-        "entry/DASlogs/det_lin2/value": [2.0],
+    # For the HDF5-file, each key requires the "/value" suffix.
+    dict_ = {
+        "run_number/value": "123456",
+        "start_time/value": "2023-06-14T14:06:40.429048667",
+        "end_time/value": "2023-06-14T14:07:56.123123123",
+        "BL3:Chop:Skf1:WavelengthUserReq/value": [detectorState.wav],
+        "det_arc1/value": [detectorState.arc[0]],
+        "det_arc2/value": [detectorState.arc[1]],
+        "BL3:Det:TH:BL:Frequency/value": [detectorState.freq],
+        "BL3:Mot:OpticsPos:Pos/value": [detectorState.guideStat],
+        "det_lin1/value": [detectorState.lin[0]],
+        "det_lin2/value": [detectorState.lin[1]],
     }
 
+    def del_item(key: str):
+        # bypass <class>.__delitem__
+        del dict_[key]
+
+    mock_ = mock.MagicMock(spec=h5py.Group)
+
+    mock_.get = lambda key, default=None: dict_.get(key, default)
+    mock_.del_item = del_item
+    
+    # Use of the h5py.File starts with access to the "entry/DASlogs" group:
+    mock_.__getitem__.side_effect =\
+       lambda key: mock_ if key == "entry/DASlogs" else dict_[key]
+    
+    mock_.__contains__.side_effect = dict_.__contains__
+    mock_.keys.side_effect = dict_.keys
+    return mock_
 
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "generateStateId")
 @mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
-@mock.patch.object(LocalDataService, "readInstrumentConfig")
+@mock.patch.object(LocalDataService, "getInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
 def test_state_root_override_enter(
     mockReadPVFile,
-    mockReadInstrumentConfig,
+    mockGetInstrumentConfig,
     mockReadDefaultGroupingMap,
     mockGenerateStateId,
     mockWriteDefaultDiffCalTable,  # noqa ARG001
 ):
     # see `test_LocalDataService::test_initializeState`
-    mockReadPVFile.return_value = initPVFileMock()
+    mockReadPVFile.return_value = mockPVFile(DAOFactory.unreal_detector_state)
 
     testCalibrationData = DAOFactory.calibrationParameters("57514", True, 1)
-    mockReadInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
+    mockGetInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
     mockReadDefaultGroupingMap.return_value = DAOFactory.groupingMap_SNAP()
 
     stateId = "ab8704b0bc2a2342"
     # NOTE delete the path first or the test can fail for confusing reasons
     expectedStateRootPath = Path(Config["instrument.calibration.powder.home"]) / stateId
     rmtree(expectedStateRootPath, ignore_errors=True)
-    decodedKey = None
-    mockGenerateStateId.return_value = (stateId, decodedKey)
+    detectorState = DAOFactory.unreal_detector_state
+    mockGenerateStateId.return_value = (stateId, detectorState)
     runNumber = "123456"
     stateName = "my happy state"
     useLiteMode = True
@@ -74,19 +103,19 @@ def test_state_root_override_enter(
 
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
-@mock.patch.object(LocalDataService, "readInstrumentConfig")
+@mock.patch.object(LocalDataService, "getInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
 def test_state_root_override_exit(
     mockReadPVFile,
-    mockReadInstrumentConfig,
+    mockGetInstrumentConfig,
     mockReadDefaultGroupingMap,
     mockWriteDefaultDiffCalTable,  # noqa ARG001
 ):
     # see `test_LocalDataService::test_initializeState`
-    mockReadPVFile.return_value = initPVFileMock()
+    mockReadPVFile.return_value = mockPVFile(DAOFactory.unreal_detector_state)
 
     testCalibrationData = DAOFactory.calibrationParameters("57514", True, 1)
-    mockReadInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
+    mockGetInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
     mockReadDefaultGroupingMap.return_value = DAOFactory.groupingMap_SNAP()
 
     stateId = "ab8704b0bc2a2342"  # noqa: F841
@@ -103,19 +132,19 @@ def test_state_root_override_exit(
 
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
-@mock.patch.object(LocalDataService, "readInstrumentConfig")
+@mock.patch.object(LocalDataService, "getInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
 def test_state_root_override_exit_no_delete(
     mockReadPVFile,
-    mockReadInstrumentConfig,
+    mockGetInstrumentConfig,
     mockReadDefaultGroupingMap,
     mockWriteDefaultDiffCalTable,  # noqa ARG001
 ):
     # see `test_LocalDataService::test_initializeState`
-    mockReadPVFile.return_value = initPVFileMock()
+    mockReadPVFile.return_value = mockPVFile(DAOFactory.unreal_detector_state)
 
     testCalibrationData = DAOFactory.calibrationParameters("57514", True, 1)
-    mockReadInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
+    mockGetInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
     mockReadDefaultGroupingMap.return_value = DAOFactory.groupingMap_SNAP()
 
     stateId = "ab8704b0bc2a2342"  # noqa: F841

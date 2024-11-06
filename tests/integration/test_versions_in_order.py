@@ -2,7 +2,7 @@
 
 """
 
-This is a test of verisoning inside calibration from the API layer.
+This is a test of versioning inside calibration from the API layer.
 Calls are made through the API to endpoints inside the calibration service,
 down to the underlying data layer.
 
@@ -64,6 +64,15 @@ class ImitationDataService(LocalDataService):
     """
 
     stateId = "abc123padto16xxx"
+    
+    detectorState = DetectorState(
+        arc=(1, 2),
+        wav=1.1,
+        freq=1.2,
+        guideStat=1,
+        lin=(1, 2),
+    )
+
 
     def __init__(self):
         super().__init__()
@@ -84,11 +93,11 @@ class ImitationDataService(LocalDataService):
         return Resource.getPath("inputs/crystalInfo/example.cif")
 
     def getIPTS(self, *x, **y):
-        # if this is not overriden, it creates hundreds of headaches
+        # if this is not overridden, it creates hundreds of headaches
         return Resource.getPath("inputs/testInstrument/IPTS-456/")
 
-    def generateStateId(self, runId: str) -> Tuple[str, str]:
-        return (self.stateId, "gibberish")
+    def generateStateId(self, runId: str) -> Tuple[str, DetectorState]:
+        return self.stateId, self.detectorState
 
     def constructCalibrationStateRoot(self, stateId) -> Path:
         return Path(self._stateRoot)
@@ -97,13 +106,7 @@ class ImitationDataService(LocalDataService):
         return DAOFactory.calibrationParameters(runId, useLiteMode)
 
     def readDetectorState(self, runId: str):
-        return DetectorState(
-            arc=(1, 2),
-            wav=1.1,
-            freq=1.2,
-            guideStat=1,
-            lin=(1, 2),
-        )
+        return self.detectorState
 
     def _defaultGroupingMapPath(self) -> Path:
         return self._outputPath / "defaultGroupingMap.json"

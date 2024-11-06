@@ -5,6 +5,8 @@ from qtpy.QtWidgets import QMainWindow, QMessageBox
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.error.UserCancellation import UserCancellation
+from snapred.backend.error.LiveDataState import LiveDataState
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
@@ -16,6 +18,7 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class WorkflowPresenter(QObject):
+    cancellationRequest = Signal()
     enableAllWorkflows = Signal()
     disableOtherWorkflows = Signal()
 
@@ -39,6 +42,8 @@ class WorkflowPresenter(QObject):
         #    allows singleton reset during testing.
         self.completionMessageLambda = completionMessageLambda
 
+        self.worker = None
+        self._setWorkflowIsRunning(False)
         self.worker_pool = WorkerPool()
 
         self.view = WorkflowView(model, parent)
@@ -51,7 +56,10 @@ class WorkflowPresenter(QObject):
         self._iterateLambda: Callable[[WorkflowPresenter], None] = (
             iterateLambda if iterateLambda is not None else self._NOP
         )
-        self._resetLambda: Callable[[], None] = resetLambda if resetLambda is not None else self.reset
+
+        # WARNING: `reset` calls `self._resetLambda` -- don't make it circular!
+        self._resetLambda: Callable[[], None] = resetLambda if resetLambda is not None else self._NOP
+        
         self._cancelLambda: Callable[[], None] = cancelLambda if cancelLambda is not None else self.resetWithPermission
 
         self.externalWorkspaces: List[str] = []
@@ -62,6 +70,8 @@ class WorkflowPresenter(QObject):
         self._hookupSignals()
         self.responseHandler = SNAPResponseHandler(self.view)
         self.responseHandler.continueAnyway.connect(self.continueAnyway)
+        self.responseHandler.userCancellation.connect(self.userCancellation)
+        self.responseHandler.liveDataStateTransition.connect(self.liveDataStateTransition)
 
         if self.view.parent() is not None:
             self.enableAllWorkflows.connect(self.view.parent().enableAllWorkflows)
@@ -98,12 +108,26 @@ class WorkflowPresenter(QObject):
         # Workflow is complete: enable the other workflow tabs.
         self.enableAllWorkflows.emit()
 
+    def safeShutdown(self):
+        # Request any executing worker thread to shut down.
+        if self.workflowIsRunning:
+            self.cancellationRequest.emit()
+        else:
+            self.reset()
+
     def resetWithPermission(self):
         ActionPrompt.prompt(
             "Are you sure?",
-            "Are you sure you want to cancel the workflow? This will clear all workspaces.",
-            self.reset,
-            self.view,
+            "Are you sure you want to cancel the workflow?\n"
+            + "This will clear any partially-calculated results.",
+            self.safeShutdown,
+            parent=self.view,
+            
+            # This was previously really confusing:
+            #   for a workflow cancellation request specifically,
+            #   use "Yes" or "No", _not_ "Continue" or "Cancel"!
+            
+            buttonNames=("Yes", "No")
         )
 
     def iterate(self):
@@ -182,15 +206,34 @@ class WorkflowPresenter(QObject):
         # do action
         self.worker = self.worker_pool.createWorker(target=action, args=args)
         self.worker.finished.connect(lambda: self._enableButtons(True))  # re-enable panel buttons on finish
+        self.worker.finished.connect(lambda: self._setWorkflowIsRunning(False))
+        self.worker.finished.connect(lambda: self.actionCompleted.emit())
         self.worker.result.connect(self._handleComplications)
         self.worker.success.connect(onSuccess)
+        self.cancellationRequest.connect(self.requestCancellation)
+        self._setWorkflowIsRunning(True)
         self.worker_pool.submitWorker(self.worker)
-        self.actionCompleted.emit()
 
+    @Slot(bool)
+    def _setWorkflowIsRunning(self, flag: bool):
+        self._workflowIsRunning = flag
+        if not flag:
+            # Transfer ownership to `worker_pool` for final deletion.
+            self.worker = None
+        return self._workflowIsRunning
+    
+    @property
+    def workflowIsRunning(self):
+        return self._workflowIsRunning
+    
     @Slot(bool)
     def _enableButtons(self, enable):
         # This slot is necessary in order for the buttons to actually be updated from the worker.
-        buttons = [self.view.continueButton, self.view.cancelButton, self.view.skipButton]
+        
+        # *** DEBUG *** allow user cancellation
+        # buttons = [self.view.continueButton, self.view.cancelButton, self.view.skipButton]
+        buttons = [self.view.continueButton, self.view.skipButton]
+        
         for button in buttons:
             button.setEnabled(enable)
 
@@ -208,6 +251,37 @@ class WorkflowPresenter(QObject):
             raise NotImplementedError(f"Continue anyway handler not implemented: {self.view.tabModel}")
         self.handleContinueButtonClicked(self.view.tabModel)
 
+    @Slot(object)
+    def liveDataStateTransition(self, liveDataInfo: LiveDataState.Model):
+        # The associated signal is of type ``Signal(SNAPResponseHandler.liveDataStateTransition) as Signal(object)``
+        QMessageBox.information(
+            self.view,
+            "Live Data:",
+            liveDataInfo.message
+        )
+        # Any live-data transition resets the workflow:
+        #   at which point the request-view should display the new live-data status.
+        self.reset()
+
+    @Slot()
+    def requestCancellation(self):
+        if self.worker:
+            # This supports coarse grained cancellation:
+            #   possible only after each service request completes.
+            #   Disabling the button here gives the user feedback that their action
+            #   has actually had any effect.
+            self.view.cancelButton.setEnabled(False)
+            
+            # This needs to be executed _off_ the worker's thread.
+            # Otherwise it wouldn't happen until after the entire task
+            #   is completed.
+            self.worker.requestCancellation()
+    
+    @Slot(object)
+    def userCancellation(self, userCancellationInfo: UserCancellation.Model):
+        # We've already asked for permission.
+        self.reset()
+        
     def completeWorkflow(self):
         # Directly show the completion message and reset the workflow
         QMessageBox.information(

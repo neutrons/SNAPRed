@@ -93,7 +93,11 @@ class state_root_redirect:
         self.dataService.constructCalibrationStateRoot = self.old_constructCalibrationStateRoot
         self.dataService.generateStateId = self.old_generateStateId
         self.tmpdir.cleanup()
-        assert not self.tmppath.exists()
+        
+        # For debugging purposes, you may want to re-add this line:
+        # assert not self.tmppath.exists()        
+        # OTHERWISE, I'm not going to _assume_ that you never want to mock-out `pathlib.Path.exists`!
+        
         del self.tmpdir
 
     def path(self) -> Path:
@@ -101,15 +105,21 @@ class state_root_redirect:
 
     def addFileAs(self, source: str, target: str):
         assert Path(self.tmpdir.name) in Path(target).parents
+        
         Path(target).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
-        assert Path(target).exists()
+        
+        # For debugging purposes, you may want to re-add this line:
+        # assert Path(target).exists()
 
     def saveObjectAt(self, thing: BaseModel, target: str):
         assert Path(self.tmpdir.name) in Path(target).parents
+        
         Path(target).parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(thing, target)
-        assert Path(target).exists()
+        
+        # For debugging purposes, you may want to re-add this line:
+        # assert Path(target).exists()
 
 
 class reduction_root_redirect:
@@ -147,7 +157,10 @@ class reduction_root_redirect:
         self.dataService._constructReductionStateRoot = self.old_constructReductionStateRoot
         self.dataService.generateStateId = self.old_generateStateId
         self.tmpdir.cleanup()
-        assert not self.tmppath.exists()
+        
+        # For debugging purposes, you may want to re-add this line:
+        # assert not self.tmppath.exists()
+        
         del self.tmpdir
 
     def path(self) -> Path:
@@ -157,4 +170,6 @@ class reduction_root_redirect:
         assert self.tmppath in list(Path(target).parents)
         Path(target).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
-        assert Path(target).exists()
+        
+        # For debugging purposes, you may want to re-add this line:
+        # assert Path(target).exists()

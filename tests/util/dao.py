@@ -26,7 +26,33 @@ from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 
 
 class DAOFactory:
+
+    ## DETECTOR STATE
+
+    real_detector_state = DetectorState(
+        arc=(-65.3, 104.95),
+        wav=2.1,
+        freq=60.0,
+        guideStat=1,
+        lin=(0.045, 0.043),
+    )
+
+    unreal_detector_state = DetectorState(  # TODO remove this object?
+        arc=(1, 2),
+        wav=1.1,
+        freq=1.2,
+        guideStat=1,
+        lin=(1, 2),
+    )
+
     ## STATE ID
+    
+    # state-id corresponding to `real_detector_state`:
+    real_state_id = ObjectSHA(
+        hex="04bd2c53f6bf6754",
+        decodedKey="{'vdet_arc1': -65.5, 'vdet_arc2': 105.0, 'WavelengthUserReq': 2.1, 'Frequency': 60, 'Pos': 1}",
+    )
+    
     magical_state_id = ObjectSHA(
         hex="0a1b2c3d0a1b2c3d",
         decodedKey=None,
@@ -79,24 +105,6 @@ class DAOFactory:
         maxBandwidth=3.0,
         delLOverL=6.453e-05,
         delThNoGuide=0.0032,
-    )
-
-    ## DETECTOR STATE
-
-    real_detector_state = DetectorState(
-        arc=(-65.3, 104.95),
-        wav=2.1,
-        freq=60.0,
-        guideStat=1,
-        lin=(0.045, 0.043),
-    )
-
-    unreal_detector_state = DetectorState(  # TODO remove this object?
-        arc=(1, 2),
-        wav=1.1,
-        freq=1.2,
-        guideStat=1,
-        lin=(1, 2),
     )
 
     ## GSAS PARAMETERS

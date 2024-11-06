@@ -42,10 +42,12 @@ class RecoverableException(Exception):
         logger.error(f"{extractTrueStacktrace()}")
         super().__init__(message)
 
+    @staticmethod
     def parse_raw(raw):
         raw = RecoverableException.Model.model_validate_json(raw)
         return RecoverableException(**raw.dict())
 
+    @staticmethod
     def stateUninitialized(runNumber: str, useLiteMode: bool):
         return RecoverableException(
             "State uninitialized",

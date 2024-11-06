@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import validate_call
 
@@ -13,10 +13,13 @@ from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
 from snapred.backend.dao.request.NormalizationExportRequest import NormalizationExportRequest
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.DetectorState import DetectorState
+from snapred.backend.dao.LiveMetadata import LiveMetadata
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
@@ -46,12 +49,12 @@ class DataFactoryService:
         return self.lookupService.readRunConfig(runId)
 
     def getInstrumentConfig(self, runId: str) -> InstrumentConfig:  # noqa: ARG002
-        return self.lookupService.readInstrumentConfig()
+        return self.lookupService.getInstrumentConfig()
 
     def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:  # noqa: ARG002
         return self.lookupService.readStateConfig(runId, useLiteMode)
 
-    def constructStateId(self, runId: str):
+    def constructStateId(self, runId: str) -> Tuple[str, DetectorState]:
         return self.lookupService.generateStateId(runId)
 
     def stateExists(self, runId: str):
@@ -73,7 +76,7 @@ class DataFactoryService:
         return self.lookupService.readDefaultGroupingMap()
 
     def getDefaultInstrumentState(self, runId: str):
-        return self.lookupService.generateInstrumentStateFromRoot(runId)
+        return self.lookupService.generateInstrumentState(runId)
 
     ##### CALIBRATION METHODS #####
 
@@ -230,3 +233,8 @@ class DataFactoryService:
 
     def deleteWorkspaceUnconditional(self, name):
         return self.groceryService.deleteWorkspaceUnconditional(name)
+
+    ##### LIVE-DATA SUPPORT METHODS #####
+
+    def getLiveMetadata(self, facility: str = Config["facility.name"], instrument: str = Config["instrument.name"]) -> LiveMetadata:
+        return self.lookupService.readLiveMetadata(facility, instrument)
