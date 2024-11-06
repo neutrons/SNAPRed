@@ -38,8 +38,6 @@ class MetadataLookupService(Service):
                 values=runs,
                 validator=IntArrayMandatoryValidator(),
             )
-            if iap.isValid != "":
-                raise ValueError(f"Input of {runs} is not valid")
             allRuns = iap.value
             validRuns = []
             for run in allRuns:
