@@ -184,7 +184,7 @@ class CalibrationService(Service):
     @FromString
     def pixelCalibration(self, request: SimpleDiffCalRequest) -> PixelDiffCalServing:
         # cook recipe
-        if request.skipPixelCalibration:
+        if request.ingredients.skipPixelCalibration:
             self.groceryClerk.name("defaultCalibrationTable").diffcal_table(
                 request.ingredients.runConfig.runNumber, VERSION_DEFAULT
             ).useLiteMode(request.ingredients.runConfig.useLiteMode).add()
