@@ -803,11 +803,19 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             maskWorkspace=mock.sentinel.mask,
         )
         self.instance.groupCalibration = mock.Mock(return_value=mockGroupRxServing)
+        mock.sentinel.ingredients.skipPixelCalibration = True
+        mock.sentinel.ingredients.runConfig = mock.Mock(spec=RunConfig)
+        mock.sentinel.ingredients.runConfig.runNumber = "12345"
+        mock.sentinel.ingredients.runConfig.useLiteMode = True
+        defaultCalibrationTable = "grocery"
+        self.instance.groceryClerk = mock.Mock(spec=GroceryListBuilder)
+        self.instance.groceryService.fetchGroceryDict = mock.Mock(
+            return_value={"defaultCalibrationTable": defaultCalibrationTable}
+        )
         # Call the method with the provided parameters
         request = SimpleDiffCalRequest.construct(
             ingredients=mock.sentinel.ingredients,
             groceries={"maskWorkspace": str(mock.sentinel.mask), "calibrationTable": str(mock.sentinel.cal)},
-            skipPixelCalibration=True,
         )
         res = self.instance.diffractionCalibrationWithIngredients(request)
         assert res == {
@@ -845,10 +853,18 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     def test_pixelCalibration_skip(self):
         # Call the method with the provided parameters
+        mock.sentinel.ingredients.skipPixelCalibration = True
+        mock.sentinel.ingredients.runConfig = mock.Mock(spec=RunConfig)
+        mock.sentinel.ingredients.runConfig.runNumber = "12345"
+        mock.sentinel.ingredients.runConfig.useLiteMode = True
+        defaultCalibrationTable = "grocery"
+        self.instance.groceryClerk = mock.Mock(spec=GroceryListBuilder)
+        self.instance.groceryService.fetchGroceryDict = mock.Mock(
+            return_value={"defaultCalibrationTable": defaultCalibrationTable}
+        )
         request = SimpleDiffCalRequest.construct(
             ingredients=mock.sentinel.ingredients,
             groceries={"maskWorkspace": str(mock.sentinel.mask), "calibrationTable": str(mock.sentinel.cal)},
-            skipPixelCalibration=True,
         )
         result = self.instance.pixelCalibration(request)
 
@@ -856,7 +872,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert result.result
         assert result.medianOffsets == []
         assert result.maskWorkspace == str(mock.sentinel.mask)
-        assert result.calibrationTable == str(mock.sentinel.cal)
+        assert result.calibrationTable == defaultCalibrationTable
 
     @mock.patch(thisService + "PixelDiffCalRecipe", spec_set=PixelDiffCalRecipe)
     def test_pixelCalibration_noskip_success(
@@ -866,6 +882,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mock.sentinel.result = PixelDiffCalServing.construct(
             maskWorkspace=self.sampleMaskWS,
         )
+        mock.sentinel.ingredients.skipPixelCalibration = False
         PixelRx().cook.return_value = mock.sentinel.result
 
         # Call the method with the provided parameters
@@ -894,6 +911,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         for pixel in range(numHistograms):
             maskWS.setY(pixel, [1.0])
 
+        mock.sentinel.ingredients.skipPixelCalibration = False
+
         # mock out the return
         mock.sentinel.result = PixelDiffCalServing.construct(
             maskWorkspace=self.sampleMaskWS,
@@ -904,7 +923,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         request = SimpleDiffCalRequest.construct(
             ingredients=mock.sentinel.ingredients,
             groceries=mock.sentinel.groceries,
-            skipPixelCalibration=False,
         )
         with pytest.raises(Exception, match=r".*pixels failed calibration*"):
             self.instance.pixelCalibration(request)
