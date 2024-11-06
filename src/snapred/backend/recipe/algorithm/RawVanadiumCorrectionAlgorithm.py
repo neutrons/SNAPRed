@@ -180,12 +180,6 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             "Delete cluttering workspace",
             Workspace=self.absorptionWS,
         )
-        self.mantidSnapper.ConvertUnits(
-            "Convert units back to TOF",
-            InputWorkspace=self.outputVanadiumWS,
-            OutputWorkspace=self.outputVanadiumWS,
-            Target="TOF",
-        )
 
         self.mantidSnapper.executeQueue()
         self.setPropertyValue("OutputWorkspace", self.outputVanadiumWS)
