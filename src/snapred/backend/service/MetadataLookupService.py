@@ -1,4 +1,4 @@
-from mantid.kernel import IntArrayProperty
+from mantid.kernel import IntArrayMandatoryValidator, IntArrayProperty
 
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.log.logger import snapredLogger
@@ -32,13 +32,22 @@ class MetadataLookupService(Service):
     @FromString
     def verifyMultipleRuns(self, runs: str):
         maxRuns = Config["instrument.maxNumberOfRuns"]
-        allRuns = IntArrayProperty(name="RunList", values=runs).value
-        validRuns = []
-        for run in allRuns:
-            if RunNumberValidator.validateRunNumber(str(run)):
-                validRuns.append(run)
-        if len(validRuns) > maxRuns:
-            logger.warning(f"Maximum value of {maxRuns} run numbers exceeded")
+        try:
+            iap = IntArrayProperty(
+                name="RunList",
+                values=runs,
+                validator=IntArrayMandatoryValidator(),
+            )
+            if iap.isValid != "":
+                raise ValueError(f"Input of {runs} is not valid")
+            allRuns = iap.value
             validRuns = []
+            for run in allRuns:
+                if RunNumberValidator.validateRunNumber(str(run)):
+                    validRuns.append(run)
+            if len(validRuns) > maxRuns:
+                raise ValueError(f"Maximum value of {maxRuns} run numbers exceeded")
 
-        return validRuns
+            return validRuns
+        except Exception as e:  # noqa: BLE001
+            raise ValueError(f"Input of {runs} is poorly formatted, see the full error:\n{e}")
