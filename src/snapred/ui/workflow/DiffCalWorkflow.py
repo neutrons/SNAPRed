@@ -308,6 +308,7 @@ class DiffCalWorkflow(WorkflowImplementer):
                 self.focusedWorkspace,
                 self.ingredients.groupedPeakLists,
                 self.fitPeaksDiagnostic,
+                self.residualWorkspace,
             )
 
             # update the values for next call to this method

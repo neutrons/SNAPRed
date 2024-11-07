@@ -233,7 +233,14 @@ class DiffCalTweakPeakView(BackendRequestView):
             ax.plot(fitted_peaks, wkspIndex=wkspIndex, label="fit", color="black", normalize_by_bin_width=True)
 
             # plot the residual data
-            ax.plot(mtd[residual], wkspIndex=wkspIndex, label="residual", color="green", normalize_by_bin_width=True)
+            ax.plot(
+                mtd[residual],
+                wkspIndex=wkspIndex,
+                label="residual",
+                color="limegreen",
+                linewidth=2,
+                normalize_by_bin_width=True,
+            )
 
             ax.legend(loc=1)
 

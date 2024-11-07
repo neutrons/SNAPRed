@@ -86,12 +86,12 @@ class CalculateResidualDiffCalAlgo(PythonAlgorithm):
 
         for i in range(numHistograms):
             # Get the actual SpectrumNumber for each spectrum
-            spectrum_id = fitPeaksWorkspace.getSpectrum(i).getSpectrumNo()
-            singleSpectrumName = f"{self.fitPeaksDiagnosticWorkSpaceName}_spectrum_{spectrum_id}"
+            spectrumId = fitPeaksWorkspace.getSpectrum(i).getSpectrumNo()
+            singleSpectrumName = f"{self.fitPeaksDiagnosticWorkSpaceName}_spectrum"
 
             # Extract each spectrum individually using the index `i`
             self.mantidSnapper.ExtractSingleSpectrum(
-                f"Extracting spectrum with SpectrumNumber {spectrum_id}...",
+                f"Extracting spectrum with SpectrumNumber {spectrumId}...",
                 InputWorkspace=self.fitPeaksDiagnosticWorkSpaceName,
                 OutputWorkspace=singleSpectrumName,
                 WorkspaceIndex=i,  # Use `i` directly to extract by position
@@ -99,7 +99,7 @@ class CalculateResidualDiffCalAlgo(PythonAlgorithm):
 
             # Replace zero values with NaN in the extracted spectrum
             self.mantidSnapper.ReplaceSpecialValues(
-                f"Replacing zeros with NaN in spectrum with SpectrumNumber {spectrum_id}...",
+                f"Replacing zeros with NaN in spectrum with SpectrumNumber {spectrumId}...",
                 InputWorkspace=singleSpectrumName,
                 OutputWorkspace=singleSpectrumName,
                 SmallNumberThreshold=1e-10,
@@ -122,12 +122,6 @@ class CalculateResidualDiffCalAlgo(PythonAlgorithm):
             LHSWorkspace=combinedWorkspace,
             RHSWorkspace=self.inputWorkspaceName,
             OutputWorkspace=self.outputWorkspaceName,
-        )
-
-        # Clean up temporary spectra workspaces
-        self.mantidSnapper.WashDishes(
-            "Deleting the workspaces used for processing...",
-            Workspace=processedSpectra,
         )
 
         # Execute all queued operations
