@@ -9,8 +9,10 @@ from qtpy.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
 )
+
+# from snapred.backend.service.MetadataLookupService import MetadataLookupService
+from snapred.backend.dao.state.RunNumber import RunNumber
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.service.MetadataLookupService import MetadataLookupService
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.Toggle import Toggle
@@ -103,7 +105,26 @@ class ReductionRequestView(BackendRequestView):
     def parseInputRunNumbers(self) -> List[str]:
         # WARNING: run numbers are strings.
         #   For now, it's OK to parse them as integer, but they should not be passed around that way.
-        runs = MetadataLookupService().verifyMultipleRuns(self.runNumberInput.text())
+        try:
+            runs, errors = RunNumber.runsFromIntArrayProperty(self.runNumberInput.text(), False)
+
+            if len(errors) > 0:
+                messageBox = QMessageBox(
+                    QMessageBox.Warning,
+                    "Warning",
+                    "There are issues with some run(s)",
+                    QMessageBox.Ok,
+                    self,
+                )
+                formattedErrors = "\n\n".join([error[1] for error in errors])
+                messageBox.setDetailedText(f"{formattedErrors}")
+                messageBox.exec()
+        except Exception:  # noqa BLE001
+            raise ValueError(
+                "Bad input was given for Reduction runs,"
+                "please read mantid docs for IntArrayProperty on how to format input"
+            )
+
         return [str(num) for num in runs]
 
     @Slot()
