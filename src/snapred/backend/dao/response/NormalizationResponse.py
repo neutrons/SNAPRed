@@ -22,3 +22,4 @@ class NormalizationResponse(BaseModel):
     focusedVanadium: str
     smoothedVanadium: str
     detectorPeaks: List[GroupPeakList]
+    calibrationRunNumber: str
