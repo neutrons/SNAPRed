@@ -3,6 +3,7 @@ import json
 import numpy as np
 from mantid.api import (
     AlgorithmFactory,
+    IEventWorkspace,
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
@@ -27,7 +28,6 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
                 "",
                 Direction.Input,
                 PropertyMode.Mandatory,
-                validator=WorkspaceUnitValidator("dSpacing"),
             ),
             doc="Workspace that contains calibrated and focused diffraction data.",
         )
@@ -120,6 +120,22 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
             InputWorkspace=self.inputWorkspaceName,
             OutputWorkspace=self.outputWorkspaceName,
         )
+        # if input workspace is an eventworkspace, convert it to a histogram workspace
+        if isinstance(self.mantidSnapper.mtd[self.inputWorkspaceName], IEventWorkspace):
+            # convert it to a histogram
+            self.mantidSnapper.ConvertToMatrixWorkspace(
+                "Converting event workspace to histogram...",
+                InputWorkspace=self.outputWorkspaceName,
+                OutputWorkspace=self.outputWorkspaceName,
+            )
+
+        self.mantidSnapper.ConvertUnits(
+            "Converting to dSpacing...",
+            InputWorkspace=self.outputWorkspaceName,
+            Target="dSpacing",
+            OutputWorkspace=self.outputWorkspaceName,
+        )
+
         self.mantidSnapper.executeQueue()
         self.inputWorkspace = self.mantidSnapper.mtd[self.inputWorkspaceName]
         self.outputWorkspace = self.mantidSnapper.mtd[self.outputWorkspaceName]

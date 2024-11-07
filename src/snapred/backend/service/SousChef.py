@@ -190,7 +190,7 @@ class SousChef(Service):
         # this also needs to check if it is in fact the default calibration
         if ingredients.calibrantSamplePath is None:
             mode = "lite" if ingredients.useLiteMode else "native"
-            self.logger().warning(f"No calibrant sample found for run {ingredients.runNumber} in {mode} mode.")
+            self.logger().debug(f"No calibrant sample found for run {ingredients.runNumber} in {mode} mode.")
             return None
 
         detectorPeaks = []

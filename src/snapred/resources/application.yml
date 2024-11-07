@@ -226,5 +226,7 @@ metadata:
 
 ui:
   default:
+    reduction:
+      smoothing: 5
     workflow:
       completionMessage: "‧₊‧₊The workflow has been completed successfully!‧₊‧₊"

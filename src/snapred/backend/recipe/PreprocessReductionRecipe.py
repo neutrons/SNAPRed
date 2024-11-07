@@ -58,6 +58,14 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
                 "Applying diffcal..", InstrumentWorkspace=self.outputWs, CalibrationWorkspace=self.diffcalWs
             )
 
+        # convert to tof if needed
+        self.mantidSnapper.ConvertUnits(
+            "Converting to TOF...",
+            InputWorkspace=self.outputWs,
+            Target="TOF",
+            OutputWorkspace=self.outputWs,
+        )
+
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         """
         Main interface method for the recipe.

@@ -2,6 +2,7 @@ from typing import Dict, List
 
 from qtpy.QtCore import Slot
 
+from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.request import (
     CreateArtificialNormalizationRequest,
     ReductionExportRequest,
@@ -175,7 +176,7 @@ class ReductionWorkflow(WorkflowImplementer):
             response = self.request(path="reduction/validateReduction", payload=request_)
             if ContinueWarning.Type.MISSING_NORMALIZATION in self.continueAnywayFlags:
                 self._artificialNormalizationView.updateRunNumber(runNumber)
-                response = self.request(path="reduction/grabDiffractionWorkspaceforArtificialNorm", payload=request_)
+                response = self.request(path="reduction/grabWorkspaceforArtificialNorm", payload=request_)
                 self._artificialNormalization(workflowPresenter, response.data, runNumber)
             else:
                 # Proceed with reduction if artificial normalization is not needed
@@ -195,7 +196,7 @@ class ReductionWorkflow(WorkflowImplementer):
             runNumber=runNumber,
             useLiteMode=self._reductionRequestView.liteModeToggle.field.getState(),
             peakWindowClippingSize=int(self._artificialNormalizationView.peakWindowClippingSize.field.text()),
-            smoothingParameter=self._artificialNormalizationView.smoothingSlider.field.value(),
+            smoothingParameter=self._artificialNormalizationView.getSmoothingParameter(),
             decreaseParameter=self._artificialNormalizationView.decreaseParameterDropdown.currentIndex() == 1,
             lss=self._artificialNormalizationView.lssDropdown.currentIndex() == 1,
             diffractionWorkspace=responseData,
@@ -232,7 +233,12 @@ class ReductionWorkflow(WorkflowImplementer):
 
     def _continueWithNormalization(self, workflowPresenter):  # noqa: ARG002
         """Continues the workflow using the artificial normalization workspace."""
-        artificialNormWorkspace = self._artificialNormalizationView.artificialNormWorkspace
+        artificialNormIngredients = ArtificialNormalizationIngredients(
+            peakWindowClippingSize=self._artificialNormalizationView.getPeakWindowClippingSize(),
+            smoothingParameter=self._artificialNormalizationView.getSmoothingParameter(),
+            decreaseParameter=self._artificialNormalizationView.getDecreaseParameter(),
+            lss=self._artificialNormalizationView.getLSS(),
+        )
         pixelMasks = self._reconstructPixelMaskNames(self._reductionRequestView.getPixelMasks())
         timestamp = self.request(path="reduction/getUniqueTimestamp").data
 
@@ -244,7 +250,7 @@ class ReductionWorkflow(WorkflowImplementer):
             pixelMasks=pixelMasks,
             keepUnfocused=self._reductionRequestView.retainUnfocusedDataCheckbox.isChecked(),
             convertUnitsTo=self._reductionRequestView.convertUnitsDropdown.currentText(),
-            artificialNormalization=artificialNormWorkspace,
+            artificialNormalizationIngredients=artificialNormIngredients,
         )
 
         response = self.request(path="reduction/", payload=request_)

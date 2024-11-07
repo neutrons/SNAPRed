@@ -762,7 +762,7 @@ class LocalDataService:
             else:
                 raise RuntimeError(
                     "No calibration exists, and you lack permissions to create one."  # fmt: skip
-                    " Please contact your CIS."  # fmt: skip
+                    " Please contact your IS or CIS."  # fmt: skip
                 )
 
         indexer = self.calibrationIndexer(runId, useLiteMode)

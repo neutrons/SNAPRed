@@ -50,11 +50,11 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepDetectorPeaks = mock.Mock()
         self.ingredients.calibrantSamplePath = None
         self.instance.logger = mock.Mock()
-        self.instance.logger.warning = mock.Mock()
+        self.instance.logger.debug = mock.Mock()
 
         res = self.instance.prepManyDetectorPeaks(self.ingredients)
         assert res is None
-        self.instance.logger().warning.assert_called_once_with("No calibrant sample found for run 123 in lite mode.")
+        self.instance.logger().debug.assert_called_once_with("No calibrant sample found for run 123 in lite mode.")
 
     def test_prepManyPixelGroups(self):
         self.instance.prepPixelGroup = mock.Mock()

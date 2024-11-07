@@ -2,6 +2,7 @@ from typing import List, NamedTuple, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -23,7 +24,7 @@ class ReductionRequest(BaseModel):
     versions: Versions = Versions(None, None)
 
     pixelMasks: List[WorkspaceName] = []
-    artificialNormalization: Optional[str] = None
+    artificialNormalizationIngredients: Optional[ArtificialNormalizationIngredients] = None
 
     # TODO: Move to SNAPRequest
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET

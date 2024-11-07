@@ -9,6 +9,7 @@ from qtpy.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
 )
+from snapred.backend.dao.state.RunNumber import RunNumber
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
@@ -102,15 +103,27 @@ class ReductionRequestView(BackendRequestView):
     def parseInputRunNumbers(self) -> List[str]:
         # WARNING: run numbers are strings.
         #   For now, it's OK to parse them as integer, but they should not be passed around that way.
-        runNumberString = self.runNumberInput.text().strip()
-        if runNumberString:
-            runNumberList = [num.strip() for num in runNumberString.split(",") if num.strip()]
-            for runNumber in runNumberList:
-                if not runNumber.isdigit():
-                    raise ValueError(
-                        "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
-                    )
-            return runNumberList
+        try:
+            runs, errors = RunNumber.runsFromIntArrayProperty(self.runNumberInput.text(), False)
+
+            if len(errors) > 0:
+                messageBox = QMessageBox(
+                    QMessageBox.Warning,
+                    "Warning",
+                    "There are issues with some run(s)",
+                    QMessageBox.Ok,
+                    self,
+                )
+                formattedErrors = "\n\n".join([error[1] for error in errors])
+                messageBox.setDetailedText(f"{formattedErrors}")
+                messageBox.exec()
+        except Exception:  # noqa BLE001
+            raise ValueError(
+                "Bad input was given for Reduction runs,"
+                "please read mantid docs for IntArrayProperty on how to format input"
+            )
+
+        return [str(num) for num in runs]
 
     @Slot()
     def removeRunNumber(self, runNumber):

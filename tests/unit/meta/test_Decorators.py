@@ -131,7 +131,7 @@ def test_stateValidationExceptionWritePerms():
             raise StateValidationException(exception)
 
         # Asserting that the error message is as expected
-        assert "The following error occurred:Test Exception\n\nPlease contact your CIS." in str(excinfo.value)
+        assert "The following error occurred:Test Exception\n\nPlease contact your IS or CIS." in str(excinfo.value)
 
 
 @ExceptionHandler(StateValidationException)
