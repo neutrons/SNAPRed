@@ -9,8 +9,6 @@ from qtpy.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
 )
-
-# from snapred.backend.service.MetadataLookupService import MetadataLookupService
 from snapred.backend.dao.state.RunNumber import RunNumber
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Resettable import Resettable
