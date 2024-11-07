@@ -32,7 +32,6 @@ Register = _makeRegister()
 
 class Service(ABC):
     _pathDelimiter = Config["orchestration.path.delimiter"]
-    _registrar = None
 
     def __init__(self):
         self._paths: Dict[str, Any] = self._getInstancePaths()
