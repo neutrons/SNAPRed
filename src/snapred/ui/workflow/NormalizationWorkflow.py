@@ -258,6 +258,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             focusGroup=list(self.focusGroups.items())[index][1],
             smoothingParameter=smoothingParameter,
             crystalDBounds={"minimum": xtalDMin, "maximum": xtalDMax},
+            continueFlags=self.continueAnywayFlags,
         )
         self.request(path="normalization", payload=payload.json())
 
