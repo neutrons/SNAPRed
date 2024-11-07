@@ -15,6 +15,7 @@ from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
 from snapred.backend.dao.request import (
+    CalculateResidualRequest,
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
     CalibrationIndexRequest,
@@ -36,6 +37,7 @@ from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
 from snapred.backend.recipe.GenericRecipe import (
+    CalculateResidualDiffCalRecipe,
     CalibrationMetricExtractionRecipe,
     FitMultiplePeaksRecipe,
     FocusSpectraRecipe,
@@ -94,6 +96,7 @@ class CalibrationService(Service):
         self.registerPath("diffraction", self.diffractionCalibration)
         self.registerPath("diffractionWithIngredients", self.diffractionCalibrationWithIngredients)
         self.registerPath("validateWritePermissions", self.validateWritePermissions)
+        self.registerPath("residual", self.calculateResidual)
         return
 
     @staticmethod
@@ -247,6 +250,14 @@ class CalibrationService(Service):
                 + "<br><b>instrument.calibration.powder.home</b> entry in SNAPRed's <b>application.yml</b> file.</p>"
                 + "</font>"
             )
+
+    @FromString
+    def calculateResidual(self, request: CalculateResidualRequest):
+        return CalculateResidualDiffCalRecipe().executeRecipe(
+            InputWorkspace=request.inputWorkspace,
+            OutputWorkspace=request.outputWorkspace,
+            FitPeaksDiagnosticWorkSpace=request.fitPeaksDiagnostic,
+        )
 
     @FromString
     def focusSpectra(self, request: FocusSpectraRequest):
