@@ -22,6 +22,7 @@ from mantid.simpleapi import (
 )
 from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
 from snapred.backend.dao.request import (
+    CalculateResidualRequest,
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
     CalibrationLoadAssessmentRequest,
@@ -1150,6 +1151,33 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             useLiteMode=True,
         )
         assert not self.instance.hasState(badRequest)
+
+    @mock.patch("snapred.backend.service.CalibrationService.CalculateResidualDiffCalRecipe")
+    def test_calculateResidual(self, MockCalculateResidualDiffCalRecipe):
+        # Arrange: set up mock request and mock recipe
+        mockRequest = mock.Mock(
+            spec=CalculateResidualRequest,
+            inputWorkspace="inputWS",
+            outputWorkspace="outputWS",
+            fitPeaksDiagnostic="fitPeaksDiagWS",
+        )
+
+        # Mock the recipe execution result
+        mockRecipeInstance = MockCalculateResidualDiffCalRecipe.return_value
+        mockRecipeInstance.executeRecipe.return_value = "expected_result"
+
+        # Act: call calculateResidual with the mock request
+        result = self.instance.calculateResidual(mockRequest)
+
+        # Assert: check that the recipe was called with correct parameters
+        MockCalculateResidualDiffCalRecipe.assert_called_once_with()
+        mockRecipeInstance.executeRecipe.assert_called_once_with(
+            InputWorkspace=mockRequest.inputWorkspace,
+            OutputWorkspace=mockRequest.outputWorkspace,
+            FitPeaksDiagnosticWorkSpace=mockRequest.fitPeaksDiagnostic,
+        )
+        # Assert that the result is what the recipe returns
+        self.assertEqual(result, "expected_result")  # noqa: PT009
 
     def test_parseCalibrationMetricList(self):
         fakeMetrics = CalibrationMetric(

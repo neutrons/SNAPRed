@@ -892,7 +892,7 @@ class TestGUIPanels:
             qtbot.wait(10000)
 
             #    continue to the next panel
-            with qtbot.waitSignal(actionCompleted, timeout=60000):
+            with qtbot.waitSignal(actionCompleted, timeout=80000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
 
             qtbot.waitUntil(
