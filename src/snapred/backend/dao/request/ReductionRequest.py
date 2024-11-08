@@ -6,6 +6,7 @@ from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 Versions = NamedTuple("Versions", [("calibration", Optional[int]), ("normalization", Optional[int])])
 
@@ -17,7 +18,7 @@ class ReductionRequest(BaseModel):
     focusGroups: List[FocusGroup] = []
 
     keepUnfocused: bool = False
-    convertUnitsTo: str = None
+    convertUnitsTo: str = wng.Units.DSP
 
     # Calibration and normalization versions:
     #   `None` => <use latest version>

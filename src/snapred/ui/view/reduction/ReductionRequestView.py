@@ -38,6 +38,7 @@ class ReductionRequestView(BackendRequestView):
         # Horizontal layout for run number input and button
         self.runNumberLayout = QHBoxLayout()
         self.runNumberInput = QLineEdit()
+        self.runNumberInput.returnPressed.connect(self.addRunNumber)
         self.enterRunNumberButton = QPushButton("Enter Run Number")
         self.clearButton = QPushButton("Clear")
         self.runNumberButtonLayout = QVBoxLayout()
@@ -57,6 +58,7 @@ class ReductionRequestView(BackendRequestView):
         self.convertUnitsDropdown = self._sampleDropDown(
             "Convert Units", ["TOF", "dSpacing", "Wavelength", "MomentumTransfer"]
         )
+        self.convertUnitsDropdown.setCurrentIndex(2)
 
         # Set field properties
         self.liteModeToggle.setEnabled(False)
