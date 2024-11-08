@@ -9,12 +9,40 @@ from snapred.meta.Config import Config
 GroupingLambda = Callable[[List[SNAPRequest]], Dict[str, List[SNAPRequest]]]
 
 
+def _makeRegister():
+    registry = {}
+
+    def register(path):
+        def reg(func):
+            clazzQualName = ".".join(func.__qualname__.split(".")[:-1])
+            methodName = func.__qualname__.split(".")[-1]
+            if clazzQualName not in registry:
+                registry[clazzQualName] = {}
+            registry[clazzQualName][path] = methodName
+            return func
+
+        return reg
+
+    register.all = registry
+    return register
+
+
+Register = _makeRegister()
+
+
 class Service(ABC):
     _pathDelimiter = Config["orchestration.path.delimiter"]
 
     def __init__(self):
-        self._paths: Dict[str, Any] = {}
+        self._paths: Dict[str, Any] = self._getInstancePaths()
         self._lambdas: Dict[str, List[GroupingLambda]] = {}
+
+    def _getInstancePaths(self):
+        instPaths = {}
+        clsPaths = Register.all.get(self.__class__.__qualname__, {})
+        for key, value in clsPaths.items():
+            instPaths[key] = self.__getattribute__(value)
+        return instPaths
 
     @abstractmethod
     def name(self):

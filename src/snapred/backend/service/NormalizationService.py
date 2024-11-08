@@ -34,7 +34,7 @@ from snapred.backend.recipe.GenericRecipe import (
 from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.service.CalibrationService import CalibrationService
-from snapred.backend.service.Service import Service
+from snapred.backend.service.Service import Register, Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
@@ -66,11 +66,6 @@ class NormalizationService(Service):
         self.groceryClerk = GroceryListItem.builder()
         self.diffractionCalibrationService = CalibrationService()
         self.sousChef = SousChef()
-        self.registerPath("", self.normalization)
-        self.registerPath("validateWritePermissions", self.validateWritePermissions)
-        self.registerPath("assessment", self.normalizationAssessment)
-        self.registerPath("save", self.saveNormalization)
-        self.registerPath("smooth", self.smoothDataExcludingPeaks)
         return
 
     @staticmethod
@@ -78,6 +73,7 @@ class NormalizationService(Service):
         return "normalization"
 
     @FromString
+    @Register("")
     def normalization(self, request: NormalizationRequest):
         self.validateRequest(request)
 
@@ -122,6 +118,9 @@ class NormalizationService(Service):
         ).add()
 
         calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
+        calRunNumber = self.dataFactoryService.getCalibrationRecord(
+            request.runNumber, request.useLiteMode, calVersion
+        ).runNumber
 
         self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
             request.useLiteMode
@@ -171,6 +170,7 @@ class NormalizationService(Service):
             focusedVanadium=focusedVanadium,
             smoothedVanadium=smoothedVanadium,
             detectorPeaks=ingredients.detectorPeaks,
+            calibrationRunNumber=calRunNumber,
         ).dict()
 
     def _markWorkspaceMetadata(self, request: NormalizationRequest, workspace: WorkspaceName):
@@ -219,6 +219,7 @@ class NormalizationService(Service):
                 continueFlags,
             )
 
+    @Register("validateWritePermissions")
     def validateWritePermissions(self, request: CalibrationWritePermissionsRequest):
         """
         Validate that the normalization-calibration workflow will be able to save its output.
@@ -255,6 +256,7 @@ class NormalizationService(Service):
         return self.dataExportService.getCalibrationStateRoot(runNumber)
 
     @FromString
+    @Register("assessment")
     def normalizationAssessment(self, request: NormalizationRequest):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
@@ -278,6 +280,7 @@ class NormalizationService(Service):
         return self.dataFactoryService.createNormalizationRecord(createRecordRequest)
 
     @FromString
+    @Register("save")
     def saveNormalization(self, request: NormalizationExportRequest):
         """
         If no version is attached to the request, this will save at next version number
@@ -343,6 +346,7 @@ class NormalizationService(Service):
         )
 
     @FromString
+    @Register("smooth")
     def smoothDataExcludingPeaks(self, request: SmoothDataExcludingPeaksRequest):
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
