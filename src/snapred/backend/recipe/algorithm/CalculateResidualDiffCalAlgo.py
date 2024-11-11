@@ -79,32 +79,44 @@ class CalculateResidualDiffCalAlgo(PythonAlgorithm):
             OutputWorkspace=self.outputWorkspaceName,
         )
 
-        # Step 2: Iterate over each spectrum in fitPeaksDiagnosticWorkSpaceName regardless of its SpectrumNumber
+        # Step 2: Check for overlapping spectra and manage them
         fitPeaksWorkspace = self.mantidSnapper.mtd[self.fitPeaksDiagnosticWorkSpaceName]
         numHistograms = fitPeaksWorkspace.getNumberHistograms()
         processedSpectra = []
+        spectrumDict = {}
 
         for i in range(numHistograms):
-            # Get the actual SpectrumNumber for each spectrum
             spectrumId = fitPeaksWorkspace.getSpectrum(i).getSpectrumNo()
-            singleSpectrumName = f"{self.fitPeaksDiagnosticWorkSpaceName}_spectrum"
+            singleSpectrumName = f"{self.fitPeaksDiagnosticWorkSpaceName}_spectrum_{spectrumId}"
 
-            # Extract each spectrum individually using the index `i`
-            self.mantidSnapper.ExtractSingleSpectrum(
-                f"Extracting spectrum with SpectrumNumber {spectrumId}...",
-                InputWorkspace=self.fitPeaksDiagnosticWorkSpaceName,
-                OutputWorkspace=singleSpectrumName,
-                WorkspaceIndex=i,  # Use `i` directly to extract by position
-            )
+            # If this spectrum number is already processed, average with existing
+            if spectrumId in spectrumDict:
+                existingName = spectrumDict[spectrumId]
+                self.mantidSnapper.Plus(
+                    f"Averaging overlapping spectrum {spectrumId}...",
+                    LHSWorkspace=existingName,
+                    RHSWorkspace=singleSpectrumName,
+                    OutputWorkspace=singleSpectrumName,
+                )
+            else:
+                # Extract spectrum by position
+                self.mantidSnapper.ExtractSingleSpectrum(
+                    f"Extracting spectrum with SpectrumNumber {spectrumId}...",
+                    InputWorkspace=self.fitPeaksDiagnosticWorkSpaceName,
+                    OutputWorkspace=singleSpectrumName,
+                    WorkspaceIndex=i,
+                )
 
-            # Replace zero values with NaN in the extracted spectrum
-            self.mantidSnapper.ReplaceSpecialValues(
-                f"Replacing zeros with NaN in spectrum with SpectrumNumber {spectrumId}...",
-                InputWorkspace=singleSpectrumName,
-                OutputWorkspace=singleSpectrumName,
-                SmallNumberThreshold=1e-10,
-                SmallNumberValue=np.nan,
-            )
+                # Replace zero values with NaN
+                self.mantidSnapper.ReplaceSpecialValues(
+                    f"Replacing zeros with NaN in spectrum with SpectrumNumber {spectrumId}...",
+                    InputWorkspace=singleSpectrumName,
+                    OutputWorkspace=singleSpectrumName,
+                    SmallNumberThreshold=1e-10,
+                    SmallNumberValue=np.nan,
+                )
+
+                spectrumDict[spectrumId] = singleSpectrumName
 
             # Append the processed spectrum to the list
             processedSpectra.append(singleSpectrumName)
