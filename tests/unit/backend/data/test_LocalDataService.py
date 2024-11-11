@@ -53,6 +53,7 @@ from snapred.backend.dao.state.GroupingMap import GroupingMap
 from snapred.backend.data.Indexer import IndexerType
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     ValueFormatter as wnvf,
@@ -522,6 +523,14 @@ def test_writeGroupingMap_relative_paths():
     assert relativePathCount > 0
 
 
+def test_stateExists():
+    # Test that the 'stateExists' method returns True when the state exists.
+    localDataService = LocalDataService()
+    localDataService.constructCalibrationStateRoot = mock.Mock(return_value=Path("."))
+    localDataService.generateStateId = mock.Mock(return_value=(ENDURING_STATE_ID, None))
+    assert localDataService.stateExists("12345")
+
+
 @mock.patch(ThisService + "GetIPTS")
 def test_calibrationFileExists(GetIPTS):  # noqa ARG002
     localDataService = LocalDataService()
@@ -934,6 +943,11 @@ def test_constructNormalizationStatePath():
         assert ans.parts[-1] == "normalization"
         assert ans.parts[-2] == "lite" if useLiteMode else "native"
         assert ans.parts[:-2] == localDataService.constructCalibrationStateRoot(fakeState).parts
+
+
+def test_hasWritePermissionsCalibrationStateRoot():
+    localDataService = LocalDataService()
+    assert localDataService._hasWritePermissionsCalibrationStateRoot() is True
 
 
 def test_constructReductionStateRoot():
@@ -1857,6 +1871,27 @@ def test_readWriteCalibrationState():
             localDataService.writeCalibrationState(calibration)
             ans = localDataService.readCalibrationState(runNumber, useLiteMode)
         assert ans == calibration
+
+
+def test_readWriteCalibrationState_noWritePermissions():
+    localDataService = LocalDataService()
+    localDataService.calibrationExists = mock.Mock(return_value=False)
+    localDataService._hasWritePermissionsCalibrationStateRoot = mock.Mock(return_value=False)
+
+    with pytest.raises(
+        RuntimeError,
+        match=r".*No calibration exists, and you lack permissions to create one. Please contact your IS or CIS.*",
+    ):
+        localDataService.readCalibrationState("123", True)
+
+
+def test_readCalibrationState_hasWritePermissions():
+    localDataService = LocalDataService()
+    localDataService.calibrationExists = mock.Mock(return_value=False)
+    localDataService._hasWritePermissionsCalibrationStateRoot = mock.Mock(return_value=True)
+
+    with pytest.raises(RecoverableException, match="State uninitialized"):
+        localDataService.readCalibrationState("123", True)
 
 
 @mock.patch("snapred.backend.data.GroceryService.GroceryService.createDiffcalTableWorkspaceName")

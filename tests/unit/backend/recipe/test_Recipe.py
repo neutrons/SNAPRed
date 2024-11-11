@@ -15,6 +15,11 @@ class Ingredients(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class FakeIngredients(BaseModel):
+    name: str
+    name2: str
+
+
 class DummyRecipe(Recipe[Ingredients]):
     """
     An instantiation with no abstract classes
@@ -44,6 +49,9 @@ class RecipeTest(unittest.TestCase):
     def test_init(self):
         DummyRecipe()
 
+    def test_Ingredients(self):
+        assert Ingredients(name="test") == DummyRecipe.Ingredients(name="test")
+
     def test_init_reuseUtensils(self):
         utensils = Utensils()
         utensils.PyInit()
@@ -67,6 +75,20 @@ class RecipeTest(unittest.TestCase):
         worseGroceries = {}
         with pytest.raises(RuntimeError, match="The workspace property ws was not found in the groceries"):
             recipe.validateInputs(ingredients, worseGroceries)
+
+    def test_validate_grocery(self):
+        groceries = self._make_groceries()
+        recipe = DummyRecipe()
+
+        with pytest.raises(ValueError, match="The key for the grocery must be a string."):
+            recipe._validateGrocery(123, groceries["ws"])
+
+    def test_validate_ingredients_fail(self):
+        fakeIngredients = FakeIngredients(name="fake", name2="fake2")
+        recipe = DummyRecipe()
+
+        with pytest.raises(ValueError, match=r".*Invalid ingredients*"):
+            recipe._validateIngredients(fakeIngredients)
 
     def test_cook(self):
         untensils = Utensils()

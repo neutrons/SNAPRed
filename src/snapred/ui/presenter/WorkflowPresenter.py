@@ -1,7 +1,7 @@
 from typing import Callable, List
 
 from qtpy.QtCore import QObject, Signal, Slot
-from qtpy.QtWidgets import QMainWindow
+from qtpy.QtWidgets import QMainWindow, QMessageBox
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.error.ContinueWarning import ContinueWarning
@@ -29,6 +29,7 @@ class WorkflowPresenter(QObject):
         iterateLambda=None,
         resetLambda=None,
         cancelLambda=None,
+        completionMessageLambda=None,
         parent=None,
     ):
         super().__init__()
@@ -36,6 +37,8 @@ class WorkflowPresenter(QObject):
         # 'WorkerPool' is a singleton:
         #    declaring it as an instance attribute, rather than a class attribute,
         #    allows singleton reset during testing.
+        self.completionMessageLambda = completionMessageLambda
+
         self.worker_pool = WorkerPool()
 
         self.view = WorkflowView(model, parent)
@@ -138,13 +141,7 @@ class WorkflowPresenter(QObject):
 
     def advanceWorkflow(self):
         if self.view.currentTab >= self.view.totalNodes - 1:
-            ActionPrompt.prompt(
-                "‧₊Workflow Complete‧₊",
-                "‧₊‧₊The workflow has been completed successfully!‧₊‧₊",
-                lambda: None,
-                self.view,
-            )
-            self.reset()
+            self.completeWorkflow()
         else:
             self.view.advanceWorkflow()
 
@@ -194,3 +191,12 @@ class WorkflowPresenter(QObject):
         else:
             raise NotImplementedError(f"Continue anyway handler not implemented: {self.view.tabModel}")
         self.handleContinueButtonClicked(self.view.tabModel)
+
+    def completeWorkflow(self):
+        # Directly show the completion message and reset the workflow
+        QMessageBox.information(
+            self.view,
+            "‧₊Workflow Complete‧₊",
+            self.completionMessageLambda(),
+        )
+        self.reset()

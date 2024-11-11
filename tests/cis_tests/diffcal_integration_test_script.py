@@ -23,9 +23,8 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 
 ## the code to test
-from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffCalRecipe as PixelDiffCalRx
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration as GroupAlgo
-from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
+from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as PixelDiffCalRx
+from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe as GroupDiffCalRx
 
 # for running through service layer
 from snapred.backend.service.CalibrationService import CalibrationService
@@ -97,7 +96,13 @@ def script(goldenData):
         clerk = GroceryListItem.builder()
         clerk.neutron(runNumber).useLiteMode(isLite).add()
         clerk.fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
-        groceries = GroceryService().fetchGroceryList(clerk.buildList())
+        groceries = GroceryService().fetchGroceryDict(
+            clerk.buildDict(),
+            outputWorkspace="_out_",
+            diagnosticWorkspace="_diag",
+            maskWorkspace="_mask_",
+            calibrationTable="_DIFC_",    
+        )
 
         ### RUN PIXEL CALIBRATION ##########
 
@@ -109,15 +114,11 @@ def script(goldenData):
         ### RUN GROUP CALIBRATION ##########
 
         DIFCprev = pixelRes.calibrationTable
-        
-        groupAlgo = GroupAlgo()
-        groupAlgo.initialize()
-        groupAlgo.setPropertyValue("Ingredients", ingredients.json())
-        groupAlgo.setPropertyValue("InputWorkspace", groceries[0])
-        groupAlgo.setPropertyValue("GroupingWorkspace", groceries[1])
-        groupAlgo.setPropertyValue("PreviousCalibrationTable", DIFCprev)
-        groupAlgo.setPropertyValue("OutputWorkspaceDSpacing", "out_ws")
-        groupAlgo.execute()
+        groupGroceries = groceries.copy()
+        groupGroceries["previousCallibration"] = DIFCprev
+        groupGroceries["calibrationTable"] = DIFCprev
+        groupRes = GroupDiffCalRx().cook(ingredients, groupGroceries)
+        assert groupRes.result
 
         ### PAUSE
         """
@@ -127,29 +128,6 @@ def script(goldenData):
         and that the fits match with the TOF diffraction focused workspace.
         """
         pause("End of GROUP CALIBRATION section")
-
-
-        ### RUN RECIPE
-
-        clerk = GroceryListItem.builder()
-        clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
-        clerk.name("groupingWorkspace").fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
-
-        groceries = GroceryService().fetchGroceryDict(
-            groceryDict=clerk.buildDict(),
-            outputTOFWorkspace="_output_from_diffcal_recipe",
-            outputDSPWorkspace="_output_diffcal_but_in_dspacing",
-        )
-
-        rx = Recipe()
-        rx.executeRecipe(ingredients, groceries)
-
-
-        ### PAUSE
-        """
-        Stop here and make sure everything still looks good.
-        """
-        pause("End of CALIBRATION RECIPE section")
 
         ### CALL CALIBRATION SERVICE
         diffcalRequest = DiffractionCalibrationRequest(

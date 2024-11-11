@@ -1,9 +1,10 @@
-from typing import Any, Dict, List, Set, Tuple, Type
+from typing import Any, Dict, List, Optional, Set, Tuple, Type
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe
+from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe
 from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
@@ -87,7 +88,9 @@ class ReductionRecipe(Recipe[Ingredients]):
         )
         self.mantidSnapper.executeQueue()
 
-    def _cloneAndConvertWorkspace(self, workspace: WorkspaceName, units: str) -> WorkspaceName:
+    def _prepareUnfocusedData(
+        self, workspace: WorkspaceName, mask: Optional[WorkspaceName], units: str
+    ) -> WorkspaceName:
         unitsAbrev = ""
         match units:
             case "Wavelength":
@@ -102,26 +105,61 @@ class ReductionRecipe(Recipe[Ingredients]):
                 raise ValueError(f"cannot convert to unit '{units}'")
 
         runNumber, liteMode = workspace.tokens("runNumber", "lite")
-        self.unfocWS = wng.run().runNumber(runNumber).lite(liteMode).unit(unitsAbrev).group(wng.Groups.UNFOC).build()
-        self._cloneWorkspace(workspace, self.unfocWS)
+        self.unfocWs = wng.run().runNumber(runNumber).lite(liteMode).unit(unitsAbrev).group(wng.Groups.UNFOC).build()
+        self._cloneWorkspace(workspace, self.unfocWs)
+
+        if mask:
+            self.mantidSnapper.MaskDetectorFlags(
+                "Applying pixel mask to unfocused data",
+                MaskWorkspace=mask,
+                OutputWorkspace=self.unfocWs,
+            )
 
         self.mantidSnapper.ConvertUnits(
-            f"Convert unfocused workspace to {units} units",
-            InputWorkspace=workspace,
-            OutputWorkspace=self.unfocWS,
+            f"Converting unfocused data to {units} units",
+            InputWorkspace=self.unfocWs,
+            OutputWorkspace=self.unfocWs,
             Target=units,
         )
         self.mantidSnapper.executeQueue()
-        return self.unfocWS
+        return self.unfocWs
+
+    def _prepareArtificialNormalization(self, inputWorkspace: str, groupIndex: int) -> str:
+        """
+        After the real data has been group processed, we can generate a fake normalization workspace
+
+        :param inputWorkspace: The real data workspace that has been group processed
+        :return: The artificial normalization workspace
+        """
+        normalizationWorkspace = self._getNormalizationWorkspaceName(groupIndex)
+        normalizationWorkspace = ArtificialNormalizationRecipe().executeRecipe(
+            InputWorkspace=inputWorkspace,
+            Ingredients=self.ingredients.artificialNormalizationIngredients,
+            OutputWorkspace=normalizationWorkspace,
+        )
+        self.groceries["normalizationWorkspace"] = normalizationWorkspace
+        return normalizationWorkspace
 
     def _applyRecipe(self, recipe: Type[Recipe], ingredients_, **kwargs):
         if "inputWorkspace" in kwargs:
             inputWorkspace = kwargs["inputWorkspace"]
+            if not inputWorkspace:
+                self.logger().debug(f"{recipe.__name__} :: Skipping recipe with default empty input workspace")
+                return
             if self.mantidSnapper.mtd.doesExist(inputWorkspace):
                 self.groceries.update(kwargs)
                 recipe().cook(ingredients_, self.groceries)
             else:
-                self.logger().warning(f"Skipping {type(recipe)} as {inputWorkspace} does not exist.")
+                raise RuntimeError(
+                    (
+                        f"{recipe.__name__} ::"
+                        " Missing non-default input workspace with groceries:"
+                        f" {self.groceries} and kwargs: {kwargs}"
+                    )
+                )
+
+    def _getNormalizationWorkspaceName(self, groupingIndex: int):
+        return f"reduced_normalization_{groupingIndex}_{wnvf.formatTimestamp(self.ingredients.timestamp)}"
 
     def _prepGroupingWorkspaces(self, groupingIndex: int):
         # TODO:  We need the wng to be able to deconstruct the workspace name
@@ -138,7 +176,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         if self.normalizationWs:
             normalizationClone = self._cloneWorkspace(
                 self.normalizationWs,
-                f"reduced_normalization_{groupingName}_{wnvf.formatTimestamp(timestamp)}",
+                self._getNormalizationWorkspaceName(groupingIndex),
             )
             self.groceries["normalizationWorkspace"] = normalizationClone
         return sampleClone, normalizationClone
@@ -164,8 +202,9 @@ class ReductionRecipe(Recipe[Ingredients]):
     def execute(self):
         data: Dict[str, Any] = {"result": False}
 
+        # Retain unfocused data for comparison.
         if self.keepUnfocused:
-            data["unfocusedWS"] = self._cloneAndConvertWorkspace(self.sampleWs, self.convertUnitsTo)
+            data["unfocusedWS"] = self._prepareUnfocusedData(self.sampleWs, self.maskWs, self.convertUnitsTo)
 
         # 1. PreprocessReductionRecipe
         outputs = []
@@ -219,6 +258,12 @@ class ReductionRecipe(Recipe[Ingredients]):
                 inputWorkspace=normalizationClone,
             )
             self._cloneIntermediateWorkspace(normalizationClone, f"normalization_FoocussedVanadium_{groupingIndex}")
+
+            # if there was no normalization and the user elected to use artificial normalization
+            # generate one given the params and the processed sample data
+            # Skipping the above steps as they are accounted for in generating the artificial normalization
+            if self.ingredients.artificialNormalizationIngredients:
+                normalizationClone = self._prepareArtificialNormalization(sampleClone, groupingIndex)
 
             # 4. ApplyNormalizationRecipe
             self._applyRecipe(

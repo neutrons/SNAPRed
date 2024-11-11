@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -22,3 +22,8 @@ class NormalizationResponse(BaseModel):
     focusedVanadium: str
     smoothedVanadium: str
     detectorPeaks: List[GroupPeakList]
+
+    # This is returned on first go of the normalization process
+    # Follow up recalc operations reuse this response object
+    # but do not need to return calibrationRunNumber
+    calibrationRunNumber: Optional[str] = None

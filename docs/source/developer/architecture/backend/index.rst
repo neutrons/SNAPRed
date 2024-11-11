@@ -100,7 +100,6 @@ For a simplified breakdown of where you may want to implement parts of your code
    algorithms/fit_mutliple_peaks_algorithm
    algorithms/focus_spectra_algorithm
    algorithms/generate_table_workspace_from_list_of_dict
-   algorithms/group_diffraction_calibration
    algorithms/lite_data_creation_algo
    algorithms/load_calibration_workspaces
    algorithms/load_grouping_definition

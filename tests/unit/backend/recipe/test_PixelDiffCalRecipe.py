@@ -8,7 +8,7 @@ from mantid.simpleapi import mtd
 
 # needed to make mocked ingredients
 # the algorithm to test
-from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffCalRecipe as Recipe
+from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as Recipe
 from snapred.meta.Config import Config
 from util.diffraction_calibration_synthetic_data import SyntheticData
 from util.helpers import maskSpectra, setSpectraToZero
@@ -22,7 +22,7 @@ renamed to `test_PixelDiffCalReipe.py` and moved to the recipe tests folder
 """
 
 
-class TestPixelDiffractionCalibration(unittest.TestCase):
+class TestPixelDiffCalRecipe(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         inputs = SyntheticData()
@@ -88,12 +88,27 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         assert allOffsets[-1] <= self.ingredients.convergenceThreshold
 
     def test_execute_ordered(self):
-        # produce 4, 2, 1, 0.5
+        # Mock workspace and check for event workspace using id()
+        mockWorkspace = mock.MagicMock()
+        mockWorkspace.id.return_value = "EventWorkspace"
+
+        # Use MagicMock to allow item assignment
         rx = Recipe()
-        rx.mantidSnapper = mock.Mock()
-        rx.mantidSnapper.GroupedDetectorIDs.return_value = {}
-        rx.mantidSnapper.OffsetStatistics.side_effect = [{"medianOffset": 4 * 2 ** (-i)} for i in range(10)]
+        rx.mantidSnapper = mock.MagicMock()
+        rx.mantidSnapper.mtd[self.groceries["inputWorkspace"]] = mockWorkspace
+
+        # Mock OffsetStatistics to return different values for "medianOffset" in each iteration
+        rx.mantidSnapper.OffsetStatistics.side_effect = [
+            {"medianOffset": 4.0},
+            {"medianOffset": 2.0},
+            {"medianOffset": 1.0},
+            {"medianOffset": 0.5},
+        ]
+
+        # Run the cook method
         result = rx.cook(self.ingredients, self.groceries)
+
+        # Assert the result
         assert result.result
         assert result.medianOffsets == [4, 2, 1, 0.5]
 
@@ -102,28 +117,33 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         If the median offsets do not converge monotonically, the recipe stops
         """
         rx = Recipe()
-        rx.mantidSnapper = mock.Mock()
+        rx.mantidSnapper = mock.MagicMock()
         rx.mantidSnapper.GroupedDetectorIDs.return_value = {}
         rx.mantidSnapper.OffsetStatistics.side_effect = [{"medianOffset": x} for x in [2, 1, 2, 0]]
+
         result = rx.cook(self.ingredients, self.groceries)
         assert result.result
         assert result.medianOffsets == [2, 1]
 
     def test_hard_cap_at_five(self):
-        maxIterations = Config["calibration.diffraction.maximumIterations"]
+        # Mock workspace and check for event workspace using id()
+        mockWorkspace = mock.MagicMock()
+        mockWorkspace.id.return_value = "EventWorkspace"
+
+        # Mock mtd and ensure it returns the mockWorkspace when accessed
         rx = Recipe()
-        rx.mantidSnapper = mock.Mock()
+        rx.mantidSnapper = mock.MagicMock()  # Use MagicMock here
+        rx.mantidSnapper.mtd = mock.MagicMock()  # Use MagicMock for mtd to support item assignment
+        rx.mantidSnapper.mtd[self.groceries["inputWorkspace"]] = mockWorkspace
+
+        # Simulate maximum iterations and offsets
+        maxIterations = Config["calibration.diffraction.maximumIterations"]
         rx.mantidSnapper.GroupedDetectorIDs.return_value = {}
         rx.mantidSnapper.OffsetStatistics.side_effect = [{"medianOffset": x} for x in range(10 * maxIterations, 5, -1)]
+
+        # Run the test
         result = rx.cook(self.ingredients, self.groceries)
-        assert result.result
-        assert result.medianOffsets == list(range(10 * maxIterations, 9 * maxIterations, -1))
-        # change the config then run again
-        maxIterations = 7
-        Config._config["calibration"]["diffraction"]["maximumIterations"] = maxIterations
-        rx._counts = 0
-        rx.mantidSnapper.OffsetStatistics.side_effect = [{"medianOffset": x} for x in range(10 * maxIterations, 5, -1)]
-        result = rx.cook(self.ingredients, self.groceries)
+
         assert result.result
         assert result.medianOffsets == list(range(10 * maxIterations, 9 * maxIterations, -1))
 

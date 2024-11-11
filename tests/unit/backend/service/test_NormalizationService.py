@@ -218,12 +218,14 @@ class TestNormalizationService(unittest.TestCase):
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "RawVanadiumCorrectionRecipe")
-    @patch(thisService + "FocusSpectraRecipe")
+    @patch(thisService + "PreprocessReductionRecipe")
+    @patch(thisService + "ReductionGroupProcessingRecipe")
     @patch(thisService + "SmoothDataExcludingPeaksRecipe")
     def test_normalization(
         self,
         mockSmoothDataExcludingPeaks,
-        mockFocusSpectra,
+        mockReductionGroupProcessing,  # noqa: ARG002
+        mockPreprocessReduction,
         mockVanadiumCorrection,
         FarmFreshIngredients,
     ):
@@ -237,7 +239,7 @@ class TestNormalizationService(unittest.TestCase):
         }
         mockGroceryService.workspaceDoesExist.return_value = False
         mockVanadiumCorrection.executeRecipe.return_value = "corrected_vanadium_ws"
-        mockFocusSpectra.executeRecipe.return_value = "focussed_vanadium_ws"
+        mockPreprocessReduction.executeRecipe.return_value = "focussed_vanadium_ws"
         mockSmoothDataExcludingPeaks.executeRecipe.return_value = "smoothed_output_ws"
 
         self.instance = NormalizationService()
@@ -245,7 +247,10 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.sousChef = SculleryBoy()
         self.instance.groceryService = mockGroceryService
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=mock.Mock(runNumber="12345"))
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
 
         result = self.instance.normalization(self.request)
@@ -256,12 +261,14 @@ class TestNormalizationService(unittest.TestCase):
         self.assertIn("smoothedVanadium", result)  # noqa: PT009
         mockGroceryService.fetchGroceryDict.assert_called_once()
         mockVanadiumCorrection.assert_called_once()
-        mockFocusSpectra.assert_called_once()
+        mockPreprocessReduction.assert_called_once()
         mockSmoothDataExcludingPeaks.assert_called_once()
 
     def test_validateRequest(self):
         # test `validateRequest` internal calls
         self.instance._sameStates = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         permissionsRequest = CalibrationWritePermissionsRequest(
             runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
         )
@@ -269,6 +276,27 @@ class TestNormalizationService(unittest.TestCase):
             self.instance.validateRequest(self.request)
             self.instance._sameStates.assert_called_once_with(self.request.runNumber, self.request.backgroundRunNumber)
             mockValidateWritePermissions.assert_called_once_with(permissionsRequest)
+
+    def test_validateDiffractionCalibrationExists_failure(self):
+        request = mock.Mock(runNumber="12345", backgroundRunNumber="67890", continueFlags=ContinueWarning.Type.UNSET)
+        self.instance.sousChef = SculleryBoy()
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=-1)
+
+        with pytest.raises(
+            ContinueWarning,
+            match=r".*Continue anyway*",
+        ):
+            self.instance._validateDiffractionCalibrationExists(request)
+
+    def test_validateDiffractionCalibrationExists_success_contineuAnyway(self):
+        request = mock.Mock(
+            runNumber="12345",
+            backgroundRunNumber="67890",
+            continueFlags=ContinueWarning.Type.DEFAULT_DIFFRACTION_CALIBRATION,
+        )
+        self.instance.sousChef = SculleryBoy()
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=-1)
+        self.instance._validateDiffractionCalibrationExists(request)
 
     def test_validateRequest_different_states(self):
         # test `validateRequest` raises `ValueError`
@@ -312,6 +340,8 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.groceryService.workSpaceDoesExist = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="path/to/cif")
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
         result = self.instance.normalization(self.request)
 

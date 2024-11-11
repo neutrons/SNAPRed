@@ -3,13 +3,22 @@ from unittest import mock
 
 import pytest
 from mantid.simpleapi import mtd
-from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
+from snapred.backend.dao.request.SimpleDiffCalRequest import SimpleDiffCalRequest
+from snapred.backend.service.CalibrationService import CalibrationService
 from util.diffraction_calibration_synthetic_data import SyntheticData
 from util.helpers import deleteWorkspaceNoThrow
 
-ThisRecipe: str = "snapred.backend.recipe.DiffractionCalibrationRecipe"
-PixelCalRx: str = ThisRecipe + ".PixelDiffCalRecipe"
-GroupCalAlgo: str = ThisRecipe + ".GroupDiffractionCalibration"
+ThisService: str = "snapred.backend.service.CalibrationService"
+PixelCalRx: str = ThisService + ".PixelDiffCalRecipe"
+GroupCalRx: str = ThisService + ".GroupDiffCalRecipe"
+
+
+"""
+NOTE this is in fact a test of the CalibrationService.  It used to test the combined DiffractionCalibrationRecipe.
+That recipe mostly handled coordinating the pixel and group segments of the diff cal process.  With the most
+recent refactor, that task of coordinating has been passed to the CalibrationService.  However, to make review
+more transparent, these tests are being temporarily housed in the same file.
+"""
 
 
 class TestDiffractionCalibrationRecipe(unittest.TestCase):
@@ -33,7 +42,12 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
             "calibrationTable": self.fakeTableWorkspace,
             "maskWorkspace": self.fakeMaskWorkspace,
         }
-        self.recipe = Recipe()
+        self.service = CalibrationService()
+        self.request = SimpleDiffCalRequest(
+            ingredients=self.fakeIngredients,
+            groceries=self.groceryList,
+            skipPixelCalibration=False,
+        )
 
     def tearDown(self) -> None:
         workspaces = mtd.getObjectNames()
@@ -42,22 +56,23 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
             deleteWorkspaceNoThrow(ws)
         return super().tearDown
 
-    def test_chop_ingredients(self):
-        self.recipe.chopIngredients(self.fakeIngredients)
-        assert self.recipe.runNumber == self.fakeIngredients.runConfig.runNumber
-        assert self.recipe.threshold == self.fakeIngredients.convergenceThreshold
-        self.recipe.unbagGroceries(self.groceryList)
-        assert self.recipe.rawInput == self.fakeRawData
-        assert self.recipe.groupingWS == self.fakeGroupingWorkspace
-        assert self.recipe.maskWS == self.fakeMaskWorkspace
-
     @mock.patch(PixelCalRx)
-    @mock.patch(GroupCalAlgo)
-    def test_execute_successful(self, mockGroupCalAlgo, mockPixelRx):
+    @mock.patch(GroupCalRx)
+    def test_execute_successful(self, mockGroupRx, mockPixelRx):
         # produce 4, 2, 1, 0.5
-        mockPixelRx.return_value.cook.return_value = mock.Mock(result=True, medianOffsets=mock.sentinel.offsets)
-        mockGroupCalAlgo.return_value.getPropertyValue.return_value = mock.sentinel.group
-        result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
+        mockPixelRx.return_value.cook.return_value = mock.Mock(
+            result=True,
+            medianOffsets=mock.sentinel.offsets,
+        )
+        mockGroupRx.return_value.cook.return_value = mock.Mock(
+            result=True,
+            diagnosticWorkspace=mock.sentinel.group,
+            outputWorkspace=mock.sentinel.group,
+            calibrationTable=mock.sentinel.group,
+            maskWorkspace=mock.sentinel.group,
+        )
+        self.service.groceryService.getWorkspaceForName = mock.Mock(return_value=mtd[self.fakeMaskWorkspace])
+        result = self.service.diffractionCalibrationWithIngredients(self.request)
         assert result["result"]
         assert result["steps"] == mock.sentinel.offsets
         assert result["calibrationTable"] == mock.sentinel.group
@@ -67,23 +82,25 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
     @mock.patch(PixelCalRx)
     def test_execute_unsuccessful_pixel_cal(self, mockPixelRx):
         mockPixelRx.return_value.cook.return_value = mock.Mock(result=False)
+        self.service.groceryService.getWorkspaceForName = mock.Mock(return_value=mtd[self.fakeMaskWorkspace])
         with pytest.raises(RuntimeError) as e:
-            self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
+            self.service.diffractionCalibrationWithIngredients(self.request)
         assert str(e.value) == "Pixel Calibration failed"
 
     @mock.patch(PixelCalRx)
-    @mock.patch(GroupCalAlgo)
-    def test_execute_unsuccessful_group_cal(self, mockGroupCalAlgo, mockPixelRx):
+    @mock.patch(GroupCalRx)
+    def test_execute_unsuccessful_group_cal(self, mockGroupRx, mockPixelRx):
         mockPixelRx.return_value.cook.return_value = mock.Mock(result=True, medianOffsets=[0])
-        mockGroupAlgo = mock.Mock()
-        mockGroupAlgo.execute.side_effect = RuntimeError(mock.sentinel.group)
-        mockGroupCalAlgo.return_value = mockGroupAlgo
+        mockGroupRx.return_value.cook.return_value = mock.Mock(result=False)
+        self.service.groceryService.getWorkspaceForName = mock.Mock(return_value=mtd[self.fakeMaskWorkspace])
         with pytest.raises(RuntimeError) as e:
-            self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
-        assert e.value.args == (mock.sentinel.group,)
+            self.service.diffractionCalibrationWithIngredients(self.request)
+        assert str(e.value) == "Group Calibration failed"
 
-    def test_execute_with_algos(self):
-        # create sample data
+    def test_execute_without_mocks(self):
+        """
+        Run the recipe with no mocks, to ensure both calculations can work.
+        """
 
         rawWS = "_test_diffcal_rx_data"
         groupingWS = "_test_diffcal_grouping"
@@ -94,7 +111,7 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         self.groceryList["groupingWorkspace"] = groupingWS
         self.groceryList["maskWorkspace"] = maskWS
         try:
-            res = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
+            res = self.service.diffractionCalibrationWithIngredients(self.request)
         except ValueError:
             print(res)
         assert res["result"]

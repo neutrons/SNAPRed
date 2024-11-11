@@ -29,7 +29,7 @@ class StateValidationException(Exception):
         doesFileExist, hasWritePermission = self._checkFileAndPermissions(filePath)
 
         if filePath and doesFileExist and hasWritePermission:
-            self.message = f"The following error occurred:{exceptionStr}\n\n" "Please contact your CIS."
+            self.message = f"The following error occurred:{exceptionStr}\n\n" "Please contact your IS or CIS."
         elif filePath and doesFileExist:
             self.message = f"You do not have write permissions: {filePath}"
         elif filePath:

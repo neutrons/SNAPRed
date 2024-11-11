@@ -16,10 +16,9 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 
 ## the code to test
-from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffCalRecipe as PixelRx
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration as GroupAlgo
+from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as PixelRx
+from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe as GroupRx
 from snapred.backend.recipe.algorithm.CreateArtificialNormalizationAlgo import CreateArtificialNormalizationAlgo as FakeNormAlgo
-from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 
 # for running through service layer
 from snapred.backend.service.CalibrationService import CalibrationService
@@ -31,7 +30,7 @@ from snapred.meta.Config import Config
 runNumber = "58882"
 groupingScheme = "Column"
 cifPath = "/SNS/users/dzj/Calibration_next/CalibrantSamples/cif/Silicon_NIST_640d.cif"
-calibrantSamplePath = "/SNS/users/dzj/Calibration_next/CalibrantSamples/Silicon_NIST_640D_001.json"
+calibrantSamplePath = "Silicon_NIST_640D_001.json"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
@@ -59,21 +58,18 @@ groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 ### RUN PIXEL CALIBRATION ##########
 pixelRes = PixelRx().cook(ingredients, groceries)
-assert False
 
 ### RUN GROUP CALIBRATION
 
 DIFCprev = pixelRes.calibrationTable
 
 outputWS = mtd.unique_name(prefix="output_")
-groupAlgo = GroupAlgo()
-groupAlgo.initialize()
-groupAlgo.setPropertyValue("Ingredients", ingredients.json())
-groupAlgo.setPropertyValue("InputWorkspace", groceries[0])
-groupAlgo.setPropertyValue("GroupingWorkspace", groceries[1])
-groupAlgo.setPropertyValue("PreviousCalibrationTable", DIFCprev)
-groupAlgo.setPropertyValue("OutputWorkspace", outputWS)
-groupAlgo.execute()
+
+groupGroceries = groceries.copy()
+groupGroceries["previousCalibration"] = DIFCprev
+groupGroceries["calibrationTable"] = DIFCprev
+groupRes = GroupRx().cook(ingredients, groupGroceries)
+assert groupRes.result
 
 ### PAUSE
 """

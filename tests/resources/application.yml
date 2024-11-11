@@ -103,6 +103,7 @@ calibration:
   fitting:
     minSignal2Noise: 10
 
+
 mantid:
     workspace:
       nameTemplate:
@@ -237,3 +238,10 @@ constants:
 
 metadata:
   tagPrefix: testSNAPfuntime_
+
+ui:
+  default:
+    reduction:
+      smoothing: 5
+    workflow:
+      completionMessage: "‧₊‧₊The workflow has been completed successfully!‧₊‧₊"

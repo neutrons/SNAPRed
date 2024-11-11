@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -116,7 +117,7 @@ class SousChef(Service):
                 timeOfFlight=data["tof"],
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
             )
-        return self._pixelGroupCache[key]
+        return deepcopy(self._pixelGroupCache[key])
 
     def prepManyPixelGroups(self, ingredients: FarmFreshIngredients) -> List[PixelGroup]:
         pixelGroups = []
@@ -139,7 +140,7 @@ class SousChef(Service):
         key = (ingredients.cifPath, ingredients.crystalDBounds.minimum, ingredients.crystalDBounds.maximum)
         if key not in self._xtalCache:
             self._xtalCache[key] = CrystallographicInfoService().ingest(*key)["crystalInfo"]
-        return self._xtalCache[key]
+        return deepcopy(self._xtalCache[key])
 
     def prepPeakIngredients(self, ingredients: FarmFreshIngredients) -> PeakIngredients:
         return PeakIngredients(
@@ -184,13 +185,13 @@ class SousChef(Service):
                 )
             self._peaksCache[key] = self.parseGroupPeakList(res)
 
-        return self._peaksCache[key]
+        return deepcopy(self._peaksCache[key])
 
     def prepManyDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[List[GroupPeakList]]:
         # this also needs to check if it is in fact the default calibration
         if ingredients.calibrantSamplePath is None:
             mode = "lite" if ingredients.useLiteMode else "native"
-            self.logger().warning(f"No calibrant sample found for run {ingredients.runNumber} in {mode} mode.")
+            self.logger().debug(f"No calibrant sample found for run {ingredients.runNumber} in {mode} mode.")
             return None
 
         detectorPeaks = []
@@ -264,7 +265,7 @@ class SousChef(Service):
             convertUnitsTo=ingredients_.convertUnitsTo,
         )
 
-    def _verifyCalibrationExists(self, runNumber: str, useLiteMode: bool) -> bool:
+    def verifyCalibrationExists(self, runNumber: str, useLiteMode: bool) -> bool:
         if not self.dataFactoryService.calibrationExists(runNumber, useLiteMode):
             recoveryData = {
                 "runNumber": runNumber,
@@ -277,7 +278,8 @@ class SousChef(Service):
             )
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
-        self._verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
+        # The calibration folder at the very least should be initialized with a default calibration
+        self.verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
 
         return NormalizationIngredients(
             pixelGroup=self.prepPixelGroup(ingredients),
@@ -288,7 +290,7 @@ class SousChef(Service):
     def prepDiffractionCalibrationIngredients(
         self, ingredients: FarmFreshIngredients
     ) -> DiffractionCalibrationIngredients:
-        self._verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
+        self.verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
 
         return DiffractionCalibrationIngredients(
             runConfig=self.prepRunConfig(ingredients.runNumber),

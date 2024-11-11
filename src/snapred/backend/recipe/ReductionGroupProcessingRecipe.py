@@ -1,11 +1,10 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 from snapred.backend.dao.ingredients import ReductionGroupProcessingIngredients as Ingredients
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.Recipe import Recipe
+from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -54,6 +53,13 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
         # )
         # self.rawInput = self.geometryOutputWS
 
+        self.mantidSnapper.ConvertUnits(
+            "Converting to TOF...",
+            InputWorkspace=self.rawInput,
+            Target="TOF",
+            OutputWorkspace=self.rawInput,
+        )
+
         self.mantidSnapper.FocusSpectraAlgorithm(
             "Focusing Spectra...",
             InputWorkspace=self.rawInput,
@@ -70,8 +76,8 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
         )
         self.outputWS = self.rawInput
 
-    def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
-        pass
+    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+        return {"inputWorkspace", "groupingWorkspace"}
 
     def execute(self):
         """

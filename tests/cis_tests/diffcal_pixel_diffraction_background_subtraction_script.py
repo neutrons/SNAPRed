@@ -15,13 +15,7 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 
 ## the code to test
-from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffCal as PixelRx
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration as GroupAlgo
-from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
-
-# for running through service layer
-from snapred.backend.service.CalibrationService import CalibrationService
-from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
+from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as PixelRx
 
 from snapred.meta.Config import Config
 
@@ -29,7 +23,7 @@ from snapred.meta.Config import Config
 runNumber = "58882"
 groupingScheme = "Column"
 cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
-calibrantSamplePath = "SNS/SNAP/shared/Calibration/CalibrationSamples/Silicon_NIST_640D_001.json"
+calibrantSamplePath = "Silicon_NIST_640D_001.json"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
@@ -56,9 +50,15 @@ ingredients.removeBackground = removeBackground
 ### FETCH GROCERIES ##################
 
 clerk = GroceryListItem.builder()
-clerk.neutron(runNumber).useLiteMode(isLite).add()
-clerk.fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
-groceries = GroceryService().fetchGroceryList(clerk.buildList())
+clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
+clerk.name("groupingWorkspace").fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
+groceries = GroceryService().fetchGroceryDict(
+    clerk.buildDict(),
+    outputWorkspace="_out_",
+    diagnosticWorkspace="_diag",
+    maskWorkspace="_mask_",
+    calibrationTable="_DIFC_",    
+)
 
 ### RUN PIXEL CALIBRATION ##########
 

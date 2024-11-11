@@ -13,17 +13,10 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as
 logger = snapredLogger.getLogger(__name__)
 
 
-"""
-NOTE this file in fact defines a RECIPE.  It needs to be renamed to PixelDiffCalRecipe.py
-and moved into the recipe folder as soon as it has been reviewed.  It is being temporarily
-stored in the wrong location to make reviewing this story easier, to ensure nothing is
-missing from the former algorithm implementation.
-"""
-
-
 class PixelDiffCalServing(BaseModel):
     result: bool
     medianOffsets: List[float]
+    maskWorkspace: str
     calibrationTable: str
 
 
@@ -88,7 +81,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         self.maskWS = groceries["maskWorkspace"]
         # the name of the output calibration table
         self.DIFCpixel = groceries["calibrationTable"]
-
+        self.isEventWs = self.mantidSnapper.mtd[self.wsTOF].id() == "EventWorkspace"
         # the input data converted to d-spacing
         self.wsDSP = wng.diffCalInputDSP().runNumber(self.runNumber).build()
         self.mantidSnapper.ConvertUnits(
@@ -147,11 +140,12 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             GroupingWorkspace=groupingWS,
             DetectorPeaks=peaks,
         )
-        self.mantidSnapper.ConvertToMatrixWorkspace(
-            "Converting TOF data to MatrixWorkspace...",
-            InputWorkspace=inputWS,
-            OutputWorkspace=inputWS,
-        )
+        if self.isEventWs:
+            self.mantidSnapper.ConvertToEventWorkspace(
+                "Converting TOF data to EventWorkspace...",
+                InputWorkspace=wsBG,
+                OutputWorkspace=wsBG,
+            )
         self.mantidSnapper.Minus(
             "Subtracting background from input data",
             LHSWorkspace=inputWS,
@@ -345,4 +339,5 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             result=True,
             medianOffsets=self.medianOffsets,
             calibrationTable=self.DIFCpixel,
+            maskWorkspace=self.maskWS,
         )

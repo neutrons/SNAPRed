@@ -38,6 +38,8 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
 
     def test_queueAlgos(self):
         recipe = ReductionGroupProcessingRecipe()
+        recipe._validateIngredients = unittest.mock.Mock(return_value=True)
+        recipe._validateGrocery = unittest.mock.Mock(return_value=True)
         groceries = {
             "inputWorkspace": "input",
             "groupingWorkspace": "groupingWS",
@@ -46,13 +48,20 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
         recipe.queueAlgos()
 
         queuedAlgos = recipe.mantidSnapper._algorithmQueue
-        diffFoc = queuedAlgos[0]
-        normCurr = queuedAlgos[1]
+        i = 0
+        convertUnits = queuedAlgos[i]
+        diffFoc = queuedAlgos[i := i + 1]
+        normCurr = queuedAlgos[i := i + 1]
 
+        assert convertUnits[0] == "ConvertUnits"
         assert diffFoc[0] == "FocusSpectraAlgorithm"
         assert normCurr[0] == "NormalizeByCurrentButTheCorrectWay"
+        assert convertUnits[1] == "Converting to TOF..."
         assert diffFoc[1] == "Focusing Spectra..."
         assert normCurr[1] == "Normalizing Current ... but the correct way!"
+        assert convertUnits[2]["InputWorkspace"] == groceries["inputWorkspace"]
+        assert convertUnits[2]["OutputWorkspace"] == groceries["inputWorkspace"]
+        assert convertUnits[2]["Target"] == "TOF"
         assert diffFoc[2]["InputWorkspace"] == groceries["inputWorkspace"]
         assert diffFoc[2]["GroupingWorkspace"] == groceries["groupingWorkspace"]
         assert diffFoc[2]["OutputWorkspace"] == groceries["inputWorkspace"]
@@ -64,6 +73,7 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
         mockSnapper = unittest.mock.Mock()
         untensils.mantidSnapper = mockSnapper
         recipe = ReductionGroupProcessingRecipe(utensils=untensils)
+        recipe._validateIngredients = unittest.mock.Mock(return_value=True)
         groceries = {
             "inputWorkspace": "input",
             "outputWorkspace": "output",
@@ -88,6 +98,7 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
         mockSnapper = unittest.mock.Mock()
         untensils.mantidSnapper = mockSnapper
         recipe = ReductionGroupProcessingRecipe(utensils=untensils)
+        recipe._validateIngredients = unittest.mock.Mock(return_value=True)
         groceries = {
             "inputWorkspace": "input",
             "outputWorkspace": "output",

@@ -28,7 +28,7 @@ from mantid.simpleapi import (
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.state import DetectorState
-from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata, diffcal_metadata_state_list
+from snapred.backend.dao.WorkspaceMetadata import UNSET, DiffcalStateMetadata, WorkspaceMetadata
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -684,7 +684,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_workspaceTagFunctions(self):
         wsname = mtd.unique_name(prefix="testWorkspaceTags_")
-        tagValues = diffcal_metadata_state_list
+        tagValues = DiffcalStateMetadata.values()
         properties = list(WorkspaceMetadata.model_json_schema()["properties"].keys())
         logName = properties[0]
 
@@ -707,6 +707,14 @@ class TestGroceryService(unittest.TestCase):
             self.instance.setWorkspaceTag(workspaceName=wsname, logname=logName, logvalue=tag)
             tagResult = self.instance.getWorkspaceTag(workspaceName=wsname, logname=logName)
             assert tagResult == tag
+
+    def test_writeWorkspaceMetadataAsTags(self):
+        self.instance.setWorkspaceTag = mock.Mock()
+        wsName = "testWsName"
+        metadata = WorkspaceMetadata()
+        self.instance.writeWorkspaceMetadataAsTags(wsName, metadata)
+        assert self.instance.setWorkspaceTag.call_count == len(metadata.dict().keys())
+        self.instance.setWorkspaceTag.assert_called_with(wsName, "normalizationState", "unset")
 
     ## TEST CLEANUP METHODS
 

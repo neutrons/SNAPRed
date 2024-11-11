@@ -3,9 +3,14 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Dict, List
 
-from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
+from snapred.backend.dao.ingredients import (
+    ArtificialNormalizationIngredients,
+    GroceryListItem,
+    ReductionIngredients,
+)
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
+    CreateArtificialNormalizationRequest,
     FarmFreshIngredients,
     ReductionExportRequest,
     ReductionRequest,
@@ -13,13 +18,17 @@ from snapred.backend.dao.request import (
 from snapred.backend.dao.request.ReductionRequest import Versions
 from snapred.backend.dao.response.ReductionResponse import ReductionResponse
 from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe
+from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
@@ -69,9 +78,12 @@ class ReductionService(Service):
         self.registerPath("hasState", self.hasState)
         self.registerPath("getCompatibleMasks", self.getCompatibleMasks)
         self.registerPath("getUniqueTimestamp", self.getUniqueTimestamp)
-        self.registerPath("checkWritePermissions", self.checkWritePermissions)
+        self.registerPath("checkWritePermissions", self.checkReductionWritePermissions)
         self.registerPath("getSavePath", self.getSavePath)
         self.registerPath("getStateIds", self.getStateIds)
+        self.registerPath("validateReduction", self.validateReduction)
+        self.registerPath("artificialNormalization", self.artificialNormalization)
+        self.registerPath("grabWorkspaceforArtificialNorm", self.grabWorkspaceforArtificialNorm)
         return
 
     @staticmethod
@@ -80,45 +92,83 @@ class ReductionService(Service):
 
     def validateReduction(self, request: ReductionRequest):
         """
-        Validate the reduction request.
+        Validate the reduction request, providing specific messages if normalization
+        or calibration data is missing. Notify the user if artificial normalization
+        will be created when normalization is absent.
 
         :param request: a reduction request
         :type request: ReductionRequest
         """
+        if not self.dataFactoryService.stateExists(request.runNumber):
+            if self.checkCalibrationWritePermissions(request.runNumber):
+                raise RecoverableException.stateUninitialized(request.runNumber, request.useLiteMode)
+            else:
+                # TODO: Centralize these exception strings or handling.
+                raise RuntimeError(
+                    " This run has not been initialized for reduction"
+                    + " and you lack the necessary permissions to do so."
+                    + " Please contact your IS or CIS."  # noqa: E501
+                )
+
         continueFlags = ContinueWarning.Type.UNSET
-        # check if a normalization is present
-        if not self.dataFactoryService.normalizationExists(request.runNumber, request.useLiteMode):
-            continueFlags |= ContinueWarning.Type.MISSING_NORMALIZATION
-        # check if a diffraction calibration is present
-        if not self.dataFactoryService.calibrationExists(request.runNumber, request.useLiteMode):
+        message = ""
+
+        # Check if a normalization is present
+        normalizationExists = self.dataFactoryService.normalizationExists(request.runNumber, request.useLiteMode)
+        # Check if a diffraction calibration is present
+        calibrationExists = self.dataFactoryService.calibrationExists(request.runNumber, request.useLiteMode)
+
+        # Determine the action based on missing components
+        if not calibrationExists and normalizationExists:
+            # Case: No calibration but normalization exists
             continueFlags |= ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
-
-        # remove any continue flags that are present in the request by xor-ing with the flags
-        if request.continueFlags:
-            continueFlags = continueFlags ^ (request.continueFlags & continueFlags)
-
-        if continueFlags:
-            raise ContinueWarning(
-                "Reduction is missing calibration data, continue in uncalibrated mode?", continueFlags
+            message = (
+                "Warning: diffraction calibration is missing."
+                "If you continue, default instrument geometry will be used."
+            )
+        elif calibrationExists and not normalizationExists:
+            # Case: Calibration exists but normalization is missing
+            continueFlags |= ContinueWarning.Type.MISSING_NORMALIZATION
+            message = (
+                "Warning: Reduction is missing normalization data. "
+                "Artificial normalization will be created in place of actual normalization. "
+                "Would you like to continue?"
+            )
+        elif not calibrationExists and not normalizationExists:
+            # Case: No calibration and no normalization
+            continueFlags |= (
+                ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
+            )
+            message = (
+                "Warning: Reduction is missing both normalization and calibration data. "
+                "If you continue, default instrument geometry will be used and data will be artificially normalized. "
             )
 
-        # ... ensure separate continue warnings ...
+        # Remove any continue flags that are present in the request by XOR-ing with the flags
+        if request.continueFlags:
+            continueFlags ^= request.continueFlags & continueFlags
+
+        # If there are any continue flags set, raise a ContinueWarning with the appropriate message
+        if continueFlags and message:
+            raise ContinueWarning(message, continueFlags)
+
+        # Ensure separate continue warnings for permission check
         continueFlags = ContinueWarning.Type.UNSET
 
-        # check that the user has write permissions to the save directory
-        if not self.checkWritePermissions(request.runNumber):
+        # Check that the user has write permissions to the save directory
+        if not self.checkReductionWritePermissions(request.runNumber):
             continueFlags |= ContinueWarning.Type.NO_WRITE_PERMISSIONS
 
-        # remove any continue flags that are present in the request by xor-ing with the flags
+        # Remove any continue flags that are present in the request by XOR-ing with the flags
         if request.continueFlags:
-            continueFlags = continueFlags ^ (request.continueFlags & continueFlags)
+            continueFlags ^= request.continueFlags & continueFlags
 
         if continueFlags:
             raise ContinueWarning(
                 f"<p>It looks like you don't have permissions to write to "
                 f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
-                + "but you can still save using the workbench tools.</p>"
-                + "<p>Would you like to continue anyway?</p>",
+                "but you can still save using the workbench tools.</p>"
+                "<p>Would you like to continue anyway?</p>",
                 continueFlags,
             )
 
@@ -130,11 +180,11 @@ class ReductionService(Service):
         :param request: a ReductionRequest object holding needed information
         :type request: ReductionRequest
         """
-        self.validateReduction(request)
 
         groupingResults = self.fetchReductionGroupings(request)
         request.focusGroups = groupingResults["focusGroups"]
         ingredients = self.prepReductionIngredients(request)
+        ingredients.artificialNormalizationIngredients = request.artificialNormalizationIngredients
 
         groceries = self.fetchReductionGroceries(request)
         # attach the list of grouping workspaces to the grocery dictionary
@@ -307,6 +357,19 @@ class ReductionService(Service):
 
         :rtype: Dict[str, Any]
         """
+        # As an interim solution: set the request "versions" field to the latest calibration and normalization versions.
+        #   TODO: set these when the request is initially generated.
+        calVersion = None
+        normVersion = None
+        if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
+            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
+                request.runNumber, request.useLiteMode
+            )
+        if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
+            normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
+                request.runNumber, request.useLiteMode
+            )
+
         # Fetch pixel masks
         residentMasks = {}
         combinedMask = None
@@ -325,7 +388,10 @@ class ReductionService(Service):
                         raise RuntimeError(
                             f"reduction pixel mask '{mask}' has unexpected workspace-type '{mask.tokens('workspaceType')}'"  # noqa: E501
                         )
-
+            if calVersion:
+                self.groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
+                    request.useLiteMode
+                ).add()
             # Load any non-resident pixel masks
             maskGroceries = self.groceryService.fetchGroceryDict(
                 self.groceryClerk.buildDict(),
@@ -339,19 +405,12 @@ class ReductionService(Service):
         # gather the input workspace and the diffcal table
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
 
-        # As an interim solution: set the request "versions" field to the latest calibration and normalization versions.
-        #   TODO: set these when the request is initially generated.
-        calVersion = None
-        normVersion = None
-        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
-        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
-            request.useLiteMode
-        ).add()
+        if calVersion:
+            self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
+                request.useLiteMode
+            ).add()
 
-        if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
-            normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
-                request.runNumber, request.useLiteMode
-            )
+        if normVersion:
             self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, normVersion).useLiteMode(
                 request.useLiteMode
             ).add()
@@ -360,11 +419,29 @@ class ReductionService(Service):
             calVersion,
             normVersion,
         )
-
-        return self.groceryService.fetchGroceryDict(
+        groceries = self.groceryService.fetchGroceryDict(
             groceryDict=self.groceryClerk.buildDict(),
             **({"maskWorkspace": combinedMask} if combinedMask else {}),
         )
+
+        self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
+
+        return groceries
+
+    def _markWorkspaceMetadata(self, request: ReductionRequest, workspace: WorkspaceName):
+        calibrationState = (
+            DiffcalStateMetadata.NONE
+            if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION in request.continueFlags
+            else DiffcalStateMetadata.EXISTS
+        )
+        # The reduction workflow will automatically create a "fake" vanadium, so it shouldnt ever be None?
+        normalizationState = (
+            NormalizationStateMetadata.FAKE
+            if ContinueWarning.Type.MISSING_NORMALIZATION in request.continueFlags
+            else NormalizationStateMetadata.EXISTS
+        )
+        metadata = WorkspaceMetadata(diffcalState=calibrationState, normalizationState=normalizationState)
+        self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
 
     def saveReduction(self, request: ReductionExportRequest):
         self.dataExportService.exportReductionRecord(request.record)
@@ -385,8 +462,12 @@ class ReductionService(Service):
     def getUniqueTimestamp(self):
         return self.dataExportService.getUniqueTimestamp()
 
-    def checkWritePermissions(self, runNumber: str) -> bool:
+    def checkReductionWritePermissions(self, runNumber: str) -> bool:
         path = self.dataExportService.getReductionStateRoot(runNumber)
+        return self.dataExportService.checkWritePermissions(path)
+
+    def checkCalibrationWritePermissions(self, runNumber: str) -> bool:
+        path = self.dataExportService.getCalibrationStateRoot(runNumber)
         return self.dataExportService.checkWritePermissions(path)
 
     def getSavePath(self, runNumber: str) -> Path:
@@ -424,3 +505,38 @@ class ReductionService(Service):
     def getCompatibleMasks(self, request: ReductionRequest) -> List[WorkspaceName]:
         runNumber, useLiteMode = request.runNumber, request.useLiteMode
         return self.dataFactoryService.getCompatibleReductionMasks(runNumber, useLiteMode)
+
+    def artificialNormalization(self, request: CreateArtificialNormalizationRequest):
+        ingredients = ArtificialNormalizationIngredients(
+            peakWindowClippingSize=request.peakWindowClippingSize,
+            smoothingParameter=request.smoothingParameter,
+            decreaseParameter=request.decreaseParameter,
+            lss=request.lss,
+        )
+        artificialNormWorkspace = ArtificialNormalizationRecipe().executeRecipe(
+            InputWorkspace=request.diffractionWorkspace,
+            Ingredients=ingredients,
+            OutputWorkspace=request.outputWorkspace,
+        )
+        return artificialNormWorkspace
+
+    def grabWorkspaceforArtificialNorm(self, request: ReductionRequest):
+        # 1. Load raw run data
+        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        runWorkspace = self.groceryService.fetchGroceryList(self.groceryClerk.buildList())[0]
+        # 2. Load Column group TODO: Future work to apply a more general approach
+        groups = self.loadAllGroupings(request.runNumber, request.useLiteMode)
+        # find column group
+        columnGroup = next((group for group in groups["focusGroups"] if "column" in group.name.lower()), None)
+        columnGroupWorkspace = next(
+            (group for group in groups["groupingWorkspaces"] if "column" in group.lower()), None
+        )
+        request.focusGroups = [columnGroup]
+        # 2.5. get ingredients
+        ingredients = self.prepReductionIngredients(request)
+        groceries = {
+            "inputWorkspace": runWorkspace,
+            "groupingWorkspace": columnGroupWorkspace,
+        }
+        # 3. Diffraction Focus Spectra
+        return ReductionGroupProcessingRecipe().cook(ingredients.groupProcessing(0), groceries)
