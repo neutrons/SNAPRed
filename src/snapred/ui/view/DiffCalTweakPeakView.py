@@ -226,6 +226,9 @@ class DiffCalTweakPeakView(BackendRequestView):
             self.badPeaks[wkspIndex] = [peak for chi2, peak in zip(chisq, peaks) if chi2 >= maxChiSq]
             # prepare the plot area
             ax = self.figure.add_subplot(nrows, ncols, wkspIndex + 1, projection="mantid")
+            # NOTE: Mutate the ax object to remove the workspace renaming,
+            # not sure why but cargs["workspaces"] is missing
+            ax.rename_workspace = lambda x, y: None  # noqa: ARG005
             ax.tick_params(direction="in")
             ax.set_title(f"Group ID: {wkspIndex + 1}")
             # plot the data and fitted

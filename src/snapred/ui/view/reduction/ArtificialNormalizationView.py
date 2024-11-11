@@ -133,6 +133,9 @@ class ArtificialNormalizationView(BackendRequestView):
         self.figure.clear()
         for i in range(numGraphs):
             ax = self.figure.add_subplot(nrows, ncols, i + 1, projection="mantid")
+            # NOTE: Mutate the ax object to remove the workspace renaming,
+            # not sure why but cargs["workspaces"] is missing
+            ax.rename_workspace = lambda x, y: None  # noqa: ARG005
             ax.plot(diffractionWorkspace, wkspIndex=i, label="Diffcal Data", normalize_by_bin_width=True)
             ax.plot(
                 artificialNormWorkspace,

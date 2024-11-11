@@ -179,6 +179,9 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.figure.clear()
         for i in range(numGraphs):
             ax = self.figure.add_subplot(nrows, ncols, i + 1, projection="mantid")
+            # NOTE: Mutate the ax object to remove the workspace renaming,
+            # not sure why but cargs["workspaces"] is missing
+            ax.rename_workspace = lambda x, y: None  # noqa: ARG005
             ax.plot(focusedWorkspace, wkspIndex=i, label="Focused Data", normalize_by_bin_width=True)
             ax.plot(smoothedWorkspace, wkspIndex=i, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
             ax.legend()

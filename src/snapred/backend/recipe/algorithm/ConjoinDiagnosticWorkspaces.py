@@ -11,6 +11,7 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     ExtractSingleSpectrum,
     GroupWorkspaces,
+    RenameWorkspace,
     UnGroupWorkspace,
     mtd,
 )
@@ -73,10 +74,16 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
 
         if index == 0:
             for old, new in zip(oldNames, newNames):
-                CloneWorkspace(
-                    InputWorkspace=old,
-                    OutputWorkspace=new,
-                )
+                if self.autoDelete:
+                    RenameWorkspace(
+                        InputWorkspace=old,
+                        OutputWorkspace=new,
+                    )
+                else:
+                    CloneWorkspace(
+                        InputWorkspace=old,
+                        OutputWorkspace=new,
+                    )
                 if isinstance(mtd[new], MatrixWorkspace) and index < mtd[new].getNumberHistograms():
                     ExtractSingleSpectrum(
                         InputWorkspace=new,
