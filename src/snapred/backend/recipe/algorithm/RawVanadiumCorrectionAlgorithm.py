@@ -73,14 +73,6 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             Target="TOF",
         )
 
-        self.mantidSnapper.CropWorkspace(
-            "Filter the workspace within bounds",
-            InputWorkspace=outputWS,
-            OutputWorkspace=outputWS,
-            XMin=self.TOFPars[0],
-            XMax=self.TOFPars[2],
-        )
-
         self.mantidSnapper.Rebin(
             "Rebin in log TOF",
             InputWorkspace=outputWS,
