@@ -250,6 +250,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=mock.Mock(runNumber="12345"))
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
 
         result = self.instance.normalization(self.request)

@@ -183,6 +183,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
         peaks = self.responses[-1].data["detectorPeaks"]
+        self.calibrationRunNumber = self.responses[-1].data["calibrationRunNumber"]
 
         self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
         self.initializationComplete = True
@@ -209,7 +210,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         view = workflowPresenter.widget.tabView
         runNumber = view.fieldRunNumber.get()
         version = view.fieldVersion.get()
-        appliesTo = view.fieldAppliesTo.get(f">={runNumber}")
+        appliesTo = view.fieldAppliesTo.get(f">={self.calibrationRunNumber}")
         # validate version number
         version = VersionedObject.parseVersion(version, exclude_default=True)
         # validate appliesTo field
