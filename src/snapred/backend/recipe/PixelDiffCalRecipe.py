@@ -84,26 +84,16 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         self.isEventWs = self.mantidSnapper.mtd[self.wsTOF].id() == "EventWorkspace"
         # the input data converted to d-spacing
         self.wsDSP = wng.diffCalInputDSP().runNumber(self.runNumber).build()
-        self.mantidSnapper.ConvertUnits(
-            "Convert to d-spacing to diffraction focus",
-            InputWorkspace=self.wsTOF,
-            OutPutWorkspace=self.wsDSP,
-            Target="dSpacing",
-        )
+        self.convertUnitsAndRebin(self.wsTOF, self.wsDSP)
         self.mantidSnapper.MakeDirtyDish(
             "Creating copy of initial d-spacing data",
             InputWorkspace=self.wsDSP,
             OutputWorkspace=self.wsDSP + "_startOfPixelDiffCal",
         )
 
-        if not self.removeBackground:
+        if self.removeBackground:
             self.stripBackground(self.detectorPeaks, self.wsTOF, self.groupingWS)
-            self.mantidSnapper.ConvertUnits(
-                "Convert background-subtracted TOF to d-spacing",
-                InputWorkspace=self.wsTOF,
-                OutPutWorkspace=self.wsDSP,
-                Target="dSpacing",
-            )
+            self.convertUnitsAndRebin(self.wsTOF, self.wsDSP)
             self.mantidSnapper.MakeDirtyDish(
                 "Creating copy of background-subtracted d-spacing",
                 InputWorkspace=self.wsDSP,
@@ -173,7 +163,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             InputWorkspace=outputWS,
             OutputWorkspace=outputWS,
             Params=self.dSpaceParams,
-            PreserveEvents=self.removeBackground,
+            PreserveEvents=not self.removeBackground,
             BinningMode="Logarithmic",
         )
 

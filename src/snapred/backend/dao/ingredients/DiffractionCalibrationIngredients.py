@@ -1,6 +1,6 @@
 from typing import List
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.RunConfig import RunConfig
@@ -9,7 +9,7 @@ from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 
-class DiffractionCalibrationIngredients(BaseModel):
+class DiffractionCalibrationIngredients(BaseModel, extra="forbid"):
     """
 
     The DiffractionCalibrationIngredients class encapsulates all the necessary components for
@@ -29,8 +29,4 @@ class DiffractionCalibrationIngredients(BaseModel):
     maxOffset: float = Config["calibration.diffraction.maximumOffset"]
     maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
     skipPixelCalibration: bool = False
-    # NOTE: removeBackground == True means that the background IS NOT removed
-    # NOTE: removeBackgroud == False means that the background IS removed
-    removeBackground: bool = True
-
-    model_config = ConfigDict(extra="forbid")
+    removeBackground: bool = False
