@@ -34,7 +34,9 @@ class DiffCalRequestView(BackendRequestView):
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
 
         # checkbox for removing background
+        # NOTE not enabled until remove event background is fixed
         self.removeBackgroundToggle = self._labeledField("RemoveBackground", Toggle(parent=self, state=False))
+        self.removeBackgroundToggle.setEnabled(False)
 
         # set field properties
         self.litemodeToggle.setEnabled(True)
