@@ -22,12 +22,12 @@ from snapred.meta.Config import Config
 #User input ###########################
 runNumber = "58882"
 groupingScheme = "Column"
-cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
+cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/cif/Silicon_NIST_640d.cif"
 calibrantSamplePath = "Silicon_NIST_640D_001.json"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
-removeBackground = False #NOTE: True == don't remove background // False == remove background
+removeBackground = True
 Config._config["cis_mode"] = True
 Config._config["diffraction.smoothingParameter"] = 0.01  #This is the smoothing parameter to be set.
 #######################################
@@ -65,4 +65,21 @@ groceries = GroceryService().fetchGroceryDict(
 pixelRx = PixelRx()
 pixelRx.prep(ingredients, groceries)
 pixelRes = pixelRx.execute()
-print(pixelRx.medianOffsets[-1])
+
+### PREPARE OUTPUTS ################
+DiffractionFocussing(
+    InputWorkspace=f"dsp_0{runNumber}_raw_startOfPixelDiffCal",
+    OutputWorkspace="BEFORE_REMOVAL",
+    GroupingWorkspace=groceries["groupingWorkspace"],
+)
+DiffractionFocussing(
+    InputWorkspace=f"dsp_0{runNumber}_raw_withoutBackground",
+    OutputWorkspace="AFTER_REMOVAL",
+    GroupingWorkspace=groceries["groupingWorkspace"],
+)
+DiffractionFocussing(
+    InputWorkspace="tof_all_lite_copy1_058882",
+    OutputWorkspace="FINAL",
+    GroupingWorkspace=groceries["groupingWorkspace"],
+)
+ 

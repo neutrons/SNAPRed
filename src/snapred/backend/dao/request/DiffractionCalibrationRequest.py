@@ -1,7 +1,7 @@
 # TODO this can probably be relaced in the code with FarmFreshIngredients
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, field_validator
 
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -36,7 +36,7 @@ class DiffractionCalibrationRequest(BaseModel, extra="forbid"):
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
     maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
     skipPixelCalibration: bool = False
-    removeBackground: Optional[bool]
+    removeBackground: bool = False
 
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
 
@@ -49,5 +49,3 @@ class DiffractionCalibrationRequest(BaseModel, extra="forbid"):
             # Coerce Generic[T]-derived type
             v = Pair[float](**v.dict())
         return v
-
-    model_config = ConfigDict(extra="forbid")
