@@ -143,7 +143,7 @@ def test_purge_bad_peaks_too_few(workflowRequest, qtbot):  # noqa: ARG001
 
     # setup the qtbot to intercept the window
     qtbot.addWidget(diffcalWorkflow._tweakPeakView)
-    threading.Timer(0.1, execute_click).start()
+    threading.Timer(0.2, execute_click).start()
     diffcalWorkflow.purgeBadPeaks(maxChiSq)
 
     assert diffcalWorkflow.ingredients.groupedPeakLists[0].peaks == peaks
