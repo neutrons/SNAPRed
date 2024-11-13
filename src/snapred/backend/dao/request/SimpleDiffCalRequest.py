@@ -8,3 +8,4 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 class SimpleDiffCalRequest(BaseModel):
     ingredients: DiffractionCalibrationIngredients
     groceries: Dict[str, str]
+    skipPixelCalibration: bool

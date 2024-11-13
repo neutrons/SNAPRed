@@ -123,8 +123,6 @@ class CalibrationService(Service):
         )
         ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
         ingredients.removeBackground = request.removeBackground
-        ingredients.skipPixelCalibration = request.skipPixelCalibration
-
         return ingredients
 
     @FromString
@@ -184,7 +182,7 @@ class CalibrationService(Service):
     @FromString
     def pixelCalibration(self, request: SimpleDiffCalRequest) -> PixelDiffCalServing:
         # cook recipe
-        if request.ingredients.skipPixelCalibration:
+        if request.skipPixelCalibration:
             self.groceryClerk.name("defaultCalibrationTable").diffcal_table(
                 request.ingredients.runConfig.runNumber, VERSION_DEFAULT
             ).useLiteMode(request.ingredients.runConfig.useLiteMode).add()

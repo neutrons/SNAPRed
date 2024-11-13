@@ -311,3 +311,6 @@ class DiffCalTweakPeakView(BackendRequestView):
             self._testContinueAnywayStates()
 
         return True
+
+    def getSkipPixelCalibration(self):
+        return self.skipPixelCalToggle.field.getState()
