@@ -58,7 +58,7 @@ class ReductionRequestView(BackendRequestView):
         self.convertUnitsDropdown = self._sampleDropDown(
             "Convert Units", ["TOF", "dSpacing", "Wavelength", "MomentumTransfer"]
         )
-        self.convertUnitsDropdown.setCurrentIndex(2)
+        self.convertUnitsDropdown.setCurrentIndex(1)
 
         # Set field properties
         self.liteModeToggle.setEnabled(False)
