@@ -42,9 +42,13 @@ class DiffCalRequestView(BackendRequestView):
         self.litemodeToggle.setEnabled(True)
         self.peakFunctionDropdown.setCurrentIndex(0)
 
+        # skip pixel calibration toggle
+        self.skipPixelCalToggle = self._labeledField("Skip Pixel Calibration", Toggle(parent=self, state=False))
+
         # add all widgets to layout
         self.layout.addWidget(self.runNumberField, 0, 0)
         self.layout.addWidget(self.litemodeToggle, 0, 1)
+        self.layout.addWidget(self.skipPixelCalToggle, 0, 2)
         self.layout.addWidget(self.fieldConvergenceThreshold, 1, 0)
         self.layout.addWidget(self.fieldNBinsAcrossPeakWidth, 1, 2)
         self.layout.addWidget(self.sampleDropdown, 2, 0)

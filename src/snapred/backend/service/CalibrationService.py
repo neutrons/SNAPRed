@@ -92,7 +92,8 @@ class CalibrationService(Service):
         self.registerPath("loadQualityAssessment", self.loadQualityAssessment)
         self.registerPath("index", self.getCalibrationIndex)
         self.registerPath("diffraction", self.diffractionCalibration)
-        self.registerPath("diffractionWithIngredients", self.diffractionCalibrationWithIngredients)
+        self.registerPath("pixel", self.pixelCalibration)
+        self.registerPath("group", self.groupCalibration)
         self.registerPath("validateWritePermissions", self.validateWritePermissions)
         return
 
@@ -151,21 +152,18 @@ class CalibrationService(Service):
     @FromString
     def diffractionCalibration(self, request: DiffractionCalibrationRequest) -> Dict[str, Any]:
         self.validateRequest(request)
+
         payload = SimpleDiffCalRequest(
             ingredients=self.prepDiffractionCalibrationIngredients(request),
             groceries=self.fetchDiffractionCalibrationGroceries(request),
-            skipPixelCalibration=request.skipPixelCalibration,
         )
-        return self.diffractionCalibrationWithIngredients(payload)
 
-    @FromString
-    def diffractionCalibrationWithIngredients(self, request: SimpleDiffCalRequest) -> Dict[str, Any]:
-        pixelRes = self.pixelCalibration(request)
+        pixelRes = self.pixelCalibration(payload)
         if not pixelRes.result:
             raise RuntimeError("Pixel Calibration failed")
 
-        request.groceries["previousCalibration"] = pixelRes.calibrationTable
-        groupRes = self.groupCalibration(request)
+        payload.groceries["previousCalibration"] = pixelRes.calibrationTable
+        groupRes = self.groupCalibration(payload)
         if not groupRes.result:
             raise RuntimeError("Group Calibration failed")
 
@@ -181,28 +179,20 @@ class CalibrationService(Service):
     @FromString
     def pixelCalibration(self, request: SimpleDiffCalRequest) -> PixelDiffCalServing:
         # cook recipe
-        if request.skipPixelCalibration:
-            res = PixelDiffCalServing(
-                result=True,
-                medianOffsets=[],
-                maskWorkspace=request.groceries.get("maskWorkspace", ""),
-                calibrationTable=request.groceries["calibrationTable"],
+        res = PixelDiffCalRecipe().cook(request.ingredients, request.groceries)
+        maskWS = self.groceryService.getWorkspaceForName(res.maskWorkspace)
+        percentMasked = maskWS.getNumberMasked() / maskWS.getNumberHistograms()
+        threshold = Config["constants.maskedPixelThreshold"]
+        if percentMasked > threshold:
+            res.result = False
+            raise Exception(
+                (
+                    f"WARNING: More than {threshold*100}% of pixels failed calibration. Please check your input "
+                    "data. If input data has poor statistics, you may get better results by disabling Cross "
+                    "Correlation. You can also improve statistics by activating Lite mode if this is not "
+                    "already activated."
+                ),
             )
-        else:
-            res = PixelDiffCalRecipe().cook(request.ingredients, request.groceries)
-            maskWS = self.groceryService.getWorkspaceForName(res.maskWorkspace)
-            percentMasked = maskWS.getNumberMasked() / maskWS.getNumberHistograms()
-            threshold = Config["constants.maskedPixelThreshold"]
-            if percentMasked > threshold:
-                res.result = False
-                raise Exception(
-                    (
-                        f"WARNING: More than {threshold*100}% of pixels failed calibration. Please check your input "
-                        "data. If input data has poor statistics, you may get better results by disabling Cross "
-                        "Correlation. You can also improve statistics by activating Lite mode if this is not "
-                        "already activated."
-                    ),
-                )
         return res
 
     @FromString
