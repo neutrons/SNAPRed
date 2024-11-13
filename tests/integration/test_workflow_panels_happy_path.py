@@ -271,7 +271,7 @@ class TestGUIPanels:
             ##########################################################################################################
 
             # Diffraction calibration:
-            calibrationPanelTabs.setCurrentIndex(0)
+            calibrationPanelTabs.setCurrentIndex(1)
             diffractionCalibrationWidget = calibrationPanelTabs.currentWidget()
 
             ### The use of this next signal is somewhat cryptic, but it makes testing the GUI much more stable:
@@ -442,7 +442,7 @@ class TestGUIPanels:
             #####################################################################################################
 
             # Normalization calibration:
-            calibrationPanelTabs.setCurrentIndex(1)
+            calibrationPanelTabs.setCurrentIndex(2)
             normalizationCalibrationWidget = calibrationPanelTabs.currentWidget()
 
             #################################################################
@@ -589,7 +589,7 @@ class TestGUIPanels:
             #################################################################################################
 
             # Reduction:
-            calibrationPanelTabs.setCurrentIndex(2)
+            calibrationPanelTabs.setCurrentIndex(1)
             reductionWidget = calibrationPanelTabs.currentWidget()
 
             #################################################################
@@ -762,7 +762,7 @@ class TestGUIPanels:
             ##########################################################################################################
 
             # Diffraction calibration:
-            calibrationPanelTabs.setCurrentIndex(0)
+            calibrationPanelTabs.setCurrentIndex(1)
             diffractionCalibrationWidget = calibrationPanelTabs.currentWidget()
 
             ### The use of this next signal is somewhat cryptic, but it makes testing the GUI much more stable:
@@ -995,7 +995,7 @@ class TestGUIPanels:
             #####################################################################################################
 
             # Normalization calibration:
-            calibrationPanelTabs.setCurrentIndex(1)
+            calibrationPanelTabs.setCurrentIndex(2)
             normalizationCalibrationWidget = calibrationPanelTabs.currentWidget()
 
             #################################################################
@@ -1234,7 +1234,7 @@ class TestGUIPanels:
             #################################################################################################
 
             # Reduction:
-            calibrationPanelTabs.setCurrentIndex(2)
+            calibrationPanelTabs.setCurrentIndex(0)
             reductionWidget = calibrationPanelTabs.currentWidget()
 
             #################################################################

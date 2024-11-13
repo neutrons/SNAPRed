@@ -1,5 +1,5 @@
 from qtpy.QtCore import Slot
-from qtpy.QtWidgets import QGridLayout, QMainWindow, QTabWidget, QWidget
+from qtpy.QtWidgets import QDesktopWidget, QGridLayout, QMainWindow, QTabWidget, QWidget
 
 
 class TestPanelView(QMainWindow):
@@ -17,7 +17,8 @@ class TestPanelView(QMainWindow):
         self.tabWidget = QTabWidget()
         self.tabWidget.setTabPosition(QTabWidget.West)
         self.grid.addWidget(self.tabWidget)
-        self.adjustSize()
+        self.resize(1280, 720)
+        self.center()
 
     @Slot()
     def enableAllWorkflows(self):
@@ -32,3 +33,9 @@ class TestPanelView(QMainWindow):
         for n in range(self.tabWidget.count()):
             if n != currentTab:
                 self.tabWidget.setTabEnabled(n, False)
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
