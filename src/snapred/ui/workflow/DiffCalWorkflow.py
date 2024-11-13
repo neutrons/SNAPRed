@@ -258,8 +258,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.residualWorkspace = f"diffcal_residual_{self.runNumber}"
         # focus the workspace to view the peaks
         self._renewFocus(self.prevGroupingIndex)
-        self._renewFitPeaks(self.peakFunction)
-        response = self._calculateResidual()
+        response = self._renewFitPeaks(self.peakFunction)
 
         self._tweakPeakView.updateGraphs(
             self.focusedWorkspace,
@@ -366,6 +365,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             peakFunction=peakFunction,
         )
         response = self.request(path="calibration/fitpeaks", payload=payload.json())
+        self._calculateResidual()
         return response
 
     def _calculateResidual(self):
