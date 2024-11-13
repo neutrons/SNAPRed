@@ -735,7 +735,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             runNumber="123",
             useLiteMode=True,
             calibrantSamplePath="bundt/cake_egg.py",
-            removeBackground=True,
+            removeBackground=False,
             focusGroup=FocusGroup(name="all", definition="path/to/all"),
             continueFlags=ContinueWarning.Type.UNSET,
         )
@@ -874,7 +874,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             runNumber="123",
             useLiteMode=True,
             calibrantSamplePath="bundt/cake_egg.py",
-            removeBackground=True,
+            removeBackground=False,
             focusGroup=FocusGroup(name="all", definition="path/to/all"),
             continueFlags=ContinueWarning.Type.UNSET,
         )
@@ -893,7 +893,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             runNumber="123",
             useLiteMode=True,
             calibrantSamplePath="bundt/cake_egg.py",
-            removeBackground=True,
+            removeBackground=False,
             focusGroup=FocusGroup(name="all", definition="path/to/all"),
             continueFlags=ContinueWarning.Type.UNSET,
         )
@@ -914,7 +914,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             runNumber="123",
             useLiteMode=True,
             calibrantSamplePath="bundt/cake_egg.py",
-            removeBackground=True,
+            removeBackground=False,
             focusGroup=FocusGroup(name="all", definition="path/to/all"),
             continueFlags=ContinueWarning.Type.UNSET,
         )
@@ -955,7 +955,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             runNumber="123",
             useLiteMode=True,
             calibrantSamplePath="bundt/cake_egg.py",
-            removeBackground=True,
+            removeBackground=False,
             focusGroup=FocusGroup(name="all", definition="path/to/all"),
             continueFlags=ContinueWarning.Type.UNSET,
         )
