@@ -104,10 +104,10 @@ class _ThirdPartyTypePydanticAnnotation:
         """
         We return a pydantic_core.CoreSchema that behaves in the following ways:
 
-        * ints will be parsed as `ThirdPartyType` instances with the int as the x attribute
+        * strs will be parsed as `ThirdPartyType` instances with the str as the runNumber attribute
         * `ThirdPartyType` instances will be parsed as `ThirdPartyType` instances without any changes
         * Nothing else will pass validation
-        * Serialization will always return just an int
+        * Serialization will always return just an str
         """
 
         def validate_from_str(value: str) -> RunNumberImpl:
@@ -130,7 +130,7 @@ class _ThirdPartyTypePydanticAnnotation:
                     from_str_schema,
                 ]
             ),
-            serialization=core_schema.plain_serializer_function_ser_schema(lambda instance: instance.x),
+            serialization=core_schema.plain_serializer_function_ser_schema(lambda instance: str(instance.runNumber)),
         )
 
     @classmethod
@@ -142,3 +142,4 @@ class _ThirdPartyTypePydanticAnnotation:
 
 
 RunNumber = Annotated[RunNumberImpl, _ThirdPartyTypePydanticAnnotation]
+RunNumber.runsFromIntArrayProperty = RunNumberImpl.runsFromIntArrayProperty
