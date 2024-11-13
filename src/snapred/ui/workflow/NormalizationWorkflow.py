@@ -61,6 +61,8 @@ class NormalizationWorkflow(WorkflowImplementer):
         )
         self._saveView = NormalizationSaveView(parent)
 
+        self.addResetHook(self._tweakPeakView.reset)
+
         # connect signal to populate the grouping dropdown after run is selected
         self._requestView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
@@ -184,7 +186,6 @@ class NormalizationWorkflow(WorkflowImplementer):
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
         peaks = self.responses[-1].data["detectorPeaks"]
         self.calibrationRunNumber = self.responses[-1].data["calibrationRunNumber"]
-
         self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
         self.initializationComplete = True
         return response
@@ -333,3 +334,23 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         # renable button when graph is updated
         self._tweakPeakView.enableRecalculateButton()
+
+    def reset(self, retainOutputs=False):
+        """Reset the workflow, clearing any stored responses and resetting the views."""
+        # Clear specific responses for NormalizationWorkflow
+        self.responses = []
+        self.initializationComplete = False
+
+        # Clear view-related state
+        self._tweakPeakView.reset()
+
+        # Reset workspace names
+        self.focusWorkspace = None
+        self.smoothedWorkspace = None
+
+        # Reinitialize grouping maps and sample paths
+        self.groupingMap = self.defaultGroupingMap
+        self.focusGroups = self.groupingMap.lite
+
+        # Call the parent reset method to handle hooks and other resets
+        super().reset(retainOutputs=retainOutputs)

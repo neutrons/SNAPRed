@@ -233,3 +233,15 @@ class NormalizationTweakPeakView(BackendRequestView):
     def verify(self):
         # TODO what needs to be verified?
         return True
+
+    def reset(self):
+        self._clearGraph()
+
+        self.focusWorkspace = None
+        self.smoothedWorkspace = None
+
+    def _clearGraph(self):
+        self.figure.clear()
+        self.figure = plt.figure(constrained_layout=True)
+        self.canvas.figure = self.figure
+        self.canvas.draw()

@@ -92,6 +92,7 @@ class WorkflowPresenter(QObject):
 
     def reset(self):
         self._resetLambda()
+        self.view.resetGraphs()
         self.resetSoft()
         self._iteration = 1
 
