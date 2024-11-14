@@ -95,15 +95,15 @@ class WorkflowImplementer(QObject):
             self.externalWorkspaces = list(externalWorkspaces)
 
     def reset(self, retainOutputs=False):
-        exclude = self.outputs if retainOutputs else []
-        self._clearWorkspaces(exclude=exclude, clearCachedWorkspaces=True)
+        # Clear workspaces, requests, responses, etc.
+        self._clearWorkspaces(exclude=self.outputs if retainOutputs else [], clearCachedWorkspaces=True)
         self.requests = []
         self.responses = []
         self.outputs = []
         self.collectedOutputs = []
-        self.continueAnywayFlags = ContinueWarning.Type.UNSET
 
         for hook in self.resetHooks:
+            logger.info(f"Calling reset hook: {hook}")
             hook()
 
     def _clearWorkspaces(self, *, exclude: List[str], clearCachedWorkspaces: bool):
