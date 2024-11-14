@@ -10,11 +10,13 @@ from snapred.backend.dao.calibration import (
 )
 from snapred.backend.dao.indexing import IndexEntry
 from snapred.backend.dao.ingredients import (
+    CalculateDiffCalResidualIngredients,
     CalibrationMetricsWorkspaceIngredients,
     DiffractionCalibrationIngredients,
     GroceryListItem,
 )
 from snapred.backend.dao.request import (
+    CalculateResidualRequest,
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
     CalibrationIndexRequest,
@@ -34,6 +36,7 @@ from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.CalculateDiffCalResidualRecipe import CalculateDiffCalResidualRecipe
 from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
@@ -94,6 +97,7 @@ class CalibrationService(Service):
         self.registerPath("diffraction", self.diffractionCalibration)
         self.registerPath("diffractionWithIngredients", self.diffractionCalibrationWithIngredients)
         self.registerPath("validateWritePermissions", self.validateWritePermissions)
+        self.registerPath("residual", self.calculateResidual)
         return
 
     @staticmethod
@@ -247,6 +251,15 @@ class CalibrationService(Service):
                 + "<br><b>instrument.calibration.powder.home</b> entry in SNAPRed's <b>application.yml</b> file.</p>"
                 + "</font>"
             )
+
+    @FromString
+    def calculateResidual(self, request: CalculateResidualRequest):
+        ingredients = CalculateDiffCalResidualIngredients(
+            inputWorkspace=request.inputWorkspace,
+            outputWorkspace=request.outputWorkspace,
+            fitPeaksDiagnosticWorkspace=request.fitPeaksDiagnostic,
+        )
+        return CalculateDiffCalResidualRecipe().cook(ingredients)
 
     @FromString
     def focusSpectra(self, request: FocusSpectraRequest):
