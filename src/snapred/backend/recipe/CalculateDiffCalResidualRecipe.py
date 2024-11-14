@@ -1,77 +1,61 @@
 from typing import Dict
 
 import numpy as np
-from mantid.api import (
-    AlgorithmFactory,
-    MatrixWorkspaceProperty,
-    PropertyMode,
-    PythonAlgorithm,
-    WorkspaceGroupProperty,
-    WorkspaceUnitValidator,
-)
-from mantid.kernel import Direction
+from pydantic import BaseModel
 
+from snapred.backend.dao.ingredients.CalculateDiffCalResidualIngredients import (
+    CalculateDiffCalResidualIngredients as Ingredients,
+)
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.algorithm.Utensils import Utensils
+from snapred.backend.recipe.Recipe import Recipe
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
 
-class CalculateResidualDiffCalAlgo(PythonAlgorithm):
-    def category(self):
-        return "SNAPRed Data Processing"
+class CalculateDiffCalServing(BaseModel):
+    outputWorkspace: str
 
-    def PyInit(self):
-        self.declareProperty(
-            MatrixWorkspaceProperty(
-                "InputWorkspace",
-                "",
-                Direction.Input,
-                PropertyMode.Mandatory,
-                validator=WorkspaceUnitValidator("dSpacing"),
-            )
-        )
-        self.declareProperty(
-            MatrixWorkspaceProperty(
-                "OutputWorkspace",
-                "",
-                Direction.Output,
-                PropertyMode.Optional,
-                validator=WorkspaceUnitValidator("dSpacing"),
-            )
-        )
-        self.declareProperty(
-            WorkspaceGroupProperty(
-                "FitPeaksDiagnosticWorkSpace",
-                "",
-                Direction.Input,
-                PropertyMode.Mandatory,
-            )
-        )
-        self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, __name__)
 
-    def chopIngredients(self):
-        # NOTE there are no ingredients
-        pass
+class CalculateDiffCalResidualRecipe(Recipe[Ingredients]):
+    def __init__(self, utensils: Utensils = None):
+        if utensils is None:
+            utensils = Utensils()
+            utensils.PyInit()
+        self.mantidSnapper = utensils.mantidSnapper
+        self._counts = 0
 
-    def unbagGroceries(self):
-        self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
-        self.outputWorkspaceName = self.getPropertyValue("OutputWorkspace")
-        inputGroupWorkspace = self.getPropertyValue("FitPeaksDiagnosticWorkSpace")
+    def logger(self):
+        return logger
+
+    def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
+        super().validateInputs(ingredients, groceries)
+
+    def chopIngredients(self, ingredients: Ingredients) -> None:
+        """Receive the ingredients from the recipe."""
+        self.inputWorkspaceName = ingredients.inputWorkspace
+        self.outputWorkspaceName = ingredients.outputWorkspace
+        inputGroupWorkspace = ingredients.fitPeaksDiagnosticWorkspace
 
         fitPeaksGroupWorkspace = self.mantidSnapper.mtd[inputGroupWorkspace]
         lastWorkspaceName = fitPeaksGroupWorkspace.getNames()[-1]
         self.fitPeaksDiagnosticWorkSpaceName = lastWorkspaceName
 
-    def validateInputs(self) -> Dict[str, str]:
-        errors = {}
-        return errors
+    def unbagGroceries(self):
+        pass
 
-    def PyExec(self):
-        self.log().notice("Calculating residual difference for calibration")
+    def prep(self, ingredients: Ingredients):
+        """
+        Convenience method to prepare the recipe for execution.
+        """
+        self.validateInputs(ingredients, groceries=None)
+        self.chopIngredients(ingredients)
         self.unbagGroceries()
+        self.stirInputs()
+        self.queueAlgos()
 
+    def queueAlgos(self):
         # Step 1: Clone the input workspace to initialize the output workspace
         self.mantidSnapper.CloneWorkspace(
             f"Creating outputWorkspace: {self.outputWorkspaceName}...",
@@ -136,13 +120,14 @@ class CalculateResidualDiffCalAlgo(PythonAlgorithm):
             OutputWorkspace=self.outputWorkspaceName,
         )
 
-        # Execute all queued operations
+    def execute(self):
         self.mantidSnapper.executeQueue()
-
         # Set the output property to the final residual workspace
-        outputWorkspace = self.mantidSnapper.mtd[self.outputWorkspaceName]
-        self.setProperty("OutputWorkspace", outputWorkspace)
+        self.outputWorkspace = self.mantidSnapper.mtd[self.outputWorkspaceName]
 
-
-# Register algorithm with Mantid
-AlgorithmFactory.subscribe(CalculateResidualDiffCalAlgo)
+    def cook(self, ingredients: Ingredients):
+        self.prep(ingredients)
+        self.execute()
+        return CalculateDiffCalServing(
+            outputWorkspace=self.outputWorkspaceName,
+        )

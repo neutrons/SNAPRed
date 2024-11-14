@@ -98,13 +98,21 @@ class Recipe(ABC, Generic[Ingredients]):
         """
         Validate the input properties before chopping or unbagging
         """
-        self._validateIngredients(ingredients)
+        if ingredients is not None:
+            self._validateIngredients(ingredients)
+        else:
+            logger.info("No ingredients given, skipping ingredient validation")
+            pass
         # ensure all of the given workspaces exist
         # NOTE may need to be tweaked to ignore output workspaces...
-        logger.info(f"Validating the given workspaces: {groceries.values()}")
-        for key in self.mandatoryInputWorkspaces():
-            ws = groceries.get(key)
-            self._validateGrocery(key, ws)
+        if groceries is not None:
+            logger.info(f"Validating the given workspaces: {groceries.values()}")
+            for key in self.mandatoryInputWorkspaces():
+                ws = groceries.get(key)
+                self._validateGrocery(key, ws)
+        else:
+            logger.info("No groceries given, skipping workspace validation")
+            pass
 
     def stirInputs(self):
         """

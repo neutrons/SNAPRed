@@ -20,7 +20,7 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
-from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
+from snapred.backend.dao.ingredients import CalculateDiffCalResidualIngredients, CalibrationMetricsWorkspaceIngredients
 from snapred.backend.dao.request import (
     CalculateResidualRequest,
     CalibrationAssessmentRequest,
@@ -67,6 +67,7 @@ with mock.patch.dict(
     from snapred.backend.dao.request.HasStateRequest import HasStateRequest
     from snapred.backend.dao.state import PixelGroup
     from snapred.backend.dao.state.FocusGroup import FocusGroup
+    from snapred.backend.recipe.CalculateDiffCalResidualRecipe import CalculateDiffCalServing
     from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe
     from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe, PixelDiffCalServing
     from snapred.backend.service.CalibrationService import CalibrationService
@@ -1152,8 +1153,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         assert not self.instance.hasState(badRequest)
 
-    @mock.patch("snapred.backend.service.CalibrationService.CalculateResidualDiffCalRecipe")
-    def test_calculateResidual(self, MockCalculateResidualDiffCalRecipe):
+    @mock.patch("snapred.backend.service.CalibrationService.CalculateDiffCalResidualRecipe")
+    def test_calculateResidual(self, MockCalculateDiffCalResidualRecipe):
         # Arrange: set up mock request and mock recipe
         mockRequest = mock.Mock(
             spec=CalculateResidualRequest,
@@ -1162,22 +1163,25 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             fitPeaksDiagnostic="fitPeaksDiagWS",
         )
 
-        # Mock the recipe execution result
-        mockRecipeInstance = MockCalculateResidualDiffCalRecipe.return_value
-        mockRecipeInstance.executeRecipe.return_value = "expected_result"
+        # Mock the recipe instance and its return value
+        mockRecipeInstance = MockCalculateDiffCalResidualRecipe.return_value
+        mockRecipeInstance.cook.return_value = CalculateDiffCalServing(outputWorkspace="outputWS")
 
         # Act: call calculateResidual with the mock request
         result = self.instance.calculateResidual(mockRequest)
 
-        # Assert: check that the recipe was called with correct parameters
-        MockCalculateResidualDiffCalRecipe.assert_called_once_with()
-        mockRecipeInstance.executeRecipe.assert_called_once_with(
-            InputWorkspace=mockRequest.inputWorkspace,
-            OutputWorkspace=mockRequest.outputWorkspace,
-            FitPeaksDiagnosticWorkSpace=mockRequest.fitPeaksDiagnostic,
+        # Assert: check that the recipe was instantiated and cook was called with the correct ingredients
+        MockCalculateDiffCalResidualRecipe.assert_called_once_with()
+        mockRecipeInstance.cook.assert_called_once_with(
+            CalculateDiffCalResidualIngredients(
+                inputWorkspace="inputWS",
+                outputWorkspace="outputWS",
+                fitPeaksDiagnosticWorkspace="fitPeaksDiagWS",
+            )
         )
-        # Assert that the result is what the recipe returns
-        self.assertEqual(result, "expected_result")  # noqa: PT009
+
+        # Assert that the result contains the expected output workspace
+        self.assertEqual(result.outputWorkspace, "outputWS")  # noqa: PT009
 
     def test_parseCalibrationMetricList(self):
         fakeMetrics = CalibrationMetric(

@@ -6,7 +6,6 @@ from pydantic import BaseModel
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.BufferMissingColumnsAlgo import BufferMissingColumnsAlgo
-from snapred.backend.recipe.algorithm.CalculateResidualDiffCalAlgo import CalculateResidualDiffCalAlgo
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
 from snapred.backend.recipe.algorithm.CreateArtificialNormalizationAlgo import CreateArtificialNormalizationAlgo
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
@@ -109,8 +108,4 @@ class BufferMissingColumnsRecipe(GenericRecipe[BufferMissingColumnsAlgo]):
 
 
 class ArtificialNormalizationRecipe(GenericRecipe[CreateArtificialNormalizationAlgo]):
-    pass
-
-
-class CalculateResidualDiffCalRecipe(GenericRecipe[CalculateResidualDiffCalAlgo]):
     pass
