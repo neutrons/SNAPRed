@@ -32,9 +32,9 @@ class TestPanelPresenter(QObject):
         self.normalizationCalibrationWidget = self._addWorkflowWidget(self.normalizationCalibrationWorkflow.widget)
         self.reductionWidget = self._addWorkflowWidget(self.reductionWorkflow.widget)
 
+        self.view.tabWidget.addTab(self.reductionWidget, "Reduction")
         self.view.tabWidget.addTab(self.diffractionCalibrationWidget, "Diffraction Calibration")
         self.view.tabWidget.addTab(self.normalizationCalibrationWidget, "Normalization")
-        self.view.tabWidget.addTab(self.reductionWidget, "Reduction")
 
     def _addWorkflowWidget(self, widget_):
         layout = QGridLayout()
