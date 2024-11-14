@@ -162,6 +162,7 @@ class ReductionWorkflow(WorkflowImplementer):
         # Use one timestamp for the entire set of runNumbers:
         timestamp = self.request(path="reduction/getUniqueTimestamp").data
         for runNumber in runNumbers:
+            self._artificialNormalizationView.updateRunNumber(runNumber)
             request_ = ReductionRequest(
                 runNumber=str(runNumber),
                 useLiteMode=self._reductionRequestView.liteModeToggle.field.getState(),
@@ -175,17 +176,16 @@ class ReductionWorkflow(WorkflowImplementer):
             # Validate reduction; if artificial normalization is needed, handle it
             response = self.request(path="reduction/validateReduction", payload=request_)
             if ContinueWarning.Type.MISSING_NORMALIZATION in self.continueAnywayFlags:
-                self._artificialNormalizationView.updateRunNumber(runNumber)
+                self._artificialNormalizationView.showAdjustView()
                 response = self.request(path="reduction/grabWorkspaceforArtificialNorm", payload=request_)
                 self._artificialNormalization(workflowPresenter, response.data, runNumber)
             else:
                 # Proceed with reduction if artificial normalization is not needed
+                self._artificialNormalizationView.showSkippedView()
                 response = self.request(path="reduction/", payload=request_)
                 if response.code == ResponseCode.OK:
                     record, unfocusedData = response.data.record, response.data.unfocusedData
                     self._finalizeReduction(record, unfocusedData)
-                    self._artificialNormalizationView.updateRunNumber(runNumber)
-                    self._artificialNormalizationView.showMessage("Artificial Normalization not Needed")
                     workflowPresenter.advanceWorkflow()
         return self.responses[-1]
 
