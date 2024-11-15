@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional, Set, Tuple, Type
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
+from snapred.backend.dao.ingredients.ApplyNormalizationIngredients import ApplyNormalizationIngredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe
@@ -124,7 +125,9 @@ class ReductionRecipe(Recipe[Ingredients]):
         self.mantidSnapper.executeQueue()
         return self.unfocWs
 
-    def _prepareArtificialNormalization(self, inputWorkspace: str, groupIndex: int) -> str:
+    def _prepareArtificialNormalization(
+        self, inputWorkspace: str, groupIndex: int, applyNormalizationIngredients: ApplyNormalizationIngredients
+    ) -> str:
         """
         After the real data has been group processed, we can generate a fake normalization workspace
 
@@ -135,6 +138,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         normalizationWorkspace = ArtificialNormalizationRecipe().executeRecipe(
             InputWorkspace=inputWorkspace,
             Ingredients=self.ingredients.artificialNormalizationIngredients,
+            ApplyNormalizationIngredients=applyNormalizationIngredients,
             OutputWorkspace=normalizationWorkspace,
         )
         self.groceries["normalizationWorkspace"] = normalizationWorkspace
@@ -263,7 +267,11 @@ class ReductionRecipe(Recipe[Ingredients]):
             # generate one given the params and the processed sample data
             # Skipping the above steps as they are accounted for in generating the artificial normalization
             if self.ingredients.artificialNormalizationIngredients:
-                normalizationClone = self._prepareArtificialNormalization(sampleClone, groupingIndex)
+                normalizationClone = self._prepareArtificialNormalization(
+                    sampleClone,
+                    groupingIndex,
+                    self.ingredients.applyNormalization(groupingIndex),
+                )
 
             # 4. ApplyNormalizationRecipe
             self._applyRecipe(

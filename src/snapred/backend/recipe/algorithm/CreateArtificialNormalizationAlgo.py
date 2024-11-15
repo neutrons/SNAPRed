@@ -13,6 +13,7 @@ from mantid.kernel import Direction
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -46,15 +47,72 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
             defaultValue="",
             direction=Direction.Input,
         )
+        self.declareProperty(
+            "ApplyNormalizationIngredients",
+            defaultValue="",
+            direction=Direction.Input,
+        )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
-    def chopInredients(self, ingredientsStr: str):
+    def chopInredients(self, ingredientsStr: str, applyNormalizationIngredientsStr: str):
         ingredientsDict = json.loads(ingredientsStr)
         self.peakWindowClippingSize = ingredientsDict["peakWindowClippingSize"]
         self.smoothingParameter = ingredientsDict["smoothingParameter"]
         self.decreaseParameter = ingredientsDict["decreaseParameter"]
         self.LSS = ingredientsDict["lss"]
+
+        if applyNormalizationIngredientsStr.strip():
+            # Parse ApplyNormalizationIngredients
+            applyNormalizationIngredients = json.loads(applyNormalizationIngredientsStr)
+            self.pixelGroup = applyNormalizationIngredients.get("pixelGroup", None)
+
+            if not self.pixelGroup:
+                raise ValueError("The 'pixelGroup' key is missing in ApplyNormalizationIngredients.")
+
+            # Extract pixelGroupingParameters and validate
+            pixelGroupingParameters = self.pixelGroup.get("pixelGroupingParameters", {})
+            if not pixelGroupingParameters:
+                raise ValueError("Pixel grouping parameters are missing in 'pixelGroup'.")
+
+            # Get the first group and extract dResolution values
+            firstGroup = next(iter(pixelGroupingParameters.values()), None)
+            if not firstGroup or "dResolution" not in firstGroup:
+                raise KeyError("Missing 'dResolution' in pixelGroupingParameters.")
+
+            dResolution = firstGroup["dResolution"]
+            lowdSpacingCrop = Config["constants.CropFactors.lowdSpacingCrop"]
+            highdSpacingCrop = Config["constants.CropFactors.highdSpacingCrop"]
+
+            if lowdSpacingCrop < 0:
+                raise ValueError("Low d-spacing crop factor must be positive.")
+            if highdSpacingCrop < 0:
+                raise ValueError("High d-spacing crop factor must be positive.")
+
+            # Compute dMin and dMax
+            self.dMin = dResolution["minimum"] + lowdSpacingCrop
+            self.dMax = dResolution["maximum"] - highdSpacingCrop
+
+            if self.dMin >= self.dMax:
+                raise ValueError(
+                    f"d-spacing crop factors are too large -- resultant dMax ({self.dMax}) must be > resultant dMin ({self.dMin})."  # noqa: E501
+                )
+
+            # Extract dBin (binWidth) from timeOfFlight
+            timeOfFlight = self.pixelGroup.get("timeOfFlight", {})
+            self.dBin = timeOfFlight.get("binWidth")
+            if self.dBin is None:
+                raise KeyError("Missing 'binWidth' in timeOfFlight.")
+
+            # Debug logging
+            logger.debug(f"Processed Ingredients: dMin={self.dMin}, dMax={self.dMax}, dBin={self.dBin}")
+        else:
+            # Skip optional steps if ApplyNormalizationIngredients is not provided
+            logger.info("ApplyNormalizationIngredients not provided. Skipping optional steps.")
+            self.pixelGroup = None
+            self.dMin = None
+            self.dMax = None
+            self.dBin = None
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
@@ -111,18 +169,16 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
         return (np.exp(np.exp(input) - 1) - 1) ** 2 - 1
 
     def PyExec(self):
-        # Main execution method for the algorithm
         self.unbagGroceries()
         ingredients = self.getProperty("Ingredients").value
-        self.chopInredients(ingredients)
+        applyNormalizationIngredients = self.getProperty("ApplyNormalizationIngredients").value
+        self.chopInredients(ingredients, applyNormalizationIngredients)
         self.mantidSnapper.CloneWorkspace(
             "Cloning input workspace...",
             InputWorkspace=self.inputWorkspaceName,
             OutputWorkspace=self.outputWorkspaceName,
         )
-        # if input workspace is an eventworkspace, convert it to a histogram workspace
         if isinstance(self.mantidSnapper.mtd[self.inputWorkspaceName], IEventWorkspace):
-            # convert it to a histogram
             self.mantidSnapper.ConvertToMatrixWorkspace(
                 "Converting event workspace to histogram...",
                 InputWorkspace=self.outputWorkspaceName,
@@ -135,12 +191,21 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
             Target="dSpacing",
             OutputWorkspace=self.outputWorkspaceName,
         )
+        if self.pixelGroup and self.dMin and self.dMax:
+            self.mantidSnapper.RebinRagged(
+                "Resampling X-axis...",
+                InputWorkspace=self.outputWorkspaceName,
+                XMin=self.dMin,
+                XMax=self.dMax,
+                Delta=self.pixelGroup.dBin(),
+                OutputWorkspace=self.outputWorkspaceName,
+                PreserveEvents=False,
+            )
 
         self.mantidSnapper.executeQueue()
         self.inputWorkspace = self.mantidSnapper.mtd[self.inputWorkspaceName]
         self.outputWorkspace = self.mantidSnapper.mtd[self.outputWorkspaceName]
 
-        # Apply peak clipping to each histogram in the workspace
         for i in range(self.outputWorkspace.getNumberHistograms()):
             dataY = self.outputWorkspace.readY(i)
             clippedData = self.peakClip(
@@ -152,7 +217,6 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
             )
             self.outputWorkspace.setY(i, clippedData)
 
-        # Set the output workspace property
         self.setProperty("OutputWorkspace", self.outputWorkspaceName)
 
 
