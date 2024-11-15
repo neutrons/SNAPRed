@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
-from qtpy.QtCore import Qt, Signal, Slot
+from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import (
+    QFrame,
+    QGridLayout,
     QHBoxLayout,
-    QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
@@ -26,8 +27,9 @@ class ArtificialNormalizationView(BackendRequestView):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
-        # create the run number fields
+        # create the run number field
         self.fieldRunNumber = self._labeledField("Run Number", QLineEdit())
+        self.fieldRunNumber.setEnabled(False)
 
         # create the graph elements
         self.figure = plt.figure(constrained_layout=True)
@@ -37,10 +39,6 @@ class ArtificialNormalizationView(BackendRequestView):
         # create the other specification elements
         self.lssDropdown = self._trueFalseDropDown("LSS")
         self.decreaseParameterDropdown = self._trueFalseDropDown("Decrease Parameter")
-
-        # disable run number
-        for x in [self.fieldRunNumber]:
-            x.setEnabled(False)
 
         # create the adjustment controls
         self.smoothingSlider = self._labeledField("Smoothing", QLineEdit())
@@ -59,29 +57,30 @@ class ArtificialNormalizationView(BackendRequestView):
         self.recalculationButton = QPushButton("Recalculate")
         self.recalculationButton.clicked.connect(self.emitValueChange)
 
-        # add all elements to the grid layout
-        self.layout.addWidget(self.fieldRunNumber, 0, 0)
-        self.layout.addWidget(self.navigationBar, 1, 0)
-        self.layout.addWidget(self.canvas, 2, 0, 1, -1)
-        self.layout.addLayout(peakControlLayout, 3, 0, 1, 2)
-        self.layout.addWidget(self.lssDropdown, 4, 0)
-        self.layout.addWidget(self.decreaseParameterDropdown, 4, 1)
-        self.layout.addWidget(self.recalculationButton, 5, 0, 1, 2)
+        # add all elements to an adjust layout
+        self.adjustLayout = QGridLayout()
+        self.adjustLayout.addWidget(self.fieldRunNumber, 0, 0)
+        self.adjustLayout.addWidget(self.navigationBar, 1, 0)
+        self.adjustLayout.addWidget(self.canvas, 2, 0, 1, -1)
+        self.adjustLayout.addLayout(peakControlLayout, 3, 0, 1, 2)
+        self.adjustLayout.addWidget(self.lssDropdown, 4, 0)
+        self.adjustLayout.addWidget(self.decreaseParameterDropdown, 4, 1)
+        self.adjustLayout.addWidget(self.recalculationButton, 5, 0, 1, 2)
 
-        self.layout.setRowStretch(2, 10)
+        self.adjustLayout.setRowStretch(2, 10)
 
-        # store the initial layout without graphs
+        # add the adjust layout to this layout so it may be turned on and off
+        self.adjustFrame = QFrame()
+        self.adjustFrame.setLayout(self.adjustLayout)
+        self.layout.addWidget(self.adjustFrame, 0, 0, -1, -1)
+        self.adjustFrame.show()
+
+        # store the initial layout height without graphs
         self.initialLayoutHeight = self.size().height()
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
         self.signalUpdateFields.connect(self._updateFields)
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
-
-        self.messageLabel = QLabel("")
-        self.messageLabel.setStyleSheet("font-size: 24px; font-weight: bold; color: black;")
-        self.messageLabel.setAlignment(Qt.AlignCenter)
-        self.layout.addWidget(self.messageLabel, 0, 0, 1, 2)
-        self.messageLabel.hide()
 
     @Slot(str)
     def _updateRunNumber(self, runNumber):
@@ -180,17 +179,11 @@ class ArtificialNormalizationView(BackendRequestView):
         # TODO what needs to be verified?
         return True
 
-    def showMessage(self, message: str):
-        self.clearView()
-        self.messageLabel.setText(message)
-        self.messageLabel.show()
+    def showSkippedView(self):
+        self.adjustFrame.hide()
 
-    def clearView(self):
-        # Remove all existing widgets except the layout
-        for i in reversed(range(self.layout.count())):
-            widget = self.layout.itemAt(i).widget()
-            if widget is not None and widget != self.messageLabel:
-                widget.deleteLater()  # Delete the widget
+    def showAdjustView(self):
+        self.adjustFrame.show()
 
     def getPeakWindowClippingSize(self):
         return int(self.peakWindowClippingSize.field.text())

@@ -199,7 +199,7 @@ class DiffCalTweakPeakView(BackendRequestView):
             return
         self.signalPurgeBadPeaks.emit(maxChiSq)
 
-    def updateGraphs(self, workspace, peaks, diagnostic):
+    def updateGraphs(self, workspace, peaks, diagnostic, residual):
         # get the updated workspaces and optimal graph grid
         self.peaks = pydantic.TypeAdapter(List[GroupPeakList]).validate_python(peaks)
         numGraphs = len(peaks)
@@ -224,10 +224,22 @@ class DiffCalTweakPeakView(BackendRequestView):
             ax = self.figure.add_subplot(nrows, ncols, wkspIndex + 1, projection="mantid")
             ax.tick_params(direction="in")
             ax.set_title(f"Group ID: {wkspIndex + 1}")
-            # plot the data and fitted
+            # plot the data and fitted curve
             ax.plot(mtd[workspace], wkspIndex=wkspIndex, label="data", normalize_by_bin_width=True)
             ax.plot(fitted_peaks, wkspIndex=wkspIndex, label="fit", color="black", normalize_by_bin_width=True)
+
+            # plot the residual data
+            ax.plot(
+                mtd[residual],
+                wkspIndex=wkspIndex,
+                label="residual",
+                color="limegreen",
+                linewidth=2,
+                normalize_by_bin_width=True,
+            )
+
             ax.legend(loc=1)
+
             # fill in the discovered peaks for easier viewing
             x, y, _, _ = get_spectrum(mtd[workspace], wkspIndex, normalize_by_bin_width=True)
             # for each detected peak in this group, shade in the peak region
@@ -235,13 +247,14 @@ class DiffCalTweakPeakView(BackendRequestView):
                 # areas inside peak bounds (to be shaded)
                 under_peaks = [(peak.minimum < xx and xx < peak.maximum) for xx in x]
                 # the color: blue = GOOD, red = BAD
-                color = "blue" if chi2 < float(self.maxChiSqField.text()) else "red"
-                alpha = 0.3 if chi2 < float(self.maxChiSqField.text()) else 0.8
+                color = "blue" if chi2 < maxChiSq else "red"
+                alpha = 0.3 if chi2 < maxChiSq else 0.8
                 # now shade
                 ax.fill_between(x, y, where=under_peaks, color=color, alpha=alpha)
             # plot the min and max value for peaks
             ax.axvline(x=max(min(x), float(self.fieldXtalDMin.field.text())), label="xtal $d_{min}$", color="red")
             ax.axvline(x=min(max(x), float(self.fieldXtalDMax.field.text())), label="xtal $d_{max}$", color="red")
+
         # resize window and redraw
         self.setMinimumHeight(
             self.initialLayoutHeight + int((self.figure.get_size_inches()[1] + self.FIGURE_MARGIN) * self.figure.dpi)

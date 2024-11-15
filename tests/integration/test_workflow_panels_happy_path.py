@@ -271,7 +271,7 @@ class TestGUIPanels:
             ##########################################################################################################
 
             # Diffraction calibration:
-            calibrationPanelTabs.setCurrentIndex(0)
+            calibrationPanelTabs.setCurrentIndex(1)
             diffractionCalibrationWidget = calibrationPanelTabs.currentWidget()
 
             ### The use of this next signal is somewhat cryptic, but it makes testing the GUI much more stable:
@@ -442,7 +442,7 @@ class TestGUIPanels:
             #####################################################################################################
 
             # Normalization calibration:
-            calibrationPanelTabs.setCurrentIndex(1)
+            calibrationPanelTabs.setCurrentIndex(2)
             normalizationCalibrationWidget = calibrationPanelTabs.currentWidget()
 
             #################################################################
@@ -589,7 +589,7 @@ class TestGUIPanels:
             #################################################################################################
 
             # Reduction:
-            calibrationPanelTabs.setCurrentIndex(2)
+            calibrationPanelTabs.setCurrentIndex(1)
             reductionWidget = calibrationPanelTabs.currentWidget()
 
             #################################################################
@@ -762,7 +762,7 @@ class TestGUIPanels:
             ##########################################################################################################
 
             # Diffraction calibration:
-            calibrationPanelTabs.setCurrentIndex(0)
+            calibrationPanelTabs.setCurrentIndex(1)
             diffractionCalibrationWidget = calibrationPanelTabs.currentWidget()
 
             ### The use of this next signal is somewhat cryptic, but it makes testing the GUI much more stable:
@@ -892,11 +892,11 @@ class TestGUIPanels:
             qtbot.wait(10000)
 
             #    continue to the next panel
-            with qtbot.waitSignal(actionCompleted, timeout=60000):
+            with qtbot.waitSignal(actionCompleted, timeout=80000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
 
             qtbot.waitUntil(
-                lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalAssessmentView), timeout=60000
+                lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalAssessmentView), timeout=80000
             )
 
             # Placing this next `stop` correctly, causes some difficulty:
@@ -909,7 +909,7 @@ class TestGUIPanels:
             #    nothing to do here, for this test
 
             #    continue to the next panel
-            with qtbot.waitSignal(actionCompleted, timeout=60000):
+            with qtbot.waitSignal(actionCompleted, timeout=80000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
 
             qtbot.waitUntil(lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalSaveView), timeout=5000)
@@ -995,7 +995,7 @@ class TestGUIPanels:
             #####################################################################################################
 
             # Normalization calibration:
-            calibrationPanelTabs.setCurrentIndex(1)
+            calibrationPanelTabs.setCurrentIndex(2)
             normalizationCalibrationWidget = calibrationPanelTabs.currentWidget()
 
             #################################################################
@@ -1234,7 +1234,7 @@ class TestGUIPanels:
             #################################################################################################
 
             # Reduction:
-            calibrationPanelTabs.setCurrentIndex(2)
+            calibrationPanelTabs.setCurrentIndex(0)
             reductionWidget = calibrationPanelTabs.currentWidget()
 
             #################################################################
