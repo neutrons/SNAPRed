@@ -249,7 +249,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._renewFocus(self.prevGroupingIndex)
         self._renewFitPeaks(self.peakFunction)
         response = self._calculateResidual()
-        
+
         self._tweakPeakView.updateGraphs(
             self.focusedWorkspace,
             self.ingredients.groupedPeakLists,
