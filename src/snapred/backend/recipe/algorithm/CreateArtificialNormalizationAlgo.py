@@ -11,6 +11,7 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
@@ -63,24 +64,11 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
         self.LSS = ingredientsDict["lss"]
 
         if applyNormalizationIngredientsStr.strip():
-            # Parse ApplyNormalizationIngredients
+            # Deserialize ApplyNormalizationIngredients into a PixelGroup object
             applyNormalizationIngredients = json.loads(applyNormalizationIngredientsStr)
-            self.pixelGroup = applyNormalizationIngredients.get("pixelGroup", None)
+            self.pixelGroup = PixelGroup(**applyNormalizationIngredients["pixelGroup"])
 
-            if not self.pixelGroup:
-                raise ValueError("The 'pixelGroup' key is missing in ApplyNormalizationIngredients.")
-
-            # Extract pixelGroupingParameters and validate
-            pixelGroupingParameters = self.pixelGroup.get("pixelGroupingParameters", {})
-            if not pixelGroupingParameters:
-                raise ValueError("Pixel grouping parameters are missing in 'pixelGroup'.")
-
-            # Get the first group and extract dResolution values
-            firstGroup = next(iter(pixelGroupingParameters.values()), None)
-            if not firstGroup or "dResolution" not in firstGroup:
-                raise KeyError("Missing 'dResolution' in pixelGroupingParameters.")
-
-            dResolution = firstGroup["dResolution"]
+            # Extract and validate dMin and dMax
             lowdSpacingCrop = Config["constants.CropFactors.lowdSpacingCrop"]
             highdSpacingCrop = Config["constants.CropFactors.highdSpacingCrop"]
 
@@ -90,21 +78,20 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
                 raise ValueError("High d-spacing crop factor must be positive.")
 
             # Compute dMin and dMax
-            self.dMin = dResolution["minimum"] + lowdSpacingCrop
-            self.dMax = dResolution["maximum"] - highdSpacingCrop
+            self.dMin = [x + lowdSpacingCrop for x in self.pixelGroup.dMin()]
+            self.dMax = [x - highdSpacingCrop for x in self.pixelGroup.dMax()]
 
-            if self.dMin >= self.dMax:
+            if not all(dMax > dMin for dMin, dMax in zip(self.dMin, self.dMax)):
                 raise ValueError(
-                    f"d-spacing crop factors are too large -- resultant dMax ({self.dMax}) must be > resultant dMin ({self.dMin})."  # noqa: E501
+                    "d-spacing crop factors are too large -- resultant dMax must be > resultant dMin for all groups."
                 )
 
-            # Extract dBin (binWidth) from timeOfFlight
-            timeOfFlight = self.pixelGroup.get("timeOfFlight", {})
-            self.dBin = timeOfFlight.get("binWidth")
-            if self.dBin is None:
-                raise KeyError("Missing 'binWidth' in timeOfFlight.")
+            # Extract dBin
+            self.dBin = self.pixelGroup.dBin()
+            if not self.dBin:
+                raise ValueError("Calculated dBin is empty or invalid.")
 
-            # Debug logging
+            # Debug logs
             logger.debug(f"Processed Ingredients: dMin={self.dMin}, dMax={self.dMax}, dBin={self.dBin}")
         else:
             # Skip optional steps if ApplyNormalizationIngredients is not provided
