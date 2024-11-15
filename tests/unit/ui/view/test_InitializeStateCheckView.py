@@ -1,6 +1,8 @@
+import pytest
 from snapred.ui.view.InitializeStateCheckView import InitializationMenu
 
 
+@pytest.mark.ui()
 def test_run_number_field(qtbot):
     menu = InitializationMenu(None)
     qtbot.addWidget(menu)

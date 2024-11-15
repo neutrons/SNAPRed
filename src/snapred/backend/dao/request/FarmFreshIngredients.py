@@ -2,13 +2,14 @@ from typing import Any, List, NamedTuple, Optional
 
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
 
+from snapred.backend.dao.indexing.Versioning import Version, VersionState
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.state import FocusGroup
 from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 # TODO: this declaration is duplicated in `ReductionRequest`.
-Versions = NamedTuple("Versions", [("calibration", Optional[int]), ("normalization", Optional[int])])
+Versions = NamedTuple("Versions", [("calibration", Version), ("normalization", Version)])
 
 
 class FarmFreshIngredients(BaseModel):
@@ -21,7 +22,7 @@ class FarmFreshIngredients(BaseModel):
 
     runNumber: str
 
-    versions: Versions = Versions(None, None)
+    versions: Versions = Versions(VersionState.LATEST, VersionState.LATEST)
 
     # allow 'versions' to be accessed as a single version,
     #   or, to be accessed ambiguously
@@ -33,7 +34,7 @@ class FarmFreshIngredients(BaseModel):
 
     @version.setter
     def version(self, v: Optional[int]):
-        self.versions = (v, None)
+        self.versions = Versions(v, None)
 
     useLiteMode: bool
 
@@ -83,6 +84,10 @@ class FarmFreshIngredients(BaseModel):
     def validate_versions(cls, v) -> Versions:
         if not isinstance(v, Versions):
             v = Versions(v)
+        if v.calibration is None:
+            raise ValueError("Calibration version must be specified")
+        if v.normalization is None:
+            raise ValueError("Normalization version must be specified")
         return v
 
     @field_validator("crystalDBounds", mode="before")
@@ -119,4 +124,4 @@ class FarmFreshIngredients(BaseModel):
                 del v["focusGroup"]
         return v
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)

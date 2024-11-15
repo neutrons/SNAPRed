@@ -14,7 +14,7 @@ from mantid.simpleapi import (
 )
 from pydantic import validate_call
 
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
+from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionState
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import WorkspaceMetadata
@@ -236,9 +236,10 @@ class GroceryService:
         calibrationDataPath = self._getCalibrationDataPath(runNumber, useLiteMode, version)
         expectedWsName = self.createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
         if wsName != expectedWsName:
+            record = self.dataService.calibrationIndexer(runNumber, useLiteMode).readRecord(version)
             raise ValueError(
                 f"Workspace name {wsName} does not match the expected diffcal table workspace name for run {runNumber}",
-                f"(i.e. {expectedWsName})",
+                f"(i.e. {expectedWsName}), debug info: {record.model_dump_json(indent=4)}, path: {calibrationDataPath}",
             )
 
         return str(calibrationDataPath / (wsName + self.diffcalTableFileExtension))
@@ -333,14 +334,14 @@ class GroceryService:
         self,
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
-        version: Optional[int],
+        version: Optional[Version],
     ) -> WorkspaceName:
         """
-        NOTE: This method will IGNORE runNumber if the provided version is VERSION_DEFAULT
+        NOTE: This method will IGNORE runNumber if the provided version is VersionState.DEFAULT
         """
         wsName = wng.diffCalTable().runNumber(runNumber).version(version).build()
-        if version == VERSION_DEFAULT:
-            wsName = wsName = wng.diffCalTable().runNumber("default").version(VERSION_DEFAULT).build()
+        if version in [VersionState.DEFAULT, VERSION_START]:
+            wsName = wsName = wng.diffCalTable().runNumber("default").version(VersionState.DEFAULT).build()
         return wsName
 
     @validate_call

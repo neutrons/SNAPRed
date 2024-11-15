@@ -363,13 +363,11 @@ class ReductionService(Service):
         calVersion = None
         normVersion = None
         if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
-            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
+            calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
                 request.runNumber, request.useLiteMode
             )
         if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
-            normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
-                request.runNumber, request.useLiteMode
-            )
+            normVersion = self.dataFactoryService.getLatestNormalizationVersion(request.runNumber, request.useLiteMode)
 
         # Fetch pixel masks
         residentMasks = {}
@@ -496,7 +494,9 @@ class ReductionService(Service):
         for request in requests:
             runNumber = json.loads(request.payload)["runNumber"]
             useLiteMode = bool(json.loads(request.payload)["useLiteMode"])
-            normalizationVersion = self.dataFactoryService.getThisOrCurrentNormalizationVersion(runNumber, useLiteMode)
+            normalizationVersion = self.dataFactoryService.getLatestApplicableNormalizationVersion(
+                runNumber, useLiteMode
+            )
             version = "normalization_" + str(normalizationVersion)
             if versions.get(version) is None:
                 versions[version] = []

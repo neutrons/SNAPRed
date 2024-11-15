@@ -125,8 +125,8 @@ class TestReductionService(unittest.TestCase):
         assert result == expected
 
     def test_fetchReductionGroceries(self):
-        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
-        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getLatestNormalizationVersion = mock.Mock(return_value=1)
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.request.continueFlags = ContinueWarning.Type.UNSET
         res = self.instance.fetchReductionGroceries(self.request)
@@ -142,10 +142,10 @@ class TestReductionService(unittest.TestCase):
             "outputs": ["one", "two", "three"],
         }
         mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
-        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.stateExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
-        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getLatestNormalizationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
         self.instance._markWorkspaceMetadata = mock.Mock()
 
@@ -326,7 +326,7 @@ class TestReductionService(unittest.TestCase):
 
         # Verify the request is sorted by state id then normalization version
         mockDataFactory = mock.Mock()
-        mockDataFactory.getThisOrCurrentNormalizationVersion.side_effect = [0, 1]
+        mockDataFactory.getLatestApplicableNormalizationVersion.side_effect = [0, 1]
         mockDataFactory.constructStateId.return_value = ("state1", "_")
         self.instance.dataFactoryService = mockDataFactory
 
@@ -680,8 +680,8 @@ class TestReductionServiceMasks:
                 pixelMasks=[self.maskWS1, self.maskWS2, self.maskWS5],
                 focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
             )
-            self.service.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
-            self.service.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=2)
+            self.service.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
+            self.service.dataFactoryService.getLatestNormalizationVersion = mock.Mock(return_value=2)
             self.service._markWorkspaceMetadata = mock.Mock()
 
             groceryClerk = self.service.groceryClerk
@@ -741,8 +741,8 @@ class TestReductionServiceMasks:
                 pixelMasks=[self.maskWS1, self.maskWS2, self.maskWS5, not_a_mask],
                 focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
             )
-            self.service.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
-            self.service.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=2)
+            self.service.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
+            self.service.dataFactoryService.getLatestNormalizationVersion = mock.Mock(return_value=2)
             combinedMaskName = wng.reductionPixelMask().runNumber(request.runNumber).build()
             mockPrepCombinedMask.return_value = combinedMaskName
 

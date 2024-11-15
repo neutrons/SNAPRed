@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 from snapred.backend.dao import Limit
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
+from snapred.backend.dao.indexing.Versioning import VersionState
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
@@ -119,7 +119,9 @@ class NormalizationService(Service):
             request.useLiteMode
         ).add()
 
-        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
+        calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
+            request.runNumber, request.useLiteMode
+        )
         calRunNumber = self.dataFactoryService.getCalibrationRecord(
             request.runNumber, request.useLiteMode, calVersion
         ).runNumber
@@ -206,8 +208,10 @@ class NormalizationService(Service):
 
         self.sousChef.verifyCalibrationExists(request.runNumber, request.useLiteMode)
 
-        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
-        if calVersion == VERSION_DEFAULT:
+        calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
+            request.runNumber, request.useLiteMode
+        )
+        if calVersion is None:
             continueFlags = continueFlags | ContinueWarning.Type.DEFAULT_DIFFRACTION_CALIBRATION
 
         if request.continueFlags:
@@ -278,6 +282,7 @@ class NormalizationService(Service):
             normalizationCalibrantSamplePath=request.calibrantSamplePath,
             calculationParameters=normalization,
             crystalDBounds=request.crystalDBounds,
+            version=VersionState.NEXT,
         )
         return self.dataFactoryService.createNormalizationRecord(createRecordRequest)
 
@@ -300,9 +305,8 @@ class NormalizationService(Service):
         record.workspaceNames = savedWorkspaces
 
         # save the objects at the indicated version
-        self.dataExportService.exportNormalizationRecord(record)
+        self.dataExportService.exportNormalizationRecord(record, entry)
         self.dataExportService.exportNormalizationWorkspaces(record)
-        self.saveNormalizationToIndex(entry)
 
     def saveNormalizationToIndex(self, entry: IndexEntry):
         """
@@ -387,9 +391,7 @@ class NormalizationService(Service):
         """
         response = {}
         for runNumber in request.runNumbers:
-            response[runNumber] = self.dataFactoryService.getThisOrLatestNormalizationVersion(
-                runNumber, request.useLiteMode
-            )
+            response[runNumber] = self.dataFactoryService.getLatestNormalizationVersion(runNumber, request.useLiteMode)
         return response
 
     @FromString

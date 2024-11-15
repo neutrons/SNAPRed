@@ -1,6 +1,6 @@
-from typing import Optional
-
 from pydantic import BaseModel
+
+from snapred.backend.dao.indexing.Versioning import Version, VersionState
 
 
 class CreateIndexEntryRequest(BaseModel):
@@ -10,7 +10,7 @@ class CreateIndexEntryRequest(BaseModel):
 
     runNumber: str
     useLiteMode: bool
-    version: Optional[int] = None
+    version: Version = VersionState.NEXT
     comments: str
     author: str
     appliesTo: str

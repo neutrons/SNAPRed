@@ -1,9 +1,11 @@
 from unittest.mock import MagicMock
 
+import pytest
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 
 
+@pytest.mark.ui()
 def test_calibration_record_dropdown(qtbot):
     view = DiffCalAssessmentView()
     assert view.getCalibrationRecordCount() == 0
@@ -26,6 +28,7 @@ def test_calibration_record_dropdown(qtbot):
     assert view.getSelectedCalibrationRecordData() == (runNumber, useLiteMode, version)
 
 
+@pytest.mark.ui()
 def test_error_on_load_calibration_record(qtbot):
     view = DiffCalAssessmentView()
     qtbot.addWidget(view.loadButton)
