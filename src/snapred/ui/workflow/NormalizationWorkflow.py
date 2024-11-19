@@ -184,7 +184,6 @@ class NormalizationWorkflow(WorkflowImplementer):
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
         peaks = self.responses[-1].data["detectorPeaks"]
         self.calibrationRunNumber = self.responses[-1].data["calibrationRunNumber"]
-
         self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
         self.initializationComplete = True
         return response

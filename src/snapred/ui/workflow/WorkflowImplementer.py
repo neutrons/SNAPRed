@@ -101,9 +101,9 @@ class WorkflowImplementer(QObject):
         self.responses = []
         self.outputs = []
         self.collectedOutputs = []
-        self.continueAnywayFlags = ContinueWarning.Type.UNSET
 
         for hook in self.resetHooks:
+            logger.info(f"Calling reset hook: {hook}")
             hook()
 
     def _clearWorkspaces(self, *, exclude: List[str], clearCachedWorkspaces: bool):

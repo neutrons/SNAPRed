@@ -96,7 +96,12 @@ class SousChef(Service):
 
     def prepPixelGroup(self, ingredients: FarmFreshIngredients) -> PixelGroup:
         groupingSchema = ingredients.focusGroup.name
-        key = (ingredients.runNumber, ingredients.useLiteMode, groupingSchema)
+        key = (
+            ingredients.runNumber,
+            ingredients.useLiteMode,
+            groupingSchema,
+            ingredients.calibrantSamplePath,
+        )
         if key not in self._pixelGroupCache:
             focusGroup = self.prepFocusGroup(ingredients)
             instrumentState = self.prepInstrumentState(ingredients)
@@ -136,7 +141,12 @@ class SousChef(Service):
         if not ingredients.cifPath:
             samplePath = Path(ingredients.calibrantSamplePath).stem
             ingredients.cifPath = self.dataFactoryService.getCifFilePath(samplePath)
-        key = (ingredients.cifPath, ingredients.crystalDBounds.minimum, ingredients.crystalDBounds.maximum)
+        key = (
+            ingredients.cifPath,
+            ingredients.crystalDBounds.minimum,
+            ingredients.crystalDBounds.maximum,
+            ingredients.calibrantSamplePath,
+        )
         if key not in self._xtalCache:
             self._xtalCache[key] = CrystallographicInfoService().ingest(*key)["crystalInfo"]
         return deepcopy(self._xtalCache[key])
@@ -165,6 +175,7 @@ class SousChef(Service):
             ingredients.crystalDBounds.maximum,
             ingredients.fwhmMultipliers.left,
             ingredients.fwhmMultipliers.right,
+            ingredients.calibrantSamplePath,
             purgePeaks,
         )
         crystalDMin = ingredients.crystalDBounds.minimum

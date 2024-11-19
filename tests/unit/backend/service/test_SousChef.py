@@ -171,8 +171,13 @@ class TestSousChef(unittest.TestCase):
     ):
         self.instance = SousChef()
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
-        key = (self.ingredients.runNumber, self.ingredients.useLiteMode, self.ingredients.focusGroup.name)
         # ensure there is no cached value
+        key = (
+            self.ingredients.runNumber,
+            self.ingredients.useLiteMode,
+            self.ingredients.focusGroup.name,
+            self.ingredients.calibrantSamplePath,
+        )
         assert self.instance._pixelGroupCache == {}
 
         # mock the calibration, which will give the instrument state
@@ -202,8 +207,13 @@ class TestSousChef(unittest.TestCase):
 
     @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
     def test_prepPixelGroup_cache(self, PixelGroupingParametersCalculationRecipe):
-        key = (self.ingredients.runNumber, self.ingredients.useLiteMode, self.ingredients.focusGroup.name)
         # ensure the cache is prepared
+        key = (
+            self.ingredients.runNumber,
+            self.ingredients.useLiteMode,
+            self.ingredients.focusGroup.name,
+            self.ingredients.calibrantSamplePath,
+        )
         self.instance._pixelGroupCache[key] = mock.sentinel.pixel
 
         res = self.instance.prepPixelGroup(self.ingredients)
@@ -212,8 +222,13 @@ class TestSousChef(unittest.TestCase):
         assert res == self.instance._pixelGroupCache[key]
 
     def test_prepPixelGroup_cache_not_altered(self):
-        key = (self.ingredients.runNumber, self.ingredients.useLiteMode, self.ingredients.focusGroup.name)
         # ensure the cache is prepared
+        key = (
+            self.ingredients.runNumber,
+            self.ingredients.useLiteMode,
+            self.ingredients.focusGroup.name,
+            self.ingredients.calibrantSamplePath,
+        )
         self.instance._pixelGroupCache[key] = PixelGroup.construct(timeOfFlight={"minimum": 0})
 
         res = self.instance.prepPixelGroup(self.ingredients)
@@ -233,6 +248,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.cifPath,
             self.ingredients.crystalDBounds.minimum,
             self.ingredients.crystalDBounds.maximum,
+            self.ingredients.calibrantSamplePath,
         )
         # ensure the cache is clear
         assert self.instance._xtalCache == {}
@@ -249,6 +265,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.cifPath,
             self.ingredients.crystalDBounds.minimum,
             self.ingredients.crystalDBounds.maximum,
+            self.ingredients.calibrantSamplePath,
         )
         # ensure the cache is preped
         self.instance._xtalCache[key] = mock.sentinel.xtal
@@ -263,6 +280,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.cifPath,
             self.ingredients.crystalDBounds.minimum,
             self.ingredients.crystalDBounds.maximum,
+            self.ingredients.calibrantSamplePath,
         )
         # ensure the cache is preped
         self.instance._xtalCache[key] = CrystallographicInfo.construct(peaks=[2])
@@ -280,6 +298,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.cifPath,
             self.ingredients.crystalDBounds.minimum,
             self.ingredients.crystalDBounds.maximum,
+            self.ingredients.calibrantSamplePath,
         )
         # ensure the cache is preped
         self.instance._xtalCache[key] = mock.sentinel.xtal
@@ -331,6 +350,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.crystalDBounds.maximum,
             self.ingredients.fwhmMultipliers.left,
             self.ingredients.fwhmMultipliers.right,
+            self.ingredients.calibrantSamplePath,
             False,
         )
         # ensure the cache is clear
@@ -367,6 +387,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.crystalDBounds.maximum,
             self.ingredients.fwhmMultipliers.left,
             self.ingredients.fwhmMultipliers.right,
+            self.ingredients.calibrantSamplePath,
             True,
         )
         # ensure the cache is clear
@@ -396,6 +417,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.crystalDBounds.maximum,
             self.ingredients.fwhmMultipliers.left,
             self.ingredients.fwhmMultipliers.right,
+            self.ingredients.calibrantSamplePath,
             True,
         )
         # ensure the cache is prepared
@@ -417,6 +439,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.crystalDBounds.maximum,
             self.ingredients.fwhmMultipliers.left,
             self.ingredients.fwhmMultipliers.right,
+            self.ingredients.calibrantSamplePath,
             True,
         )
         # ensure the cache is prepared
