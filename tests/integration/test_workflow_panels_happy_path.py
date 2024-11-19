@@ -607,7 +607,7 @@ class TestGUIPanels:
             #    enter a "Run Number":
             requestView.runNumberInput.setText(reductionRunNumber)
             qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
-            _count = range(self.runNumberDisplay.count())
+            _count = range(requestView.runNumberDisplay.count())
             _runNumbers = [requestView.runNumberDisplay.item(x).text() for x in range(_count)]
             assert reductionRunNumber in _runNumbers
 
