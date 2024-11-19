@@ -97,9 +97,9 @@ class SousChef(Service):
     def prepPixelGroup(self, ingredients: FarmFreshIngredients) -> PixelGroup:
         groupingSchema = ingredients.focusGroup.name
         key = (
-            ingredients.runNumber, 
-            ingredients.useLiteMode, 
-            groupingSchema, 
+            ingredients.runNumber,
+            ingredients.useLiteMode,
+            groupingSchema,
             ingredients.calibrantSamplePath,
         )
         if key not in self._pixelGroupCache:
@@ -142,9 +142,9 @@ class SousChef(Service):
             samplePath = Path(ingredients.calibrantSamplePath).stem
             ingredients.cifPath = self.dataFactoryService.getCifFilePath(samplePath)
         key = (
-            ingredients.cifPath, 
-            ingredients.crystalDBounds.minimum, 
-            ingredients.crystalDBounds.maximum, 
+            ingredients.cifPath,
+            ingredients.crystalDBounds.minimum,
+            ingredients.crystalDBounds.maximum,
             ingredients.calibrantSamplePath,
         )
         if key not in self._xtalCache:
