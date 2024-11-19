@@ -607,8 +607,10 @@ class TestGUIPanels:
             #    enter a "Run Number":
             requestView.runNumberInput.setText(reductionRunNumber)
             qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
+
             _count = range(requestView.runNumberDisplay.count())
             _runNumbers = [requestView.runNumberDisplay.item(x).text() for x in range(_count)]
+
             assert reductionRunNumber in _runNumbers
 
             """
@@ -1257,8 +1259,8 @@ class TestGUIPanels:
             requestView.runNumberInput.setText(reductionRunNumber)
             qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
 
-            _currentText = requestView.runNumberDisplay.toPlainText()
-            _runNumbers = [num.strip() for num in _currentText.split("\n") if num.strip()]
+            _count = range(requestView.runNumberDisplay.count())
+            _runNumbers = [requestView.runNumberDisplay.item(x).text() for x in range(_count)]
 
             assert reductionRunNumber in _runNumbers
 
