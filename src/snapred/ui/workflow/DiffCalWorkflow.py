@@ -9,6 +9,7 @@ from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.request import (
+    CalculateResidualRequest,
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
     CalibrationWritePermissionsRequest,
@@ -27,7 +28,9 @@ from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutput
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceType as wngt,
+)
 from snapred.ui.presenter.WorkflowPresenter import WorkflowPresenter
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 from snapred.ui.view.DiffCalRequestView import DiffCalRequestView
@@ -249,15 +252,17 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.prevFWHM = payload.fwhmMultipliers  # NOTE set in __init__ to defaults
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
         self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}_pre"
-
+        self.residualWorkspace = f"diffcal_residual_{self.runNumber}"
         # focus the workspace to view the peaks
         self._renewFocus(self.prevGroupingIndex)
-        response = self._renewFitPeaks(self.peakFunction)
+        self._renewFitPeaks(self.peakFunction)
+        response = self._calculateResidual()
 
         self._tweakPeakView.updateGraphs(
             self.focusedWorkspace,
             self.ingredients.groupedPeakLists,
             self.fitPeaksDiagnostic,
+            self.residualWorkspace,
         )
         return response
 
@@ -288,6 +293,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             ):
                 self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
                 self._renewFitPeaks(peakFunction)
+                self._calculateResidual()
                 self.peaksWerePurged = False
 
             # if the grouping file changes, load new grouping and refocus
@@ -295,11 +301,13 @@ class DiffCalWorkflow(WorkflowImplementer):
                 self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
                 self._renewFocus(groupingIndex)
                 self._renewFitPeaks(peakFunction)
+                self._calculateResidual()
 
             self._tweakPeakView.updateGraphs(
                 self.focusedWorkspace,
                 self.ingredients.groupedPeakLists,
                 self.fitPeaksDiagnostic,
+                self.residualWorkspace,
             )
 
             # update the values for next call to this method
@@ -356,7 +364,16 @@ class DiffCalWorkflow(WorkflowImplementer):
             detectorPeaks=self.ingredients.groupedPeakLists,
             peakFunction=peakFunction,
         )
-        return self.request(path="calibration/fitpeaks", payload=payload.json())
+        response = self.request(path="calibration/fitpeaks", payload=payload.json())
+        return response
+
+    def _calculateResidual(self):
+        payload = CalculateResidualRequest(
+            inputWorkspace=self.focusedWorkspace,
+            outputWorkspace=self.residualWorkspace,
+            fitPeaksDiagnostic=self.fitPeaksDiagnostic,
+        )
+        return self.request(path="calibration/residual", payload=payload.json())
 
     @ExceptionToErrLog
     @Slot(float)
