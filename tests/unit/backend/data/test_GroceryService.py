@@ -31,6 +31,7 @@ from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, DiffcalStateMetadata, WorkspaceMetadata
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Config, Resource
+from snapred.meta.InternalConstants import ReservedStateId
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType
@@ -133,6 +134,7 @@ class TestGroceryService(unittest.TestCase):
 
     def setUp(self):
         self.instance = GroceryService(dataService=self.fridge)
+        self.stateId, _ = self.instance.dataService.generateStateId(self.runNumber)
         self.groupingItem = (
             GroceryListItem.builder()
             .fromRun(self.runNumber)
@@ -996,10 +998,11 @@ class TestGroceryService(unittest.TestCase):
         groupFilepath = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
         self.instance._createGroupingFilename = mock.Mock(return_value=groupFilepath)
         testItem = (self.groupingItem.groupingScheme, self.runNumber, self.groupingItem.useLiteMode)
+        testKey = (self.groupingItem.groupingScheme, self.stateId, self.groupingItem.useLiteMode)
 
         # call once and load
         groupingWorkspaceName = self.instance._createGroupingWorkspaceName(*testItem)
-        groupKey = self.instance._key(*testItem)
+        groupKey = self.instance._key(*testKey)
         res = self.instance.fetchGroupingDefinition(self.groupingItem)
         assert res["result"]
         assert res["loader"] == "LoadGroupingDefinition"
@@ -1039,7 +1042,7 @@ class TestGroceryService(unittest.TestCase):
         mockGroceryList.builder.return_value.grouping.return_value.build.return_value = mockLiteMapGroceryItem
 
         # call once and load
-        testItem = ("Lite", GroceryListItem.RESERVED_NATIVE_RUNNUMBER, False)
+        testItem = ("Lite", ReservedStateId.NATIVE, False)
         groupingWorkspaceName = self.instance._createGroupingWorkspaceName(*testItem)
         groupKey = self.instance._key(*testItem)
 
