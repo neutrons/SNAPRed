@@ -90,7 +90,6 @@ class WorkflowView(QWidget):
         self.tabWidget.setCurrentIndex(0)
         self.currentTab = 0
         self.position = 0
-        self.resetGraphs()
 
     def advanceWorkflow(self):
         if self.currentTab < self.totalNodes - 1:
@@ -110,9 +109,3 @@ class WorkflowView(QWidget):
         widget.onBackButtonClicked(self.goBack)
         widget.onForwardButtonClicked(self.goForward)
         return widget
-
-    def resetGraphs(self):
-        for i in range(0, self.tabWidget.count()):
-            widget = self.tabWidget.widget(i)
-            if hasattr(widget, "clearGraph"):
-                widget.clearGraph()

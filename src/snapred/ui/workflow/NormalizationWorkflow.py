@@ -61,8 +61,6 @@ class NormalizationWorkflow(WorkflowImplementer):
         )
         self._saveView = NormalizationSaveView(parent)
 
-        self.addResetHook(self._resetWorkflow)
-
         # connect signal to populate the grouping dropdown after run is selected
         self._requestView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
@@ -336,11 +334,3 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         # renable button when graph is updated
         self._tweakPeakView.enableRecalculateButton()
-
-    def _resetWorkflow(self):
-        # Clear any stored responses or other workflow state
-        self.responses = []
-        self.initializationComplete = False
-        self.focusWorkspace = None
-        self.smoothedWorkspace = None
-        self._tweakPeakView.resetView()

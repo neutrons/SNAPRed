@@ -95,8 +95,8 @@ class WorkflowImplementer(QObject):
             self.externalWorkspaces = list(externalWorkspaces)
 
     def reset(self, retainOutputs=False):
-        # Clear workspaces, requests, responses, etc.
-        self._clearWorkspaces(exclude=self.outputs if retainOutputs else [], clearCachedWorkspaces=True)
+        exclude = self.outputs if retainOutputs else []
+        self._clearWorkspaces(exclude=exclude, clearCachedWorkspaces=True)
         self.requests = []
         self.responses = []
         self.outputs = []

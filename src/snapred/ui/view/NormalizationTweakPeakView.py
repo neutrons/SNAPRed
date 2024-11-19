@@ -233,13 +233,3 @@ class NormalizationTweakPeakView(BackendRequestView):
     def verify(self):
         # TODO what needs to be verified?
         return True
-
-    def _clearGraphs(self):
-        self.figure.clear()
-        self.canvas.draw()
-
-    def resetView(self):
-        self.fieldRunNumber.clear()
-        self.fieldBackgroundRunNumber.clear()
-        self._clearGraphs()
-        self.canvas.draw()

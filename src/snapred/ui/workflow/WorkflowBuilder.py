@@ -55,7 +55,7 @@ class WorkflowBuilder:
             self._workflow,
             startLambda=self._startLambda,
             iterateLambda=self._iterateLambda,
-            resetLambda=self._resetLambda or self.parent.reset,
+            resetLambda=self._resetLambda,
             cancelLambda=self._cancelLambda,
             completionMessageLambda=self._completionMessageLambda,
             parent=self.parent,
