@@ -25,7 +25,7 @@ from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.InternalConstants import ReservedRunNumber, ReservedStateId
+from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     NameBuilder,
     WorkspaceName,
@@ -863,10 +863,7 @@ class GroceryService:
 
         :rtype: Dict[str, Any]
         """
-        if item.runNumber in ReservedRunNumber.values():
-            stateId = ReservedStateId.forRun(item.runNumber)
-        else:
-            stateId, _ = self.dataService.generateStateId(item.runNumber)
+        stateId, _ = self.dataService.generateStateId(item.runNumber)
         key = self._key(item.groupingScheme, stateId, item.useLiteMode)
         workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.runNumber, item.useLiteMode)
         workspaceName = self._loadedGroupings.get(key, workspaceName)

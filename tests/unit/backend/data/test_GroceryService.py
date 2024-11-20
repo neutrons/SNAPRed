@@ -31,7 +31,7 @@ from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, DiffcalStateMetadata, WorkspaceMetadata
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Config, Resource
-from snapred.meta.InternalConstants import ReservedStateId
+from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType
@@ -1035,14 +1035,15 @@ class TestGroceryService(unittest.TestCase):
         # have to subvert the validation methods in grocerylistitem
         mockLiteMapGroceryItem = GroceryListItem(
             workspaceType="grouping",
-            runNumber=self.runNumber,
+            runNumber=ReservedRunNumber.NATIVE,
             groupingScheme="Lite",
         )
         mockLiteMapGroceryItem.instrumentSource = self.instrumentFilePath
         mockGroceryList.builder.return_value.grouping.return_value.build.return_value = mockLiteMapGroceryItem
+        stateId, _ = self.instance.dataService.generateStateId(mockLiteMapGroceryItem.runNumber)
 
         # call once and load
-        testItem = ("Lite", ReservedStateId.NATIVE, False)
+        testItem = ("Lite", stateId, False)
         groupingWorkspaceName = self.instance._createGroupingWorkspaceName(*testItem)
         groupKey = self.instance._key(*testItem)
 
