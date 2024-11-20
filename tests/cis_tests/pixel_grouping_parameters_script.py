@@ -16,7 +16,7 @@ SNAPRed_module_root = Path(snapred.__file__).parent.parent
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
     PixelGroupingParametersCalculationRecipe as pgpRecipe,
 )
-from snapred.meta.Config import Config, Resource
+from snapred.meta.Config import Config
 
 ## for prepping ingredients
 from snapred.backend.dao.ingredients import PixelGroupingIngredients
@@ -77,16 +77,14 @@ from util.helpers import (
     maskGroups,
     maskComponentByName,
 )
-# SNAPLiteInstrumentFilePath = str(Path(SNAPRed_module_root).parent / 'tests' / 'resources' / 'inputs' / 'pixel_grouping' / 'SNAPLite_Definition.xml')
-SNAPLiteInstrumentFilePath = Resource.getPath("inputs/testInstrument/CRACKLE_Definition.xml")
+SNAPLiteInstrumentFilePath = str(Path(SNAPRed_module_root).parent / 'tests' / 'resources' / 'inputs' / 'pixel_grouping' / 'SNAPLite_Definition.xml')
+
 # USER INPUT ##########################
-runNumber = "46680"
-# groupingScheme = 'CRACKLE Lite'
-groupingScheme = 'CRACKLE Native'
-# isLite = True
-isLite = False
+runNumber = "58882"
+groupingScheme = 'Column'
+isLite = True
 instrumentFilePath = SNAPLiteInstrumentFilePath
-Config._config["cis_mode"] = True
+Config._config["cis_mode"] = False
 #######################################
 
 ## PREP INGREDIENTS ###################

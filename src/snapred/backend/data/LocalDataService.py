@@ -278,8 +278,6 @@ class LocalDataService:
     def _readPVFile(self, runId: str):
         fileName: Path = self._constructPVFilePath(runId)
 
-        print(f"READ PV FILE NAME: {fileName}")
-
         if fileName.exists():
             h5 = h5py.File(fileName, "r")
         else:

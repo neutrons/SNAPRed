@@ -5,8 +5,9 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    WorkspaceUnitValidator,
 )
-from mantid.kernel import Direction
+from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.state.PixelGroup import PixelGroup as Ingredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -27,7 +28,9 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "InputWorkspace", "", Direction.Input, PropertyMode.Mandatory, validator=WorkspaceUnitValidator("TOF")
+            ),
             doc="Workspace containing values at each pixel",
         )
         self.declareProperty(
@@ -40,14 +43,14 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
                 "",
                 Direction.Output,
                 PropertyMode.Mandatory,
-                # validator=WorkspaceUnitValidator("dSpacing"),
+                validator=WorkspaceUnitValidator("dSpacing"),
             ),
             doc="The diffraction-focused data",
         )
         self.declareProperty(
             "Ingredients",
             defaultValue="",
-            # validator=StringMandatoryValidator(),
+            validator=StringMandatoryValidator(),
             direction=Direction.Input,
         )
         self.declareProperty(

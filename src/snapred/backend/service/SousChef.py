@@ -92,7 +92,6 @@ class SousChef(Service):
             return ingredients.focusGroup
         else:
             groupingMap = self.dataFactoryService.getGroupingMap(ingredients.runNumber)
-            print(groupingMap.getMap(ingredients.useLiteMode))
             return groupingMap.getMap(ingredients.useLiteMode)[ingredients.focusGroup.name]
 
     def prepPixelGroup(self, ingredients: FarmFreshIngredients) -> PixelGroup:
