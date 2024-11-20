@@ -1030,7 +1030,7 @@ class TestGroceryService(unittest.TestCase):
         """
         groupMapFilepath = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-        self.instance._createGroupingWorkspaceName = mock.Mock(return_value="lite_map")
+        # self.instance._createGroupingWorkspaceName = mock.Mock(return_value="lite_map")
         self.instance._createGroupingFilename = mock.Mock(return_value=groupMapFilepath)
         # have to subvert the validation methods in grocerylistitem
         mockLiteMapGroceryItem = GroceryListItem(
@@ -1043,9 +1043,10 @@ class TestGroceryService(unittest.TestCase):
         stateId, _ = self.instance.dataService.generateStateId(mockLiteMapGroceryItem.runNumber)
 
         # call once and load
-        testItem = ("Lite", stateId, False)
+        testItem = ("Lite", ReservedRunNumber.NATIVE, False)
+        testKey = ("Lite", stateId, False)
         groupingWorkspaceName = self.instance._createGroupingWorkspaceName(*testItem)
-        groupKey = self.instance._key(*testItem)
+        groupKey = self.instance._key(*testKey)
 
         res = self.instance.fetchLiteDataMap()
         assert res == groupingWorkspaceName
