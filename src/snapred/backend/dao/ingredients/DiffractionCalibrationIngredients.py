@@ -28,5 +28,4 @@ class DiffractionCalibrationIngredients(BaseModel, extra="forbid"):
     peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
     maxOffset: float = Config["calibration.diffraction.maximumOffset"]
     maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
-    skipPixelCalibration: bool = False
     removeBackground: bool = False

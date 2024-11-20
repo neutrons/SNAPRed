@@ -58,7 +58,7 @@ class ReductionWorkflow(WorkflowImplementer):
             )
             .build()
         )
-
+        self._keeps = set()
         self._reductionRequestView.retainUnfocusedDataCheckbox.checkedChanged.connect(self._enableConvertToUnits)
         self._artificialNormalizationView.signalValueChanged.connect(self.onArtificialNormalizationValueChange)
 
@@ -110,7 +110,7 @@ class ReductionWorkflow(WorkflowImplementer):
                 payload=ReductionRequest(
                     # All runNumbers are from the same state => any one can be used here
                     runNumber=runNumbers[0],
-                    useLiteMode=useLiteMode,
+                    useLiteMode=self.useLiteMode,
                 ),
             ).data
 
@@ -156,28 +156,41 @@ class ReductionWorkflow(WorkflowImplementer):
         #
         # ## Why would I want to set the ~obfuscated-by-pydantic~ `pixelMasks` field of the class object?
 
+    def _createReductionRequest(self, runNumber, artificialNormalizationIngredients=None):
+        """
+        Create a standardized ReductionRequest object for passing to the ReductionService
+        """
+        return ReductionRequest(
+            runNumber=str(runNumber),
+            useLiteMode=self.useLiteMode,
+            timestamp=self.timestamp,
+            continueFlags=self.continueAnywayFlags,
+            pixelMasks=self.pixelMasks,
+            keepUnfocused=self._reductionRequestView.retainUnfocusedDataCheckbox.isChecked(),
+            convertUnitsTo=self._reductionRequestView.convertUnitsDropdown.currentText(),
+            artificialNormalizationIngredients=artificialNormalizationIngredients,
+        )
+
     def _triggerReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView  # noqa: F841
 
-        runNumbers = self._reductionRequestView.getRunNumbers()
-        pixelMasks = self._reconstructPixelMaskNames(self._reductionRequestView.getPixelMasks())
+        self.runNumbers = self._reductionRequestView.getRunNumbers()
+        self.pixelMasks = self._reconstructPixelMaskNames(self._reductionRequestView.getPixelMasks())
 
         # Use one timestamp for the entire set of runNumbers:
-        timestamp = self.request(path="reduction/getUniqueTimestamp").data
-        for runNumber in runNumbers:
+        self.timestamp = self.request(path="reduction/getUniqueTimestamp").data
+
+        # all runs in same state, use the first run to load groupings
+        request_ = self._createReductionRequest(self.runNumbers[0])
+        response = self.request(path="reduction/groupings", payload=request_)
+        self._keeps = set(response.data["groupingWorkspaces"])
+
+        for runNumber in self.runNumbers:
             self._artificialNormalizationView.updateRunNumber(runNumber)
-            request_ = ReductionRequest(
-                runNumber=str(runNumber),
-                useLiteMode=self._reductionRequestView.liteModeToggle.field.getState(),
-                timestamp=timestamp,
-                continueFlags=self.continueAnywayFlags,
-                pixelMasks=pixelMasks,
-                keepUnfocused=self._reductionRequestView.retainUnfocusedDataCheckbox.isChecked(),
-                convertUnitsTo=self._reductionRequestView.convertUnitsDropdown.currentText(),
-            )
+            request_ = self._createReductionRequest(runNumber)
 
             # Validate reduction; if artificial normalization is needed, handle it
-            response = self.request(path="reduction/validateReduction", payload=request_)
+            response = self.request(path="reduction/validate", payload=request_)
             if ContinueWarning.Type.MISSING_NORMALIZATION in self.continueAnywayFlags:
                 self._artificialNormalizationView.showAdjustView()
                 response = self.request(path="reduction/grabWorkspaceforArtificialNorm", payload=request_)
@@ -189,7 +202,14 @@ class ReductionWorkflow(WorkflowImplementer):
                 if response.code == ResponseCode.OK:
                     record, unfocusedData = response.data.record, response.data.unfocusedData
                     self._finalizeReduction(record, unfocusedData)
-                    workflowPresenter.advanceWorkflow()
+            # after each run, clean workspaces except groupings, calibrations, normalizations, and outputs
+            self._keeps.update(self.outputs)
+            self._clearWorkspaces(exclude=self._keeps, clearCachedWorkspaces=True)
+        workflowPresenter.advanceWorkflow()
+        # SPECIAL FOR THE REDUCTION WORKFLOW: clear everything _except_ the output workspaces
+        #   _before_ transitioning to the "save" panel.
+        # TODO: make '_clearWorkspaces' a public method (i.e make this combination a special `cleanup` method).
+        self._clearWorkspaces(exclude=self.outputs, clearCachedWorkspaces=True)
         return self.responses[-1]
 
     def _artificialNormalization(self, workflowPresenter, responseData, runNumber):
@@ -197,7 +217,7 @@ class ReductionWorkflow(WorkflowImplementer):
         view = workflowPresenter.widget.tabView  # noqa: F841
         request_ = CreateArtificialNormalizationRequest(
             runNumber=runNumber,
-            useLiteMode=self._reductionRequestView.liteModeToggle.field.getState(),
+            useLiteMode=self.useLiteMode,
             peakWindowClippingSize=int(self._artificialNormalizationView.peakWindowClippingSize.field.text()),
             smoothingParameter=self._artificialNormalizationView.getSmoothingParameter(),
             decreaseParameter=self._artificialNormalizationView.decreaseParameterDropdown.currentIndex() == 1,
@@ -222,7 +242,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         request_ = CreateArtificialNormalizationRequest(
             runNumber=runNumber,
-            useLiteMode=self._reductionRequestView.liteModeToggle.field.getState(),
+            useLiteMode=self.useLiteMode,
             peakWindowClippingSize=peakWindowClippingSize,
             smoothingParameter=smoothingValue,
             decreaseParameter=decreaseParameter,

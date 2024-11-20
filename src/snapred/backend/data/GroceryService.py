@@ -25,6 +25,7 @@ from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     NameBuilder,
     WorkspaceName,
@@ -563,10 +564,7 @@ class GroceryService:
 
                 # Initialize the instrument parameters
                 # (Reserved run-numbers will use the unmodified instrument.)
-                if (
-                    runNumber != GroceryListItem.RESERVED_NATIVE_RUNNUMBER
-                    and runNumber != GroceryListItem.RESERVED_LITE_RUNNUMBER
-                ):
+                if runNumber not in ReservedRunNumber.values():
                     detectorState: DetectorState = self._getDetectorState(runNumber)
                     self.updateInstrumentParameters(wsName, detectorState)
             self._loadedInstruments[key] = wsName
@@ -865,13 +863,14 @@ class GroceryService:
 
         :rtype: Dict[str, Any]
         """
-        key = self._key(item.groupingScheme, item.runNumber, item.useLiteMode)
+        stateId, _ = self.dataService.generateStateId(item.runNumber)
+        key = self._key(item.groupingScheme, stateId, item.useLiteMode)
         workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.runNumber, item.useLiteMode)
+        workspaceName = self._loadedGroupings.get(key, workspaceName)
 
         self._updateGroupingCacheFromADS(key, workspaceName)
-        groupingIsLoaded = self._loadedGroupings.get(key) is not None
 
-        if groupingIsLoaded:
+        if key in self._loadedGroupings:
             data = {
                 "result": True,
                 "loader": "cached",

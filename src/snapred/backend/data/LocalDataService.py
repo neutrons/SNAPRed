@@ -51,6 +51,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.InternalConstants import ReservedRunNumber, ReservedStateId
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     ValueFormatter as wnvf,
 )
@@ -288,8 +289,11 @@ class LocalDataService:
     @lru_cache
     @ExceptionHandler(StateValidationException)
     def generateStateId(self, runId: str) -> Tuple[str, str]:
-        detectorState = self.readDetectorState(runId)
-        SHA = self._stateIdFromDetectorState(detectorState)
+        if runId in ReservedRunNumber.values():
+            SHA = ObjectSHA(hex=ReservedStateId.forRun(runId))
+        else:
+            detectorState = self.readDetectorState(runId)
+            SHA = self._stateIdFromDetectorState(detectorState)
         return SHA.hex, SHA.decodedKey
 
     def _stateIdFromDetectorState(self, detectorState: DetectorState) -> ObjectSHA:

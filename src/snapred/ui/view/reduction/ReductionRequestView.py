@@ -1,12 +1,12 @@
 from typing import Callable, List, Optional
 
-from qtpy.QtCore import Signal, Slot
+from qtpy.QtCore import Slot
 from qtpy.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
+    QListWidget,
     QMessageBox,
     QPushButton,
-    QTextEdit,
     QVBoxLayout,
 )
 from snapred.backend.dao.state.RunNumber import RunNumber
@@ -20,8 +20,6 @@ logger = snapredLogger.getLogger(__name__)
 
 @Resettable
 class ReductionRequestView(BackendRequestView):
-    signalRemoveRunNumber = Signal(int)
-
     def __init__(
         self,
         parent=None,
@@ -49,8 +47,8 @@ class ReductionRequestView(BackendRequestView):
         self.runNumberLayout.addLayout(self.runNumberButtonLayout)
 
         # Run number display
-        self.runNumberDisplay = QTextEdit()
-        self.runNumberDisplay.setReadOnly(True)
+        self.runNumberDisplay = QListWidget()
+        self.runNumberDisplay.setSortingEnabled(False)
 
         # Lite mode toggle, pixel masks dropdown, and retain unfocused data checkbox
         self.liteModeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
@@ -77,8 +75,6 @@ class ReductionRequestView(BackendRequestView):
         # Connect buttons to methods
         self.enterRunNumberButton.clicked.connect(self.addRunNumber)
         self.clearButton.clicked.connect(self.clearRunNumbers)
-
-        self.signalRemoveRunNumber.connect(self._removeRunNumber)
 
     @Slot()
     def addRunNumber(self):
@@ -127,22 +123,9 @@ class ReductionRequestView(BackendRequestView):
 
         return [str(num) for num in runs]
 
-    @Slot()
-    def removeRunNumber(self, runNumber):
-        self.signalRemoveRunNumber.emit(runNumber)
-
-    @Slot()
-    def _removeRunNumber(self, runNumber):
-        if runNumber not in self.runNumbers:
-            logger.warning(
-                f"[ReductionRequestView]: attempting to remove run {runNumber} not in the list {self.runNumbers}"
-            )
-            return
-        self.runNumbers.remove(runNumber)
-        self.updateRunNumberList()
-
     def updateRunNumberList(self):
-        self.runNumberDisplay.setText("\n".join(map(str, sorted(self.runNumbers))))
+        self.runNumberDisplay.clear()
+        self.runNumberDisplay.addItems(self.runNumbers)
 
     def clearRunNumbers(self):
         self.runNumbers.clear()
@@ -150,10 +133,11 @@ class ReductionRequestView(BackendRequestView):
         self.pixelMaskDropdown.setItems([])
 
     def verify(self):
-        currentText = self.runNumberDisplay.toPlainText()
-        runNumbers = [num.strip() for num in currentText.split("\n") if num.strip()]
+        runNumbers = [self.runNumberDisplay.item(x).text() for x in range(self.runNumberDisplay.count())]
         if not runNumbers:
             raise ValueError("Please enter at least one run number.")
+        if runNumbers != self.runNumbers:
+            raise ValueError("Unexpected issue verifying run numbers.  Please clear and re-enter.")
         for runNumber in runNumbers:
             if not runNumber.isdigit():
                 raise ValueError(

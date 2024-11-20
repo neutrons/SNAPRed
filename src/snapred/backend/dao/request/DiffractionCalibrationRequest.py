@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, field_validator
 
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.error.ContinueWarning import ContinueWarning
@@ -35,10 +36,11 @@ class DiffractionCalibrationRequest(BaseModel, extra="forbid"):
     maximumOffset: float = Config["calibration.diffraction.maximumOffset"]
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
     maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
-    skipPixelCalibration: bool = False
     removeBackground: bool = False
 
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
+
+    startingTableVersion: int = VERSION_DEFAULT
 
     @field_validator("fwhmMultipliers", mode="before")
     @classmethod

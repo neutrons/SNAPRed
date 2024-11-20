@@ -3,6 +3,7 @@ from typing import Any, ClassVar, Literal, Optional, get_args
 from pydantic import BaseModel, model_validator
 
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
@@ -32,9 +33,9 @@ class GroceryListItem(BaseModel):
     """
 
     # Reserved instrument-cache run-number values:
-    RESERVED_NATIVE_RUNNUMBER: ClassVar[str] = "000000"  # unmodified _native_ instrument:
+    RESERVED_NATIVE_RUNNUMBER: ClassVar[str] = ReservedRunNumber.NATIVE  # unmodified _native_ instrument:
     #   from 'SNAP_Definition.xml'
-    RESERVED_LITE_RUNNUMBER: ClassVar[str] = "000001"  # unmodified _lite_ instrument  :
+    RESERVED_LITE_RUNNUMBER: ClassVar[str] = ReservedRunNumber.LITE  # unmodified _lite_ instrument  :
     #   from 'SNAPLite.xml'
 
     workspaceType: GroceryTypes
