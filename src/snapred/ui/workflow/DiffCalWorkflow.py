@@ -174,11 +174,10 @@ class DiffCalWorkflow(WorkflowImplementer):
         useLiteMode = self._requestView.litemodeToggle.field.getState()
         self._tweakPeakView.litemodeToggle.field.setState(useLiteMode)
 
-        # Enable pixel calibration skip only if not using lite mode
-        if useLiteMode is False:
-            self._tweakPeakView.skipPixelCalToggle.field.setState(True)
-        else:
-            self._tweakPeakView.skipPixelCalToggle.field.setState(False)
+        # set default state for skipPixelCalToggle
+        # in native mode, skip by default
+        # in lite mode, do not skip by default
+        self._requestView.skipPixelCalToggle.field.setState(not useLiteMode)
 
         self._requestView.groupingFileDropdown.setEnabled(False)
         # TODO: Use threads, account for fail cases
@@ -200,6 +199,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.calibrantSamplePath = view.sampleDropdown.currentText()
         self.peakFunction = view.peakFunctionDropdown.currentText()
+        self.skipPixelCal = view.getSkipPixelCalibration()
         self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
 
         self.removeBackground = view.getRemoveBackground()
@@ -225,25 +225,15 @@ class DiffCalWorkflow(WorkflowImplementer):
         )
         self._tweakPeakView.updateMaxChiSq(self.maxChiSq)
 
-        payload = DiffractionCalibrationRequest(
-            runNumber=self.runNumber,
-            useLiteMode=self.useLiteMode,
-            focusGroup=self.focusGroups[self.focusGroupPath],
-            calibrantSamplePath=self.calibrantSamplePath,
-            # fiddly bits
+        payload = self._createDiffCalRequest(
+            xtalDMin=self.prevXtalDMin,
+            xtalDMax=self.prevXtalDMax,
             peakFunction=self.peakFunction,
-            convergenceThreshold=self.convergenceThreshold,
-            nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
-            fwhmMultipliers=self.prevFWHM,
-            crystalDMin=self.prevXtalDMin,
-            crystalDMax=self.prevXtalDMax,
+            fwhm=self.prevFWHM,
             maxChiSq=self.maxChiSq,
-            skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
-            removeBackground=self.removeBackground,
         )
-
-        self.ingredients = self.request(path="calibration/ingredients", payload=payload.json()).data
-        self.groceries = self.request(path="calibration/groceries", payload=payload.json()).data
+        self.ingredients = self.request(path="calibration/ingredients", payload=payload).data
+        self.groceries = self.request(path="calibration/groceries", payload=payload).data
 
         # set "previous" values -- this is their initialization
         # these are used to compare if the values have changed
@@ -252,8 +242,10 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.prevFWHM = payload.fwhmMultipliers  # NOTE set in __init__ to defaults
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
         self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}_pre"
+
         self.residualWorkspace = f"diffcal_residual_{self.runNumber}"
         # focus the workspace to view the peaks
+        self._renewPixelCal()
         self._renewFocus(self.prevGroupingIndex)
         self._renewFitPeaks(self.peakFunction)
         response = self._calculateResidual()
@@ -278,17 +270,12 @@ class DiffCalWorkflow(WorkflowImplementer):
             self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
 
             # if peaks will change, redo only the smoothing
-            xtalDMinValueChanged = xtalDMin != self.prevXtalDMin
-            xtalDMaxValueChanged = xtalDMax != self.prevXtalDMax
-            peakFunctionChanged = peakFunction != self.peakFunction
-            fwhmChanged = fwhm != self.prevFWHM
-            maxChiSqChanged = maxChiSq != self.maxChiSq
             if (
-                xtalDMinValueChanged
-                or xtalDMaxValueChanged
-                or peakFunctionChanged
-                or fwhmChanged
-                or maxChiSqChanged
+                xtalDMin != self.prevXtalDMin
+                or xtalDMax != self.prevXtalDMax
+                or peakFunction != self.peakFunction
+                or fwhm != self.prevFWHM
+                or maxChiSq != self.maxChiSq
                 or self.peaksWerePurged
             ):
                 self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
@@ -302,6 +289,10 @@ class DiffCalWorkflow(WorkflowImplementer):
                 self._renewFocus(groupingIndex)
                 self._renewFitPeaks(peakFunction)
                 self._calculateResidual()
+
+            # NOTE it was determined pixel calibration NOT need to be re-calculated when peak params change.
+            # However, if this requirement changes, the if at L282 should be combined with the if at 269,
+            # and the order should be _renewIngredients --> _renewPixelCal --> _renewFocus --> _renewFitPeaks
 
             self._tweakPeakView.updateGraphs(
                 self.focusedWorkspace,
@@ -323,24 +314,42 @@ class DiffCalWorkflow(WorkflowImplementer):
         # renable button when graph is updated
         self._tweakPeakView.enableRecalculateButton()
 
-    def _renewIngredients(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq):
-        payload = DiffractionCalibrationRequest(
+    def _createDiffCalRequest(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq) -> DiffractionCalibrationRequest:
+        """
+        Creates a standard diffraction calibration request in one location, so that the same parameters are always used.
+        """
+        return DiffractionCalibrationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
             focusGroup=self.focusGroups[self.focusGroupPath],
             calibrantSamplePath=self.calibrantSamplePath,
             # fiddly bits
             peakFunction=peakFunction,
+            convergenceThreshold=self.convergenceThreshold,
+            nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            fwhmMultipliers=fwhm,
             crystalDMin=xtalDMin,
             crystalDMax=xtalDMax,
-            fwhmMultipliers=fwhm,
             maxChiSq=maxChiSq,
-            skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
             removeBackground=self.removeBackground,
         )
-        response = self.request(path="calibration/ingredients", payload=payload.json())
+
+    def _renewIngredients(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq):
+        payload = self._createDiffCalRequest(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+        response = self.request(path="calibration/ingredients", payload=payload)
         self.ingredients = response.data
         return response
+
+    def _renewPixelCal(self):
+        if not self.skipPixelCal:
+            payload = SimpleDiffCalRequest(
+                ingredients=self.ingredients,
+                groceries=self.groceries,
+            )
+            response = self.request(path="calibration/pixel", payload=payload).data
+            self.prevDiffCal = response.calibrationTable
+        else:
+            self.prevDiffCal = self.groceries["previousCalibration"]
 
     def _renewFocus(self, groupingIndex):
         self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
@@ -352,7 +361,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             inputWorkspace=self.groceries["inputWorkspace"],
             groupingWorkspace=self.groceries["groupingWorkspace"],
         )
-        response = self.request(path="calibration/focus", payload=payload.json())
+        response = self.request(path="calibration/focus", payload=payload)
         self.focusedWorkspace = response.data[0]
         self.groceries["groupingWorkspace"] = response.data[1]
         return response
@@ -364,7 +373,8 @@ class DiffCalWorkflow(WorkflowImplementer):
             detectorPeaks=self.ingredients.groupedPeakLists,
             peakFunction=peakFunction,
         )
-        response = self.request(path="calibration/fitpeaks", payload=payload.json())
+
+        response = self.request(path="calibration/fitpeaks", payload=payload)
         return response
 
     def _calculateResidual(self):
@@ -373,7 +383,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             outputWorkspace=self.residualWorkspace,
             fitPeaksDiagnostic=self.fitPeaksDiagnostic,
         )
-        return self.request(path="calibration/residual", payload=payload.json())
+        return self.request(path="calibration/residual", payload=payload)
 
     @ExceptionToErrLog
     @Slot(float)
@@ -430,14 +440,13 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.runNumber = view.runNumberField.text()
         self._saveView.updateRunNumber(self.runNumber)
         self.focusGroupPath = view.groupingFileDropdown.currentText()
+        self.groceries["previousCalibration"] = self.prevDiffCal
 
         payload = SimpleDiffCalRequest(
             ingredients=self.ingredients,
             groceries=self.groceries,
-            skipPixelCalibration=self._tweakPeakView.skipPixelCalToggle.field.getState(),
         )
-
-        response = self.request(path="calibration/diffractionWithIngredients", payload=payload.json())
+        response = self.request(path="calibration/group", payload=payload).data
 
         payload = CalibrationAssessmentRequest(
             run=RunConfig(runNumber=self.runNumber),
@@ -445,10 +454,10 @@ class DiffCalWorkflow(WorkflowImplementer):
             focusGroup=self.focusGroups[self.focusGroupPath],
             calibrantSamplePath=self.calibrantSamplePath,
             workspaces={
-                wngt.DIFFCAL_OUTPUT: [response.data["outputWorkspace"]],
-                wngt.DIFFCAL_DIAG: [response.data["diagnosticWorkspace"]],
-                wngt.DIFFCAL_TABLE: [response.data["calibrationTable"]],
-                wngt.DIFFCAL_MASK: [response.data["maskWorkspace"]],
+                wngt.DIFFCAL_OUTPUT: [response.outputWorkspace],
+                wngt.DIFFCAL_DIAG: [response.diagnosticWorkspace],
+                wngt.DIFFCAL_TABLE: [response.calibrationTable],
+                wngt.DIFFCAL_MASK: [response.maskWorkspace],
             },
             # fiddly bits
             peakFunction=self.peakFunction,
