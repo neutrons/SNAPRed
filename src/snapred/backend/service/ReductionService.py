@@ -81,7 +81,7 @@ class ReductionService(Service):
         self.registerPath("checkWritePermissions", self.checkReductionWritePermissions)
         self.registerPath("getSavePath", self.getSavePath)
         self.registerPath("getStateIds", self.getStateIds)
-        self.registerPath("validateReduction", self.validateReduction)
+        self.registerPath("validate", self.validateReduction)
         self.registerPath("artificialNormalization", self.artificialNormalization)
         self.registerPath("grabWorkspaceforArtificialNorm", self.grabWorkspaceforArtificialNorm)
         return
