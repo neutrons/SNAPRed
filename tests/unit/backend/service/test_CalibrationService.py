@@ -695,6 +695,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             runNumber=runNumber,
             useLiteMode=useLiteMode,
             focusGroup=focusGroup,
+            startingTableVersion=0,
         )
         result = self.instance.fetchDiffractionCalibrationGroceries(request)
 
