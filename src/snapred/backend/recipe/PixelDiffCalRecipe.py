@@ -81,6 +81,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         self.maskWS = groceries["maskWorkspace"]
         # the name of the output calibration table
         self.DIFCpixel = groceries["calibrationTable"]
+        self.DIFCprev = groceries.get("previousCalibration", "")
         self.isEventWs = self.mantidSnapper.mtd[self.wsTOF].id() == "EventWorkspace"
         # the input data converted to d-spacing
         self.wsDSP = wng.diffCalInputDSP().runNumber(self.runNumber).build()
@@ -100,13 +101,20 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
                 OutputWorkspace=self.wsDSP + "_withoutBackground",
             )
 
-        self.mantidSnapper.CalculateDiffCalTable(
-            "Calculate initial table of DIFC values",
-            InputWorkspace=self.wsTOF,
-            CalibrationTable=self.DIFCpixel,
-            OffsetMode="Signed",
-            BinWidth=self.dBin,
-        )
+        if self.DIFCprev == "":
+            self.mantidSnapper.CalculateDiffCalTable(
+                "Calculate initial table of DIFC values",
+                InputWorkspace=self.wsTOF,
+                CalibrationTable=self.DIFCpixel,
+                OffsetMode="Signed",
+                BinWidth=self.dBin,
+            )
+        else:
+            self.mantidSnapper.RenameWorkspace(
+                "Begin DIFC table at previous",
+                InputWorkspace=self.DIFCprev,
+                OutputWorkspace=self.DIFCpixel,
+            )
 
     def stirInputs(self):
         self.groupWorkspaceIndices = self.mantidSnapper.GroupedDetectorIDs(

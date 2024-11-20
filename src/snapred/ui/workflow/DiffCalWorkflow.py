@@ -199,7 +199,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.calibrantSamplePath = view.sampleDropdown.currentText()
         self.peakFunction = view.peakFunctionDropdown.currentText()
-        self.skipPixelCal = view.skipPixelCalToggle.field.getState()
+        self.skipPixelCal = view.getSkipPixelCalibration()
         self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
 
         self.removeBackground = view.getRemoveBackground()
@@ -349,13 +349,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             response = self.request(path="calibration/pixel", payload=payload).data
             self.prevDiffCal = response.calibrationTable
         else:
-            # response = PixelDiffCalServing(
-            #     result=True,
-            #     medianOffsets=[],
-            #     maskWorkspace=self.groceries.get("maskWorkspace", ""),
-            #     calibrationTable=self.groceries["calibrationTable"],
-            # )
-            self.prevDiffCal = self.groceries["calibrationTable"]
+            self.prevDiffCal = self.groceries["previousCalibration"]
 
     def _renewFocus(self, groupingIndex):
         self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]

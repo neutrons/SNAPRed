@@ -136,6 +136,11 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
         if self.calibrationTable:
+            # NOTE ConvertDiffCal has issues ifthe "tofmin" column is present,
+            # and LoadFiffCal is written to always add this column on load.
+            # Easiest temporary solution is to delete this column, until mantid is updated.
+            calTab = self.mantidSnapper.mtd[self.calibrationTable]
+            calTab.removeColumn("tofmin")
             self.setPropertyValue("CalibrationTable", self.calibrationTable)
         if self.maskWorkspace:
             self.setPropertyValue("MaskWorkspace", self.maskWorkspace)

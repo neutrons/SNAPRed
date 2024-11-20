@@ -79,3 +79,6 @@ class DiffCalRequestView(BackendRequestView):
 
     def getRemoveBackground(self):
         return self.removeBackgroundToggle.field.getState()
+
+    def getSkipPixelCalibration(self):
+        return self.skipPixelCalToggle.field.getState()

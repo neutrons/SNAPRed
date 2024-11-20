@@ -136,6 +136,10 @@ class CalibrationService(Service):
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(
             request.focusGroup.name
         ).useLiteMode(request.useLiteMode).add()
+        self.groceryClerk.name("previousCalibration").diffcal_table(
+            request.runNumber, request.startingTableVersion
+        ).useLiteMode(request.useLiteMode).add()
+        # names
         diffcalOutputName = (
             wng.diffCalOutput().unit(wng.Units.DSP).runNumber(request.runNumber).group(request.focusGroup.name).build()
         )
