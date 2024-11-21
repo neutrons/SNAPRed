@@ -110,7 +110,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
                 BinWidth=self.dBin,
             )
         else:
-            self.mantidSnapper.RenameWorkspace(
+            self.mantidSnapper.CloneWorkspace(
                 "Begin DIFC table at previous",
                 InputWorkspace=self.DIFCprev,
                 OutputWorkspace=self.DIFCpixel,
