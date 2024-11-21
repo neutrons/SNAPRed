@@ -97,7 +97,7 @@ class ReductionWorkflow(WorkflowImplementer):
             self._reductionRequestView.pixelMaskDropdown.setItems([])
             return []
 
-        useLiteMode = self._reductionRequestView.liteModeToggle.field.getState()  # noqa: F841
+        self.useLiteMode = self._reductionRequestView.liteModeToggle.field.getState()  # noqa: F841
 
         self._reductionRequestView.liteModeToggle.setEnabled(False)
         self._reductionRequestView.pixelMaskDropdown.setEnabled(False)
