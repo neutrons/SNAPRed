@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional, Set, Tuple, Type
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe
@@ -181,20 +182,9 @@ class ReductionRecipe(Recipe[Ingredients]):
             self.groceries["normalizationWorkspace"] = normalizationClone
         return sampleClone, normalizationClone
 
-    def _isGroupFullyMasked(self, groupingWorkspace: str) -> bool:
-        maskWorkspace = self.mantidSnapper.mtd[self.maskWs]
-        groupWorkspace = self.mantidSnapper.mtd[groupingWorkspace]
-
-        totalMaskedPixels = 0
-        totalGroupPixels = 0
-
-        for i in range(groupWorkspace.getNumberHistograms()):
-            group_spectra = groupWorkspace.readY(i)
-            for spectrumIndex in group_spectra:
-                if maskWorkspace.readY(int(spectrumIndex))[0] == 1:
-                    totalMaskedPixels += 1
-                totalGroupPixels += 1
-        return totalMaskedPixels == totalGroupPixels
+    def _isGroupFullyMasked(self, pixelGroup: PixelGroup) -> bool:
+        # Checks if the entire PixelGroup is masked.
+        return all(pixelGroup.isMasked)
 
     def queueAlgos(self):
         pass
@@ -224,9 +214,10 @@ class ReductionRecipe(Recipe[Ingredients]):
         self._cloneIntermediateWorkspace(self.normalizationWs, "normalization_preprocessed")
 
         for groupingIndex, groupingWs in enumerate(self.groupingWorkspaces):
+            pixelGroup = self.ingredients.pixelGroups[groupingIndex]
             self.groceries["groupingWorkspace"] = groupingWs
 
-            if self.maskWs and self._isGroupFullyMasked(groupingWs):
+            if self.maskWs and self._isGroupFullyMasked(pixelGroup):
                 # Notify the user of a fully masked group, but continue with the workflow
                 self.logger().warning(
                     f"\nAll pixels masked within {groupingWs} schema.\n"

@@ -11,6 +11,7 @@ from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.WorkflowView import WorkflowView
 from snapred.ui.widget.ActionPrompt import ActionPrompt
+from snapred.ui.widget.LoadingCursor import LoadingCursor
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -152,6 +153,10 @@ class WorkflowPresenter(QObject):
             # disable other workflow-tabs during workflow execution
             self.disableOtherWorkflows.emit()
 
+        # Show the LoadingCursor
+        self.loadingCursor = LoadingCursor(self.view)
+        self.loadingCursor.show()
+
         # disable navigation buttons during run
         self._enableButtons(False)
 
@@ -159,15 +164,21 @@ class WorkflowPresenter(QObject):
         def verifyAndContinue():
             # On verification failure: this will raise an exception and abort the continue.
             self.view.tabView.verify()
-
+            
             # On verification success: this will return the correct SNAPResponse.
             return model.continueAction(self)
+        
+         # Define actions upon worker completion
+        def onWorkerFinished():
+            self._enableButtons(True)  # Re-enable panel buttons on finish
+            self.loadingCursor.close()  # Close the LoadingCursor once the task finishes
 
         # do action
         self.worker = self.worker_pool.createWorker(target=verifyAndContinue, args=None)
-        self.worker.finished.connect(lambda: self._enableButtons(True))  # re-enable panel buttons on finish
+        self.worker.finished.connect(onWorkerFinished)
         self.worker.result.connect(self._handleComplications)
         self.worker.success.connect(lambda success: self.advanceWorkflow() if success else None)
+        self.loadingCursor.close()
         self.worker_pool.submitWorker(self.worker)
         self.actionCompleted.emit()
 

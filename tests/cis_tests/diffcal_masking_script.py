@@ -86,8 +86,8 @@ SNAPLiteInstrumentFilePath = str(Path(SNAPRed_module_root).parent / 'tests' / 'r
 #User input ###########################
 runNumber = "58882"
 groupingScheme = 'Column'
-cifPath = f"{instrumentHome}/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
-calibrantSamplePath = f"{instrumentHome}/shared/Calibration/CalibrationSamples/Silicon_NIST_640D_001.json"
+cifPath = "/home/dzj/Calibration_next/CalibrantSamples/Silicon_NIST_001.json"
+calibrantSamplePath = "/home/dzj/Calibration_next/CalibrantSamples/cif/Silicon_NIST_640d.cif"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
