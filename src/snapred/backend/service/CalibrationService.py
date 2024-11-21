@@ -29,6 +29,7 @@ from snapred.backend.dao.request import (
     FocusSpectraRequest,
     HasStateRequest,
     InitializeStateRequest,
+    MatchRunsRequest,
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
@@ -99,6 +100,7 @@ class CalibrationService(Service):
         self.registerPath("group", self.groupCalibration)
         self.registerPath("validateWritePermissions", self.validateWritePermissions)
         self.registerPath("residual", self.calculateResidual)
+        self.registerPath("fetchMatches", self.fetchMatchingCalibrations)
         return
 
     @staticmethod
@@ -364,6 +366,27 @@ class CalibrationService(Service):
         If no version is given, will load the latest version applicable to the run number
         """
         return self.dataFactoryService.getCalibrationRecord(run.runNumber, run.useLiteMode, version)
+
+    def matchRunsToCalibrationVersions(self, request: MatchRunsRequest) -> Dict[str, Any]:
+        """
+        For each run in the list, find the calibration version that applies to it
+        """
+        response = {}
+        for runNumber in request.runNumbers:
+            response[runNumber] = self.dataFactoryService.getThisOrLatestCalibrationVersion(
+                runNumber, request.useLiteMode
+            )
+        return response
+
+    @FromString
+    def fetchMatchingCalibrations(self, request: MatchRunsRequest):
+        calibrations = self.matchRunsToCalibrationVersions(request)
+        for runNumber in request.runNumbers:
+            if runNumber in calibrations:
+                self.groceryClerk.diffcal_table(runNumber, calibrations[runNumber]).useLiteMode(
+                    request.useLiteMode
+                ).add()
+        return set(self.groceryService.fetchGroceryList(self.groceryClerk.buildList())), calibrations
 
     @FromString
     def saveCalibrationToIndex(self, entry: IndexEntry):
