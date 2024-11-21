@@ -273,6 +273,8 @@ class ReductionRecipe(Recipe[Ingredients]):
                     self.ingredients.applyNormalization(groupingIndex),
                 )
 
+                raise RuntimeError(f"sample workspace: {sampleClone}")
+
             # 4. ApplyNormalizationRecipe
             self._applyRecipe(
                 ApplyNormalizationRecipe,

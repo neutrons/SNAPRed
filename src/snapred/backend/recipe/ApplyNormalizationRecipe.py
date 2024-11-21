@@ -103,8 +103,7 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         print(f"dMax: {self.dMax}")
         print(f"dBin: {self.pixelGroup.dBin()}")
 
-        self.mantidSnapper.mtd[self.sampleWs].setDistribution(True)
-            
+        self.mantidSnapper.mtd[self.sampleWs].setDistribution(True)   
         self.mantidSnapper.executeQueue()
 
         
