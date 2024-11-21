@@ -6,6 +6,7 @@ from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from mantid.simpleapi import mtd
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -64,13 +65,30 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         Queues up the procesing algorithms for the recipe.
         Requires: unbagged groceries and chopped ingredients.
         """
+
         if self.normalizationWs:
+
+            print("cloning vanadium")
+            self.mantidSnapper.CloneWorkspace(
+                "Creating temporary clone of normalization workspace...",
+                InputWorkspace=self.normalizationWs,
+                OutputWorkspace='tempNorm',
+            )
+
+            print("cloning sample")
+            self.mantidSnapper.CloneWorkspace(
+                "Creating clone of sample workspace...",
+                InputWorkspace=self.sampleWs,
+                OutputWorkspace='sampleBeforeDivide',
+            )
+
             self.mantidSnapper.Divide(
                 "Dividing out the normalization..",
                 LHSWorkspace=self.sampleWs,
                 RHSWorkspace=self.normalizationWs,
                 OutputWorkspace=self.sampleWs,
             )
+
         self.mantidSnapper.RebinRagged(
             "Resampling X-axis...",
             InputWorkspace=self.sampleWs,
@@ -79,7 +97,17 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
             Delta=self.pixelGroup.dBin(),
             OutputWorkspace=self.sampleWs,
             PreserveEvents=False,
-        )
+            )
+        
+        print(f"dMin: {self.dMin}")
+        print(f"dMax: {self.dMax}")
+        print(f"dBin: {self.pixelGroup.dBin()}")
+
+        self.mantidSnapper.mtd[self.sampleWs].setDistribution(True)
+            
+        self.mantidSnapper.executeQueue()
+
+        
 
     # NOTE: Metaphorically, would ingredients better have been called Spices?
     # Considering they are mostly never the meat of a recipe.
@@ -103,4 +131,6 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
             self.prep(ingredient, grocery)
             output.append(self.sampleWs)
         self.execute()
+
+
         return output

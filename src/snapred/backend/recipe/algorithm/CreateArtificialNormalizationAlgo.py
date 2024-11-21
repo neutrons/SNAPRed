@@ -107,6 +107,16 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
 
     def peakClip(self, data, winSize: int, decrese: bool, LLS: bool, smoothing: float):
         # Clipping peaks from the data with optional smoothing and transformations
+        print(f"""PeakClip params:
+              winsize: {winSize}
+              decrese(sic): {decrese}
+              LLS: {LLS}
+              smoothing: {smoothing}
+              """)
+        print("LLS and decrese hard set to be True to match SNAPReduce")
+        LLS = True
+        decrese = True
+
         startData = np.copy(data)
         window = winSize
         if smoothing > 0:
@@ -165,7 +175,7 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
             InputWorkspace=self.inputWorkspaceName,
             OutputWorkspace=self.outputWorkspaceName,
         )
-        if isinstance(self.mantidSnapper.mtd[self.inputWorkspaceName], IEventWorkspace):
+        if not (self.pixelGroup and self.dMin and self.dMax):
             self.mantidSnapper.ConvertToMatrixWorkspace(
                 "Converting event workspace to histogram...",
                 InputWorkspace=self.outputWorkspaceName,
@@ -189,9 +199,24 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
                 PreserveEvents=False,
             )
 
+            print(f"dMin = {self.dMin}")
+            print(f"dMax = {self.dMax}")
+            print(f"dBin = {self.pixelGroup.dBin}")
+
+            self.mantidSnapper.CloneWorkspace(
+                "Cloning input workspace...",
+                InputWorkspace=self.outputWorkspaceName,
+                OutputWorkspace="ClipPeaks_input",
+            )
+
+
+
+
         self.mantidSnapper.executeQueue()
         self.inputWorkspace = self.mantidSnapper.mtd[self.inputWorkspaceName]
         self.outputWorkspace = self.mantidSnapper.mtd[self.outputWorkspaceName]
+
+
 
         for i in range(self.outputWorkspace.getNumberHistograms()):
             dataY = self.outputWorkspace.readY(i)
@@ -203,6 +228,13 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
                 smoothing=self.smoothingParameter,
             )
             self.outputWorkspace.setY(i, clippedData)
+
+        self.mantidSnapper.CloneWorkspace(
+                "Cloning input workspace...",
+                InputWorkspace=self.outputWorkspaceName,
+                OutputWorkspace="ClipPeaks_output",
+            )
+        self.mantidSnapper.executeQueue()
 
         self.setProperty("OutputWorkspace", self.outputWorkspaceName)
 

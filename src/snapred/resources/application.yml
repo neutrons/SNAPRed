@@ -12,7 +12,7 @@ instrument:
   name: SNAP
   home: ${IPTS.root}/SNAP
   calibration:
-    home: ${instrument.home}/shared/Calibration
+    home: ${instrument.home}/shared/Calibration_column
     sample:
       home: ${instrument.calibration.home}/CalibrantSamples
       extensions:
@@ -183,7 +183,7 @@ version:
     default: 0 # alphanumeric
   start: 1   # MUST be nonnegative integer
 
-cis_mode: false
+cis_mode: true
 
 constants:
   millisecondsPerSecond: 1000
