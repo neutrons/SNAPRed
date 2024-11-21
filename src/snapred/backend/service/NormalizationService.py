@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any, Dict
 
 from snapred.backend.dao import Limit
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
@@ -14,6 +15,7 @@ from snapred.backend.dao.request import (
     CreateNormalizationRecordRequest,
     FarmFreshIngredients,
     FocusSpectraRequest,
+    MatchRunsRequest,
     NormalizationExportRequest,
     NormalizationRequest,
     SmoothDataExcludingPeaksRequest,
@@ -378,3 +380,25 @@ class NormalizationService(Service):
             smoothedVanadium=request.outputWorkspace,
             detectorPeaks=peaks,
         ).dict()
+
+    def matchRunsToNormalizationVersions(self, request: MatchRunsRequest) -> Dict[str, Any]:
+        """
+        For each run in the list, find the calibration version that applies to it
+        """
+        response = {}
+        for runNumber in request.runNumbers:
+            response[runNumber] = self.dataFactoryService.getThisOrLatestNormalizationVersion(
+                runNumber, request.useLiteMode
+            )
+        return response
+
+    @FromString
+    @Register("fetchMatches")
+    def fetchMatchingNormalizations(self, request: MatchRunsRequest):
+        normalizations = self.matchRunsToNormalizationVersions(request)
+        for runNumber in request.runNumbers:
+            if normalizations.get(runNumber) is not None:
+                self.groceryClerk.normalization(runNumber, normalizations[runNumber]).useLiteMode(
+                    request.useLiteMode
+                ).add()
+        return set(self.groceryService.fetchGroceryList(self.groceryClerk.buildList())), normalizations
