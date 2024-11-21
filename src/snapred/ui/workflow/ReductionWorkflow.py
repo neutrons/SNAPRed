@@ -299,14 +299,6 @@ class ReductionWorkflow(WorkflowImplementer):
             # Note that the run number is deliberately not deleted from the run numbers list.
             # Almost certainly it should be moved to a "completed run numbers" list.
 
-        # SPECIAL FOR THE REDUCTION WORKFLOW: clear everything _except_ the output workspaces
-        #   _before_ transitioning to the "save" panel.
-        # TODO: make '_clearWorkspaces' a public method (i.e make this combination a special `cleanup` method).
-        self._clearWorkspaces(exclude=self.outputs, clearCachedWorkspaces=True)
-
-    def _resetPixelMaskDropDown(self):
-        self._populatePixelMaskDropdown()
-
     @property
     def widget(self):
         return self.workflow.presenter.widget
