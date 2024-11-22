@@ -1043,6 +1043,33 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         res = self.instance.fitPeaks(request)
         assert res == FitMultiplePeaksRecipe.return_value.executeRecipe.return_value
 
+    def test_matchRuns(self):
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(
+            side_effect=[mock.sentinel.version1, mock.sentinel.version2, mock.sentinel.version3],
+        )
+        request = mock.Mock(runNumbers=[mock.sentinel.run1, mock.sentinel.run2], useLiteMode=True)
+        response = self.instance.matchRunsToCalibrationVersions(request)
+        assert response == {
+            mock.sentinel.run1: mock.sentinel.version1,
+            mock.sentinel.run2: mock.sentinel.version2,
+        }
+
+    def test_fetchRuns(self):
+        mockCalibrations = {
+            mock.sentinel.run1: mock.sentinel.version1,
+            mock.sentinel.run2: mock.sentinel.version2,
+            mock.sentinel.run3: mock.sentinel.version2,
+        }
+        mockGroceries = [mock.sentinel.grocery1, mock.sentinel.grocery2, mock.sentinel.grocery2]
+        self.instance.matchRunsToCalibrationVersions = mock.Mock(return_value=mockCalibrations)
+        self.instance.groceryService.fetchGroceryList = mock.Mock(return_value=mockGroceries)
+        self.instance.groceryClerk = mock.Mock()
+
+        request = mock.Mock(runNumbers=[mock.sentinel.run1, mock.sentinel.run2], useLiteMode=True)
+        groceries, cal = self.instance.fetchMatchingCalibrations(request)
+        assert groceries == {mock.sentinel.grocery1, mock.sentinel.grocery2}
+        assert cal == mockCalibrations
+
     def test_initializeState(self):
         testCalibration = DAOFactory.calibrationParameters()
         mockInitializeState = mock.Mock(return_value=testCalibration.instrumentState)

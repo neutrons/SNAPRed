@@ -207,6 +207,33 @@ class TestNormalizationService(unittest.TestCase):
             SmoothingParameter=mockRequest.smoothingParameter,
         )
 
+    def test_matchRuns(self):
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(
+            side_effect=[mock.sentinel.version1, mock.sentinel.version2],
+        )
+        request = mock.Mock(runNumbers=[mock.sentinel.run1, mock.sentinel.run2], useLiteMode=True)
+        response = self.instance.matchRunsToNormalizationVersions(request)
+        assert response == {
+            mock.sentinel.run1: mock.sentinel.version1,
+            mock.sentinel.run2: mock.sentinel.version2,
+        }
+
+    def test_fetchRuns(self):
+        mockCalibrations = {
+            mock.sentinel.run1: mock.sentinel.version1,
+            mock.sentinel.run2: mock.sentinel.version2,
+            mock.sentinel.run3: mock.sentinel.version2,
+        }
+        mockGroceries = [mock.sentinel.grocery1, mock.sentinel.grocery2, mock.sentinel.grocery2]
+        self.instance.matchRunsToNormalizationVersions = mock.Mock(return_value=mockCalibrations)
+        self.instance.groceryService.fetchGroceryList = mock.Mock(return_value=mockGroceries)
+        self.instance.groceryClerk = mock.Mock()
+
+        request = mock.Mock(runNumbers=[mock.sentinel.run1, mock.sentinel.run2], useLiteMode=True)
+        groceries, cal = self.instance.fetchMatchingNormalizations(request)
+        assert groceries == {mock.sentinel.grocery1, mock.sentinel.grocery2}
+        assert cal == mockCalibrations
+
     def test_normalizationAssessment(self):
         self.instance = NormalizationService()
         self.instance.sousChef = SculleryBoy()
