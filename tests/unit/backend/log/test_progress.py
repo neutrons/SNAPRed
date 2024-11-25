@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from mantid.api import Progress
+
 from snapred.backend.log.logger import snapredLogger
 
 

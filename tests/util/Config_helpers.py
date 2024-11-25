@@ -3,6 +3,7 @@ from contextlib import ExitStack, contextmanager
 from typing import Any, Dict, Tuple
 
 import pytest
+
 from snapred.meta.Config import Config
 
 Node = namedtuple("Node", "dict key")
@@ -48,7 +49,7 @@ def Config_override(key: str, value: Any):
         _savedNode.dict[_savedNode.key] = _savedValue
 
 
-@pytest.fixture()
+@pytest.fixture
 def Config_override_fixture():
     _stack = ExitStack()
 

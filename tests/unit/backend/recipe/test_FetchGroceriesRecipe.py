@@ -12,6 +12,7 @@ from mantid.simpleapi import (
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
+
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 
 # needed to make mocked ingredients

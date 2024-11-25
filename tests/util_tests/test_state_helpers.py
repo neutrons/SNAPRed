@@ -5,12 +5,13 @@ from pathlib import Path
 from shutil import rmtree
 
 import pytest
+from util.dao import DAOFactory
+from util.state_helpers import reduction_root_redirect, state_root_override, state_root_redirect
+
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
-from util.dao import DAOFactory
-from util.state_helpers import reduction_root_redirect, state_root_override, state_root_redirect
 
 
 @pytest.fixture(autouse=True)

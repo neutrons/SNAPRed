@@ -5,13 +5,14 @@ from unittest import mock
 
 from mantid.simpleapi import LoadDetectorsGroupingFile, LoadEmptyInstrument, mtd
 from pydantic import validate_call
+from util.WhateversInTheFridge import WhateversInTheFridge
+
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
-from util.WhateversInTheFridge import WhateversInTheFridge
 
 
 @Singleton

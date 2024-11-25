@@ -13,13 +13,13 @@ from mantid.simpleapi import (
     mtd,
 )
 from pydantic import BaseModel, ConfigDict, ValidationError
+from util.helpers import deleteWorkspaceNoThrow
 
 # the algorithm to test
 from snapred.backend.dao.WorkspaceMetadata import UNSET
 from snapred.backend.recipe.ReadWorkspaceMetadata import ReadWorkspaceMetadata
 from snapred.backend.recipe.WriteWorkspaceMetadata import WriteWorkspaceMetadata
 from snapred.meta.Config import Config
-from util.helpers import deleteWorkspaceNoThrow
 
 thisRecipe = "snapred.backend.recipe.WriteWorkspaceMetadata."
 readRecipe = "snapred.backend.recipe.ReadWorkspaceMetadata."

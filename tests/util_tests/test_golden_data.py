@@ -5,8 +5,9 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from snapred.meta.Config import Resource
 from util.golden_data import ApproxAnyNested, _isPrimitive, assertMatchToGoldenData
+
+from snapred.meta.Config import Resource
 
 # Generate a temporary golden-data directory, that will be automatically deleted at the end of the module's execution.
 # * Note that pytest collection occurs at import: all _marker_ definitions must be resolved at that time.

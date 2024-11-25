@@ -2,6 +2,7 @@ from random import randint
 from unittest.mock import MagicMock
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, GroupWorkspaces, mtd
+
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
 

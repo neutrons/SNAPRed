@@ -3,6 +3,7 @@ import unittest
 import pytest
 from mantid.geometry import CrystalStructure
 from pydantic import ValidationError
+
 from snapred.backend.dao.state.CalibrantSample.Atom import Atom
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.meta.Config import Resource

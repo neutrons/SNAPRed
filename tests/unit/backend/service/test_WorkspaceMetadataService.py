@@ -3,10 +3,11 @@ import unittest
 import pytest
 from mantid.simpleapi import AddSampleLogMultiple, CreateSingleValuedWorkspace, mtd
 from pydantic import ValidationError
+from util.helpers import deleteWorkspaceNoThrow
+
 from snapred.backend.dao.WorkspaceMetadata import WorkspaceMetadata
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.meta.Config import Config
-from util.helpers import deleteWorkspaceNoThrow
 
 thisService = "snapred.backend.service.WorkspaceMetadataService."
 TAG_PREFIX = Config["metadata.tagPrefix"]
