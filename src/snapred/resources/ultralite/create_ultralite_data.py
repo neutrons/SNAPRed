@@ -66,6 +66,7 @@ for x in runs_to_reduce:
     clerk.neutron(x).native().add()
 groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
+
 # The FileName should point to a "diffract_consts_<runNumber>_v#.h5 file, this gets saved at the end of a diffcal run
 LoadDiffCal(
     InputWorkspace=groceries[0],
@@ -115,6 +116,23 @@ for grocery in groceries:
         )
         uws = mtd[ultralite]
         Rebin(InputWorkspace=ultralite, OutputWorkspace=ultralite, Params=(uws.getTofMax() - uws.getTofMin()))
+    logs = (
+        "BL3:Det:TH:BL:Frequency",
+        "BL3:Mot:OpticsPos:Pos",
+        "BL3:Chop:Gbl:WavelengthReq",
+        "BL3:Chop:Skf1:WavelengthUserReq",
+        "BL3:Chop:Gbl:WavelengthReq",
+        "BL3:Chop:Skf1:WavelengthUserReq",
+        "det_arc1",
+        "det_arc2",
+        "BL3:Det:TH:BL:Frequency",
+        "BL3:Mot:OpticsPos:Pos",
+        "det_lin1",
+        "det_lin2",
+        "proton_charge",
+        "gd_prtn_chrg",
+    )
+    RemoveLogs(Workspace=ultralite, KeepLogs=logs)
     SaveNexusProcessed(
         InputWorkspace=ultralite,
         Filename=f"~/Documents/ultralite/{ultralite}.nxs.h5",
