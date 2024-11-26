@@ -209,6 +209,9 @@ constants:
   PeakIntensityFractionThreshold: 0.05
   m2cm: 10000.0 # conversion factor for m^2 to cm^2
   maskedPixelThreshold: 0.15
+  # Swap these when running with ultralite data
+  logsLocation: "entry/DASlogs"
+  # logsLocation: "/mantid_workspace_1/logs"
 
   CrystallographicInfo:
     crystalDMin: 0.4

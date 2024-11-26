@@ -1,0 +1,237 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- For help on the notation used to specify an Instrument Definition File
+     see http://www.mantidproject.org/IDF -->
+<instrument xmlns="http://www.mantidproject.org/IDF/1.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://www.mantidproject.org/IDF/1.0 http://schema.mantidproject.org/IDF/1.0/IDFSchema.xsd"
+            name="CRACKLELite" valid-from="1970-01-01 00:00:00">
+  <!--
+    THIS IS A FAKE INSTRUMENT DEFINITION FOR TESTING ONLY
+    It is the Lite version of CRACKLE, grouping 2x2 pixel banks to single superpixel
+  -->
+  <!--DEFAULTS-->
+  <defaults>
+    <length unit="metre"/>
+    <angle unit="degree"/>
+    <reference-frame>
+      <along-beam axis="z"/>
+      <pointing-up axis="y"/>
+      <handedness val="right"/>
+      <theta-sign axis="x"/>
+    </reference-frame>
+  </defaults>
+
+  <!--SOURCE-->
+  <component type="source">
+    <location z="-15.0"/>
+  </component>
+  <type name="source" is="Source"/>
+
+  <!--SAMPLE-->
+  <component type="sample-position">
+    <location y="0.0" x="0.0" z="0.0"/>
+  </component>
+  <type name="sample-position" is="SamplePos"/>
+
+  <!--
+    the monitor was removed due to inconsistencies with
+    loading the instrument into a created sample workspace
+  -->
+
+  <!--DETECTORS-->
+
+  <component type="East">
+    <location >
+      <parameter name="roty">
+        <logfile id="det_arc2" eq="180.0+value"/>
+      </parameter>
+      <parameter name="r-position">
+        <logfile id="det_lin2" eq="0.5+value" />
+      </parameter>
+      <parameter name="t-position">
+        <logfile id="det_arc2" />
+      </parameter>
+    </location>
+  </component>
+  <component type="West">
+    <location >
+      <parameter name="roty">
+        <logfile id="det_arc1" eq="180.0+value"/>
+      </parameter>
+      <parameter name="r-position">
+        <logfile id="det_lin1" eq="0.5+value" />
+      </parameter>
+      <parameter name="t-position">
+        <logfile id="det_arc1" />
+      </parameter>
+    </location>
+  </component>
+
+  <type name="East">
+    <component type="Column1">
+      <location/>
+    </component>
+    <component type="Column2">
+      <location/>
+    </component>
+    <component type="Column3">
+      <location/>
+    </component>
+  </type>
+  <type name="West">
+    <component type="Column4">
+      <location/>
+    </component>
+    <component type="Column5">
+      <location/>
+    </component>
+    <component type="Column6">
+      <location/>
+    </component>
+  </type>
+
+  <type name="Column1">
+    <component type="pixel" idlist="0" >
+      <location name="bank13">
+        <trans x="-0.167548" y="+0.167548" />
+      </location>
+    </component>
+    <component type="pixel" idlist="1">
+      <location name="bank12">
+        <trans x="-0.167548" y="0" />
+      </location>
+    </component>
+    <component type="pixel" idlist="2">
+      <location name="bank11">
+        <trans x="-0.167548" y="-0.167548" />
+      </location>
+    </component>
+  </type>
+
+  <type name="Column2">
+    <component type="pixel" idlist="3">
+      <location name="bank23">
+        <trans x="0" y="+0.167548" />
+      </location>
+    </component>
+    <component type="pixel" idlist="4">
+      <location name="bank22">
+        <trans x="0" y="0" />
+      </location>
+    </component>
+    <component type="pixel" idlist="5">
+      <location name="bank21">
+        <trans x="0" y="-0.167548" />
+      </location>
+    </component>
+  </type>
+
+  <type name="Column3">
+    <component type="pixel" idlist="6">
+      <location name="bank33">
+        <trans x="+0.167548" y="+0.167548" />
+      </location>
+    </component>
+    <component type="pixel" idlist="7">
+      <location name="bank32">
+        <trans x="+0.167548" y="0" />
+      </location>
+    </component>
+    <component type="pixel" idlist="8">
+      <location name="bank31">
+        <trans x="+0.167548" y="-0.167548" />
+      </location>
+    </component>
+  </type>
+
+  <type name="Column4">
+    <component type="pixel" idlist="9">
+      <location name="bank63">
+        <trans x="-0.167548" y="+0.167548" />
+      </location>
+    </component>
+    <component type="pixel" idlist="10">
+      <location name="bank62">
+        <trans x="-0.167548" y="0" />
+      </location>
+    </component>
+    <component type="pixel" idlist="11">
+      <location name="bank61">
+        <trans x="-0.167548" y="-0.167548" />
+      </location>
+    </component>
+  </type>
+
+  <type name="Column5">
+    <component type="pixel" idlist="12">
+      <location name="bank53">
+        <trans x="0" y="+0.167548" />
+      </location>
+    </component>
+    <component type="pixel" idlist="13">
+      <location name="bank52">
+        <trans x="0" y="0" />
+      </location>
+    </component>
+    <component type="pixel" idlist="14">
+      <location name="bank51">
+        <trans x="0" y="-0.167548" />
+      </location>
+    </component>
+  </type>
+
+  <type name="Column6">
+    <component type="pixel" idlist="15">
+      <location name="bank43">
+        <trans x="+0.167548" y="+0.167548" />
+      </location>
+    </component>
+    <component type="pixel" idlist="16">
+      <location name="bank42">
+        <trans x="+0.167548" y="0" />
+      </location>
+    </component>
+    <component type="pixel" idlist="17">
+      <location name="bank41">
+        <trans x="+0.167548" y="-0.167548" />
+      </location>
+    </component>
+  </type>
+
+<!-- Rectangular Detector Panel -->
+<type name="panel" is="rectangular_detector" type="pixel"
+    xpixels="1" xstart="-0.001" xstep="+0.001"
+    ypixels="1" ystart="-0.078795" ystep="+0.079104" >
+  <properties/>
+</type>
+
+<idlist idname="0"><id val="0" /></idlist>
+<idlist idname="1"><id val="1" /></idlist>
+<idlist idname="2"><id val="2" /></idlist>
+<idlist idname="3"><id val="3" /></idlist>
+<idlist idname="4"><id val="4" /></idlist>
+<idlist idname="5"><id val="5" /></idlist>
+<idlist idname="6"><id val="6" /></idlist>
+<idlist idname="7"><id val="7" /></idlist>
+<idlist idname="8"><id val="8" /></idlist>
+<idlist idname="9"><id val="9" /></idlist>
+<idlist idname="10"><id val="10" /></idlist>
+<idlist idname="11"><id val="11" /></idlist>
+<idlist idname="12"><id val="12" /></idlist>
+<idlist idname="13"><id val="13" /></idlist>
+<idlist idname="14"><id val="14" /></idlist>
+<idlist idname="15"><id val="15" /></idlist>
+<idlist idname="16"><id val="16" /></idlist>
+<idlist idname="17"><id val="17" /></idlist>
+
+<!-- Pixel for Detectors-->
+<type name="pixel" is="detector">
+  <cuboid id="pixel-shape">
+    <left-front-bottom-point  y="-0.079104" x="-0.0005" z="0.0"/>
+    <left-front-top-point     y="+0.079104" x="-0.0005" z="0.0"/>
+    <left-back-bottom-point   y="-0.079104" x="-0.0005" z="0.0001"/>
+    <right-front-bottom-point y="-0.079104" x="+0.0005" z="0.0"/>
+  </cuboid>
+  <algebra val="pixel-shape"/>
+</type>
+</instrument>
