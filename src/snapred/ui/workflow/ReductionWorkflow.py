@@ -5,6 +5,7 @@ from qtpy.QtCore import Slot
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.request import (
     CreateArtificialNormalizationRequest,
+    MatchRunsRequest,
     ReductionExportRequest,
     ReductionRequest,
 )
@@ -185,27 +186,48 @@ class ReductionWorkflow(WorkflowImplementer):
         response = self.request(path="reduction/groupings", payload=request_)
         self._keeps = set(response.data["groupingWorkspaces"])
 
-        for runNumber in self.runNumbers:
-            self._artificialNormalizationView.updateRunNumber(runNumber)
-            request_ = self._createReductionRequest(runNumber)
+        # get the calibration and normalization versions for all runs to be processed
+        matchRequest = MatchRunsRequest(runNumbers=self.runNumbers, useLiteMode=self.useLiteMode)
+        loadedCalibrations, calVersions = self.request(path="calibration/fetchMatches", payload=matchRequest).data
+        loadedNormalizations, normVersions = self.request(path="normalization/fetchMatches", payload=matchRequest).data
+        self._keeps.update(loadedCalibrations)
+        self._keeps.update(loadedNormalizations)
 
-            # Validate reduction; if artificial normalization is needed, handle it
-            response = self.request(path="reduction/validate", payload=request_)
-            if ContinueWarning.Type.MISSING_NORMALIZATION in self.continueAnywayFlags:
+        distinctNormVersions = set(normVersions.values())
+        if len(distinctNormVersions) > 1 and None in distinctNormVersions:
+            raise RuntimeError(
+                "Some of your workspaces require Artificial Normalization.  "
+                "SNAPRed can currently only handle the situation where all, or none "
+                "of the runs require Artificial Normalization.  Please clear the list "
+                "and try again."
+            )
+
+        # Validate reduction; if artificial normalization is needed, handle it
+        # NOTE: this logic ONLY works because we are forbidding mixed cases of artnorm or loaded norm
+        response = self.request(path="reduction/validate", payload=request_)
+        if ContinueWarning.Type.MISSING_NORMALIZATION in self.continueAnywayFlags:
+            if len(self.runNumbers) > 1:
+                raise RuntimeError(
+                    "Currently, Artificial Normalization can only be performed on a "
+                    "single run at a time.  Please clear your run list and try again."
+                )
+            for runNumber in self.runNumbers:
+                self._artificialNormalizationView.updateRunNumber(runNumber)
                 self._artificialNormalizationView.showAdjustView()
+                request_ = self._createReductionRequest(runNumber)
                 response = self.request(path="reduction/grabWorkspaceforArtificialNorm", payload=request_)
                 self._artificialNormalization(workflowPresenter, response.data, runNumber)
-            else:
-                # Proceed with reduction if artificial normalization is not needed
+        else:
+            for runNumber in self.runNumbers:
                 self._artificialNormalizationView.showSkippedView()
+                request_ = self._createReductionRequest(runNumber)
                 response = self.request(path="reduction/", payload=request_)
                 if response.code == ResponseCode.OK:
-                    record, unfocusedData = response.data.record, response.data.unfocusedData
-                    self._finalizeReduction(record, unfocusedData)
-            # after each run, clean workspaces except groupings, calibrations, normalizations, and outputs
-            self._keeps.update(self.outputs)
-            self._clearWorkspaces(exclude=self._keeps, clearCachedWorkspaces=True)
-        workflowPresenter.advanceWorkflow()
+                    self._finalizeReduction(response.data.record, response.data.unfocusedData)
+                # after each run, clean workspaces except groupings, calibrations, normalizations, and outputs
+                self._keeps.update(self.outputs)
+                self._clearWorkspaces(exclude=self._keeps, clearCachedWorkspaces=True)
+            workflowPresenter.advanceWorkflow()
         # SPECIAL FOR THE REDUCTION WORKFLOW: clear everything _except_ the output workspaces
         #   _before_ transitioning to the "save" panel.
         # TODO: make '_clearWorkspaces' a public method (i.e make this combination a special `cleanup` method).

@@ -29,17 +29,23 @@ instrument:
     # Here "{IPTS}" will be substituted with the IPTS-directory name for a specified <runNumber>
     home: ${instrument.home}/{IPTS}/shared/SNAPRed
 
+  # Swap the commented out fields when using ultralite data
   config: ${instrument.calibration.home}/SNAPInstPrm.json
   native:
     pixelResolution: 1179648
+    # pixelResolution: 72
     definition:
       file: ${module.root}/resources/SNAP_Definition.xml
+      # file: ${module.root}/resources/ultralite/CRACKLE_Definition.xml
   lite:
     pixelResolution: 18432
+    # pixelResolution: 18
     definition:
       file: ${module.root}/resources/SNAPLite_Definition.xml
+      # file: ${module.root}/resources/ultralite/CRACKLELite_Definition.xml
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
+      # file: ${module.root}/resources/ultralite/CRACKLELiteDataMap.xml
   startingRunNumber: 10000
   minimumRunNumber: 46342
   maxNumberOfRuns: 10
@@ -190,6 +196,10 @@ constants:
   PeakIntensityFractionThreshold: 0.05
   m2cm: 10000.0 # conversion factor for m^2 to cm^2
   maskedPixelThreshold: 0.15
+  # Swap these when running with ultralite data
+  logsLocation: "entry/DASlogs"
+  # logsLocation: "/mantid_workspace_1/logs"
+
 
   CrystallographicInfo:
     crystalDMin: 0.4
@@ -216,6 +226,10 @@ constants:
     lowWavelengthCrop: 0.05
     lowdSpacingCrop: 0.1
     highdSpacingCrop: 0.15
+
+  RawVanadiumCorrection:
+    numberOfSlices: 10
+    numberOfAnnuli: 10
 
 docs:
   user:

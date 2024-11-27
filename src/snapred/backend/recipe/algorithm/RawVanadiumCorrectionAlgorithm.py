@@ -9,6 +9,7 @@ from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.ingredients import NormalizationIngredients as Ingredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 
 
 class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
@@ -91,17 +92,24 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
     def shapedAbsorption(self, inputWS: str, absorptionWS: str, sampleShape: str):
+        numberOfSlices = Config["constants.RawVanadiumCorrection.numberOfSlices"]
+        numberOfAnnuli = Config["constants.RawVanadiumCorrection.numberOfAnnuli"]
+
         if sampleShape == "Cylinder":
             self.mantidSnapper.CylinderAbsorption(
                 "Create cylinder absorption data",
                 InputWorkspace=inputWS,
                 OutputWorkspace=absorptionWS,
+                NumberOfSlices=numberOfSlices,
+                NumberOfAnnuli=numberOfAnnuli,
             )
         elif sampleShape == "Sphere":
             self.mantidSnapper.SphericalAbsorption(
                 "Create spherical absorption data",
                 InputWorkspace=inputWS,
                 OutputWorkspace=absorptionWS,
+                NumberOfSlices=numberOfSlices,
+                NumberOfAnnuli=numberOfAnnuli,
             )
         else:
             raise RuntimeError("Must use cylindrical or spherical calibrant samples\n")
