@@ -227,6 +227,10 @@ constants:
     lowdSpacingCrop: 0.1
     highdSpacingCrop: 0.15
 
+  RawVanadiumCorrection:
+    numberOfSlices: 10
+    numberOfAnnuli: 10
+
 docs:
   user:
     path: /SNS/SNAP/shared/Malcolm/SNAPUserDocs/_build/html/index.html

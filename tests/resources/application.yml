@@ -239,6 +239,10 @@ constants:
     lowdSpacingCrop: 0.1
     highdSpacingCrop: 0.15
 
+  RawVanadiumCorrection:
+    numberOfSlices: 10
+    numberOfAnnuli: 10
+
 metadata:
   tagPrefix: testSNAPfuntime_
 
