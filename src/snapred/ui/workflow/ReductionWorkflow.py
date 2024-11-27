@@ -93,20 +93,19 @@ class ReductionWorkflow(WorkflowImplementer):
 
     @ExceptionToErrLog
     def _populatePixelMaskDropdown(self):
-        if len(self._reductionRequestView.getRunNumbers()) == 0:
-            return
-
         runNumbers = self._reductionRequestView.getRunNumbers()
+        if not runNumbers:
+            self._reductionRequestView.pixelMaskDropdown.setItems([])
+            return []
+
         self.useLiteMode = self._reductionRequestView.liteModeToggle.field.getState()  # noqa: F841
 
         self._reductionRequestView.liteModeToggle.setEnabled(False)
         self._reductionRequestView.pixelMaskDropdown.setEnabled(False)
         self._reductionRequestView.retainUnfocusedDataCheckbox.setEnabled(False)
 
-        # Assemble the list of compatible masks for the current reduction state --
-        #   note that all run numbers should be from the same state.
-        compatibleMasks = []
         try:
+            # Get compatible masks for the current reduction state.
             compatibleMasks = self.request(
                 path="reduction/getCompatibleMasks",
                 payload=ReductionRequest(
@@ -115,18 +114,23 @@ class ReductionWorkflow(WorkflowImplementer):
                     useLiteMode=self.useLiteMode,
                 ),
             ).data
+
+            # Map mask names to their corresponding WorkspaceName objects.
+            self._compatibleMasks = {name.toString(): name for name in compatibleMasks}
+
+            # Populate the dropdown with the mask names.
+            self._reductionRequestView.pixelMaskDropdown.setItems(list(self._compatibleMasks.keys()))
         except Exception as e:  # noqa: BLE001
-            print(e)
+            print(f"Error retrieving compatible masks: {e}")
+            self._compatibleMasks = {}
+            self._reductionRequestView.pixelMaskDropdown.setItems([])
+        finally:
+            # Re-enable UI elements.
+            self._reductionRequestView.liteModeToggle.setEnabled(True)
+            self._reductionRequestView.pixelMaskDropdown.setEnabled(True)
+            self._reductionRequestView.retainUnfocusedDataCheckbox.setEnabled(True)
 
-        # Create a mapping back to the original `WorkspaceName`
-        #  for reconstruction of the complete type after passing through Qt.
-        self._compatibleMasks = {name.toString(): name for name in compatibleMasks}
-
-        self._reductionRequestView.pixelMaskDropdown.setItems(list(self._compatibleMasks.keys()))
-
-        self._reductionRequestView.liteModeToggle.setEnabled(True)
-        self._reductionRequestView.pixelMaskDropdown.setEnabled(True)
-        self._reductionRequestView.retainUnfocusedDataCheckbox.setEnabled(True)
+        return list(self._compatibleMasks.keys())
 
     def _validateRunNumbers(self, runNumbers: List[str]):
         # For now, all run numbers in a reduction batch must be from the same instrument state.

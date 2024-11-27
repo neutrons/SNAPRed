@@ -130,6 +130,7 @@ class ReductionRequestView(BackendRequestView):
     def clearRunNumbers(self):
         self.runNumbers.clear()
         self.runNumberDisplay.clear()
+        self.pixelMaskDropdown.setItems([])
 
     def verify(self):
         runNumbers = [self.runNumberDisplay.item(x).text() for x in range(self.runNumberDisplay.count())]
