@@ -1,19 +1,44 @@
-from qtpy.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import ( 
+    QHBoxLayout, 
+    QLabel, 
+    QLineEdit,
+    QPushButton,
+    QSizePolicy, 
+    QVBoxLayout,
+    QWidget
+)
 
 
 class LabeledField(QWidget):
-    def __init__(self, label, field=None, text=None, parent=None, horizontalLayout=True):
+    def __init__(self, label, field=None, text=None, parent=None, orientation=Qt.Horizontal, sizeHint=None):
         super(LabeledField, self).__init__(parent)
+        
+        # TODO: Set this from the application style sheet.
+        #    Otherwise, this overrides the application style sheet!
         self.setStyleSheet("background-color: #F5E9E2;")
-        layout = QHBoxLayout() if horizontalLayout else QVBoxLayout()
-        self.setLayout(layout)
+        
+        if field is not None:
+            # bubble up the size policy from the field
+            self.setSizePolicy(field.sizePolicy())
+            
+        _layout = None
+        match orientation:
+            case Qt.Horizontal:
+                _layout = QHBoxLayout()
+            case Qt.Vertical:
+                _layout = QVBoxLayout()
+            case _:
+                raise RuntimeError(f"unexpected orientation for `LabeledField`: {orientation}")
+                
+        self.setLayout(_layout)
 
         self._label = QLabel(label)
         if field is not None:
             self._field = field
         else:
             self._field = QLineEdit(parent=self)
-            self._field.setText(text)
+            self._field.setText(text if text is not None else "")
 
         layout.addWidget(self._label)
         layout.addWidget(self._field)

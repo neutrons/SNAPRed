@@ -20,7 +20,8 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class WorkflowImplementer(QObject):
-    enableAllWorkflows = Signal()
+    # I'm not sure, but this seems to be deprecated:
+    # enableAllWorkflows = Signal()
 
     def __init__(self, parent=None):
         super().__init__()

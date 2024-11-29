@@ -74,7 +74,7 @@ class ArtificialNormalizationView(BackendRequestView):
         # add the adjust layout to this layout so it may be turned on and off
         self.adjustFrame = QFrame()
         self.adjustFrame.setLayout(self.adjustLayout)
-        self.layout.addWidget(self.adjustFrame, 0, 0, -1, -1)
+        self.layout().addWidget(self.adjustFrame, 0, 0, -1, -1)
         self.adjustFrame.show()
 
         # store the initial layout height without graphs

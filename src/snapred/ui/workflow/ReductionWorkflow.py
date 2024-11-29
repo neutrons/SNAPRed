@@ -19,6 +19,7 @@ from snapred.ui.view.reduction.ReductionRequestView import ReductionRequestView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
+
 logger = snapredLogger.getLogger(__name__)
 
 
@@ -28,14 +29,19 @@ class ReductionWorkflow(WorkflowImplementer):
 
         self._reductionRequestView = ReductionRequestView(
             parent=parent,
-            populatePixelMaskDropdown=self._populatePixelMaskDropdown,
+            getCompatibleMasks=self._getCompatibleMasks,
             validateRunNumbers=self._validateRunNumbers,
+            getLiveMetadata=self._getLiveMetadata
         )
         self._compatibleMasks: Dict[str, WorkspaceName] = {}
 
-        self._reductionRequestView.liteModeToggle.stateChanged.connect(lambda: self._populatePixelMaskDropdown())
-        self._reductionRequestView.enterRunNumberButton.clicked.connect(lambda: self._populatePixelMaskDropdown())
-        self._reductionRequestView.pixelMaskDropdown.dropDown.view().pressed.connect(self._onPixelMaskSelection)
+        # TODO: Move to `ReductionRequestView.__init__`?        
+        self._reductionRequestView.liteModeToggle.stateChanged.connect(
+            lambda: self._reductionRequestView._populatePixelMaskDropdown()
+        )
+
+        # Note (just in case it's tempting to reconnect it here):
+        #   `_reductionRequestView.enterRunNumberButton.clicked.connect` has already been connected.
 
         self._artificialNormalizationView = ArtificialNormalizationView(parent=parent)
 
@@ -92,46 +98,56 @@ class ReductionWorkflow(WorkflowImplementer):
             )
         return panelText
 
-    def __setInteractive(self, state: bool):
-        self._reductionRequestView.liteModeToggle.setEnabled(state)
-        self._reductionRequestView.pixelMaskDropdown.setEnabled(state)
-        self._reductionRequestView.retainUnfocusedDataCheckbox.setEnabled(state)
+    def _setInteractive(self, state: bool):
+        
+        # Sorry! Two proceeding underscores is reserved!
 
-    @ExceptionToErrLog
-    def _populatePixelMaskDropdown(self):
-        self.useLiteMode = self._reductionRequestView.liteModeToggle.getState()  # noqa: F841
-        runNumbers = self._reductionRequestView.getRunNumbers()
-        if not runNumbers:
-            self._reductionRequestView.pixelMaskDropdown.setItems([])
-            return []
+        self._reductionRequestView._setInteractive(state)
+        # self._reductionRequestView.liteModeToggle.setEnabled(state)
+        # self._reductionRequestView.liveDataToggle.setEnabled(state)
+        # self._reductionRequestView.pixelMaskDropdown.setEnabled(state)
+        # self._reductionRequestView.retainUnfocusedDataCheckbox.setEnabled(state)
 
-        self.useLiteMode = self._reductionRequestView.liteModeToggle.getState()  # noqa: F841
+   def _getCompatibleMasks(self, runNumbers: List[str], useLiteMode: bool) -> List[str]:
+            # Get compatible masks for the current reduction state.
+            masks = []
+            self.useLiteMode = useLiteMode
+            
+            if runNumbers:
 
-        self.__setInteractive(False)
-        self.workflow.presenter.handleAction(
-            self.handlePixelMaskDropdown,
-            args=(runNumbers[0], self.useLiteMode),
-            onSuccess=lambda: self.__setInteractive(True),
-        )
-        return list(self._compatibleMasks.keys())
+                compatibleMasks = self.request(
+                    path="reduction/getCompatibleMasks",
+                    payload=ReductionRequest(
+                        # All runNumbers are from the same state => any one can be used here
+                        runNumber=runNumbers[0],
+                        useLiteMode=self.useLiteMode,
+                    ),
+                ).data
 
-    def handlePixelMaskDropdown(self, firstRunNumber, useLiteMode):
-        # Get compatible masks for the current reduction state.
-        compatibleMasks = self.request(
-            path="reduction/getCompatibleMasks",
-            payload=ReductionRequest(
-                # All runNumbers are from the same state => any one can be used here
-                runNumber=firstRunNumber,
-                useLiteMode=useLiteMode,
+                # Map from mask name strings to their corresponding WorkspaceName objects.
+                self._compatibleMasks = {name.toString(): name for name in compatibleMasks}
+                masks = list(self._compatibleMasks.keys())
+    
+            return masks
+
+    def _getLiveMetadata(self) -> LiveMetadata:
+        # *** DEBUG *** : mock
+        duration = timedelta(hours=14)
+        now = datetime.utcnow()
+        return LiveMetadata.model_construct(
+            runNumber="46680",
+            startTime=now - duration,
+            endTime=now,
+            # WARNING: probably not DetectorState for "46680"
+            detectorState=DetectorState(
+                arc=(-65.3, 104.95),
+                wav=2.1,
+                freq=60.0,
+                guideStat=1,
+                lin=(0.045, 0.043)
             ),
-        ).data
-
-        # Map mask names to their corresponding WorkspaceName objects.
-        self._compatibleMasks = {name.toString(): name for name in compatibleMasks}
-
-        # Populate the dropdown with the mask names.
-        self._reductionRequestView.pixelMaskDropdown.setItems(list(self._compatibleMasks.keys()))
-        return SNAPResponse(code=ResponseCode.OK)
+            protonCharge=1000.0
+        )
 
     def _validateRunNumbers(self, runNumbers: List[str]):
         # For now, all run numbers in a reduction batch must be from the same instrument state.
@@ -147,17 +163,6 @@ class ReductionWorkflow(WorkflowImplementer):
     def _reconstructPixelMaskNames(self, pixelMasks: List[str]) -> List[WorkspaceName]:
         return [self._compatibleMasks[name] for name in pixelMasks]
 
-    @Slot()
-    def _onPixelMaskSelection(self):
-        pass
-        #  The previous version of this method actually does nothing:  :(
-        #
-        # selectedKeys = self._reductionRequestView.getPixelMasks()
-        # selectedWorkspaceNames = self._reconstructPixelMaskNames(selectedKeys)
-        # ReductionRequest.pixelMasks = selectedWorkspaceNames
-        #
-        # ## Why would I want to set the ~obfuscated-by-pydantic~ `pixelMasks` field of the class object?
-
     def _createReductionRequest(self, runNumber, artificialNormalizationIngredients=None):
         """
         Create a standardized ReductionRequest object for passing to the ReductionService
@@ -168,8 +173,8 @@ class ReductionWorkflow(WorkflowImplementer):
             timestamp=self.timestamp,
             continueFlags=self.continueAnywayFlags,
             pixelMasks=self.pixelMasks,
-            keepUnfocused=self._reductionRequestView.retainUnfocusedDataCheckbox.isChecked(),
-            convertUnitsTo=self._reductionRequestView.convertUnitsDropdown.currentText(),
+            keepUnfocused=self._reductionRequestView.keepUnfocused(),
+            convertUnitsTo=self._reductionRequestView.convertUnitsTo(),
             artificialNormalizationIngredients=artificialNormalizationIngredients,
         )
 
@@ -182,12 +187,12 @@ class ReductionWorkflow(WorkflowImplementer):
         # Use one timestamp for the entire set of runNumbers:
         self.timestamp = self.request(path="reduction/getUniqueTimestamp").data
 
-        # all runs in same state, use the first run to load groupings
+        # All runs are from the same state, use the first run to load groupings.
         request_ = self._createReductionRequest(self.runNumbers[0])
         response = self.request(path="reduction/groupings", payload=request_)
         self._keeps = set(response.data["groupingWorkspaces"])
 
-        # get the calibration and normalization versions for all runs to be processed
+        # Get the calibration and normalization versions for all runs to be processed
         matchRequest = MatchRunsRequest(runNumbers=self.runNumbers, useLiteMode=self.useLiteMode)
         loadedCalibrations, calVersions = self.request(path="calibration/fetchMatches", payload=matchRequest).data
         loadedNormalizations, normVersions = self.request(path="normalization/fetchMatches", payload=matchRequest).data
@@ -285,19 +290,15 @@ class ReductionWorkflow(WorkflowImplementer):
             decreaseParameter=self._artificialNormalizationView.getDecreaseParameter(),
             lss=self._artificialNormalizationView.getLSS(),
         )
-        pixelMasks = self._reconstructPixelMaskNames(self._reductionRequestView.getPixelMasks())
-        timestamp = self.request(path="reduction/getUniqueTimestamp").data
 
-        request_ = ReductionRequest(
-            runNumber=str(self._artificialNormalizationView.fieldRunNumber.text()),
-            useLiteMode=self._reductionRequestView.liteModeToggle.getState(),
-            timestamp=timestamp,
-            continueFlags=self.continueAnywayFlags,
-            pixelMasks=pixelMasks,
-            keepUnfocused=self._reductionRequestView.retainUnfocusedDataCheckbox.isChecked(),
-            convertUnitsTo=self._reductionRequestView.convertUnitsDropdown.currentText(),
-            artificialNormalizationIngredients=artificialNormIngredients,
-        )
+        # Here we use the standardized `_createReductionRequest` method.
+        # We do NOT set a new timestamp,
+        #   nor do we re-initialize any other values "by hand" that may have nothing to do
+        #   with this artificial normalization step.
+        request_ = self._createReductionRequest(
+            runNumber=self._artificialNormalizationView.fieldRunNumber.text(),
+            artificialNormalizationIngredients=artificialNormIngredients
+        ) 
 
         response = self.request(path="reduction/", payload=request_)
         if response.code == ResponseCode.OK:

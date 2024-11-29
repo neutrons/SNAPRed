@@ -46,15 +46,16 @@ class DiffCalRequestView(BackendRequestView):
         self.skipPixelCalToggle = self._labeledToggle("Skip Pixel Calibration", False)
 
         # add all widgets to layout
-        self.layout.addWidget(self.runNumberField, 0, 0)
-        self.layout.addWidget(self.litemodeToggle, 0, 1)
-        self.layout.addWidget(self.skipPixelCalToggle, 0, 2)
-        self.layout.addWidget(self.fieldConvergenceThreshold, 1, 0)
-        self.layout.addWidget(self.fieldNBinsAcrossPeakWidth, 1, 1)
-        self.layout.addWidget(self.removeBackgroundToggle, 1, 2)
-        self.layout.addWidget(self.sampleDropdown, 2, 0)
-        self.layout.addWidget(self.groupingFileDropdown, 2, 1)
-        self.layout.addWidget(self.peakFunctionDropdown, 2, 2)
+        layout_ = self.layout()
+        layout_.addWidget(self.runNumberField, 0, 0)
+        layout_.addWidget(self.litemodeToggle, 0, 1)
+        layout_.addWidget(self.skipPixelCalToggle, 0, 2)
+        layout_.addWidget(self.fieldConvergenceThreshold, 1, 0)
+        layout_.addWidget(self.fieldNBinsAcrossPeakWidth, 1, 1)
+        layout_.addWidget(self.removeBackgroundToggle, 1, 2)
+        layout_.addWidget(self.sampleDropdown, 2, 0)
+        layout_.addWidget(self.groupingFileDropdown, 2, 1)
+        layout_.addWidget(self.peakFunctionDropdown, 2, 2)
 
     def populateGroupingDropdown(self, groups):
         self.groupingFileDropdown.setItems(groups)

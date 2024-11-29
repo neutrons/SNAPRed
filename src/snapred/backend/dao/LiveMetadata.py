@@ -27,9 +27,9 @@ class LiveMetadata(BaseModel):
     detectorState: DetectorState
  
     protonCharge: float
- 
+    
     def hasActiveRun(self):
-        return int(runNumber) != INACTIVE_RUN
+        return int(self.runNumber) != LiveMetadata.INACTIVE_RUN
 
     def beamState(self):
         return self.protonCharge > 0.0

@@ -31,11 +31,12 @@ class NormalizationRequestView(BackendRequestView):
         self.litemodeToggle.setEnabled(False)
 
         # add all widgets to layout
-        self.layout.addWidget(self.runNumberField, 0, 0)
-        self.layout.addWidget(self.litemodeToggle, 0, 1)
-        self.layout.addWidget(self.backgroundRunNumberField, 1, 0)
-        self.layout.addWidget(self.sampleDropdown, 2, 0)
-        self.layout.addWidget(self.groupingFileDropdown, 2, 1)
+        _layout = self.layout()
+        _layout.addWidget(self.runNumberField, 0, 0)
+        _layout.addWidget(self.litemodeToggle, 0, 1)
+        _layout.addWidget(self.backgroundRunNumberField, 1, 0)
+        _layout.addWidget(self.sampleDropdown, 2, 0)
+        _layout.addWidget(self.groupingFileDropdown, 2, 1)
 
     def populateGroupingDropdown(self, groups):
         self.groupingFileDropdown.setItems(groups)

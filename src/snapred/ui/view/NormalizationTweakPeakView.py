@@ -84,16 +84,17 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.recalculationButton.clicked.connect(self.emitValueChange)
 
         # add all elements to the grid layout
-        self.layout.addWidget(self.navigationBar, 0, 0)
-        self.layout.addWidget(self.canvas, 1, 0, 1, -1)
-        self.layout.addWidget(self.fieldRunNumber, 2, 0)
-        self.layout.addWidget(self.fieldBackgroundRunNumber, 2, 1)
-        self.layout.addLayout(peakControlLayout, 3, 0, 1, 2)
-        self.layout.addWidget(self.sampleDropdown, 4, 0)
-        self.layout.addWidget(self.groupingFileDropdown, 4, 1)
-        self.layout.addWidget(self.recalculationButton, 5, 0, 1, 2)
+        _layout = self.layout()
+        _layout.addWidget(self.navigationBar, 0, 0)
+        _layout.addWidget(self.canvas, 1, 0, 1, -1)
+        _layout.addWidget(self.fieldRunNumber, 2, 0)
+        _layout.addWidget(self.fieldBackgroundRunNumber, 2, 1)
+        _layout.addLayout(peakControlLayout, 3, 0, 1, 2)
+        _layout.addWidget(self.sampleDropdown, 4, 0)
+        _layout.addWidget(self.groupingFileDropdown, 4, 1)
+        _layout.addWidget(self.recalculationButton, 5, 0, 1, 2)
 
-        self.layout.setRowStretch(1, 10)
+        _layout.setRowStretch(1, 10)
 
         # store the initial layout without graphs
         self.initialLayoutHeight = self.size().height()

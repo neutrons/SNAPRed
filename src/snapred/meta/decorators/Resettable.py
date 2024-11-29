@@ -16,21 +16,25 @@ def Resettable(orig_cls):
             self._args = args
             self._kwargs = kwargs
             orig_cls.__new__ = orig_new
-            self.layout = QHBoxLayout()
-            self.layout.addWidget(orig_cls(*args, **kwargs))
+            
+            
+            # IMPORTANT: do not hide the "layout" method!
+            self._layout = QHBoxLayout()
+            self._layout.addWidget(orig_cls(*args, **kwargs))
+            
             orig_cls.__new__ = __new__
-            self.setLayout(self.layout)
+            self.setLayout(self._layout)
 
         def reset(self):
-            widget = self.layout.itemAt(0).widget()
-            self.layout.removeWidget(widget)
+            widget = self._layout.itemAt(0).widget()
+            self._layout.removeWidget(widget)
             widget.deleteLater()
             orig_cls.__new__ = orig_new
-            self.layout.addWidget(orig_cls(*self._args, **self._kwargs))
+            self._layout.addWidget(orig_cls(*self._args, **self._kwargs))
             orig_cls.__new__ = __new__
 
         def __getattr__(self, name):
-            return getattr(self.layout.itemAt(0).widget(), name)
+            return getattr(self._layout.itemAt(0).widget(), name)
 
     orig_cls.__new__ = __new__
     return orig_cls

@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from contextlib import contextmanager
 import datetime
 import glob
+import h5py
 import json
 import numpy as np
 import os
@@ -12,15 +13,14 @@ import time
 from errno import ENOENT as NOT_FOUND
 from functools import lru_cache
 from pathlib import Path
+from pydantic import validate_call, ValidationError
 from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional, Set, Tuple
-import h5py
 
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import ConfigService, PhysicalConstants
 from mantid.api import Run
 from mantid.simpleapi import GetIPTS, mtd
-from pydantic import validate_call, ValidationError
 
 from snapred.backend.dao import (
     GSASParameters,
@@ -306,8 +306,11 @@ class LocalDataService:
     @lru_cache
     @ExceptionHandler(StateValidationException)
     def generateStateId(self, runId: str) -> Tuple[str, DetectorState]:
-        detectorState = self.readDetectorState(runId)
-        SHA = self._stateIdFromDetectorState(detectorState)
+        if runId in ReservedRunNumber.values():
+            SHA = ObjectSHA(hex=ReservedStateId.forRun(runId))
+        else:
+            detectorState = self.readDetectorState(runId)
+            SHA = self._stateIdFromDetectorState(detectorState)
         return SHA.hex, detectorState
 
     def _stateIdFromDetectorState(self, detectorState: DetectorState) -> ObjectSHA:
@@ -317,9 +320,8 @@ class LocalDataService:
             WavelengthUserReq=detectorState.wav,
             Frequency=detectorState.freq,
             Pos=detectorState.guideStat,
-            
-            # TODO: these next could possibly be added:
-            #   but they're never supposed to change.
+            # TODO: these should probably be added:
+            #   if they change with the runId, there will be a potential hash collision.
             # det_lin1=detectorState.lin[0],
             # det_lin2=detectorState.lin[1],
         )
@@ -1315,7 +1317,7 @@ class LocalDataService:
                 OutputWorkspace=ws,
                 Instrument=instrument,
                 AccumulationMethod='Replace',
-                StartTime=(datetime.utcnow() + timedelta(seconds=-duration)).isoformat()
+                StartTime=(datetime.datetime.utcnow() + datetime.timedelta(seconds=-duration)).isoformat()
             )
             self.mantidsnapper.executeQueue()
         

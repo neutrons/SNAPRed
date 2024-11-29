@@ -99,18 +99,19 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.purgePeaksButton.clicked.connect(self.emitPurge)
 
         # add all elements to the grid layout
-        self.layout.addWidget(self.runNumberField, 0, 0)
-        self.layout.addWidget(self.litemodeToggle, 0, 1)
-        self.layout.addWidget(self.navigationBar, 1, 0)
-        self.layout.addWidget(self.canvas, 2, 0, 1, -1)
-        self.layout.addLayout(peakControlLayout, 3, 0, 1, 2)
-        self.layout.addWidget(self.sampleDropdown, 4, 0)
-        self.layout.addWidget(self.groupingFileDropdown, 4, 1)
-        self.layout.addWidget(self.peakFunctionDropdown, 4, 2)
-        self.layout.addWidget(self.purgePeaksButton, 4, 3)
-        self.layout.addWidget(self.recalculationButton, 5, 0, 1, 4)
+        _layout = self.layout()
+        _layout.addWidget(self.runNumberField, 0, 0)
+        _layout.addWidget(self.litemodeToggle, 0, 1)
+        _layout.addWidget(self.navigationBar, 1, 0)
+        _layout.addWidget(self.canvas, 2, 0, 1, -1)
+        _layout.addLayout(peakControlLayout, 3, 0, 1, 2)
+        _layout.addWidget(self.sampleDropdown, 4, 0)
+        _layout.addWidget(self.groupingFileDropdown, 4, 1)
+        _layout.addWidget(self.peakFunctionDropdown, 4, 2)
+        _layout.addWidget(self.purgePeaksButton, 4, 3)
+        _layout.addWidget(self.recalculationButton, 5, 0, 1, 4)
 
-        self.layout.setRowStretch(2, 10)
+        _layout.setRowStretch(2, 10)
 
         # store the initial layout without graphs
         self.initialLayoutHeight = self.size().height()
