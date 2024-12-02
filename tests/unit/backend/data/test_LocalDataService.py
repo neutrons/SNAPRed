@@ -34,6 +34,12 @@ from mantid.simpleapi import (
     SaveDiffCal,
     mtd,
 )
+from util.Config_helpers import Config_override
+from util.dao import DAOFactory
+from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
+from util.instrument_helpers import addInstrumentLogs, getInstrumentLogDescriptors
+from util.state_helpers import reduction_root_redirect, state_root_redirect
+
 from snapred.backend.dao import StateConfig
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.GroupPeakList import GroupPeakList
@@ -68,11 +74,6 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
 from snapred.meta.redantic import parse_file_as, write_model_pretty
-from util.Config_helpers import Config_override
-from util.dao import DAOFactory
-from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
-from util.instrument_helpers import addInstrumentLogs, getInstrumentLogDescriptors
-from util.state_helpers import reduction_root_redirect, state_root_redirect
 
 LocalDataServiceModule = importlib.import_module(LocalDataService.__module__)
 ThisService = "snapred.backend.data.LocalDataService."
@@ -1500,7 +1501,7 @@ def test_readWriteReductionRecord():
     assert actualRecord == testRecord
 
 
-@pytest.fixture()
+@pytest.fixture
 def readSyntheticReductionRecord():
     # Read a `ReductionRecord` from the specified file path:
     #   * update the record's timestamp and workspace-name list using the specified value.
@@ -1554,7 +1555,7 @@ def readSyntheticReductionRecord():
     pass
 
 
-@pytest.fixture()
+@pytest.fixture
 def createReductionWorkspaces(cleanup_workspace_at_exit):
     # Create sample workspaces from a list of names:
     #   * these workspaces are automatically deleted at teardown.
@@ -2007,7 +2008,7 @@ def test_readDetectorState_bad_logs():
         localDataService.readDetectorState("123")
 
 
-@pytest.fixture()
+@pytest.fixture
 def instrumentWorkspace(cleanup_workspace_at_exit):
     useLiteMode = True
     wsName = mtd.unique_hidden_name()

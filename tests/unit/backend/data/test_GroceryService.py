@@ -9,7 +9,6 @@ from random import randint
 from unittest import mock
 
 import pytest
-import snapred.backend.recipe.algorithm  # noqa: F401
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
@@ -26,6 +25,13 @@ from mantid.simpleapi import (
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
+from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
+from util.instrument_helpers import mapFromSampleLogs
+from util.kernel_helpers import tupleFromQuat, tupleFromV3D
+from util.state_helpers import reduction_root_redirect, state_root_redirect
+from util.WhateversInTheFridge import WhateversInTheFridge
+
+import snapred.backend.recipe.algorithm  # noqa: F401
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, DiffcalStateMetadata, WorkspaceMetadata
@@ -35,11 +41,6 @@ from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType
-from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
-from util.instrument_helpers import mapFromSampleLogs
-from util.kernel_helpers import tupleFromQuat, tupleFromV3D
-from util.state_helpers import reduction_root_redirect, state_root_redirect
-from util.WhateversInTheFridge import WhateversInTheFridge
 
 ThisService = "snapred.backend.data.GroceryService."
 

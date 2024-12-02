@@ -5,13 +5,13 @@ from mantid.simpleapi import (
     mtd,
 )
 from mantid.testing import assert_almost_equal
+from util.dao import DAOFactory
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.FocusSpectraAlgorithm import (
     FocusSpectraAlgorithm as ThisAlgo,  # noqa: E402
 )
 from snapred.meta.Config import Resource
-from util.dao import DAOFactory
 
 
 class TestFocusSpectra(unittest.TestCase):

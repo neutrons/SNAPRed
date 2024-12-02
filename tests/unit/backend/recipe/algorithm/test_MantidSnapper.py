@@ -2,6 +2,7 @@ import unittest
 from unittest import mock
 
 from mantid.kernel import Direction
+
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Callback import callback
 

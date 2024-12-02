@@ -77,7 +77,7 @@ class ApproxAnyNested:
         return status
 
 
-@pytest.fixture()
+@pytest.fixture
 def goldenDataFilePath(request) -> Path:
     # Generate a golden-data file path from test marker information:
     # * as "<golden_data_root> / <short_name>_<golden_data_date>.json".
@@ -93,7 +93,7 @@ def goldenDataFilePath(request) -> Path:
     return Path(basePath) / f"{shortName}_{goldenDataDate}.json"
 
 
-@pytest.fixture()
+@pytest.fixture
 def goldenData(goldenDataFilePath):
     # Obtain the golden-data corresponding to test marker information:
     # * returns a namedtuple: (<data: Dict[int, Any]>, <key: int>, <filePath: Path>)

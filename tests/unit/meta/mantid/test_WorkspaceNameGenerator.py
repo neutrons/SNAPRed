@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pytest
 from pydantic import BaseModel, ConfigDict
+
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     VERSION_DEFAULT,

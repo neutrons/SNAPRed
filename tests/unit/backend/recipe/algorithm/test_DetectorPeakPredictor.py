@@ -14,6 +14,7 @@ with mock.patch.dict(
     },
 ):
     from mantid.simpleapi import DeleteWorkspace, mtd
+
     from snapred.backend.dao.GroupPeakList import GroupPeakList
     from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
     from snapred.meta.Config import Resource

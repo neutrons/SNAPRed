@@ -7,11 +7,12 @@ from mantid.simpleapi import (
     LoadNexusProcessed,
     mtd,
 )
+from util.SculleryBoy import SculleryBoy
+
 from snapred.backend.dao.request import FarmFreshIngredients
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo as Algo
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import list_to_raw
-from util.SculleryBoy import SculleryBoy
 
 
 class TestSmoothDataAlgo(unittest.TestCase):

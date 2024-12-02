@@ -5,9 +5,10 @@ from mantid.simpleapi import (
     ConvertUnits,
     mtd,
 )
+from util.diffraction_calibration_synthetic_data import SyntheticData
+
 from snapred.backend.dao.ingredients.ArtificialNormalizationIngredients import ArtificialNormalizationIngredients
 from snapred.backend.recipe.algorithm.CreateArtificialNormalizationAlgo import CreateArtificialNormalizationAlgo as Algo
-from util.diffraction_calibration_synthetic_data import SyntheticData
 
 
 class TestCreateArtificialNormalizationAlgo(unittest.TestCase):

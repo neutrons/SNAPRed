@@ -6,6 +6,8 @@ from typing import Any, Dict, Optional, Tuple
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from pydantic import validate_call
+from util.dao import DAOFactory
+
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
@@ -22,7 +24,6 @@ from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from util.dao import DAOFactory
 
 logger = snapredLogger.getLogger(__name__)
 

@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 from unittest import mock
 
 import pytest
+
 import snapred.meta.Config as Config_module
 from snapred.meta.Config import Config, Resource, _find_root_dir, fromMantidLoggingLevel
 

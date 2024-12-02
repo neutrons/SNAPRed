@@ -12,12 +12,12 @@ import pytest
 # mantid imports
 from mantid.simpleapi import AddSampleLogMultiple, CreateSingleValuedWorkspace, mtd
 from pydantic import BaseModel, ConfigDict, ValidationError
+from util.helpers import deleteWorkspaceNoThrow
 
 # the algorithm to test
 from snapred.backend.dao.WorkspaceMetadata import UNSET
 from snapred.backend.recipe.ReadWorkspaceMetadata import ReadWorkspaceMetadata
 from snapred.meta.Config import Config
-from util.helpers import deleteWorkspaceNoThrow
 
 thisRecipe = "snapred.backend.recipe.ReadWorkspaceMetadata."
 TAG_PREFIX = Config["metadata.tagPrefix"]

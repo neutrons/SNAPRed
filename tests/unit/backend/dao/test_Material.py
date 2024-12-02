@@ -3,6 +3,7 @@ import unittest
 
 import pytest
 from mantid.simpleapi import CreateWorkspace, DeleteWorkspace, SetSample
+
 from snapred.backend.dao.state.CalibrantSample.Material import Material
 
 

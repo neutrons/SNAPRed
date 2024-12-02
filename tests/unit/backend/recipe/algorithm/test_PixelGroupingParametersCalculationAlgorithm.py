@@ -17,6 +17,12 @@ from mantid.simpleapi import (
     RenameWorkspace,
     mtd,
 )
+from util.dao import DAOFactory
+from util.helpers import (
+    createCompatibleMask,
+    maskComponentByName,
+)
+
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.data.GroceryService import GroceryService
@@ -25,11 +31,6 @@ from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorith
 )
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import write_model_list_pretty
-from util.dao import DAOFactory
-from util.helpers import (
-    createCompatibleMask,
-    maskComponentByName,
-)
 
 GENERATE_GOLDEN_DATA = False
 GOLDEN_DATA_DATE = "2024-05-20"  # date.today().isoformat()

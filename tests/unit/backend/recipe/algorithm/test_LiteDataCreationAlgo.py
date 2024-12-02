@@ -3,9 +3,10 @@ import unittest.mock as mock
 
 import pytest
 from mantid.simpleapi import DeleteWorkspace, mtd
+from util.dao import DAOFactory
+
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.meta.Config import Resource
-from util.dao import DAOFactory
 
 HAVE_MOUNT_SNAP = os.path.exists("/SNS/SNAP/")
 
