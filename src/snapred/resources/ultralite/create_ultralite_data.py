@@ -1,6 +1,7 @@
 # import mantid algorithms, numpy and matplotlib
 
 from mantid.simpleapi import *
+
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
