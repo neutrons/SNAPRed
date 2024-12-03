@@ -86,10 +86,10 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         # the input data converted to d-spacing
         self.wsDSP = wng.diffCalInputDSP().runNumber(self.runNumber).build()
         self.convertUnitsAndRebin(self.wsTOF, self.wsDSP)
-        self.mantidSnapper.MakeDirtyDish(
+        self.mantidSnapper.CloneWorkspace(
             "Creating copy of initial d-spacing data",
             InputWorkspace=self.wsDSP,
-            OutputWorkspace=self.wsDSP + "_startOfPixelDiffCal",
+            OutputWorkspace=self.wsDSP + "_beforeCrossCor",
         )
 
         if self.removeBackground:
@@ -332,6 +332,10 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             logger.info(f"... converging to answer; step {self._counts}, {self.medianOffsets[-1]} > {self.threshold}")
             self.queueAlgos()
         logger.info(f"Pixel calibration converged.  Offsets: {self.medianOffsets}")
+
+        # create for inspection
+        self.convertUnitsAndRebin(self.wsTOF, f"{self.wsDSP}_afterCrossCor")
+        self.mantidSnapper.executeQueue()
 
         return PixelDiffCalServing(
             result=True,
