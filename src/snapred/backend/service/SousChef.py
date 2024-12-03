@@ -104,7 +104,7 @@ class SousChef(Service):
             ingredients.useLiteMode,
             groupingSchema,
             ingredients.calibrantSamplePath,
-            pixelMask
+            pixelMask,
         )
         if key not in self._pixelGroupCache:
             focusGroup = self.prepFocusGroup(ingredients)
@@ -116,10 +116,7 @@ class SousChef(Service):
             self.groceryClerk.name("groupingWorkspace").fromRun(ingredients.runNumber).grouping(
                 focusGroup.name
             ).useLiteMode(ingredients.useLiteMode).add()
-            groceries = self.groceryService.fetchGroceryDict(
-                self.groceryClerk.buildDict(),
-                maskWorkspace=pixelMask
-            )
+            groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict(), maskWorkspace=pixelMask)
             data = PixelGroupingParametersCalculationRecipe().executeRecipe(pixelIngredients, groceries)
 
             self._pixelGroupCache[key] = PixelGroup(
@@ -131,9 +128,7 @@ class SousChef(Service):
         return deepcopy(self._pixelGroupCache[key])
 
     def prepManyPixelGroups(
-        self,
-        ingredients: FarmFreshIngredients,
-        pixelMask: Optional[WorkspaceName] = None
+        self, ingredients: FarmFreshIngredients, pixelMask: Optional[WorkspaceName] = None
     ) -> List[PixelGroup]:
         pixelGroups = []
         ingredients_ = ingredients.model_copy()
@@ -267,9 +262,7 @@ class SousChef(Service):
         return ingredients, smoothingParameter, calibrantSamplePath
 
     def prepReductionIngredients(
-        self,
-        ingredients: FarmFreshIngredients,
-        combinedPixelMask: Optional[WorkspaceName] = None
+        self, ingredients: FarmFreshIngredients, combinedPixelMask: Optional[WorkspaceName] = None
     ) -> ReductionIngredients:
         ingredients_ = ingredients.model_copy()
         # some of the reduction ingredients MUST match those used in the calibration/normalization processes

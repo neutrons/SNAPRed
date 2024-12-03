@@ -8,6 +8,7 @@ from mantid.simpleapi import (
     mtd,
 )
 from qtpy.QtWidgets import QMessageBox
+
 from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEnum
 from snapred.meta.pointer import create_pointer
 from snapred.ui.workflow.DiffCalWorkflow import DiffCalWorkflow

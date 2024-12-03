@@ -180,7 +180,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
             self.ingredients.calibrantSamplePath,
-            None
+            None,
         )
 
         # ensure there is no cached value
@@ -213,14 +213,13 @@ class TestSousChef(unittest.TestCase):
 
     @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
     def test_prepPixelGroup_cache(self, PixelGroupingParametersCalculationRecipe):
-
         # ensure the cache is prepared
         key = (
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
             self.ingredients.calibrantSamplePath,
-            self.pixelMask
+            self.pixelMask,
         )
         self.instance._pixelGroupCache[key] = mock.sentinel.pixel
 
@@ -230,14 +229,13 @@ class TestSousChef(unittest.TestCase):
         assert res == self.instance._pixelGroupCache[key]
 
     def test_prepPixelGroup_cache_not_altered(self):
-
         # ensure the cache is prepared
         key = (
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
             self.ingredients.calibrantSamplePath,
-            None
+            None,
         )
         self.instance._pixelGroupCache[key] = PixelGroup.construct(timeOfFlight={"minimum": 0})
 

@@ -1,6 +1,8 @@
-import numpy as np
+from unittest import mock
 
-from mantid.simpleapi import EditInstrumentGeometry
+import numpy as np
+import pytest
+from util.SculleryBoy import SculleryBoy
 
 from snapred.backend.dao.ingredients import EffectiveInstrumentIngredients as Ingredients
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -10,10 +12,6 @@ from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.EffectiveInstrumentRecipe import EffectiveInstrumentRecipe
 from snapred.meta.Config import Resource
 
-from util.SculleryBoy import SculleryBoy
-
-from unittest import mock
-import pytest
 
 class TestEffectiveInstrumentRecipe:
     fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")

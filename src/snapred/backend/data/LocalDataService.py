@@ -668,7 +668,7 @@ class LocalDataService:
         # 2) For SNAPRed internal use:
         #        if `reduction.output.useEffectiveInstrument` is set to false in "application.yml",
         #    output workspaces will be saved without converting their instruments to the reduced form.
-        #    Both of these alternatives are retained to allow some flexibility in what specifically 
+        #    Both of these alternatives are retained to allow some flexibility in what specifically
         #    is saved with the reduction data.
         #
 

@@ -6,14 +6,13 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
+from util.helpers import createCompatibleMask
+from util.SculleryBoy import SculleryBoy
 
 from snapred.backend.dao.ingredients import PreprocessReductionIngredients as Ingredients
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.meta.Config import Resource
-
-from util.helpers import createCompatibleMask
-from util.SculleryBoy import SculleryBoy
 
 
 class PreprocessReductionRecipeTest(unittest.TestCase):

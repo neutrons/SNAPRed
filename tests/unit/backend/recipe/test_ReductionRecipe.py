@@ -3,6 +3,8 @@ from unittest import TestCase, mock
 
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
+from util.Config_helpers import Config_override
+from util.SculleryBoy import SculleryBoy
 
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.ReductionRecipe import (
@@ -15,8 +17,6 @@ from snapred.backend.recipe.ReductionRecipe import (
 )
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
-from util.SculleryBoy import SculleryBoy
-from util.Config_helpers import Config_override
 
 class ReductionRecipeTest(TestCase):
     sculleryBoy = SculleryBoy()
@@ -478,7 +478,6 @@ class ReductionRecipeTest(TestCase):
         assert recipe._deleteWorkspace.call_count == len(recipe._prepGroupingWorkspaces.return_value)
         assert result["outputs"][0] == "sample_grouped"
 
-
     @mock.patch("mantid.simpleapi.mtd", create=True)
     def test_execute_useEffectiveInstrument(self, mockMtd):
         with Config_override("reduction.output.useEffectiveInstrument", True):
@@ -491,7 +490,9 @@ class ReductionRecipeTest(TestCase):
             mockGroupWorkspace.readY.return_value = [0] * 10
             mockMaskworkspace.readY.return_value = [0] * 10
 
-            mockMtd.__getitem__.side_effect = lambda ws_name: mockMaskworkspace if ws_name == "mask" else mockGroupWorkspace
+            mockMtd.__getitem__.side_effect = (
+                lambda ws_name: mockMaskworkspace if ws_name == "mask" else mockGroupWorkspace
+            )
 
             recipe = ReductionRecipe()
             recipe.mantidSnapper = mockMantidSnapper
