@@ -129,6 +129,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         # Populate the dropdown with the mask names.
         self._reductionRequestView.pixelMaskDropdown.setItems(list(self._compatibleMasks.keys()))
+        return SNAPResponse(code=ResponseCode.OK)
 
     def _validateRunNumbers(self, runNumbers: List[str]):
         # For now, all run numbers in a reduction batch must be from the same instrument state.

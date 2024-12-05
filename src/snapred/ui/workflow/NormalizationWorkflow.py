@@ -11,7 +11,7 @@ from snapred.backend.dao.request import (
     NormalizationRequest,
 )
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
-from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.EntryExitLogger import EntryExitLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
@@ -117,6 +117,7 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         # populate and reenable the drop down
         self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        return SNAPResponse(code=ResponseCode.OK)
 
     @EntryExitLogger(logger=logger)
     @ExceptionToErrLog
@@ -136,6 +137,7 @@ class NormalizationWorkflow(WorkflowImplementer):
     def handleSwitchLiteNative(self, useLiteMode):
         self.focusGroups = self.groupingMap.getMap(useLiteMode)
         self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        return SNAPResponse(code=ResponseCode.OK)
 
     @EntryExitLogger(logger=logger)
     @Slot(WorkflowPresenter, result=SNAPResponse)
@@ -337,3 +339,5 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.prevSmoothingParameter = smoothingValue
         self.prevXtalDMin = xtalDMin
         self.prevXtalDMax = xtalDMax
+
+        return SNAPResponse(code=ResponseCode.OK)

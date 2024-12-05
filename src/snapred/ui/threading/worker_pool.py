@@ -25,8 +25,10 @@ class Worker(QObject):
     def run(self):
         """Long-running task."""
         try:
-            if self.args is not None:
+            if isinstance(self.args, tuple):
                 results = self.target(*self.args)
+            elif self.args is not None:
+                results = self.target(self.args)
             else:
                 results = self.target()
             # results.code = 200 # set to 200 for testing

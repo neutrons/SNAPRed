@@ -419,7 +419,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             msg = """
             Too Few Peaks
             Purging would result in fewer than the required 2 peaks for calibration.
-            The current set of peaks will be retained.,
+            The current set of peaks will be retained.
             """
             raise RuntimeError(msg)
         else:
@@ -436,6 +436,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             self.focusedWorkspace,
             self.ingredients.groupedPeakLists,
             self.fitPeaksDiagnostic,
+            self.residualWorkspace,
         )
         return SNAPResponse(code=ResponseCode.OK)
 
@@ -474,7 +475,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             maxChiSq=self.maxChiSq,
         )
 
-        response = self.request(path="calibration/assessment", payload=payload.json())
+        response = self.request(path="calibration/assessment", payload=payload)
         assessmentResponse = response.data
         self.calibrationRecord = assessmentResponse.record
 
