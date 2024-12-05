@@ -49,12 +49,21 @@ def test_purge_bad_peaks(workflowRequest, qtbot):  # noqa: ARG001
     )
     diffcalWorkflow.fitPeaksDiagnostic = diagWS
     diffcalWorkflow.peakFunction = "gaussian"
+    diffcalWorkflow.residualWorkspace = ws1
     diffcalWorkflow.focusedWorkspace = ws1
     diffcalWorkflow._renewFitPeaks = MagicMock()
     diffcalWorkflow._tweakPeakView.updateGraphs = MagicMock()
 
     diffcalWorkflow._purgeBadPeaks(maxChiSq)
     assert diffcalWorkflow.ingredients.groupedPeakLists[0].peaks == good_peaks
+
+    diffcalWorkflow._renewFitPeaks.assert_called_once_with(diffcalWorkflow.peakFunction)
+    diffcalWorkflow._tweakPeakView.updateGraphs.assert_called_once_with(
+        diffcalWorkflow.focusedWorkspace,
+        diffcalWorkflow.ingredients.groupedPeakLists,
+        diffcalWorkflow.fitPeaksDiagnostic,
+        diffcalWorkflow.residualWorkspace,
+    )
 
 
 @patch("snapred.ui.workflow.DiffCalWorkflow.WorkflowImplementer.request")
@@ -100,6 +109,7 @@ def test_purge_bad_peaks_two_wkspindex(workflowRequest, qtbot):  # noqa: ARG001
     )
     diffcalWorkflow.fitPeaksDiagnostic = diagWS
     diffcalWorkflow.peakFunction = "gaussian"
+    diffcalWorkflow.residualWorkspace = ws1
     diffcalWorkflow.focusedWorkspace = ws1
     diffcalWorkflow._renewFitPeaks = MagicMock()
     diffcalWorkflow._tweakPeakView.updateGraphs = MagicMock()
@@ -113,6 +123,7 @@ def test_purge_bad_peaks_two_wkspindex(workflowRequest, qtbot):  # noqa: ARG001
         diffcalWorkflow.focusedWorkspace,
         diffcalWorkflow.ingredients.groupedPeakLists,
         diffcalWorkflow.fitPeaksDiagnostic,
+        diffcalWorkflow.residualWorkspace,
     )
 
 

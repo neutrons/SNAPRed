@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import Any, Callable, List, Tuple
 
 from qtpy.QtCore import QObject, Signal, Slot
 from qtpy.QtWidgets import QMainWindow, QMessageBox
@@ -167,7 +167,18 @@ class WorkflowPresenter(QObject):
         continueOnSuccess = lambda success: self.advanceWorkflow() if success else None  # noqa E731
         self.handleAction(verifyAndContinue, None, continueOnSuccess)
 
-    def handleAction(self, action, args, onSuccess):
+    def handleAction(
+        self,
+        action: Callable[[Any], Any],
+        args: Tuple[Any, ...] | Any | None,
+        onSuccess: Callable[[None], None],
+    ):
+        """
+        Send front-end task to a separate worker to complete.
+        @param action : a Callable to be called on worker
+        @param args : the argument action is to be called with
+        @param onSuccess : another Callable, called on completion, must take no parameters
+        """
         # do action
         self.worker = self.worker_pool.createWorker(target=action, args=args)
         self.worker.finished.connect(lambda: self._enableButtons(True))  # re-enable panel buttons on finish
