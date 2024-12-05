@@ -1,5 +1,8 @@
 from mantid.simpleapi import mtd
 from qtpy.QtCore import Slot
+from qtpy.QtWidgets import (
+    QMessageBox,
+)
 
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
@@ -18,7 +21,7 @@ from snapred.backend.dao.request import (
     HasStateRequest,
     SimpleDiffCalRequest,
 )
-from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
+from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
@@ -133,10 +136,6 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._continueAnywayHandler(continueInfo)
         self._tweakPeakView.updateContinueAnyway(True)
 
-    def __setInteraction(self, state: bool):
-        self._requestView.litemodeToggle.setEnabled(state)
-        self._requestView.groupingFileDropdown.setEnabled(state)
-
     @ExceptionToErrLog
     @Slot()
     def _populateGroupingDropdown(self):
@@ -144,34 +143,34 @@ class DiffCalWorkflow(WorkflowImplementer):
         runNumber = self._requestView.runNumberField.text()
         useLiteMode = self._requestView.litemodeToggle.field.getState()
 
-        self.__setInteraction(False)
-        self.workflow.presenter.handleAction(
-            self.handleDropdown,
-            args=(runNumber, useLiteMode),
-            onSuccess=lambda: self.__setInteraction(True),
-        )
+        self._requestView.groupingFileDropdown.setEnabled(False)
+        self._requestView.litemodeToggle.setEnabled(False)
+        # TODO: Use threads, account for fail cases
+        try:
+            # check if the state exists -- if so load its grouping map
+            payload = HasStateRequest(
+                runId=runNumber,
+                useLiteMode=useLiteMode,
+            )
+            hasState = self.request(path="calibration/hasState", payload=payload.json()).data
+            if hasState:
+                self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
+            else:
+                self.groupingMap = self.defaultGroupingMap
+            self.focusGroups = self.groupingMap.getMap(useLiteMode)
 
-    def handleDropdown(self, runNumber, useLiteMode):
-        # check if the state exists -- if so load its grouping map
-        payload = HasStateRequest(
-            runId=runNumber,
-            useLiteMode=useLiteMode,
-        )
-        hasState = self.request(path="calibration/hasState", payload=payload.json()).data
-        if hasState:
-            self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
-        else:
-            self.groupingMap = self.defaultGroupingMap
-        self.focusGroups = self.groupingMap.getMap(useLiteMode)
+            # populate and re-enable the drop down
+            self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        except Exception as e:  # noqa BLE001
+            print(e)
 
-        # populate and re-enable the drop down
-        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
-        return SNAPResponse(code=ResponseCode.OK)
+        self._requestView.groupingFileDropdown.setEnabled(True)
+        self._requestView.litemodeToggle.setEnabled(True)
 
     @ExceptionToErrLog
     @Slot()
     def _switchLiteNativeGroups(self):
-        # determine resolution mode
+        # when the run number is updated, freeze the drop down to populate it
         useLiteMode = self._requestView.litemodeToggle.field.getState()
         self._tweakPeakView.litemodeToggle.field.setState(useLiteMode)
 
@@ -181,17 +180,14 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._requestView.skipPixelCalToggle.field.setState(not useLiteMode)
 
         self._requestView.groupingFileDropdown.setEnabled(False)
+        # TODO: Use threads, account for fail cases
+        try:
+            self.focusGroups = self.groupingMap.getMap(useLiteMode)
+            self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        except Exception as e:  # noqa BLE001
+            print(e)
 
-        self.workflow.presenter.handleAction(
-            self.handleSwitchLiteNative,
-            args=(useLiteMode,),
-            onSuccess=lambda: self._requestView.groupingFileDropdown.setEnabled(True),
-        )
-
-    def handleSwitchLiteNative(self, useLiteMode):
-        self.focusGroups = self.groupingMap.getMap(useLiteMode)
-        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
-        return SNAPResponse(code=ResponseCode.OK)
+        self._requestView.groupingFileDropdown.setEnabled(True)
 
     @Slot(WorkflowPresenter, result=SNAPResponse)
     def _specifyRun(self, workflowPresenter):
@@ -264,61 +260,59 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     @ExceptionToErrLog
     @Slot(int, float, float, SymmetricPeakEnum, Pair, float)
-    def onValueChange(self, *args):
+    def onValueChange(self, groupingIndex, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq):
         self._tweakPeakView.disableRecalculateButton()
-        self.workflow.presenter.handleAction(
-            self.renewWhenRecalculate,
-            args=args,
-            onSuccess=self._tweakPeakView.enableRecalculateButton,
-        )
+        # TODO: This is a temporary solution,
+        # this should have never been setup to all run on the same thread.
+        # It assumed an exception would never be tossed and thus
+        # would never enable the recalc button again if one did
+        try:
+            self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
 
-    def renewWhenRecalculate(self, groupingIndex, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq):
-        self._tweakPeakView.disableRecalculateButton()
+            # if peaks will change, redo only the smoothing
+            if (
+                xtalDMin != self.prevXtalDMin
+                or xtalDMax != self.prevXtalDMax
+                or peakFunction != self.peakFunction
+                or fwhm != self.prevFWHM
+                or maxChiSq != self.maxChiSq
+                or self.peaksWerePurged
+            ):
+                self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+                self._renewFitPeaks(peakFunction)
+                self._calculateResidual()
+                self.peaksWerePurged = False
 
-        self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
+            # if the grouping file changes, load new grouping and refocus
+            if groupingIndex != self.prevGroupingIndex:
+                self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+                self._renewFocus(groupingIndex)
+                self._renewFitPeaks(peakFunction)
+                self._calculateResidual()
 
-        # if peaks will change, redo only the smoothing
-        if (
-            xtalDMin != self.prevXtalDMin
-            or xtalDMax != self.prevXtalDMax
-            or peakFunction != self.peakFunction
-            or fwhm != self.prevFWHM
-            or maxChiSq != self.maxChiSq
-            or self.peaksWerePurged
-        ):
-            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
-            self._renewFitPeaks(peakFunction)
-            self._calculateResidual()
+            # NOTE it was determined pixel calibration NOT need to be re-calculated when peak params change.
+            # However, if this requirement changes, the if at L282 should be combined with the if at 269,
+            # and the order should be _renewIngredients --> _renewPixelCal --> _renewFocus --> _renewFitPeaks
 
-        # if the grouping file changes, load new grouping and refocus
-        if groupingIndex != self.prevGroupingIndex:
-            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
-            self._renewFocus(groupingIndex)
-            self._renewFitPeaks(peakFunction)
-            self._calculateResidual()
+            self._tweakPeakView.updateGraphs(
+                self.focusedWorkspace,
+                self.ingredients.groupedPeakLists,
+                self.fitPeaksDiagnostic,
+                self.residualWorkspace,
+            )
 
-        self.peaksWerePurged = False
+            # update the values for next call to this method
+            self.prevXtalDMin = xtalDMin
+            self.prevXtalDMax = xtalDMax
+            self.prevFWHM = fwhm
+            self.peakFunction = peakFunction
+            self.prevGroupingIndex = groupingIndex
+            self.maxChiSq = maxChiSq
+        except Exception as e:  # noqa BLE001
+            print(e)
 
-        # NOTE it was determined pixel calibration NOT need to be re-calculated when peak params change.
-        # However, if this requirement changes, the if at L282 should be combined with the if at 269,
-        # and the order should be _renewIngredients --> _renewPixelCal --> _renewFocus --> _renewFitPeaks
-
-        self._tweakPeakView.updateGraphs(
-            self.focusedWorkspace,
-            self.ingredients.groupedPeakLists,
-            self.fitPeaksDiagnostic,
-            self.residualWorkspace,
-        )
-
-        # update the values for next call to this method
-        self.prevXtalDMin = xtalDMin
-        self.prevXtalDMax = xtalDMax
-        self.prevFWHM = fwhm
-        self.peakFunction = peakFunction
-        self.prevGroupingIndex = groupingIndex
-        self.maxChiSq = maxChiSq
-
-        return SNAPResponse(code=ResponseCode.OK)
+        # renable button when graph is updated
+        self._tweakPeakView.enableRecalculateButton()
 
     def _createDiffCalRequest(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq) -> DiffractionCalibrationRequest:
         """
@@ -395,50 +389,49 @@ class DiffCalWorkflow(WorkflowImplementer):
     @Slot(float)
     def purgeBadPeaks(self, maxChiSq):
         self._tweakPeakView.disableRecalculateButton()
-        self.workflow.presenter.handleAction(
-            self._purgeBadPeaks,
-            args=(maxChiSq,),
-            onSuccess=self._tweakPeakView.enableRecalculateButton,
-        )
+        try:
+            # update the max chi sq
+            self.maxChiSq = maxChiSq
+            allPeaks = self.ingredients.groupedPeakLists
+            param_table = mtd[self.fitPeaksDiagnostic].getItem(FitOutputEnum.Parameters.value).toDict()
+            index = param_table["wsindex"]
+            allChi2 = param_table["chi2"]
+            goodPeaks = []
+            for wkspIndex, groupPeaks in enumerate(allPeaks):
+                peaks = groupPeaks.peaks
+                # collect the fit chi-sq parameters for this spectrum, and the fits
+                chi2 = [x2 for i, x2 in zip(index, allChi2) if i == wkspIndex]
+                goodPeaks.append([peak for x2, peak in zip(chi2, peaks) if x2 < maxChiSq])
+            too_fews = [goodPeak for goodPeak in goodPeaks if len(goodPeak) < 2]
+            if too_fews != []:
+                QMessageBox.critical(
+                    self._tweakPeakView,
+                    "Too Few Peaks",
+                    "Purging would result in fewer than the required 2 peaks for calibration.  "
+                    + "The current set of peaks will be retained.",
+                    QMessageBox.Ok,
+                )
+            else:
+                for wkspIndex, groupPeaks in enumerate(allPeaks):
+                    groupPeaks.peaks = goodPeaks[wkspIndex]
+                self.peaksWerePurged = True
 
-    def _purgeBadPeaks(self, maxChiSq):
-        # update the max chi sq
-        self.maxChiSq = maxChiSq
-        allPeaks = self.ingredients.groupedPeakLists
-        param_table = mtd[self.fitPeaksDiagnostic].getItem(FitOutputEnum.Parameters.value).toDict()
-        index = param_table["wsindex"]
-        allChi2 = param_table["chi2"]
-        goodPeaks = []
-        for wkspIndex, groupPeaks in enumerate(allPeaks):
-            peaks = groupPeaks.peaks
-            # collect the fit chi-sq parameters for this spectrum, and the fits
-            chi2 = [x2 for i, x2 in zip(index, allChi2) if i == wkspIndex]
-            goodPeaks.append([peak for x2, peak in zip(chi2, peaks) if x2 < maxChiSq])
-        too_fews = [goodPeak for goodPeak in goodPeaks if len(goodPeak) < 2]
-        if too_fews != []:
-            msg = """
-            Too Few Peaks
-            Purging would result in fewer than the required 2 peaks for calibration.
-            The current set of peaks will be retained.
-            """
-            raise RuntimeError(msg)
-        else:
-            for wkspIndex, originalGroupPeaks in enumerate(allPeaks):
-                originalGroupPeaks.peaks = goodPeaks[wkspIndex]
-            self.ingredients.groupedPeakLists = allPeaks
-            self.peaksWerePurged = True
+            # renew the fits to the peaks
+            self._renewFitPeaks(self.peakFunction)
 
-        # renew the fits to the peaks
-        self._renewFitPeaks(self.peakFunction)
+            # update graph with reduced peak list
+            self._tweakPeakView.updateGraphs(
+                self.focusedWorkspace,
+                self.ingredients.groupedPeakLists,
+                self.fitPeaksDiagnostic,
+            )
 
-        # update graph with reduced peak list
-        self._tweakPeakView.updateGraphs(
-            self.focusedWorkspace,
-            self.ingredients.groupedPeakLists,
-            self.fitPeaksDiagnostic,
-            self.residualWorkspace,
-        )
-        return SNAPResponse(code=ResponseCode.OK)
+        except Exception as e:  # noqa BLE001
+            # NOTE this has the same issue as onValueChange
+            print(e)
+
+        # renable button when graph is updated
+        self._tweakPeakView.enableRecalculateButton()
 
     @Slot(WorkflowPresenter, result=SNAPResponse)
     def _triggerDiffractionCalibration(self, workflowPresenter):
@@ -475,7 +468,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             maxChiSq=self.maxChiSq,
         )
 
-        response = self.request(path="calibration/assessment", payload=payload)
+        response = self.request(path="calibration/assessment", payload=payload.json())
         assessmentResponse = response.data
         self.calibrationRecord = assessmentResponse.record
 

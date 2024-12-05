@@ -11,7 +11,7 @@ from snapred.backend.dao.request import (
     NormalizationRequest,
 )
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
-from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
+from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.EntryExitLogger import EntryExitLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
@@ -83,10 +83,6 @@ class NormalizationWorkflow(WorkflowImplementer):
             .build()
         )
 
-    def __setInteraction(self, state: bool):
-        self._requestView.litemodeToggle.setEnabled(state)
-        self._requestView.groupingFileDropdown.setEnabled(state)
-
     @EntryExitLogger(logger=logger)
     @ExceptionToErrLog
     @Slot()
@@ -95,29 +91,28 @@ class NormalizationWorkflow(WorkflowImplementer):
         runNumber = self._requestView.runNumberField.text()
         self.useLiteMode = self._requestView.litemodeToggle.field.getState()
 
-        self.__setInteraction(False)
-        self.workflow.presenter.handleAction(
-            self.handleDropdown,
-            args=(runNumber, self.useLiteMode),
-            onSuccess=lambda: self.__setInteraction(True),
-        )
+        self._requestView.litemodeToggle.setEnabled(False)
+        self._requestView.groupingFileDropdown.setEnabled(False)
+        # TODO: Use threads, account for fail cases
+        try:
+            # check if the state exists -- if so load its grouping map
+            payload = HasStateRequest(
+                runId=runNumber,
+                useLiteMode=self.useLiteMode,
+            )
+            hasState = self.request(path="calibration/hasState", payload=payload.json()).data
+            if hasState:
+                self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
+            else:
+                self.groupingMap = self.defaultGroupingMap
+            self.focusGroups = self.groupingMap.getMap(self.useLiteMode)
 
-    def handleDropdown(self, runNumber, useLiteMode):
-        # check if the state exists -- if so load its grouping map
-        payload = HasStateRequest(
-            runId=runNumber,
-            useLiteMode=useLiteMode,
-        )
-        hasState = self.request(path="calibration/hasState", payload=payload.json()).data
-        if hasState:
-            self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
-        else:
-            self.groupingMap = self.defaultGroupingMap
-        self.focusGroups = self.groupingMap.getMap(useLiteMode)
-
-        # populate and reenable the drop down
-        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
-        return SNAPResponse(code=ResponseCode.OK)
+            # populate and reenable the drop down
+            self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        except Exception as e:  # noqa BLE001
+            print(e)
+        self._requestView.litemodeToggle.setEnabled(True)
+        self._requestView.groupingFileDropdown.setEnabled(True)
 
     @EntryExitLogger(logger=logger)
     @ExceptionToErrLog
@@ -127,17 +122,14 @@ class NormalizationWorkflow(WorkflowImplementer):
         useLiteMode = self._requestView.litemodeToggle.field.getState()
 
         self._requestView.groupingFileDropdown.setEnabled(False)
+        # TODO: Use threads, account for fail cases
+        try:
+            self.focusGroups = self.groupingMap.getMap(useLiteMode)
+            self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        except Exception as e:  # noqa BLE001
+            print(e)
 
-        self.workflow.presenter.handleAction(
-            self.handleSwitchLiteNative,
-            args=(useLiteMode,),
-            onSuccess=lambda: self._requestView.groupingFileDropdown.setEnabled(True),
-        )
-
-    def handleSwitchLiteNative(self, useLiteMode):
-        self.focusGroups = self.groupingMap.getMap(useLiteMode)
-        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
-        return SNAPResponse(code=ResponseCode.OK)
+        self._requestView.groupingFileDropdown.setEnabled(True)
 
     @EntryExitLogger(logger=logger)
     @Slot(WorkflowPresenter, result=SNAPResponse)
@@ -300,44 +292,45 @@ class NormalizationWorkflow(WorkflowImplementer):
     @EntryExitLogger(logger=logger)
     @ExceptionToErrLog
     @Slot(int, float, float, float)
-    def onNormalizationValueChange(self, *args):  # noqa: ARG002
+    def onNormalizationValueChange(self, index, smoothingValue, xtalDMin, xtalDMax):  # noqa: ARG002
         if not self.initializationComplete:
             return
         # disable recalculate button
         self._tweakPeakView.disableRecalculateButton()
-        self.workflow.presenter.handleAction(
-            self.renewWhenRecalculate,
-            args=args,
-            onSuccess=self._tweakPeakView.enableRecalculateButton,
-        )
+        # TODO: This is a temporary solution,
+        # this should have never been setup to all run on the same thread.
+        # It assumed an exception would never be tossed and thus
+        # would never enable the recalc button again if one did
+        try:
+            # if the grouping file change, redo whole calculation
+            groupingFileChanged = index != self.prevGroupingIndex
+            # if peaks will change, redo only the smoothing
+            smoothingValueChanged = self.prevSmoothingParameter != smoothingValue
+            xtalDMinValueChanged = xtalDMin != self.prevXtalDMin
+            xtalDMaxValueChanged = xtalDMax != self.prevXtalDMax
+            peakListWillChange = smoothingValueChanged or xtalDMinValueChanged or xtalDMaxValueChanged
 
-    def renewWhenRecalculate(self, index, smoothingValue, xtalDMin, xtalDMax):
-        # if the grouping file change, redo whole calculation
-        groupingFileChanged = index != self.prevGroupingIndex
-        # if peaks will change, redo only the smoothing
-        smoothingValueChanged = self.prevSmoothingParameter != smoothingValue
-        xtalDMinValueChanged = xtalDMin != self.prevXtalDMin
-        xtalDMaxValueChanged = xtalDMax != self.prevXtalDMax
-        peakListWillChange = smoothingValueChanged or xtalDMinValueChanged or xtalDMaxValueChanged
+            # check the case, apply correct update
+            if groupingFileChanged:
+                self.callNormalization(index, smoothingValue, xtalDMin, xtalDMax)
+            elif peakListWillChange:
+                self.applySmoothingUpdate(index, smoothingValue, xtalDMin, xtalDMax)
+            elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
+                # if nothing changed but this function was called anyway... just replot stuff with old values
+                focusWorkspace = self.responses[-1].data["focusedVanadium"]
+                smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
+                peaks = self.responses[-1].data["detectorPeaks"]
+                self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
+            else:
+                raise Exception("Expected data not found in the last response")
 
-        # check the case, apply correct update
-        if groupingFileChanged:
-            self.callNormalization(index, smoothingValue, xtalDMin, xtalDMax)
-        elif peakListWillChange:
-            self.applySmoothingUpdate(index, smoothingValue, xtalDMin, xtalDMax)
-        elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
-            # if nothing changed but this function was called anyway... just replot stuff with old values
-            focusWorkspace = self.responses[-1].data["focusedVanadium"]
-            smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
-            peaks = self.responses[-1].data["detectorPeaks"]
-            self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
-        else:
-            raise Exception("Expected data not found in the last response")
+            # update the values for next call to this method
+            self.prevGroupingIndex = index
+            self.prevSmoothingParameter = smoothingValue
+            self.prevXtalDMin = xtalDMin
+            self.prevXtalDMax = xtalDMax
+        except Exception as e:  # noqa BLE001
+            print(e)
 
-        # update the values for next call to this method
-        self.prevGroupingIndex = index
-        self.prevSmoothingParameter = smoothingValue
-        self.prevXtalDMin = xtalDMin
-        self.prevXtalDMax = xtalDMax
-
-        return SNAPResponse(code=ResponseCode.OK)
+        # renable button when graph is updated
+        self._tweakPeakView.enableRecalculateButton()
