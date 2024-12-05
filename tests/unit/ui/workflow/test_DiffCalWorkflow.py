@@ -1,6 +1,7 @@
 from random import randint
 from unittest.mock import MagicMock, patch
 
+import pytest
 from mantid.simpleapi import (
     CreateSingleValuedWorkspace,
     CreateTableWorkspace,
@@ -47,9 +48,22 @@ def test_purge_bad_peaks(workflowRequest, qtbot):  # noqa: ARG001
         InputWorkspaces=[ws1, ws2, tabWS],
     )
     diffcalWorkflow.fitPeaksDiagnostic = diagWS
+    diffcalWorkflow.peakFunction = "gaussian"
+    diffcalWorkflow.residualWorkspace = ws1
+    diffcalWorkflow.focusedWorkspace = ws1
+    diffcalWorkflow._renewFitPeaks = MagicMock()
+    diffcalWorkflow._tweakPeakView.updateGraphs = MagicMock()
 
-    diffcalWorkflow.purgeBadPeaks(maxChiSq)
+    diffcalWorkflow._purgeBadPeaks(maxChiSq)
     assert diffcalWorkflow.ingredients.groupedPeakLists[0].peaks == good_peaks
+
+    diffcalWorkflow._renewFitPeaks.assert_called_once_with(diffcalWorkflow.peakFunction)
+    diffcalWorkflow._tweakPeakView.updateGraphs.assert_called_once_with(
+        diffcalWorkflow.focusedWorkspace,
+        diffcalWorkflow.ingredients.groupedPeakLists,
+        diffcalWorkflow.fitPeaksDiagnostic,
+        diffcalWorkflow.residualWorkspace,
+    )
 
 
 @patch("snapred.ui.workflow.DiffCalWorkflow.WorkflowImplementer.request")
@@ -75,8 +89,8 @@ def test_purge_bad_peaks_two_wkspindex(workflowRequest, qtbot):  # noqa: ARG001
     # setup some mocks
     diffcalWorkflow.ingredients = MagicMock(
         groupedPeakLists=[
-            MagicMock(peaks=peaks1),
-            MagicMock(peaks=peaks2),
+            MagicMock(groupID=1, peaks=peaks1),
+            MagicMock(groupID=2, peaks=peaks2),
         ]
     )
     diagWS = mtd.unique_name(prefix="difc_wf_tab_")
@@ -94,10 +108,23 @@ def test_purge_bad_peaks_two_wkspindex(workflowRequest, qtbot):  # noqa: ARG001
         InputWorkspaces=[ws1, ws2, tabWS],
     )
     diffcalWorkflow.fitPeaksDiagnostic = diagWS
+    diffcalWorkflow.peakFunction = "gaussian"
+    diffcalWorkflow.residualWorkspace = ws1
+    diffcalWorkflow.focusedWorkspace = ws1
+    diffcalWorkflow._renewFitPeaks = MagicMock()
+    diffcalWorkflow._tweakPeakView.updateGraphs = MagicMock()
 
-    diffcalWorkflow.purgeBadPeaks(maxChiSq)
+    diffcalWorkflow._purgeBadPeaks(maxChiSq)
     assert diffcalWorkflow.ingredients.groupedPeakLists[0].peaks == good_peaks1
     assert diffcalWorkflow.ingredients.groupedPeakLists[1].peaks == good_peaks2
+
+    diffcalWorkflow._renewFitPeaks.assert_called_once_with(diffcalWorkflow.peakFunction)
+    diffcalWorkflow._tweakPeakView.updateGraphs.assert_called_once_with(
+        diffcalWorkflow.focusedWorkspace,
+        diffcalWorkflow.ingredients.groupedPeakLists,
+        diffcalWorkflow.fitPeaksDiagnostic,
+        diffcalWorkflow.residualWorkspace,
+    )
 
 
 @patch("snapred.ui.workflow.DiffCalWorkflow.WorkflowImplementer.request")
@@ -133,6 +160,9 @@ def test_purge_bad_peaks_too_few(workflowRequest, qtbot):  # noqa: ARG001
         InputWorkspaces=[ws1, ws2, tabWS],
     )
     diffcalWorkflow.fitPeaksDiagnostic = diagWS
+
+    with pytest.raises(RuntimeError):
+        diffcalWorkflow._purgeBadPeaks(maxChiSq)
 
     # setup the qtbot to intercept the window
     qtbot.addWidget(diffcalWorkflow._tweakPeakView)
