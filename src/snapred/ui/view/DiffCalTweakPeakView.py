@@ -218,6 +218,7 @@ class DiffCalTweakPeakView(BackendRequestView):
 
         # now re-draw the figure
         self.figure.clear()
+
         for wkspIndex in range(numGraphs):
             peaks = self.peaks[wkspIndex].peaks
             # collect the fit chi-sq parameters for this spectrum, and the fits
@@ -226,15 +227,39 @@ class DiffCalTweakPeakView(BackendRequestView):
             self.badPeaks[wkspIndex] = [peak for chi2, peak in zip(chisq, peaks) if chi2 >= maxChiSq]
             # prepare the plot area
             ax = self.figure.add_subplot(nrows, ncols, wkspIndex + 1, projection="mantid")
-            # NOTE: Mutate the ax object to remove the workspace renaming,
-            # not sure why but cargs["workspaces"] is missing
-            ax.rename_workspace = lambda x, y: None  # noqa: ARG005
+
+            # NOTE: Mutate the ax object as the mantidaxis does not account for lines
+            # TODO: Bubble this up to the mantid codebase and remove this mutation.
+            def rename_workspace(old_name, new_name):
+                """
+                Rename a workspace, and update the artists, creation arguments and tracked workspaces accordingly
+                :param new_name : the new name of workspace
+                :param old_name : the old name of workspace
+                """
+                for cargs in ax.creation_args:
+                    # NEW CHECK
+                    func_name = cargs["function"]
+                    if func_name not in ["axhline", "axvline"] and cargs["workspaces"] == old_name:
+                        cargs["workspaces"] = new_name
+                    # Alternatively,
+                    # if cargs.get("workspaces") == old_name:
+                    #     cargs["workspaces"] = new_name
+                for ws_name, ws_artist_list in list(ax.tracked_workspaces.items()):
+                    for ws_artist in ws_artist_list:
+                        if ws_artist.workspace_name == old_name:
+                            ws_artist.rename_data(new_name)
+                    if ws_name == old_name:
+                        ax.tracked_workspaces[new_name] = ax.tracked_workspaces.pop(old_name)
+
+            ax.rename_workspace = rename_workspace
+
             ax.tick_params(direction="in")
             ax.set_title(f"Group ID: {wkspIndex + 1}")
             # plot the data and fitted
             ax.plot(mtd[workspace], wkspIndex=wkspIndex, label="data", normalize_by_bin_width=True)
             ax.plot(fitted_peaks, wkspIndex=wkspIndex, label="fit", color="black", normalize_by_bin_width=True)
             ax.legend(loc=1)
+
             # fill in the discovered peaks for easier viewing
             x, y, _, _ = get_spectrum(mtd[workspace], wkspIndex, normalize_by_bin_width=True)
             # for each detected peak in this group, shade in the peak region
@@ -249,6 +274,7 @@ class DiffCalTweakPeakView(BackendRequestView):
             # plot the min and max value for peaks
             ax.axvline(x=max(min(x), float(self.fieldXtalDMin.field.text())), label="xtal $d_{min}$", color="red")
             ax.axvline(x=min(max(x), float(self.fieldXtalDMax.field.text())), label="xtal $d_{max}$", color="red")
+
         # resize window and redraw
         self.setMinimumHeight(
             self.initialLayoutHeight + int((self.figure.get_size_inches()[1] + self.FIGURE_MARGIN) * self.figure.dpi)
