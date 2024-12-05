@@ -191,24 +191,21 @@ class DataFactoryService:
         return reductionState
 
     @validate_call
-    def getReductionDataPath(self, runId: str, useLiteMode: bool, version: int) -> Path:
-        return self.lookupService._constructReductionDataPath(runId, useLiteMode, version)
+    def getReductionDataPath(self, runId: str, useLiteMode: bool, timestamp: float) -> Path:
+        return self.lookupService._constructReductionDataPath(runId, useLiteMode, timestamp)
 
     @validate_call
-    def getReductionRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
-        """
-        If no version is passed, will use the latest version applicable to runId
-        """
-        return self.lookupService.readReductionRecord(runId, useLiteMode, version)
+    def getReductionRecord(self, runId: str, useLiteMode: bool, timestamp: float) -> ReductionRecord:
+        return self.lookupService.readReductionRecord(runId, useLiteMode, timestamp)
 
     @validate_call
-    def getReductionData(self, runId: str, useLiteMode: bool, version: int) -> ReductionRecord:
-        return self.lookupService.readReductionData(runId, useLiteMode, version)
+    def getReductionData(self, runId: str, useLiteMode: bool, timestamp: float) -> ReductionRecord:
+        return self.lookupService.readReductionData(runId, useLiteMode, timestamp)
 
     @validate_call
-    def getCompatibleReductionMasks(self, runNumber: str, useLiteMode: bool) -> List[WorkspaceName]:
+    def getCompatibleReductionMasks(self, runId: str, useLiteMode: bool) -> List[WorkspaceName]:
         # Assemble a list of masks, both resident and otherwise, that are compatible with the current reduction
-        return self.lookupService.getCompatibleReductionMasks(runNumber, useLiteMode)
+        return self.lookupService.getCompatibleReductionMasks(runId, useLiteMode)
 
     ##### WORKSPACE METHODS #####
 

@@ -30,8 +30,7 @@ class ContinueWarning(Exception):
         return self.model.flags
 
     def __init__(self, message: str, flags: "Type" = 0):
-        ContinueWarning.Model.update_forward_refs()
-        ContinueWarning.Model.model_rebuild(force=True)
+        ContinueWarning.Model.model_rebuild(force=True)  # replaces: `update_forward_refs` method
         self.model = ContinueWarning.Model(message=message, flags=flags)
         super().__init__(message)
 

@@ -26,6 +26,7 @@ class TestSousChef(unittest.TestCase):
             cifPath="path/to/cif",
             maxChiSq=100.0,
         )
+        self.pixelMask = mock.Mock()
 
     def tearDown(self):
         del self.instance
@@ -59,9 +60,9 @@ class TestSousChef(unittest.TestCase):
 
     def test_prepManyPixelGroups(self):
         self.instance.prepPixelGroup = mock.Mock()
-        res = self.instance.prepManyPixelGroups(self.ingredients)
+        res = self.instance.prepManyPixelGroups(self.ingredients, self.pixelMask)
         assert res[0] == self.instance.prepPixelGroup.return_value
-        self.instance.prepPixelGroup.assert_called_once_with(self.ingredients)
+        self.instance.prepPixelGroup.assert_called_once_with(self.ingredients, self.pixelMask)
 
     def test_prepFocusGroup_exists(self):
         # create a temp file to be used a the path for the focus group
@@ -172,13 +173,17 @@ class TestSousChef(unittest.TestCase):
     ):
         self.instance = SousChef()
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
-        # ensure there is no cached value
+
+        # Warning: key now includes pixel mask name.
         key = (
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
             self.ingredients.calibrantSamplePath,
+            None,
         )
+
+        # ensure there is no cached value
         assert self.instance._pixelGroupCache == {}
 
         # mock the calibration, which will give the instrument state
@@ -214,10 +219,11 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
             self.ingredients.calibrantSamplePath,
+            self.pixelMask,
         )
         self.instance._pixelGroupCache[key] = mock.sentinel.pixel
 
-        res = self.instance.prepPixelGroup(self.ingredients)
+        res = self.instance.prepPixelGroup(self.ingredients, self.pixelMask)
 
         assert not PixelGroupingParametersCalculationRecipe.called
         assert res == self.instance._pixelGroupCache[key]
@@ -229,6 +235,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
             self.ingredients.calibrantSamplePath,
+            None,
         )
         self.instance._pixelGroupCache[key] = PixelGroup.construct(timeOfFlight={"minimum": 0})
 
@@ -463,49 +470,57 @@ class TestSousChef(unittest.TestCase):
     @mock.patch(thisService + "ReductionIngredients")
     def test_prepReductionIngredients(self, ReductionIngredients, mockOS):  # noqa: ARG002
         calibrationCalibrantSamplePath = "a/sample.x"
-        record = mock.Mock(
-            smoothingParamter=1.0,
+        calibrationRecord = mock.Mock(
+            smoothingParameter=mock.Mock(),
             calculationParameters=mock.Mock(
                 calibrantSamplePath=calibrationCalibrantSamplePath,
             ),
-            calibrantSamplePath=calibrationCalibrantSamplePath,
         )
-        normalRecord = mock.Mock(
-            smoothingParamter=1.0,
-            calculationParameters=mock.Mock(
-                calibrantSamplePath=calibrationCalibrantSamplePath,
-            ),
-            normalizationCalibrantSamplePath=calibrationCalibrantSamplePath,
+        normalizationCalibrantSamplePath = "b/sample.x"
+        normalizationRecord = mock.Mock(
+            smoothingParameter=mock.Mock(),
+            calculationParameters=mock.Mock(),
+            normalizationCalibrantSamplePath=normalizationCalibrantSamplePath,
         )
         self.instance.prepCalibrantSample = mock.Mock()
         self.instance.prepRunConfig = mock.Mock()
-        self.instance.prepManyPixelGroups = mock.Mock()
+        prepPixelGroupsReturnValues = [mock.Mock(), mock.Mock()]
+        self.instance.prepManyPixelGroups = mock.Mock(side_effect=prepPixelGroupsReturnValues)
         self.instance.prepManyDetectorPeaks = mock.Mock()
+        self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=mock.Mock())
         self.instance.dataFactoryService.getCifFilePath = mock.Mock()
         self.instance.dataFactoryService.getReductionState = mock.Mock()
-        self.instance.dataFactoryService.getNormalizationRecord = mock.Mock(return_value=normalRecord)
-        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=record)
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibrationRecord)
+        self.instance.dataFactoryService.getNormalizationRecord = mock.Mock(return_value=normalizationRecord)
 
+        # Modifications to a copy of `ingredients` during the first part of `prepReductionIngredients`,
+        #   before the `prepManyPixelGroups` calls:
         ingredients_ = self.ingredients.model_copy()
         # ... from calibration record:
-        ingredients_.calibrantSamplePath = calibrationCalibrantSamplePath
         ingredients_.cifPath = self.instance.dataFactoryService.getCifFilePath.return_value
         # ... from normalization record:
-        ingredients_.peakIntensityThreshold = self.instance._getThresholdFromCalibrantSample(
-            "calibrationCalibrantSamplePath"
-        )
-        result = self.instance.prepReductionIngredients(ingredients_)
+        ingredients_.calibrantSamplePath = normalizationCalibrantSamplePath
 
-        self.instance.prepManyPixelGroups.assert_called_once_with(ingredients_)
+        combinedMask = mock.Mock()
+        # Note that `prepReductionIngredients` is called with the _unmodified_ ingredients.
+        result = self.instance.prepReductionIngredients(self.ingredients, combinedMask)
+
+        assert self.instance.prepManyPixelGroups.call_count == 2
+
+        self.instance.prepManyPixelGroups.assert_any_call(ingredients_)
+        self.instance.prepManyPixelGroups.assert_any_call(ingredients_, combinedMask)
+
         self.instance.dataFactoryService.getCifFilePath.assert_called_once_with("sample")
+
         ReductionIngredients.assert_called_once_with(
             runNumber=ingredients_.runNumber,
             useLiteMode=ingredients_.useLiteMode,
             timestamp=ingredients_.timestamp,
-            pixelGroups=self.instance.prepManyPixelGroups.return_value,
-            smoothingParameter=normalRecord.smoothingParameter,
+            pixelGroups=prepPixelGroupsReturnValues[0],
+            unmaskedPixelGroups=prepPixelGroupsReturnValues[1],
+            smoothingParameter=normalizationRecord.smoothingParameter,
             calibrantSamplePath=ingredients_.calibrantSamplePath,
-            peakIntensityThreshold=ingredients_.peakIntensityThreshold,
+            peakIntensityThreshold=self.instance._getThresholdFromCalibrantSample.return_value,
             detectorPeaksMany=self.instance.prepManyDetectorPeaks.return_value,
             keepUnfocused=ingredients_.keepUnfocused,
             convertUnitsTo=ingredients_.convertUnitsTo,
