@@ -3,11 +3,13 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Type
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe
+from snapred.backend.recipe.EffectiveInstrumentRecipe import EffectiveInstrumentRecipe
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe
 from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe
 from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
+from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
@@ -61,7 +63,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         self.groceries = groceries.copy()
         self.sampleWs = groceries["inputWorkspace"]
         self.normalizationWs = groceries.get("normalizationWorkspace", "")
-        self.maskWs = groceries.get("maskWorkspace", "")
+        self.maskWs = groceries.get("combinedMask", "")
         self.groupingWorkspaces = groceries["groupingWorkspaces"]
 
     def _cloneWorkspace(self, inputWorkspace: str, outputWorkspace: str) -> str:
@@ -273,6 +275,14 @@ class ReductionRecipe(Recipe[Ingredients]):
                 normalizationWorkspace=normalizationClone,
             )
             self._cloneIntermediateWorkspace(sampleClone, f"sample_ApplyNormalization_{groupingIndex}")
+
+            # 5. Replace the instrument with the effective instrument for this grouping
+            if Config["reduction.output.useEffectiveInstrument"]:
+                self._applyRecipe(
+                    EffectiveInstrumentRecipe,
+                    self.ingredients.effectiveInstrument(groupingIndex),
+                    inputWorkspace=sampleClone,
+                )
 
             # Cleanup
             outputs.append(sampleClone)

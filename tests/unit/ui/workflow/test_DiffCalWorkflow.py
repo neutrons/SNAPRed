@@ -1,4 +1,3 @@
-import threading
 from random import randint
 from unittest.mock import MagicMock, patch
 
@@ -8,8 +7,7 @@ from mantid.simpleapi import (
     GroupWorkspaces,
     mtd,
 )
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QApplication, QMessageBox
+from qtpy.QtWidgets import QMessageBox
 
 from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEnum
 from snapred.meta.pointer import create_pointer
@@ -136,16 +134,29 @@ def test_purge_bad_peaks_too_few(workflowRequest, qtbot):  # noqa: ARG001
     )
     diffcalWorkflow.fitPeaksDiagnostic = diagWS
 
-    def execute_click():
-        w = QApplication.activeWindow()
-        if isinstance(w, QMessageBox):
-            close_button = w.button(QMessageBox.Ok)
-            qtbot.mouseClick(close_button, Qt.LeftButton)
-
     # setup the qtbot to intercept the window
     qtbot.addWidget(diffcalWorkflow._tweakPeakView)
-    threading.Timer(0.2, execute_click).start()
+
+    #
+    # Using a mock here bypasses the following issues:
+    #
+    #   * which thread the messagebox will be running on (may cause a segfault);
+    #
+    #   * how long to wait for the messagebox to instantiate.
+    #
+    def _tooFewPeaksQuery(_parent, title, text, _buttons):
+        if title == "Too Few Peaks":
+            return QMessageBox.Ok
+        raise RuntimeError(f"unexpected `QMessageBox.critical`: title: {title}, text: {text}")
+
+    mockTooFewPeaksQuery = patch("qtpy.QtWidgets.QMessageBox.critical", _tooFewPeaksQuery)
+
+    # Use `start` and `stop` rather than `with patch...` in order to apply the mock even in the case of exceptions.
+    mockTooFewPeaksQuery.start()
     diffcalWorkflow.purgeBadPeaks(maxChiSq)
+
+    # Remember to remove the mock.
+    mockTooFewPeaksQuery.stop()
 
     assert diffcalWorkflow.ingredients.groupedPeakLists[0].peaks == peaks
     assert diffcalWorkflow.ingredients.groupedPeakLists[0].peaks != good_peaks

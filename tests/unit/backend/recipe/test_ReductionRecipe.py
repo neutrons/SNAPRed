@@ -3,11 +3,13 @@ from unittest import TestCase, mock
 
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
+from util.Config_helpers import Config_override
 from util.SculleryBoy import SculleryBoy
 
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.ReductionRecipe import (
     ApplyNormalizationRecipe,
+    EffectiveInstrumentRecipe,
     GenerateFocussedVanadiumRecipe,
     PreprocessReductionRecipe,
     ReductionGroupProcessingRecipe,
@@ -398,6 +400,9 @@ class ReductionRecipeTest(TestCase):
         recipe.ingredients.applyNormalization = mock.Mock(
             return_value=lambda groupingIndex: f"applyNormalization_{groupingIndex}"
         )
+        recipe.ingredients.effectiveInstrument = mock.Mock(
+            return_value=lambda groupingIndex: f"unmaskedPixelGroup_{groupingIndex}"
+        )
 
         # Mock internal methods of recipe
         recipe._applyRecipe = mock.Mock()
@@ -463,17 +468,137 @@ class ReductionRecipeTest(TestCase):
             normalizationWorkspace="norm_grouped",
         )
 
-        artNormCalls = recipe._prepareArtificialNormalization.call_args_list
-        anCall1 = artNormCalls[0]
-        anCall2 = artNormCalls[1]
-        assert anCall1[0][0] == "sample_grouped"
-        assert anCall2[0][0] == "sample_grouped"
-        assert anCall1[0][1] == 0
-        assert anCall2[0][1] == 1
+        recipe._prepareArtificialNormalization.call_count == 2
+        recipe._prepareArtificialNormalization.assert_any_call("sample_grouped", 0)
+        recipe._prepareArtificialNormalization.assert_any_call("sample_grouped", 1)
+
+        recipe.ingredients.effectiveInstrument.assert_not_called()
 
         recipe._deleteWorkspace.assert_called_with("norm_grouped")
         assert recipe._deleteWorkspace.call_count == len(recipe._prepGroupingWorkspaces.return_value)
         assert result["outputs"][0] == "sample_grouped"
+
+    @mock.patch("mantid.simpleapi.mtd", create=True)
+    def test_execute_useEffectiveInstrument(self, mockMtd):
+        with Config_override("reduction.output.useEffectiveInstrument", True):
+            mockMantidSnapper = mock.Mock()
+
+            mockMaskworkspace = mock.Mock()
+            mockGroupWorkspace = mock.Mock()
+
+            mockGroupWorkspace.getNumberHistograms.return_value = 10
+            mockGroupWorkspace.readY.return_value = [0] * 10
+            mockMaskworkspace.readY.return_value = [0] * 10
+
+            mockMtd.__getitem__.side_effect = (
+                lambda ws_name: mockMaskworkspace if ws_name == "mask" else mockGroupWorkspace
+            )
+
+            recipe = ReductionRecipe()
+            recipe.mantidSnapper = mockMantidSnapper
+            recipe.mantidSnapper.mtd = mockMtd
+            recipe._prepareArtificialNormalization = mock.Mock()
+            recipe._prepareArtificialNormalization.return_value = "norm_grouped"
+
+            # Set up ingredients and other variables for the recipe
+            recipe.groceries = {}
+            recipe.ingredients = mock.Mock()
+            recipe.ingredients.artificialNormalizationIngredients = "test"
+            recipe.ingredients.groupProcessing = mock.Mock(
+                return_value=lambda groupingIndex: f"groupProcessing_{groupingIndex}"
+            )
+            recipe.ingredients.generateFocussedVanadium = mock.Mock(
+                return_value=lambda groupingIndex: f"generateFocussedVanadium_{groupingIndex}"
+            )
+            recipe.ingredients.applyNormalization = mock.Mock(
+                return_value=lambda groupingIndex: f"applyNormalization_{groupingIndex}"
+            )
+            recipe.ingredients.effectiveInstrument = mock.Mock(
+                return_value=lambda groupingIndex: f"unmaskedPixelGroup_{groupingIndex}"
+            )
+
+            # Mock internal methods of recipe
+            recipe._applyRecipe = mock.Mock()
+            recipe._cloneIntermediateWorkspace = mock.Mock()
+            recipe._deleteWorkspace = mock.Mock()
+            recipe._prepareUnfocusedData = mock.Mock()
+            recipe._prepGroupingWorkspaces = mock.Mock()
+            recipe._prepGroupingWorkspaces.return_value = ("sample_grouped", "norm_grouped")
+
+            # Set up other recipe variables
+            recipe.sampleWs = "sample"
+            recipe.maskWs = "mask"
+            recipe.normalizationWs = "norm"
+            recipe.groupingWorkspaces = ["group1", "group2"]
+            recipe.keepUnfocused = True
+            recipe.convertUnitsTo = "TOF"
+
+            # Execute the recipe
+            result = recipe.execute()
+
+            # Perform assertions
+            recipe._applyRecipe.assert_any_call(
+                PreprocessReductionRecipe,
+                recipe.ingredients.preprocess(),
+                inputWorkspace=recipe.sampleWs,
+                maskWorkspace=recipe.maskWs,
+            )
+            recipe._applyRecipe.assert_any_call(
+                PreprocessReductionRecipe,
+                recipe.ingredients.preprocess(),
+                inputWorkspace=recipe.normalizationWs,
+                maskWorkspace=recipe.maskWs,
+            )
+
+            recipe._applyRecipe.assert_any_call(
+                ReductionGroupProcessingRecipe, recipe.ingredients.groupProcessing(0), inputWorkspace="sample_grouped"
+            )
+            recipe._applyRecipe.assert_any_call(
+                ReductionGroupProcessingRecipe, recipe.ingredients.groupProcessing(1), inputWorkspace="norm_grouped"
+            )
+
+            recipe._applyRecipe.assert_any_call(
+                GenerateFocussedVanadiumRecipe,
+                recipe.ingredients.generateFocussedVanadium(0),
+                inputWorkspace="norm_grouped",
+            )
+            recipe._applyRecipe.assert_any_call(
+                GenerateFocussedVanadiumRecipe,
+                recipe.ingredients.generateFocussedVanadium(1),
+                inputWorkspace="norm_grouped",
+            )
+
+            recipe._applyRecipe.assert_any_call(
+                ApplyNormalizationRecipe,
+                recipe.ingredients.applyNormalization(0),
+                inputWorkspace="sample_grouped",
+                normalizationWorkspace="norm_grouped",
+            )
+            recipe._applyRecipe.assert_any_call(
+                ApplyNormalizationRecipe,
+                recipe.ingredients.applyNormalization(1),
+                inputWorkspace="sample_grouped",
+                normalizationWorkspace="norm_grouped",
+            )
+
+            recipe._prepareArtificialNormalization.call_count == 2
+            recipe._prepareArtificialNormalization.assert_any_call("sample_grouped", 0)
+            recipe._prepareArtificialNormalization.assert_any_call("sample_grouped", 1)
+
+            recipe._applyRecipe.assert_any_call(
+                EffectiveInstrumentRecipe,
+                recipe.ingredients.effectiveInstrument(0),
+                inputWorkspace="sample_grouped",
+            )
+            recipe._applyRecipe.assert_any_call(
+                EffectiveInstrumentRecipe,
+                recipe.ingredients.effectiveInstrument(1),
+                inputWorkspace="sample_grouped",
+            )
+
+            recipe._deleteWorkspace.assert_called_with("norm_grouped")
+            assert recipe._deleteWorkspace.call_count == len(recipe._prepGroupingWorkspaces.return_value)
+            assert result["outputs"][0] == "sample_grouped"
 
     @mock.patch("mantid.simpleapi.mtd", create=True)
     def test_isGroupFullyMasked(self, mockMtd):
