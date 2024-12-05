@@ -164,10 +164,15 @@ class WorkflowPresenter(QObject):
             return model.continueAction(self)
 
         # do action
-        self.worker = self.worker_pool.createWorker(target=verifyAndContinue, args=None)
+        continueOnSuccess = lambda success: self.advanceWorkflow() if success else None  # noqa E731
+        self.handleAction(verifyAndContinue, None, continueOnSuccess)
+
+    def handleAction(self, action, args, onSuccess):
+        # do action
+        self.worker = self.worker_pool.createWorker(target=action, args=args)
         self.worker.finished.connect(lambda: self._enableButtons(True))  # re-enable panel buttons on finish
         self.worker.result.connect(self._handleComplications)
-        self.worker.success.connect(lambda success: self.advanceWorkflow() if success else None)
+        self.worker.success.connect(onSuccess)
         self.worker_pool.submitWorker(self.worker)
         self.actionCompleted.emit()
 

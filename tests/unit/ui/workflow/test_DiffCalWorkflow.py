@@ -1,15 +1,13 @@
-import threading
 from random import randint
 from unittest.mock import MagicMock, patch
 
+import pytest
 from mantid.simpleapi import (
     CreateSingleValuedWorkspace,
     CreateTableWorkspace,
     GroupWorkspaces,
     mtd,
 )
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QApplication, QMessageBox
 
 from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEnum
 from snapred.meta.pointer import create_pointer
@@ -49,8 +47,12 @@ def test_purge_bad_peaks(workflowRequest, qtbot):  # noqa: ARG001
         InputWorkspaces=[ws1, ws2, tabWS],
     )
     diffcalWorkflow.fitPeaksDiagnostic = diagWS
+    diffcalWorkflow.peakFunction = "gaussian"
+    diffcalWorkflow.focusedWorkspace = ws1
+    diffcalWorkflow._renewFitPeaks = MagicMock()
+    diffcalWorkflow._tweakPeakView.updateGraphs = MagicMock()
 
-    diffcalWorkflow.purgeBadPeaks(maxChiSq)
+    diffcalWorkflow._purgeBadPeaks(maxChiSq)
     assert diffcalWorkflow.ingredients.groupedPeakLists[0].peaks == good_peaks
 
 
@@ -77,8 +79,8 @@ def test_purge_bad_peaks_two_wkspindex(workflowRequest, qtbot):  # noqa: ARG001
     # setup some mocks
     diffcalWorkflow.ingredients = MagicMock(
         groupedPeakLists=[
-            MagicMock(peaks=peaks1),
-            MagicMock(peaks=peaks2),
+            MagicMock(groupID=1, peaks=peaks1),
+            MagicMock(groupID=2, peaks=peaks2),
         ]
     )
     diagWS = mtd.unique_name(prefix="difc_wf_tab_")
@@ -96,10 +98,21 @@ def test_purge_bad_peaks_two_wkspindex(workflowRequest, qtbot):  # noqa: ARG001
         InputWorkspaces=[ws1, ws2, tabWS],
     )
     diffcalWorkflow.fitPeaksDiagnostic = diagWS
+    diffcalWorkflow.peakFunction = "gaussian"
+    diffcalWorkflow.focusedWorkspace = ws1
+    diffcalWorkflow._renewFitPeaks = MagicMock()
+    diffcalWorkflow._tweakPeakView.updateGraphs = MagicMock()
 
-    diffcalWorkflow.purgeBadPeaks(maxChiSq)
+    diffcalWorkflow._purgeBadPeaks(maxChiSq)
     assert diffcalWorkflow.ingredients.groupedPeakLists[0].peaks == good_peaks1
     assert diffcalWorkflow.ingredients.groupedPeakLists[1].peaks == good_peaks2
+
+    diffcalWorkflow._renewFitPeaks.assert_called_once_with(diffcalWorkflow.peakFunction)
+    diffcalWorkflow._tweakPeakView.updateGraphs.assert_called_once_with(
+        diffcalWorkflow.focusedWorkspace,
+        diffcalWorkflow.ingredients.groupedPeakLists,
+        diffcalWorkflow.fitPeaksDiagnostic,
+    )
 
 
 @patch("snapred.ui.workflow.DiffCalWorkflow.WorkflowImplementer.request")
@@ -136,16 +149,8 @@ def test_purge_bad_peaks_too_few(workflowRequest, qtbot):  # noqa: ARG001
     )
     diffcalWorkflow.fitPeaksDiagnostic = diagWS
 
-    def execute_click():
-        w = QApplication.activeWindow()
-        if isinstance(w, QMessageBox):
-            close_button = w.button(QMessageBox.Ok)
-            qtbot.mouseClick(close_button, Qt.LeftButton)
-
-    # setup the qtbot to intercept the window
-    qtbot.addWidget(diffcalWorkflow._tweakPeakView)
-    threading.Timer(0.2, execute_click).start()
-    diffcalWorkflow.purgeBadPeaks(maxChiSq)
+    with pytest.raises(RuntimeError):
+        diffcalWorkflow._purgeBadPeaks(maxChiSq)
 
     assert diffcalWorkflow.ingredients.groupedPeakLists[0].peaks == peaks
     assert diffcalWorkflow.ingredients.groupedPeakLists[0].peaks != good_peaks

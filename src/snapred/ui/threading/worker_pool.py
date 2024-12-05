@@ -26,7 +26,7 @@ class Worker(QObject):
         """Long-running task."""
         try:
             if self.args is not None:
-                results = self.target(self.args)
+                results = self.target(*self.args)
             else:
                 results = self.target()
             # results.code = 200 # set to 200 for testing
