@@ -20,10 +20,12 @@ from util.state_helpers import reduction_root_redirect
 
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import WorkspaceMetadata
+from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
     CreateArtificialNormalizationRequest,
+    FarmFreshIngredients,
     ReductionExportRequest,
     ReductionRequest,
 )
@@ -75,7 +77,10 @@ class TestReductionService(unittest.TestCase):
             timestamp=self.instance.getUniqueTimestamp(),
             versions=(1, 2),
             pixelMasks=[],
+            keepUnfocused=True,
+            convertUnitsTo="TOF",
             focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
+            artificialNormalizationIngredients=mock.Mock(spec=ArtificialNormalizationIngredients),
         )
 
     def test_name(self):
@@ -102,10 +107,22 @@ class TestReductionService(unittest.TestCase):
 
     def test_prepReductionIngredients(self):
         # Call the method with the provided parameters
-        res = self.instance.prepReductionIngredients(self.request)
+        result = self.instance.prepReductionIngredients(self.request)
 
-        assert ReductionIngredients.model_validate(res)
-        assert res == self.instance.sousChef.prepReductionIngredients(self.request)
+        farmFresh = FarmFreshIngredients(
+            runNumber=self.request.runNumber,
+            useLiteMode=self.request.useLiteMode,
+            timestamp=self.request.timestamp,
+            focusGroups=self.request.focusGroups,
+            keepUnfocused=self.request.keepUnfocused,
+            convertUnitsTo=self.request.convertUnitsTo,
+            versions=self.request.versions,
+        )
+        expected = self.instance.sousChef.prepReductionIngredients(farmFresh)
+        expected.artificialNormalizationIngredients = self.request.artificialNormalizationIngredients
+
+        assert ReductionIngredients.model_validate(result)
+        assert result == expected
 
     def test_fetchReductionGroceries(self):
         self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
@@ -140,6 +157,50 @@ class TestReductionService(unittest.TestCase):
         mockReductionRecipe.assert_called()
         mockReductionRecipe.return_value.cook.assert_called_once_with(ingredients, groceries)
         assert result.record.workspaceNames == mockReductionRecipe.return_value.cook.return_value["outputs"]
+
+    @mock.patch(thisService + "ReductionResponse")
+    @mock.patch(thisService + "ReductionRecipe")
+    def test_reduction_full_sequence(self, mockReductionRecipe, mockReductionResponse):
+        mockReductionRecipe.return_value = mock.Mock()
+        mockResult = {"result": True, "outputs": ["one", "two", "three"], "unfocusedWS": mock.Mock()}
+        mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.stateExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
+        self.instance._markWorkspaceMetadata = mock.Mock()
+
+        self.instance.fetchReductionGroupings = mock.Mock(
+            return_value={"focusGroups": mock.Mock(), "groupingWorkspaces": mock.Mock()}
+        )
+        self.instance.fetchReductionGroceries = mock.Mock(return_value={"combinedPixelMask": mock.Mock()})
+        self.instance.prepReductionIngredients = mock.Mock(return_value=mock.Mock())
+        self.instance._createReductionRecord = mock.Mock(return_value=mock.Mock())
+
+        request_ = self.request.model_copy()
+        self.instance.reduction(request_)
+
+        self.instance.fetchReductionGroupings.assert_called_once_with(request_)
+        assert request_.focusGroups == self.instance.fetchReductionGroupings.return_value["focusGroups"]
+        self.instance.fetchReductionGroceries.assert_called_once_with(request_)
+        self.instance.prepReductionIngredients.assert_called_once_with(
+            request_, self.instance.fetchReductionGroceries.return_value["combinedPixelMask"]
+        )
+        assert (
+            self.instance.fetchReductionGroceries.return_value["groupingWorkspaces"]
+            == self.instance.fetchReductionGroupings.return_value["groupingWorkspaces"]
+        )
+
+        self.instance._createReductionRecord.assert_called_once_with(
+            request_,
+            self.instance.prepReductionIngredients.return_value,
+            mockReductionRecipe.return_value.cook.return_value["outputs"],
+        )
+        mockReductionResponse.assert_called_once_with(
+            record=self.instance._createReductionRecord.return_value,
+            unfocusedData=mockReductionRecipe.return_value.cook.return_value["unfocusedWS"],
+        )
 
     def test_reduction_noState_withWritePerms(self):
         mockRequest = mock.Mock()
@@ -645,7 +706,7 @@ class TestReductionServiceMasks:
                 request.runNumber, request.versions.normalization
             ).useLiteMode(request.useLiteMode).add()
             loadableOtherGroceryItems = groceryClerk.buildDict()
-            residentOtherGroceryKwargs = {"maskWorkspace": combinedMaskName}
+            residentOtherGroceryKwargs = {"combinedPixelMask": combinedMaskName}
 
             self.service.fetchReductionGroceries(request)
 

@@ -1,10 +1,13 @@
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Tuple
 
-from snapred.backend.dao.ingredients import ReductionGroupProcessingIngredients as Ingredients
+import numpy as np
+
+from snapred.backend.dao.ingredients import EffectiveInstrumentIngredients as Ingredients
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
+from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -12,47 +15,37 @@ Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
 @Singleton
-class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
+class EffectiveInstrumentRecipe(Recipe[Ingredients]):
     def unbagGroceries(self, groceries: Dict[str, Any]):
-        self.rawInput = groceries["inputWorkspace"]
+        self.inputWS = groceries["inputWorkspace"]
         self.outputWS = groceries.get("outputWorkspace", groceries["inputWorkspace"])
-        # self.geometryOutputWS = groceries["geometryOutputWorkspace"]
-        # self.diffFocOutputWS = groceries["diffFocOutputWorkspace"]
-        self.groupingWS = groceries["groupingWorkspace"]
 
     def chopIngredients(self, ingredients):
-        self.pixelGroup = ingredients.pixelGroup
+        self.unmaskedPixelGroup = ingredients.unmaskedPixelGroup
 
     def queueAlgos(self):
         """
         Queues up the processing algorithms for the recipe.
         Requires: unbagged groceries.
         """
-        self.mantidSnapper.ConvertUnits(
-            "Converting to TOF...",
-            InputWorkspace=self.rawInput,
-            Target="TOF",
-            OutputWorkspace=self.rawInput,
+        # `EditInstrumentGeometry` modifies in-place, so we need to clone if a distinct output workspace is required.
+        if self.outputWS != self.inputWS:
+            self.mantidSnapper.CloneWorkspace(
+                "Clone workspace for reduced instrument", OutputWorkspace=self.outputWS, InputWorkspace=self.inputWS
+            )
+        self.mantidSnapper.EditInstrumentGeometry(
+            f"Editing instrument geometry for grouping '{self.unmaskedPixelGroup.focusGroup.name}'",
+            Workspace=self.outputWS,
+            # TODO: Mantid defect: allow SI units here!
+            L2=self.unmaskedPixelGroup.L2,
+            Polar=np.rad2deg(self.unmaskedPixelGroup.twoTheta),
+            Azimuthal=np.rad2deg(self.unmaskedPixelGroup.azimuth),
+            #
+            InstrumentName=f"SNAP_{self.unmaskedPixelGroup.focusGroup.name}",
         )
 
-        self.mantidSnapper.FocusSpectraAlgorithm(
-            "Focusing Spectra...",
-            InputWorkspace=self.rawInput,
-            OutputWorkspace=self.rawInput,
-            GroupingWorkspace=self.groupingWS,
-            Ingredients=self.pixelGroup.json(),
-            RebinOutput=False,
-        )
-
-        self.mantidSnapper.NormalizeByCurrentButTheCorrectWay(
-            "Normalizing Current ... but the correct way!",
-            InputWorkspace=self.rawInput,
-            OutputWorkspace=self.rawInput,
-        )
-        self.outputWS = self.rawInput
-
-    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
-        return {"inputWorkspace", "groupingWorkspace"}
+    def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
+        pass
 
     def execute(self):
         """
@@ -63,12 +56,6 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
             self.mantidSnapper.executeQueue()
         except AlgorithmException as e:
             errorString = str(e)
-            if "NORMALIZATIONFACTOR" in errorString:
-                errorString = (
-                    "Input raw data has already been normalized by current.\n "
-                    "Please use one that has not had current normalization applied."
-                    "i.e. sample logs dont contain entries for gd_prtn_chrg or proton_charge"
-                )
             raise RuntimeError(errorString) from e
 
     def cook(self, ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:

@@ -408,7 +408,7 @@ class DiffCalWorkflow(WorkflowImplementer):
                     self._tweakPeakView,
                     "Too Few Peaks",
                     "Purging would result in fewer than the required 2 peaks for calibration.  "
-                    "The current set of peaks will be retained.",
+                    + "The current set of peaks will be retained.",
                     QMessageBox.Ok,
                 )
             else:

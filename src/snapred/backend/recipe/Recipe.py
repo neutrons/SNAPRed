@@ -47,7 +47,7 @@ class Recipe(ABC, Generic[Ingredients]):
     @abstractmethod
     def queueAlgos(self):
         """
-        Queues up the procesing algorithms for the recipe.
+        Queues up the processing algorithms for the recipe.
         Requires: unbagged groceries and chopped ingredients.
         """
 

@@ -2,6 +2,7 @@
   "runNumber": "57514",
   "useLiteMode": true,
   "timestamp": 1722893493.2375631,
+
   "pixelGroups": [
     {
       "pixelGroupingParameters": {
@@ -200,6 +201,207 @@
       "binningMode": -1
     }
   ],
+
+  "unmaskedPixelGroups": [
+    {
+      "pixelGroupingParameters": {
+        "1": {
+          "groupID": 1,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.4888167719149363,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.35983386414596874,
+            "maximum": 4.355830260153734
+          },
+          "dRelativeResolution": 0.009342020503289764
+        }
+      },
+      "nBinsAcrossPeakWidth": 10,
+      "focusGroup": {
+        "name": "All",
+        "definition": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.lite.hdf"
+      },
+      "timeOfFlight": {
+        "minimum": 2546.742533573784,
+        "binWidth": 0.0009342020503289763,
+        "maximum": 12000,
+        "binningMode": -1
+      },
+      "binningMode": -1
+    },
+    {
+      "pixelGroupingParameters": {
+        "1": {
+          "groupID": 1,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.8230747956560218,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.35983386414596874,
+            "maximum": 2.3643065241537378
+          },
+          "dRelativeResolution": 0.006510460909679324
+        },
+        "2": {
+          "groupID": 2,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.1545587481738246,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.46173472918300634,
+            "maximum": 4.355830260153734
+          },
+          "dRelativeResolution": 0.01149611207805968
+        }
+      },
+      "nBinsAcrossPeakWidth": 10,
+      "focusGroup": {
+        "name": "Bank",
+        "definition": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Bank.lite.hdf"
+      },
+      "timeOfFlight": {
+        "minimum": 2546.742533573784,
+        "binWidth": 0.0006510460909679324,
+        "maximum": 12000,
+        "binningMode": -1
+      },
+      "binningMode": -1
+    },
+    {
+      "pixelGroupingParameters": {
+        "1": {
+          "groupID": 1,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 2.1108948177427838,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.35983386414596874,
+            "maximum": 1.8446004591300944
+          },
+          "dRelativeResolution": 0.005285822142225365
+        },
+        "2": {
+          "groupID": 2,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.82310673131693,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.3897805853492433,
+            "maximum": 2.0555564929623205
+          },
+          "dRelativeResolution": 0.006281306679209721
+        },
+        "3": {
+          "groupID": 3,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.5352228379083572,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.43925160115545075,
+            "maximum": 2.3643065241537378
+          },
+          "dRelativeResolution": 0.007730690425302433
+        },
+        "4": {
+          "groupID": 4,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.440276389170165,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.46173472918300634,
+            "maximum": 2.5221224737819017
+          },
+          "dRelativeResolution": 0.008321708397955027
+        },
+        "5": {
+          "groupID": 5,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.1543988461042238,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.5352414154696261,
+            "maximum": 3.194134388808033
+          },
+          "dRelativeResolution": 0.01064966864886483
+        },
+        "6": {
+          "groupID": 6,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 0.8690010092470938,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.6591133268028296,
+            "maximum": 4.355830260153734
+          },
+          "dRelativeResolution": 0.014622431594735495
+        }
+      },
+      "nBinsAcrossPeakWidth": 10,
+      "focusGroup": {
+        "name": "Column",
+        "definition": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.hdf"
+      },
+      "timeOfFlight": {
+        "minimum": 2546.742533573784,
+        "binWidth": 0.0005285822142225365,
+        "maximum": 12000,
+        "binningMode": -1
+      },
+      "binningMode": -1
+    },
+    {
+      "pixelGroupingParameters": {
+        "1": {
+          "groupID": 1,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.7273751940345703,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.35983386414596874,
+            "maximum": 2.5221224737819017
+          },
+          "dRelativeResolution": 0.007007302163279077
+        },
+        "2": {
+          "groupID": 2,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.011699927675655,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.5352414154696261,
+            "maximum": 4.355830260153734
+          },
+          "dRelativeResolution": 0.012791226447712764
+        }
+      },
+      "nBinsAcrossPeakWidth": 10,
+      "focusGroup": {
+        "name": "2_4",
+        "definition": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_2_4.lite.hdf"
+      },
+      "timeOfFlight": {
+        "minimum": 2546.742533573784,
+        "binWidth": 0.0007007302163279077,
+        "maximum": 12000,
+        "binningMode": -1
+      },
+      "binningMode": -1
+    }
+  ],
+
+
   "detectorPeaksMany": [
     [
       {

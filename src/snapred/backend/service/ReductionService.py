@@ -1,7 +1,7 @@
 import json
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from snapred.backend.dao.ingredients import (
     ArtificialNormalizationIngredients,
@@ -183,10 +183,12 @@ class ReductionService(Service):
 
         groupingResults = self.fetchReductionGroupings(request)
         request.focusGroups = groupingResults["focusGroups"]
-        ingredients = self.prepReductionIngredients(request)
-        ingredients.artificialNormalizationIngredients = request.artificialNormalizationIngredients
 
+        # Fetch groceries first: `prepReductionIngredients` will need the combined mask.
         groceries = self.fetchReductionGroceries(request)
+
+        ingredients = self.prepReductionIngredients(request, groceries.get("combinedPixelMask"))
+
         # attach the list of grouping workspaces to the grocery dictionary
         groceries["groupingWorkspaces"] = groupingResults["groupingWorkspaces"]
 
@@ -306,18 +308,15 @@ class ReductionService(Service):
         return combinedMask
 
     @FromString
-    def prepReductionIngredients(self, request: ReductionRequest) -> ReductionIngredients:
+    def prepReductionIngredients(
+        self, request: ReductionRequest, combinedPixelMask: Optional[WorkspaceName] = None
+    ) -> ReductionIngredients:
         """
         Prepare the needed ingredients for calculating reduction.
         Requires:
 
-            - runNumber
-            - lite mode flag
-            - timestamp
-            - at least one focus group specified
-            - a smoothing parameter
-            - a calibrant sample path
-            - a peak threshold
+            - reduction request
+            - an optional combined mask workspace
 
         :param request: a reduction request
         :type request: ReductionRequest
@@ -334,7 +333,9 @@ class ReductionService(Service):
             versions=request.versions,
         )
         # TODO: Skip calibrant sample if there is no calibrant
-        return self.sousChef.prepReductionIngredients(farmFresh)
+        ingredients = self.sousChef.prepReductionIngredients(farmFresh, combinedPixelMask)
+        ingredients.artificialNormalizationIngredients = request.artificialNormalizationIngredients
+        return ingredients
 
     @FromString
     def fetchReductionGroceries(self, request: ReductionRequest) -> Dict[str, Any]:
@@ -353,7 +354,7 @@ class ReductionService(Service):
             - "inputworkspace"
             - "diffcalWorkspace"
             - "normalizationWorkspace"
-            - "maskWorkspace"
+            - "combinedPixelMask"
 
         :rtype: Dict[str, Any]
         """
@@ -372,7 +373,7 @@ class ReductionService(Service):
 
         # Fetch pixel masks
         residentMasks = {}
-        combinedMask = None
+        combinedPixelMask = None
         if request.pixelMasks:
             for mask in request.pixelMasks:
                 match mask.tokens("workspaceType"):
@@ -388,7 +389,7 @@ class ReductionService(Service):
                         raise RuntimeError(
                             f"reduction pixel mask '{mask}' has unexpected workspace-type '{mask.tokens('workspaceType')}'"  # noqa: E501
                         )
-            if calVersion:
+            if calVersion is not None:  # WARNING: version may be _zero_!
                 self.groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
                     request.useLiteMode
                 ).add()
@@ -398,19 +399,19 @@ class ReductionService(Service):
                 **residentMasks,
             )
             # combine all of the pixel masks, for application and final output
-            combinedMask = self.prepCombinedMask(
+            combinedPixelMask = self.prepCombinedMask(
                 request.runNumber, request.useLiteMode, request.timestamp, maskGroceries.values()
             )
 
         # gather the input workspace and the diffcal table
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
 
-        if calVersion:
+        if calVersion is not None:
             self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
                 request.useLiteMode
             ).add()
 
-        if normVersion:
+        if normVersion is not None:  # WARNING: version may be _zero_!
             self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, normVersion).useLiteMode(
                 request.useLiteMode
             ).add()
@@ -421,7 +422,7 @@ class ReductionService(Service):
         )
         groceries = self.groceryService.fetchGroceryDict(
             groceryDict=self.groceryClerk.buildDict(),
-            **({"maskWorkspace": combinedMask} if combinedMask else {}),
+            **({"combinedPixelMask": combinedPixelMask} if combinedPixelMask else {}),
         )
 
         self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
