@@ -169,7 +169,10 @@ class TestGUIPanels:
             lambda self, *args, **kwargs: QMessageBox.Ok
             if (
                 "The backend has encountered warning(s)" in self.text()
-                and "InstrumentDonor will only be used if GroupingFilename is in XML format." in self.detailedText()
+                and (
+                    "InstrumentDonor will only be used if GroupingFilename is in XML format." in self.detailedText()
+                    or "No valid FocusGroups were specified for mode: 'lite'" in self.detailedText()
+                )
             )
             else pytest.fail(
                 "unexpected QMessageBox.exec:"
@@ -782,9 +785,8 @@ class TestGUIPanels:
             assert isinstance(requestView, DiffCalRequestView)
 
             #    set "Run Number", "Convergence Threshold", ,:
-            requestView.runNumberField.setText("46680")
-            requestView.fieldConvergenceThreshold.setText("0.1")
-            requestView.fieldNBinsAcrossPeakWidth.setText("10")
+            requestView.runNumberField.setText("58882")
+            requestView.litemodeToggle.field.setState(False)
 
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
             requestView.sampleDropdown.setCurrentIndex(0)
@@ -796,13 +798,15 @@ class TestGUIPanels:
             #    I assume this is because somehow the 'populateGroupingDropdown',
             #    triggered by the 'runNumberField' 'editComplete' hasn't actually occurred yet?
             qtbot.wait(1000)
-            requestView.groupingFileDropdown.setCurrentIndex(1)
-            assert requestView.groupingFileDropdown.currentIndex() == 1
-            assert requestView.groupingFileDropdown.currentText() == "Bank"
+            requestView.groupingFileDropdown.setCurrentIndex(0)
+            assert requestView.groupingFileDropdown.currentIndex() == 0
+            assert requestView.groupingFileDropdown.currentText() == "Column"
 
             requestView.peakFunctionDropdown.setCurrentIndex(0)
             assert requestView.peakFunctionDropdown.currentIndex() == 0
             assert requestView.peakFunctionDropdown.currentText() == "Gaussian"
+
+            requestView.skipPixelCalToggle.field.setState(False)
 
             #    execute the request
 
@@ -878,11 +882,11 @@ class TestGUIPanels:
             warningMessageBox.start()
             # ---------------------------------------------------------------------------
 
-            #    set "xtal dMin", "FWHM left", and "FWHM right": these are sufficient to get "46680" to pass.
+            #    set "xtal dMin", "FWHM left", and "FWHM right": these are sufficient to get "58882" to pass.
             #    TODO: set ALL of the relevant fields, and use a test initialization template for this.
-            tweakPeakView.fieldXtalDMin.setText("0.72")
-            tweakPeakView.fieldFWHMleft.setText("2.0")
-            tweakPeakView.fieldFWHMright.setText("2.0")
+            tweakPeakView.fieldFWHMleft.setText("1")
+            tweakPeakView.fieldFWHMright.setText("2")
+            tweakPeakView.maxChiSqField.setText("1000.0")
             tweakPeakView.peakFunctionDropdown.setCurrentIndex(0)
             assert tweakPeakView.peakFunctionDropdown.currentIndex() == 0
             assert tweakPeakView.peakFunctionDropdown.currentText() == "Gaussian"
@@ -1015,22 +1019,24 @@ class TestGUIPanels:
             assert isinstance(requestView, NormalizationRequestView)
 
             #    set "Run Number", "Background run number":
-            requestView.runNumberField.setText("46680")
-            requestView.backgroundRunNumberField.setText("46680")
+            requestView.runNumberField.setText("58882")
+            requestView.backgroundRunNumberField.setText("58882")
+
+            requestView.litemodeToggle.field.setState(False)
 
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
-            requestView.sampleDropdown.setCurrentIndex(0)
-            assert requestView.sampleDropdown.currentIndex() == 0
-            assert requestView.sampleDropdown.currentText().endswith("Diamond_001.json")
+            requestView.sampleDropdown.setCurrentIndex(4)
+            assert requestView.sampleDropdown.currentIndex() == 4
+            assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
 
             #    Without this next 'qtbot.wait(1000)',
             #      the 'groupingFileDropdown' gets reset after this successful initialization.
             #    I assume this is because somehow the 'populateGroupingDropdown',
             #    triggered by the 'runNumberField' 'editComplete' hasn't actually occurred yet?
             qtbot.wait(1000)
-            requestView.groupingFileDropdown.setCurrentIndex(1)
-            assert requestView.groupingFileDropdown.currentIndex() == 1
-            assert requestView.groupingFileDropdown.currentText() == "Bank"
+            requestView.groupingFileDropdown.setCurrentIndex(0)
+            assert requestView.groupingFileDropdown.currentIndex() == 0
+            assert requestView.groupingFileDropdown.currentText() == "Column"
 
             """ # Why no "peak function" for normalization calibration?!
             requestView.peakFunctionDropdown.setCurrentIndex(0)
@@ -1117,7 +1123,7 @@ class TestGUIPanels:
             qtbot.wait(1000)
             tweakPeakView.groupingFileDropdown.setCurrentIndex(0)
             assert tweakPeakView.groupingFileDropdown.currentIndex() == 0
-            assert tweakPeakView.groupingFileDropdown.currentText() == "All"
+            assert tweakPeakView.groupingFileDropdown.currentText() == "Column"
 
             #    recalculate using the new values
             #    * recalculate => peak display is recalculated,
@@ -1174,7 +1180,7 @@ class TestGUIPanels:
         ##
 
         # TODO: these could be initialized in the 'setup', but the current plan is to use a YML test template.
-        reductionRunNumber = "46680"
+        reductionRunNumber = "58882"
         reductionStateId = "04bd2c53f6bf6754"
 
         # Override the standard reduction-output location, using a temporary directory
@@ -1256,6 +1262,7 @@ class TestGUIPanels:
             qtbot.wait(1000)
 
             #    enter a "Run Number":
+            requestView.liteModeToggle.field.setState(False)
             requestView.runNumberInput.setText(reductionRunNumber)
             qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
 
