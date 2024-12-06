@@ -12,3 +12,7 @@ IPTS:
 constants:
   # For tests with '46680' this seems to be necessary.
   maskedPixelThreshold: 1.0
+
+  RawVanadiumCorrection:
+    numberOfSlices: 1
+    numberOfAnnuli: 1
