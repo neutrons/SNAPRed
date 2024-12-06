@@ -17,6 +17,7 @@ from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 from snapred.backend.dao import GroupPeakList
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
+from snapred.ui.plotting.Factory import mantidAxisFactory
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.SmoothingSlider import SmoothingSlider
 
@@ -182,28 +183,8 @@ class NormalizationTweakPeakView(BackendRequestView):
 
             # NOTE: Mutate the ax object as the mantidaxis does not account for lines
             # TODO: Bubble this up to the mantid codebase and remove this mutation.
-            def rename_workspace(old_name, new_name):
-                """
-                Rename a workspace, and update the artists, creation arguments and tracked workspaces accordingly
-                :param new_name : the new name of workspace
-                :param old_name : the old name of workspace
-                """
-                for cargs in ax.creation_args:
-                    # NEW CHECK
-                    func_name = cargs["function"]
-                    if func_name not in ["axhline", "axvline"] and cargs["workspaces"] == old_name:
-                        cargs["workspaces"] = new_name
-                    # Alternatively,
-                    # if cargs.get("workspaces") == old_name:
-                    #     cargs["workspaces"] = new_name
-                for ws_name, ws_artist_list in list(ax.tracked_workspaces.items()):
-                    for ws_artist in ws_artist_list:
-                        if ws_artist.workspace_name == old_name:
-                            ws_artist.rename_data(new_name)
-                    if ws_name == old_name:
-                        ax.tracked_workspaces[new_name] = ax.tracked_workspaces.pop(old_name)
+            ax = mantidAxisFactory(ax)
 
-            ax.rename_workspace = rename_workspace
             ax.plot(focusedWorkspace, wkspIndex=i, label="Focused Data", normalize_by_bin_width=True)
             ax.plot(smoothedWorkspace, wkspIndex=i, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
             ax.legend()
