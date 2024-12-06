@@ -7,7 +7,6 @@ from mantid.simpleapi import mtd
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import (
     QHBoxLayout,
-    QLineEdit,
     QMessageBox,
     QPushButton,
 )
@@ -22,7 +21,6 @@ from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.meta.mantid.FitPeaksOutput import FitOutputEnum
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
@@ -57,8 +55,8 @@ class DiffCalTweakPeakView(BackendRequestView):
 
         # create the run number field and lite mode toggle
         self.runNumberField = self._labeledField("Run Number")
-        self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
-        self.maxChiSqField = self._labeledField("Max Chi Sq", QLineEdit(str(self.MAX_CHI_SQ)))
+        self.litemodeToggle = self._labeledToggle("Lite Mode", True)
+        self.maxChiSqField = self._labeledField("Max Chi Sq", text=str(self.MAX_CHI_SQ))
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
         self.signalMaxChiSqUpdate.connect(self._updateMaxChiSq)
 
@@ -80,10 +78,10 @@ class DiffCalTweakPeakView(BackendRequestView):
             x.setEnabled(False)
 
         # create the peak adjustment controls
-        self.fieldXtalDMin = self._labeledField("xtal dMin", QLineEdit(str(self.XTAL_DMIN)))
-        self.fieldXtalDMax = self._labeledField("xtal dMax", QLineEdit(str(self.XTAL_DMAX)))
-        self.fieldFWHMleft = self._labeledField("FWHM left", QLineEdit(str(self.FWHM.left)))
-        self.fieldFWHMright = self._labeledField("FWHM right", QLineEdit(str(self.FWHM.right)))
+        self.fieldXtalDMin = self._labeledField("xtal dMin", text=str(self.XTAL_DMIN))
+        self.fieldXtalDMax = self._labeledField("xtal dMax", text=str(self.XTAL_DMAX))
+        self.fieldFWHMleft = self._labeledField("FWHM left", text=str(self.FWHM.left))
+        self.fieldFWHMright = self._labeledField("FWHM right", text=str(self.FWHM.right))
         peakControlLayout = QHBoxLayout()
         peakControlLayout.addWidget(self.fieldXtalDMin)
         peakControlLayout.addWidget(self.fieldXtalDMax)

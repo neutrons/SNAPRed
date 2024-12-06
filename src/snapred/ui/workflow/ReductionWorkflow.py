@@ -33,6 +33,7 @@ class ReductionWorkflow(WorkflowImplementer):
         )
         self._compatibleMasks: Dict[str, WorkspaceName] = {}
 
+        self._reductionRequestView.liteModeToggle.stateChanged.connect(lambda: self._populatePixelMaskDropdown())
         self._reductionRequestView.enterRunNumberButton.clicked.connect(lambda: self._populatePixelMaskDropdown())
         self._reductionRequestView.pixelMaskDropdown.dropDown.view().pressed.connect(self._onPixelMaskSelection)
 
@@ -98,6 +99,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
     @ExceptionToErrLog
     def _populatePixelMaskDropdown(self):
+        self.useLiteMode = self._reductionRequestView.liteModeToggle.getState()  # noqa: F841
         runNumbers = self._reductionRequestView.getRunNumbers()
         if not runNumbers:
             self._reductionRequestView.pixelMaskDropdown.setItems([])
@@ -288,7 +290,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         request_ = ReductionRequest(
             runNumber=str(self._artificialNormalizationView.fieldRunNumber.text()),
-            useLiteMode=self._reductionRequestView.liteModeToggle.field.getState(),
+            useLiteMode=self._reductionRequestView.liteModeToggle.getState(),
             timestamp=timestamp,
             continueFlags=self.continueAnywayFlags,
             pixelMasks=pixelMasks,
