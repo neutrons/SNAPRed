@@ -1,6 +1,5 @@
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
@@ -21,7 +20,7 @@ class NormalizationRequestView(BackendRequestView):
 
         # input fields
         self.runNumberField = self._labeledLineEdit("Run Number:")
-        self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
+        self.litemodeToggle = self._labeledToggle("Lite Mode", True)
         self.backgroundRunNumberField = self._labeledLineEdit("Background Run Number:")
 
         # drop downs

@@ -1,17 +1,16 @@
 from typing import List
 
 from qtpy.QtCore import Signal, Slot
-from qtpy.QtWidgets import QComboBox, QGridLayout, QLabel, QMessageBox, QPushButton, QWidget
+from qtpy.QtWidgets import QComboBox, QLabel, QMessageBox, QPushButton
 
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.presenter.CalibrationAssessmentPresenter import CalibrationAssessmentPresenter
-from snapred.ui.widget.LabeledField import LabeledField
+from snapred.ui.view.BackendRequestView import BackendRequestView
 
 
-# TODO rebase on BackendRequestView
 @Resettable
-class DiffCalAssessmentView(QWidget):
+class DiffCalAssessmentView(BackendRequestView):
     """
 
     The DiffCalAssessmentView serves as a user interface within the SNAPRed application,
@@ -31,9 +30,6 @@ class DiffCalAssessmentView(QWidget):
 
         self.presenter = CalibrationAssessmentPresenter(self)
 
-        self.layout = QGridLayout()
-        self.setLayout(self.layout)
-
         self.interactionText = QLabel(
             "Calibration Complete! Please examine the calibration assessment workspaces. "
             "You can also load and examine previous calibration assessments for the same "
@@ -49,11 +45,12 @@ class DiffCalAssessmentView(QWidget):
         self.calibrationRecordDropdown.setEnabled(True)
         self.calibrationRecordDropdown.addItem("Select Calibration Record")
         self.calibrationRecordDropdown.model().item(0).setEnabled(False)
+        self.calibrationRecordField = self._labeledField("Calibration Record:", field=self.calibrationRecordDropdown)
 
         self.signalError.connect(self._displayError)
 
         self.layout.addWidget(self.interactionText, 0, 0)
-        self.layout.addWidget(LabeledField("Calibration Record:", self.calibrationRecordDropdown, self), 1, 0)
+        self.layout.addWidget(self.calibrationRecordField, 1, 0)
         self.layout.addWidget(self.loadButton, 1, 1)
         self.layout.addWidget(self.placeHolder)
 

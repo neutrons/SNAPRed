@@ -98,6 +98,7 @@ snapred.ui.widget.Toggle module
 .. automodule:: snapred.ui.widget.Toggle
    :members:
    :undoc-members:
+   :exclude-members: stateChanged
    :show-inheritance:
 
 snapred.ui.widget.ToolBar module

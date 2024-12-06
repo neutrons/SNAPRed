@@ -1,13 +1,12 @@
 from qtpy.QtCore import Signal, Slot
-from qtpy.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QWidget
+from qtpy.QtWidgets import QComboBox, QLabel
 
 from snapred.meta.decorators.Resettable import Resettable
-from snapred.ui.widget.LabeledField import LabeledField
+from snapred.ui.view.BackendRequestView import BackendRequestView
 
 
-# TODO rebase on BackendRequestView
 @Resettable
-class DiffCalSaveView(QWidget):
+class DiffCalSaveView(BackendRequestView):
     """
 
     The DiffCalSaveView is a Qt widget designed for the final step in the calibration process within
@@ -24,33 +23,31 @@ class DiffCalSaveView(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.currentIterationText = "Current"
-        self.layout = QGridLayout()
-        self.setLayout(self.layout)
 
         self.interactionText = QLabel("Assessment Complete! Would you like to save the calibration now?")
 
-        self.fieldRunNumber = LabeledField("Run Number :", QLineEdit(parent=self), self)
+        self.fieldRunNumber = self._labeledField("Run Number :")
         self.fieldRunNumber.setEnabled(False)
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
 
-        self.fieldVersion = LabeledField("Version :", QLineEdit(parent=self), self)
+        self.fieldVersion = self._labeledField("Version :")
         # add tooltip to leave blank for new version
         self.fieldVersion.setToolTip("Leave blank for new version!")
 
-        self.fieldAppliesTo = LabeledField("Applies To :", QLineEdit(parent=self), self)
+        self.fieldAppliesTo = self._labeledField("Applies To :")
         self.fieldAppliesTo.setToolTip(
             "Determines which runs this calibration applies to. 'runNumber', '>runNumber', or \
                 '<runNumber', default is '>runNumber'."
         )
 
-        self.fieldComments = LabeledField("Comments :", QLineEdit(parent=self), self)
+        self.fieldComments = self._labeledField("Comments :")
         self.fieldComments.setToolTip("Comments about the calibration, documentation of important information.")
 
-        self.fieldAuthor = LabeledField("Author :", QLineEdit(parent=self), self)
+        self.fieldAuthor = self._labeledField("Author :")
         self.fieldAuthor.setToolTip("Author of the calibration.")
 
         self.iterationDropdown = QComboBox(parent=self)
-        self.iterationWidget = LabeledField("Iteration :", self.iterationDropdown, self)
+        self.iterationWidget = self._labeledField("Iteration :", field=self.iterationDropdown)
         self.iterationWidget.setVisible(False)
 
         self.layout.addWidget(self.interactionText)

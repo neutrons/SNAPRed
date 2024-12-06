@@ -14,7 +14,6 @@ from snapred.backend.dao.state.RunNumber import RunNumber
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.widget.Toggle import Toggle
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -52,7 +51,7 @@ class ReductionRequestView(BackendRequestView):
         self.runNumberDisplay.setSortingEnabled(False)
 
         # Lite mode toggle, pixel masks dropdown, and retain unfocused data checkbox
-        self.liteModeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
+        self.liteModeToggle = self._labeledToggle("Lite Mode", True)
         self.retainUnfocusedDataCheckbox = self._labeledCheckBox("Retain Unfocused Data")
         self.convertUnitsDropdown = self._sampleDropDown(
             "Convert Units", ["TOF", "dSpacing", "Wavelength", "MomentumTransfer"]

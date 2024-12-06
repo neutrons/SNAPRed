@@ -2,7 +2,6 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
@@ -25,7 +24,7 @@ class DiffCalRequestView(BackendRequestView):
 
         # input fields
         self.runNumberField = self._labeledField("Run Number")
-        self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
+        self.litemodeToggle = self._labeledToggle("Lite Mode", True)
         self.fieldConvergenceThreshold = self._labeledField("Convergence Threshold")
         self.fieldNBinsAcrossPeakWidth = self._labeledField("Bins Across Peak Width")
 
@@ -36,7 +35,7 @@ class DiffCalRequestView(BackendRequestView):
 
         # checkbox for removing background
         # NOTE not enabled unless in CIS mode until remove event background is fixed -- then re-enable
-        self.removeBackgroundToggle = self._labeledField("RemoveBackground", Toggle(parent=self, state=False))
+        self.removeBackgroundToggle = self._labeledToggle("RemoveBackground", False)
         self.removeBackgroundToggle.setEnabled(Config["cis_mode"])
 
         # set field properties
@@ -44,7 +43,7 @@ class DiffCalRequestView(BackendRequestView):
         self.peakFunctionDropdown.setCurrentIndex(0)
 
         # skip pixel calibration toggle
-        self.skipPixelCalToggle = self._labeledField("Skip Pixel Calibration", Toggle(parent=self, state=False))
+        self.skipPixelCalToggle = self._labeledToggle("Skip Pixel Calibration", False)
 
         # add all widgets to layout
         self.layout.addWidget(self.runNumberField, 0, 0)
@@ -75,10 +74,10 @@ class DiffCalRequestView(BackendRequestView):
         return self.runNumberField.text()
 
     def getLiteMode(self):
-        return self.litemodeToggle.field.getState()
+        return self.litemodeToggle.getState()
 
     def getRemoveBackground(self):
-        return self.removeBackgroundToggle.field.getState()
+        return self.removeBackgroundToggle.getState()
 
     def getSkipPixelCalibration(self):
-        return self.skipPixelCalToggle.field.getState()
+        return self.skipPixelCalToggle.getState()
