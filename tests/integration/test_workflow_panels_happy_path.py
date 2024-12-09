@@ -40,7 +40,6 @@ class InterruptWithBlock(BaseException):
     pass
 
 
-@pytest.fixture
 class TestSummary:
     def __init__(self):
         self._index = 0
@@ -98,7 +97,7 @@ class TestSummary:
             return self.summary
 
 
-@pytest.fixture()
+@pytest.fixture
 def calibration_home_from_mirror():
     # Test fixture to create a copy of the calibration home directory from an existing mirror:
     # * creates a temporary calibration home directory under the optional `prefix` path;
