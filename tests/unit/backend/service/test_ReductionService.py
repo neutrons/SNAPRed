@@ -126,7 +126,7 @@ class TestReductionService(unittest.TestCase):
 
     def test_fetchReductionGroceries(self):
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
-        self.instance.dataFactoryService.getLatestNormalizationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.request.continueFlags = ContinueWarning.Type.UNSET
         res = self.instance.fetchReductionGroceries(self.request)
@@ -145,7 +145,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.stateExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
-        self.instance.dataFactoryService.getLatestNormalizationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
         self.instance._markWorkspaceMetadata = mock.Mock()
 
@@ -681,7 +681,7 @@ class TestReductionServiceMasks:
                 focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
             )
             self.service.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
-            self.service.dataFactoryService.getLatestNormalizationVersion = mock.Mock(return_value=2)
+            self.service.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=2)
             self.service._markWorkspaceMetadata = mock.Mock()
 
             groceryClerk = self.service.groceryClerk
@@ -742,7 +742,7 @@ class TestReductionServiceMasks:
                 focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
             )
             self.service.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
-            self.service.dataFactoryService.getLatestNormalizationVersion = mock.Mock(return_value=2)
+            self.service.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=2)
             combinedMaskName = wng.reductionPixelMask().runNumber(request.runNumber).build()
             mockPrepCombinedMask.return_value = combinedMaskName
 

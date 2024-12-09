@@ -367,7 +367,9 @@ class ReductionService(Service):
                 request.runNumber, request.useLiteMode
             )
         if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
-            normVersion = self.dataFactoryService.getLatestNormalizationVersion(request.runNumber, request.useLiteMode)
+            normVersion = self.dataFactoryService.getLatestApplicableNormalizationVersion(
+                request.runNumber, request.useLiteMode
+            )
 
         # Fetch pixel masks
         residentMasks = {}

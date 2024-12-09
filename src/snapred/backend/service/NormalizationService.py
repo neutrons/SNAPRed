@@ -391,7 +391,9 @@ class NormalizationService(Service):
         """
         response = {}
         for runNumber in request.runNumbers:
-            response[runNumber] = self.dataFactoryService.getLatestNormalizationVersion(runNumber, request.useLiteMode)
+            response[runNumber] = self.dataFactoryService.getLatestApplicableNormalizationVersion(
+                runNumber, request.useLiteMode
+            )
         return response
 
     @FromString

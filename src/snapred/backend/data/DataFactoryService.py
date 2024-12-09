@@ -161,10 +161,6 @@ class DataFactoryService:
     def getLatestApplicableNormalizationVersion(self, runId: str, useLiteMode: bool):
         return self.lookupService.normalizationIndexer(runId, useLiteMode).latestApplicableVersion(runId)
 
-    @validate_call
-    def getLatestNormalizationVersion(self, runId: str, useLiteMode: bool):
-        return self.lookupService.normalizationIndexer(runId, useLiteMode).latestApplicableVersion(runId)
-
     ##### REDUCTION METHODS #####
 
     @validate_call

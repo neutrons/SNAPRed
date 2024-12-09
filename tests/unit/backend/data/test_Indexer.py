@@ -282,7 +282,7 @@ class TestIndexer(unittest.TestCase):
         with pytest.raises(ValueError, match=r".*Version must be an int or*"):
             indexer._flattenVersion(None)
 
-    def test_writeNewRecord_noAppliesTo(self):
+    def test_writeNewVersion_noAppliesTo(self):
         # ensure that a new record is written to disk
         # and the index is updated to reflect the new record
         indexer = self.initIndexer()
@@ -290,18 +290,18 @@ class TestIndexer(unittest.TestCase):
         record = self.record(version)
         entry = self.indexEntryFromRecord(record)
         entry.appliesTo = None
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
         assert self.recordPath(version).exists()
         assert indexer.index[version] == entry
 
-    def test_writeNewRecord_recordAlreadyExists(self):
+    def test_writeNewVersion_recordAlreadyExists(self):
         # ensure that a new record is written to disk
         # and the index is updated to reflect the new record
         indexer = self.initIndexer()
         version = randint(2, 120)
         record = self.record(version)
         entry = self.indexEntryFromRecord(record)
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
         assert self.recordPath(version).exists()
         assert indexer.index[version] == entry
 
@@ -311,7 +311,7 @@ class TestIndexer(unittest.TestCase):
         entry = self.indexEntryFromRecord(record)
 
         with pytest.raises(ValueError, match=".*already exists.*"):
-            indexer.writeNewRecord(record, entry)
+            indexer.writeNewVersion(record, entry)
 
     def test_currentVersion_add(self):
         # ensure current version advances when index entries are written
@@ -509,7 +509,7 @@ class TestIndexer(unittest.TestCase):
         # now write the record
         # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WRITE 1 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         record = self.recordFromIndexEntry(entry)
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
         expectedIndex[here] = entry
 
         # the current version hasn't moved
@@ -550,7 +550,7 @@ class TestIndexer(unittest.TestCase):
         record = self.record(here)
         entry = self.indexEntryFromRecord(record)
         expectedIndex[entry.version] = entry
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
         assert indexer.nextVersion() == here + 1
         assert indexer.nextVersion() not in indexer.index
 
@@ -579,7 +579,7 @@ class TestIndexer(unittest.TestCase):
         entry = self.indexEntry(VersionState.DEFAULT)
         record = self.recordFromIndexEntry(entry)
         expectedIndex[VERSION_START] = entry
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
         assert self.recordPath(indexer.defaultVersion()).exists()
         # the current version is still the default version
         assert indexer.currentVersion() == indexer.defaultVersion()
@@ -601,7 +601,7 @@ class TestIndexer(unittest.TestCase):
         # now write the record -- ensure it is written at the
         record = self.recordFromIndexEntry(entry)
         entry = self.indexEntryFromRecord(record)
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
         assert self.recordPath(VERSION_START).exists()
         # ensure current still here
         assert indexer.currentVersion() == VERSION_START + 1
@@ -624,7 +624,7 @@ class TestIndexer(unittest.TestCase):
         record = self.record(VersionState.DEFAULT)
         entry = self.indexEntryFromRecord(record)
         assert indexer._flattenVersion(record.version) == VERSION_START
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
 
         # the current version is still the default version
         assert indexer.currentVersion() == VERSION_START
@@ -818,7 +818,7 @@ class TestIndexer(unittest.TestCase):
         # and the read / written records match
         record = self.record(nextVersion)
         entry = self.indexEntryFromRecord(record)
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
         res = indexer.readRecord(nextVersion)
         assert record.version == nextVersion
         assert res == record
@@ -832,7 +832,7 @@ class TestIndexer(unittest.TestCase):
         # write then read the record
         # make sure the record version was updated
         # and the read / written records match
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
         res = indexer.readRecord(version)
         assert record.version == version
         assert res == record
@@ -870,7 +870,7 @@ class TestIndexer(unittest.TestCase):
         record = self.record(version)
         entry = self.indexEntryFromRecord(record)
         indexer = self.initIndexer()
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
         assert record.version == version
         assert self.recordPath(version).exists()
         # read it back in and ensure it is the same
@@ -892,7 +892,7 @@ class TestIndexer(unittest.TestCase):
         # now write the record
         record = self.record(nextVersion)
         entry = self.indexEntryFromRecord(record)
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
         assert record.version == nextVersion
         assert self.recordPath(nextVersion).exists()
         res = parse_file_as(Record, self.recordPath(nextVersion))
@@ -910,7 +910,7 @@ class TestIndexer(unittest.TestCase):
         entry = self.indexEntryFromRecord(record)
         # write then read in the record
         indexer = self.initIndexer(IndexerType.CALIBRATION)
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
         res = indexer.readRecord(record.version)
         assert type(res) is CalibrationRecord
         assert res == record
@@ -922,7 +922,7 @@ class TestIndexer(unittest.TestCase):
         entry = self.indexEntryFromRecord(record)
         # write then read in the record
         indexer = self.initIndexer(IndexerType.NORMALIZATION)
-        indexer.writeNewRecord(record, entry)
+        indexer.writeNewVersion(record, entry)
         res = indexer.readRecord(record.version)
         assert type(res) is NormalizationRecord
         assert res == record

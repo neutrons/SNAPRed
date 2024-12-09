@@ -126,7 +126,12 @@ class Indexer:
                     f"The following records were expected, but not available on disk: {missingRecords}"
                 )
             else:
-                logger.warning(f"The following records were expected, but not available on disk: {missingRecords}")
+                logger.warning(
+                    (
+                        f"The following records were expected, but not available on disk: {missingRecords}",
+                        "\n Please contact your IS or CIS about these missing records.",
+                    )
+                )
 
         # take the set of versions common to both
         commonVersions = self.dirVersions & indexVersions
@@ -363,7 +368,7 @@ class Indexer:
     def versionExists(self, version: Version):
         return self._flattenVersion(version) in self.index
 
-    def writeNewRecord(self, record: Record, entry: IndexEntry):
+    def writeNewVersion(self, record: Record, entry: IndexEntry):
         """
         Coupled write of a record and an index entry.
         As required for new records.

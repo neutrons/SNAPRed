@@ -211,7 +211,7 @@ class TestNormalizationService(unittest.TestCase):
         )
 
     def test_matchRuns(self):
-        self.instance.dataFactoryService.getLatestNormalizationVersion = mock.Mock(
+        self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(
             side_effect=[mock.sentinel.version1, mock.sentinel.version2],
         )
         request = mock.Mock(runNumbers=[mock.sentinel.run1, mock.sentinel.run2], useLiteMode=True)

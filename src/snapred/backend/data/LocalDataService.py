@@ -525,7 +525,7 @@ class LocalDataService:
         if entry is None:
             indexer.writeRecord(record)
         else:
-            indexer.writeNewRecord(record, entry)
+            indexer.writeNewVersion(record, entry)
         # separately write the normalization state
         indexer.writeParameters(record.calculationParameters)
 
@@ -587,7 +587,7 @@ class LocalDataService:
             indexer.writeRecord(record)
         else:
             # write record to file
-            indexer.writeNewRecord(record, entry)
+            indexer.writeNewVersion(record, entry)
         # separately write the calibration state
         indexer.writeParameters(record.calculationParameters)
 
@@ -1034,7 +1034,7 @@ class LocalDataService:
                 comments="The default configuration when loading StateConfig if none other is found",
             )
             # write the calibration state
-            indexer.writeNewRecord(record, entry)
+            indexer.writeNewVersion(record, entry)
             indexer.writeParameters(record.calculationParameters)
             # write the default diffcal table
             self._writeDefaultDiffCalTable(runId, liteMode)

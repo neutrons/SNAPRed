@@ -228,7 +228,7 @@ class TestDataFactoryService(unittest.TestCase):
 
     def test_getLatestNormalizationVersion(self):
         for useLiteMode in [True, False]:
-            actual = self.instance.getLatestNormalizationVersion("123", useLiteMode)
+            actual = self.instance.getLatestApplicableNormalizationVersion("123", useLiteMode)
             assert actual == self.expected("Normalization", "123")
 
     ## TEST REDUCTION METHODS
