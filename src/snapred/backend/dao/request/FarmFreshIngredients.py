@@ -27,14 +27,14 @@ class FarmFreshIngredients(BaseModel):
     # allow 'versions' to be accessed as a single version,
     #   or, to be accessed ambiguously
     @property
-    def version(self) -> Optional[int]:
+    def version(self) -> Version:
         if self.versions.calibration is not None and self.versions.normalization is not None:
             raise RuntimeError("accessing 'version' property when 'versions' is non-singular")
         return self.versions[0]
 
     @version.setter
-    def version(self, v: Optional[int]):
-        self.versions = Versions(v, None)
+    def version(self, v: Version):
+        self.versions = Versions(v, v)
 
     useLiteMode: bool
 
