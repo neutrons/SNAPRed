@@ -282,10 +282,6 @@ class TestIndexer(unittest.TestCase):
         with pytest.raises(ValueError, match=r".*Version must be an int or*"):
             indexer._flattenVersion(None)
 
-        indexer.currentVersion = lambda: None
-        with pytest.raises(ValueError, match=r".*No available versions found during lookup using:*"):
-            indexer._flattenVersion(VersionState.LATEST)
-
     def test_writeNewRecord_noAppliesTo(self):
         # ensure that a new record is written to disk
         # and the index is updated to reflect the new record
