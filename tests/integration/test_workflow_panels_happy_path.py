@@ -786,7 +786,7 @@ class TestGUIPanels:
 
             #    set "Run Number", "Convergence Threshold", ,:
             requestView.runNumberField.setText("58882")
-            requestView.litemodeToggle.field.setState(False)
+            requestView.litemodeToggle.setState(False)
 
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
             requestView.sampleDropdown.setCurrentIndex(3)
@@ -806,7 +806,7 @@ class TestGUIPanels:
             assert requestView.peakFunctionDropdown.currentIndex() == 0
             assert requestView.peakFunctionDropdown.currentText() == "Gaussian"
 
-            requestView.skipPixelCalToggle.field.setState(False)
+            requestView.skipPixelCalToggle.setState(False)
 
             #    execute the request
 
@@ -1022,7 +1022,7 @@ class TestGUIPanels:
             requestView.runNumberField.setText("58882")
             requestView.backgroundRunNumberField.setText("58882")
 
-            requestView.litemodeToggle.field.setState(False)
+            requestView.litemodeToggle.setState(False)
 
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
             requestView.sampleDropdown.setCurrentIndex(3)
@@ -1262,7 +1262,7 @@ class TestGUIPanels:
             qtbot.wait(1000)
 
             #    enter a "Run Number":
-            requestView.liteModeToggle.field.setState(False)
+            requestView.liteModeToggle.setState(False)
             requestView.runNumberInput.setText(reductionRunNumber)
             qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
 
