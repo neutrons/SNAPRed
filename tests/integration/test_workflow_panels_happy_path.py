@@ -789,9 +789,9 @@ class TestGUIPanels:
             requestView.litemodeToggle.field.setState(False)
 
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
-            requestView.sampleDropdown.setCurrentIndex(0)
-            assert requestView.sampleDropdown.currentIndex() == 0
-            assert requestView.sampleDropdown.currentText().endswith("Diamond_001.json")
+            requestView.sampleDropdown.setCurrentIndex(3)
+            assert requestView.sampleDropdown.currentIndex() == 3
+            assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
 
             #    Without this next 'qtbot.wait(1000)',
             #      the 'groupingFileDropdown' gets reset after this successful initialization.
@@ -884,7 +884,7 @@ class TestGUIPanels:
 
             #    set "xtal dMin", "FWHM left", and "FWHM right": these are sufficient to get "58882" to pass.
             #    TODO: set ALL of the relevant fields, and use a test initialization template for this.
-            tweakPeakView.fieldFWHMleft.setText("1")
+            tweakPeakView.fieldFWHMleft.setText("1.5")
             tweakPeakView.fieldFWHMright.setText("2")
             tweakPeakView.maxChiSqField.setText("1000.0")
             tweakPeakView.peakFunctionDropdown.setCurrentIndex(0)
@@ -1025,8 +1025,8 @@ class TestGUIPanels:
             requestView.litemodeToggle.field.setState(False)
 
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
-            requestView.sampleDropdown.setCurrentIndex(4)
-            assert requestView.sampleDropdown.currentIndex() == 4
+            requestView.sampleDropdown.setCurrentIndex(3)
+            assert requestView.sampleDropdown.currentIndex() == 3
             assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
 
             #    Without this next 'qtbot.wait(1000)',
