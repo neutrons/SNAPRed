@@ -67,12 +67,12 @@ class TestDataFactoryService(unittest.TestCase):
         cls.mockLookupService.calibrationIndexer.return_value = mock.Mock(
             versionPath=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
             getIndex=mock.Mock(return_value=[cls.expected(cls, "Calibration")]),
-            getLatestApplicableVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
+            latestApplicableVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
         )
         cls.mockLookupService.normalizationIndexer.return_value = mock.Mock(
             versionPath=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
             getIndex=mock.Mock(return_value=[cls.expected(cls, "Normalization")]),
-            getLatestApplicableVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
+            latestApplicableVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
         )
 
     def setUp(self):

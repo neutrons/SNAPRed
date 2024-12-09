@@ -10,6 +10,7 @@ from typing import List
 from unittest import mock
 
 import pytest
+from util.dao import DAOFactory
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
@@ -275,7 +276,6 @@ class TestIndexer(unittest.TestCase):
         indexer.currentVersion = lambda: 3
         indexer.nextVersion = lambda: 4
         assert indexer._flattenVersion(VersionState.DEFAULT) == indexer.defaultVersion()
-        assert indexer._flattenVersion(VersionState.LATEST) == indexer.currentVersion()
         assert indexer._flattenVersion(VersionState.NEXT) == indexer.nextVersion()
         assert indexer._flattenVersion(3) == 3
 

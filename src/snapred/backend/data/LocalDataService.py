@@ -850,8 +850,10 @@ class LocalDataService:
         return parameters
 
     @validate_call
-    def readNormalizationState(self, runId: str, useLiteMode: bool, version: Optional[Version] = VersionState.LATEST):
+    def readNormalizationState(self, runId: str, useLiteMode: bool, version: Version = VersionState.LATEST):
         indexer = self.normalizationIndexer(runId, useLiteMode)
+        if version is VersionState.LATEST:
+            version = indexer.latestApplicableVersion(runId)
         return indexer.readParameters(version)
 
     def writeCalibrationState(self, calibration: Calibration):

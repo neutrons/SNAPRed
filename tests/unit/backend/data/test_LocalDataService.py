@@ -315,8 +315,11 @@ def test_readStateConfig_default():
         indexer = localDataService.calibrationIndexer("57514", True)
         parameters = DAOFactory.calibrationParameters("57514", True, indexer.defaultVersion())
         tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
-        tmpRoot.saveObjectAt(parameters, indexer.parametersPath(VersionState.DEFAULT))
-        indexer.index = {VersionState.DEFAULT: mock.Mock()}  # NOTE manually update the Indexer
+        tmpRoot.saveObjectAt(parameters, indexer.parametersPath(indexer.defaultVersion()))
+
+        indexer.index = {
+            VersionState.DEFAULT: mock.MagicMock(appliesTo="57514", version=indexer.defaultVersion())
+        }  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
     assert actual.stateId == DAOFactory.magical_state_id
@@ -332,7 +335,9 @@ def test_readStateConfig_previous():
         indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
         tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
-        indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
+        indexer.index = {
+            version: mock.MagicMock(appliesTo="57514", version=version)
+        }  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
     assert actual.stateId == DAOFactory.magical_state_id
@@ -348,7 +353,9 @@ def test_readStateConfig_attaches_grouping_map():
         indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
         tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
-        indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
+        indexer.index = {
+            version: mock.MagicMock(appliesTo="57514", version=version)
+        }  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     expectedMap = DAOFactory.groupingMap_SNAP()
     assert actual.groupingMap == expectedMap
@@ -365,7 +372,9 @@ def test_readStateConfig_invalid_grouping_map():
         indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
         tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
-        indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
+        indexer.index = {
+            version: mock.MagicMock(appliesTo="57514", version=version)
+        }  # NOTE manually update the Indexer
         # 'GroupingMap.defaultStateId' is _not_ a valid grouping-map 'stateId' for an existing `StateConfig`.
         with pytest.raises(  # noqa: PT012
             RuntimeError,
@@ -383,7 +392,9 @@ def test_readStateConfig_calls_prepareStateRoot():
     with state_root_redirect(localDataService, stateId=expected.instrumentState.id.hex) as tmpRoot:
         indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.saveObjectAt(expected, indexer.parametersPath(version))
-        indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
+        indexer.index = {
+            version: mock.MagicMock(appliesTo="57514", version=version)
+        }  # NOTE manually update the Indexer
         assert not localDataService._groupingMapPath(tmpRoot.stateId).exists()
         localDataService._prepareStateRoot = mock.Mock(
             side_effect=lambda x: tmpRoot.saveObjectAt(  # noqa ARG005
@@ -720,7 +731,8 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
         # move the calculation parameters into correct folder
         indexer = localDataService.calibrationIndexer("57514", True)
         indexer.writeParameters(DAOFactory.calibrationParameters("57514", True, indexer.defaultVersion()))
-        indexer.index = {indexer.defaultVersion(): mock.Mock()}
+        indexer.index = {indexer.defaultVersion(): mock.MagicMock(appliesTo="57514", version=indexer.defaultVersion())}
+
         # move the grouping map into correct folder
         write_model_pretty(DAOFactory.groupingMap_SNAP(), localDataService._groupingMapPath(tmpRoot.stateId))
 
@@ -2120,7 +2132,7 @@ def test_readWriteNormalizationState():
 
     ans = localDataService.readNormalizationState(runNumber, True, VersionState.LATEST)
     assert ans == mockNormalizationIndexer.readParameters.return_value
-    mockNormalizationIndexer.readParameters.assert_called_once_with(VersionState.LATEST)
+    mockNormalizationIndexer.readParameters.assert_called_once_with(1)
 
 
 def test_readDetectorState():
