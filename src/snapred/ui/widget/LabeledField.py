@@ -2,7 +2,7 @@ from qtpy.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QWidget
 
 
 class LabeledField(QWidget):
-    def __init__(self, label, field=None, parent=None):
+    def __init__(self, label, field=None, text=None, parent=None):
         super(LabeledField, self).__init__(parent)
         self.setStyleSheet("background-color: #F5E9E2;")
         layout = QHBoxLayout()
@@ -13,6 +13,7 @@ class LabeledField(QWidget):
             self._field = field
         else:
             self._field = QLineEdit(parent=self)
+            self._field.setText(text)
 
         layout.addWidget(self._label)
         layout.addWidget(self._field)

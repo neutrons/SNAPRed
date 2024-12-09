@@ -102,6 +102,12 @@ calibration:
   fitting:
     minSignal2Noise: 0.0
 
+reduction:
+  output:
+    extension: .nxs
+    # convert the instrument for the output workspaces into the reduced form
+    useEffectiveInstrument: false
+
 mantid:
   workspace:
     nameTemplate:

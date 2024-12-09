@@ -37,8 +37,7 @@ class RecoverableException(Exception):
         return self.model.data
 
     def __init__(self, message: str, flags: "Type" = 0, data: Optional[Any] = None):
-        RecoverableException.Model.update_forward_refs()
-        RecoverableException.Model.model_rebuild(force=True)
+        RecoverableException.Model.model_rebuild(force=True)  # replaces: `update_forward_refs` method
         self.model = RecoverableException.Model(message=message, flags=flags, data=data)
         logger.error(f"{extractTrueStacktrace()}")
         super().__init__(message)

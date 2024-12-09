@@ -7,7 +7,6 @@ from mantid.simpleapi import mtd
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import (
     QHBoxLayout,
-    QLineEdit,
     QMessageBox,
     QPushButton,
 )
@@ -51,8 +50,8 @@ class NormalizationTweakPeakView(BackendRequestView):
         super().__init__(parent=parent)
 
         # create the run number fields
-        self.fieldRunNumber = self._labeledField("Run Number", QLineEdit(parent=self))
-        self.fieldBackgroundRunNumber = self._labeledField("Background Run Number", QLineEdit(parent=self))
+        self.fieldRunNumber = self._labeledField("Run Number")
+        self.fieldBackgroundRunNumber = self._labeledField("Background Run Number")
         # connect them to signals
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
@@ -72,8 +71,8 @@ class NormalizationTweakPeakView(BackendRequestView):
 
         # create the adjustment controls
         self.smoothingSlider = self._labeledField("Smoothing", SmoothingSlider())
-        self.fieldXtalDMin = self._labeledField("xtal dMin", QLineEdit(str(self.XTAL_DMIN)))
-        self.fieldXtalDMax = self._labeledField("xtal dMax", QLineEdit(str(self.XTAL_DMAX)))
+        self.fieldXtalDMin = self._labeledField("xtal dMin", text=str(self.XTAL_DMIN))
+        self.fieldXtalDMax = self._labeledField("xtal dMax", text=str(self.XTAL_DMAX))
         peakControlLayout = QHBoxLayout()
         peakControlLayout.addWidget(self.smoothingSlider, 2)
         peakControlLayout.addWidget(self.fieldXtalDMin)

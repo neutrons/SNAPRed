@@ -1,9 +1,11 @@
-from qtpy.QtCore import Property, QEasingCurve, QPropertyAnimation, Qt
+from qtpy.QtCore import Property, QEasingCurve, QPropertyAnimation, Qt, Signal, Slot
 from qtpy.QtGui import QLinearGradient, QPainter
 from qtpy.QtWidgets import QWidget
 
 
 class Toggle(QWidget):
+    stateChanged = Signal(bool)
+
     def __init__(self, parent=None, state=False):
         super().__init__(parent=parent)
         self._state = state
@@ -28,9 +30,12 @@ class Toggle(QWidget):
     def toggle(self):
         self.setState(not self._state)
 
+    @Slot(bool)
     def setState(self, state):
-        self._state = state
-        self.animateClick()
+        if self._state != state:
+            self._state = state
+            self.stateChanged.emit(state)
+            self.animateClick()
 
     def connectUpdate(self, update):  # noqa: ARG002
         self.toggleAnimation.finished.connect(update)
