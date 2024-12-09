@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict, field_validator
+
 from snapred.meta.Config import Config
 from snapred.meta.Enum import StrEnum
 

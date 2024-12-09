@@ -31,7 +31,7 @@ def setup_view_and_workflow():
     return view, workflow
 
 
-@pytest.mark.ui()
+@pytest.mark.ui
 def test_handleButtonClicked_with_valid_input(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     view.getRunNumber.return_value = "12345"
@@ -43,7 +43,7 @@ def test_handleButtonClicked_with_valid_input(setup_view_and_workflow):
         mock_initializeState.assert_called_once_with("12345", "Test State", True)
 
 
-@pytest.mark.ui()
+@pytest.mark.ui
 def test_handleButtonClicked_with_invalid_input(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     view.getRunNumber.return_value = "invalid"
@@ -53,7 +53,7 @@ def test_handleButtonClicked_with_invalid_input(setup_view_and_workflow):
         mock_warning.assert_called_once()
 
 
-@pytest.mark.ui()
+@pytest.mark.ui
 def test__initializeState(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     view.getRunNumber.return_value = "12345"
@@ -69,7 +69,7 @@ def test__initializeState(setup_view_and_workflow):
         mock_dialog_showSuccess.assert_called_once()
 
 
-@pytest.mark.ui()
+@pytest.mark.ui
 def test__handleResponse_error(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     error_response = SNAPResponse(code=ResponseCode.ERROR, message="Error message")
@@ -82,7 +82,7 @@ def test__handleResponse_error(setup_view_and_workflow):
         mock_critical.assert_called_once()
 
 
-@pytest.mark.ui()
+@pytest.mark.ui
 def test__handleResponse_success(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     success_response = SNAPResponse(code=ResponseCode.OK)

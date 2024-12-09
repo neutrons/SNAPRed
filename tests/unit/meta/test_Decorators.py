@@ -184,7 +184,7 @@ class BasicWidget(QWidget):
         self.text = text
 
 
-@pytest.mark.ui()
+@pytest.mark.ui
 def test_resettable(qtbot):
     parent = QWidget()
     qtbot.addWidget(parent)

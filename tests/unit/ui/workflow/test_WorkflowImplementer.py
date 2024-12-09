@@ -7,7 +7,7 @@ from mantid.simpleapi import CreateSingleValuedWorkspace, GroupWorkspaces, mtd
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
 
-@pytest.mark.ui()
+@pytest.mark.ui
 def test_rename_on_iterate_list(qtbot):  # noqa: ARG001
     """
     Test that on iteration, a list of workspaces will be renamed according to the iteration template.
@@ -26,7 +26,7 @@ def test_rename_on_iterate_list(qtbot):  # noqa: ARG001
     assert instance.collectedOutputs == newNames
 
 
-@pytest.mark.ui()
+@pytest.mark.ui
 def test_rename_on_iterate_group(qtbot):  # noqa: ARG001
     """
     Test that on iteration, a workspace group has all of its members renamed.

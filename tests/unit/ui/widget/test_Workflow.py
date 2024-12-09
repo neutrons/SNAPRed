@@ -40,7 +40,7 @@ def _generateWorkflow():
     return WorkflowBuilder().addNode(continueAction, view, "Test").build()
 
 
-@pytest.mark.ui()
+@pytest.mark.ui
 def test_workflowPresenterHandleContinueButtonClicked(qtbot):
     # Mock the worker pool
     mockWorkerPool = MagicMock()
