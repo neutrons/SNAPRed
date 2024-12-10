@@ -20,6 +20,7 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.meta.mantid.FitPeaksOutput import FitOutputEnum
+from snapred.ui.plotting.Factory import mantidAxisFactory
 from snapred.ui.view.BackendRequestView import BackendRequestView
 
 
@@ -212,6 +213,7 @@ class DiffCalTweakPeakView(BackendRequestView):
 
         # now re-draw the figure
         self.figure.clear()
+
         for wkspIndex in range(numGraphs):
             peaks = self.peaks[wkspIndex].peaks
             # collect the fit chi-sq parameters for this spectrum, and the fits
@@ -220,6 +222,11 @@ class DiffCalTweakPeakView(BackendRequestView):
             self.badPeaks[wkspIndex] = [peak for chi2, peak in zip(chisq, peaks) if chi2 >= maxChiSq]
             # prepare the plot area
             ax = self.figure.add_subplot(nrows, ncols, wkspIndex + 1, projection="mantid")
+
+            # NOTE: Mutate the ax object as the mantidaxis does not account for lines
+            # TODO: Bubble this up to the mantid codebase and remove this mutation.
+            ax = mantidAxisFactory(ax)
+
             ax.tick_params(direction="in")
             ax.set_title(f"Group ID: {wkspIndex + 1}")
             # plot the data and fitted curve

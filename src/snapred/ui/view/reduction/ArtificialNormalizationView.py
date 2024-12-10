@@ -15,6 +15,7 @@ from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
+from snapred.ui.plotting.Factory import mantidAxisFactory
 from snapred.ui.view.BackendRequestView import BackendRequestView
 
 
@@ -133,6 +134,11 @@ class ArtificialNormalizationView(BackendRequestView):
         self.figure.clear()
         for i in range(numGraphs):
             ax = self.figure.add_subplot(nrows, ncols, i + 1, projection="mantid")
+
+            # NOTE: Mutate the ax object as the mantidaxis does not account for lines
+            # TODO: Bubble this up to the mantid codebase and remove this mutation.
+            ax = mantidAxisFactory(ax)
+
             ax.plot(diffractionWorkspace, wkspIndex=i, label="Diffcal Data", normalize_by_bin_width=True)
             ax.plot(
                 artificialNormWorkspace,
