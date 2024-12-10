@@ -232,7 +232,9 @@ class ReductionWorkflow(WorkflowImplementer):
         # SPECIAL FOR THE REDUCTION WORKFLOW: clear everything _except_ the output workspaces
         #   _before_ transitioning to the "save" panel.
         # TODO: make '_clearWorkspaces' a public method (i.e make this combination a special `cleanup` method).
-        self._clearWorkspaces(exclude=self.outputs, clearCachedWorkspaces=True)
+
+        # NOTE: should this not occur in the 'finalizeReduction' method?
+        # self._clearWorkspaces(exclude=self.outputs, clearCachedWorkspaces=True)
         return self.responses[-1]
 
     def _artificialNormalization(self, workflowPresenter, responseData, runNumber):
@@ -243,8 +245,8 @@ class ReductionWorkflow(WorkflowImplementer):
             useLiteMode=self.useLiteMode,
             peakWindowClippingSize=int(self._artificialNormalizationView.peakWindowClippingSize.field.text()),
             smoothingParameter=self._artificialNormalizationView.getSmoothingParameter(),
-            decreaseParameter=self._artificialNormalizationView.decreaseParameterDropdown.currentIndex() == 1,
-            lss=self._artificialNormalizationView.lssDropdown.currentIndex() == 1,
+            decreaseParameter=self._artificialNormalizationView.decreaseParameterDropdown.getValue(),
+            lss=self._artificialNormalizationView.lssDropdown.getValue(),
             diffractionWorkspace=responseData,
         )
         response = self.request(path="reduction/artificialNormalization", payload=request_)
