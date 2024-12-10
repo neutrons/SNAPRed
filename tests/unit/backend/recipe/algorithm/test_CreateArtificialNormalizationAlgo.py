@@ -42,7 +42,10 @@ class TestCreateArtificialNormalizationAlgo(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("decreaseParameter", self.fakeIngredients.decreaseParameter)
+        algo.setProperty("lss", self.fakeIngredients.lss)
+        algo.setProperty("peakWindowClippingSize", self.fakeIngredients.peakWindowClippingSize)
+        algo.setProperty("smoothingParameter", self.fakeIngredients.smoothingParameter)
         algo.setProperty("OutputWorkspace", "test_output_ws")
         originalData = []
         inputWs = mtd[self.fakeRawData]
@@ -70,7 +73,10 @@ class TestCreateArtificialNormalizationAlgo(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("decreaseParameter", self.fakeIngredients.decreaseParameter)
+        algo.setProperty("lss", self.fakeIngredients.lss)
+        algo.setProperty("peakWindowClippingSize", self.fakeIngredients.peakWindowClippingSize)
+        algo.setProperty("smoothingParameter", self.fakeIngredients.smoothingParameter)
         algo.setProperty("OutputWorkspace", "test_output_ws")
         assert algo.execute()
 
@@ -84,7 +90,10 @@ class TestCreateArtificialNormalizationAlgo(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("decreaseParameter", self.fakeIngredients.decreaseParameter)
+        algo.setProperty("lss", self.fakeIngredients.lss)
+        algo.setProperty("peakWindowClippingSize", self.fakeIngredients.peakWindowClippingSize)
+        algo.setProperty("smoothingParameter", self.fakeIngredients.smoothingParameter)
         algo.setProperty("OutputWorkspace", "test_output_ws")
         algo.execute()
         output_ws = mtd["test_output_ws"]

@@ -32,13 +32,13 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
             "Converting to TOF...",
             InputWorkspace=self.rawInput,
             Target="TOF",
-            OutputWorkspace=self.rawInput,
+            OutputWorkspace=self.outputWS,
         )
 
         self.mantidSnapper.FocusSpectraAlgorithm(
             "Focusing Spectra...",
-            InputWorkspace=self.rawInput,
-            OutputWorkspace=self.rawInput,
+            InputWorkspace=self.outputWS,
+            OutputWorkspace=self.outputWS,
             GroupingWorkspace=self.groupingWS,
             Ingredients=self.pixelGroup.json(),
             RebinOutput=False,
@@ -46,10 +46,9 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
 
         self.mantidSnapper.NormalizeByCurrentButTheCorrectWay(
             "Normalizing Current ... but the correct way!",
-            InputWorkspace=self.rawInput,
-            OutputWorkspace=self.rawInput,
+            InputWorkspace=self.outputWS,
+            OutputWorkspace=self.outputWS,
         )
-        self.outputWS = self.rawInput
 
     def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
         return {"inputWorkspace", "groupingWorkspace"}
