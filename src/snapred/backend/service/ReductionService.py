@@ -30,6 +30,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
+from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString

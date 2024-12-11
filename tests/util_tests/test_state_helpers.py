@@ -5,6 +5,7 @@ import shutil
 from shutil import rmtree
 
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
+from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf

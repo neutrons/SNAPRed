@@ -14,8 +14,8 @@ from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional, Set, Tuple
-
 import h5py
+
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import ConfigService, PhysicalConstants
 from mantid.api import Run
@@ -25,6 +25,7 @@ from pydantic import validate_call, ValidationError
 from snapred.backend.dao import (
     GSASParameters,
     InstrumentConfig,
+    LiveMetadata,
     ObjectSHA,
     ParticleBounds,
     RunConfig,
@@ -1286,8 +1287,8 @@ class LocalDataService:
             run_number: str = str(logs['run_number'])
             
             # See comment at `snapred.backend.data.util.mapping_util.mappingFromRun` about this conversion.
-            start_time: datetime = np.datetime64(logs['start_time'], "us").astype(datetime)
-            end_time: datetime = np.datetime64(logs['end_time'], "us").astype(datetime)
+            start_time: datetime.datetime = np.datetime64(logs['start_time'], "us").astype(datetime.datetime)
+            end_time: datetime.datetime = np.datetime64(logs['end_time'], "us").astype(datetime.datetime)
 
             # Many required log values will not be present if a run is inactive.
             detector_state=self._detectorStateFromMapping(logs) if run_number != str(LiveMetadata.INACTIVE_RUN) else None

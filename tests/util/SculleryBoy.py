@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 import pydantic
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
@@ -15,6 +15,7 @@ from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.GenericRecipe import DetectorPeakPredictorRecipe
 from snapred.meta.Config import Resource
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.redantic import parse_file_as
 
 ##

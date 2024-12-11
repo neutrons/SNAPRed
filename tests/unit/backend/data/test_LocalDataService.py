@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+import datetime
 import functools
 import importlib
 import json
@@ -18,7 +20,7 @@ import h5py
 import numpy as np
 import pydantic
 import pytest
-from mantid.api import ITableWorkspace, MatrixWorkspace
+from mantid.api import ITableWorkspace, MatrixWorkspace, Run
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import amend_config
 from mantid.simpleapi import (
@@ -42,6 +44,7 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.ingredients import ReductionIngredients
+from snapred.backend.dao.LiveMetadata import LiveMetadata
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
@@ -141,8 +144,8 @@ def mockNeXusLogsMapping(detectorState: DetectorState) -> mock.Mock:
     
     dict_ = {
         "run_number": "123456",
-        "start_time": datetime.fromisoformat("2023-06-14T14:06:40.429048"),
-        "end_time": datetime.fromisoformat("2023-06-14T14:07:56.123123"),
+        "start_time": datetime.datetime.fromisoformat("2023-06-14T14:06:40.429048"),
+        "end_time": datetime.datetime.fromisoformat("2023-06-14T14:07:56.123123"),
         "proton_charge": 1000.0,
         "BL3:Chop:Skf1:WavelengthUserReq": [detectorState.wav],
         "det_arc1": [detectorState.arc[0]],
@@ -2306,8 +2309,8 @@ def test_liveMetadataFromRun(mockMapping):
     instance = LocalDataService()
     expected = LiveMetadata(
         runNumber=logs["run_number"],
-        startTime=np.datetime64(logs["start_time"], "us").astype(datetime),
-        endTime=np.datetime64(logs["end_time"], "us").astype(datetime),
+        startTime=np.datetime64(logs["start_time"], "us").astype(datetime.datetime),
+        endTime=np.datetime64(logs["end_time"], "us").astype(datetime.datetime),
         detectorState=DAOFactory.real_detector_state,
         protonCharge=1000.0
     )
