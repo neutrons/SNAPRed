@@ -15,7 +15,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 class LiteDataService(Service):
     def __init__(self):
         super().__init__()
-        self.registerPath("createLiteData", self.reduceLiteData)
+        self.registerPath("createLiteData", self.createLiteData)
         self.dataExportService = DataExportService()
         self.dataFactoryService = DataFactoryService()
         self.sousChef = SousChef()
@@ -23,7 +23,7 @@ class LiteDataService(Service):
 
     @staticmethod
     def name():
-        return "reduceLiteData"
+        return "createLiteData"
 
     def _ensureLiteDataMap(self) -> str:
         from snapred.backend.data.GroceryService import GroceryService
@@ -31,11 +31,12 @@ class LiteDataService(Service):
         return GroceryService().fetchLiteDataMap()
 
     @FromString
-    def reduceLiteData(
+    def createLiteData(
         self,
         inputWorkspace: WorkspaceName,
         outputWorkspace: WorkspaceName,
         instrumentDefinition: str = None,
+        liveDataMode: bool = False
     ) -> Dict[Any, Any]:
         liteDataMap = self._ensureLiteDataMap()
         runNumber = inputWorkspace.split("_")[-1].lstrip("0")
@@ -50,10 +51,12 @@ class LiteDataService(Service):
                 OutputWorkspace=outputWorkspace,
                 Ingredients=ingredients.model_dump_json(),
             )
-            fullPath = self.dataExportService.getFullLiteDataFilePath(runNumber)
-            path = fullPath.parent
-            fileName = fullPath.name
-            self.dataExportService.exportWorkspace(path, fileName, outputWorkspace)
+            if not liveDataMode:
+                # Only save the lite-mode data when not in live-data mode.
+                fullPath = self.dataExportService.getFullLiteDataFilePath(runNumber)
+                path = fullPath.parent
+                fileName = fullPath.name
+                self.dataExportService.exportWorkspace(path, fileName, outputWorkspace)
         except Exception as e:
             raise e
         return data

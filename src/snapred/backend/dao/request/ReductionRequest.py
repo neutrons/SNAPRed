@@ -14,6 +14,7 @@ Versions = NamedTuple("Versions", [("calibration", Optional[int]), ("normalizati
 class ReductionRequest(BaseModel):
     runNumber: str
     useLiteMode: bool
+    liveDataMode: bool
     timestamp: Optional[float] = None
     focusGroups: List[FocusGroup] = []
 
@@ -27,6 +28,13 @@ class ReductionRequest(BaseModel):
     pixelMasks: List[WorkspaceName] = []
     artificialNormalizationIngredients: Optional[ArtificialNormalizationIngredients] = None
 
+    # Live-data info (these values are only to be used by live-data):
+    #   'facility' and 'instrument' will have a special meaning when the listener
+    #   is mocked out for testing.
+    facility: str = Config["facility"] 
+    instrument: str = Config["instrument"]
+    duration: int = 1 # minimum duration is 1 second
+    
     # TODO: Move to SNAPRequest
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
 

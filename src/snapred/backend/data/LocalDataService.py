@@ -1255,12 +1255,12 @@ class LocalDataService:
 
     @contextmanager
     def _useFacility(self, facility: str):
-        _facilitySave: str = ConfigManager.getFacility()
-        ConfigManager.setFacility(facility)
+        _facilitySave: str = ConfigService.getFacility()
+        ConfigService.setFacility(facility)
         yield facility
         
         # exit
-        ConfigManager.setFacility(_facilitySave)
+        ConfigService.setFacility(_facilitySave)
         
     def hasLiveDataConnection(self, facility: str = Config["facility.name"], instrument: str = Config["instrument.name"]):
         """For 'live data' methods: test if there is a listener connection to the instrument."""
@@ -1311,7 +1311,8 @@ class LocalDataService:
     def _readLiveData(self, ws: WorkspaceName, duration: int, facility: str, instrument: str):
         if duration < 1:
             raise RuntimeError(f"duration must be in seconds and >= 1, not {duration}")
-            
+        
+        # TODO: duplicated at `FetchGroceriesAlgorithm`.  Probably that should be called here.    
         with self._useFacility(facility):
             self.mantidsnapper.LoadLiveData(
                 OutputWorkspace=ws,

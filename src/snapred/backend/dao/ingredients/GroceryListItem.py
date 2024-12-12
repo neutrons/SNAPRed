@@ -33,9 +33,12 @@ class GroceryListItem(BaseModel):
     """
 
     # Reserved instrument-cache run-number values:
-    RESERVED_NATIVE_RUNNUMBER: ClassVar[str] = ReservedRunNumber.NATIVE  # unmodified _native_ instrument:
+    RESERVED_NATIVE_RUNNUMBER: ClassVar[str] = ReservedRunNumber.NATIVE
+    # unmodified _native_ instrument:
     #   from 'SNAP_Definition.xml'
-    RESERVED_LITE_RUNNUMBER: ClassVar[str] = ReservedRunNumber.LITE  # unmodified _lite_ instrument  :
+    
+    RESERVED_LITE_RUNNUMBER: ClassVar[str] = ReservedRunNumber.LITE
+    # unmodified _lite_ instrument  :
     #   from 'SNAPLite.xml'
 
     workspaceType: GroceryTypes
@@ -44,9 +47,18 @@ class GroceryListItem(BaseModel):
     # optional loader:
     # -- "" tells FetchGroceries to choose the loader
     loader: Literal[
-        "", "LoadGroupingDefinition", "LoadCalibrationWorkspaces", "LoadNexus", "LoadEventNexus", "LoadNexusProcessed"
+        "", 
+        "LoadCalibrationWorkspaces",
+        "LoadEventNexus",
+        "LoadGroupingDefinition",
+        "LoadLiveData",
+        "LoadNexus",
+        "LoadNexusProcessed"
     ] = ""
 
+    # optional loader arguments:
+    loaderArgs: str = ""
+    
     # optional: Mantid-workspace number tag (only output if != 1)
     numberTag: Optional[int] = None
 

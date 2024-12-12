@@ -277,29 +277,29 @@ class DAOFactory:
     ## GROUPING MAP
 
     @classmethod
-    def groupingMap_SNAP(cls, stateId=magical_state_id.copy()) -> GroupingMap:
+    def groupingMap_SNAP(cls, stateId=magical_state_id.model_copy()) -> GroupingMap:
         return GroupingMap(
             stateId=stateId,
             liteFocusGroups=[
-                cls.focus_group_SNAP_all_lite.copy(),
-                cls.focus_group_SNAP_bank_lite.copy(),
-                cls.focus_group_SNAP_column_lite.copy(),
+                cls.focus_group_SNAP_all_lite.model_copy(),
+                cls.focus_group_SNAP_bank_lite.model_copy(),
+                cls.focus_group_SNAP_column_lite.model_copy(),
             ],
             nativeFocusGroups=[
-                cls.focus_group_SNAP_all_native.copy(),
-                cls.focus_group_SNAP_bank_native.copy(),
-                cls.focus_group_SNAP_column_native.copy(),
+                cls.focus_group_SNAP_all_native.model_copy(),
+                cls.focus_group_SNAP_bank_native.model_copy(),
+                cls.focus_group_SNAP_column_native.model_copy(),
             ],
         )
 
     @classmethod
-    def groupingMap_POP(cls, stateId=magical_state_id.copy()) -> GroupingMap:
+    def groupingMap_POP(cls, stateId=magical_state_id.model_copy()) -> GroupingMap:
         return GroupingMap(
             stateId=stateId,
             liteFocusGroups=[],
             nativeFocusGroups=[
-                cls.focus_group_POP_column_native.copy(),
-                cls.focus_group_POP_natural_native.copy(),
+                cls.focus_group_POP_column_native.model_copy(),
+                cls.focus_group_POP_natural_native.model_copy(),
             ],
         )
 
@@ -307,7 +307,7 @@ class DAOFactory:
 
     @classmethod
     def xtalInfo(cls, runNumber: str, useLiteMode: bool):  # noqa ARG003
-        return cls.default_xtal_info.copy()
+        return cls.default_xtal_info.model_copy()
 
     default_xtal_peak = CrystallographicPeak(
         hkl=(0, 0, 0),
@@ -331,7 +331,7 @@ class DAOFactory:
 
     synthetic_pixel_group = PixelGroup(
         # fake pixel group . json
-        focusGroup=synthetic_focus_group_natural.copy(),
+        focusGroup=synthetic_focus_group_natural.model_copy(),
         timeOfFlight=BinnedValue(
             minimum=10,
             maximum=1000,
@@ -391,7 +391,7 @@ class DAOFactory:
     )
 
     good_pixel_group = PixelGroup(
-        focusGroup=synthetic_focus_group_natural.copy(),
+        focusGroup=synthetic_focus_group_natural.model_copy(),
         timeOfFlight=BinnedValue(
             minimum=1959.0,
             maximum=14496.6,
@@ -461,22 +461,22 @@ class DAOFactory:
 
     @classmethod
     def pixelGroups(cls):
-        return [cls.synthetic_pixel_group.copy()]
+        return [cls.synthetic_pixel_group.model_copy()]
 
     ## PEAK INGREDIENTS
 
     fake_peak_ingredients = PeakIngredients(
-        instrumentState=pop_instrument_state.copy(),
+        instrumentState=pop_instrument_state.model_copy(),
         peakIntensityThreshold=1,
-        pixelGroup=synthetic_pixel_group.copy(),
-        crystalInfo=default_xtal_info.copy(),
+        pixelGroup=synthetic_pixel_group.model_copy(),
+        crystalInfo=default_xtal_info.model_copy(),
     )
 
     good_peak_ingredients = PeakIngredients(
-        instrumentState=pop_instrument_state.copy(),
+        instrumentState=pop_instrument_state.model_copy(),
         peakIntensityThreshold=0.05,
-        pixelGroup=good_pixel_group.copy(),
-        crystalInfo=good_xtal_info.copy(),
+        pixelGroup=good_pixel_group.model_copy(),
+        crystalInfo=good_xtal_info.model_copy(),
     )
 
     ## CALIBRATION PARAMETERS
@@ -490,7 +490,7 @@ class DAOFactory:
         *,
         creationDate="2024-04-03",
         name="test",
-        instrumentState=default_instrument_state.copy(),
+        instrumentState=default_instrument_state.model_copy(),
     ) -> Calibration:
         return Calibration(
             seedRun=runNumber,
@@ -511,7 +511,7 @@ class DAOFactory:
         version: int = randint(2, 120),
         **other_properties,
     ) -> CalibrationRecord:
-        other_properties.setdefault("crystalInfo", cls.default_xtal_info.copy())
+        other_properties.setdefault("crystalInfo", cls.default_xtal_info.model_copy())
         other_properties.setdefault("pixelGroups", cls.pixelGroups())
         other_properties.setdefault(
             "workspaces",
@@ -527,7 +527,7 @@ class DAOFactory:
             },
         )
         other_properties.setdefault("calculationParameters", cls.calibrationParameters(runNumber, useLiteMode, version))
-        other_properties.setdefault("focusGroupCalibrationMetrics", cls.focusGroupCalibrationMetric_Column.copy())
+        other_properties.setdefault("focusGroupCalibrationMetrics", cls.focusGroupCalibrationMetric_Column.model_copy())
         return CalibrationRecord(
             runNumber=runNumber,
             useLiteMode=useLiteMode,
@@ -546,7 +546,7 @@ class DAOFactory:
         *,
         creationDate="2024-04-03",
         name="test",
-        instrumentState=default_instrument_state.copy(),
+        instrumentState=default_instrument_state.model_copy(),
     ) -> Normalization:
         if runNumber == "":
             runNumber = str(randint(5000, 10000))
@@ -586,7 +586,7 @@ class DAOFactory:
             ],
         )
         other_properties.setdefault("calibrationVersionUsed", randint(2, 120))
-        other_properties.setdefault("crystalDBounds", cls.default_xtal_dbounds.copy())
+        other_properties.setdefault("crystalDBounds", cls.default_xtal_dbounds.model_copy())
         other_properties.setdefault(
             "calculationParameters", cls.normalizationParameters(runNumber, useLiteMode, version)
         )
@@ -611,7 +611,7 @@ class DAOFactory:
 
     focusGroupCalibrationMetric_Column = FocusGroupMetric(
         focusGroupName="Column",
-        calibrationMetric=[default_calibration_metric.copy()] * 6,
+        calibrationMetric=[default_calibration_metric.model_copy()] * 6,
     )
 
     ## CalibrantSample

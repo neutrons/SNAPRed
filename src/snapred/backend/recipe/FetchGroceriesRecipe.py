@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm as FetchAlgo
+from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.decorators.Singleton import Singleton
 
@@ -19,7 +19,7 @@ class FetchGroceriesRecipe:
 
     def executeRecipe(
         self,
-        filename: str,
+        filename: str = "",
         workspace: str = "",
         loader: str = "",
         instrumentPropertySource=None,
@@ -46,7 +46,7 @@ class FetchGroceriesRecipe:
             "loader": "",
         }
         logger.info(f"Fetching data from {filename} into {workspace}")
-        algo = FetchAlgo()
+        algo = FetchGroceriesAlgorithm()
         algo.initialize()
         algo.setPropertyValue("Filename", filename)
         algo.setPropertyValue("OutputWorkspace", workspace)

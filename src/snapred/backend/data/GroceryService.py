@@ -725,7 +725,13 @@ class GroceryService:
                 raise RuntimeError(f"unable to load workspace {name} from {filePath}")
         return data
 
-    def fetchNeutronDataSingleUse(self, runNumber: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
+    def fetchNeutronDataSingleUse(
+        self,
+        runNumber: str,
+        useLiteMode: bool,
+        loader: str = "",
+        loaderArgs: str = ""
+    ) -> Dict[str, Any]:
         """
         Fetch a neutron data file, without copy-protection.
         If the workspace is truly only needed once, this saves time and memory.
@@ -737,6 +743,8 @@ class GroceryService:
         :type useLiteMode: bool
         :param loader: the loader algorithm to use to load the data, optional
         :type loader: str
+        :param loaderArgs: any additionl keyword arguments for the loader algorithm, optional
+        :type loaderArgs: str
         :return: a dictionary with the following keys
 
             - "result": true if everything ran correctly
@@ -745,30 +753,47 @@ class GroceryService:
 
         :rtype: Dict[str, Any]
         """
-
-        filename: str = self._createNeutronFilename(runNumber, useLiteMode)
-        workspaceName: str = self._createNeutronWorkspaceName(runNumber, useLiteMode)
+        liveDataMode: bool = loader == "LoadLiveData"
+        workspace: str = self._createNeutronWorkspaceName(runNumber, useLiteMode)
 
         self._updateNeutronCacheFromADS(runNumber, useLiteMode)
 
         # check if a raw workspace exists, and clone it if so
         if self._loadedRuns.get(self._key(runNumber, useLiteMode)) is not None:
-            self.getCloneOfWorkspace(self._createRawNeutronWorkspaceName(runNumber, useLiteMode), workspaceName)
+            self.getCloneOfWorkspace(self._createRawNeutronWorkspaceName(runNumber, useLiteMode), workspace)
             data = {
                 "result": True,
                 "loader": "cached",
-                "workspace": workspaceName,
+                "workspace": workspace,
             }
         # otherwise fetch the data
+        elif liveDataMode:
+            data = self.grocer.executeRecipe(
+                workspace=workspace,
+                loader="LoadLiveData",
+                loaderArgs=loaderArgs
+            )        
         else:
-            data = self.grocer.executeRecipe(filename, workspaceName, loader)
+            filename = self._createNeutronFilename(runNumber, useLiteMode)        
+            data = self.grocer.executeRecipe(
+                filename=filename,
+                workspace=workspace,
+                loader=loader,
+                loaderArgs=loaderArgs
+            )
 
         if useLiteMode:
-            self.convertToLiteMode(workspaceName)
+            self.convertToLiteMode(workspaceName, liveDataMode=liveDataMode)
 
         return data
 
-    def fetchNeutronDataCached(self, runNumber: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
+    def fetchNeutronDataCached(
+        self,
+        runNumber: str,
+        useLiteMode: bool,
+        loader: str = "",
+        loaderArgs: str = ""
+    ) -> Dict[str, Any]:
         """
         Fetch a nexus data file using a cache system to prevent double-loading from disk
 
@@ -778,6 +803,8 @@ class GroceryService:
         :type useLiteMode: bool
         :param loader: the loader algorithm to use to load the data, optional
         :type loader: str
+        :param loaderArgs: any additional keyword arguments for the loader algorithm, optional
+        :type loaderArgs: str
         :return: a dictionary with the following keys
 
             - "result": true if everything ran correctly
@@ -787,6 +814,7 @@ class GroceryService:
         :rtype: Dict[str, Any]
         """
         key = self._key(runNumber, useLiteMode)
+        liveDataMode: bool = loader == "LoadLiveData"
         rawWorkspaceName: WorkspaceName = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
         filename: str = self._createNeutronFilename(runNumber, useLiteMode)
 
@@ -796,41 +824,61 @@ class GroceryService:
 
         # if the raw data has already been loaded, clone it
         if self._loadedRuns.get(key) is not None:
-            data = {"loader": "cached"}
-        # if the data is not cached, but the file exists
-        elif os.path.isfile(filename):
-            data = self.grocer.executeRecipe(filename, rawWorkspaceName, loader)
-            self._loadedRuns[key] = 0
-        # if the file does not exist, and this is native resolution data, this represents an error condition
-        elif useLiteMode is False:
-            raise RuntimeError(f"Could not load run {runNumber} from file {filename}")
-        # if in Lite mode, and no raw workspace and no file exists, look if native data has been loaded from cache
-        # if so, then clone the native data and reduce it
-        elif self._loadedRuns.get(self._key(runNumber, False)) is not None:
-            nativeRawWorkspaceName = self._createRawNeutronWorkspaceName(runNumber, False)
-            data = {"loader": "cached"}
-            loadedFromNative = True
-        # neither lite nor native data in cache and lite file does not exist
-        # then load native data, clone it, and reduce it
-        elif os.path.isfile(self._createNeutronFilename(runNumber, False)):
+            data = {"loader": "cached"}        
+        else if not liveDataMode:
+            # if the data is not cached, but the file exists
+            elif os.path.isfile(filename):
+                data = self.grocer.executeRecipe(filename, rawWorkspaceName, loader)
+                self._loadedRuns[key] = 0
+            # if the file does not exist, and this is native resolution data, this represents an error condition
+            elif useLiteMode is False:
+                raise RuntimeError(f"Could not load run {runNumber} from file {filename}")
+            # if in Lite mode, and no raw workspace and no file exists, look if native data has been loaded from cache
+            # if so, then clone the native data and reduce it
+            elif self._loadedRuns.get(self._key(runNumber, False)) is not None:
+                nativeRawWorkspaceName = self._createRawNeutronWorkspaceName(runNumber, False)
+                data = {"loader": "cached"}
+                loadedFromNative = True
+            # neither lite nor native data in cache and lite file does not exist
+            # then load native data, clone it, and reduce it
+            elif os.path.isfile(self._createNeutronFilename(runNumber, False)):
+                # load the native resolution data
+                goingNative = (runNumber, False)
+                nativeRawWorkspaceName = self._createRawNeutronWorkspaceName(*goingNative)
+                nativeFilename = self._createNeutronFilename(*goingNative)
+                data = self.grocer.executeRecipe(nativeFilename, nativeRawWorkspaceName, loader="")
+                # keep track of the loaded raw native data
+                self._loadedRuns[self._key(*goingNative)] = 0
+                loadedFromNative = True
+            # the data cannot be loaded -- this is an error condition
+            else:
+                raise RuntimeError(f"Could not load run {runNumber} from file {filename}")
+        else:
+            # Live data should only be cached for the duration of one cycle (and lite-mode cannot be changed during a cycle).
+            # If native-mode data exists in the cache -- this is an error.
+            if self._loadedRuns.get(self._key(runNumber, False)) is not None:
+                raise RuntimeError(f"Usage error: loading live data for run {runNumber}: native data should not exist in the cache")
             # load the native resolution data
             goingNative = (runNumber, False)
             nativeRawWorkspaceName = self._createRawNeutronWorkspaceName(*goingNative)
-            nativeFilename = self._createNeutronFilename(*goingNative)
-            data = self.grocer.executeRecipe(nativeFilename, nativeRawWorkspaceName, loader="")
+            data = self.grocer.executeRecipe(
+                workspace=nativeRawWorkspaceName,
+                loader="LoadLiveData",
+                loaderArgs="{...}"
+            )
             # keep track of the loaded raw native data
+            self._liveRunKeys.append(self._key(*goingNative))
             self._loadedRuns[self._key(*goingNative)] = 0
             loadedFromNative = True
-        # the data cannot be loaded -- this is an error condition
-        else:
-            raise RuntimeError(f"Could not load run {runNumber} from file {filename}")
-
+                        
         if loadedFromNative:
             # clone the native raw workspace
             # then reduce its resolution to make the lite raw workspace
             self.getCloneOfWorkspace(nativeRawWorkspaceName, rawWorkspaceName)
+            if liveDataMode:
+                self._liveRunKeys.append(key)
             self._loadedRuns[key] = 0
-            self.convertToLiteMode(rawWorkspaceName)
+            self.convertToLiteMode(rawWorkspaceName, liveDataMode=liveDataMode)
 
         # create a copy of the raw data for use
         workspaceName = self._createCopyNeutronWorkspaceName(runNumber, useLiteMode, self._loadedRuns[key] + 1)
@@ -840,6 +888,19 @@ class GroceryService:
 
         return data
 
+    def clearLiveDataCache(self):
+        """
+        Clear cache for and delete any live-data workspaces.
+        """"
+        for key in self._liveRunKeys:
+            rawWorkspaceName = self._createRawNeutronWorkspaceName(*key)
+            if self.mantidSnapper.mtd.doesExist(rawWorkspaceName)
+                #It's OK if it doesn't exist.  That just means the cache was cleared somewhere else.
+                self.mantidSnapper.DeleteWorkspace(workspace=rawWorkspaceName)
+                self.mantidSnapper.executeQueue()
+            del self._loadedRuns[key]
+        self._liveRunKeys = []
+    
     def fetchLiteDataMap(self) -> WorkspaceName:
         """
         The lite data map is a special grouping workspace which associates groups of nearby pixels to create Lite mode.
@@ -1208,7 +1269,7 @@ class GroceryService:
         data.update(kwargs)
         return data
 
-    def convertToLiteMode(self, workspace: WorkspaceName):
+    def convertToLiteMode(self, workspace: WorkspaceName, liveDataMode: bool = False): # *** DEBUG *** default arg to mandatory
         """
         Given a workspace, converts it (in place) to Lite mode using the lite data service.
 
@@ -1218,7 +1279,7 @@ class GroceryService:
 
         from snapred.backend.service.LiteDataService import LiteDataService
 
-        LiteDataService().reduceLiteData(workspace, workspace)
+        LiteDataService().createLiteData(workspace, workspace, liveDataMode=liveDataMode)
 
     ## CLEANUP METHODS
 

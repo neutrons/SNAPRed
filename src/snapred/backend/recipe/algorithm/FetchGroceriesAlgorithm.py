@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+import datetime
 import json
 from typing import Dict
 
@@ -10,6 +12,7 @@ from mantid.api import (
     WorkspaceProperty,
 )
 from mantid.kernel import (
+    ConfigService,
     Direction,
     StringListValidator,
 )
@@ -50,10 +53,11 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             StringListValidator(
                 [
                     "",
-                    "LoadGroupingDefinition",
                     "LoadCalibrationWorkspaces",
-                    "LoadNexus",
                     "LoadEventNexus",
+                    "LoadGroupingDefinition",
+                    "LoadLiveData"
+                    "LoadNexus",
                     "LoadNexusProcessed",
                 ]
             ),
@@ -105,48 +109,75 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             issues.update({s: issue for s in specifiedSources})
         return issues
 
+    @contextmanager
+    def _useFacility(self, facility: str):
+        _facilitySave: str = ConfigService.getFacility()
+        ConfigService.setFacility(facility)
+        yield facility
+
+        # exit
+        ConfigService.setFacility(_facilitySave)
+
     def PyExec(self) -> None:
         filename = self.getPropertyValue("Filename")
         outWS = self.getPropertyValue("OutputWorkspace")
         loaderType = self.getPropertyValue("LoaderType")
         # TODO: do we need to guard this with an if?
         if not self.mantidSnapper.mtd.doesExist(outWS):
-            if loaderType == "":
-                _, loaderType, _ = self.mantidSnapper.Load(
-                    "Loading with unspecified loader",
-                    Filename=filename,
-                    OutputWorkspace=outWS,
-                )
-            elif loaderType == "LoadGroupingDefinition":
-                for x in ["InstrumentName", "InstrumentFilename", "InstrumentDonor"]:
-                    if not self.getProperty(x).isDefault:
-                        instrumentPropertySource = x
-                        instrumentSource = self.getPropertyValue(x)
-                self.mantidSnapper.LoadGroupingDefinition(
-                    "Loading grouping definition",
-                    GroupingFilename=filename,
-                    OutputWorkspace=outWS,
-                    **{instrumentPropertySource: instrumentSource},
-                )
-            elif loaderType == "LoadCalibrationWorkspaces":
-                loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))
-                self.mantidSnapper.LoadCalibrationWorkspaces(
-                    "Loading diffraction-calibration workspaces",
-                    Filename=filename,
-                    InstrumentDonor=self.getPropertyValue("InstrumentDonor"),
-                    **loaderArgs,
-                )
-            else:
-                getattr(self.mantidSnapper, loaderType)(
-                    f"Loading data using {loaderType}",
-                    Filename=filename,
-                    OutputWorkspace=outWS,
-                )
+            match loaderType:
+                case "":
+                    _, loaderType, _ = self.mantidSnapper.Load(
+                        "Loading with unspecified loader",
+                        Filename=filename,
+                        OutputWorkspace=outWS,
+                    )
+                    self.mantidSnapper.executeQueue()
+                case "LoadCalibrationWorkspaces":
+                    loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))
+                    self.mantidSnapper.LoadCalibrationWorkspaces(
+                        "Loading diffraction-calibration workspaces",
+                        Filename=filename,
+                        InstrumentDonor=self.getPropertyValue("InstrumentDonor"),
+                        **loaderArgs,
+                    )
+                    self.mantidSnapper.executeQueue()
+                case "LoadGroupingDefinition":
+                    for x in ["InstrumentName", "InstrumentFilename", "InstrumentDonor"]:
+                        if not self.getProperty(x).isDefault:
+                            instrumentPropertySource = x
+                            instrumentSource = self.getPropertyValue(x)
+                    self.mantidSnapper.LoadGroupingDefinition(
+                        "Loading grouping definition",
+                        GroupingFilename=filename,
+                        OutputWorkspace=outWS,
+                        **{instrumentPropertySource: instrumentSource},
+                    )
+                    self.mantidSnapper.executeQueue()
+                case "LoadLiveData":
+                    loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))
+                    instrument = loaderArgs["Instrument"]
+                    facility = loaderArgs["Facility"]
+                    duration = loaderArgs["Duration"]
+                    with self._useFacility(facility):
+                        self.mantidSnapper.LoadLiveData(
+                            "Loading live data",
+                            OutputWorkspace=outWs,
+                            Instrument=loaderArgs["Instrument"],
+                            AccumulationMethod="Replace",
+                            StartTime=(datetime.datetime.utcnow() + datetime.timedelta(seconds=-duration)).isoformat()
+                        )
+                        self.mantidSnapper.executeQueue()
+                case _:
+                    getattr(self.mantidSnapper, loaderType)(
+                        f"Loading data using {loaderType}",
+                        Filename=filename,
+                        OutputWorkspace=outWS,
+                    )
+                    self.mantidSnapper.executeQueue()    
         else:
             # TODO: should this throw a warning?  Or warn in logger?
             logger.warning(f"A workspace with name {outWS} already exists in the ADS, and so will not be loaded")
             loaderType = ""
-        self.mantidSnapper.executeQueue()
         self.setPropertyValue("OutputWorkspace", outWS)
         self.setPropertyValue("LoaderType", str(loaderType))
 

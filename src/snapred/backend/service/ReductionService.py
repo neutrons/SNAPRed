@@ -346,7 +346,7 @@ class ReductionService(Service):
             - neutron run data
             - diffcal tables
             - normalization
-            - combined pixel-mask workspace
+            - input pixel-mask workspaces, to be combined
 
         :param request: a reduction request
         :type request: ReductionRequest
@@ -405,7 +405,20 @@ class ReductionService(Service):
             )
 
         # gather the input workspace and the diffcal table
+        """
+        # *** DEBUG *** : Previous lines:
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        ## I DO NOT LIKE THIS SYNTAX for setting up the loader,
+        ## It should be more transparent.
+        ?? <item>.liveDataMode(True).duration(duration) ?
+        """
+        inputItemBuilder = self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode)
+        if request.liveDataMode:
+            inputItemBuilder.loader(
+                loader="LiveDataMode",
+                loaderArgs=f"{{'Duration': {request.duration}, 'Facility': {request.facility}, 'Instrument': {request.instrument}}}"
+            )
+        inputItemBuilder.add()
 
         if calVersion is not None:
             self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
@@ -524,7 +537,18 @@ class ReductionService(Service):
 
     def grabWorkspaceforArtificialNorm(self, request: ReductionRequest):
         # 1. Load raw run data
+        """
+        # *** DEBUG *** : Previous lines:
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        """
+        inputItemBuilder = self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode)
+        if request.liveDataMode:
+            inputItemBuilder.loader(
+                loader="LiveDataMode",
+                loaderArgs=f"{{'Duration': {request.duration}, 'Facility': {request.facility}, 'Instrument': {request.instrument}}}"
+            )
+        inputItemBuilder.add()
+        
         runWorkspace = self.groceryService.fetchGroceryList(self.groceryClerk.buildList())[0]
         # 2. Load Column group TODO: Future work to apply a more general approach
         groups = self.loadAllGroupings(request.runNumber, request.useLiteMode)

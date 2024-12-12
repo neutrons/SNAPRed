@@ -1,5 +1,5 @@
 import datetime
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from qtpy.QtCore import Slot
 
@@ -61,7 +61,23 @@ class ReductionWorkflow(WorkflowImplementer):
             )
             .build()
         )
-        self._keeps = set()
+        
+        ##
+        ## WORKFLOW-STATE attributes:
+        ##
+        
+        # Most of these should also be updated at `self._triggerReduction`
+        #   using the current settings from `ReductionRequestView`.
+        
+        self._keeps: Set[WorkspaceName] = set()
+        self.runNumbers: List[str] = []
+        self.useLiteMode: bool = True
+        self.liveDataMode: bool = False
+        self.pixelMasks: List[WorkspaceName] = []
+        
+        ##
+        ## Connect signals to slots:
+        ##
         self._artificialNormalizationView.signalValueChanged.connect(self.onArtificialNormalizationValueChange)
         
         # Note: in order to simplify the flow-of-control,
@@ -109,7 +125,6 @@ class ReductionWorkflow(WorkflowImplementer):
     def _getCompatibleMasks(self, runNumbers: List[str], useLiteMode: bool) -> List[str]:
         # Get compatible masks for the current reduction state.
         masks = []
-        self.useLiteMode = useLiteMode
 
         if runNumbers:
 
@@ -118,7 +133,7 @@ class ReductionWorkflow(WorkflowImplementer):
                 payload=ReductionRequest(
                     # All runNumbers are from the same state => any one can be used here
                     runNumber=runNumbers[0],
-                    useLiteMode=self.useLiteMode,
+                    useLiteMode=useLiteMode,
                 ),
             ).data
 
@@ -180,6 +195,8 @@ class ReductionWorkflow(WorkflowImplementer):
         view = workflowPresenter.widget.tabView  # noqa: F841
 
         self.runNumbers = self._reductionRequestView.getRunNumbers()
+        self.useLiteMode = self._reductionRequestView.useLiteMode()
+        self.liveDataMode = self._reductionRequestView.liveDataMode()
         self.pixelMasks = self._reconstructPixelMaskNames(self._reductionRequestView.getPixelMasks())
 
         # Use one timestamp for the entire set of runNumbers:
@@ -228,14 +245,18 @@ class ReductionWorkflow(WorkflowImplementer):
                 response = self.request(path="reduction/", payload=request_)
                 if response.code == ResponseCode.OK:
                     self._finalizeReduction(response.data.record, response.data.unfocusedData)
+                
                 # after each run, clean workspaces except groupings, calibrations, normalizations, and outputs
                 self._keeps.update(self.outputs)
                 self._clearWorkspaces(exclude=self._keeps, clearCachedWorkspaces=True)
+            
             workflowPresenter.advanceWorkflow()
+        
         # SPECIAL FOR THE REDUCTION WORKFLOW: clear everything _except_ the output workspaces
         #   _before_ transitioning to the "save" panel.
         # TODO: make '_clearWorkspaces' a public method (i.e make this combination a special `cleanup` method).
         self._clearWorkspaces(exclude=self.outputs, clearCachedWorkspaces=True)
+        
         return self.responses[-1]
 
     def _artificialNormalization(self, workflowPresenter, responseData, runNumber):
@@ -277,6 +298,13 @@ class ReductionWorkflow(WorkflowImplementer):
         )
 
         response = self.request(path="reduction/artificialNormalization", payload=request_)
+        
+        #
+        # TODO: why isn't this checking that the request actually succeeded?
+        #   More significantly, why isn't this entire method just a call to `self._artificialNormalization`?
+        #   (Or, if that's an issue, `self._artificialNormalization` should just include a call to this method.)
+        #
+        
         self._artificialNormalizationView.updateWorkspaces(diffractionWorkspace, response.data)
         self._artificialNormalizationView.enableRecalculateButton()
 

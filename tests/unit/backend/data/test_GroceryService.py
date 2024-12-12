@@ -1710,7 +1710,11 @@ class TestGroceryService(unittest.TestCase):
 
         # assert that the lite data service was created and called
         mockLiteDataService.assert_called_once()
-        mockLiteDataService.return_value.reduceLiteData.assert_called_once_with(workspacename, workspacename)
+        mockLiteDataService.return_value.createLiteData.assert_called_once_with(
+            workspacename,
+            workspacename,
+            liveDataMode=False
+        )
 
     def test_getCachedWorkspaces(self):
         rawWsName = self.instance._createRawNeutronWorkspaceName("556854", False)
