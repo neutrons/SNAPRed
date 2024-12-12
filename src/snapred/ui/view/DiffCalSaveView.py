@@ -1,5 +1,9 @@
 from qtpy.QtCore import Signal, Slot
-from qtpy.QtWidgets import QComboBox, QLabel
+from qtpy.QtWidgets import (
+    QComboBox,
+    QGridLayout,
+    QLabel
+)
 
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView

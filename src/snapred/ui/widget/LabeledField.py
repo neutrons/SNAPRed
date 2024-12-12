@@ -30,8 +30,6 @@ class LabeledField(QWidget):
                 _layout = QVBoxLayout()
             case _:
                 raise RuntimeError(f"unexpected orientation for `LabeledField`: {orientation}")
-                
-        self.setLayout(_layout)
 
         self._label = QLabel(label)
         if field is not None:
@@ -40,11 +38,13 @@ class LabeledField(QWidget):
             self._field = QLineEdit(parent=self)
             self._field.setText(text if text is not None else "")
 
-        layout.addWidget(self._label)
-        layout.addWidget(self._field)
+        _layout.addWidget(self._label)
+        _layout.addWidget(self._field)
         # adjust layout size such that label has no whitespace
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        _layout.setContentsMargins(0, 0, 0, 0)
+        _layout.setSpacing(0)
+        self.setLayout(_layout)
+        
         self._label.adjustSize()
         self._field.adjustSize()
         self.adjustSize()

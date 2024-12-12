@@ -3,6 +3,7 @@ from typing import Dict, List
 from qtpy.QtCore import Slot
 
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
+from snapred.backend.dao.LiveMetadata import LiveMetadata
 from snapred.backend.dao.request import (
     CreateArtificialNormalizationRequest,
     MatchRunsRequest,
@@ -35,14 +36,6 @@ class ReductionWorkflow(WorkflowImplementer):
         )
         self._compatibleMasks: Dict[str, WorkspaceName] = {}
 
-        # TODO: Move to `ReductionRequestView.__init__`?        
-        self._reductionRequestView.liteModeToggle.stateChanged.connect(
-            lambda: self._reductionRequestView._populatePixelMaskDropdown()
-        )
-
-        # Note (just in case it's tempting to reconnect it here):
-        #   `_reductionRequestView.enterRunNumberButton.clicked.connect` has already been connected.
-
         self._artificialNormalizationView = ArtificialNormalizationView(parent=parent)
 
         self.workflow = (
@@ -67,8 +60,11 @@ class ReductionWorkflow(WorkflowImplementer):
             .build()
         )
         self._keeps = set()
-        self._reductionRequestView.retainUnfocusedDataCheckbox.checkedChanged.connect(self._enableConvertToUnits)
         self._artificialNormalizationView.signalValueChanged.connect(self.onArtificialNormalizationValueChange)
+        
+        # Note: in order to simplify the flow-of-control,
+        #   all of the `ReductionRequestView` signal connections have been moved to `ReductionRequestView` itself,
+        #     which is now a `QStackedOverlay` consisting of multiple sub-views. 
 
     def _enableConvertToUnits(self):
         state = self._reductionRequestView.retainUnfocusedDataCheckbox.isChecked()
@@ -108,27 +104,27 @@ class ReductionWorkflow(WorkflowImplementer):
         # self._reductionRequestView.pixelMaskDropdown.setEnabled(state)
         # self._reductionRequestView.retainUnfocusedDataCheckbox.setEnabled(state)
 
-   def _getCompatibleMasks(self, runNumbers: List[str], useLiteMode: bool) -> List[str]:
-            # Get compatible masks for the current reduction state.
-            masks = []
-            self.useLiteMode = useLiteMode
-            
-            if runNumbers:
+    def _getCompatibleMasks(self, runNumbers: List[str], useLiteMode: bool) -> List[str]:
+        # Get compatible masks for the current reduction state.
+        masks = []
+        self.useLiteMode = useLiteMode
 
-                compatibleMasks = self.request(
-                    path="reduction/getCompatibleMasks",
-                    payload=ReductionRequest(
-                        # All runNumbers are from the same state => any one can be used here
-                        runNumber=runNumbers[0],
-                        useLiteMode=self.useLiteMode,
-                    ),
-                ).data
+        if runNumbers:
 
-                # Map from mask name strings to their corresponding WorkspaceName objects.
-                self._compatibleMasks = {name.toString(): name for name in compatibleMasks}
-                masks = list(self._compatibleMasks.keys())
-    
-            return masks
+            compatibleMasks = self.request(
+                path="reduction/getCompatibleMasks",
+                payload=ReductionRequest(
+                    # All runNumbers are from the same state => any one can be used here
+                    runNumber=runNumbers[0],
+                    useLiteMode=self.useLiteMode,
+                ),
+            ).data
+
+            # Map from mask name strings to their corresponding WorkspaceName objects.
+            self._compatibleMasks = {name.toString(): name for name in compatibleMasks}
+            masks = list(self._compatibleMasks.keys())
+
+        return masks
 
     def _getLiveMetadata(self) -> LiveMetadata:
         # *** DEBUG *** : mock

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QGridLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController

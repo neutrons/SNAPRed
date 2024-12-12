@@ -128,6 +128,7 @@ class _RequestView(_RequestViewBase):
         self.enterRunNumberButton.clicked.connect(self.addRunNumber)
         self.clearButton.clicked.connect(self.clearRunNumbers)
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
+        self.liteModeToggle.field.connectUpdate(self._populatePixelMaskDropdown)
         self.liveDataToggle.field.connectUpdate(lambda: self.liveDataModeChange.emit(self.liveDataToggle.field.getState()))
 
     @Slot()
@@ -152,6 +153,7 @@ class _RequestView(_RequestViewBase):
             self.runNumberInput.clear()
 
     @ExceptionToErrLog
+    @Slot()
     def _populatePixelMaskDropdown(self):
         runNumbers = self.getRunNumbers()
         useLiteMode = self.liteModeToggle.field.getState()
@@ -320,6 +322,7 @@ class _LiveDataView(_RequestViewBase):
 
         # Connect buttons to methods
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
+        self.liteModeToggle.field.connectUpdate(self._populatePixelMaskDropdown)
         self.liveDataToggle.field.connectUpdate(lambda: self.liveDataModeChange.emit(self.liveDataToggle.field.getState()))
 
     @Slot(LiveMetadata)
@@ -376,6 +379,7 @@ class _LiveDataView(_RequestViewBase):
             self.liveDataIndicator.setFlash(True)
                 
     @ExceptionToErrLog
+    @Slot()
     def _populatePixelMaskDropdown(self):
         runNumbers = self.getRunNumbers()
         useLiteMode = self.liteModeToggle.field.getState()
