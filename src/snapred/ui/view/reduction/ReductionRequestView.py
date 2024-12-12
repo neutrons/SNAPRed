@@ -91,8 +91,8 @@ class _RequestView(_RequestViewBase):
         self.runNumberDisplay.setSortingEnabled(False)
 
         # Lite mode toggle, pixel masks dropdown, and retain unfocused data checkbox
-        self.liteModeToggle = self._labeledToggle("Lite Mode", True)
-        self.liteModeToggle.field.setObjectName("liteModeToggle")
+        self.liteModeToggle = self._labeledToggle("Lite Mode", state=True)
+        self.liteModeToggle.toggle.setObjectName("liteModeToggle")
 
         self.retainUnfocusedDataCheckbox = self._labeledCheckBox("Retain Unfocused Data")
         self.convertUnitsDropdown = self._sampleDropDown(
@@ -105,9 +105,8 @@ class _RequestView(_RequestViewBase):
         self.unfocusedDataLayout.addWidget(self.convertUnitsDropdown, 2)
         
         # live-data toggle
-        self.liveDataToggle = self._labeledToggle("Live data", False)
-        self.liveDataToggle.sizeHint = lambda toggle: QSize(self.width() / 10, toggle.height())
-        self.liveDataToggle.field.setObjectName("liveDataToggle")
+        self.liveDataToggle = self._labeledToggle("Live data", state=False)
+        self.liveDataToggle.toggle.setObjectName("liveDataToggle")
 
         # Set field properties
         self.liteModeToggle.setEnabled(False)
@@ -128,8 +127,8 @@ class _RequestView(_RequestViewBase):
         self.enterRunNumberButton.clicked.connect(self.addRunNumber)
         self.clearButton.clicked.connect(self.clearRunNumbers)
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
-        self.liteModeToggle.field.connectUpdate(self._populatePixelMaskDropdown)
-        self.liveDataToggle.field.connectUpdate(lambda: self.liveDataModeChange.emit(self.liveDataToggle.field.getState()))
+        self.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
+        self.liveDataToggle.stateChanged.connect(lambda flag: self.liveDataModeChange.emit(flag))
 
     @Slot()
     def addRunNumber(self):
@@ -147,16 +146,15 @@ class _RequestView(_RequestViewBase):
                 self.runNumbers = noDuplicates
                 self.updateRunNumberList()
                 self.runNumberInput.clear()
-                self._populatePixelMaskDropdown()
+                self._populatePixelMaskDropdown(self.useLiteMode())
         except ValueError as e:
             QMessageBox.warning(self, "Warning", str(e), buttons=QMessageBox.Ok, defaultButton=QMessageBox.Ok)
             self.runNumberInput.clear()
 
     @ExceptionToErrLog
-    @Slot()
-    def _populatePixelMaskDropdown(self):
+    @Slot(bool)
+    def _populatePixelMaskDropdown(self, useLiteMode: bool):
         runNumbers = self.getRunNumbers()
-        useLiteMode = self.liteModeToggle.field.getState()
 
         self.liteModeToggle.setEnabled(False)
         self.pixelMaskDropdown.setEnabled(False)
@@ -232,6 +230,18 @@ class _RequestView(_RequestViewBase):
             if self.convertUnitsDropdown.currentIndex() < 0:
                 raise ValueError("Please select units to convert to")
         return True
+    
+    def useLiteMode(self) -> bool:
+        return self.liteModeToggle.getState()
+
+    def keepUnfocused(self) -> bool:
+        return self.retainUnfocusedDataCheckbox.isChecked() 
+
+    def convertUnitsTo(self) -> str:
+        return self.convertUnitsDropdown.currentText()
+
+    def liveDataMode(self) -> bool:
+        return self.liveDataToggle.getState()
 
     def getRunNumbers(self):
         return self.runNumbers
@@ -289,8 +299,8 @@ class _LiveDataView(_RequestViewBase):
         self.pixelMaskDropdown = self._multiSelectDropDown("Select Pixel Mask(s)", [])
 
         # Lite mode toggle, pixel masks dropdown, and retain unfocused data checkbox
-        self.liteModeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
-        self.liteModeToggle.field.setObjectName("liteModeToggle")
+        self.liteModeToggle = self._labeledToggle("Lite Mode", state=True)
+        self.liteModeToggle.toggle.setObjectName("liteModeToggle")
 
         self.retainUnfocusedDataCheckbox = self._labeledCheckBox("Retain Unfocused Data")
         self.convertUnitsDropdown = self._sampleDropDown(
@@ -303,8 +313,8 @@ class _LiveDataView(_RequestViewBase):
         self.unfocusedDataLayout.addWidget(self.convertUnitsDropdown, 2)
         
         # live-data toggle
-        self.liveDataToggle = self._labeledField("Live data", Toggle(parent=self, state=False))
-        self.liveDataToggle.field.setObjectName("liveDataToggle")
+        self.liveDataToggle = self._labeledToggle("Live data", state=False)
+        self.liveDataToggle.toggle.setObjectName("liveDataToggle")
 
         # Set field properties
         self.liteModeToggle.setEnabled(False)
@@ -322,8 +332,8 @@ class _LiveDataView(_RequestViewBase):
 
         # Connect buttons to methods
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
-        self.liteModeToggle.field.connectUpdate(self._populatePixelMaskDropdown)
-        self.liveDataToggle.field.connectUpdate(lambda: self.liveDataModeChange.emit(self.liveDataToggle.field.getState()))
+        self.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
+        self.liveDataToggle.stateChanged.connect(lambda flag: self.liveDataModeChange.emit(flag))
 
     @Slot(LiveMetadata)
     def updateLiveMetadata(self, data: LiveMetadata):
@@ -335,7 +345,7 @@ class _LiveDataView(_RequestViewBase):
                 liveStateChange = not self.runNumbers or (self.runNumbers[0] != data.runNumber)
                 if liveStateChange:
                     self.runNumbers = [data.runNumber]
-                    self._populatePixelMaskDropdown()
+                    self._populatePixelMaskDropdown(self.useLiteMode())
 
                 # TODO: convert to local time zone
                 self.startTime = data.startTime
@@ -379,10 +389,9 @@ class _LiveDataView(_RequestViewBase):
             self.liveDataIndicator.setFlash(True)
                 
     @ExceptionToErrLog
-    @Slot()
-    def _populatePixelMaskDropdown(self):
+    @Slot(bool)
+    def _populatePixelMaskDropdown(self, useLiteMode: bool):
         runNumbers = self.getRunNumbers()
-        useLiteMode = self.liteModeToggle.field.getState()
 
         self.liteModeToggle.setEnabled(False)
         self.pixelMaskDropdown.setEnabled(False)
@@ -421,7 +430,7 @@ class _LiveDataView(_RequestViewBase):
         return True
     
     def useLiteMode(self) -> bool:
-        return self.liteModeToggle.field.getState()
+        return self.liteModeToggle.getState()
 
     def keepUnfocused(self) -> bool:
         return self.retainUnfocusedDataCheckbox.isChecked() 
@@ -430,7 +439,7 @@ class _LiveDataView(_RequestViewBase):
         return self.convertUnitsDropdown.currentText()
 
     def liveDataMode(self) -> bool:
-        return self.liveDataToggle.field.getState()
+        return self.liveDataToggle.getState()
 
     def getRunNumbers(self) -> List[str]:
         return self.runNumbers
@@ -487,17 +496,17 @@ class ReductionRequestView(_RequestViewBase):
     @Slot()
     def _changeLiveDataMode(self):
         view = self._stackedLayout.currentWidget()
-        view.liveDataToggle.field.setEnabled(False)
+        view.liveDataToggle.toggle.setEnabled(False)
         if view == self._requestView:
-            view.liveDataToggle.field.setState(False)
+            view.liveDataToggle.setState(False)
         elif view == self._liveDataView:
-            view.liveDataToggle.field.setState(True)
+            view.liveDataToggle.setState(True)
             
             # *** DEBUG ***
             if self.getLiveMetadata:
                 _data = self.getLiveMetadata()
                 view.updateLiveMetadata(_data)
-        view.liveDataToggle.field.setEnabled(True)
+        view.liveDataToggle.toggle.setEnabled(True)
                 
     ###
     ### Abstract methods:

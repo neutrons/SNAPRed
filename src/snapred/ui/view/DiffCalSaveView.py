@@ -54,9 +54,7 @@ class DiffCalSaveView(BackendRequestView):
         self.iterationWidget = self._labeledField("Iteration :", field=self.iterationDropdown)
         self.iterationWidget.setVisible(False)
 
-        # IMPORTANT: do not hide the "layout" method!
-        _layout = QGridLayout()
-        self.setLayout(_layout)
+        _layout = self.layout()
         _layout.addWidget(self.interactionText)
         _layout.addWidget(self.fieldRunNumber)
         _layout.addWidget(self.fieldVersion)

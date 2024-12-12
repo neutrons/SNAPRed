@@ -1,3 +1,4 @@
+import datetime
 from typing import Dict, List
 
 from qtpy.QtCore import Slot
@@ -11,6 +12,7 @@ from snapred.backend.dao.request import (
     ReductionRequest,
 )
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
+from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
@@ -128,8 +130,8 @@ class ReductionWorkflow(WorkflowImplementer):
 
     def _getLiveMetadata(self) -> LiveMetadata:
         # *** DEBUG *** : mock
-        duration = timedelta(hours=14)
-        now = datetime.utcnow()
+        duration = datetime.timedelta(hours=14)
+        now = datetime.datetime.utcnow()
         return LiveMetadata.model_construct(
             runNumber="46680",
             startTime=now - duration,
