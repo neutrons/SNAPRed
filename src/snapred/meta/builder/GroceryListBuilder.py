@@ -16,10 +16,6 @@ class GroceryListBuilder:
         self._tokens["workspaceType"] = "neutron"
         self._tokens["runNumber"] = runId
         return self
-
-    def loader(self, loader: str, loaderArgs: str = ""):
-        self._tokens["loader"] = loader
-        self._tokens["loaderArgs"] = loaderArgs
     
     def grouping(self, groupingScheme: str):
         self._tokens["workspaceType"] = "grouping"

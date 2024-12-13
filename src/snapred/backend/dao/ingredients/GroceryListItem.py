@@ -55,9 +55,6 @@ class GroceryListItem(BaseModel):
         "LoadNexus",
         "LoadNexusProcessed"
     ] = ""
-
-    # optional loader arguments:
-    loaderArgs: str = ""
     
     # optional: Mantid-workspace number tag (only output if != 1)
     numberTag: Optional[int] = None

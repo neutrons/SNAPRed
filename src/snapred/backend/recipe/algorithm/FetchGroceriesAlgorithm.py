@@ -122,8 +122,12 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         filename = self.getPropertyValue("Filename")
         outWS = self.getPropertyValue("OutputWorkspace")
         loaderType = self.getPropertyValue("LoaderType")
+        
+        # Allow live-data mode to replace an existing workspace
+        addOrReplace = loaderType == "LoadLiveData"
+        
         # TODO: do we need to guard this with an if?
-        if not self.mantidSnapper.mtd.doesExist(outWS):
+        if addOrReplace or not self.mantidSnapper.mtd.doesExist(outWS):
             match loaderType:
                 case "":
                     _, loaderType, _ = self.mantidSnapper.Load(
@@ -154,17 +158,12 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     )
                     self.mantidSnapper.executeQueue()
                 case "LoadLiveData":
-                    loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))
-                    instrument = loaderArgs["Instrument"]
-                    facility = loaderArgs["Facility"]
-                    duration = loaderArgs["Duration"]
+                    loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))                    
                     with self._useFacility(facility):
                         self.mantidSnapper.LoadLiveData(
                             "Loading live data",
                             OutputWorkspace=outWs,
-                            Instrument=loaderArgs["Instrument"],
-                            AccumulationMethod="Replace",
-                            StartTime=(datetime.datetime.utcnow() + datetime.timedelta(seconds=-duration)).isoformat()
+                            **loaderArgs
                         )
                         self.mantidSnapper.executeQueue()
                 case _:
