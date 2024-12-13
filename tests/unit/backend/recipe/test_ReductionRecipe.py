@@ -727,6 +727,71 @@ class ReductionRecipeTest(TestCase):
 
         assert result["outputs"][0] == "mask"
 
+    def test_checkMaskedPixels(self):
+        recipe = ReductionRecipe()
+        recipe.logger = mock.Mock()
+
+        # Scenario 1: Invalid groupingWorkspace format (no "__")
+        invalid_format_ws = "group1"
+        result = recipe._checkMaskedPixels(invalid_format_ws)
+        assert result is True, "Expected True when groupingWorkspace format is invalid."
+        recipe.logger().error.assert_any_call(
+            f"Unexpected groupingWorkspace format: '{invalid_format_ws}'. Skipping this workspace."
+        )
+
+        recipe.logger().error.reset_mock()
+
+        # Scenario 2: No matching PixelGroup found
+        recipe.ingredients = mock.Mock()
+        recipe.ingredients.pixelGroups = []
+        valid_format_ws = "someprefix__focus1_1234"
+        result = recipe._checkMaskedPixels(valid_format_ws)
+        assert result is True, "Expected True when no matching PixelGroup is found."
+        recipe.logger().error.assert_any_call(f"No matching PixelGroup found for {valid_format_ws}")
+
+        recipe.logger().error.reset_mock()
+        recipe.logger().warning.reset_mock()
+
+        # Prepare a mock pixel group for the next scenarios
+        mock_pixel_group = mock.Mock()
+        mock_pixel_group.focusGroup.name = "focus1"
+        mock_pixel_group.pixelGroupingParameters = {
+            "subgroupA": mock.Mock(isMasked=False),
+            "subgroupB": mock.Mock(isMasked=False),
+        }
+        recipe.ingredients.pixelGroups = [mock_pixel_group]
+
+        # Scenario 3: No subgroups masked -> should return False
+        result = recipe._checkMaskedPixels(valid_format_ws)
+        assert result is False, "Expected False when no subgroups are masked."
+        recipe.logger().warning.assert_not_called()
+        recipe.logger().error.assert_not_called()
+
+        recipe.logger().warning.reset_mock()
+        recipe.logger().error.reset_mock()
+
+        # Scenario 4: One subgroup masked -> should return True
+        mock_pixel_group.pixelGroupingParameters["subgroupA"].isMasked = True
+        result = recipe._checkMaskedPixels(valid_format_ws)
+        assert result is True, "Expected True when a subgroup is masked."
+        recipe.logger().warning.assert_called_once_with(
+            "Subgroup 'subgroupA' in group 'focus1' is fully masked. "
+            f"Skipping execution for {valid_format_ws} workspace.\n"
+            "This will affect future reductions.\n\n"
+        )
+
+        recipe.logger().warning.reset_mock()
+
+        # Scenario 5: All subgroups masked -> should also return True and log a different message
+        mock_pixel_group.pixelGroupingParameters["subgroupB"].isMasked = True
+        result = recipe._checkMaskedPixels(valid_format_ws)
+
+        mock_pixel_group.pixelGroupingParameters["subgroupA"].isMasked = True
+        mock_pixel_group.pixelGroupingParameters["subgroupB"].isMasked = True
+
+        mock_pixel_group.pixelGroupingParameters["subgroupA"].isMasked = True
+        mock_pixel_group.pixelGroupingParameters["subgroupB"].isMasked = True
+
     def test_cook(self):
         recipe = ReductionRecipe()
         recipe.prep = mock.Mock()
