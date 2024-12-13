@@ -63,7 +63,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         self.groceries = groceries.copy()
         self.sampleWs = groceries["inputWorkspace"]
         self.normalizationWs = groceries.get("normalizationWorkspace", "")
-        self.maskWs = groceries.get("combinedMask", "")
+        self.maskWs = groceries.get("combinedPixelMask", "")
         self.groupingWorkspaces = groceries["groupingWorkspaces"]
 
     def _cloneWorkspace(self, inputWorkspace: str, outputWorkspace: str) -> str:
@@ -183,20 +183,46 @@ class ReductionRecipe(Recipe[Ingredients]):
             self.groceries["normalizationWorkspace"] = normalizationClone
         return sampleClone, normalizationClone
 
-    def _isGroupFullyMasked(self, groupingWorkspace: str) -> bool:
-        maskWorkspace = self.mantidSnapper.mtd[self.maskWs]
-        groupWorkspace = self.mantidSnapper.mtd[groupingWorkspace]
-
-        totalMaskedPixels = 0
-        totalGroupPixels = 0
-
-        for i in range(groupWorkspace.getNumberHistograms()):
-            group_spectra = groupWorkspace.readY(i)
-            for spectrumIndex in group_spectra:
-                if maskWorkspace.readY(int(spectrumIndex))[0] == 1:
-                    totalMaskedPixels += 1
-                totalGroupPixels += 1
-        return totalMaskedPixels == totalGroupPixels
+    def _checkMaskedPixels(self, groupingWorkspace: str) -> bool:
+        try:
+            # Extract the focus group name from the grouping workspace name
+            focusGroupName = groupingWorkspace.split("__")[1].rsplit("_", 1)[0]
+        # NOTE: This might be jumping the gun a lil bit.
+        except IndexError:
+            self.logger().error(
+                f"Unexpected groupingWorkspace format: '{groupingWorkspace}'. " "Skipping this workspace."
+            )
+            return True  # Skip execution for invalid format
+        # Retrieve the PixelGroup matching the focus group name
+        pixelGroup = next(
+            (
+                group
+                for group in self.ingredients.pixelGroups
+                if group.focusGroup.name.lower() == focusGroupName.lower()
+            ),
+            None,
+        )
+        if not pixelGroup:
+            self.logger().error(f"No matching PixelGroup found for {groupingWorkspace}")
+            return True  # Skip the grouping if no matching group is found
+        # Check if any subgroup is fully masked
+        for subgroupID, params in pixelGroup.pixelGroupingParameters.items():
+            if params.isMasked:
+                self.logger().warning(
+                    f"Subgroup '{subgroupID}' in group '{focusGroupName}' is fully masked. "
+                    f"Skipping execution for {groupingWorkspace} workspace.\n"
+                    "This will affect future reductions.\n\n"
+                )
+                return True
+        # Check if all subgroups are masked (redundant, as the above already skips if any are masked)
+        if all(param.isMasked for param in pixelGroup.pixelGroupingParameters.values()):
+            self.logger().warning(
+                f"All subgroups in the group '{focusGroupName}' from '{groupingWorkspace}' "
+                "are fully masked. Skipping the entire grouping schema.\n"
+                "This will affect future reductions.\n\n"
+            )
+            return True
+        return False  # Proceed if no subgroups are fully masked
 
     def queueAlgos(self):
         pass
@@ -228,13 +254,8 @@ class ReductionRecipe(Recipe[Ingredients]):
         for groupingIndex, groupingWs in enumerate(self.groupingWorkspaces):
             self.groceries["groupingWorkspace"] = groupingWs
 
-            if self.maskWs and self._isGroupFullyMasked(groupingWs):
+            if self.maskWs and self._checkMaskedPixels(groupingWs):
                 # Notify the user of a fully masked group, but continue with the workflow
-                self.logger().warning(
-                    f"\nAll pixels masked within {groupingWs} schema.\n"
-                    + "Skipping all algorithm execution for this group.\n"
-                    + "This will affect future reductions."
-                )
                 continue
 
             sampleClone, normalizationClone = self._prepGroupingWorkspaces(groupingIndex)
