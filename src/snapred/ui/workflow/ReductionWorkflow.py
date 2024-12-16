@@ -187,6 +187,10 @@ class ReductionWorkflow(WorkflowImplementer):
         response = self.request(path="reduction/groupings", payload=request_)
         self._keeps = set(response.data["groupingWorkspaces"])
 
+        # Validate reduction; if artificial normalization is needed, handle it
+        # NOTE: this logic ONLY works because we are forbidding mixed cases of artnorm or loaded norm
+        response = self.request(path="reduction/validate", payload=request_)
+
         # get the calibration and normalization versions for all runs to be processed
         matchRequest = MatchRunsRequest(runNumbers=self.runNumbers, useLiteMode=self.useLiteMode)
         loadedCalibrations, calVersions = self.request(path="calibration/fetchMatches", payload=matchRequest).data
@@ -203,9 +207,6 @@ class ReductionWorkflow(WorkflowImplementer):
                 "and try again."
             )
 
-        # Validate reduction; if artificial normalization is needed, handle it
-        # NOTE: this logic ONLY works because we are forbidding mixed cases of artnorm or loaded norm
-        response = self.request(path="reduction/validate", payload=request_)
         if ContinueWarning.Type.MISSING_NORMALIZATION in self.continueAnywayFlags:
             if len(self.runNumbers) > 1:
                 raise RuntimeError(

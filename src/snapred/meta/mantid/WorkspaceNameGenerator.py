@@ -8,11 +8,8 @@ from pydantic import WithJsonSchema
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated, Self
 
+from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.meta.Config import Config
-
-# Bypass circular import:
-VERSION_DEFAULT = Config["version.default"]
-VERSION_DEFAULT_NAME = Config["version.friendlyName.default"]
 
 
 class WorkspaceName(str):
@@ -179,8 +176,8 @@ class ValueFormatter:
         # in those cases, format will be a user-specified string
 
         formattedVersion = ""
-        if version == VERSION_DEFAULT:
-            formattedVersion = f"v{VERSION_DEFAULT_NAME}"
+        if version == VersionState.DEFAULT:
+            formattedVersion = f"v{VERSION_START}"
         elif isinstance(version, int):
             formattedVersion = fmt.format(version=version)
         elif str(version).isdigit():
@@ -191,8 +188,8 @@ class ValueFormatter:
     def pathVersion(cls, version: int):
         # only one special case: default version
 
-        if version == VERSION_DEFAULT:
-            return f"v_{VERSION_DEFAULT_NAME}"
+        if version == VersionState.DEFAULT:
+            return f"v_{VersionState.DEFAULT}"
         return cls.formatVersion(version, fmt=cls.versionFormat.PATH)
 
     @classmethod

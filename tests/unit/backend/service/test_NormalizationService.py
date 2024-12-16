@@ -10,6 +10,7 @@ from mantid.simpleapi import (
     mtd,
 )
 
+from snapred.backend.dao.indexing.Versioning import VersionState
 from snapred.backend.dao.request import CalibrationWritePermissionsRequest
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
@@ -63,7 +64,7 @@ with mock.patch.dict(
         normalizationService.dataExportService.exportNormalizationIndexEntry = MagicMock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = "expected"
         normalizationService.saveNormalizationToIndex(
-            IndexEntry(runNumber="1", useLiteMode=True, backgroundRunNumber="2")
+            IndexEntry(runNumber="1", useLiteMode=True, backgroundRunNumber="2", version=VersionState.NEXT)
         )
         assert normalizationService.dataExportService.exportNormalizationIndexEntry.called
         savedEntry = normalizationService.dataExportService.exportNormalizationIndexEntry.call_args.args[0]
@@ -210,7 +211,7 @@ class TestNormalizationService(unittest.TestCase):
         )
 
     def test_matchRuns(self):
-        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(
+        self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(
             side_effect=[mock.sentinel.version1, mock.sentinel.version2],
         )
         request = mock.Mock(runNumbers=[mock.sentinel.run1, mock.sentinel.run2], useLiteMode=True)
@@ -276,7 +277,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.sousChef = SculleryBoy()
         self.instance.groceryService = mockGroceryService
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
-        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=mock.Mock(runNumber="12345"))
@@ -297,7 +298,7 @@ class TestNormalizationService(unittest.TestCase):
         # test `validateRequest` internal calls
         self.instance._sameStates = mock.Mock(return_value=True)
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
-        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         permissionsRequest = CalibrationWritePermissionsRequest(
             runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
         )
@@ -309,7 +310,7 @@ class TestNormalizationService(unittest.TestCase):
     def test_validateDiffractionCalibrationExists_failure(self):
         request = mock.Mock(runNumber="12345", backgroundRunNumber="67890", continueFlags=ContinueWarning.Type.UNSET)
         self.instance.sousChef = SculleryBoy()
-        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=-1)
+        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=None)
 
         with pytest.raises(
             ContinueWarning,
@@ -324,7 +325,7 @@ class TestNormalizationService(unittest.TestCase):
             continueFlags=ContinueWarning.Type.DEFAULT_DIFFRACTION_CALIBRATION,
         )
         self.instance.sousChef = SculleryBoy()
-        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=-1)
+        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=None)
         self.instance._validateDiffractionCalibrationExists(request)
 
     def test_validateRequest_different_states(self):
@@ -370,7 +371,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="path/to/cif")
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
-        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
         result = self.instance.normalization(self.request)
 

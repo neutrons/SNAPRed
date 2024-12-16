@@ -20,6 +20,7 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.meta.mantid.FitPeaksOutput import FitOutputEnum
+from snapred.ui.plotting.Factory import mantidAxisFactory
 from snapred.ui.view.BackendRequestView import BackendRequestView
 
 
@@ -60,6 +61,9 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
         self.signalMaxChiSqUpdate.connect(self._updateMaxChiSq)
 
+        # skip pixel calibration toggle
+        self.skipPixelCalToggle = self._labeledToggle("Skip Pixel Calibration", False)
+
         self.continueAnyway = False
         self.signalContinueAnyway.connect(self._updateContinueAnyway)
 
@@ -99,7 +103,8 @@ class DiffCalTweakPeakView(BackendRequestView):
 
         # add all elements to the grid layout
         self.layout.addWidget(self.runNumberField, 0, 0)
-        self.layout.addWidget(self.litemodeToggle, 0, 1)
+        self.layout.addWidget(self.litemodeToggle, 0, 1, 1, 2)
+        self.layout.addWidget(self.skipPixelCalToggle, 0, 2)
         self.layout.addWidget(self.navigationBar, 1, 0)
         self.layout.addWidget(self.canvas, 2, 0, 1, -1)
         self.layout.addLayout(peakControlLayout, 3, 0, 1, 2)
@@ -212,6 +217,7 @@ class DiffCalTweakPeakView(BackendRequestView):
 
         # now re-draw the figure
         self.figure.clear()
+
         for wkspIndex in range(numGraphs):
             peaks = self.peaks[wkspIndex].peaks
             # collect the fit chi-sq parameters for this spectrum, and the fits
@@ -220,6 +226,11 @@ class DiffCalTweakPeakView(BackendRequestView):
             self.badPeaks[wkspIndex] = [peak for chi2, peak in zip(chisq, peaks) if chi2 >= maxChiSq]
             # prepare the plot area
             ax = self.figure.add_subplot(nrows, ncols, wkspIndex + 1, projection="mantid")
+
+            # NOTE: Mutate the ax object as the mantidaxis does not account for lines
+            # TODO: Bubble this up to the mantid codebase and remove this mutation.
+            ax = mantidAxisFactory(ax)
+
             ax.tick_params(direction="in")
             ax.set_title(f"Group ID: {wkspIndex + 1}")
             # plot the data and fitted curve
@@ -318,3 +329,6 @@ class DiffCalTweakPeakView(BackendRequestView):
             self._testContinueAnywayStates()
 
         return True
+
+    def getSkipPixelCalibration(self):
+        return self.skipPixelCalToggle.field.getState()

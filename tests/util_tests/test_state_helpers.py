@@ -8,7 +8,7 @@ import pytest
 from util.dao import DAOFactory
 from util.state_helpers import reduction_root_redirect, state_root_override, state_root_redirect
 
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
+from snapred.backend.dao.indexing.Versioning import VERSION_START
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -68,7 +68,7 @@ def test_state_root_override_enter(
         assert Path(stateRootPath) == expectedStateRootPath
         assert Path(stateRootPath).exists()
         assert Path(stateRootPath).joinpath("groupingMap.json").exists()
-        versionString = wnvf.pathVersion(VERSION_DEFAULT)
+        versionString = wnvf.pathVersion(VERSION_START)
         assert (Path(stateRootPath) / "lite" / "diffraction" / versionString / "CalibrationParameters.json").exists()
 
 

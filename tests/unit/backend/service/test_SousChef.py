@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+import pytest
 from mantid.simpleapi import DeleteWorkspace, mtd
 
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
@@ -110,6 +111,7 @@ class TestSousChef(unittest.TestCase):
         self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
         fakeLeft = 116
         fakeRight = 17
+        self.ingredients.model_config["validate_assignment"] = False
         self.ingredients.fwhmMultipliers = mock.Mock(left=fakeLeft, right=fakeRight)
         self.instance.prepCalibrantSample = mock.Mock()
 
@@ -332,6 +334,7 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepPixelGroup = mock.Mock()
         self.instance.prepCalibrantSample = mock.Mock()
         calibrantSample = self.instance.prepCalibrantSample()
+        self.ingredients.model_config["validate_assignment"] = False
         self.ingredients.peakIntensityThreshold = calibrantSample.peakIntensityFractionThreshold
 
         result = self.instance.prepPeakIngredients(self.ingredients)
@@ -496,6 +499,7 @@ class TestSousChef(unittest.TestCase):
         # Modifications to a copy of `ingredients` during the first part of `prepReductionIngredients`,
         #   before the `prepManyPixelGroups` calls:
         ingredients_ = self.ingredients.model_copy()
+        ingredients_.model_config["validate_assignment"] = False
         # ... from calibration record:
         ingredients_.cifPath = self.instance.dataFactoryService.getCifFilePath.return_value
         # ... from normalization record:
@@ -598,3 +602,15 @@ class TestSousChef(unittest.TestCase):
     def test__getThresholdFromCalibrantSample_none_path(self):
         result = self.instance._getThresholdFromCalibrantSample(None)
         assert result == Config["constants.PeakIntensityFractionThreshold"]
+
+    def test_pullCalibrationRecordFFI_noCalibrationVersion(self):
+        mockDataFactory = mock.Mock()
+        mockDataFactory.getCalibrationRecord = mock.Mock()
+        mockDataFactory.getCalibrationRecord.return_value = None
+        self.instance.dataFactoryService = mockDataFactory
+        self.ingredients.version = None
+
+        assert self.ingredients.versions.calibration is None
+
+        with pytest.raises(ValueError, match="Calibration version must be specified"):
+            self.instance._pullCalibrationRecordFFI(self.ingredients)
