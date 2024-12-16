@@ -524,7 +524,7 @@ class GroceryService:
         The grouping workspaces require an instrument definition, and do not always have their own instrument definition
         saved with them (such as XML groupings).  Therefore, when loading groupings, it is necessary to match them to
         the proper instrument definition *with the proper instrument state params*.
-        This uses the run number (and lite mode)to locate the proper state, and from that the proper instrument
+        This uses the run number (and lite mode) to locate the proper state, and from that the proper instrument
         definition with instrument params for that state.
 
         :param runNumber: a run number that was taken in the desired instrument state
@@ -729,9 +729,9 @@ class GroceryService:
         """
         Fetch a neutron data file, without copy-protection.
         If the workspace is truly only needed once, this saves time and memory.
-        If the workspace needs to be loaded more than once, used cached method.
+        If the workspace needs to be loaded more than once, use the cached method.
 
-        :param item: the item from the grocery list
+        :param item: the grocery-list item
         :type item: GroceryListItem
         :return: a dictionary with the following keys
 
@@ -741,99 +741,104 @@ class GroceryService:
 
         :rtype: Dict[str, Any]
         """
-        runNumber, useLiteMode, loader, liveDataArgs 
-          = item.runNumber, item.useLiteMode, item.loader, item.liveDataArgs 
         
-        workspace: str = self._createNeutronWorkspaceName(runNumber, useLiteMode)
+        runNumber, useLiteMode, loader, liveDataArgs = item.runNumber, item.useLiteMode, item.loader, item.liveDataArgs
+        
+        workspaceName: str = self._createNeutronWorkspaceName(runNumber, useLiteMode)
 
+        success = False
+        convertToLiteMode = False
+        
         self._updateNeutronCacheFromADS(runNumber, useLiteMode)
-        
-        # Live-data mode will also be the final fallback, even if there are no explicit args.
-        liveDataMode = loader == "LoadLiveData" or item.liveDataArgs is not None
-        
-        # check if a raw workspace exists, and clone it if so
+
+        # Check for a cached copy, and use it if available.
         if self._loadedRuns.get(self._key(runNumber, useLiteMode)) is not None:
-            self.getCloneOfWorkspace(self._createRawNeutronWorkspaceName(runNumber, useLiteMode), workspace)
+            self.getCloneOfWorkspace(self._createRawNeutronWorkspaceName(runNumber, useLiteMode), workspaceName)
             data = {
                 "result": True,
                 "loader": "cached",
-                "workspace": workspace,
+                "workspace": workspaceName,
             }
-            return data
+            success = True
+    
+        # Live-data mode can be requested explicitly,
+        #   but it also serves as the fallback mode.
+        liveDataMode = loader == "LoadLiveData" or liveDataArgs is not None
+        
+        if not success and not liveDataMode:
+            liteModeFilePath: Path = self._createNeutronFilename(runNumber, True)
+            nativeModeFilePath: Path = self._createNeutronFilename(runNumber, False)
+            cachedNativeMode = self._loadedRuns.get(self._key(runNumber, False)) is not None
+
+            match (useLiteMode, cachedNativeMode, liteModeFilePath.exists(), nativeModeFilePath.exists()):
+        
+                # THERE ARE MANY SPECIAL CASES HERE, but basically a single-use fetch will use
+                #   cached (or on-disk lite versions) if available, but will not create any new cache entries if not.
             
-        # otherwise fetch the data
-        loadedFromNative = False
-        if not liveDataMode:
-            try:
-                IPTS = self.getIPTS(runNumber, Config["instrument.name"])
-                # The IPTS-directory may exist, but the actual input file[s] may not.
-
-                filePath = self._createNeutronFilepath(IPTS, useLiteMode)       
-                if filePath.exists():
-                    data = self.grocer.executeRecipe(
-                        filename=str(filePath),
-                        workspace=workspace,
-                        loader=loader
-                    )
-                    return data
-                                
-                if useLiteMode:
-                    # Check the cache again for native data
-                    if self._loadedRuns.get(self._key(runNumber, False)) is not None:
-                        # native data exists: clone it for conversion to lite mode
-                        self.getCloneOfWorkspace(self._createRawNeutronWorkspaceName(runNumber, useLiteMode), workspace)
-                        data = {
-                            "result": True,
-                            "loader": "cached",
-                            "workspace": workspace,
-                        }
-                        loadedFromNative = True
-                    else:                    
-                        filePath = self._createNeutronFilepath(IPTS, False)
-                        if not filePath.exists():
-                            raise FileNotFoundError(f"input file {filePath} does not exist")
-
-                        data = self.grocer.executeRecipe(
-                            filename=str(filePath),
-                            workspace=workspace,
-                            loader=loader
-                        )
-                        loadedFromNative = True
+                case (True, _, True, _):
+                    # lite mode and lite-mode exists on disk
+                    data = self.grocer.executeRecipe(str(liteModeFilePath), workspaceName, loader)
+                    success = True
                 
-                if data.result and useLiteMode and loadedFromNative:
-                    self.convertToLiteMode(workspaceName, liveDataMode=liveDataMode)
-                                                
-                # WARNING: the data.result also may indicate a loader failure, but that does not trigger the fallback!
-                return data
-            except RuntimeError, FileNotFoundError as e:
-                pass
+                case (True, True, _, _):
+                    # lite mode and native is cached
+                    self.getCloneOfWorkspace(self._createRawNeutronWorkspaceName(runNumber, False), workspaceName)
+                    convertToLiteMode = True
+                    success = True
+                    
+                case (True, False, _, True):
+                    # lite mode and native on disk
+                    data = self.grocer.executeRecipe(str(nativeModeFilePath), workspaceName, loader)
+                    convertToLiteMode = True
+                    success = True
+
+                case (False, _, _, True):
+                    # native mode and native on disk
+                    data = self.grocer.executeRecipe(str(nativeModeFilePath), workspaceName, loader)
+                    success = True
                 
-        # Fallback to live-data mode
+                case _:
+                    # live data fallback
+                    pass
+        
+        if not success:
+            # Live-data fallback
+            if self.dataService.hasLiveDataConnection():
 
-        # When not specified in the `liveDataArgs`,
-        #   default behavior will be to load the entire run.
-        startTime = (datetime.datetime.utcnow() - liveDataArgs.duration).isoformat()
-            if liveDataArgs is not None else ""
+                # When not specified in the `liveDataArgs`,
+                #   default behavior will be to load the entire run.
+                startTime = (datetime.datetime.utcnow() - liveDataArgs.duration).isoformat()
+                    if liveDataArgs is not None else ""
 
-        loaderArgs = {
-            "StartTime": startTime,
-            "Facility": Config["liveData.facility"],
-            "Instrument": Config["liveData.instrument"],
-            "AccumulationMethod": Config["liveData.accumulationMethod"],
-            "StartTime": startTime
-        }
-        data = self.grocer.executeRecipe(
-            workspace=workspace,
-            loader="LoadLiveData",
-            loaderArgs=json.dumps(loaderArgs)
-        )
-        loadedFromNative = True
-                
-        if data.result and useLiteMode and loadedFromNative:
-            self.convertToLiteMode(workspace, liveDataMode=liveDataMode)
+                loaderArgs = {
+                    "Facility": Config["liveData.facility"],
+                    "Instrument": Config["liveData.instrument"],
+                    "AccumulationMethod": Config["liveData.accumulationMethod"],
+                    "PreserveEvents": True,
+                    "StartTime": startTime
+                }
+                data = self.grocer.executeRecipe(
+                    workspace=workspace,
+                    loader="LoadLiveData",
+                    loaderArgs=json.dumps(loaderArgs)
+                )
+                if data["result"]:
+                    liveRunNumber = self.mantidSnapper.mtd[workspace].getRun().runNumber()
+                    if int(runNumber) != int(liveRunNumber):
+                        self.deleteWorkspaceUnconditional(workspace)
+                        data = {"result": False}
+                        if liveDataArgs is not None:
+                            # the live-data run isn't the expected one => a state change has occurred
+                            raise LiveDataState.runStateTransition(liveRunNumber, runNumber)
+                        raise RuntimeError(f"Neutron data for run '{runNumber}' is not present on disk, nor is it the live-data run")
+                    success = True                                            
+            else:
+                raise RuntimeError(f"Neutron data for run '{runNumber}' is not present on disk, and no live-data connection is available")
 
+        if success and convertToLiteMode:
+            self.convertToLiteMode(workspace)
+            
         return data
-
 
     def fetchNeutronDataCached(
         self,
@@ -1364,8 +1369,6 @@ class GroceryService:
                 Workspace=name,
             )
             self.mantidSnapper.executeQueue()
-        else:
-            pass
 
     def clearADS(self, exclude: List[WorkspaceName] = [], clearCache: bool = False):
         """

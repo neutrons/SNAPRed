@@ -59,7 +59,7 @@ class FetchGroceriesRecipe:
             data["loader"] = algo.getPropertyValue("LoaderType")
             data["workspace"] = workspace
 
-            if data["loader"] == "LoadEventNexus":
+            if data["loader"] in ("LoadEventNexus", "LoadLiveData"):
                 self.dataService = LocalDataService()
                 config = self.dataService.getInstrumentConfig()
                 width = config.width
