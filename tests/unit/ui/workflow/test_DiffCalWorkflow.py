@@ -14,6 +14,7 @@ from snapred.meta.pointer import create_pointer
 from snapred.ui.workflow.DiffCalWorkflow import DiffCalWorkflow
 
 
+@pytest.mark.ui
 @patch("snapred.ui.workflow.DiffCalWorkflow.WorkflowImplementer.request")
 def test_purge_bad_peaks(workflowRequest, qtbot):  # noqa: ARG001
     """
@@ -65,6 +66,7 @@ def test_purge_bad_peaks(workflowRequest, qtbot):  # noqa: ARG001
     )
 
 
+@pytest.mark.ui
 @patch("snapred.ui.workflow.DiffCalWorkflow.WorkflowImplementer.request")
 def test_purge_bad_peaks_two_wkspindex(workflowRequest, qtbot):  # noqa: ARG001
     """
@@ -126,6 +128,7 @@ def test_purge_bad_peaks_two_wkspindex(workflowRequest, qtbot):  # noqa: ARG001
     )
 
 
+@pytest.mark.ui
 @patch("snapred.ui.workflow.DiffCalWorkflow.WorkflowImplementer.request")
 def test_purge_bad_peaks_too_few(workflowRequest, qtbot):  # noqa: ARG001
     """

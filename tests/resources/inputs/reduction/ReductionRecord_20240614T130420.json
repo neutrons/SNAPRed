@@ -761,6 +761,7 @@
             "fitted_strippedFocussedData_stripped_2"
         ],
         "version": 7,
+        "calibrationVersionUsed": 1,
         "crystalDBounds": {"minimum": 0.4, "maximum": 100.0},
         "normalizationCalibrantSamplePath": "/SNS/SNAP/shared/Calibration/Calibrants/Al2O3/Al2O3_20240614T130420.nxs"
     },

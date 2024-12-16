@@ -67,16 +67,12 @@ class TestDataFactoryService(unittest.TestCase):
         cls.mockLookupService.calibrationIndexer.return_value = mock.Mock(
             versionPath=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
             getIndex=mock.Mock(return_value=[cls.expected(cls, "Calibration")]),
-            thisOrNextVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
-            thisOrCurrentVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
-            thisOrLatestApplicableVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
+            latestApplicableVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
         )
         cls.mockLookupService.normalizationIndexer.return_value = mock.Mock(
             versionPath=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
             getIndex=mock.Mock(return_value=[cls.expected(cls, "Normalization")]),
-            thisOrNextVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
-            thisOrCurrentVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
-            thisOrLatestApplicableVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
+            latestApplicableVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
         )
 
     def setUp(self):
@@ -187,20 +183,10 @@ class TestDataFactoryService(unittest.TestCase):
             actual = self.instance.getCalibrationDataWorkspace("456", useLiteMode, self.version, "bunko")
             assert actual == self.instance.groceryService.fetchWorkspace.return_value
 
-    def test_getThisOrCurrentCalibrationVersion(self):
+    def test_getLatestCalibrationVersion(self):
         for useLiteMode in [True, False]:
-            actual = self.instance.getThisOrCurrentCalibrationVersion("123", useLiteMode, self.version)
-            assert actual == self.expected("Calibration", self.version)  # NOTE mock indexer called only with version
-
-    def test_getThisOrNextCalibrationVersion(self):
-        for useLiteMode in [True, False]:
-            actual = self.instance.getThisOrNextCalibrationVersion("123", useLiteMode, self.version)
-            assert actual == self.expected("Calibration", self.version)  # NOTE mock indexer called only with version
-
-    def test_getThisOrLatestCalibrationVersion(self):
-        for useLiteMode in [True, False]:
-            actual = self.instance.getThisOrLatestCalibrationVersion("123", useLiteMode, self.version)
-            assert actual == self.expected("Calibration", "123", self.version)
+            actual = self.instance.getLatestApplicableCalibrationVersion("123", useLiteMode)
+            assert actual == self.expected("Calibration", "123")
 
     ## TEST NORMALIZATION METHODS
 
@@ -240,20 +226,10 @@ class TestDataFactoryService(unittest.TestCase):
             actual = self.instance.getNormalizationDataWorkspace("456", useLiteMode, self.version, "bunko")
             assert actual == self.instance.groceryService.fetchWorkspace.return_value
 
-    def test_getThisOrCurrentNormalizationVersion(self):
+    def test_getLatestNormalizationVersion(self):
         for useLiteMode in [True, False]:
-            actual = self.instance.getThisOrCurrentNormalizationVersion("123", useLiteMode, self.version)
-            assert actual == self.expected("Normalization", self.version)  # NOTE mock indexer called only with version
-
-    def test_getThisOrNextNormalizationVersion(self):
-        for useLiteMode in [True, False]:
-            actual = self.instance.getThisOrNextNormalizationVersion("123", useLiteMode, self.version)
-            assert actual == self.expected("Normalization", self.version)  # NOTE mock indexer called only with version
-
-    def test_getThisOrLatestNormalizationVersion(self):
-        for useLiteMode in [True, False]:
-            actual = self.instance.getThisOrLatestNormalizationVersion("123", useLiteMode, self.version)
-            assert actual == self.expected("Normalization", "123", self.version)
+            actual = self.instance.getLatestApplicableNormalizationVersion("123", useLiteMode)
+            assert actual == self.expected("Normalization", "123")
 
     ## TEST REDUCTION METHODS
 

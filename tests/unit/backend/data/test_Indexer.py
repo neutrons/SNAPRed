@@ -10,7 +10,6 @@ from typing import List
 from unittest import mock
 
 import pytest
-from pydantic import ValidationError
 from util.dao import DAOFactory
 
 from snapred.backend.dao.calibration.Calibration import Calibration
@@ -18,7 +17,7 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_START
+from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.data.Indexer import DEFAULT_RECORD_TYPE, Indexer, IndexerType
@@ -262,14 +261,57 @@ class TestIndexer(unittest.TestCase):
 
     def test_defaultVersion(self):
         indexer = self.initIndexer()
-        assert indexer.defaultVersion() == VERSION_DEFAULT
+        assert indexer.defaultVersion() == VERSION_START
 
     def test_currentVersion_none(self):
         # ensure the current version of an empty index is unitialized
         indexer = self.initIndexer()
         assert indexer.currentVersion() is None
-        # the path should go to the starting version
-        indexer.currentPath() == self.versionPath(VERSION_START)
+        # if there is no current version then there is no current path on disk.
+        with pytest.raises(ValueError, match=r".*The indexer has encountered an invalid version*"):
+            indexer.currentPath() == self.versionPath(VERSION_START)
+
+    def test_flattenVersion(self):
+        indexer = self.initIndexer()
+        indexer.currentVersion = lambda: 3
+        indexer.nextVersion = lambda: 4
+        assert indexer._flattenVersion(VersionState.DEFAULT) == indexer.defaultVersion()
+        assert indexer._flattenVersion(VersionState.NEXT) == indexer.nextVersion()
+        assert indexer._flattenVersion(3) == 3
+
+        with pytest.raises(ValueError, match=r".*Version must be an int or*"):
+            indexer._flattenVersion(None)
+
+    def test_writeNewVersion_noAppliesTo(self):
+        # ensure that a new record is written to disk
+        # and the index is updated to reflect the new record
+        indexer = self.initIndexer()
+        version = randint(2, 120)
+        record = self.record(version)
+        entry = self.indexEntryFromRecord(record)
+        entry.appliesTo = None
+        indexer.writeNewVersion(record, entry)
+        assert self.recordPath(version).exists()
+        assert indexer.index[version] == entry
+
+    def test_writeNewVersion_recordAlreadyExists(self):
+        # ensure that a new record is written to disk
+        # and the index is updated to reflect the new record
+        indexer = self.initIndexer()
+        version = randint(2, 120)
+        record = self.record(version)
+        entry = self.indexEntryFromRecord(record)
+        indexer.writeNewVersion(record, entry)
+        assert self.recordPath(version).exists()
+        assert indexer.index[version] == entry
+
+        # now write the record again
+        # ensure that the record is overwritten
+        record = self.record(version)
+        entry = self.indexEntryFromRecord(record)
+
+        with pytest.raises(ValueError, match=".*already exists.*"):
+            indexer.writeNewVersion(record, entry)
 
     def test_currentVersion_add(self):
         # ensure current version advances when index entries are written
@@ -378,23 +420,23 @@ class TestIndexer(unittest.TestCase):
     def test_latestApplicableVersion_returns_default(self):
         # ensure latest applicable version will be default if it is the only one
         runNumber = "123"
-        versionList = [VERSION_DEFAULT]
+        versionList = [VERSION_START]
         self.prepareVersions(versionList)
         indexer = self.initIndexer()
         # make it applicable
-        indexer.index[VERSION_DEFAULT].appliesTo = f">={runNumber}"
+        indexer.index[indexer.defaultVersion()].appliesTo = f">={runNumber}"
         # get latest apllicable
         latest = indexer.latestApplicableVersion(runNumber)
-        assert latest == VERSION_DEFAULT
+        assert latest == VERSION_START
 
     def test_latestApplicableVersion_excludes_default(self):
         # ensure latest applicable version will remove default if other runs exist
         runNumber = "123"
-        versionList = [VERSION_DEFAULT, 4, 5]
+        versionList = [VERSION_START, 4, 5]
         self.prepareVersions(versionList)
         indexer = self.initIndexer()
         # make some entries applicable
-        applicableVersions = [VERSION_DEFAULT, 4]
+        applicableVersions = [VERSION_START, 4]
         print(indexer.index)
         for version in applicableVersions:
             indexer.index[version].appliesTo = f">={runNumber}"
@@ -402,21 +444,7 @@ class TestIndexer(unittest.TestCase):
         latest = indexer.latestApplicableVersion(runNumber)
         assert latest == applicableVersions[-1]
 
-    def test_thisOrCurrentVersion(self):
-        version = randint(20, 120)
-        indexer = self.initIndexer()
-        assert indexer.thisOrCurrentVersion(None) == indexer.currentVersion()
-        assert indexer.thisOrCurrentVersion(VERSION_DEFAULT) == VERSION_DEFAULT
-        assert indexer.thisOrCurrentVersion(version) == version
-
-    def test_thisOrNextVersion(self):
-        version = randint(20, 120)
-        indexer = self.initIndexer()
-        assert indexer.thisOrNextVersion(None) == indexer.nextVersion()
-        assert indexer.thisOrNextVersion(VERSION_DEFAULT) == VERSION_DEFAULT
-        assert indexer.thisOrNextVersion(version) == version
-
-    def test_thisOrLatestApplicableVersion(self):
+    def test_getLatestApplicableVersion(self):
         # make one applicable entry
         version1 = randint(1, 10)
         entry1 = self.indexEntry(version1)
@@ -429,22 +457,19 @@ class TestIndexer(unittest.TestCase):
         indexer = self.initIndexer()
         indexer.index = {version1: entry1, version2: entry2}
         # only the applicable entry is returned
-        assert indexer.thisOrLatestApplicableVersion("123", None) == version1
-        assert indexer.thisOrLatestApplicableVersion("123", version1) == version1
-        assert indexer.thisOrLatestApplicableVersion("123", version2) == version1
+        assert indexer.latestApplicableVersion("123") == version1
 
     def test_isValidVersion(self):
         indexer = self.initIndexer()
         # the good
         for i in range(10):
-            assert indexer.isValidVersion(randint(2, 120))
-        assert indexer.isValidVersion(VERSION_DEFAULT)
+            assert indexer.validateVersion(randint(2, 120))
+        assert indexer.validateVersion(VersionState.DEFAULT)
         # the bad
-        assert not indexer.isValidVersion("bad")
-        assert not indexer.isValidVersion("*")
-        assert not indexer.isValidVersion(None)
-        assert not indexer.isValidVersion(-2)
-        assert not indexer.isValidVersion(1.2)
+        badInput = ["bad", "*", None, -2, 1.2]
+        for i in badInput:
+            with pytest.raises(ValueError, match=r".*The indexer has encountered an invalid version*"):
+                indexer.validateVersion(i)
 
     def test_nextVersion(self):
         # check that the current version advances as expected as
@@ -454,13 +479,9 @@ class TestIndexer(unittest.TestCase):
         expectedIndex = {}
         indexer = self.initIndexer()
         assert indexer.index == expectedIndex
-
         # there is no current version
         assert indexer.currentVersion() is None
-        assert indexer.currentVersion() is None
-
         # the first "next" version is the start
-        assert indexer.nextVersion() == VERSION_START
         assert indexer.nextVersion() == VERSION_START
 
         # add an entry to the calibration index
@@ -470,18 +491,26 @@ class TestIndexer(unittest.TestCase):
         indexer.addIndexEntry(entry)
         expectedIndex[here] = entry
         assert indexer.index == expectedIndex
-
         # the current version should be this version
-        assert indexer.currentVersion() == here
         assert indexer.currentVersion() == here
         # the next version also should be this version
         # until a record is written to disk
         assert indexer.nextVersion() == here
-        assert indexer.nextVersion() == here
+        expectedIndex.pop(here)
+        assert indexer.index == expectedIndex
+
+        # NOTE: At this point, the index will have been purged because
+        #       the entry did not have a corresponding record on disk.
+        # PREVIOUSLY: This had been testing against a ghost entry which
+        #             did not represent a record on disk,
+        #             but was still in the index.
+        #             This is no longer the case.
 
         # now write the record
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WRITE 1 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         record = self.recordFromIndexEntry(entry)
-        indexer.writeRecord(record)
+        indexer.writeNewVersion(record, entry)
+        expectedIndex[here] = entry
 
         # the current version hasn't moved
         assert indexer.currentVersion() == here
@@ -491,18 +520,12 @@ class TestIndexer(unittest.TestCase):
         assert indexer.currentVersion() == here
         assert indexer.nextVersion() == here + 1
 
-        # add another entry
-        here = here + 1
-        # ensure it is added at the next version
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WRITE 2 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         entry = self.indexEntry(indexer.nextVersion())
+        expectedIndex[entry.version] = entry
         indexer.addIndexEntry(entry)
-        expectedIndex[here] = entry
-        assert indexer.index == expectedIndex
-        assert indexer.currentVersion() == here
-        # the next version should be here
-        assert indexer.nextVersion() == here
-        # now write the record
         indexer.writeRecord(self.recordFromIndexEntry(entry))
+        here = here + 1
         # ensure current still here
         assert indexer.currentVersion() == here
         # ensure next is after here
@@ -511,37 +534,24 @@ class TestIndexer(unittest.TestCase):
         assert indexer.currentVersion() == here
         assert indexer.nextVersion() == here + 1
 
-        # now write a record FIRST, at the next version
-        here = here + 1
-        record = self.record(here)
-        indexer.writeRecord(record)
-        # the current version will point here
-        assert indexer.currentVersion() == here
-        assert indexer.currentVersion() == here
-        # the next version will point here
-        assert indexer.nextVersion() == here
-        assert indexer.nextVersion() == here
+        record = self.record(here + 1)
+        # NOTE: Writing aribitrary records to disk is not allowed.
+        #       Our code should never produce an unindexed record.
+        #       What value is there in writing a record that is
+        #       inherently missing metadata supplied by the index?
+        with pytest.raises(ValueError, match=".*not found in index, please write an index entry first.*"):
+            indexer.writeRecord(record)
 
-        # there is no index entry for this version
-        assert indexer.nextVersion() not in indexer.index
-
-        # add the entry
-        entry = self.indexEntryFromRecord(record)
-        indexer.addIndexEntry(entry)
-        expectedIndex[here] = entry
-        assert indexer.index == expectedIndex
-        # ensure current version points here, next points to next
-        assert indexer.currentVersion() == here
-        assert indexer.nextVersion() == here + 1
-        assert indexer.currentVersion() == here
-        assert indexer.nextVersion() == here + 1
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WRITE 3 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
         # write a record first, at a much future version
         # then add an index entry, and ensure it matches
         here = here + 23
         record = self.record(here)
-        indexer.writeRecord(record)
-        assert indexer.nextVersion() == here
+        entry = self.indexEntryFromRecord(record)
+        expectedIndex[entry.version] = entry
+        indexer.writeNewVersion(record, entry)
+        assert indexer.nextVersion() == here + 1
         assert indexer.nextVersion() not in indexer.index
 
         # now add the entry
@@ -562,49 +572,41 @@ class TestIndexer(unittest.TestCase):
 
         # there is no current version
         assert indexer.currentVersion() is None
-
         # the first "next" version is the start
         assert indexer.nextVersion() == VERSION_START
 
         # add an entry at the default version
-        entry = self.indexEntry(VERSION_DEFAULT)
-        indexer.addIndexEntry(entry)
-        expectedIndex[VERSION_DEFAULT] = entry
-        assert indexer.index == expectedIndex
-        assert entry.version == VERSION_DEFAULT
-
-        # the current version is now the default version
-        assert indexer.currentVersion() == VERSION_DEFAULT
-        # the next version also should be the default version
-        # until a record is written to disk
-        assert indexer.nextVersion() == VERSION_DEFAULT
-
-        # now write the record -- it should write to default
+        entry = self.indexEntry(VersionState.DEFAULT)
         record = self.recordFromIndexEntry(entry)
-        indexer.writeRecord(record)
-        assert self.recordPath(VERSION_DEFAULT).exists()
-
+        expectedIndex[VERSION_START] = entry
+        indexer.writeNewVersion(record, entry)
+        assert self.recordPath(indexer.defaultVersion()).exists()
         # the current version is still the default version
-        assert indexer.currentVersion() == VERSION_DEFAULT
-        # the next version will be the starting version
-        assert indexer.nextVersion() == VERSION_START
+        assert indexer.currentVersion() == indexer.defaultVersion()
+        # the next version will be the starting version + 1
+        assert indexer.nextVersion() == VERSION_START + 1
 
         # add another entry -- now at the start
         entry = self.indexEntry(indexer.nextVersion())
+        expectedIndex[indexer.nextVersion()] = entry
         indexer.addIndexEntry(entry)
-        expectedIndex[VERSION_START] = entry
         assert indexer.index == expectedIndex
-        assert indexer.currentVersion() == VERSION_START
+        assert indexer.currentVersion() == VERSION_START + 1
+
         # the next version should be the starting version
         # until a record is written
-        assert indexer.nextVersion() == VERSION_START
-        # now write the record -- ensure it is written at the start
-        indexer.writeRecord(self.recordFromIndexEntry(entry))
+        assert indexer.nextVersion() == VERSION_START + 1
+        expectedIndex.pop(entry.version)
+        assert indexer.index == expectedIndex
+        # now write the record -- ensure it is written at the
+        record = self.recordFromIndexEntry(entry)
+        entry = self.indexEntryFromRecord(record)
+        indexer.writeNewVersion(record, entry)
         assert self.recordPath(VERSION_START).exists()
         # ensure current still here
-        assert indexer.currentVersion() == VERSION_START
+        assert indexer.currentVersion() == VERSION_START + 1
         # ensure next is after here
-        assert indexer.nextVersion() == VERSION_START + 1
+        assert indexer.nextVersion() == VERSION_START + 2
 
     def test_nextVersion_with_default_record_first(self):
         # check default behaves correctly if a record is written first
@@ -619,23 +621,15 @@ class TestIndexer(unittest.TestCase):
         assert indexer.nextVersion() == VERSION_START
 
         # add a record at the default version
-        record = self.record(VERSION_DEFAULT)
-        indexer.writeRecord(record)
-
-        # the current version is now the default version
-        assert indexer.currentVersion() == VERSION_DEFAULT
-        # the next version also should be the default version
-        # until an entry is written to disk
-        assert indexer.nextVersion() == VERSION_DEFAULT
-
-        # now write the index entry -- it should write to default
+        record = self.record(VersionState.DEFAULT)
         entry = self.indexEntryFromRecord(record)
-        indexer.addIndexEntry(entry)
+        assert indexer._flattenVersion(record.version) == VERSION_START
+        indexer.writeNewVersion(record, entry)
 
         # the current version is still the default version
-        assert indexer.currentVersion() == VERSION_DEFAULT
+        assert indexer.currentVersion() == VERSION_START
         # the next version will be one past the starting version
-        assert indexer.nextVersion() == VERSION_START
+        assert indexer.nextVersion() == VERSION_START + 1
 
     ### TESTS OF VERSION COMPARISON METHODS ###
 
@@ -689,9 +683,8 @@ class TestIndexer(unittest.TestCase):
             self.writeRecordVersion(version)
         indexer = self.initIndexer()
 
-        # if version path is unitialized, path points to version start
-        ans1 = indexer.versionPath(None)
-        assert ans1 == self.versionPath(VERSION_START)
+        with pytest.raises(ValueError, match=".*The indexer has encountered an invalid version*"):
+            indexer.versionPath(None)
 
         # if version is specified, return that one
         for i in versionList:
@@ -703,6 +696,7 @@ class TestIndexer(unittest.TestCase):
         versionList = [3, 4, 5]
         for version in versionList:
             self.writeRecordVersion(version)
+        self.prepareIndex(versionList)
         indexer = self.initIndexer()
         indexer.currentPath() == self.versionPath(max(versionList))
 
@@ -720,7 +714,7 @@ class TestIndexer(unittest.TestCase):
         indexer.index[version].appliesTo = f">={runNumber}"
         print(indexer.index)
         latest = indexer.latestApplicableVersion(runNumber)
-        assert indexer.latestApplicablePath(runNumber) == self.versionPath(latest)
+        assert indexer.getLatestApplicablePath(runNumber) == self.versionPath(latest)
 
     ### TEST INDEX MANIPULATION METHODS ###
 
@@ -765,19 +759,11 @@ class TestIndexer(unittest.TestCase):
             readIndex = parse_file_as(List[IndexEntry], indexer.indexPath())
             assert readIndex == list(indexer.index.values())
 
-    def test_addEntry_fails(self):
-        # adding an entry with a bad version will fail
-        indexer = self.initIndexer()
-        indexer.isValidVersion = lambda x: False  # now it will always return false
-        entry = self.indexEntry()
-        with pytest.raises(RuntimeError):
-            indexer.addIndexEntry(entry)
-
     def test_addEntry_default(self):
         indexer = self.initIndexer()
-        entry = self.indexEntry(VERSION_DEFAULT)
+        entry = self.indexEntry(indexer.defaultVersion())
         indexer.addIndexEntry(entry)
-        assert VERSION_DEFAULT in indexer.index
+        assert indexer.defaultVersion() in indexer.index
 
     def test_addEntry_advances(self):
         # adding an index entry advances the current version
@@ -831,7 +817,8 @@ class TestIndexer(unittest.TestCase):
         # make sure the record was saved at the next version
         # and the read / written records match
         record = self.record(nextVersion)
-        indexer.writeRecord(record)
+        entry = self.indexEntryFromRecord(record)
+        indexer.writeNewVersion(record, entry)
         res = indexer.readRecord(nextVersion)
         assert record.version == nextVersion
         assert res == record
@@ -840,11 +827,12 @@ class TestIndexer(unittest.TestCase):
         # write a record at some version number
         version = randint(10, 20)
         record = self.record(version)
+        entry = self.indexEntryFromRecord(record)
         indexer = self.initIndexer()
         # write then read the record
         # make sure the record version was updated
         # and the read / written records match
-        indexer.writeRecord(record)
+        indexer.writeNewVersion(record, entry)
         res = indexer.readRecord(version)
         assert record.version == version
         assert res == record
@@ -855,8 +843,8 @@ class TestIndexer(unittest.TestCase):
         version = randint(1, 11)
         indexer = self.initIndexer()
         assert not self.recordPath(version).exists()
-        res = indexer.readRecord(version)
-        assert res is None
+        with pytest.raises(FileNotFoundError, match=r".*No record found at*"):
+            indexer.readRecord(version)
 
     def test_readRecord(self):
         record = self.record(randint(1, 100))
@@ -870,25 +858,19 @@ class TestIndexer(unittest.TestCase):
         record = self.record(randint(1, 100))
         self.writeRecord(record)
         indexer = self.initIndexer()
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValueError, match=r".*The indexer has encountered an invalid version*"):
             indexer.readRecord("*")
 
     # write #
-
-    def test_writeRecord_fails(self):
-        record = self.record()
-        indexer = self.initIndexer()
-        indexer.isValidVersion = lambda x: False
-        with pytest.raises(RuntimeError):
-            indexer.writeRecord(record)
 
     def test_writeRecord_with_version(self):
         # this test ensures a record can be written to the indicated version
         # create a record and write it
         version = randint(2, 120)
         record = self.record(version)
+        entry = self.indexEntryFromRecord(record)
         indexer = self.initIndexer()
-        indexer.writeRecord(record)
+        indexer.writeNewVersion(record, entry)
         assert record.version == version
         assert self.recordPath(version).exists()
         # read it back in and ensure it is the same
@@ -909,7 +891,8 @@ class TestIndexer(unittest.TestCase):
         assert nextVersion != VERSION_START
         # now write the record
         record = self.record(nextVersion)
-        indexer.writeRecord(record)
+        entry = self.indexEntryFromRecord(record)
+        indexer.writeNewVersion(record, entry)
         assert record.version == nextVersion
         assert self.recordPath(nextVersion).exists()
         res = parse_file_as(Record, self.recordPath(nextVersion))
@@ -924,10 +907,11 @@ class TestIndexer(unittest.TestCase):
         # prepare the record
         record = DAOFactory.calibrationRecord()
         record.version = randint(2, 100)
+        entry = self.indexEntryFromRecord(record)
         # write then read in the record
         indexer = self.initIndexer(IndexerType.CALIBRATION)
-        indexer.writeRecord(record)
-        res = indexer.readRecord()
+        indexer.writeNewVersion(record, entry)
+        res = indexer.readRecord(record.version)
         assert type(res) is CalibrationRecord
         assert res == record
 
@@ -935,10 +919,11 @@ class TestIndexer(unittest.TestCase):
         # prepare the record
         record = DAOFactory.normalizationRecord()
         record.version = randint(2, 100)
+        entry = self.indexEntryFromRecord(record)
         # write then read in the record
         indexer = self.initIndexer(IndexerType.NORMALIZATION)
-        indexer.writeRecord(record)
-        res = indexer.readRecord()
+        indexer.writeNewVersion(record, entry)
+        res = indexer.readRecord(record.version)
         assert type(res) is NormalizationRecord
         assert res == record
 
@@ -949,13 +934,6 @@ class TestIndexer(unittest.TestCase):
         assert not indexer.parametersPath(1).exists()
         with pytest.raises(FileNotFoundError):
             indexer.readParameters(1)
-
-    def test_writeParameters_fails(self):
-        params = self.calculationParameters(randint(2, 10))
-        indexer = self.initIndexer()
-        indexer.isValidVersion = lambda x: False
-        with pytest.raises(RuntimeError):
-            indexer.writeParameters(params)
 
     def test_readWriteParameters(self):
         version = randint(1, 10)
@@ -990,7 +968,7 @@ class TestIndexer(unittest.TestCase):
         params = DAOFactory.calibrationParameters()
         indexer = self.initIndexer(IndexerType.CALIBRATION)
         indexer.writeParameters(params)
-        res = indexer.readParameters()
+        res = indexer.readParameters(params.version)
         assert type(res) is Calibration
         assert res == params
 
@@ -998,7 +976,7 @@ class TestIndexer(unittest.TestCase):
         params = DAOFactory.normalizationParameters()
         indexer = self.initIndexer(IndexerType.NORMALIZATION)
         indexer.writeParameters(params)
-        res = indexer.readParameters()
+        res = indexer.readParameters(params.version)
         assert type(res) is Normalization
         assert res == params
 
@@ -1006,10 +984,12 @@ class TestIndexer(unittest.TestCase):
         params = CalculationParameters(**DAOFactory.calibrationParameters().model_dump())
         indexer = self.initIndexer(IndexerType.REDUCTION)
         indexer.writeParameters(params)
-        res = indexer.readParameters()
+        res = indexer.readParameters(params.version)
         assert type(res) is CalculationParameters
         assert res == params
 
     def test__determineRecordType(self):
         indexer = self.initIndexer(IndexerType.CALIBRATION)
-        assert indexer._determineRecordType(VERSION_DEFAULT) == DEFAULT_RECORD_TYPE.get(IndexerType.CALIBRATION)
+        assert indexer._determineRecordType(indexer.defaultVersion()) == DEFAULT_RECORD_TYPE.get(
+            IndexerType.CALIBRATION
+        )

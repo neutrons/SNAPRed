@@ -193,7 +193,7 @@ version:
   friendlyName:
     error: "uninitialized"  # alphanumeric
     default: 0 # alphanumeric
-  start: 1   # MUST be nonnegative integer
+  start: 0   # MUST be nonnegative integer
 
 cis_mode: false
 

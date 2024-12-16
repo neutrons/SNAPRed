@@ -27,7 +27,7 @@ from snapred.backend.dao import (
 )
 from snapred.backend.dao.calibration import Calibration, CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
+from snapred.backend.dao.indexing.Versioning import Version, VersionState
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.normalization import Normalization, NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
@@ -142,7 +142,9 @@ class LocalDataService:
             raise _createFileNotFoundError("Instrument configuration file", self.instrumentConfigPath) from e
 
     def readStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
-        diffCalibration = self.calibrationIndexer(runId, useLiteMode).readParameters()
+        indexer = self.calibrationIndexer(runId, useLiteMode)
+        version = indexer.latestApplicableVersion(runId)
+        diffCalibration = indexer.readParameters(version)
         stateId = str(diffCalibration.instrumentState.id)
 
         # Read the grouping-schema map associated with this `StateConfig`.
@@ -481,28 +483,37 @@ class LocalDataService:
 
     def createNormalizationIndexEntry(self, request: CreateIndexEntryRequest) -> IndexEntry:
         indexer = self.normalizationIndexer(request.runNumber, request.useLiteMode)
-        return indexer.createIndexEntry(**request.model_dump())
+        entryParams = request.model_dump()
+        entryParams["version"] = entryParams.get("version", VersionState.NEXT)
+        if entryParams["version"] is None:
+            entryParams["version"] = VersionState.NEXT
+        return indexer.createIndexEntry(**entryParams)
 
     def createNormalizationRecord(self, request: CreateNormalizationRecordRequest) -> NormalizationRecord:
         indexer = self.normalizationIndexer(request.runNumber, request.useLiteMode)
         return indexer.createRecord(**request.model_dump())
 
     def normalizationExists(self, runId: str, useLiteMode: bool) -> bool:
-        version = self.normalizationIndexer(runId, useLiteMode).currentVersion()
+        version = self.normalizationIndexer(runId, useLiteMode).latestApplicableVersion(runId)
         return version is not None
 
     @validate_call
-    def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+    def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Version = VersionState.LATEST):
         """
         Will return a normalization record for the given version.
         If no version given, will choose the latest applicable version from the index.
         """
         indexer = self.normalizationIndexer(runId, useLiteMode)
-        if version is None:
+        if version is VersionState.LATEST:
             version = indexer.latestApplicableVersion(runId)
-        return indexer.readRecord(version)
+        record = None
+        if version is not None:
+            record = indexer.readRecord(version)
+        logger.info(indexer.index)
+        logger.info(f"latest applicable version: {version} for runId: {runId} ")
+        return record
 
-    def writeNormalizationRecord(self, record: NormalizationRecord):
+    def writeNormalizationRecord(self, record: NormalizationRecord, entry: Optional[IndexEntry] = None):
         """
         Persists a `NormalizationRecord` to either a new version folder, or overwrites a specific version.
         Record must be set with correct version.
@@ -511,7 +522,10 @@ class LocalDataService:
 
         indexer = self.normalizationIndexer(record.runNumber, record.useLiteMode)
         # write the record to file
-        indexer.writeRecord(record)
+        if entry is None:
+            indexer.writeRecord(record)
+        else:
+            indexer.writeNewVersion(record, entry)
         # separately write the normalization state
         indexer.writeParameters(record.calculationParameters)
 
@@ -542,22 +556,25 @@ class LocalDataService:
         return indexer.createRecord(**request.model_dump())
 
     def calibrationExists(self, runId: str, useLiteMode: bool) -> bool:
-        version = self.calibrationIndexer(runId, useLiteMode).currentVersion()
+        version = self.calibrationIndexer(runId, useLiteMode).latestApplicableVersion(runId)
         return version is not None
 
     @validate_call
-    def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+    def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Version = VersionState.LATEST):
         """
         Will return a calibration record for the given version.
         If no version given, will choose the latest applicable version from the index.
         """
         indexer = self.calibrationIndexer(runId, useLiteMode)
-        if version is None:
-            # NOTE Indexer.readRecord defaults to currentVersion
+        if version is VersionState.LATEST:
             version = indexer.latestApplicableVersion(runId)
-        return indexer.readRecord(version)
+        record = None
+        if version is not None:
+            record = indexer.readRecord(version)
 
-    def writeCalibrationRecord(self, record: CalibrationRecord):
+        return record
+
+    def writeCalibrationRecord(self, record: CalibrationRecord, entry: Optional[IndexEntry] = None):
         """
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
         Record must be set with correct version.
@@ -565,8 +582,12 @@ class LocalDataService:
         """
 
         indexer = self.calibrationIndexer(record.runNumber, record.useLiteMode)
-        # write record to file
-        indexer.writeRecord(record)
+        if entry is None:
+            # write record to file
+            indexer.writeRecord(record)
+        else:
+            # write record to file
+            indexer.writeNewVersion(record, entry)
         # separately write the calibration state
         indexer.writeParameters(record.calculationParameters)
 
@@ -808,7 +829,7 @@ class LocalDataService:
     ##### READ / WRITE STATE METHODS #####
 
     @validate_call
-    def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+    def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[Version] = VersionState.LATEST):
         if not self.calibrationExists(runId, useLiteMode):
             if self._hasWritePermissionsCalibrationStateRoot():
                 raise RecoverableException.stateUninitialized(runId, useLiteMode)
@@ -820,16 +841,19 @@ class LocalDataService:
 
         indexer = self.calibrationIndexer(runId, useLiteMode)
         # NOTE if we prefer latest version in index, uncomment below
-        # if version is None:
-        #     version = indexer.latestApplicableVersion(runId)
-        return indexer.readParameters(version)
+        parameters = None
+        if version is VersionState.LATEST:
+            version = indexer.latestApplicableVersion(runId)
+        if version is not None:
+            parameters = indexer.readParameters(version)
+
+        return parameters
 
     @validate_call
-    def readNormalizationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+    def readNormalizationState(self, runId: str, useLiteMode: bool, version: Version = VersionState.LATEST):
         indexer = self.normalizationIndexer(runId, useLiteMode)
-        # NOTE if we prefer latest version in index, uncomment below
-        # if version is None:
-        #     version = indexer.latestApplicableVersion(runId)
+        if version is VersionState.LATEST:
+            version = indexer.latestApplicableVersion(runId)
         return indexer.readParameters(version)
 
     def writeCalibrationState(self, calibration: Calibration):
@@ -977,9 +1001,9 @@ class LocalDataService:
             self._prepareStateRoot(stateId)
 
         # now save default versions of files in both lite and native resolution directories
-        version = VERSION_DEFAULT
         for liteMode in [True, False]:
             indexer = self.calibrationIndexer(runId, liteMode)
+            version = indexer.defaultVersion()
             calibration = indexer.createParameters(
                 instrumentState=instrumentState,
                 name=name,
@@ -1010,9 +1034,8 @@ class LocalDataService:
                 comments="The default configuration when loading StateConfig if none other is found",
             )
             # write the calibration state
-            indexer.writeRecord(record)
+            indexer.writeNewVersion(record, entry)
             indexer.writeParameters(record.calculationParameters)
-            indexer.addIndexEntry(entry)
             # write the default diffcal table
             self._writeDefaultDiffCalTable(runId, liteMode)
 

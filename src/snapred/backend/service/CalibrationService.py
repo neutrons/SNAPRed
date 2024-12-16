@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import pydantic
 
@@ -9,6 +9,7 @@ from snapred.backend.dao.calibration import (
     FocusGroupMetric,
 )
 from snapred.backend.dao.indexing import IndexEntry
+from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import (
     CalculateDiffCalResidualIngredients,
     CalibrationMetricsWorkspaceIngredients,
@@ -29,6 +30,7 @@ from snapred.backend.dao.request import (
     FocusSpectraRequest,
     HasStateRequest,
     InitializeStateRequest,
+    LoadCalibrationRecordRequest,
     MatchRunsRequest,
     SimpleDiffCalRequest,
 )
@@ -134,6 +136,12 @@ class CalibrationService(Service):
     @FromString
     def fetchDiffractionCalibrationGroceries(self, request: DiffractionCalibrationRequest) -> Dict[str, str]:
         # groceries
+
+        # TODO:  It would be nice for groceryclerk to be smart enough to flatten versions
+        # However I will save that scope for another time
+        if request.startingTableVersion == VersionState.DEFAULT:
+            request.startingTableVersion = VERSION_START
+
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(
             request.focusGroup.name
@@ -304,6 +312,9 @@ class CalibrationService(Service):
         entry = self.dataFactoryService.createCalibrationIndexEntry(request.createIndexEntryRequest)
         record = self.dataFactoryService.createCalibrationRecord(request.createRecordRequest)
         version = entry.version
+        if self.dataFactoryService.calibrationExists(entry.runNumber, entry.useLiteMode):
+            if version == VERSION_START:
+                raise RuntimeError("Overwriting the default calibration is not allowed.")
 
         # Rebuild the workspace names to strip any "iteration" number:
         savedWorkspaces = {}
@@ -356,15 +367,16 @@ class CalibrationService(Service):
         record.workspaces = savedWorkspaces
 
         # save the objects at the indicated version
-        self.dataExportService.exportCalibrationRecord(record)
+        self.dataExportService.exportCalibrationRecord(record, entry)
         self.dataExportService.exportCalibrationWorkspaces(record)
-        self.saveCalibrationToIndex(entry)
 
     @FromString
-    def load(self, run: RunConfig, version: Optional[int] = None):
+    def load(self, request: LoadCalibrationRecordRequest):
         """
         If no version is given, will load the latest version applicable to the run number
         """
+        run = request.runConfig
+        version = request.version
         return self.dataFactoryService.getCalibrationRecord(run.runNumber, run.useLiteMode, version)
 
     def matchRunsToCalibrationVersions(self, request: MatchRunsRequest) -> Dict[str, Any]:
@@ -373,7 +385,7 @@ class CalibrationService(Service):
         """
         response = {}
         for runNumber in request.runNumbers:
-            response[runNumber] = self.dataFactoryService.getThisOrLatestCalibrationVersion(
+            response[runNumber] = self.dataFactoryService.getLatestApplicableCalibrationVersion(
                 runNumber, request.useLiteMode
             )
         return response
@@ -395,8 +407,6 @@ class CalibrationService(Service):
         """
         if entry.appliesTo is None:
             entry.appliesTo = ">=" + entry.runNumber
-        if entry.timestamp is None:
-            entry.timestamp = self.dataExportService.getUniqueTimestamp()
         logger.info("Saving calibration index entry for Run Number {}".format(entry.runNumber))
         self.dataExportService.exportCalibrationIndexEntry(entry)
 
