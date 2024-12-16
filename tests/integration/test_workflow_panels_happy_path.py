@@ -944,7 +944,7 @@ class TestGUIPanels:
 
                 # Now that there is a new state, we need to reselect the grouping file ... :
                 # Why was this error box being swallowed?
-                requestView.groupingFileDropdown.setCurrentIndex(1)
+                requestView.groupingFileDropdown.setCurrentIndex(0)
 
             #    (2) execute the calibration workflow
             with qtbot.waitSignal(actionCompleted, timeout=60000):
@@ -1200,7 +1200,7 @@ class TestGUIPanels:
 
                 # Now that there is a new state, we need to reselect the grouping file ... :
                 # Why was this error box being swallowed?
-                requestView.groupingFileDropdown.setCurrentIndex(1)
+                requestView.groupingFileDropdown.setCurrentIndex(0)
 
             warningMessageBox = mock.patch(  # noqa: PT008
                 "qtpy.QtWidgets.QMessageBox.warning",
