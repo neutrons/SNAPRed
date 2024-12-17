@@ -15,7 +15,6 @@ from snapred.backend.dao.request import (
     ReductionExportRequest,
     ReductionRequest,
 )
-from snapred.backend.dao.request.ReductionRequest import Versions
 from snapred.backend.dao.response.ReductionResponse import ReductionResponse
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
@@ -323,6 +322,9 @@ class ReductionService(Service):
         :return: The needed reduction ignredients.
         :rtype: ReductionIngredients
         """
+        if request.versions is None or request.versions.calibration is None or request.versions.normalization is None:
+            raise ValueError("Reduction request must have versions set")
+
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -363,11 +365,11 @@ class ReductionService(Service):
         calVersion = None
         normVersion = None
         if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
-            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
+            calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
                 request.runNumber, request.useLiteMode
             )
         if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
-            normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
+            normVersion = self.dataFactoryService.getLatestApplicableNormalizationVersion(
                 request.runNumber, request.useLiteMode
             )
 
@@ -416,10 +418,6 @@ class ReductionService(Service):
                 request.useLiteMode
             ).add()
 
-        request.versions = Versions(
-            calVersion,
-            normVersion,
-        )
         groceries = self.groceryService.fetchGroceryDict(
             groceryDict=self.groceryClerk.buildDict(),
             **({"combinedPixelMask": combinedPixelMask} if combinedPixelMask else {}),
@@ -496,7 +494,9 @@ class ReductionService(Service):
         for request in requests:
             runNumber = json.loads(request.payload)["runNumber"]
             useLiteMode = bool(json.loads(request.payload)["useLiteMode"])
-            normalizationVersion = self.dataFactoryService.getThisOrCurrentNormalizationVersion(runNumber, useLiteMode)
+            normalizationVersion = self.dataFactoryService.getLatestApplicableNormalizationVersion(
+                runNumber, useLiteMode
+            )
             version = "normalization_" + str(normalizationVersion)
             if versions.get(version) is None:
                 versions[version] = []

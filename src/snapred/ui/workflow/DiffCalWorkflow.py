@@ -3,7 +3,7 @@ from qtpy.QtCore import Slot
 
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Versioning import VersionedObject
+from snapred.backend.dao.indexing.Versioning import VersionedObject, VersionState
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.request import (
     CalculateResidualRequest,
@@ -96,6 +96,10 @@ class DiffCalWorkflow(WorkflowImplementer):
         # connect the lite mode toggles across the views
         self._requestView.litemodeToggle.stateChanged.connect(self._tweakPeakView.litemodeToggle.setState)
         self._tweakPeakView.litemodeToggle.stateChanged.connect(self._requestView.litemodeToggle.setState)
+
+        # connect the skip pixelcal toggles across the views
+        self._requestView.skipPixelCalToggle.stateChanged.connect(self._tweakPeakView.skipPixelCalToggle.setState)
+        self._tweakPeakView.skipPixelCalToggle.stateChanged.connect(self._requestView.skipPixelCalToggle.setState)
 
         self.prevFWHM = DiffCalTweakPeakView.FWHM
         self.prevXtalDMin = DiffCalTweakPeakView.XTAL_DMIN
@@ -257,6 +261,10 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._renewFitPeaks(self.peakFunction)
         response = self._calculateResidual()
 
+        # freeze these toggles, as they can no longer function
+        self._requestView.litemodeToggle.setEnabled(False)
+        self._requestView.skipPixelCalToggle.setEnabled(False)
+
         self._tweakPeakView.updateGraphs(
             self.focusedWorkspace,
             self.ingredients.groupedPeakLists,
@@ -280,8 +288,26 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
 
+        newSkipPixelSelection = self._tweakPeakView.skipPixelCalToggle.getState()
+
+        # if the user made a change in skip pixelcal election, redo everything
+        if self.skipPixelCal != newSkipPixelSelection:
+            self.skipPixelCal = newSkipPixelSelection
+            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+            self._renewPixelCal()
+            self._renewFocus(groupingIndex)
+            self._renewFitPeaks(peakFunction)
+            self._calculateResidual()
+
+        # if the grouping file changes, load new grouping and refocus
+        elif groupingIndex != self.prevGroupingIndex:
+            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+            self._renewFocus(groupingIndex)
+            self._renewFitPeaks(peakFunction)
+            self._calculateResidual()
+
         # if peaks will change, redo only the smoothing
-        if (
+        elif (
             xtalDMin != self.prevXtalDMin
             or xtalDMax != self.prevXtalDMax
             or peakFunction != self.peakFunction
@@ -290,13 +316,6 @@ class DiffCalWorkflow(WorkflowImplementer):
             or self.peaksWerePurged
         ):
             self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
-            self._renewFitPeaks(peakFunction)
-            self._calculateResidual()
-
-        # if the grouping file changes, load new grouping and refocus
-        if groupingIndex != self.prevGroupingIndex:
-            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
-            self._renewFocus(groupingIndex)
             self._renewFitPeaks(peakFunction)
             self._calculateResidual()
 
@@ -515,10 +534,10 @@ class DiffCalWorkflow(WorkflowImplementer):
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         runNumber = view.fieldRunNumber.get()
-        version = view.fieldVersion.get(None)
+        version = view.fieldVersion.get(VersionState.NEXT)
         appliesTo = view.fieldAppliesTo.get(f">={runNumber}")
         # validate the version number
-        version = VersionedObject.parseVersion(version, exclude_default=True)
+        version = VersionedObject(version=version).version
         # validate appliesTo field
         appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
 

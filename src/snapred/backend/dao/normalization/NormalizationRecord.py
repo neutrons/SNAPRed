@@ -1,9 +1,9 @@
 from typing import Any, List
 
-from pydantic import field_serializer, field_validator
+from pydantic import field_validator
 
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VersionedObject
+from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionedObject
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -31,7 +31,7 @@ class NormalizationRecord(Record, extra="ignore"):
     smoothingParameter: float
     # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
     workspaceNames: List[WorkspaceName] = []
-    calibrationVersionUsed: int = VERSION_DEFAULT
+    calibrationVersionUsed: Version = VERSION_START
     crystalDBounds: Limit[float]
     normalizationCalibrantSamplePath: str
 
@@ -44,8 +44,4 @@ class NormalizationRecord(Record, extra="ignore"):
     @field_validator("calibrationVersionUsed", mode="before")
     @classmethod
     def version_is_integer(cls, v: Any) -> Any:
-        return VersionedObject.parseVersion(v)
-
-    @field_serializer("calibrationVersionUsed", when_used="json")
-    def write_user_defaults(self, value: Any):  # noqa ARG002
-        return VersionedObject.writeVersion(self.calibrationVersionUsed)
+        return VersionedObject(version=v).version
