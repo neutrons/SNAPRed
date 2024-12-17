@@ -1,4 +1,5 @@
-from typing import Any, ClassVar, Literal, Optional, get_args
+import datetime
+from typing import Any, ClassVar, Literal, NamedTuple, Optional, get_args
 
 from pydantic import BaseModel, model_validator
 
@@ -11,6 +12,7 @@ logger = snapredLogger.getLogger(__name__)
 KnownUnits = Literal[wng.Units.TOF, wng.Units.DSP, wng.Units.DIAG]
 known_units = list(get_args(KnownUnits))
 
+LiveDataArgs = NamedTuple("LiveDataArgs", [("duration", datetime.timedelta),])
 
 GroceryTypes = Literal[
     "neutron",
@@ -77,6 +79,10 @@ class GroceryListItem(BaseModel):
     instrumentPropertySource: Optional[Literal["InstrumentName", "InstrumentFilename", "InstrumentDonor"]] = None
     instrumentSource: Optional[str] = None
 
+    # Set arguments for an explicit live-data request;
+    #   note that live-data is also the last fallback for the `fetchNeutronData` methods.
+    liveDataArgs: Optional[LiveDataArgs] = None
+    
     # if set to False, neutron data will not be loaded in a clean, cached way
     # this is faster and uses less memory, if you know you only need one copy
     keepItClean: bool = True
@@ -112,8 +118,12 @@ class GroceryListItem(BaseModel):
                 case "neutron":
                     if v.get("runNumber") is None:
                         raise ValueError("Loading neutron data requires a run number")
+                    if v.get("liveDataArgs") is not None:
+                        duration = v.get("liveDataArgs").duration
+                        if duration < datetime.timedelta(seconds=0):
+                            raise ValueError("live-data args 'duration' must be >= 0 seconds; zero indicates load all available data")
                     if v.get("groupingScheme") is not None:
-                        del v["groupingScheme"]
+                        raise ValueError("Loading neutron data should not specify a grouping scheme")
                     if v.get("instrumentPropertySource") is not None:
                         raise ValueError("Loading neutron data should not specify an instrument")
                 case "grouping":

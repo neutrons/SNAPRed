@@ -83,6 +83,10 @@ class GroceryListBuilder:
         self._tokens["useLiteMode"] = useLiteMode
         return self
 
+    def liveData(self, duration: datetime.timedelta):
+        self._tokens["liveDataArgs"] = GroceryListItem.LiveDataArgs(duration=duration)
+        return self
+    
     def unit(self, unit_: str):
         self._tokens["unit"] = unit_
         return self
