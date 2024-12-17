@@ -1262,7 +1262,7 @@ class LocalDataService:
         # exit
         ConfigService.setFacility(_facilitySave)
         
-    def hasLiveDataConnection(self, facility: str = Config["liveData.facility.name"], instrument: str = Config["liveData.instrument.name"]):
+    def hasLiveDataConnection(self, facility: str = Config["liveData.facility.name"], instrument: str = Config["liveData.instrument.name"]) -> bool:
         """For 'live data' methods: test if there is a listener connection to the instrument."""
         
         # In addition to 'analysis.sns.gov', other nodes on the subnet should be OK as well.
