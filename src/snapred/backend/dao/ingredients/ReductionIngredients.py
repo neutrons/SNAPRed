@@ -58,6 +58,7 @@ class ReductionIngredients(BaseModel):
             smoothingParameter=self.smoothingParameter,
             pixelGroup=self.pixelGroups[groupingIndex],
             detectorPeaks=self.getDetectorPeaks(groupingIndex),
+            artificialNormalizationIngredients=self.artificialNormalizationIngredients,
         )
 
     def applyNormalization(self, groupingIndex: int) -> ApplyNormalizationIngredients:

@@ -471,23 +471,31 @@ class TestReductionService(unittest.TestCase):
             decreaseParameter=True,
             lss=True,
             diffractionWorkspace="mock_diffraction_workspace",
-            outputWorkspace="mock_output_workspace",
+            outputWorkspace="artificial_norm_dsp_column_000123_preview",
         )
 
         result = self.instance.artificialNormalization(request)
 
         mockArtificialNormalizationRecipe.return_value.executeRecipe.assert_called_once_with(
             InputWorkspace=request.diffractionWorkspace,
-            Ingredients=mock.ANY,
+            peakWindowClippingSize=request.peakWindowClippingSize,
+            smoothingParameter=request.smoothingParameter,
+            decreaseParameter=request.decreaseParameter,
+            lss=request.lss,
             OutputWorkspace=request.outputWorkspace,
         )
         assert result == mockResult
 
+    @mock.patch(thisService + "RebinFocussedGroupDataRecipe")
     @mock.patch(thisService + "ReductionGroupProcessingRecipe")
     @mock.patch(thisService + "GroceryService")
     @mock.patch(thisService + "DataFactoryService")
     def test_grabWorkspaceforArtificialNorm(
-        self, mockDataFactoryService, mockGroceryService, mockReductionGroupProcessingRecipe
+        self,
+        mockDataFactoryService,
+        mockGroceryService,
+        mockReductionGroupProcessingRecipe,
+        mockRebinFocussedGroupDataRecipe,
     ):
         self.instance.groceryService = mockGroceryService
         self.instance.dataFactoryService = mockDataFactoryService
@@ -500,7 +508,10 @@ class TestReductionService(unittest.TestCase):
             pixelMasks=[],
             focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
         )
+
         mockIngredients = mock.Mock()
+        mockIngredients.pixelGroups = [mock.Mock()]
+
         runWorkspaceName = "runworkspace"
         columnGroupingWS = "columnGroupingWS"
         self.instance.groceryService.fetchGroceryList.return_value = [runWorkspaceName]
@@ -517,9 +528,13 @@ class TestReductionService(unittest.TestCase):
         groceries = {
             "inputWorkspace": runWorkspaceName,
             "groupingWorkspace": columnGroupingWS,
+            "outputWorkspace": "artificial_norm_dsp_column_000123_source",
         }
 
         mockReductionGroupProcessingRecipe().cook.assert_called_once_with(mockIngredients.groupProcessing(0), groceries)
+        groceries = {"inputWorkspace": groceries["outputWorkspace"]}
+        rebinIngredients = mockRebinFocussedGroupDataRecipe.Ingredients()
+        mockRebinFocussedGroupDataRecipe().cook.assert_called_once_with(rebinIngredients, groceries)
 
 
 class TestReductionServiceMasks:

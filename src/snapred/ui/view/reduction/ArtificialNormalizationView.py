@@ -105,8 +105,8 @@ class ArtificialNormalizationView(BackendRequestView):
         # verify the fields before recalculation
         try:
             smoothingValue = float(self.smoothingSlider.field.text())
-            lss = self.lssDropdown.currentIndex() == "True"
-            decreaseParameter = self.decreaseParameterDropdown.currentIndex == "True"
+            lss = self.lssDropdown.getValue()
+            decreaseParameter = self.decreaseParameterDropdown.getValue()
             peakWindowClippingSize = int(self.peakWindowClippingSize.field.text())
         except ValueError as e:
             QMessageBox.warning(
@@ -199,7 +199,7 @@ class ArtificialNormalizationView(BackendRequestView):
         return float(self.smoothingSlider.field.text())
 
     def getLSS(self):
-        return self.lssDropdown.currentIndex() == 1
+        return self.lssDropdown.getValue()
 
     def getDecreaseParameter(self):
-        return self.decreaseParameterDropdown.currentIndex() == 1
+        return self.decreaseParameterDropdown.getValue()

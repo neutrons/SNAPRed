@@ -85,9 +85,9 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
         output = recipe.cook(self.mockIngredients(), groceries)
 
         assert recipe.rawInput == groceries["inputWorkspace"]
-        assert recipe.outputWS == groceries["inputWorkspace"]
+        assert recipe.outputWS == groceries["outputWorkspace"]
         assert recipe.groupingWS == groceries["groupingWorkspace"]
-        assert output == groceries["inputWorkspace"]
+        assert output == groceries["outputWorkspace"]
 
         assert mockSnapper.executeQueue.called
         assert mockSnapper.FocusSpectraAlgorithm.called
@@ -110,9 +110,9 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
         output = recipe.cater([(self.mockIngredients(), groceries)])
 
         assert recipe.rawInput == groceries["inputWorkspace"]
-        assert recipe.outputWS == groceries["inputWorkspace"]
+        assert recipe.outputWS == groceries["outputWorkspace"]
         assert recipe.groupingWS == groceries["groupingWorkspace"]
-        assert output[0] == groceries["inputWorkspace"]
+        assert output[0] == groceries["outputWorkspace"]
 
         assert mockSnapper.executeQueue.called
         assert mockSnapper.FocusSpectraAlgorithm.called

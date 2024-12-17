@@ -384,8 +384,8 @@ class ReductionRecipeTest(TestCase):
         recipe = ReductionRecipe()
         recipe.mantidSnapper = mockMantidSnapper
         recipe.mantidSnapper.mtd = mockMtd
-        recipe._prepareArtificialNormalization = mock.Mock()
-        recipe._prepareArtificialNormalization.return_value = "norm_grouped"
+        recipe._getNormalizationWorkspaceName = mock.Mock()
+        recipe._getNormalizationWorkspaceName.return_value = "norm_grouped"
 
         # Set up ingredients and other variables for the recipe
         recipe.groceries = {}
@@ -447,12 +447,14 @@ class ReductionRecipeTest(TestCase):
         recipe._applyRecipe.assert_any_call(
             GenerateFocussedVanadiumRecipe,
             recipe.ingredients.generateFocussedVanadium(0),
-            inputWorkspace="norm_grouped",
+            inputWorkspace="sample_grouped",
+            outputWorkspace=recipe._getNormalizationWorkspaceName.return_value,
         )
         recipe._applyRecipe.assert_any_call(
             GenerateFocussedVanadiumRecipe,
             recipe.ingredients.generateFocussedVanadium(1),
-            inputWorkspace="norm_grouped",
+            inputWorkspace="sample_grouped",
+            outputWorkspace=recipe._getNormalizationWorkspaceName.return_value,
         )
 
         recipe._applyRecipe.assert_any_call(
@@ -468,9 +470,9 @@ class ReductionRecipeTest(TestCase):
             normalizationWorkspace="norm_grouped",
         )
 
-        recipe._prepareArtificialNormalization.call_count == 2
-        recipe._prepareArtificialNormalization.assert_any_call("sample_grouped", 0)
-        recipe._prepareArtificialNormalization.assert_any_call("sample_grouped", 1)
+        recipe._getNormalizationWorkspaceName.call_count == 2
+        recipe._getNormalizationWorkspaceName.assert_any_call(0)
+        recipe._getNormalizationWorkspaceName.assert_any_call(1)
 
         recipe.ingredients.effectiveInstrument.assert_not_called()
 
@@ -497,8 +499,8 @@ class ReductionRecipeTest(TestCase):
             recipe = ReductionRecipe()
             recipe.mantidSnapper = mockMantidSnapper
             recipe.mantidSnapper.mtd = mockMtd
-            recipe._prepareArtificialNormalization = mock.Mock()
-            recipe._prepareArtificialNormalization.return_value = "norm_grouped"
+            recipe._getNormalizationWorkspaceName = mock.Mock()
+            recipe._getNormalizationWorkspaceName.return_value = "norm_grouped"
 
             # Set up ingredients and other variables for the recipe
             recipe.groceries = {}
@@ -560,12 +562,14 @@ class ReductionRecipeTest(TestCase):
             recipe._applyRecipe.assert_any_call(
                 GenerateFocussedVanadiumRecipe,
                 recipe.ingredients.generateFocussedVanadium(0),
-                inputWorkspace="norm_grouped",
+                inputWorkspace="sample_grouped",
+                outputWorkspace=recipe._getNormalizationWorkspaceName.return_value,
             )
             recipe._applyRecipe.assert_any_call(
                 GenerateFocussedVanadiumRecipe,
                 recipe.ingredients.generateFocussedVanadium(1),
-                inputWorkspace="norm_grouped",
+                inputWorkspace="sample_grouped",
+                outputWorkspace=recipe._getNormalizationWorkspaceName.return_value,
             )
 
             recipe._applyRecipe.assert_any_call(
@@ -581,9 +585,9 @@ class ReductionRecipeTest(TestCase):
                 normalizationWorkspace="norm_grouped",
             )
 
-            recipe._prepareArtificialNormalization.call_count == 2
-            recipe._prepareArtificialNormalization.assert_any_call("sample_grouped", 0)
-            recipe._prepareArtificialNormalization.assert_any_call("sample_grouped", 1)
+            recipe._getNormalizationWorkspaceName.call_count == 2
+            recipe._getNormalizationWorkspaceName.assert_any_call(0)
+            recipe._getNormalizationWorkspaceName.assert_any_call(1)
 
             recipe._applyRecipe.assert_any_call(
                 EffectiveInstrumentRecipe,
