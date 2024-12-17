@@ -256,14 +256,14 @@ class TestGroceryService(unittest.TestCase):
 
     def test_nexus_filename(self):
         """Test the creation of the nexus filename"""        
-        res = self.instance._createNeutronFilename(self.runNumber, False)
+        res = str(self.instance._createNeutronFilePath(self.runNumber, False))
         assert self.instance.dataService.getIPTS(self.runNumber) in res
         assert Config["nexus.native.prefix"] in res
         assert self.runNumber in res
         assert "lite" not in res.lower()
 
         # now use lite mode
-        res = self.instance._createNeutronFilename(self.runNumber, True)
+        res = str(self.instance._createNeutronFilePath(self.runNumber, True))
         assert self.instance.dataService.getIPTS(self.runNumber) in res
         assert Config["nexus.lite.prefix"] in res
         assert self.runNumber in res
@@ -797,20 +797,25 @@ class TestGroceryService(unittest.TestCase):
         """Test the correct behavior when fetching raw nexus data"""
         # mock out the filename function to point to the test file
         self.instance.convertToLiteMode = mock.Mock()
-        self.instance._createNeutronFilename = mock.Mock(return_value=self.sampleWSFilePath)
+        self.instance._createNeutronFilePath = mock.Mock(return_value=Path(self.sampleWSFilePath))
 
-        # easier calls
-        testItem = (self.runNumber, False)
+        testItem = mock.Mock(
+            spec=GroceryListItem,
+            runNumber=self.runNumber,
+            useLiteMode=False,
+            loader="",
+            liveDataArgs=None
+        )
 
         # ensure a clean ADS
-        workspaceName = self.instance._createNeutronWorkspaceName(*testItem)
-        rawWorkspaceName = self.instance._createRawNeutronWorkspaceName(*testItem)
+        workspaceName = self.instance._createNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode)
+        rawWorkspaceName = self.instance._createRawNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode)
         assert len(self.instance._loadedRuns) == 0
         assert not mtd.doesExist(workspaceName)
         assert not mtd.doesExist(rawWorkspaceName)
 
         # test that a nexus workspace can be loaded
-        res = self.instance.fetchNeutronDataSingleUse(*testItem)
+        res = self.instance.fetchNeutronDataSingleUse(testItem)
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
@@ -832,14 +837,14 @@ class TestGroceryService(unittest.TestCase):
         assert not mtd.doesExist(rawWorkspaceName)
         assert not mtd.doesExist(workspaceName)
         # create a clean version so a raw exists in cache
-        res = self.instance.fetchNeutronDataCached(*testItem)
+        res = self.instance.fetchNeutronDataCached(testItem)
         assert mtd.doesExist(rawWorkspaceName)
         assert not mtd.doesExist(workspaceName)
         assert len(self.instance._loadedRuns) == 1
-        testKey = self.instance._key(*testItem)
+        testKey = self.instance._key(testItem.runNumber, testItem.useLiteMode)
         assert self.instance._loadedRuns == {testKey: 1}
         # now load a dirty version, which should clone the raw
-        res = self.instance.fetchNeutronDataSingleUse(*testItem)
+        res = self.instance.fetchNeutronDataSingleUse(testItem)
         assert mtd.doesExist(workspaceName)
         assert res["workspace"] == workspaceName
         assert res["loader"] == "cached"  # this indicates it used a cached value
@@ -851,24 +856,38 @@ class TestGroceryService(unittest.TestCase):
         )
 
         # test calling with Lite data, that it will call to lite service
-        liteItem = (self.runNumber, True)
-        testKeyLite = self.instance._key(*liteItem)
-        res = self.instance.fetchNeutronDataSingleUse(*liteItem)
+        liteItem = mock.Mock(
+            spec=GroceryListItem,
+            runNumber=self.runNumber,
+            useLiteMode=True,
+            loader="",
+            liveDataArgs=None
+        )
+        
+        testKeyLite = self.instance._key(liteItem.runNumber, liteItem.useLiteMode)
+        res = self.instance.fetchNeutronDataSingleUse(liteItem)
         assert self.instance._loadedRuns.get(testKeyLite) is None
-        workspaceNameLite = self.instance._createNeutronWorkspaceName(*liteItem)
+        workspaceNameLite = self.instance._createNeutronWorkspaceName(liteItem.runNumber, liteItem.useLiteMode)
         self.instance.convertToLiteMode.assert_called_once_with(workspaceNameLite)
         assert mtd.doesExist(workspaceNameLite)
 
     def test_fetch_cached_native(self):
         """Test the correct behavior when fetching nexus data"""
-        self.instance._createNeutronFilename = mock.Mock()
+        self.instance._createNeutronFilePath = mock.Mock()
+        self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
 
-        testItem = (self.runNumber, False)
-        testKey = self.instance._key(*testItem)
+        testItem = mock.Mock(
+            spec=GroceryListItem,
+            runNumber=self.runNumber,
+            useLiteMode=False,
+            loader="",
+            liveDataArgs=None
+        )        
+        testKey = self.instance._key(testItem.runNumber, testItem.useLiteMode)
 
-        workspaceNameRaw = self.instance._createRawNeutronWorkspaceName(*testItem)
-        workspaceNameCopy1 = self.instance._createCopyNeutronWorkspaceName(*testItem, 1)
-        workspaceNameCopy2 = self.instance._createCopyNeutronWorkspaceName(*testItem, 2)
+        workspaceNameRaw = self.instance._createRawNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode)
+        workspaceNameCopy1 = self.instance._createCopyNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode, 1)
+        workspaceNameCopy2 = self.instance._createCopyNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode, 2)
 
         # make sure the ADS is clean
         self.clearoutWorkspaces()
@@ -877,18 +896,20 @@ class TestGroceryService(unittest.TestCase):
         assert len(self.instance._loadedRuns) == 0
 
         # run with nothing in cache and bad filename -- it will fail
-        self.instance._createNeutronFilename = mock.Mock(return_value="not/a/real/file.txt")
-        assert not os.path.isfile(self.instance._createNeutronFilename.return_value)
-        with pytest.raises(RuntimeError) as e:
-            self.instance.fetchNeutronDataCached(*testItem)
+        self.instance._createNeutronFilePath = mock.Mock(return_value=Path("not/a/real/file.txt"))
+        assert not self.instance._createNeutronFilePath.return_value.exists()
+        with pytest.raises(
+            RuntimeError,
+            match=r".*is not present on disk, and no live-data connection is available.*"
+        ) as e:
+            self.instance.fetchNeutronDataCached(testItem)
         assert self.runNumber in str(e.value)
-        assert self.instance._createNeutronFilename.return_value in str(e.value)
 
         # mock filename to point at test file
-        self.instance._createNeutronFilename.return_value = self.sampleWSFilePath
+        self.instance._createNeutronFilePath.return_value = Path(self.sampleWSFilePath)
 
         # run with nothing loaded -- it will find the file and load it
-        res = self.instance.fetchNeutronDataCached(*testItem)
+        res = self.instance.fetchNeutronDataCached(testItem)
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
         assert res["workspace"] == workspaceNameCopy1
@@ -904,7 +925,7 @@ class TestGroceryService(unittest.TestCase):
         )
 
         # run with a raw workspace in cache -- it will copy it
-        res = self.instance.fetchNeutronDataCached(*testItem)
+        res = self.instance.fetchNeutronDataCached(testItem)
         assert res["result"]
         assert res["loader"] == "cached"  # indicates no loader called
         assert res["workspace"] == workspaceNameCopy2
@@ -926,16 +947,30 @@ class TestGroceryService(unittest.TestCase):
         This tests cases of using native-resolution data and auto-reducing.
         """
         self.instance.convertToLiteMode = mock.Mock()
-        self.instance._createNeutronFilename = mock.Mock()
+        self.instance._createNeutronFilePath = mock.Mock()
+        self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
 
-        testItem = (self.runNumber, True)
-        testKey = self.instance._key(*testItem)
-        nativeItem = (self.runNumber, False)
-        nativeKey = self.instance._key(*nativeItem)
+        testItem = mock.Mock(
+            spec=GroceryListItem,
+            runNumber=self.runNumber,
+            useLiteMode=True,
+            loader="",
+            liveDataArgs=None
+        )        
+        testKey = self.instance._key(testItem.runNumber, testItem.useLiteMode)
+        
+        nativeItem = mock.Mock(
+            spec=GroceryListItem,
+            runNumber=self.runNumber,
+            useLiteMode=False,
+            loader="",
+            liveDataArgs=None
+        )        
+        nativeKey = self.instance._key(nativeItem.runNumber, nativeItem.useLiteMode)
 
-        workspaceNameNativeRaw = self.instance._createRawNeutronWorkspaceName(*nativeItem)
-        workspaceNameLiteRaw = self.instance._createRawNeutronWorkspaceName(*testItem)
-        workspaceNameLiteCopy1 = self.instance._createCopyNeutronWorkspaceName(*testItem, 1)
+        workspaceNameNativeRaw = self.instance._createRawNeutronWorkspaceName(nativeItem.runNumber, nativeItem.useLiteMode)
+        workspaceNameLiteRaw = self.instance._createRawNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode)
+        workspaceNameLiteCopy1 = self.instance._createCopyNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode, 1)
 
         # make sure the ADS is clean
         self.clearoutWorkspaces()
@@ -945,26 +980,28 @@ class TestGroceryService(unittest.TestCase):
 
         # test that trying to load data from a fake file fails
         # will reach the final "else" statement
-        fakeFilename = "not/a/real/file.txt"
-        self.instance._createNeutronFilename.return_value = fakeFilename
-        assert not os.path.isfile(self.instance._createNeutronFilename.return_value)
-        with pytest.raises(RuntimeError) as e:
-            self.instance.fetchNeutronDataCached(*testItem)
+        fakeFilePath = Path("not/a/real/file.txt")
+        self.instance._createNeutronFilePath.return_value = fakeFilePath
+        assert not self.instance._createNeutronFilePath.return_value.exists()
+        with pytest.raises(
+            RuntimeError,
+            match=r".*is not present on disk, and no live-data connection is available.*"
+        ) as e:
+            self.instance.fetchNeutronDataCached(testItem)
         assert self.runNumber in str(e.value)
-        assert fakeFilename in str(e.value)
 
         # mock filename -- create situation where Lite file does not exist, native does
-        self.instance._createNeutronFilename.side_effect = [
-            fakeFilename,  # called in the assert below
-            fakeFilename,  # called at beginning of function looking for Lite file
-            self.sampleWSFilePath,  # called inside elif when looking for Native file
-            self.sampleWSFilePath,  # called inside the block when making the filename variable
+        self.instance._createNeutronFilePath.side_effect = [
+            fakeFilePath,  # called in the assert below
+            fakeFilePath,  # called at beginning of function looking for Lite file
+            Path(self.sampleWSFilePath),  # called inside elif when looking for Native file
+            Path(self.sampleWSFilePath),  # called inside the block when making the filename variable
         ]
-        assert not os.path.isfile(self.instance._createNeutronFilename(*testItem))
+        assert not self.instance._createNeutronFilePath(testItem.runNumber, testItem.useLiteMode).exists()
 
         # there is no lite file and nothing cached
         # load native resolution from file, then clone/reduce the native data
-        res = self.instance.fetchNeutronDataCached(*testItem)
+        res = self.instance.fetchNeutronDataCached(testItem)
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
         assert res["workspace"] == workspaceNameLiteCopy1
@@ -976,7 +1013,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance.convertToLiteMode.reset_mock()
 
         # clear out the Lite workspaces from ADS and the cache
-        self.instance._createNeutronFilename.side_effect = [fakeFilename, self.sampleWSFilePath]
+        self.instance._createNeutronFilePath.side_effect = [fakeFilePath, Path(self.sampleWSFilePath)]
         for ws in [workspaceNameLiteRaw, workspaceNameLiteCopy1]:
             DeleteWorkspace(ws)
             assert not mtd.doesExist(ws)
@@ -987,7 +1024,7 @@ class TestGroceryService(unittest.TestCase):
         # then clone/reduce the native workspace
         assert mtd.doesExist(workspaceNameNativeRaw)
         assert self.instance._loadedRuns == {nativeKey: 0}
-        res = self.instance.fetchNeutronDataCached(*testItem)
+        res = self.instance.fetchNeutronDataCached(testItem)
         assert res["result"]
         assert res["loader"] == "cached"
         assert res["workspace"] == workspaceNameLiteCopy1

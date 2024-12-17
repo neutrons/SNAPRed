@@ -42,9 +42,12 @@ class _RequestViewBase(BackendRequestView):
     def convertUnitsTo(self) -> str:
         pass
 
-    @abstractmethod
     def liveDataMode(self) -> bool:
-        pass
+        return False
+        
+    def liveDataDuration(self) -> timedelta:
+        # default value: indicates that all available data should be loaded
+        return timedelta(seconds=0)
 
     @abstractmethod
     def getRunNumbers(self) -> List[str]:
@@ -240,9 +243,6 @@ class _RequestView(_RequestViewBase):
     def convertUnitsTo(self) -> str:
         return self.convertUnitsDropdown.currentText()
 
-    def liveDataMode(self) -> bool:
-        return self.liveDataToggle.getState()
-
     def getRunNumbers(self):
         return self.runNumbers
 
@@ -277,15 +277,23 @@ class _LiveDataView(_RequestViewBase):
         self.liveDataSummary.addWidget(self.liveDataIndicator)
         self.liveDataSummary.addWidget(self.liveDataStatus)
         
+        self.liveDataDurationSlider = QSlider(parent=self, orientation=Qt.Horizontal)
+        self.liveDataDurationSlider.setInvertedAppearance(True) # Increase from the right
+        self.liveDataDurationSlider.setMinimum(0)
+        self.liveDataDurationSlider.setMaximum(100) # reasonable positive value until first update
         self.liveDataDuration = self._labeledField(
             "duration (< t0: s)",
-            QSlider(parent=self, orientation=Qt.Horizontal),
+            self.liveDataDurationSlider,
             orientation=Qt.Vertical
         )
-        self.liveDataDuration.field.setInvertedAppearance(True) # Increase from the right
+        
+        self.liveDataUpdateIntervalSlider = QSlider(parent=self, orientation=Qt.Horizontal)
+        self.liveDataUpdateIntervalSlider.setMinimum(Config["liveData.updateIntervalMinimum"])
+        self.liveDataUpdateIntervalSlider.setMaximum(Config["liveData.updateIntervalMaximum"])
+        self.liveDataUpdateIntervalSlider.setValue(Config["liveData.updateIntervalDefault"])        
         self.liveDataUpdateInterval = self._labeledField(
             "update interval (> t0: s)",
-            QSlider(parent=self, orientation=Qt.Horizontal),
+            self.liveDataUpdateIntervalSlider,
             orientation=Qt.Vertical
         )
         self._liveDataLayout = QVBoxLayout()
@@ -363,6 +371,11 @@ class _LiveDataView(_RequestViewBase):
 
                 self.liveDataIndicator.setColor(QColor(255, 255, 0))
                 self.liveDataIndicator.setChecked(True)
+                
+                self.liveDataDuration.setEnabled(False)
+                self.liveDataDuration.setMinimum(0)
+                self.liveDataDuration.setMaximum(datetime.timedelta(seconds=(datetime.datetime.utcnow() - data.startTime).seconds))
+                self.liveDataDuration.setEnabled(True)
             else:
                 self.runNumbers = []
                 timeFormat = TIME_ONLY_UTC if (datetime.utcnow() - data.startTime < timedelta(hours=12)) else TIME_AND_DATE_UTC
@@ -439,7 +452,12 @@ class _LiveDataView(_RequestViewBase):
         return self.convertUnitsDropdown.currentText()
 
     def liveDataMode(self) -> bool:
-        return self.liveDataToggle.getState()
+        return True
+        
+    def liveDataDuration(self) -> timedelta:
+        _value = self.liveDataDuration.value()
+        # a duration of seconds=0 indicates that all of the available data should be loaded
+        return timedelta(seconds=_value)
 
     def getRunNumbers(self) -> List[str]:
         return self.runNumbers

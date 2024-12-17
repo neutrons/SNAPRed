@@ -1262,7 +1262,7 @@ class LocalDataService:
         # exit
         ConfigService.setFacility(_facilitySave)
         
-    def hasLiveDataConnection(self, facility: str = Config["facility.name"], instrument: str = Config["instrument.name"]):
+    def hasLiveDataConnection(self, facility: str = Config["liveData.facility.name"], instrument: str = Config["liveData.instrument.name"]):
         """For 'live data' methods: test if there is a listener connection to the instrument."""
         
         # In addition to 'analysis.sns.gov', other nodes on the subnet should be OK as well.
@@ -1309,22 +1309,24 @@ class LocalDataService:
         return metadata
 
     def _readLiveData(self, ws: WorkspaceName, duration: int, facility: str, instrument: str):
-        if duration < 1:
-            raise RuntimeError(f"duration must be in seconds and >= 1, not {duration}")
+        # 'StartTime=""' => read all of the available data
+        
+        startTime = (datetime.datetime.utcnow() + datetime.timedelta(seconds=-duration)).isoformat()\
+            if duration != 0 else ""
         
         # TODO: duplicated at `FetchGroceriesAlgorithm`.  Probably that should be called here.    
         with self._useFacility(facility):
             self.mantidsnapper.LoadLiveData(
                 OutputWorkspace=ws,
                 Instrument=instrument,
-                AccumulationMethod='Replace',
-                StartTime=(datetime.datetime.utcnow() + datetime.timedelta(seconds=-duration)).isoformat()
+                AccumulationMethod=Config["liveData.accumulationMethod"],
+                StartTime=startTime
             )
             self.mantidsnapper.executeQueue()
         
         return ws
 
-    def readLiveMetadata(self, facility: str = Config["facility.name"], instrument: str = Config["instrument.name"]) -> LiveMetadata:
+    def readLiveMetadata(self, facility: str = Config["liveData.facility.name"], instrument: str = Config["liveData.instrument.name"]) -> LiveMetadata:
         ws = self.mantidsnapper.mtd.unique_hidden_name()
         
         # Retrieve the smallest possible data increment, in order to read the logs:
@@ -1339,7 +1341,8 @@ class LocalDataService:
         self,
         ws: WorkspaceName,
         duration: int,
-        facility: str = Config["facility.name"],
-        instrument: str = Config["instrument.name"]
+        facility: str = Config["liveData.facility.name"],
+        instrument: str = Config["liveData.instrument.name"]
     ) -> WorkspaceName:
+        # A duration of zero => read all of the available data.
         return self._readLiveData(ws, duration, facility, instrument)

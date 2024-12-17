@@ -72,7 +72,10 @@ class ReductionWorkflow(WorkflowImplementer):
         self._keeps: Set[WorkspaceName] = set()
         self.runNumbers: List[str] = []
         self.useLiteMode: bool = True
+        
         self.liveDataMode: bool = False
+        self.liveDataDuration: datetime.timedelta = datetime.timedelta(seconds=0)
+        
         self.pixelMasks: List[WorkspaceName] = []
         
         ##
@@ -183,6 +186,8 @@ class ReductionWorkflow(WorkflowImplementer):
         return ReductionRequest(
             runNumber=str(runNumber),
             useLiteMode=self.useLiteMode,
+            liveDataMode=self.liveDataMode,
+            liveDataDuration=self.liveDataDuration,
             timestamp=self.timestamp,
             continueFlags=self.continueAnywayFlags,
             pixelMasks=self.pixelMasks,
@@ -197,6 +202,7 @@ class ReductionWorkflow(WorkflowImplementer):
         self.runNumbers = self._reductionRequestView.getRunNumbers()
         self.useLiteMode = self._reductionRequestView.useLiteMode()
         self.liveDataMode = self._reductionRequestView.liveDataMode()
+        self.liveDataDuration = self._reductionRequestView.liveDataDuration()
         self.pixelMasks = self._reconstructPixelMaskNames(self._reductionRequestView.getPixelMasks())
 
         # Use one timestamp for the entire set of runNumbers:

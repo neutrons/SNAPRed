@@ -1,10 +1,11 @@
+import datetime
 from typing import List, NamedTuple, Optional, Tuple
-
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
@@ -14,7 +15,8 @@ Versions = NamedTuple("Versions", [("calibration", Optional[int]), ("normalizati
 class ReductionRequest(BaseModel):
     runNumber: str
     useLiteMode: bool
-    liveDataMode: bool
+    liveDataMode: Optional[bool] = False
+    liveDataDuration: Optional[datetime.timedelta] = None
     timestamp: Optional[float] = None
     focusGroups: List[FocusGroup] = []
 
@@ -28,11 +30,11 @@ class ReductionRequest(BaseModel):
     pixelMasks: List[WorkspaceName] = []
     artificialNormalizationIngredients: Optional[ArtificialNormalizationIngredients] = None
 
-    # Live-data info (these values are only to be used by live-data):
-    #   'facility' and 'instrument' will have a special meaning when the listener
+    # Live-data info (these should only be the corresponding live-data values from the 'application.yml'):
+    #   'facility' and 'instrument' have a special meaning when the live-data listener
     #   is mocked out for testing.
-    facility: str = Config["facility"] 
-    instrument: str = Config["instrument"]
+    facility: str = Config["liveData.facility.name"] 
+    instrument: str = Config["liveData.instrument.name"]
     duration: int = 1 # minimum duration is 1 second
     
     # TODO: Move to SNAPRequest

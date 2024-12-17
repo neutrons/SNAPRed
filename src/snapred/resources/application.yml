@@ -53,6 +53,21 @@ instrument:
   minimumRunNumber: 46342
   maxNumberOfRuns: 10
 
+liveData:
+  # Override 'liveData.facility' and 'liveData.instrument'
+  #   in order to use the mock listener for testing
+  #   without overriding the real instrument.
+  facility: 
+    name: ${facility.name}
+  instrument:
+    name: ${instrument.name}
+  accumulationMethod: Replace
+
+  # Update-interval slider limits and position in seconds.
+  updateIntervalMinimum: 60
+  updateIntervalDefault: 120
+  updateIntervalMaximum: 900
+  
 nexus:
   lite:
     prefix: shared/lite/SNAP_

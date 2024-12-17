@@ -1,24 +1,25 @@
 # ruff: noqa: F811
 import json
+import numpy as np
 import os
 from collections.abc import Iterable
 from pathlib import Path
+from pydantic import validate_call
 from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
 from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import (
     CreateWorkspace,
     ExtractMask,
     mtd,
 )
-from pydantic import validate_call
 
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.backend.error.LiveDataState import LiveDataState
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
@@ -202,12 +203,15 @@ class GroceryService:
         ipts = self.dataService.getIPTS(runNumber, instrumentName)
         return str(ipts)
         
-    def _createNeutronFilename(self, runNumber: str, useLiteMode: bool) -> str:
+    def _createNeutronFilePath(self, runNumber: str, useLiteMode: bool) -> Path:
+        # TODO: fully normalize this to pathlib.Path:
+        #   -- problems (among others): `GetIPTS` returns with an '/' at the end?
+        
         IPTS = self.getIPTS(runNumber)
         instr = "nexus.lite" if useLiteMode else "nexus.native"
         pre = instr + ".prefix"
         ext = instr + ".extension"
-        return IPTS + Config[pre] + str(runNumber) + Config[ext]
+        return Path(IPTS + Config[pre] + str(runNumber) + Config[ext])
 
     @validate_call
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
@@ -769,8 +773,8 @@ class GroceryService:
             success = True
         
         if not success and not liveDataMode:
-            liteModeFilePath: Path = self._createNeutronFilename(runNumber, True)
-            nativeModeFilePath: Path = self._createNeutronFilename(runNumber, False)
+            liteModeFilePath: Path = self._createNeutronFilePath(runNumber, True)
+            nativeModeFilePath: Path = self._createNeutronFilePath(runNumber, False)
             cachedNativeMode = self._loadedRuns.get(self._key(runNumber, False)) is not None
 
             match (useLiteMode, cachedNativeMode, liteModeFilePath.exists(), nativeModeFilePath.exists()):
@@ -811,12 +815,12 @@ class GroceryService:
 
                 # When not specified in the `liveDataArgs`,
                 #   default behavior will be to load the entire run.
-                startTime = (datetime.datetime.utcnow() - liveDataArgs.duration).isoformat()
+                startTime = (datetime.datetime.utcnow() - liveDataArgs.duration).isoformat()\
                     if liveDataArgs is not None else ""
 
                 loaderArgs = {
-                    "Facility": Config["liveData.facility"],
-                    "Instrument": Config["liveData.instrument"],
+                    "Facility": Config["liveData.facility.name"],
+                    "Instrument": Config["liveData.instrument.name"],
                     "AccumulationMethod": Config["liveData.accumulationMethod"],
                     "PreserveEvents": True,
                     "StartTime": startTime
@@ -832,7 +836,7 @@ class GroceryService:
                         self.deleteWorkspaceUnconditional(workspace)
                         data = {"result": False}
                         if liveDataArgs is not None:
-                            # the live-data run isn't the expected one => a state change has occurred
+                            # the live-data run isn't the expected one => a live-data state change has occurred
                             raise LiveDataState.runStateTransition(liveRunNumber, runNumber)
                         raise RuntimeError(f"Neutron data for run '{runNumber}' is not present on disk, nor is it the live-data run")
                     success = True                                            
@@ -881,8 +885,8 @@ class GroceryService:
             
         if not success and not liveDataMode:
             
-            liteModeFilePath: Path = self._createNeutronFilename(runNumber, True)
-            nativeModeFilePath: Path = self._createNeutronFilename(runNumber, False)
+            liteModeFilePath: Path = self._createNeutronFilePath(runNumber, True)
+            nativeModeFilePath: Path = self._createNeutronFilePath(runNumber, False)
             cachedNativeMode = self._loadedRuns.get(self._key(runNumber, False)) is not None
 
             match (useLiteMode, cachedNativeMode, liteModeFilePath.exists(), nativeModeFilePath.exists()):
@@ -895,7 +899,7 @@ class GroceryService:
                     # lite mode and lite-mode exists on disk
                     data = self.grocer.executeRecipe(str(liteModeFilePath), rawWorkspaceName, loader)
                     self._loadedRuns[key] = 0
-                    self._liveRuns.append(key)
+                    self._liveDataKeys.append(key)
                     success = True
                 
                 case (True, True, _, _):
@@ -907,9 +911,9 @@ class GroceryService:
                 case (True, _, _, True):
                     # lite mode and native exists on disk
                     goingNative = self._key(runNumber, False)
-                    data = self.grocer.executeRecipe(str(nativeModeFilePath), nativeRawworkspaceName, loader="")
+                    data = self.grocer.executeRecipe(str(nativeModeFilePath), nativeRawWorkspaceName, loader="")
                     self._loadedRuns[self._key(*goingNative)] = 0
-                    self._liveRuns.append(self._key(*goingNative)]
+                    self._liveDataKeys.append(self._key(*goingNative))
                     convertToLiteMode = True
                     success = True
 
@@ -917,7 +921,7 @@ class GroceryService:
                     # native mode and native exists on disk
                     data = self.grocer.executeRecipe(str(nativeModeFilePath), nativeRawWorkspaceName, loader)
                     self._loadedRuns[key] = 0
-                    self._liveRuns.append(key)
+                    self._liveDataKeys.append(key)
                     success = True
                 
                 case _:
@@ -932,12 +936,12 @@ class GroceryService:
 
                 # When not specified in the `liveDataArgs`,
                 #   default behavior will be to load the entire run.
-                startTime = (datetime.datetime.utcnow() - liveDataArgs.duration).isoformat()
+                startTime = (datetime.datetime.utcnow() - liveDataArgs.duration).isoformat()\
                     if liveDataArgs is not None else ""
 
                 loaderArgs = {
-                    "Facility": Config["liveData.facility"],
-                    "Instrument": Config["liveData.instrument"],
+                    "Facility": Config["liveData.facility.name"],
+                    "Instrument": Config["liveData.instrument.name"],
                     "AccumulationMethod": Config["liveData.accumulationMethod"],
                     "PreserveEvents": True,
                     "StartTime": startTime
@@ -957,7 +961,7 @@ class GroceryService:
                             raise LiveDataState.runStateTransition(liveRunNumber, runNumber)
                         raise RuntimeError(f"Neutron data for run '{runNumber}' is not present on disk, nor is it the live-data run")
                     self._loadedRuns[self._key(runNumber, False)] = 0
-                    self._liveRuns.append(self._key(runNumber, False))
+                    self._liveDataKeys.append(self._key(runNumber, False))
                     success = True                                            
             else:
                 raise RuntimeError(f"Neutron data for run '{runNumber}' is not present on disk, and no live-data connection is available")
@@ -968,7 +972,7 @@ class GroceryService:
                     # then reduce its resolution to make the lite raw workspace
                     self.getCloneOfWorkspace(nativeRawWorkspaceName, rawWorkspaceName)
                     self._loadedRuns[key] = 0
-                    self._liveRuns.append(key)
+                    self._liveDataKeys.append(key)
                     self.convertToLiteMode(rawWorkspaceName, export=not liveDataMode)
 
                 # create a copy of the raw data for use
@@ -982,9 +986,9 @@ class GroceryService:
     def clearLiveDataCache(self):
         """
         Clear cache for and delete any live-data workspaces.
-        """"
-        while self._liveRunKeys:
-            key = self._liveRunKeys.pop()
+        """
+        while self._liveDataKeys:
+            key = self._liveDataKeys.pop()
             del self._loadedRuns[key]
             self.deleteWorkspaceUnconditional(self._createRawNeutronWorkspaceName(key))
     

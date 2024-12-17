@@ -56,7 +56,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     "LoadCalibrationWorkspaces",
                     "LoadEventNexus",
                     "LoadGroupingDefinition",
-                    "LoadLiveData"
+                    "LoadLiveData",
                     "LoadNexus",
                     "LoadNexusProcessed",
                 ]

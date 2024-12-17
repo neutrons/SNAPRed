@@ -35,7 +35,7 @@ instrument:
   reduction:
     # Here "{IPTS}" will be substituted with the IPTS-directory name for a specified <runNumber>
     home: ${instrument.home}/{IPTS}/shared/SNAPRed
-
+    
   config: ${instrument.calibration.home}/SNAPInstPrm.json
   native:
     pixelResolution: 1179648
@@ -52,6 +52,21 @@ instrument:
   startingRunNumber: 10000
   minimumRunNumber: 46342
   maxNumberOfRuns: 10
+
+liveData:
+  # Override 'liveData.facility' and 'liveData.instrument'
+  #   in order to use the mock listener for testing
+  #   without overriding the real instrument.
+  facility: 
+    name: ${facility.name}
+  instrument:
+    name: ${instrument.name}
+  accumulationMethod: Replace
+
+  # Update-interval slider limits and position in seconds.
+  updateIntervalMinimum: 60
+  updateIntervalDefault: 120
+  updateIntervalMaximum: 900
 
 nexus:
   lite:
