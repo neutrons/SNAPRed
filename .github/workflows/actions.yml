@@ -100,7 +100,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8"]
+        python-version: ["3.10"]
     defaults:
       run:
         shell: bash -l {0}
@@ -125,7 +125,7 @@ jobs:
         cd conda.recipe
         echo "versioningit $(versioningit ../)"
         # build the package
-        VERSION=$(versioningit ../) conda mambabuild --channel conda-forge --output-folder . .
+        VERSION=$(versioningit ../) conda mambabuild --channel conda-forge --channel mantid/label/nightly --output-folder . .
         conda verify noarch/snapred*.tar.bz2
     - name: Deploy to Anaconda
       shell: bash -l {0}
