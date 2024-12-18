@@ -12,14 +12,15 @@ class WorkflowView(QWidget):
         self.position = 0
         self.currentTab = 0
 
-        self.layout = QGridLayout()
-        self.setLayout(self.layout)
+        # Do _not_ hide the `layout()` method!
+        layout_ = QGridLayout()
+        self.setLayout(layout_)
 
         # add a tab widget
         self.tabWidget = QTabWidget()
         self.tabWidget.setObjectName("nodeTabs")
         self.tabWidget.tabBarClicked.connect(self.handleTabClicked)
-        self.layout.addWidget(self.tabWidget)
+        layout_.addWidget(self.tabWidget)
 
         # add a tab for each node
         for node in nodes:

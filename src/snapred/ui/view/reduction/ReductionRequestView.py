@@ -19,6 +19,7 @@ from qtpy.QtWidgets import (
 from snapred.backend.dao.LiveMetadata import LiveMetadata
 from snapred.backend.dao.state.RunNumber import RunNumber
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.ui.view.BackendRequestView import BackendRequestView
@@ -29,7 +30,16 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class _RequestViewBase(BackendRequestView):
+        
+    def preVerify(self) -> bool:
+        # Determines whether or not continue button is even enabled.
+        return True
 
+    @abstractmethod
+    def verify(self) -> bool:
+        # Occurs _after_ continue button is pressed.
+        pass
+    
     @abstractmethod
     def useLiteMode(self) -> bool:
         pass
@@ -48,6 +58,10 @@ class _RequestViewBase(BackendRequestView):
     def liveDataDuration(self) -> timedelta:
         # default value: indicates that all available data should be loaded
         return timedelta(seconds=0)
+        
+    def liveDataUpdateInterval(self) -> timedelta:
+        # default value: two minute update time
+        return timedelta(seconds=120)
 
     @abstractmethod
     def getRunNumbers(self) -> List[str]:
@@ -267,6 +281,8 @@ class _LiveDataView(_RequestViewBase):
 
         self.runNumbers = []
         
+        self._liveMetadata = None
+        
         # Display and controls specific to `_LiveDataView`:
         self.liveDataIndicator = LEDIndicator()
         #  indicator itself is non-clickable:
@@ -281,8 +297,9 @@ class _LiveDataView(_RequestViewBase):
         self.liveDataDurationSlider.setInvertedAppearance(True) # Increase from the right
         self.liveDataDurationSlider.setMinimum(0)
         self.liveDataDurationSlider.setMaximum(100) # reasonable positive value until first update
+        self._durationFormat = "duration ({value}s < t0)"
         self.liveDataDuration = self._labeledField(
-            "duration (< t0: s)",
+            self._durationFormat.format(value=str(timedelta(seconds=0))),
             self.liveDataDurationSlider,
             orientation=Qt.Vertical
         )
@@ -290,9 +307,11 @@ class _LiveDataView(_RequestViewBase):
         self.liveDataUpdateIntervalSlider = QSlider(parent=self, orientation=Qt.Horizontal)
         self.liveDataUpdateIntervalSlider.setMinimum(Config["liveData.updateIntervalMinimum"])
         self.liveDataUpdateIntervalSlider.setMaximum(Config["liveData.updateIntervalMaximum"])
-        self.liveDataUpdateIntervalSlider.setValue(Config["liveData.updateIntervalDefault"])        
+        defaultUpdateInterval = Config["liveData.updateIntervalDefault"]
+        self.liveDataUpdateIntervalSlider.setValue(defaultUpdateInterval)        
+        self._updateIntervalFormat = "update interval ({value}s > t0)"
         self.liveDataUpdateInterval = self._labeledField(
-            "update interval (> t0: s)",
+            self._updateIntervalFormat.format(value=str(timedelta(seconds=defaultUpdateInterval))),
             self.liveDataUpdateIntervalSlider,
             orientation=Qt.Vertical
         )
@@ -338,13 +357,17 @@ class _LiveDataView(_RequestViewBase):
         _layout.addWidget(self.pixelMaskDropdown, 2, 0, 1, 2)
         _layout.addLayout(self.unfocusedDataLayout, 3, 0, 1, 2)
 
-        # Connect buttons to methods
+        # Connect signals to slots
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
         self.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
         self.liveDataToggle.stateChanged.connect(lambda flag: self.liveDataModeChange.emit(flag))
+        self.liveDataDurationSlider.valueChanged.connect(self._updateDuration)
+        self.liveDataUpdateIntervalSlider.valueChanged.connect(self._updateUpdateInterval)
 
     @Slot(LiveMetadata)
     def updateLiveMetadata(self, data: LiveMetadata):
+        self._liveMetadata = data
+    
         TIME_ONLY_UTC = "%H:%m:%S (utc)"
         TIME_AND_DATE_UTC = "%b %d: %H:%m:%S (utc)"
         
@@ -372,10 +395,10 @@ class _LiveDataView(_RequestViewBase):
                 self.liveDataIndicator.setColor(QColor(255, 255, 0))
                 self.liveDataIndicator.setChecked(True)
                 
-                self.liveDataDuration.setEnabled(False)
-                self.liveDataDuration.setMinimum(0)
-                self.liveDataDuration.setMaximum(datetime.timedelta(seconds=(datetime.datetime.utcnow() - data.startTime).seconds))
-                self.liveDataDuration.setEnabled(True)
+                self.liveDataDurationSlider.setEnabled(False)
+                self.liveDataDurationSlider.setMinimum(0)
+                self.liveDataDurationSlider.setMaximum((datetime.utcnow() - data.startTime).seconds)
+                self.liveDataDurationSlider.setEnabled(True)
             else:
                 self.runNumbers = []
                 timeFormat = TIME_ONLY_UTC if (datetime.utcnow() - data.startTime < timedelta(hours=12)) else TIME_AND_DATE_UTC
@@ -400,7 +423,15 @@ class _LiveDataView(_RequestViewBase):
             # WARNING flash
             self.liveDataIndicator.setFlashSequence(((QColor(255, 255, 0),), (0.1, 0.4)))
             self.liveDataIndicator.setFlash(True)
-                
+
+    @Slot(int)
+    def _updateDuration(self, seconds: int):
+        self.liveDataDuration.setLabelText(self._durationFormat.format(value=str(timedelta(seconds=seconds))))
+
+    @Slot(int)
+    def _updateUpdateInterval(self, seconds: int):
+        self.liveDataUpdateInterval.setLabelText(self._updateIntervalFormat.format(value=str(timedelta(seconds=seconds))))
+    
     @ExceptionToErrLog
     @Slot(bool)
     def _populatePixelMaskDropdown(self, useLiteMode: bool):
@@ -430,13 +461,22 @@ class _LiveDataView(_RequestViewBase):
     ###
     ### Abstract methods:
     ###
+        
+    def preVerify(self) -> bool:
+        # Determines whether or not continue button is even enabled.
+        if self._liveMetadata is None:
+            return False
+        return self._liveMetadata.hasActiveRun() and self._liveMetadata.beamState()
 
-    def verify(self):
-        if not self.liveMetadata.hasActiveRun():
-            raise ValueError("No live-data acquisition is active.")
-        for runNumber in self.runNumbers:
-            if not runNumber.isdigit():
-                raise ValueError("Unexpected run number format")
+    def verify(self) -> bool:
+        if self._liveMetadata is None:
+            raise RuntimeError("usage error: `verify` called before first call to `updateLiveMetadata`")
+        # -- These checks can also be here, but they are redundant: --
+        if not self._liveMetadata.hasActiveRun():
+            raise ValueError("No live-data run is active.")
+        if not self._liveMetadata.beamState():
+            raise ValueError("The beam is down")
+        # -- end: redundant checks --
         if self.keepUnfocused():
             if self.convertUnitsDropdown.currentIndex() < 0:
                 raise ValueError("Please select units to convert to")
@@ -455,8 +495,12 @@ class _LiveDataView(_RequestViewBase):
         return True
         
     def liveDataDuration(self) -> timedelta:
-        _value = self.liveDataDuration.value()
+        _value = self.liveDataDurationSlider.value()
         # a duration of seconds=0 indicates that all of the available data should be loaded
+        return timedelta(seconds=_value)
+        
+    def liveDataUpdateInterval(self) -> timedelta:
+        _value = self.liveDataUpdateIntervalSlider.value()
         return timedelta(seconds=_value)
 
     def getRunNumbers(self) -> List[str]:
@@ -529,8 +573,11 @@ class ReductionRequestView(_RequestViewBase):
     ###
     ### Abstract methods:
     ###
-    def verify(self):
-        self._stackedLayout.currentWidget().verify()
+    def preVerify(self) -> bool:
+        return self._stackedLayout.currentWidget().preVerify()
+    
+    def verify(self) -> bool:
+        return self._stackedLayout.currentWidget().verify()
     
     def useLiteMode(self) -> bool:
         return self._stackedLayout.currentWidget().useLiteMode()

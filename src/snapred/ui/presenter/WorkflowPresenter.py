@@ -40,7 +40,7 @@ class WorkflowPresenter(QObject):
         # 'WorkerPool' is a singleton:
         #    declaring it as an instance attribute, rather than a class attribute,
         #    allows singleton reset during testing.
-        self.completionMessageLambda = completionMessageLambda
+        self.completionMessageLambda = completionMessageLambda if completionMessageLambda is not None else lambda: ""
 
         self.worker = None
         self._setWorkflowIsRunning(False)
@@ -123,9 +123,9 @@ class WorkflowPresenter(QObject):
             self.safeShutdown,
             parent=self.view,
             
-            # This was previously really confusing:
-            #   for a workflow cancellation request specifically,
-            #   use "Yes" or "No", _not_ "Continue" or "Cancel"!
+            # Previously this used "Continue" / "Cancel" and was really confusing!
+            # For a workflow cancellation request specifically,
+            # please use "Yes" or "No", _not_ "Continue" or "Cancel"!
             
             buttonNames=("Yes", "No")
         )

@@ -67,14 +67,20 @@ class LabeledField(QWidget):
             return default
         return self.text()
 
+    def convertCommaSeparatedToList(self):
+        return self.text().split(",")
+
     def text(self):
         return self._field.text()
 
-    def convertCommaSepartedToList(self):
-        return self.text().split(",")
-
     def setText(self, text):
         self._field.setText(text)
+
+    def labelText(self):
+        return self._label.text()
+
+    def setLabelText(self, text):
+        self._label.setText(text)
 
     def clear(self):
         self._field.clear()

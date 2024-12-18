@@ -6,23 +6,26 @@ class WorkflowNodeView(QWidget):
         super(WorkflowNodeView, self).__init__(parent)
         self.model = node
         self.view = node.view
-        self.layout = QGridLayout()
-        self.setLayout(self.layout)
+        
+        # Do _not_ hide the `layout()` method!
+        layout_ = QGridLayout()
+        self.setLayout(layout_)
+        
         # add a back and forward button to the top left
         self.backButton = QPushButton("Back \U00002b05", self)
-        self.layout.addWidget(self.backButton, 0, 0)
+        layout_.addWidget(self.backButton, 0, 0)
         if position == 0:
             self.backButton.setVisible(False)
 
         self.forwardButton = QPushButton("Forward \U000027a1", self)
-        self.layout.addWidget(self.forwardButton, 0, 1)
+        layout_.addWidget(self.forwardButton, 0, 1)
         self.forwardButton.setVisible(False)
 
-        self.layout.addWidget(self.view, 1, 0, 1, 2)
+        layout_.addWidget(self.view, 1, 0, 1, 2)
 
         # add a continue and quit button to the bottom
         self.continueButton = QPushButton("Continue \U00002705", self)
-        self.layout.addWidget(self.continueButton, 2, 0)
+        layout_.addWidget(self.continueButton, 2, 0)
 
         self.skipButton = QPushButton("Skip \U000023ed", self)
         self.skipButton.setVisible(False)
@@ -31,25 +34,27 @@ class WorkflowNodeView(QWidget):
         self.iterateButton.setVisible(False)
 
         self.cancelButton = QPushButton("Cancel \U0000274c", self)
-        self.layout.addWidget(self.cancelButton, 2, 1)
+        layout_.addWidget(self.cancelButton, 2, 1)
 
     def reset(self):
         self.view.reset()
 
     def enableSkip(self):
-        self.layout.removeWidget(self.continueButton)
-        self.layout.removeWidget(self.cancelButton)
-        self.layout.addWidget(self.continueButton, 2, 0)
-        self.layout.addWidget(self.skipButton, 2, 1)
-        self.layout.addWidget(self.cancelButton, 2, 2)
+        layout_ = self.layout()
+        layout_.removeWidget(self.continueButton)
+        layout_.removeWidget(self.cancelButton)
+        layout_.addWidget(self.continueButton, 2, 0)
+        layout_.addWidget(self.skipButton, 2, 1)
+        layout_.addWidget(self.cancelButton, 2, 2)
         self.skipButton.setVisible(True)
 
     def enableIterate(self):
-        self.layout.removeWidget(self.continueButton)
-        self.layout.removeWidget(self.cancelButton)
-        self.layout.addWidget(self.continueButton, 2, 0)
-        self.layout.addWidget(self.iterateButton, 2, 1)
-        self.layout.addWidget(self.cancelButton, 2, 2)
+        layout_ = self.layout()
+        layout_.removeWidget(self.continueButton)
+        layout_.removeWidget(self.cancelButton)
+        layout_.addWidget(self.continueButton, 2, 0)
+        layout_.addWidget(self.iterateButton, 2, 1)
+        layout_.addWidget(self.cancelButton, 2, 2)
         self.iterateButton.setVisible(True)
 
     def onBackButtonClicked(self, slot):
