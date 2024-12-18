@@ -795,9 +795,16 @@ class TestGroceryService(unittest.TestCase):
 
     def test_fetch_dirty_nexus_native(self):
         """Test the correct behavior when fetching raw nexus data"""
-        # mock out the filename function to point to the test file
+        
         self.instance.convertToLiteMode = mock.Mock()
-        self.instance._createNeutronFilePath = mock.Mock(return_value=Path(self.sampleWSFilePath))
+        
+        # mock out _createNeutronFilePath so that only a native version exists on disk
+        nonExistentPath = Path("does/not/exist.nxs")
+        assert not nonExistentPath.exists()
+        self.instance._createNeutronFilePath = mock.Mock(
+            side_effect=lambda _, useLiteMode: Path(self.sampleWSFilePath)\
+                             if not useLiteMode else nonExistentPath
+        )
 
         testItem = mock.Mock(
             spec=GroceryListItem,
@@ -868,7 +875,7 @@ class TestGroceryService(unittest.TestCase):
         res = self.instance.fetchNeutronDataSingleUse(liteItem)
         assert self.instance._loadedRuns.get(testKeyLite) is None
         workspaceNameLite = self.instance._createNeutronWorkspaceName(liteItem.runNumber, liteItem.useLiteMode)
-        self.instance.convertToLiteMode.assert_called_once_with(workspaceNameLite)
+        self.instance.convertToLiteMode.assert_called_once_with(workspaceNameLite, export=False)
         assert mtd.doesExist(workspaceNameLite)
 
     def test_fetch_cached_native(self):
@@ -993,14 +1000,14 @@ class TestGroceryService(unittest.TestCase):
         # mock filename -- create situation where Lite file does not exist, native does
         self.instance._createNeutronFilePath.side_effect = [
             fakeFilePath,  # called in the assert below
-            fakeFilePath,  # called at beginning of function looking for Lite file
-            Path(self.sampleWSFilePath),  # called inside elif when looking for Native file
-            Path(self.sampleWSFilePath),  # called inside the block when making the filename variable
+            fakeFilePath,  # called when testing for Lite on disk
+            Path(self.sampleWSFilePath),  # called when testing for native on disk
         ]
         assert not self.instance._createNeutronFilePath(testItem.runNumber, testItem.useLiteMode).exists()
 
         # there is no lite file and nothing cached
         # load native resolution from file, then clone/reduce the native data
+        
         res = self.instance.fetchNeutronDataCached(testItem)
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
@@ -1750,7 +1757,7 @@ class TestGroceryService(unittest.TestCase):
         mockLiteDataService.return_value.createLiteData.assert_called_once_with(
             workspacename,
             workspacename,
-            liveDataMode=False
+            export=True
         )
 
     def test_getCachedWorkspaces(self):

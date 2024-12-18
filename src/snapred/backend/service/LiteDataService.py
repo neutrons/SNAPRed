@@ -36,7 +36,7 @@ class LiteDataService(Service):
         inputWorkspace: WorkspaceName,
         outputWorkspace: WorkspaceName,
         instrumentDefinition: str = None,
-        liveDataMode: bool = False
+        export: bool = True
     ) -> Dict[Any, Any]:
         liteDataMap = self._ensureLiteDataMap()
         runNumber = inputWorkspace.split("_")[-1].lstrip("0")
@@ -51,8 +51,8 @@ class LiteDataService(Service):
                 OutputWorkspace=outputWorkspace,
                 Ingredients=ingredients.model_dump_json(),
             )
-            if not liveDataMode:
-                # Only save the lite-mode data when not in live-data mode.
+            if export:
+                # Export the converted data to disk
                 fullPath = self.dataExportService.getFullLiteDataFilePath(runNumber)
                 path = fullPath.parent
                 fileName = fullPath.name
