@@ -21,6 +21,7 @@ from util.qt_mock_util import MockQMessageBox
 #   however, for the moment, the reduction-data output relocation fixture is defined in the current file.
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
+from snapred.meta.Enum import StrEnum
 from snapred.ui.main import SNAPRedGUI, prependDataSearchDirectories
 from snapred.ui.view import InitializeStateCheckView
 from snapred.ui.view.NormalizationRequestView import NormalizationRequestView
@@ -30,6 +31,63 @@ from snapred.ui.view.NormalizationTweakPeakView import NormalizationTweakPeakVie
 
 class InterruptWithBlock(BaseException):
     pass
+
+
+class TestSummary:
+    def __init__(self):
+        self._index = 0
+        self._steps = []
+
+    def SUCCESS(self):
+        step = self._steps[self._index]
+        step.status = self.TestStep.StepStatus.SUCCESS
+        self._index += 1
+
+    def FAILURE(self):
+        step = self._steps[self._index]
+        step.status = self.TestStep.StepStatus.FAILURE
+        self._index += 1
+
+    def isComplete(self):
+        return self._index == len(self._steps)
+
+    def isFailure(self):
+        return any(step.status == self.TestStep.StepStatus.FAILURE for step in self._steps)
+
+    def builder():
+        return TestSummary.TestSummaryBuilder()
+
+    def __str__(self):
+        longestStatus = max(len(step.status) for step in self._steps)
+        longestName = max(len(step.name) for step in self._steps)
+        tableCapStr = "#" * (longestName + longestStatus + 6)
+        tableStr = (
+            f"\n{tableCapStr}\n"
+            + "\n".join(f"# {step.name:{longestName}}: {step.status:{longestStatus}} #" for step in self._steps)
+            + f"\n{tableCapStr}\n"
+        )
+        return tableStr
+
+    class TestStep:
+        class StepStatus(StrEnum):
+            SUCCESS = "SUCCESS"
+            FAILURE = "FAILURE"
+            INCOMPLETE = "INCOMPLETE"
+
+        def __init__(self, name: str):
+            self.name = name
+            self.status = self.StepStatus.INCOMPLETE
+
+    class TestSummaryBuilder:
+        def __init__(self):
+            self.summary = TestSummary()
+
+        def step(self, name: str):
+            self.summary._steps.append(TestSummary.TestStep(name))
+            return self
+
+        def build(self):
+            return self.summary
 
 
 @pytest.fixture
@@ -77,55 +135,6 @@ def calibration_home_from_mirror():
     # teardown => __exit__
     _stack.close()
     LocalDataService()._indexer.cache_clear()
-
-
-@pytest.fixture
-def reduction_home_from_mirror():
-    # Test fixture to write reduction data to a temporary directory under `Config["instrument.reduction.home"]`.
-    # * creates a temporary reduction state root directory under the optional `prefix` path;
-    #   when not specified, the temporary directory is created under the existing
-    #   `Config["instrument.reduction.home"]` (with the substituted 'IPTS' tag).
-    # * overrides the `Config` entry for "instrument.reduction.home".
-
-    # IMPLEMENTATION notes: (see previous).
-    _stack = ExitStack()
-
-    def _reduction_home_from_mirror(runNumber: str, prefix: Optional[Path] = None):
-        if prefix is None:
-            dataService = LocalDataService()
-            originalReductionHome = dataService._constructReductionStateRoot(runNumber)
-
-            # WARNING: this 'mkdir' step will not be reversed at exit,
-            #   but that shouldn't matter very much.
-            originalReductionHome.mkdir(parents=True, exist_ok=True)
-            prefix = originalReductionHome
-
-            tmpReductionHome = Path(_stack.enter_context(tempfile.TemporaryDirectory(dir=prefix, suffix=os.sep)))
-
-            # Ensure that `_createReductionStateRoot` will return the temporary directory,
-            #   while still exercising it's IPTS-substitution functionality.
-            _stack.enter_context(
-                Config_override(
-                    "instrument.reduction.home", Config["instrument.reduction.home"] + os.sep + tmpReductionHome.name
-                )
-            )
-
-            # No `LocalDataService._indexer.cache_clear()` should be required here, but keep it in mind, just in case!
-
-        else:
-            # Specified prefix => just use that, without any substitution.
-            # In this case `_constructReductionStateRoot` will return a path
-            #   which does not depend on the IPTS-directory for the run number.
-            tmpReductionHome = Path(_stack.enter_context(tempfile.TemporaryDirectory(dir=prefix, suffix=os.sep)))
-            _stack.enter_context(Config_override("instrument.reduction.home", str(tmpReductionHome)))
-
-        assert tmpReductionHome.exists()
-        return tmpReductionHome
-
-    yield _reduction_home_from_mirror
-
-    # teardown => __exit__
-    _stack.close()
 
 
 @pytest.mark.datarepo
@@ -192,8 +201,15 @@ class TestGUIPanels:
         # # Establish context for each test: these normally run as part of `src/snapred/__main__.py`.
         self.exitStack = ExitStack()
         self.exitStack.enter_context(amend_config(data_dir=prependDataSearchDirectories(), prepend_datadir=True))
+
+        self.testSummary = None
         yield
 
+        if isinstance(self.testSummary, TestSummary):
+            if not self.testSummary.isComplete():
+                self.testSummary.FAILURE()
+            if self.testSummary.isFailure():
+                pytest.fail(f"Test Summary (-vv for full table): {self.testSummary}")
         # # teardown...
         # self._warningMessageBox.stop()
         # self._criticalMessageBox.stop()
@@ -214,7 +230,18 @@ class TestGUIPanels:
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
         tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841
-
+        self.testSummary = (
+            TestSummary.builder()
+            .step("Open the GUI")
+            .step("Open the calibration panel")
+            .step("Set the diffraction calibration request")
+            .step("Execute the diffraction calibration request")
+            .step("Tweak the peaks")
+            .step("Assess the peaks")
+            .step("Save the diffraction calibration")
+            .step("Close the GUI")
+            .build()
+        )
         with (
             qtbot.captureExceptions() as exceptions,
             suppress(InterruptWithBlock),
