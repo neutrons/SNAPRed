@@ -1,6 +1,7 @@
+import numpy
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
 
 from snapred.backend.dao.calibration import CalibrationDefaultRecord
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
@@ -21,7 +22,7 @@ class ReductionRecord(BaseModel):
     #   for this reason, this class is not derived from 'Record',
     #   and does not include a 'CalculationParameters' instance.
     runNumber: str
-    useLiteMode: bool
+    useLiteMode: bool | numpy.bool_
     timestamp: float = Field(frozen=True, default=None)
 
     # specific to reduction records
@@ -30,11 +31,6 @@ class ReductionRecord(BaseModel):
     pixelGroupingParameters: Dict[str, List[PixelGroupingParameters]]
 
     workspaceNames: List[WorkspaceName]
-
-    model_config = ConfigDict(
-        # required in order to use 'WorkspaceName'
-        arbitrary_types_allowed=True,
-    )
 
     """
     *Other details to include above*:
@@ -55,3 +51,16 @@ class ReductionRecord(BaseModel):
     dSAppliedData: (dS == down sampling)
     dSAppliedParameters: (rebinning parameters)
     """
+
+    @field_validator("useLiteMode", mode="before")
+    @classmethod
+    def validate_useLiteMode(cls, v):
+        # this allows the use of 'strict' mode
+        if isinstance(v, numpy.bool_):
+            v = bool(v)
+        return v
+
+    model_config = ConfigDict(
+        # required in order to use 'WorkspaceName'
+        arbitrary_types_allowed=True,
+    )

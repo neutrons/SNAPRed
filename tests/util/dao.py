@@ -84,7 +84,7 @@ class DAOFactory:
         "nexusDirectory": "nexus/",
         "reducedDataDirectory": "shared/manualReduced/",
         "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
-        "bandwidth": "3.0",
+        "bandwidth": 3.0,
         "L1": 15.0,
         "L2": 0.5,
         "delTOverT": 0.002,

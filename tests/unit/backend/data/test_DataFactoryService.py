@@ -46,20 +46,20 @@ class TestDataFactoryService(unittest.TestCase):
             setattr(getattr(cls.mockLookupService, x), "side_effect", lambda *x: cls.expected(cls, *x))
 
         mockStateId = "04bd2c53f6bf6754"
-        mockInstrumentState = InstrumentState.construct(id=mockStateId)
-        mockCalibration = Calibration.construct(instrumentState=mockInstrumentState)
+        mockInstrumentState = InstrumentState.model_construct(id=mockStateId)
+        mockCalibration = Calibration.model_construct(instrumentState=mockInstrumentState)
 
         # these are treated specially as returning specific object types
-        cls.mockLookupService.getInstrumentConfig.return_value = InstrumentConfig.construct({})
+        cls.mockLookupService.getInstrumentConfig.return_value = InstrumentConfig.model_construct({})
         #
         # ... allow the `StateConfig` to actually complete validation:
         #   this is required because `getReductionState` is declared in the wrong place... :(
         #
-        cls.mockLookupService.readStateConfig.return_value = StateConfig.construct(
+        cls.mockLookupService.readStateConfig.return_value = StateConfig.model_construct(
             stateId=mockStateId,
             calibration=mockCalibration,
         )
-        cls.mockLookupService.readRunConfig.return_value = RunConfig.construct({})
+        cls.mockLookupService.readRunConfig.return_value = RunConfig.model_construct({})
 
         cls.mockLookupService.fileExists.return_value = lambda filePath: Path(filePath).exists()
 
@@ -262,7 +262,7 @@ class TestDataFactoryService(unittest.TestCase):
         assert type(actual) is ReductionState
 
     def test_getReductionState_cache(self):
-        previous = ReductionState.construct()
+        previous = ReductionState.model_construct()
         self.instance.cache["456"] = previous
         actual = self.instance.getReductionState("456", False)
         assert actual == previous

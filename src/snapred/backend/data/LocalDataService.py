@@ -115,9 +115,9 @@ class LocalDataService:
         """This method locates the instrument configuration path and
         sets the instance variable ``_instrumentConfigPath``."""
         # verify parent directory exists
-        self.dataPath = Path(Config["instrument.home"])
-        if self._verifyPaths and not self.dataPath.exists():
-            raise _createFileNotFoundError(Config["instrument.home"], self.dataPath)
+        self._instrumentHomePath = Path(Config["instrument.home"])
+        if self._verifyPaths and not self._instrumentHomePath.exists():
+            raise _createFileNotFoundError(Config["instrument.home"], self._instrumentHomePath)
 
         # look for the config file and verify it exists
         self._instrumentConfigPath = Config["instrument.config"]
@@ -137,7 +137,7 @@ class LocalDataService:
             instrumentConfig = InstrumentConfig(**instrumentParameterMap)
         except KeyError as e:
             raise KeyError(f"{e}: while reading instrument configuration '{self._instrumentConfigPath}'") from e
-        if self.dataPath:
+        if self._instrumentHomePath:
             instrumentConfig.calibrationDirectory = Path(Config["instrument.calibration.home"])
             if self._verifyPaths and not instrumentConfig.calibrationDirectory.exists():
                 raise _createFileNotFoundError("[calibration directory]", instrumentConfig.calibrationDirectory)
@@ -753,6 +753,10 @@ class LocalDataService:
         # read the metadata first, in order to use the workspaceNames list
         record = None
         with h5py.File(filePath, "r") as h5:
+            # *** DEBUG ***
+            _dict = n5m.extractMetadataGroup(h5, "/metadata")
+            print(f"*** {type(_dict['useLiteMode'])}")
+            
             record = ReductionRecord.model_validate(n5m.extractMetadataGroup(h5, "/metadata"))
         for ws in record.workspaceNames:
             if mtd.doesExist(ws):

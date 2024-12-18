@@ -714,7 +714,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     @mock.patch(thisService + "SimpleDiffCalRequest", spec_set=SimpleDiffCalRequest)
     def test_diffractionCalibration_calls_others(self, SimpleDiffCalRequest):
         # mock out external functionalties
-        SimpleDiffCalRequest.return_value = SimpleDiffCalRequest.construct(groceries={"previousCalibration": ""})
+        SimpleDiffCalRequest.return_value = SimpleDiffCalRequest.model_construct(groceries={"previousCalibration": ""})
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value=mock.sentinel.stateroot)
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
@@ -768,7 +768,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     @mock.patch(thisService + "SimpleDiffCalRequest")
     def test_diffractionCalibration_pixel_fail(self, mockSimpleDiffCalRequest):
-        mockSimpleDiffCalRequest.return_value = SimpleDiffCalRequest.construct(groceries={"previousCalibration": ""})
+        mockSimpleDiffCalRequest.return_value = SimpleDiffCalRequest.model_construct(groceries={"previousCalibration": ""})
         self.instance.validateRequest = mock.Mock()
         mockPixelRxServing = mock.Mock(
             result=False,
@@ -780,14 +780,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.pixelCalibration = mock.Mock(return_value=mockPixelRxServing)
 
         # Call the method with the provided parameters
-        request = DiffractionCalibrationRequest.construct()
+        request = DiffractionCalibrationRequest.model_construct()
         with pytest.raises(RuntimeError) as e:
             self.instance.diffractionCalibration(request)
         assert str(e.value) == "Pixel Calibration failed"
 
     @mock.patch(thisService + "SimpleDiffCalRequest")
     def test_diffractionCalibration_group_fail(self, mockSimpleDiffCalRequest):
-        mockSimpleDiffCalRequest.return_value = SimpleDiffCalRequest.construct(groceries={"previousCalibration": ""})
+        mockSimpleDiffCalRequest.return_value = SimpleDiffCalRequest.model_construct(groceries={"previousCalibration": ""})
         self.instance.validateRequest = mock.Mock()
         mockPixelRxServing = mock.Mock(
             result=True,
@@ -807,20 +807,20 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groupCalibration = mock.Mock(return_value=mockGroupRxServing)
 
         # Call the method with the provided parameters
-        request = DiffractionCalibrationRequest.construct()
+        request = DiffractionCalibrationRequest.model_construct()
         with pytest.raises(RuntimeError) as e:
             self.instance.diffractionCalibration(request)
         assert str(e.value) == "Group Calibration failed"
 
     @mock.patch(thisService + "PixelDiffCalRecipe", spec_set=PixelDiffCalRecipe)
     def test_pixelCalibration_success(self, PixelRx):
-        mock.sentinel.result = PixelDiffCalServing.construct(
+        mock.sentinel.result = PixelDiffCalServing.model_construct(
             maskWorkspace=self.sampleMaskWS,
         )
         PixelRx().cook.return_value = mock.sentinel.result
 
         # Call the method with the provided parameters
-        request = SimpleDiffCalRequest.construct(
+        request = SimpleDiffCalRequest.model_construct(
             ingredients=mock.sentinel.ingredients,
             groceries=mock.sentinel.groceries,
         )
@@ -842,13 +842,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             maskWS.setY(pixel, [1.0])
 
         # mock out the return
-        mock.sentinel.result = PixelDiffCalServing.construct(
+        mock.sentinel.result = PixelDiffCalServing.model_construct(
             maskWorkspace=self.sampleMaskWS,
         )
         PixelRx().cook.return_value = mock.sentinel.result
 
         # Call the method with the provided parameters
-        request = SimpleDiffCalRequest.construct(
+        request = SimpleDiffCalRequest.model_construct(
             ingredients=mock.sentinel.ingredients,
             groceries=mock.sentinel.groceries,
         )
@@ -861,7 +861,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         GroupRx().cook.return_value = mock.sentinel.result
 
         # Call the method with the provided parameters
-        request = SimpleDiffCalRequest.construct(
+        request = SimpleDiffCalRequest.model_construct(
             ingredients=mock.sentinel.ingredients,
             groceries=mock.sentinel.groceries,
         )
@@ -1086,7 +1086,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     def test_getState(self):
         testCalibration = DAOFactory.calibrationParameters()
-        testConfig = StateConfig.construct()
+        testConfig = StateConfig.model_construct()
         testConfig.calibration = testCalibration
         states = [deepcopy(testConfig), deepcopy(testConfig), deepcopy(testConfig)]
         states[0].calibration.instrumentState.id = "0000000000000000"

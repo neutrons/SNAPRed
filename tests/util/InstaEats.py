@@ -1,9 +1,9 @@
 # ruff: noqa: F811 ARG005 ARG002
-import os
+from pathlib import Path
+from pydantic import validate_call
 from typing import Any, Dict, List
 
 from mantid.simpleapi import LoadDetectorsGroupingFile, LoadEmptyInstrument, mtd
-from pydantic import validate_call
 
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
@@ -43,11 +43,11 @@ class InstaEats(GroceryService):
     def getIPTS(self, runNumber: str, instrumentName: str = None) -> str:
         return Resource.getPath("inputs/testInstrument/IPTS-456/")
 
-    def _createNeutronFilename(self, runNumber: str, useLiteMode: bool) -> str:
+    def _createNeutronFilename(self, runNumber: str, useLiteMode: bool) -> Path:
         instr = "nexus.lite" if useLiteMode else "nexus.native"
         pre = instr + ".prefix"
         ext = instr + ".extension"
-        return self.getIPTS(runNumber) + Config[pre] + str(runNumber) + Config[ext]
+        return Path(self.getIPTS(runNumber) + Config[pre] + str(runNumber) + Config[ext])
 
     @validate_call
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
@@ -154,7 +154,7 @@ class InstaEats(GroceryService):
                     # lite mode and lite-mode exists on disk
                     data = self.grocer.executeRecipe(str(liteModeFilePath), rawWorkspaceName, loader)
                     self._loadedRuns[key] = 0
-                    self._liveRuns.append(key)
+                    self._liveDataKeys.append(key)
                     success = True
                 
                 case (True, True, _, _):
@@ -168,7 +168,7 @@ class InstaEats(GroceryService):
                     goingNative = self._key(runNumber, False)
                     data = self.grocer.executeRecipe(str(nativeModeFilePath), nativeRawworkspaceName, loader="")
                     self._loadedRuns[self._key(*goingNative)] = 0
-                    self._liveRuns.append(self._key(*goingNative))
+                    self._liveDataKeys.append(self._key(*goingNative))
                     convertToLiteMode = True
                     success = True
 
@@ -176,7 +176,7 @@ class InstaEats(GroceryService):
                     # native mode and native exists on disk
                     data = self.grocer.executeRecipe(str(nativeModeFilePath), nativeRawWorkspaceName, loader)
                     self._loadedRuns[key] = 0
-                    self._liveRuns.append(key)
+                    self._liveDataKeys.append(key)
                     success = True
                 
                 case _:
@@ -216,34 +216,34 @@ class InstaEats(GroceryService):
                             raise LiveDataState.runStateTransition(liveRunNumber, runNumber)
                         raise RuntimeError(f"Neutron data for run '{runNumber}' is not present on disk, nor is it the live-data run")
                     self._loadedRuns[self._key(runNumber, False)] = 0
-                    self._liveRuns.append(self._key(runNumber, False))
+                    self._liveDataKeys.append(self._key(runNumber, False))
                     success = True                                            
             else:
                 raise RuntimeError(f"Neutron data for run '{runNumber}' is not present on disk, and no live-data connection is available")
 
-            if success:
-                if convertToLiteMode:
-                    # clone the native raw workspace
-                    # then reduce its resolution to make the lite raw workspace
-                    self.getCloneOfWorkspace(nativeRawWorkspaceName, rawWorkspaceName)
-                    self._loadedRuns[key] = 0
-                    self._liveRuns.append(key)
-                    self.convertToLiteMode(rawWorkspaceName, export=not liveDataMode)
+        if success:
+            if convertToLiteMode:
+                # clone the native raw workspace
+                # then reduce its resolution to make the lite raw workspace
+                self.getCloneOfWorkspace(nativeRawWorkspaceName, rawWorkspaceName)
+                self._loadedRuns[key] = 0
+                self._liveDataKeys.append(key)
+                self.convertToLiteMode(rawWorkspaceName, export=not liveDataMode)
 
-                # create a copy of the raw data for use
-                workspaceName = self._createCopyNeutronWorkspaceName(runNumber, useLiteMode, self._loadedRuns[key] + 1)
-                data["result"] = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
-                data["workspace"] = workspaceName
-                self._loadedRuns[key] += 1
-            
-            return data
+            # create a copy of the raw data for use
+            workspaceName = self._createCopyNeutronWorkspaceName(runNumber, useLiteMode, self._loadedRuns[key] + 1)
+            data["result"] = True
+            data["workspace"] = workspaceName
+            self._loadedRuns[key] += 1
+
+        return data
             
     def clearLiveDataCache(self):
         """
         Clear cache for and delete any live-data workspaces.
         """
-        while self._liveRunKeys:
-            key = self._liveRunKeys.pop()
+        while self._liveDataKeys:
+            key = self._liveDataKeys.pop()
             del self._loadedRuns[key]
             self.deleteWorkspaceUnconditional(self._createRawNeutronWorkspaceName(key))
     
@@ -297,9 +297,9 @@ class InstaEats(GroceryService):
                 # for neutron data stored in a nexus file
                 case "neutron":
                     if item.keepItClean:
-                        res = self.fetchNeutronDataCached(item.runNumber, item.useLiteMode, item.loader)
+                        res = self.fetchNeutronDataCached(item)
                     else:
-                        res = self.fetchNeutronDataSingleUse(item.runNumber, item.useLiteMode, item.loader)
+                        res = self.fetchNeutronDataSingleUse(item)
                 # for grouping definitions
                 case "grouping":
                     res = self.fetchGroupingDefinition(item)
@@ -338,5 +338,5 @@ class InstaEats(GroceryService):
             if res["result"] is True:
                 groceries.append(res["workspace"])
             else:
-                raise RuntimeError(f"Error fetching item {item.json(indent=2)}")
+                raise RuntimeError(f"Error fetching item {item.model_dump_json(indent=2)}")
         return groceries

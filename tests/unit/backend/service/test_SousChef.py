@@ -237,7 +237,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.calibrantSamplePath,
             None,
         )
-        self.instance._pixelGroupCache[key] = PixelGroup.construct(timeOfFlight={"minimum": 0})
+        self.instance._pixelGroupCache[key] = PixelGroup.model_construct(timeOfFlight={"minimum": 0})
 
         res = self.instance.prepPixelGroup(self.ingredients)
         res.timeOfFlight["minimum"] = 2
@@ -291,7 +291,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.calibrantSamplePath,
         )
         # ensure the cache is preped
-        self.instance._xtalCache[key] = CrystallographicInfo.construct(peaks=[2])
+        self.instance._xtalCache[key] = CrystallographicInfo.model_construct(peaks=[2])
 
         res = self.instance.prepCrystallographicInfo(self.ingredients)
         res.peaks = [3]
@@ -451,7 +451,7 @@ class TestSousChef(unittest.TestCase):
             True,
         )
         # ensure the cache is prepared
-        self.instance._peaksCache[key] = [GroupPeakList.construct(groupId=2, peaks=[2])]
+        self.instance._peaksCache[key] = [GroupPeakList.model_construct(groupId=2, peaks=[2])]
         self.instance.prepCalibrantSample = mock.Mock()
         self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
 

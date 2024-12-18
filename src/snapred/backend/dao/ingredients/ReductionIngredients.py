@@ -70,4 +70,5 @@ class ReductionIngredients(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        strict=True
     )

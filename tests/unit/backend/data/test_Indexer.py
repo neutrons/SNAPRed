@@ -1,17 +1,13 @@
 # ruff: noqa: E402, ARG005
 
+from datetime import datetime
 import importlib
 import logging
-import tempfile
-import unittest
 from pathlib import Path
-from random import randint
-from typing import List
-from unittest import mock
-
-import pytest
 from pydantic import ValidationError
-from util.dao import DAOFactory
+from random import randint
+import tempfile
+from typing import List
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
@@ -25,6 +21,13 @@ from snapred.backend.data.Indexer import DEFAULT_RECORD_TYPE, Indexer, IndexerTy
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
+
+# Place test-specific imports after other required imports, in order to retain the import order
+#   as much as possible.
+import unittest
+from unittest import mock
+import pytest
+from util.dao import DAOFactory
 
 IndexerModule = importlib.import_module(Indexer.__module__)
 
@@ -94,7 +97,7 @@ class TestIndexer(unittest.TestCase):
             instrumentState=self.instrumentState,
             seedRun=randint(1000, 5000),
             useLiteMode=bool(randint(0, 1)),
-            creationDate=0,
+            creationDate=datetime.today().isoformat(),
             name="",
             version=version,
         )

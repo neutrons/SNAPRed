@@ -238,7 +238,7 @@ def recordWithVersion(version):
         version=version,
         runNumber="xyz",
         useLiteMode=True,
-        calculationParameters=CalculationParameters.construct(),
+        calculationParameters=CalculationParameters.model_construct(),
     )
 
 

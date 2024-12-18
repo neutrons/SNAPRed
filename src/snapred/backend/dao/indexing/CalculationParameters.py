@@ -1,6 +1,6 @@
 from datetime import datetime
-
-from pydantic import field_validator
+import numpy
+from pydantic import ConfigDict, field_validator
 
 from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.backend.dao.state.InstrumentState import InstrumentState
@@ -29,8 +29,8 @@ class CalculationParameters(VersionedObject, extra="allow"):
 
     instrumentState: InstrumentState
     seedRun: str
-    useLiteMode: bool
-    creationDate: datetime
+    useLiteMode: bool | numpy.bool_
+    creationDate: datetime | str
     name: str
 
     @field_validator("seedRun", mode="before")
@@ -39,3 +39,23 @@ class CalculationParameters(VersionedObject, extra="allow"):
         if isinstance(v, int):
             v = str(v)
         return v
+
+    @field_validator("creationDate", mode="before")
+    @classmethod
+    def validate_creationDate(cls, v):
+        if isinstance(v, str):
+            v = datetime.fromisoformat(v)
+        return v
+
+    @field_validator("useLiteMode", mode="before")
+    @classmethod
+    def validate_useLiteMode(cls, v):
+        # this allows the use of 'strict' mode
+        if isinstance(v, numpy.bool_):
+            v = bool(v)
+        return v
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True, # numpy.bool_
+        strict=True
+    )

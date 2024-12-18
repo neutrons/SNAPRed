@@ -119,7 +119,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
             rtol=self.rtolValue,
         )
 
-    @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchAlgo")
+    @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchGroceriesAlgorithm")
     def test_fetch_with_load_event_nexus(self, mockAlgo):
         """Test the correct behavior of the fetch method"""
         mock_instance = mockAlgo.return_value

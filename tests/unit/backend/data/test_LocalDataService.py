@@ -1101,7 +1101,7 @@ def test_statePathForWorkflow_nonsense():
 
 @mock.patch("snapred.backend.data.LocalDataService.Indexer")
 def test_index_default(Indexer):
-    indexer = Indexer.construct()
+    indexer = Indexer.model_construct()
     Indexer.return_value = indexer
     localDataService = LocalDataService()
 
@@ -1137,7 +1137,7 @@ def test_index_default(Indexer):
 @mock.patch("snapred.backend.data.LocalDataService.Indexer")
 def test_index_reduction(Indexer):
     # Reduction Indexers are not supported by LocalDataService
-    indexer = Indexer.construct()
+    indexer = Indexer.model_construct()
     Indexer.return_value = indexer
     # TODO check the indexer points inside correct file
     localDataService = LocalDataService()
