@@ -22,10 +22,11 @@ class Recipe(ABC, Generic[Ingredients]):
         Sets up the recipe with the necessary utensils.
         """
         # NOTE: workaround, we just add an empty host algorithm.
-        if utensils is None:
-            utensils = Utensils()
-            utensils.PyInit()
-        self.mantidSnapper = utensils.mantidSnapper
+        self.utensils = utensils
+        if self.utensils is None:
+            self.utensils = Utensils()
+            self.utensils.PyInit()
+        self.mantidSnapper = self.utensils.mantidSnapper
 
     def __init_subclass__(cls) -> None:
         cls._Ingredients = get_args(cls.__orig_bases__[0])[0]  # type: ignore

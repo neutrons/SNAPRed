@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from snapred.backend.dao.ingredients import (
-    ArtificialNormalizationIngredients,
     GroceryListItem,
     ReductionIngredients,
 )
@@ -27,18 +26,15 @@ from snapred.backend.error.StateValidationException import StateValidationExcept
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe
+from snapred.backend.recipe.RebinFocussedGroupDataRecipe import RebinFocussedGroupDataRecipe
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import (
-    WorkspaceName,
-)
-from snapred.meta.mantid.WorkspaceNameGenerator import (
-    WorkspaceNameGenerator as wng,
-)
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
@@ -508,15 +504,12 @@ class ReductionService(Service):
         return self.dataFactoryService.getCompatibleReductionMasks(runNumber, useLiteMode)
 
     def artificialNormalization(self, request: CreateArtificialNormalizationRequest):
-        ingredients = ArtificialNormalizationIngredients(
+        artificialNormWorkspace = ArtificialNormalizationRecipe().executeRecipe(
+            InputWorkspace=request.diffractionWorkspace,
             peakWindowClippingSize=request.peakWindowClippingSize,
             smoothingParameter=request.smoothingParameter,
             decreaseParameter=request.decreaseParameter,
             lss=request.lss,
-        )
-        artificialNormWorkspace = ArtificialNormalizationRecipe().executeRecipe(
-            InputWorkspace=request.diffractionWorkspace,
-            Ingredients=ingredients,
             OutputWorkspace=request.outputWorkspace,
         )
         return artificialNormWorkspace
@@ -535,9 +528,32 @@ class ReductionService(Service):
         request.focusGroups = [columnGroup]
         # 2.5. get ingredients
         ingredients = self.prepReductionIngredients(request)
+
+        artNormBasisWorkspace = (
+            wng.artificialNormalizationPreview()
+            .runNumber(request.runNumber)
+            .group(wng.Groups.COLUMN)
+            .type(wng.ArtificialNormWorkspaceType.SOURCE)
+            .build()
+        )
         groceries = {
             "inputWorkspace": runWorkspace,
             "groupingWorkspace": columnGroupWorkspace,
+            "outputWorkspace": artNormBasisWorkspace,
         }
         # 3. Diffraction Focus Spectra
-        return ReductionGroupProcessingRecipe().cook(ingredients.groupProcessing(0), groceries)
+        ReductionGroupProcessingRecipe().cook(ingredients.groupProcessing(0), groceries)
+
+        # 4. Rebin
+        rebinIngredients = RebinFocussedGroupDataRecipe.Ingredients(
+            pixelGroup=ingredients.pixelGroups[0], preserveEvents=True
+        )
+
+        # NOTE: This is PURPOSELY reinstanced to support testing.
+        #       assert_called_with DOES NOT deep copy the dictionary.
+        #       Thus reusing the above dict would fail the test.
+        groceries = {"inputWorkspace": artNormBasisWorkspace}
+
+        rebinResult = RebinFocussedGroupDataRecipe().cook(rebinIngredients, groceries)
+        # 5. Return the rebin result
+        return rebinResult

@@ -1,5 +1,3 @@
-import json
-
 import numpy as np
 from mantid.api import (
     AlgorithmFactory,
@@ -42,19 +40,33 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
             doc="Workspace that contains artificial normalization.",
         )
         self.declareProperty(
-            "Ingredients",
-            defaultValue="",
+            "decreaseParameter",
+            defaultValue=True,
+            direction=Direction.Input,
+        )
+        self.declareProperty(
+            "lss",
+            defaultValue=True,
+            direction=Direction.Input,
+        )
+        self.declareProperty(
+            "peakWindowClippingSize",
+            defaultValue=5,
+            direction=Direction.Input,
+        )
+        self.declareProperty(
+            "smoothingParameter",
+            defaultValue=5.0,
             direction=Direction.Input,
         )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
-    def chopInredients(self, ingredientsStr: str):
-        ingredientsDict = json.loads(ingredientsStr)
-        self.peakWindowClippingSize = ingredientsDict["peakWindowClippingSize"]
-        self.smoothingParameter = ingredientsDict["smoothingParameter"]
-        self.decreaseParameter = ingredientsDict["decreaseParameter"]
-        self.LSS = ingredientsDict["lss"]
+    def chopInredients(self):
+        self.peakWindowClippingSize = int(self.getPropertyValue("peakWindowClippingSize"))
+        self.smoothingParameter = float(self.getPropertyValue("smoothingParameter"))
+        self.decreaseParameter = int(self.getPropertyValue("decreaseParameter"))
+        self.LSS = int(self.getPropertyValue("lss"))
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
@@ -113,11 +125,18 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
     def PyExec(self):
         # Main execution method for the algorithm
         self.unbagGroceries()
-        ingredients = self.getProperty("Ingredients").value
-        self.chopInredients(ingredients)
-        self.mantidSnapper.CloneWorkspace(
-            "Cloning input workspace...",
-            InputWorkspace=self.inputWorkspaceName,
+        self.chopInredients()
+        if self.outputWorkspaceName != self.inputWorkspaceName:
+            self.mantidSnapper.CloneWorkspace(
+                "Cloning input workspace...",
+                InputWorkspace=self.inputWorkspaceName,
+                OutputWorkspace=self.outputWorkspaceName,
+            )
+
+        self.mantidSnapper.ConvertUnits(
+            "Converting to dSpacing...",
+            InputWorkspace=self.outputWorkspaceName,
+            Target="dSpacing",
             OutputWorkspace=self.outputWorkspaceName,
         )
         # if input workspace is an eventworkspace, convert it to a histogram workspace
@@ -129,15 +148,7 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
                 OutputWorkspace=self.outputWorkspaceName,
             )
 
-        self.mantidSnapper.ConvertUnits(
-            "Converting to dSpacing...",
-            InputWorkspace=self.outputWorkspaceName,
-            Target="dSpacing",
-            OutputWorkspace=self.outputWorkspaceName,
-        )
-
         self.mantidSnapper.executeQueue()
-        self.inputWorkspace = self.mantidSnapper.mtd[self.inputWorkspaceName]
         self.outputWorkspace = self.mantidSnapper.mtd[self.outputWorkspaceName]
 
         # Apply peak clipping to each histogram in the workspace
