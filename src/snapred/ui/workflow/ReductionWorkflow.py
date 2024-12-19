@@ -1,7 +1,7 @@
 import datetime
 from typing import Dict, List, Optional, Set
 
-from qtpy.QtCore import Slot
+from qtpy.QtCore import Qt, QTimer, Slot
 
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.LiveMetadata import LiveMetadata
@@ -75,12 +75,14 @@ class ReductionWorkflow(WorkflowImplementer):
         
         self.liveDataMode: bool = False
         self.liveDataDuration: datetime.timedelta = datetime.timedelta(seconds=0)
+        self._liveDataUpdateTimer = QTimer()
         
         self.pixelMasks: List[WorkspaceName] = []
         
         ##
         ## Connect signals to slots:
         ##
+        self._reductionRequestView.liveDataModeChange.connect(self.updateLiveMetadata)
         self._artificialNormalizationView.signalValueChanged.connect(self.onArtificialNormalizationValueChange)
         
         # Note: in order to simplify the flow-of-control,
@@ -143,12 +145,31 @@ class ReductionWorkflow(WorkflowImplementer):
                 ),
             ).data
 
-            # Map from mask name strings to their corresponding WorkspaceName objects.
+            # Map from mask-name strings to their corresponding WorkspaceName objects.
             self._compatibleMasks = {name.toString(): name for name in compatibleMasks}
             masks = list(self._compatibleMasks.keys())
 
         return masks
 
+    @Slot(bool)
+    def updateLiveMetadata(self, liveDataMode: bool):
+        if liveDataMode:
+            self._updateLiveMetadata()
+        else:
+            if self._liveDataUpdateTimer.isActive():
+                self._liveDataUpdateTimer.stop()
+    
+    @Slot()
+    def _updateLiveMetadata(self):
+        if not self.workflow.presenter.workflowIsRunning:
+            # Don't harrass the data listener if it's already in a retrieval cycle!
+            data = self._getLiveMetadata()
+            self._reductionRequestView.updateLiveMetadata(data)
+        
+        # Automatically update live metadata every update interval.
+        updateDuration = self._reductionRequestView.liveDataUpdateInterval().seconds * 1000
+        self._liveDataUpdateTimer.singleShot(updateDuration, Qt.CoarseTimer, self._updateLiveMetadata)
+    
     def _getLiveMetadata(self) -> LiveMetadata:
         # *** DEBUG *** : mock
         duration = datetime.timedelta(minutes=1)

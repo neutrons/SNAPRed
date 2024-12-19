@@ -293,33 +293,33 @@ class _LiveDataView(_RequestViewBase):
         self.liveDataSummary.addWidget(self.liveDataIndicator)
         self.liveDataSummary.addWidget(self.liveDataStatus)
         
-        self.liveDataDurationSlider = QSlider(parent=self, orientation=Qt.Horizontal)
-        self.liveDataDurationSlider.setInvertedAppearance(True) # Increase from the right
-        self.liveDataDurationSlider.setMinimum(0)
-        self.liveDataDurationSlider.setMaximum(100) # reasonable positive value until first update
+        self.durationSlider = QSlider(parent=self, orientation=Qt.Horizontal)
+        self.durationSlider.setInvertedAppearance(True) # Increase from the right
+        self.durationSlider.setMinimum(0)
+        self.durationSlider.setMaximum(100) # reasonable positive value until first update
         self._durationFormat = "duration ({value}s < t0)"
-        self.liveDataDuration = self._labeledField(
+        self.duration = self._labeledField(
             self._durationFormat.format(value=str(timedelta(seconds=0))),
-            self.liveDataDurationSlider,
+            self.durationSlider,
             orientation=Qt.Vertical
         )
         
-        self.liveDataUpdateIntervalSlider = QSlider(parent=self, orientation=Qt.Horizontal)
-        self.liveDataUpdateIntervalSlider.setMinimum(Config["liveData.updateIntervalMinimum"])
-        self.liveDataUpdateIntervalSlider.setMaximum(Config["liveData.updateIntervalMaximum"])
+        self.updateIntervalSlider = QSlider(parent=self, orientation=Qt.Horizontal)
+        self.updateIntervalSlider.setMinimum(Config["liveData.updateIntervalMinimum"])
+        self.updateIntervalSlider.setMaximum(Config["liveData.updateIntervalMaximum"])
         defaultUpdateInterval = Config["liveData.updateIntervalDefault"]
-        self.liveDataUpdateIntervalSlider.setValue(defaultUpdateInterval)        
-        self._updateIntervalFormat = "update interval ({value}s > t0)"
-        self.liveDataUpdateInterval = self._labeledField(
+        self.updateIntervalSlider.setValue(defaultUpdateInterval)        
+        self._updateIntervalFormat = "update interval (t0 < {value}s)"
+        self.updateInterval = self._labeledField(
             self._updateIntervalFormat.format(value=str(timedelta(seconds=defaultUpdateInterval))),
-            self.liveDataUpdateIntervalSlider,
+            self.updateIntervalSlider,
             orientation=Qt.Vertical
         )
         self._liveDataLayout = QVBoxLayout()
         self._liveDataLayout.addLayout(self.liveDataSummary)
         _sliders = QHBoxLayout()
-        _sliders.addWidget(self.liveDataDuration)
-        _sliders.addWidget(self.liveDataUpdateInterval)
+        _sliders.addWidget(self.duration)
+        _sliders.addWidget(self.updateInterval)
         self._liveDataLayout.addLayout(_sliders)
         
         # Display and controls in common with  `_RequestView`.
@@ -364,8 +364,8 @@ class _LiveDataView(_RequestViewBase):
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
         self.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
         self.liveDataToggle.stateChanged.connect(lambda flag: self.liveDataModeChange.emit(flag))
-        self.liveDataDurationSlider.valueChanged.connect(self._updateDuration)
-        self.liveDataUpdateIntervalSlider.valueChanged.connect(self._updateUpdateInterval)
+        self.durationSlider.valueChanged.connect(self._updateDuration)
+        self.updateIntervalSlider.valueChanged.connect(self._updateUpdateInterval)
 
     @Slot(LiveMetadata)
     def updateLiveMetadata(self, data: LiveMetadata):
@@ -377,10 +377,12 @@ class _LiveDataView(_RequestViewBase):
 
     @Slot()
     def _updateLiveMetadata(self):    
-        TIME_ONLY_UTC = "%H:%m:%S (utc)"
-        TIME_AND_DATE_UTC = "%b %d: %H:%m:%S (utc)"
+        TIME_ONLY_UTC = "%H:%M:%S (utc)"
+        TIME_AND_DATE_UTC = "%b %d: %H:%M:%S (utc)"
+        utcnow = datetime.utcnow()
         
         data = self._liveMetadata
+        timeFormat = TIME_ONLY_UTC if (utcnow - data.startTime < timedelta(hours=12)) else TIME_AND_DATE_UTC
         
         if data.hasActiveRun():
             if data.beamState():
@@ -393,33 +395,31 @@ class _LiveDataView(_RequestViewBase):
                 self.startTime = data.startTime
 
                 # Update the status display
-                timeFormat = TIME_ONLY_UTC if (datetime.utcnow() - data.startTime < timedelta(hours=12)) else TIME_AND_DATE_UTC
                 self.liveDataStatus.setText(
                     "<p><font size = 4><b>Live data:</font>" 
                     + "<font size = 3>"
                     + f" running: {data.runNumber}, "
                     + f" since: {data.startTime.strftime(timeFormat)}</p>"
                     + "</font>"
-                    + f"<p><font size = 3> &nbsp;&nbsp; t0(now): {datetime.utcnow().strftime(TIME_ONLY_UTC)}</font></p>"
+                    + f"<p><font size = 3> &nbsp;&nbsp; t0(now): {utcnow.strftime(TIME_ONLY_UTC)}</font></p>"
                 )
 
                 self.liveDataIndicator.setColor(QColor(255, 255, 0))
                 self.liveDataIndicator.setChecked(True)
                 
-                self.liveDataDurationSlider.setEnabled(False)
-                self.liveDataDurationSlider.setMinimum(0)
-                self.liveDataDurationSlider.setMaximum((datetime.utcnow() - data.startTime).seconds)
-                self.liveDataDurationSlider.setEnabled(True)
+                self.durationSlider.setEnabled(False)
+                self.durationSlider.setMinimum(0)
+                self.durationSlider.setMaximum((utcnow - data.startTime).seconds)
+                self.durationSlider.setEnabled(True)
             else:
                 self.runNumbers = []
-                timeFormat = TIME_ONLY_UTC if (datetime.utcnow() - data.startTime < timedelta(hours=12)) else TIME_AND_DATE_UTC
                 self.liveDataStatus.setText(
                     "<p><font size = 4><b>Live data:</b></font>" 
                     + "<font size = 3>"
                     + f" running: {data.runNumber}, "
                     + f" since: {data.startTime.strftime(timeFormat)}</p>"
                     + "</font>"
-                    + f"<p><font size = 3> &nbsp;&nbsp; t0(now): {datetime.utcnow().strftime(TIME_ONLY_UTC)}</font></p>"
+                    + f"<p><font size = 3> &nbsp;&nbsp; t0(now): {utcnow.strftime(TIME_ONLY_UTC)}</font></p>"
                     + "<p><font size = 4><b>BEAM is DOWN.</b></font></p>"
                 )
                 # ERROR flash -- beam is down with a run active.
@@ -444,11 +444,11 @@ class _LiveDataView(_RequestViewBase):
         
     @Slot(int)
     def _updateDuration(self, seconds: int):
-        self.liveDataDuration.setLabelText(self._durationFormat.format(value=str(timedelta(seconds=seconds))))
+        self.duration.setLabelText(self._durationFormat.format(value=str(timedelta(seconds=seconds))))
 
     @Slot(int)
     def _updateUpdateInterval(self, seconds: int):
-        self.liveDataUpdateInterval.setLabelText(self._updateIntervalFormat.format(value=str(timedelta(seconds=seconds))))
+        self.updateInterval.setLabelText(self._updateIntervalFormat.format(value=str(timedelta(seconds=seconds))))
     
     @ExceptionToErrLog
     @Slot(bool)
@@ -513,12 +513,12 @@ class _LiveDataView(_RequestViewBase):
         return True
         
     def liveDataDuration(self) -> timedelta:
-        _value = self.liveDataDurationSlider.value()
+        _value = self.durationSlider.value()
         # a duration of seconds=0 indicates that all of the available data should be loaded
         return timedelta(seconds=_value)
         
     def liveDataUpdateInterval(self) -> timedelta:
-        _value = self.liveDataUpdateIntervalSlider.value()
+        _value = self.updateIntervalSlider.value()
         return timedelta(seconds=_value)
 
     def getRunNumbers(self) -> List[str]:
@@ -530,7 +530,8 @@ class _LiveDataView(_RequestViewBase):
 
 @Resettable
 class ReductionRequestView(_RequestViewBase):
-
+    liveDataModeChange = Signal(bool)
+    
     def __init__(
         self,
         parent=None,
@@ -562,32 +563,28 @@ class ReductionRequestView(_RequestViewBase):
         self.layout().addLayout(self._stackedLayout, 0, 0)
 
         # Connect signals to slots
-        self._stackedLayout.currentChanged.connect(self._changeLiveDataMode)
-        self._requestView.liveDataModeChange.connect(self._liveDataModeChange)
-        self._liveDataView.liveDataModeChange.connect(self._liveDataModeChange)
+        self._requestView.liveDataModeChange.connect(self.liveDataModeChange)
+        self._liveDataView.liveDataModeChange.connect(self.liveDataModeChange)
+        self.liveDataModeChange.connect(self._setLiveDataMode)
 
     @Slot(bool)
-    def _liveDataModeChange(self, flag: bool):
-        if flag:
-            self._stackedLayout.setCurrentWidget(self._liveDataView)  
-        else:
-            self._stackedLayout.setCurrentWidget(self._requestView)
-
-    @Slot()
-    def _changeLiveDataMode(self):
+    def _setLiveDataMode(self, flag: bool):
+        self._stackedLayout.setCurrentWidget(self._liveDataView if flag else self._requestView)
         view = self._stackedLayout.currentWidget()
         view.liveDataToggle.toggle.setEnabled(False)
-        if view == self._requestView:
+        
+        if flag:
+            view.liveDataToggle.setState(True)    
+        else:
             view.liveDataToggle.setState(False)
-        elif view == self._liveDataView:
-            view.liveDataToggle.setState(True)
-            
-            # *** DEBUG ***
-            if self.getLiveMetadata:
-                _data = self.getLiveMetadata()
-                view.updateLiveMetadata(_data)
+        
         view.liveDataToggle.toggle.setEnabled(True)
-                
+
+    @Slot(LiveMetadata)
+    def updateLiveMetadata(self, data: LiveMetadata):
+        if self.liveDataMode():
+            self._liveDataView.updateLiveMetadata(data)
+                        
     ###
     ### Abstract methods:
     ###
@@ -608,7 +605,13 @@ class ReductionRequestView(_RequestViewBase):
 
     def liveDataMode(self) -> bool:
         return self._stackedLayout.currentWidget().liveDataMode()
-
+        
+    def liveDataDuration(self) -> timedelta:
+        return self._stackedLayout.currentWidget().liveDataDuration()
+        
+    def liveDataUpdateInterval(self) -> timedelta:
+        return self._stackedLayout.currentWidget().liveDataUpdateInterval()
+        
     def getRunNumbers(self) -> List[str]:
         return self._stackedLayout.currentWidget().getRunNumbers()
 
