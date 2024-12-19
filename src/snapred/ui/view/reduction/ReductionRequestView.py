@@ -377,6 +377,7 @@ class _LiveDataView(_RequestViewBase):
 
     @Slot()
     def _updateLiveMetadata(self):    
+
         TIME_ONLY_UTC = "%H:%M:%S (utc)"
         TIME_AND_DATE_UTC = "%b %d: %H:%M:%S (utc)"
         utcnow = datetime.utcnow()

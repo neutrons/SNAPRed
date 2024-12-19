@@ -177,7 +177,7 @@ class WorkflowPresenter(QObject):
             self.disableOtherWorkflows.emit()
 
         # disable navigation buttons during run
-        self._enableButtons(False)
+        self.enableButtons(False)
 
         # scoped action to verify before running
         def verifyAndContinue():
@@ -205,9 +205,9 @@ class WorkflowPresenter(QObject):
         """
         # do action
         self.worker = self.worker_pool.createWorker(target=action, args=args)
-        self.worker.finished.connect(lambda: self._enableButtons(True))  # re-enable panel buttons on finish
+        self.worker.finished.connect(lambda: self.enableButtons(True))  # re-enable panel buttons on finish
         self.worker.finished.connect(lambda: self._setWorkflowIsRunning(False))
-        self.worker.finished.connect(lambda: self.actionCompleted.emit())
+        self.worker.finished.connect(self.actionCompleted)
         self.worker.result.connect(self._handleComplications)
         self.worker.success.connect(onSuccess)
         self.cancellationRequest.connect(self.requestCancellation)
@@ -227,7 +227,7 @@ class WorkflowPresenter(QObject):
         return self._workflowIsRunning
     
     @Slot(bool)
-    def _enableButtons(self, enable):
+    def enableButtons(self, enable):
         # This slot is necessary in order for the buttons to actually be updated from the worker.
         
         # *** DEBUG *** allow user cancellation

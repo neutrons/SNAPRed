@@ -82,7 +82,13 @@ class ReductionWorkflow(WorkflowImplementer):
         ##
         ## Connect signals to slots:
         ##
+        
+        # Start automatic update at live-data mode change:
         self._reductionRequestView.liveDataModeChange.connect(self.updateLiveMetadata)
+        
+        # Restart automatic update at workflow completion:
+        self.workflow.presenter.actionCompleted.connect(lambda: self.updateLiveMetadata(self.liveDataMode))
+        
         self._artificialNormalizationView.signalValueChanged.connect(self.onArtificialNormalizationValueChange)
         
         # Note: in order to simplify the flow-of-control,
@@ -153,11 +159,16 @@ class ReductionWorkflow(WorkflowImplementer):
 
     @Slot(bool)
     def updateLiveMetadata(self, liveDataMode: bool):
+        # Start at live-data mode change, 
+        #   or restart at workflow completion.
+        if self._liveDataUpdateTimer.isActive():
+            self._liveDataUpdateTimer.stop()
         if liveDataMode:
             self._updateLiveMetadata()
         else:
-            if self._liveDataUpdateTimer.isActive():
-                self._liveDataUpdateTimer.stop()
+            # WARNING: live-data mode can disable the continue button,
+            #   so we need to re-enable it here, just in case.
+            self.workflow.presenter.enableButtons(True)
     
     @Slot()
     def _updateLiveMetadata(self):
@@ -165,6 +176,10 @@ class ReductionWorkflow(WorkflowImplementer):
             # Don't harrass the data listener if it's already in a retrieval cycle!
             data = self._getLiveMetadata()
             self._reductionRequestView.updateLiveMetadata(data)
+            
+            # Disable buttons in case of "no active run" or "beam down" conditions.
+            if not data.hasActiveRun() or not data.beamState():
+                self.workflow.presenter.enableButtons(False)
         
         # Automatically update live metadata every update interval.
         updateDuration = self._reductionRequestView.liveDataUpdateInterval().seconds * 1000
@@ -186,7 +201,7 @@ class ReductionWorkflow(WorkflowImplementer):
                 guideStat=1,
                 lin=(0.045, 0.043)
             ),
-            protonCharge=1000.0
+            protonCharge=0.0
         )
 
     def _validateRunNumbers(self, runNumbers: List[str]):

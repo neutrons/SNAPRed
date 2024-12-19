@@ -88,7 +88,8 @@ class LEDIndicator(QAbstractButton):
             self._flashColors = colors
             self._flashDurations = durations
         else:
-            raise RuntimeError("LEDIndicator.setFlashSequence: usage error: cannot be called when flash mode is active")
+            if pairs != (self._flashColors, self._flashDurations):
+                raise RuntimeError("'LEDIndicator.setFlashSequence': the flash sequence can only be changed when flash is inactive")
 
     @Slot()
     def _resetFlash(self):
