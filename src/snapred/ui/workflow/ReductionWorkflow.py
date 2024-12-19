@@ -1,5 +1,5 @@
 import datetime
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 from qtpy.QtCore import Slot
 
@@ -94,7 +94,10 @@ class ReductionWorkflow(WorkflowImplementer):
     def _nothing(self, workflowPresenter):  # noqa: ARG002
         return SNAPResponse(code=200)
 
-    def completionMessage(self):
+    def completionMessage(self) -> Optional[str]:
+        if self.liveDataMode:
+            return None
+            
         panelText = ""
         if (
             self.continueAnywayFlags is not None

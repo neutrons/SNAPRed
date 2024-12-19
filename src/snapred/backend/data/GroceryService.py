@@ -934,16 +934,14 @@ class GroceryService:
                     # live data fallback
                     pass
         
-        if not success:
-            # Live-data fallback
-            liveDataMode = True
-            
+        if not success:            
             if self.dataService.hasLiveDataConnection():
+                # Live-data fallback
 
                 # When not specified in the `liveDataArgs`,
                 #   default behavior will be to load the entire run.
                 startTime = (datetime.datetime.utcnow() - liveDataArgs.duration).isoformat()\
-                    if liveDataArgs is not None else ""
+                    if liveDataMode else ""
 
                 loaderArgs = {
                     "Facility": Config["liveData.facility.name"],
@@ -962,7 +960,7 @@ class GroceryService:
                     if int(runNumber) != int(liveRunNumber):
                         self.deleteWorkspaceUnconditional(nativeRawWorkspaceName)
                         data = {"result": False}
-                        if liveDataArgs is not None:
+                        if liveDataMode:
                             # the live-data run isn't the expected one => a live-data state change has occurred
                             raise LiveDataState.runStateTransition(liveRunNumber, runNumber)
                         raise RuntimeError(f"Neutron data for run '{runNumber}' is not present on disk, nor is it the live-data run")
@@ -970,6 +968,8 @@ class GroceryService:
                     self._liveDataKeys.append(self._key(runNumber, False))
                     success = True                                            
             else:
+                if liveDataMode:
+                    raise RuntimeError("no live-data connection is available")
                 raise RuntimeError(f"Neutron data for run '{runNumber}' is not present on disk, and no live-data connection is available")
 
         if success:
@@ -1258,9 +1258,9 @@ class GroceryService:
                 # for neutron data stored in a nexus file
                 case "neutron":
                     if item.keepItClean:
-                        res = self.fetchNeutronDataCached(item.runNumber, item.useLiteMode, item.loader)
+                        res = self.fetchNeutronDataCached(item)
                     else:
-                        res = self.fetchNeutronDataSingleUse(item.runNumber, item.useLiteMode, item.loader)
+                        res = self.fetchNeutronDataSingleUse(item)
                 # for grouping definitions
                 case "grouping":
                     res = self.fetchGroupingDefinition(item)

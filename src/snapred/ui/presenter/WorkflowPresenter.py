@@ -40,7 +40,7 @@ class WorkflowPresenter(QObject):
         # 'WorkerPool' is a singleton:
         #    declaring it as an instance attribute, rather than a class attribute,
         #    allows singleton reset during testing.
-        self.completionMessageLambda = completionMessageLambda if completionMessageLambda is not None else lambda: ""
+        self.completionMessageLambda = completionMessageLambda if completionMessageLambda is not None else self._NOP
 
         self.worker = None
         self._setWorkflowIsRunning(False)
@@ -283,10 +283,12 @@ class WorkflowPresenter(QObject):
         self.reset()
         
     def completeWorkflow(self):
-        # Directly show the completion message and reset the workflow
-        QMessageBox.information(
-            self.view,
-            "‧₊Workflow Complete‧₊",
-            self.completionMessageLambda(),
-        )
+        message: Optional[str] = self.completionMessageLambda()
+        if message:
+            # Directly show the completion message and reset the workflow
+            QMessageBox.information(
+                self.view,
+                "‧₊Workflow Complete‧₊",
+                message,
+            )
         self.reset()

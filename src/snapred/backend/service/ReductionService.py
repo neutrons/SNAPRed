@@ -405,19 +405,10 @@ class ReductionService(Service):
             )
 
         # gather the input workspace and the diffcal table
-        """
-        # *** DEBUG *** : Previous lines:
-        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
-        ## I DO NOT LIKE THIS SYNTAX for setting up the loader,
-        ## It should be more transparent.
-        ?? <item>.liveDataMode(True).duration(duration) ?
-        """
+
         inputItemBuilder = self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode)
         if request.liveDataMode:
-            inputItemBuilder.loader(
-                loader="LiveDataMode",
-                loaderArgs=f"{{'Duration': {request.duration}, 'Facility': {request.facility}, 'Instrument': {request.instrument}}}"
-            )
+            inputItemBuilder.liveData(duration=request.liveDataDuration)
         inputItemBuilder.add()
 
         if calVersion is not None:

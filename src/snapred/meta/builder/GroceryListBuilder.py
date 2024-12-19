@@ -1,7 +1,7 @@
 import datetime
 from typing import Dict, List
 
-from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem, LiveDataArgs
 
 
 class GroceryListBuilder:
@@ -85,7 +85,7 @@ class GroceryListBuilder:
         return self
 
     def liveData(self, duration: datetime.timedelta):
-        self._tokens["liveDataArgs"] = GroceryListItem.LiveDataArgs(duration=duration)
+        self._tokens["liveDataArgs"] = LiveDataArgs(duration=duration)
         return self
     
     def unit(self, unit_: str):
