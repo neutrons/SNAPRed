@@ -151,7 +151,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
     def _getLiveMetadata(self) -> LiveMetadata:
         # *** DEBUG *** : mock
-        duration = datetime.timedelta(hours=14)
+        duration = datetime.timedelta(minutes=1)
         now = datetime.datetime.utcnow()
         return LiveMetadata.model_construct(
             runNumber="46680",

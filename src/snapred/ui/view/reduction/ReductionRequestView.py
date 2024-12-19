@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Callable, List, Optional
 
-from qtpy.QtCore import Qt, QSize, Signal, Slot
+from qtpy.QtCore import Qt, QSize, QTimer, Signal, Slot
 from qtpy.QtGui import QColor
 from qtpy.QtWidgets import (
     QHBoxLayout,
@@ -357,6 +357,9 @@ class _LiveDataView(_RequestViewBase):
         _layout.addWidget(self.pixelMaskDropdown, 2, 0, 1, 2)
         _layout.addLayout(self.unfocusedDataLayout, 3, 0, 1, 2)
 
+        # Automatically update fields depending on time of day.
+        self._timeUpdateTimer = QTimer()
+        
         # Connect signals to slots
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
         self.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
@@ -366,10 +369,18 @@ class _LiveDataView(_RequestViewBase):
 
     @Slot(LiveMetadata)
     def updateLiveMetadata(self, data: LiveMetadata):
+        if self._timeUpdateTimer.isActive():
+            self._timeUpdateTimer.stop()
+            
         self._liveMetadata = data
-    
+        self._updateLiveMetadata()
+
+    @Slot()
+    def _updateLiveMetadata(self):    
         TIME_ONLY_UTC = "%H:%m:%S (utc)"
         TIME_AND_DATE_UTC = "%b %d: %H:%m:%S (utc)"
+        
+        data = self._liveMetadata
         
         if data.hasActiveRun():
             if data.beamState():
@@ -424,6 +435,13 @@ class _LiveDataView(_RequestViewBase):
             self.liveDataIndicator.setFlashSequence(((QColor(255, 255, 0),), (0.1, 0.4)))
             self.liveDataIndicator.setFlash(True)
 
+        # Automatically update any fields depending on time of day, once per second.
+        self._timeUpdateTimer.singleShot(1000, Qt.CoarseTimer, self._updateLiveMetadata)
+
+    def hideEvent(self, event):
+        if self._timeUpdateTimer.isActive():
+            self._timeUpdateTimer.stop()
+        
     @Slot(int)
     def _updateDuration(self, seconds: int):
         self.liveDataDuration.setLabelText(self._durationFormat.format(value=str(timedelta(seconds=seconds))))
