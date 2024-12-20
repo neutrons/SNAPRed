@@ -4,7 +4,7 @@
 
 
 import snapred.backend.recipe.algorithm
-from mantid.simpleapi import Rebin, SmoothDataExcludingPeaksAlgo
+from mantid.simpleapi import Rebin, SmoothDataExcludingPeaksAlgo, ConvertUnits, DiffractionFocussing
 
 # try to make the logger shutup
 from snapred.backend.log.logger import snapredLogger
@@ -18,13 +18,13 @@ from snapred.backend.service.SousChef import SousChef
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 
-from snapred.meta.redantic import list_to_raw
+from snapred.meta.pointer import create_pointer
 
 #User inputs ###########################
 runNumber = "58882" #58409
 isLite = True
 groupingScheme = "Column"
-cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
+calibrantSamplePath = "Silicon_NIST_640D_001.json"
 smoothingParameter = 0.05
 #######################################
 
@@ -33,26 +33,41 @@ farmFresh = FarmFreshIngredients(
   runNumber = runNumber,
   useLiteMode=isLite,
   focusGroups=[{"name": groupingScheme, "definition": ""}],
-  cifPath=cifPath,
+  calibrantSamplePath=calibrantSamplePath,
 )
 peaks = SousChef().prepDetectorPeaks(farmFresh)
 
 ## FETCH GROCERIES
 simpleList = GroceryListItem.builder().neutron(runNumber).useLiteMode(isLite).buildList()
-grocery = GroceryService().fetchGroceryList(simpleList)[0]
+
+clerk = GroceryListItem.builder()
+clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
+clerk.name("groupingWorkspace").fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
+groceries = GroceryService().fetchGroceryDict(clerk.buildDict())
+
+inputWS = groceries["inputWorkspace"]
+focusWS = groceries["groupingWorkspace"]
+
+## PREPARE 
+# data must be in units of d-spacing
 # we must convert the event data to histogram data
-# this rebin step will accomplish that, due to PreserveEvents = False
-Rebin(
-    InputWorkspace = grocery,
-    OutputWorkspace = grocery,
-    Params = (1,-0.01,1667.7),
-    PreserveEvents = False,
+ConvertUnits(
+    InputWorkspace = inputWS,
+    OutputWorkspace="in_ws",
+    Target="dSpacing",
+)
+DiffractionFocussing(
+    InputWorkspace="in_ws",
+    GroupingWorkspace=focusWS,
+    OutputWorkspace="in_ws",
+    PreserveEvents=False, # will convert to histogram
 )
 
 ## RUN ALGORITHM
+
 assert SmoothDataExcludingPeaksAlgo(
-  InputWorkspace = grocery,
-  DetectorPeaks = list_to_raw(peaks),
+  InputWorkspace = "in_ws",
+  DetectorPeaks = create_pointer(peaks),
   SmoothingParameter = smoothingParameter,
   OutputWorkspace = "out_ws",
 )

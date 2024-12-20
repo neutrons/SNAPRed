@@ -143,6 +143,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def __setInteraction(self, state: bool):
         self._requestView.litemodeToggle.setEnabled(state)
+        self._requestView.skipPixelCalToggle.setEnabled(state)
         self._requestView.groupingFileDropdown.setEnabled(state)
 
     @ExceptionToErrLog
@@ -260,10 +261,6 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._renewFocus(self.prevGroupingIndex)
         self._renewFitPeaks(self.peakFunction)
         response = self._calculateResidual()
-
-        # freeze these toggles, as they can no longer function
-        self._requestView.litemodeToggle.setEnabled(False)
-        self._requestView.skipPixelCalToggle.setEnabled(False)
 
         self._tweakPeakView.updateGraphs(
             self.focusedWorkspace,

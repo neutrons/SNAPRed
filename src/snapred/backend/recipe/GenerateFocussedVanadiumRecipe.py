@@ -5,7 +5,6 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.RebinFocussedGroupDataRecipe import RebinFocussedGroupDataRecipe
 from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -26,7 +25,7 @@ class GenerateFocussedVanadiumRecipe(Recipe[Ingredients]):
 
     def chopIngredients(self, ingredients: Ingredients):
         self.smoothingParameter = ingredients.smoothingParameter
-        self.detectorPeaks = list_to_raw(ingredients.detectorPeaks) if ingredients.detectorPeaks is not None else None
+        self.detectorPeaks = ingredients.detectorPeaks
         self.pixelGroup = ingredients.pixelGroup
 
         self.artificialNormalizationIngredients = ingredients.artificialNormalizationIngredients

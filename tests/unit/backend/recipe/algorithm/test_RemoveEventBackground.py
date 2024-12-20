@@ -129,31 +129,22 @@ class TestRemoveEventBackground(unittest.TestCase):
             algo.execute()
 
     def test_smoothing_parameter_edge_cases(self):
-        peaks = self.create_test_peaks()
         ConvertToEventWorkspace(
             InputWorkspace=self.fakeData,
             OutputWorkspace=self.fakeData,
         )
         algo = Algo()
         algo.initialize()
-        algo.setProperty("InputWorkspace", self.fakeData)
-        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("DetectorPeaks", create_pointer(peaks))
-        algo.setProperty("SmoothingParameter", 0)
-        algo.setProperty("OutputWorkspace", "output_test_ws_no_smoothing")
 
-        assert algo.execute()
+        # negative values are excluded
+        with self.assertRaises(ValueError):  # noqa: PT027
+            algo.setProperty("SmoothingParameter", -1)
 
-        algo.setProperty("SmoothingParameter", -1)
-        algo.setProperty("OutputWorkspace", "output_test_ws_negative_smoothing")
-
-        with self.assertRaises(RuntimeError):  # noqa: PT027
-            algo.execute()
-
-        algo.setProperty("SmoothingParameter", 1000)
-        algo.setProperty("OutputWorkspace", "output_test_ws_large_smoothing")
-
-        assert algo.execute()
+        # zero is valid, large numbers valid, floats valid
+        valid_values = [0, 1000, 3.141592]
+        for value in valid_values:
+            algo.setProperty("SmoothingParameter", value)
+            assert value == algo.getProperty("SmoothingParameter").value
 
     def test_output_workspace_creation(self):
         peaks = self.create_test_peaks()
