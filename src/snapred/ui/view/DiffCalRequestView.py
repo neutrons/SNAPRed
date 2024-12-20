@@ -1,4 +1,3 @@
-from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.ui.view.BackendRequestView import BackendRequestView
@@ -34,9 +33,8 @@ class DiffCalRequestView(BackendRequestView):
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
 
         # checkbox for removing background
-        # NOTE not enabled unless in CIS mode until remove event background is fixed -- then re-enable
         self.removeBackgroundToggle = self._labeledToggle("RemoveBackground", False)
-        self.removeBackgroundToggle.setEnabled(Config["cis_mode"])
+        self.removeBackgroundToggle.setEnabled(True)
 
         # set field properties
         self.litemodeToggle.setEnabled(True)

@@ -1,13 +1,10 @@
-# Use this script to test Pixel Diffraction Background Subtraction
+# import mantid algorithms, numpy and matplotlib
 import snapred.backend.recipe.algorithm
-from mantid.simpleapi import *
+from mantid.simpleapi import DiffractionFocussing, Rebin, RemoveSmoothedBackground
 import matplotlib.pyplot as plt
 import numpy as np
 import json
 import time
-from typing import List
-
-
 ## for creating ingredients
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
 from snapred.backend.service.SousChef import SousChef
@@ -16,11 +13,9 @@ from snapred.backend.service.SousChef import SousChef
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 
-## the code to test
-from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as PixelRx
-
 from snapred.meta.Config import Config
-from snapred.meta.pointer import create_pointer
+from snapred.meta.pointer import create_pointer, access_pointer
+from snapred.meta.redantic import list_to_raw
 
 #User input ###########################
 runNumber = "58882"
@@ -29,12 +24,11 @@ calibrantSamplePath = "Silicon_NIST_640D_001.json"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
-removeBackground = True
 Config._config["cis_mode"] = True
-Config._config["diffraction.smoothingParameter"] = 0.5  #This is the smoothing parameter to be set.
 #######################################
 
 ### PREP INGREDIENTS ################
+
 farmFresh = FarmFreshIngredients(
     runNumber=runNumber,
     useLiteMode=isLite,
@@ -44,38 +38,48 @@ farmFresh = FarmFreshIngredients(
     convergenceThreshold=offsetConvergenceLimit,
     maxOffset=100.0,
 )
-ingredients = SousChef().prepDiffractionCalibrationIngredients(farmFresh)
+pixelGroup = SousChef().prepPixelGroup(farmFresh)
+detectorPeaks = SousChef().prepDetectorPeaks(farmFresh)
 
-# HERE IS THE BACKGROUND REMOVAL TOGGLE!
-ingredients.removeBackground = removeBackground 
+peaks = "peaks"
 
 ### FETCH GROCERIES ##################
 
 clerk = GroceryListItem.builder()
 clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
 clerk.name("groupingWorkspace").fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
-groceries = GroceryService().fetchGroceryDict(
-    clerk.buildDict(),
-    outputWorkspace="_out_",
-    diagnosticWorkspace="_diag",
-    maskWorkspace="_mask_",
-    calibrationTable="_DIFC_",
+groceries = GroceryService().fetchGroceryDict(clerk.buildDict())
+
+## UNBAG GROCERIES
+
+inputWorkspace = groceries["inputWorkspace"]
+focusWorkspace = groceries["groupingWorkspace"]
+Rebin(
+    InputWorkspace=inputWorkspace,
+    OutputWorkspace=inputWorkspace,
+    Params=pixelGroup.timeOfFlight.params,
 )
 
-### RUN PIXEL CALIBRATION ##########
+### REMOVE EVENT BACKGROUND BY SMOOTHING ##
 
-pixelRx = PixelRx()
-pixelRx.cook(ingredients, groceries)
+start = time.time()
+RemoveSmoothedBackground(
+    InputWorkspace=inputWorkspace,
+    GroupingWorkspace=focusWorkspace,
+    OutputWorkspace=peaks,
+    DetectorPeaks = create_pointer(detectorPeaks),
+    SmoothingParameter=0.5,
+)
+end = time.time()
+print(f"TIME FOR ALGO = {end-start}")
 
-### PREPARE OUTPUTS ################
 DiffractionFocussing(
-    InputWorkspace=f"dsp_0{runNumber}_raw_beforeCrossCor",
-    OutputWorkspace="BEFORE_REMOVAL",
-    GroupingWorkspace=groceries["groupingWorkspace"],
+    InputWorkspace="peaks_extractDSP_before",
+    OutputWorkspace="peaks_extractDSP_before_foc",
+    GroupingWorkspace=focusWorkspace,
 )
 DiffractionFocussing(
-    InputWorkspace=f"dsp_0{runNumber}_raw_withoutBackground",
-    OutputWorkspace="AFTER_REMOVAL",
-    GroupingWorkspace=groceries["groupingWorkspace"],
+    InputWorkspace="peaks_extractDSP_after",
+    OutputWorkspace="peaks_extractDSP_after_foc",
+    GroupingWorkspace=focusWorkspace,
 )
-
