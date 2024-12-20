@@ -1,5 +1,6 @@
 import json
 from collections.abc import Iterable
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -184,7 +185,8 @@ class ReductionService(Service):
         :param request: a ReductionRequest object holding needed information
         :type request: ReductionRequest
         """
-
+        startTime = datetime.utcnow()
+        
         groupingResults = self.fetchReductionGroupings(request)
         request.focusGroups = groupingResults["focusGroups"]
 
@@ -198,7 +200,11 @@ class ReductionService(Service):
 
         data = ReductionRecipe().cook(ingredients, groceries)
         record = self._createReductionRecord(request, ingredients, data["outputs"])
-        return ReductionResponse(record=record, unfocusedData=data.get("unfocusedWS", None))
+        
+        # Execution wallclock time is required by the live-data workflow loop.
+        executionTime = datetime.utcnow() - startTime
+        
+        return ReductionResponse(record=record, unfocusedData=data.get("unfocusedWS", None), executionTime=executionTime)
 
     def _createReductionRecord(
         self, request: ReductionRequest, ingredients: ReductionIngredients, workspaceNames: List[WorkspaceName]

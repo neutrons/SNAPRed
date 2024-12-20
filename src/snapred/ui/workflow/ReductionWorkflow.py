@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set
 
 from qtpy.QtCore import Qt, QTimer, Slot
@@ -49,7 +49,8 @@ class ReductionWorkflow(WorkflowImplementer):
                 startLambda=self.start,
                 # Retain reduction-output workspaces.
                 resetLambda=lambda: self.reset(True),
-                completionMessageLambda=self.completionMessage,
+                cancelLambda=self.cancelWorkflow,
+                completeWorkflowLambda=self.completeWorkflow,
                 parent=parent,
             )
             .addNode(
@@ -78,8 +79,12 @@ class ReductionWorkflow(WorkflowImplementer):
         self.useLiteMode: bool = True
         
         self.liveDataMode: bool = False
-        self.liveDataDuration: datetime.timedelta = datetime.timedelta(seconds=0)
+        self.liveDataDuration: timedelta = timedelta(seconds=0)
+        # Control of live-data metadata update:
         self._liveDataUpdateTimer = QTimer()
+        
+        # Control of live-data reduction workflow loop:
+        self._workflowTimer = QTimer()
         
         self.pixelMasks: List[WorkspaceName] = []
         
@@ -106,29 +111,55 @@ class ReductionWorkflow(WorkflowImplementer):
     def _nothing(self, workflowPresenter):  # noqa: ARG002
         return SNAPResponse(code=200)
 
-    def completionMessage(self) -> Optional[str]:
-        if self.liveDataMode:
-            return None
+    def cancelWorkflow(self):
+        # This method exists in order to correctly shut down the live-data loop.
+        def _safeShutdown():
+            if self._workflowTimer.isActive():
+                self._workflowTimer.stop()
+            self.workflow.presenter.safeShutdown()
             
-        panelText = ""
-        if (
-            self.continueAnywayFlags is not None
-            and ContinueWarning.Type.NO_WRITE_PERMISSIONS in self.continueAnywayFlags
-        ):
-            panelText = (
-                "<p>You didn't have permissions to write to "
-                + f"<br><b>{self.savePath}</b>,<br>"
-                + "but you can still save using the workbench tools.</p>"
-                + "<p>Please remember to save your output workspaces!</p>"
-            )
+        self.workflow.presenter.resetWithPermission(
+            shutdownLambda=_safeShutdown
+        )
+    
+    def completeWorkflow(self):
+        if not self.liveDataMode:
+            panelText = ""
+            if (
+                self.continueAnywayFlags is not None
+                and ContinueWarning.Type.NO_WRITE_PERMISSIONS in self.continueAnywayFlags
+            ):
+                panelText = (
+                    "<p>You didn't have permissions to write to "
+                    + f"<br><b>{self.savePath}</b>,<br>"
+                    + "but you can still save using the workbench tools.</p>"
+                    + "<p>Please remember to save your output workspaces!</p>"
+                )
+            else:
+                panelText = (
+                    "<p>Reduction has completed successfully!"
+                    + "<br>Reduction workspaces have been saved to "
+                    + f"<br><b>{self.savePath}</b>.<br></p>"
+                    + "<p>If required later, these can be reloaded into Mantid workbench using 'LoadNexus'.</p>"
+                )
+            self.workflow.presenter.completeWorkflow(message=panelText)
         else:
-            panelText = (
-                "<p>Reduction has completed successfully!"
-                + "<br>Reduction workspaces have been saved to "
-                + f"<br><b>{self.savePath}</b>.<br></p>"
-                + "<p>If required later, these can be reloaded into Mantid workbench using 'LoadNexus'.</p>"
-            )
-        return panelText
+            # Live-data loop: exit is by cancellation only:
+            
+            request_: ReductionRequest = self.requests[-1]
+            response: ReductionResponse = self.responses[-1]
+            
+            # -- `presenter.completeWorkflow` will call `reset`, which gets us back to the live-data summary panel.
+            self.workflow.presenter.completeWorkflow(message=None)
+            
+            updateInterval = self._liveDataUpdateInterval()
+            if response.executionTime > updateInterval:
+                # Immediately start the next reduction.
+                self.request(path="reduction/", payload=request_)
+            else:
+                # Wait and then start the next reduction.
+                waitTime = updateInterval - response.executionTime
+                self._workflowTimer.singleShot(waitTime.seconds * 1000, Qt.CoarseTimer, lambda: self.request(path="reduction/", request=request_))
 
     def _setInteractive(self, state: bool):
         
@@ -161,6 +192,9 @@ class ReductionWorkflow(WorkflowImplementer):
 
         return masks
 
+    def _liveDataUpdateInterval(self) -> timedelta:
+        return self._reductionRequestView.liveDataUpdateInterval()
+
     @Slot(bool)
     def updateLiveMetadata(self, liveDataMode: bool):
         self.liveDataMode = liveDataMode
@@ -179,7 +213,7 @@ class ReductionWorkflow(WorkflowImplementer):
     @Slot()
     def _updateLiveMetadata(self):
         if not self.workflow.presenter.workflowIsRunning:
-            # Don't harrass the data listener if it's already in a retrieval cycle!
+            # Don't harass the data listener if it's already in a retrieval cycle!
             data = self._getLiveMetadata()
             self._reductionRequestView.updateLiveMetadata(data)
             
@@ -188,8 +222,8 @@ class ReductionWorkflow(WorkflowImplementer):
                 self.workflow.presenter.enableButtons(False)
         
         # Automatically update live metadata every update interval.
-        updateDuration = self._reductionRequestView.liveDataUpdateInterval().seconds * 1000
-        self._liveDataUpdateTimer.singleShot(updateDuration, Qt.CoarseTimer, self._updateLiveMetadata)
+        updateInterval = self._liveDataUpdateInterval().seconds * 1000
+        self._liveDataUpdateTimer.singleShot(updateInterval, Qt.CoarseTimer, self._updateLiveMetadata)
     
     def _hasLiveDataConnection(self) -> bool:
         return self.request(path="reduction/hasLiveDataConnection").data
@@ -239,7 +273,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         # Use one timestamp for the entire set of runNumbers:
         self.timestamp = self.request(path="reduction/getUniqueTimestamp").data
-
+        
         # All runs are from the same state, use the first run to load groupings.
         request_ = self._createReductionRequest(self.runNumbers[0])
         response = self.request(path="reduction/groupings", payload=request_)
@@ -348,6 +382,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
     def _continueWithNormalization(self, workflowPresenter):  # noqa: ARG002
         """Continues the workflow using the artificial normalization workspace."""
+        
         artificialNormIngredients = ArtificialNormalizationIngredients(
             peakWindowClippingSize=self._artificialNormalizationView.getPeakWindowClippingSize(),
             smoothingParameter=self._artificialNormalizationView.getSmoothingParameter(),

@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 from qtpy.QtCore import QObject, Signal, Slot
 from qtpy.QtWidgets import QMainWindow, QMessageBox
@@ -8,6 +8,7 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.UserCancellation import UserCancellation
 from snapred.backend.error.LiveDataState import LiveDataState
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.Config import Config
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.threading.worker_pool import WorkerPool
@@ -36,7 +37,7 @@ class WorkflowPresenter(QObject):
         iterateLambda=None,
         resetLambda=None,
         cancelLambda=None,
-        completionMessageLambda=None,
+        completeWorkflowLambda=None,
         parent=None,
     ):
         super().__init__()
@@ -44,7 +45,6 @@ class WorkflowPresenter(QObject):
         # 'WorkerPool' is a singleton:
         #    declaring it as an instance attribute, rather than a class attribute,
         #    allows singleton reset during testing.
-        self.completionMessageLambda = completionMessageLambda if completionMessageLambda is not None else self._NOP
 
         self.worker = None
         self._setWorkflowIsRunning(False)
@@ -66,6 +66,8 @@ class WorkflowPresenter(QObject):
         
         self._cancelLambda: Callable[[], None] = cancelLambda if cancelLambda is not None else self.resetWithPermission
 
+        self._completeWorkflowLambda: Callable[[], None] = completeWorkflowLambda if completeWorkflowLambda is not None else self.completeWorkflow
+        
         self.externalWorkspaces: List[str] = []
         # Retain list of ADS-resident workspaces at start of workflow
 
@@ -122,12 +124,13 @@ class WorkflowPresenter(QObject):
         else:
             self.reset()
 
-    def resetWithPermission(self):
+    def resetWithPermission(self, shutdownLambda: Optional[Callable[[], None]] = None):
+        shutdown = safeShutdown if shutdownLambda is None else shutdownLambda
         ActionPrompt.prompt(
             "Are you sure?",
             "Are you sure you want to cancel the workflow?\n"
             + "This will clear any partially-calculated results.",
-            self.safeShutdown,
+            shutdown,
             parent=self.view,
             
             # Previously this used "Continue" / "Cancel" and was really confusing!
@@ -172,7 +175,7 @@ class WorkflowPresenter(QObject):
 
     def advanceWorkflow(self):
         if self.view.currentTab >= self.view.totalNodes - 1:
-            self.completeWorkflow()
+            self._completeWorkflowLambda()
         else:
             self.view.advanceWorkflow()
 
@@ -289,10 +292,9 @@ class WorkflowPresenter(QObject):
         # We've already asked for permission.
         self.reset()
         
-    def completeWorkflow(self):
-        message: Optional[str] = self.completionMessageLambda()
-        if message:
-            # Directly show the completion message and reset the workflow
+    def completeWorkflow(self, message: Optional[str] = Config["ui.default.workflow.completionMessage"]):
+        # Directly show the completion message and reset the workflow
+        if message is not None:
             QMessageBox.information(
                 self.view,
                 "‧₊Workflow Complete‧₊",
