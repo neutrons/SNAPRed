@@ -1,7 +1,9 @@
 import ctypes
 import gc
 
-from snapred.meta.pointer import access_pointer, create_pointer
+import pytest
+
+from snapred.meta.pointer import access_pointer, create_pointer, inspect_pointer
 
 
 def make_a():
@@ -42,3 +44,25 @@ def test_pointer_persistence():
     aa = access_pointer(pa)
     assert aa.__dir__() != {}
     assert aa == make_a()
+
+
+def test_inspect_pointer():
+    """Ensure pointers can be expected and still remain in the queue"""
+    a = make_a()
+    pa = create_pointer(a)
+    aa = inspect_pointer(pa)
+    aaa = access_pointer(pa)
+    assert a == aa
+    assert a == aaa
+
+
+def test_inspect_bad_pointer_error():
+    """Ensure accessing a bad pointer raises an error"""
+
+    # create a pointer then access it, which removes it from the cache
+    a = make_a()
+    pa = create_pointer(a)
+    access_pointer(pa)
+
+    with pytest.raises(RuntimeError):
+        inspect_pointer(pa)

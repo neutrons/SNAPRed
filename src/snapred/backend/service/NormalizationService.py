@@ -45,6 +45,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceName,
 )
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.pointer import create_pointer
 from snapred.meta.redantic import parse_obj_as
 
 logger = snapredLogger.getLogger(__name__)
@@ -164,7 +165,7 @@ class NormalizationService(Service):
         # 3. smooth
         SmoothDataExcludingPeaksRecipe().executeRecipe(
             InputWorkspace=focusedVanadium,
-            DetectorPeaks=ingredients.detectorPeaks,
+            DetectorPeaks=create_pointer(ingredients.detectorPeaks),
             SmoothingParameter=request.smoothingParameter,
             OutputWorkspace=smoothedVanadium,
         )
@@ -369,7 +370,7 @@ class NormalizationService(Service):
         SmoothDataExcludingPeaksRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
             OutputWorkspace=request.outputWorkspace,
-            DetectorPeaks=peaks,
+            DetectorPeaks=create_pointer(peaks),
             SmoothingParameter=request.smoothingParameter,
         )
 

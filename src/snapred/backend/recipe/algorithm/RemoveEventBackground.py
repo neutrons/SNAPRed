@@ -9,7 +9,7 @@ from mantid.api import (
     PythonAlgorithm,
     WorkspaceUnitValidator,
 )
-from mantid.kernel import Direction
+from mantid.kernel import Direction, FloatBoundedValidator
 from mantid.kernel import ULongLongPropertyWithValue as PointerProperty
 from mantid.simpleapi import (
     ConvertToMatrixWorkspace,
@@ -58,6 +58,7 @@ class RemoveEventBackground(PythonAlgorithm):
             "SmoothingParameter",
             defaultValue=Config["calibration.diffraction.smoothingParameter"],
             direction=Direction.Input,
+            validator=FloatBoundedValidator(lower=0.0),
         )
         self.setRethrows(True)
 
