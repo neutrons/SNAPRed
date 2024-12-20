@@ -1,3 +1,4 @@
+import logging
 import threading
 
 from qtpy.QtCore import Signal, Slot
@@ -5,7 +6,9 @@ from qtpy.QtWidgets import QMessageBox, QWidget
 
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.error.LiveDataState import LiveDataState
 from snapred.backend.error.RecoverableException import RecoverableException
+from snapred.backend.error.UserCancellation import UserCancellation
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.InitializeStateCheckView import InitializationMenu
 
@@ -14,13 +17,16 @@ logger = snapredLogger.getLogger(__name__)
 
 class SNAPResponseHandler(QWidget):
     signal = Signal(object)
-    signalWarning = Signal(str, object)
+    signalWarning = Signal(str)
     continueAnyway = Signal(object)
+    resetWorkflow = Signal()
+    userCancellation = Signal(object)
+    liveDataStateTransition = Signal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.signal.connect(self._handle)
-        self.signalWarning.connect(SNAPResponseHandler._handleWarning)
+        self.signalWarning.connect(self._handleWarning)
 
     def handle(self, result):
         self.signal.emit(result)
@@ -31,8 +37,9 @@ class SNAPResponseHandler(QWidget):
         # if errors, do nothing here (program will halt)
         # if a continue warning was raised, receive what user selected
         # if the user selected to continue anyway, then emit the signal to continue anyway
-        if isinstance(threading.current_thread(), threading._MainThread):
-            SNAPResponseHandler._handleComplications(result.code, result.message, self)
+
+        if threading.current_thread() is threading.main_thread():
+            self._handleComplications(result.code, result.message)
         else:
             self.rethrow(result)
 
@@ -45,59 +52,66 @@ class SNAPResponseHandler(QWidget):
         return ResponseCode.RECOVERABLE <= code < ResponseCode.ERROR
 
     def rethrow(self, result):
+        # Use the SNAPResponse.code to route the exception
+        #   by re-parsing into an exception of the target type.
+
         if result.code >= ResponseCode.ERROR:
             raise RuntimeError(result.message)
         if result.code >= ResponseCode.RECOVERABLE:
             raise RecoverableException.parse_raw(result.message)
+        if result.code == ResponseCode.LIVE_DATA_STATE:
+            raise LiveDataState.parse_raw(result.message)
+        if result.code == ResponseCode.USER_CANCELLATION:
+            raise UserCancellation.parse_raw(result.message)
         if result.code == ResponseCode.CONTINUE_WARNING:
             raise ContinueWarning.parse_raw(result.message)
         if result.message:
-            self.signalWarning.emit(result.message, self)
+            self.signalWarning.emit(result.message)
 
-    # TODO: view is only ever handler, maybe this variable should be updated to reflect that?
-    @staticmethod
-    def _handleComplications(code, message, view):
-        if SNAPResponseHandler._isErrorCode(code):
+    def _handleComplications(self, code, message):
+        if self._isErrorCode(code):
             QMessageBox.critical(
-                view,
+                self,
                 "Error",
                 f"Error {code}: {message}",
                 QMessageBox.Ok,
                 QMessageBox.Ok,
             )
-        elif SNAPResponseHandler._isRecoverableError(code):
+        elif self._isRecoverableError(code):
             recoverableException = RecoverableException.parse_raw(message)
             if recoverableException.flags == RecoverableException.Type.STATE_UNINITIALIZED:
-                SNAPResponseHandler.handleStateMessage(view, recoverableException)
+                self.handleStateMessage(recoverableException)
+        elif code == ResponseCode.LIVE_DATA_STATE:
+            liveDataInfo = LiveDataState.Model.model_validate_json(message)
+            self.liveDataStateTransition.emit(liveDataInfo)
+        elif code == ResponseCode.USER_CANCELLATION:
+            userCancellationInfo = UserCancellation.Model.model_validate_json(message)
+            self.userCancellation.emit(userCancellationInfo)
         elif code == ResponseCode.CONTINUE_WARNING:
             continueInfo = ContinueWarning.Model.model_validate_json(message)
-            if SNAPResponseHandler._handleContinueWarning(continueInfo, view):
-                view.continueAnyway.emit(continueInfo)
+            if self._handleContinueWarning(continueInfo):
+                self.continueAnyway.emit(continueInfo)
         elif message:
-            SNAPResponseHandler._handleWarning(message, view)
+            self._handleWarning(message)
 
-    @staticmethod
-    def _handleWarning(message, view):
+    @Slot(str)
+    def _handleWarning(self, message: str):
         messageBox = QMessageBox(
-            QMessageBox.Warning,
-            "Warning",
-            "The backend has encountered warning(s)",
-            QMessageBox.Ok,
-            view,
+            QMessageBox.Warning, "Warning", "The backend has encountered warning(s)", QMessageBox.Ok, parent=self
         )
         messageBox.setDetailedText(f"{message}")
         messageBox.exec()
 
-    @staticmethod
-    def _handleContinueWarning(continueInfo: ContinueWarning.Model, view):
-        # print stacktrace
-        logger.info("It happens here and here")
-        import traceback
+    def _handleContinueWarning(self, continueInfo: ContinueWarning.Model):
+        if logger.isEnabledFor(logging.DEBUG):
+            import traceback
 
-        traceback.print_stack()
+            # print stacktrace
+            logger.debug(f"`_handleContinueWarning`: `continueInfo`: {continueInfo}")
+            traceback.print_stack()
 
         continueAnyway = QMessageBox.warning(
-            view,
+            self,
             "Warning",
             continueInfo.message,
             buttons=QMessageBox.Yes | QMessageBox.No,
@@ -105,8 +119,7 @@ class SNAPResponseHandler(QWidget):
         )
         return continueAnyway == QMessageBox.Yes
 
-    @staticmethod
-    def handleStateMessage(view, recoverableException):
+    def handleStateMessage(self, recoverableException):
         """
         Handles a specific 'state' message.
         """
@@ -115,8 +128,9 @@ class SNAPResponseHandler(QWidget):
         useLiteMode = recoveryData.get("useLiteMode")
         try:
             logger.info("Handling 'state' message.")
-            initializationMenu = InitializationMenu(runNumber=runNumber, parent=view, useLiteMode=useLiteMode)
+            initializationMenu = InitializationMenu(runNumber=runNumber, parent=self, useLiteMode=useLiteMode)
             initializationMenu.finished.connect(lambda: initializationMenu.deleteLater())
+            initializationMenu.finished.connect(self.resetWorkflow)
             initializationMenu.show()
         except Exception as e:  # noqa: BLE001
             logger.warning(f"The 'state' handling method encountered an error:{str(e)}")

@@ -65,7 +65,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._saveView = NormalizationSaveView(parent)
 
         # connect signal to populate the grouping dropdown after run is selected
-        self._requestView.litemodeToggle.stateChanged.connect(self._switchLiteNativeGroups)
+        self._requestView.liteModeToggle.stateChanged.connect(self._switchLiteNativeGroups)
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
         self._requestView.backgroundRunNumberField.editingFinished.connect(self._verifyBackgroundRunNumber)
         self._tweakPeakView.signalValueChanged.connect(self.onNormalizationValueChange)
@@ -87,8 +87,8 @@ class NormalizationWorkflow(WorkflowImplementer):
             .build()
         )
 
-    def __setInteraction(self, state: bool):
-        self._requestView.litemodeToggle.setEnabled(state)
+    def _setInteractive(self, state: bool):
+        self._requestView.liteModeToggle.setEnabled(state)
         self._requestView.groupingFileDropdown.setEnabled(state)
 
     @EntryExitLogger(logger=logger)
@@ -97,13 +97,13 @@ class NormalizationWorkflow(WorkflowImplementer):
     def _populateGroupingDropdown(self):
         # when the run number is updated, grab the grouping map and populate grouping drop down
         runNumber = self._requestView.runNumberField.text()
-        self.useLiteMode = self._requestView.litemodeToggle.getState()
+        self.useLiteMode = self._requestView.liteModeToggle.getState()
 
-        self.__setInteraction(False)
+        self._setInteractive(False)
         self.workflow.presenter.handleAction(
             self.handleDropdown,
             args=(runNumber, self.useLiteMode),
-            onSuccess=lambda: self.__setInteraction(True),
+            onSuccess=lambda: self._setInteractive(True),
         )
 
     def handleDropdown(self, runNumber, useLiteMode):
@@ -145,7 +145,7 @@ class NormalizationWorkflow(WorkflowImplementer):
     @Slot()
     def _switchLiteNativeGroups(self):
         # when the run number is updated, freeze the drop down to populate it
-        useLiteMode = self._requestView.litemodeToggle.getState()
+        useLiteMode = self._requestView.liteModeToggle.getState()
 
         self._requestView.groupingFileDropdown.setEnabled(False)
 
@@ -167,7 +167,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         # pull fields from view for normalization
 
         self.runNumber = view.runNumberField.field.text()
-        self.useLiteMode = view.litemodeToggle.getState()
+        self.useLiteMode = view.liteModeToggle.getState()
         self.backgroundRunNumber = view.backgroundRunNumberField.field.text()
         self.sampleIndex = view.sampleDropdown.currentIndex()
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()

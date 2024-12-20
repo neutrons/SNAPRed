@@ -1,7 +1,9 @@
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from snapred.backend.dao import LiveMetadata
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
     ReductionIngredients,
@@ -78,6 +80,8 @@ class ReductionService(Service):
         self.registerPath("validate", self.validateReduction)
         self.registerPath("artificialNormalization", self.artificialNormalization)
         self.registerPath("grabWorkspaceforArtificialNorm", self.grabWorkspaceforArtificialNorm)
+        self.registerPath("hasLiveDataConnection", self.hasLiveDataConnection)
+        self.registerPath("getLiveMetadata", self.getLiveMetadata)
         return
 
     @staticmethod
@@ -174,6 +178,7 @@ class ReductionService(Service):
         :param request: a ReductionRequest object holding needed information
         :type request: ReductionRequest
         """
+        startTime = datetime.utcnow()
 
         groupingResults = self.fetchReductionGroupings(request)
         request.focusGroups = groupingResults["focusGroups"]
@@ -188,7 +193,13 @@ class ReductionService(Service):
 
         data = ReductionRecipe().cook(ingredients, groceries)
         record = self._createReductionRecord(request, ingredients, data["outputs"])
-        return ReductionResponse(record=record, unfocusedData=data.get("unfocusedWS", None))
+
+        # Execution wallclock time is required by the live-data workflow loop.
+        executionTime = datetime.utcnow() - startTime
+
+        return ReductionResponse(
+            record=record, unfocusedData=data.get("unfocusedWS", None), executionTime=executionTime
+        )
 
     def _createReductionRecord(
         self, request: ReductionRequest, ingredients: ReductionIngredients, workspaceNames: List[WorkspaceName]
@@ -286,9 +297,7 @@ class ReductionService(Service):
             ==> TO / FROM mask-dropdown in Reduction panel
             This MUST be a list of valid `WorkspaceName` (i.e. containing their original `builder` attribute)
         """
-        runNumber = request.runNumber
-        useLiteMode = request.useLiteMode
-        timestamp = request.timestamp
+        runNumber, useLiteMode, timestamp = request.runNumber, request.useLiteMode, request.timestamp
         combinedMask = wng.reductionPixelMask().runNumber(runNumber).timestamp(timestamp).build()
 
         # if there is a mask associated with the diffcal file, load it here
@@ -321,9 +330,9 @@ class ReductionService(Service):
         )
 
         self.groceryService.fetchCompatiblePixelMask(combinedMask, runNumber, useLiteMode)
-        for n, mask in enumerate(allMasks.values()):
+        for mask in allMasks.values():
             self.mantidSnapper.BinaryOperateMasks(
-                f"combine from pixel mask {n}...",
+                f"combine from pixel mask: '{mask}'...",
                 InputWorkspace1=combinedMask,
                 InputWorkspace2=mask,
                 OperationType="OR",
@@ -405,7 +414,11 @@ class ReductionService(Service):
             combinedPixelMask = None
 
         # gather the input workspace and the diffcal table
-        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode)
+        if not request.liveDataMode:
+            self.groceryClerk.add()
+        else:
+            self.groceryClerk.liveData(duration=request.liveDataDuration).add()
 
         if calVersion is not None:
             self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
@@ -518,9 +531,35 @@ class ReductionService(Service):
         return artificialNormWorkspace
 
     def grabWorkspaceforArtificialNorm(self, request: ReductionRequest):
+        # TODO: REBASE NOTE:
+        #   This method actually seems to be a reduction sub-recipe:
+        #     something like `PreprocessArtificialNormalizationRecipe`.
+        #   It should not get "special treatment" in comparison to any other `ReductionRecipe` sub-recipes!
+        #   It also isn't obvious here that incoming pixel masks should be ignored?!
+        """# PROBABLY THIS SHOULD BE something like:
+
+        groupingResults = self.fetchReductionGroupings(request)
+        request.focusGroups = groupingResults["focusGroups"]
+
+        # Fetch groceries first: `prepReductionIngredients` will need the combined mask.
+        groceries = self.fetchReductionGroceries(request)
+
+        ingredients = self.prepReductionIngredients(request, groceries.get("combinedPixelMask"))
+
+        # attach the list of grouping workspaces to the grocery dictionary
+        groceries["groupingWorkspaces"] = groupingResults["groupingWorkspaces"]
+
+        """
+
         # 1. Load raw run data
-        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        if not request.liveDataMode:
+            self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        else:
+            self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
+                request.useLiteMode
+            ).liveData(duration=request.liveDataDuration).add()
         runWorkspace = self.groceryService.fetchGroceryList(self.groceryClerk.buildList())[0]
+
         # 2. Load Column group TODO: Future work to apply a more general approach
         groups = self.loadAllGroupings(request.runNumber, request.useLiteMode)
         # find column group
@@ -529,6 +568,7 @@ class ReductionService(Service):
             (group for group in groups["groupingWorkspaces"] if "column" in group.lower()), None
         )
         request.focusGroups = [columnGroup]
+
         # 2.5. get ingredients
         ingredients = self.prepReductionIngredients(request)
 
@@ -544,6 +584,7 @@ class ReductionService(Service):
             "groupingWorkspace": columnGroupWorkspace,
             "outputWorkspace": artNormBasisWorkspace,
         }
+
         # 3. Diffraction Focus Spectra
         ReductionGroupProcessingRecipe().cook(ingredients.groupProcessing(0), groceries)
 
@@ -552,11 +593,18 @@ class ReductionService(Service):
             pixelGroup=ingredients.pixelGroups[0], preserveEvents=True
         )
 
-        # NOTE: This is PURPOSELY reinstanced to support testing.
-        #       assert_called_with DOES NOT deep copy the dictionary.
-        #       Thus reusing the above dict would fail the test.
+        # NOTE: This is PURPOSELY re-instanced to support testing.
+        #       `assert_called_with` DOES NOT deep copy the dictionary.
+        #       Thus re-using the above dict would fail the test.
         groceries = {"inputWorkspace": artNormBasisWorkspace}
 
         rebinResult = RebinFocussedGroupDataRecipe().cook(rebinIngredients, groceries)
         # 5. Return the rebin result
         return rebinResult
+
+    def hasLiveDataConnection(self) -> bool:
+        """For 'live data' methods: test if there is a listener connection to the instrument."""
+        return self.dataFactoryService.hasLiveDataConnection()
+
+    def getLiveMetadata(self) -> LiveMetadata:
+        return self.dataFactoryService.getLiveMetadata()

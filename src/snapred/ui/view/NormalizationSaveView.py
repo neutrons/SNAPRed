@@ -48,13 +48,14 @@ class NormalizationSaveView(BackendRequestView):
         self.fieldAuthor = self._labeledLineEdit("Author :")
         self.fieldAuthor.setToolTip("Author of the normalization.")
 
-        self.layout.addWidget(self.interactionText)
-        self.layout.addWidget(self.fieldRunNumber)
-        self.layout.addWidget(self.fieldBackgroundRunNumber)
-        self.layout.addWidget(self.fieldVersion)
-        self.layout.addWidget(self.fieldAppliesTo)
-        self.layout.addWidget(self.fieldComments)
-        self.layout.addWidget(self.fieldAuthor)
+        _layout = self.layout()
+        _layout.addWidget(self.interactionText)
+        _layout.addWidget(self.fieldRunNumber)
+        _layout.addWidget(self.fieldBackgroundRunNumber)
+        _layout.addWidget(self.fieldVersion)
+        _layout.addWidget(self.fieldAppliesTo)
+        _layout.addWidget(self.fieldComments)
+        _layout.addWidget(self.fieldAuthor)
 
     @Slot(str)
     def _updateRunNumber(self, runNumber: str):
@@ -76,3 +77,7 @@ class NormalizationSaveView(BackendRequestView):
         if self.fieldComments.text() == "":
             raise ValueError("You must add comments")
         return True
+
+    def setInteractive(self, flag: bool):
+        # TODO: put widgets here to allow them to be enabled or disabled by the presenter.
+        pass

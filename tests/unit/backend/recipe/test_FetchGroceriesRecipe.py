@@ -30,7 +30,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         This is created at the start of this test suite, then deleted at the end.
         """
         cls.runNumber = "555"
-        cls.filepath = Resource.getPath(f"inputs/test_{cls.runNumber}_fetchgroceriesrx.nxs")
+        cls.filePath = Resource.getPath(f"inputs/test_{cls.runNumber}_fetchgroceriesrx.nxs")
         cls.instrumentFilepath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.fetchedWSname = "_fetched_grocery"
         cls.groupingScheme = "Native"
@@ -52,9 +52,9 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         )
         SaveNexusProcessed(
             InputWorkspace=cls.sampleWS,
-            Filename=cls.filepath,
+            Filename=cls.filePath,
         )
-        assert os.path.exists(cls.filepath)
+        assert os.path.exists(cls.filePath)
 
         cls.liteMapGroceryItem = GroceryListItem.builder().grouping("Lite").build()
 
@@ -87,7 +87,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
                 DeleteWorkspace(ws)
             except:  # noqa: E722
                 pass
-        os.remove(cls.filepath)
+        os.remove(cls.filePath)
         return super().tearDownClass()
 
     ### TESTS OF FETCH METHODS
@@ -95,7 +95,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
     def test_fetch(self):
         """Test the correct behavior of the fetch method"""
         self.clearoutWorkspaces()
-        res = self.rx.executeRecipe(self.filepath, self.fetchedWSname, "")
+        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "")
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
@@ -108,7 +108,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
 
         # make sure it won't load same workspace name again
         assert mtd.doesExist(self.fetchedWSname)
-        res = self.rx.executeRecipe(self.filepath, self.fetchedWSname, res["loader"])
+        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, res["loader"])
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == ""  # this makes sure no loader called
@@ -119,7 +119,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
             rtol=self.rtolValue,
         )
 
-    @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchAlgo")
+    @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchGroceriesAlgorithm")
     def test_fetch_with_load_event_nexus(self, mockAlgo):
         """Test the correct behavior of the fetch method"""
         mock_instance = mockAlgo.return_value
@@ -128,10 +128,56 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         self.rx.mantidSnapper.RemovePromptPulse = mock.MagicMock()
 
         self.clearoutWorkspaces()
-        res = self.rx.executeRecipe(self.filepath, self.fetchedWSname, "LoadEventNexus")
+        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadEventNexus")
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadEventNexus"
+        assert res["workspace"] == self.fetchedWSname
+        assert self.rx.mantidSnapper.RemovePromptPulse.called
+
+    @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.logger")
+    @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchGroceriesAlgorithm")
+    def test_fetch_logging_LoadEventNexus(self, mockAlgo, mockLogger):
+        """Test that fetch logs correct source: from disk"""
+        mock_instance = mockAlgo.return_value
+        mock_instance.execute.return_value = "data"
+        mock_instance.getPropertyValue.return_value = "LoadEventNexus"
+        self.rx.mantidSnapper.RemovePromptPulse = mock.MagicMock()
+
+        self.clearoutWorkspaces()
+
+        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadEventNexus")
+        mockLogger.info.assert_called_with(f"Fetching data from {self.filePath} into {res['workspace']}")
+        mockLogger.debug.assert_called_with(f"Finished fetching {res['workspace']} from {self.filePath}")
+
+    @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.logger")
+    @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchGroceriesAlgorithm")
+    def test_fetch_logging_LoadLiveData(self, mockAlgo, mockLogger):
+        """Test that fetch logs correct source: live data"""
+        mock_instance = mockAlgo.return_value
+        mock_instance.execute.return_value = "data"
+        mock_instance.getPropertyValue.return_value = "LoadLiveData"
+        self.rx.mantidSnapper.RemovePromptPulse = mock.MagicMock()
+
+        self.clearoutWorkspaces()
+
+        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveData")
+        mockLogger.info.assert_called_with(f"Fetching live data into {res['workspace']}")
+        mockLogger.debug.assert_called_with(f"Finished fetching {res['workspace']} from live-data listener")
+
+    @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchGroceriesAlgorithm")
+    def test_fetch_with_LoadLiveData(self, mockAlgo):
+        """Test fetch method with LoadLiveData loader"""
+        mock_instance = mockAlgo.return_value
+        mock_instance.execute.return_value = "data"
+        mock_instance.getPropertyValue.return_value = "LoadLiveData"
+        self.rx.mantidSnapper.RemovePromptPulse = mock.Mock()
+
+        self.clearoutWorkspaces()
+        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveData")
+        assert len(res) > 0
+        assert res["result"]
+        assert res["loader"] == "LoadLiveData"
         assert res["workspace"] == self.fetchedWSname
         assert self.rx.mantidSnapper.RemovePromptPulse.called
 

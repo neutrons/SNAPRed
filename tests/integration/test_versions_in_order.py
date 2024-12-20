@@ -2,7 +2,7 @@
 
 """
 
-This is a test of verisoning inside calibration from the API layer.
+This is a test of versioning inside calibration from the API layer.
 Calls are made through the API to endpoints inside the calibration service,
 down to the underlying data layer.
 
@@ -23,8 +23,11 @@ all the way to the data layer in the way expected.
 
 import json
 import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+
+# In order to keep the import order unchanged, test-specific imports should follow other required imports.
 from unittest import TestCase
 
 from mantid.simpleapi import (
@@ -39,6 +42,7 @@ from util.diffraction_calibration_synthetic_data import SyntheticData
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.dao.state.DetectorState import DetectorState
@@ -63,7 +67,15 @@ class ImitationDataService(LocalDataService):
 
     """
 
-    stateId = "abc123padto16xxx"
+    stateId = "abc123padto16xxx"  # TODO: this is NOT a valid SHA!
+
+    detectorState = DetectorState(
+        arc=(1, 2),
+        wav=1.1,
+        freq=1.2,
+        guideStat=1,
+        lin=(1, 2),
+    )
 
     def __init__(self):
         super().__init__()
@@ -84,11 +96,11 @@ class ImitationDataService(LocalDataService):
         return Resource.getPath("inputs/crystalInfo/example.cif")
 
     def getIPTS(self, *x, **y):
-        # if this is not overriden, it creates hundreds of headaches
+        # if this is not overridden, it creates hundreds of headaches
         return Resource.getPath("inputs/testInstrument/IPTS-456/")
 
-    def generateStateId(self, runId: str) -> Tuple[str, str]:
-        return (self.stateId, "gibberish")
+    def generateStateId(self, runId: str) -> Tuple[str, DetectorState]:
+        return self.stateId, self.detectorState
 
     def constructCalibrationStateRoot(self, stateId) -> Path:
         return Path(self._stateRoot)
@@ -97,13 +109,7 @@ class ImitationDataService(LocalDataService):
         return DAOFactory.calibrationParameters(runId, useLiteMode)
 
     def readDetectorState(self, runId: str):
-        return DetectorState(
-            arc=(1, 2),
-            wav=1.1,
-            freq=1.2,
-            guideStat=1,
-            lin=(1, 2),
-        )
+        return self.detectorState
 
     def _defaultGroupingMapPath(self) -> Path:
         return self._outputPath / "defaultGroupingMap.json"
@@ -174,10 +180,12 @@ class ImitationGroceryService(GroceryService):
             "workspace": workspaceName,
         }
 
-    def fetchNeutronDataSingleUse(self, runNumber: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
-        return self.fetchNeutronDataCached(runNumber, useLiteMode, loader)
+    def fetchNeutronDataSingleUse(self, item: GroceryListItem) -> Dict[str, Any]:
+        return self.fetchNeutronDataCached(item)
 
-    def fetchNeutronDataCached(self, runNumber: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
+    def fetchNeutronDataCached(self, item: GroceryListItem) -> Dict[str, Any]:
+        runNumber, useLiteMode, loader = item.runNumber, item.useLiteMode, item.loader  # noqa: F841
+
         workspaceName = self._createNeutronWorkspaceName(runNumber, useLiteMode)
         CloneWorkspace(InputWorkspace=self.rawdataWS, OutputWorkspace=workspaceName)
         return {
@@ -387,7 +395,7 @@ class TestVersioning(TestCase):
             wngt.DIFFCAL_MASK: [res["maskWorkspace"]],
         }
         params = DAOFactory.calibrationParameters()
-        params.creationDate = 0  # the creation data cannot be parsed by JSON, so set to something else
+        params.creationDate = datetime.today().isoformat()
         createRecordRequest = {
             "runNumber": self.runNumber,
             "useLiteMode": self.useLiteMode,

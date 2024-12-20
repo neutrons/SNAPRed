@@ -8,6 +8,9 @@ orchestration:
   path:
     delimiter: /
 
+facility:
+  name: SNS
+
 instrument:
   name: SNAP
   # "instrument.home" is overridden in "test.yml":
@@ -46,9 +49,50 @@ instrument:
       file: ${module.root}/resources/inputs/pixel_grouping/SNAPLite_Definition.xml
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
+
+  PVLogs:
+    # Swap these when running with ultralite data
+    rootGroup: "entry/DASlogs"
+    # rootGroup: "mantid_workspace_1/logs"
+
+    # PV-log keys relating to instrument settings:
+    instrumentKeys:
+    - "BL3:Chop:Gbl:WavelengthReq"
+    - "BL3:Chop:Skf1:WavelengthUserReq"
+    - "det_arc1"
+    - "det_arc2"
+    - "BL3:Det:TH:BL:Frequency"
+    - "BL3:Mot:OpticsPos:Pos"
+    - "det_lin1"
+    - "det_lin2"
+
   startingRunNumber: 10000
   minimumRunNumber: 46342
   maxNumberOfRuns: 10
+
+liveData:
+  # Override 'liveData.facility' and 'liveData.instrument'
+  #   in order to use the mock listener for testing
+  #   without overriding the real instrument.
+  facility:
+    name: ${facility.name}
+    # name: TEST_LIVE
+  instrument:
+    name: ${instrument.name}
+    # name: ADARA_FileReader
+  accumulationMethod: Replace
+  testInput:
+    inputFilename: SNAP_46680.nxs.h5
+    # WARNING: "chunks" seems a bit glitchy:
+    #   event workspaces are not loaded uniformly with respect to
+    #   event _pixel_ assignment.
+    # For thorough testing "1" might actually be the best value!
+    chunks: 1 # 50
+
+  # Update-interval slider limits and position in seconds.
+  updateIntervalMinimum: 60
+  updateIntervalDefault: 120
+  updateIntervalMaximum: 900
 
 nexus:
   lite:
@@ -115,6 +159,7 @@ mantid:
         delimiter: "_"
         template:
           run: "_{unit},{group},{lite},{auxiliary},{runNumber}"
+          liteDataMap: "lite_grouping_map"
           diffCal:
             input: "_{unit},{runNumber},raw"
             table: "_diffract_consts,{runNumber},{version}"
@@ -216,9 +261,6 @@ constants:
   PeakIntensityFractionThreshold: 0.05
   m2cm: 10000.0 # conversion factor for m^2 to cm^2
   maskedPixelThreshold: 0.15
-  # Swap these when running with ultralite data
-  logsLocation: "entry/DASlogs"
-  # logsLocation: "/mantid_workspace_1/logs"
 
   CrystallographicInfo:
     crystalDMin: 0.4

@@ -317,7 +317,9 @@ class CalibrationService(Service):
 
         # Rebuild the workspace names to strip any "iteration" number:
         savedWorkspaces = {}
-        for key, wsNames in record.workspaces.items():
+        for key_, wsNames in record.workspaces.items():
+            key = wngt(key_)  # TODO: fix usage of `@FromString`. Probably get rid of it!
+
             savedWorkspaces[key] = []
             match key:
                 case wngt.DIFFCAL_OUTPUT:
@@ -392,12 +394,17 @@ class CalibrationService(Service):
     @FromString
     def fetchMatchingCalibrations(self, request: MatchRunsRequest):
         calibrations = self.matchRunsToCalibrationVersions(request)
+        masks = set()
         for runNumber in request.runNumbers:
             if runNumber in calibrations:
                 self.groceryClerk.diffcal_table(runNumber, calibrations[runNumber]).useLiteMode(
                     request.useLiteMode
                 ).add()
-        return set(self.groceryService.fetchGroceryList(self.groceryClerk.buildList())), calibrations
+                # Calibration masks are also required, and are automatically loaded at the same time.
+                masks.add(wng.diffCalMask().runNumber(runNumber).version(calibrations[runNumber]).build())
+        workspaces = set(self.groceryService.fetchGroceryList(self.groceryClerk.buildList()))
+        workspaces.update(masks)
+        return workspaces, calibrations
 
     @FromString
     def saveCalibrationToIndex(self, entry: IndexEntry):

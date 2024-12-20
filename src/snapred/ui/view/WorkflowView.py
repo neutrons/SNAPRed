@@ -12,14 +12,15 @@ class WorkflowView(QWidget):
         self.position = 0
         self.currentTab = 0
 
-        self.layout = QGridLayout()
-        self.setLayout(self.layout)
+        # Do _not_ hide the `layout()` method!
+        layout_ = QGridLayout()
+        self.setLayout(layout_)
 
         # add a tab widget
         self.tabWidget = QTabWidget()
         self.tabWidget.setObjectName("nodeTabs")
         self.tabWidget.tabBarClicked.connect(self.handleTabClicked)
-        self.layout.addWidget(self.tabWidget)
+        layout_.addWidget(self.tabWidget)
 
         # add a tab for each node
         for node in nodes:
@@ -74,15 +75,17 @@ class WorkflowView(QWidget):
     def cancelButton(self):
         return self.tabWidget.widget(self.currentTab).cancelButton
 
-    def reset(self, hard: bool = False):
+    def reset(self, hard: bool = False, manualMode: bool = True):
         """
         This resets the workflow
         """
         for i in range(0, self.tabWidget.count()):
             self.tabWidget.setTabEnabled(i, False)
             currentWidget = self.tabWidget.widget(i)
-            currentWidget.continueButton.setEnabled(True)
-            currentWidget.cancelButton.setEnabled(True)
+            if manualMode:
+                currentWidget.continueButton.setEnabled(True)
+                currentWidget.cancelButton.setEnabled(True)
+                currentWidget.view.setInteractive(True)
             currentWidget.forwardButton.setVisible(False)
             if hard:
                 currentWidget.reset()
@@ -91,6 +94,7 @@ class WorkflowView(QWidget):
         self.currentTab = 0
         self.position = 0
 
+    @Slot()
     def advanceWorkflow(self):
         if self.currentTab < self.totalNodes - 1:
             # enable forward button of previous tab

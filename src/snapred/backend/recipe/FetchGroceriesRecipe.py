@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm as FetchAlgo
+from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.decorators.Singleton import Singleton
 
@@ -19,7 +19,7 @@ class FetchGroceriesRecipe:
 
     def executeRecipe(
         self,
-        filename: str,
+        filename: str = "",
         workspace: str = "",
         loader: str = "",
         instrumentPropertySource=None,
@@ -45,8 +45,13 @@ class FetchGroceriesRecipe:
             "result": False,
             "loader": "",
         }
-        logger.info(f"Fetching data from {filename} into {workspace}")
-        algo = FetchAlgo()
+        liveDataMode = loader == "LoadLiveData"
+        if liveDataMode:
+            logger.info(f"Fetching live data into {workspace}")
+        else:
+            logger.info(f"Fetching data from {filename} into {workspace}")
+
+        algo = FetchGroceriesAlgorithm()
         algo.initialize()
         algo.setPropertyValue("Filename", filename)
         algo.setPropertyValue("OutputWorkspace", workspace)
@@ -59,9 +64,9 @@ class FetchGroceriesRecipe:
             data["loader"] = algo.getPropertyValue("LoaderType")
             data["workspace"] = workspace
 
-            if data["loader"] == "LoadEventNexus":
+            if data["loader"] in ("LoadEventNexus", "LoadLiveData"):
                 self.dataService = LocalDataService()
-                config = self.dataService.readInstrumentConfig()
+                config = self.dataService.getInstrumentConfig()
                 width = config.width
                 frequency = config.frequency
                 self.mantidSnapper.RemovePromptPulse(
@@ -74,5 +79,9 @@ class FetchGroceriesRecipe:
                 self.mantidSnapper.executeQueue()
         except RuntimeError as e:
             raise RuntimeError(str(e).split("\n")[0]) from e
-        logger.info(f"Finished fetching {workspace} from {filename}")
+
+        if liveDataMode:
+            logger.debug(f"Finished fetching {workspace} from live-data listener")
+        else:
+            logger.debug(f"Finished fetching {workspace} from {filename}")
         return data

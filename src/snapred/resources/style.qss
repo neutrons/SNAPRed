@@ -68,3 +68,30 @@ QWidget#header {
     color: #0B0014;
     border-radius: 10px;
 }
+
+.Toggle {
+    /* fixed height and width */
+    min-height: 30px; max-height: 30px;
+    min-width: 60px; max-width: 60px;
+
+    /* Toggle-switch background */
+    qproperty-backgroundColor: rgb(0, 128, 0); /* Qt.darkGreen */
+
+    /* Toggle-switch bar: vertical gradient */
+    qproperty-gradStartColor: rgb(0, 255, 0);
+    qproperty-gradEndColor: rgb(0, 128, 128); /* Qt.darkCyan */
+}
+
+/* WARNING: "liteModeToggle" is the name of the `LabeledField.field`, not the `LabeledField` itself! */
+Toggle#liteModeToggle {
+    /* `liteModeToggle` uses only default values */
+}
+
+Toggle#liveDataToggle {
+    /* Toggle-switch background */
+    qproperty-backgroundColor: rgb(0, 0, 128); /* Qt.darkBlue */
+
+    /* Toggle-switch bar: vertical gradient */
+    qproperty-gradStartColor: rgb(0, 0, 255);
+    qproperty-gradEndColor: rgb(0, 128, 128); /* Qt.darkCyan */
+}

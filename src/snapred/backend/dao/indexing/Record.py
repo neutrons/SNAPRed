@@ -1,5 +1,6 @@
 from typing import Any
 
+import numpy
 from pydantic import ConfigDict, field_validator
 
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
@@ -36,7 +37,16 @@ class Record(VersionedObject, extra="allow"):
             v = str(v)
         return v
 
+    @field_validator("useLiteMode", mode="before")
+    @classmethod
+    def validate_useLiteMode(cls, v):
+        # this allows the use of 'strict' mode
+        if isinstance(v, numpy.bool_):
+            # Conversion from HDF5 metadata.
+            v = bool(v)
+        return v
+
     model_config = ConfigDict(
         # required in order to use 'WorkspaceName'
-        arbitrary_types_allowed=True,
+        arbitrary_types_allowed=True
     )

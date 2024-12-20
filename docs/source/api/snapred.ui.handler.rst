@@ -10,7 +10,7 @@ snapred.ui.handler.SNAPResponseHandler module
 .. automodule:: snapred.ui.handler.SNAPResponseHandler
    :members:
    :undoc-members:
-   :exclude-members: continueAnyway, signal, signalWarning
+   :exclude-members: continueAnyway, liveDataStateTransition, resetWorkflow, signal, signalWarning, userCancellation
    :show-inheritance:
 
 Module contents

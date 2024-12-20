@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.meta.Config import Config
 
-# Type define which is a callable function with a List of SNAPRequests as input,
+# Type definition which is a callable function with a List of SNAPRequests as input,
 # and a Dict of str keys and List of SNAPRequests values as expected output.
 GroupingLambda = Callable[[List[SNAPRequest]], Dict[str, List[SNAPRequest]]]
 

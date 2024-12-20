@@ -70,13 +70,18 @@ class RecipeTest(unittest.TestCase):
         badIngredients = {"nothing": 0}
         with pytest.raises(ValueError, match="Ingredients must be a Pydantic BaseModel."):
             recipe.validateInputs(badIngredients, groceries)
-        badGroceries = {"ws": mtd.unique_name(prefix="bad")}
+        propertyName = "ws"
+        badGroceries = {propertyName: mtd.unique_name(prefix="bad")}
         with pytest.raises(
-            RuntimeError, match=f"The indicated workspace {badGroceries['ws']} not found in Mantid ADS."
+            RuntimeError,
+            match=f"The required workspace property for key '{propertyName}': "
+            + f"'{badGroceries[propertyName]}' was not found in the Mantid ADS.",
         ):
             recipe.validateInputs(ingredients, badGroceries)
         worseGroceries = {}
-        with pytest.raises(RuntimeError, match="The workspace property ws was not found in the groceries"):
+        with pytest.raises(
+            RuntimeError, match=f"The required workspace property '{propertyName}' was not found in the grocery list"
+        ):
             recipe.validateInputs(ingredients, worseGroceries)
         tooManyGroceries = {"ws": groceries["ws"], "another": groceries["ws"]}
         with pytest.raises(ValueError, match=r".*invalid keys.*"):
@@ -86,7 +91,7 @@ class RecipeTest(unittest.TestCase):
         groceries = self._make_groceries()
         recipe = DummyRecipe()
 
-        with pytest.raises(ValueError, match="The key for the grocery must be a string."):
+        with pytest.raises(ValueError, match=r"The keys for the grocery list must be strings, not.*"):
             recipe._validateGrocery(123, groceries["ws"])
 
     def test_validate_ingredients_fail(self):

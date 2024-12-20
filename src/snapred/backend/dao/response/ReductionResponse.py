@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -9,6 +10,9 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 class ReductionResponse(BaseModel):
     record: ReductionRecord
     unfocusedData: Optional[WorkspaceName] = None
+
+    # wallclock execution time: used by the live-data workflow cycle
+    executionTime: timedelta
 
     model_config = ConfigDict(
         extra="forbid",

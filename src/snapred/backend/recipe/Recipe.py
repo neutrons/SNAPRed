@@ -73,20 +73,22 @@ class Recipe(ABC, Generic[Ingredients]):
 
     def _validateGrocery(self, key, ws):
         """
-        Validate the given grocery
+        Validate the given grocery-list entry
         """
         if ws is None:
-            raise RuntimeError(f"The workspace property {key} was not found in the groceries")
+            raise RuntimeError(f"The required workspace property '{key}' was not found in the grocery list")
 
         if not isinstance(key, str):
-            raise ValueError("The key for the grocery must be a string.")
+            raise ValueError(f"The keys for the grocery list must be strings, not '{key}'.")
 
         if not isinstance(ws, list):
             ws = [ws]
 
         for wsStr in ws:
             if isinstance(wsStr, str) and not self.mantidSnapper.mtd.doesExist(wsStr):
-                raise RuntimeError(f"The indicated workspace {wsStr} not found in Mantid ADS.")
+                raise RuntimeError(
+                    f"The required workspace property for key '{key}': '{wsStr}' was not found in the Mantid ADS."
+                )
 
     def _validateIngredients(self, ingredients: Ingredients):
         """
@@ -100,7 +102,7 @@ class Recipe(ABC, Generic[Ingredients]):
             if ingredients is not None:
                 self._Ingredients.model_validate(ingredients.dict())
         except ValidationError as e:
-            raise ValueError(f"Invalid ingredients: {e}")
+            raise ValueError(f"Invalid ingredients: {e}") from e
 
     def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
         """
@@ -109,8 +111,7 @@ class Recipe(ABC, Generic[Ingredients]):
         if ingredients is not None:
             self._validateIngredients(ingredients)
         else:
-            logger.info("No ingredients given, skipping ingredient validation")
-            pass
+            logger.debug("No ingredients were given, skipping ingredient validation")
 
         # make sure no invalid keys were passed
         if groceries is not None:
@@ -118,16 +119,15 @@ class Recipe(ABC, Generic[Ingredients]):
             if bool(diff):
                 raise ValueError(f"The following invalid keys were found in the input groceries: {diff}")
 
-        # ensure all of the mandatory workspaces exist
+        # ensure all of the given workspaces exist
         # NOTE may need to be tweaked to ignore output workspaces...
         if groceries is not None:
-            logger.info(f"Validating the given workspaces: {groceries.values()}")
+            logger.debug(f"Validating the given workspaces: {groceries.values()}")
             for key in self.mandatoryInputWorkspaces():
                 ws = groceries.get(key)
                 self._validateGrocery(key, ws)
         else:
-            logger.info("No groceries given, skipping workspace validation")
-            pass
+            logger.debug("No groceries were given, skipping workspace validation")
 
     def stirInputs(self):
         """

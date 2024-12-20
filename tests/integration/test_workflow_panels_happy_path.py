@@ -1,5 +1,10 @@
 import re
 from contextlib import ExitStack, suppress
+
+##
+## In order to retain the normal import order as much as possible:
+##   place test-specific imports at the end.
+##
 from unittest import mock
 
 import pytest
@@ -10,9 +15,11 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QTabWidget,
 )
-from util.pytest_helpers import calibration_home_from_mirror, handleStateInit, reduction_home_from_mirror  # noqa: F401
+from util.pytest_helpers import handleStateInit
 from util.TestSummary import TestSummary
 
+# I would prefer not to access `LocalDataService` within an integration test,
+#   however, for the moment, the reduction-data output relocation fixture is defined in the current file.
 from snapred.meta.Config import Resource
 from snapred.ui.main import SNAPRedGUI, prependDataSearchDirectories
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
@@ -24,8 +31,6 @@ from snapred.ui.view.NormalizationSaveView import NormalizationSaveView
 from snapred.ui.view.NormalizationTweakPeakView import NormalizationTweakPeakView
 from snapred.ui.view.reduction.ReductionRequestView import ReductionRequestView
 from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
-
-# TODO: WorkflowNodeComplete signal, at end of each node!
 
 
 class InterruptWithBlock(BaseException):
@@ -122,8 +127,10 @@ class TestGUIPanels:
                 + f"    expecting:  QMessageBox.information(...'{message}'...)"
             )
 
-    # This test exists primarily for use during development, where combining the workflows into one test sequence
-    # allows the convenient generation of input calibration and normalization data for use by the other workflows.
+    ##
+    ## This test exists primarily for use during development, where combining the workflows into one test sequence
+    ## allows the convenient generation of input calibration and normalization data for use by the other workflows.
+    ##
     @pytest.mark.skip(reason="each workflow panel now has a separate test")
     def test_calibration_and_reduction_panels_happy_path(
         self,
@@ -204,6 +211,8 @@ class TestGUIPanels:
 
             #    set "Run Number", "Convergence Threshold", ,:
             requestView.runNumberField.setText(reductionRunNumber)
+            qtbot.keyClick(requestView.runNumberField._field, Qt.Key_Return)
+
             requestView.fieldConvergenceThreshold.setText("0.1")
             requestView.fieldNBinsAcrossPeakWidth.setText("10")
 
@@ -212,11 +221,6 @@ class TestGUIPanels:
             assert requestView.sampleDropdown.currentIndex() == 0
             assert requestView.sampleDropdown.currentText().endswith("Diamond_001.json")
 
-            #    Without this next 'qtbot.wait(1000)',
-            #      the 'groupingFileDropdown' gets reset after this successful initialization.
-            #    I assume this is because somehow the 'populateGroupingDropdown',
-            #      triggered by the 'runNumberField' 'editComplete', hasn't actually occurred yet?
-            qtbot.wait(1000)
             requestView.groupingFileDropdown.setCurrentIndex(1)
             assert requestView.groupingFileDropdown.currentIndex() == 1
             assert requestView.groupingFileDropdown.currentText() == "Bank"
@@ -329,7 +333,10 @@ class TestGUIPanels:
 
             #    set "Run Number", "Background run number":
             requestView.runNumberField.setText(reductionRunNumber)
+            qtbot.keyClick(requestView.runNumberField._field, Qt.Key_Return)
+
             requestView.backgroundRunNumberField.setText(reductionRunNumber)
+            qtbot.keyClick(requestView.backgroundRunNumberField._field, Qt.Key_Return)
 
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
             requestView.sampleDropdown.setCurrentIndex(0)
@@ -570,20 +577,19 @@ class TestGUIPanels:
             assert isinstance(requestView, DiffCalRequestView)
             self.testSummary.SUCCESS()
 
+            requestView.liteModeToggle.setState(False)
+
             #    set "Run Number", "Convergence Threshold", ,:
             requestView.runNumberField.setText("58882")
-            requestView.litemodeToggle.setState(False)
+            qtbot.keyClick(requestView.runNumberField._field, Qt.Key_Return)
+            qapp.processEvents()
+            qtbot.wait(1000)
 
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
             requestView.sampleDropdown.setCurrentIndex(3)
             assert requestView.sampleDropdown.currentIndex() == 3
             assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
 
-            #    Without this next 'qtbot.wait(1000)',
-            #      the 'groupingFileDropdown' gets reset after this successful initialization.
-            #    I assume this is because somehow the 'populateGroupingDropdown',
-            #    triggered by the 'runNumberField' 'editComplete' hasn't actually occurred yet?
-            qtbot.wait(1000)
             requestView.groupingFileDropdown.setCurrentIndex(0)
             assert requestView.groupingFileDropdown.currentIndex() == 0
             assert requestView.groupingFileDropdown.currentText() == "Column"
@@ -777,22 +783,24 @@ class TestGUIPanels:
             assert isinstance(requestView, NormalizationRequestView)
             self.testSummary.SUCCESS()
 
+            requestView.liteModeToggle.setState(False)
+
             #    set "Run Number", "Background run number":
             requestView.runNumberField.setText("58882")
-            requestView.backgroundRunNumberField.setText("58882")
+            #    click return, otherwise `editingFinished` signal is never sent
+            qtbot.keyClick(requestView.runNumberField._field, Qt.Key_Return)
 
-            requestView.litemodeToggle.setState(False)
+            requestView.backgroundRunNumberField.setText("58882")
+            qtbot.keyClick(requestView.backgroundRunNumberField._field, Qt.Key_Return)
+            qapp.processEvents()
+            #
+            qtbot.wait(1000)
 
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
             requestView.sampleDropdown.setCurrentIndex(3)
             assert requestView.sampleDropdown.currentIndex() == 3
             assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
 
-            #    Without this next 'qtbot.wait(1000)',
-            #      the 'groupingFileDropdown' gets reset after this successful initialization.
-            #    I assume this is because somehow the 'populateGroupingDropdown',
-            #    triggered by the 'runNumberField' 'editComplete' hasn't actually occurred yet?
-            qtbot.wait(1000)
             requestView.groupingFileDropdown.setCurrentIndex(0)
             assert requestView.groupingFileDropdown.currentIndex() == 0
             assert requestView.groupingFileDropdown.currentText() == "Column"
@@ -829,6 +837,7 @@ class TestGUIPanels:
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationTweakPeakView), timeout=60000
             )
             warningMessageBox.stop()
+
             self.testSummary.SUCCESS()
             tweakPeakView = workflowNodeTabs.currentWidget().view
 
@@ -983,6 +992,10 @@ class TestGUIPanels:
             # node-tab indices: (0) request view, and (2) save view
             workflowNodeTabs = reductionWidget.findChild(QTabWidget, "nodeTabs")
 
+            # WARNING:
+            # `ReductionRequestView` now has two variants:
+            # `<reduction request view>._requestView` and `<reduction request view>._liveDataView`.
+
             requestView = workflowNodeTabs.currentWidget().view
             assert isinstance(requestView, ReductionRequestView)
             self.testSummary.SUCCESS()
@@ -990,13 +1003,14 @@ class TestGUIPanels:
             # (And I'd love to understand _why_!  :(  )
             qtbot.wait(1000)
 
-            #    enter a "Run Number":
-            requestView.liteModeToggle.setState(False)
-            requestView.runNumberInput.setText(reductionRunNumber)
-            qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
+            requestView._requestView.liteModeToggle.setState(False)
 
-            _count = requestView.runNumberDisplay.count()
-            _runNumbers = [requestView.runNumberDisplay.item(x).text() for x in range(_count)]
+            #    enter a "Run Number":
+            requestView._requestView.runNumberInput.setText(reductionRunNumber)
+            qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
+
+            _count = requestView._requestView.runNumberDisplay.count()
+            _runNumbers = [requestView._requestView.runNumberDisplay.item(x).text() for x in range(_count)]
 
             assert reductionRunNumber in _runNumbers
             self.testSummary.SUCCESS()

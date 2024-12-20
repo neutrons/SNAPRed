@@ -21,10 +21,10 @@ class MakeDirtyDish(PythonAlgorithm):
         self._CISmode: bool = Config["cis_mode"]
 
     def PyExec(self) -> None:
-        inWS = self.getProperty("InputWorkspace").value
-        outWS = self.getProperty("OutputWorkspace").value
-        self.log().notice(f"Dirtying up dish {inWS} --> {outWS}")
         if self._CISmode:
+            inWS = self.getProperty("InputWorkspace").value
+            outWS = self.getProperty("OutputWorkspace").value
+            self.log().debug(f"Dirtying up dish {inWS} --> {outWS}")
             CloneWorkspace(
                 InputWorkspace=inWS,
                 OutputWorkspace=outWS,

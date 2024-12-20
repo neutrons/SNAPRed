@@ -1,4 +1,8 @@
 from random import randint
+
+##
+## Place the test imports at the end, so that the normal non-test import order is unmodified.
+##
 from unittest.mock import MagicMock, patch
 
 import pytest

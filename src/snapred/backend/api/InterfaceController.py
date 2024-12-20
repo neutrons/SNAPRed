@@ -4,6 +4,7 @@ from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import SNAPRequest, SNAPResponse
 from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.error.LiveDataState import LiveDataState
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.service.ServiceFactory import ServiceFactory
@@ -31,7 +32,7 @@ class InterfaceController:
         return "\n".join(snapredLogger.getWarnings())
 
     def executeRequest(self, request: SNAPRequest) -> SNAPResponse:
-        # execute the recipe
+        # execute the request
         # return the result
         try:
             self.logger.debug(f"Request Received: {request.json()}")
@@ -48,6 +49,12 @@ class InterfaceController:
         except RecoverableException as e:
             self.logger.error(f"Recoverable error occurred: {str(e)}")
             response = SNAPResponse(code=ResponseCode.RECOVERABLE, message=e.model.json())
+        except LiveDataState as e:
+            self.logger.error(
+                f"live-data state change: {e.model.transition}: "
+                + f"{e.model.endRunNumber} <- {e.model.startRunNumber}"
+            )
+            response = SNAPResponse(code=ResponseCode.LIVE_DATA_STATE, message=e.model.json())
         except ContinueWarning as e:
             self.logger.error(f"Continue warning occurred: {str(e)}")
             response = SNAPResponse(code=ResponseCode.CONTINUE_WARNING, message=e.model.json())
@@ -63,7 +70,7 @@ class InterfaceController:
         return response
 
     def executeBatchRequests(self, requests: List[SNAPRequest]) -> List[SNAPResponse]:
-        # verify all requests have same path
+        # verify that all requests have the same path
         for request in requests:
             if not requests[0].path == request.path:
                 self.logger.error("Mismatch of paths in list of requests")

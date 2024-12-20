@@ -1,6 +1,7 @@
+import datetime
 from typing import Dict, List
 
-from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem, LiveDataArgs
 
 
 class GroceryListBuilder:
@@ -83,6 +84,10 @@ class GroceryListBuilder:
         self._tokens["useLiteMode"] = useLiteMode
         return self
 
+    def liveData(self, duration: datetime.timedelta):
+        self._tokens["liveDataArgs"] = LiveDataArgs(duration=duration)
+        return self
+
     def unit(self, unit_: str):
         self._tokens["unit"] = unit_
         return self
@@ -111,25 +116,25 @@ class GroceryListBuilder:
         self._tokens["keepItClean"] = False
         return self
 
-    def build(self) -> GroceryListItem:
-        # create the grocery item list, and return
-        return GroceryListItem(**self._tokens)
+    def build(self, reset=True) -> GroceryListItem:
+        # create the grocery list item, and return it
+        item = GroceryListItem(**self._tokens)
+        if reset:
+            self._tokens = {}
+            self._hasInstrumentSource = False
+        return item
 
     def add(self):
-        self._list.append(self.build())
-        self._tokens = {}
-        self._hasInstrumentSource = False
+        self._list.append(self.build(True))
 
     def buildList(self) -> List[GroceryListItem]:
         if self._tokens != {}:
             self.add()
-        res = self._list
+        result = self._list
         self._list = []
-        return res
+        return result
 
     def buildDict(self) -> Dict[str, GroceryListItem]:
-        if self._tokens != {}:
-            self.add()
-        res = {item.propertyName: item for item in self._list if item.propertyName is not None}
-        self._list = []
-        return res
+        list_ = self.buildList()
+        result = {item.propertyName: item for item in list_ if item.propertyName is not None}
+        return result

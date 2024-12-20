@@ -1,4 +1,6 @@
-from typing import Dict, List
+from typing import Annotated, Dict, List
+
+from pydantic import Field
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.indexing.Record import Record
@@ -23,4 +25,4 @@ class CalibrationDefaultRecord(Record, extra="ignore"):
     calculationParameters: Calibration
 
     # specific to calibration records
-    workspaces: Dict[WorkspaceType, List[WorkspaceName]]
+    workspaces: Dict[Annotated[WorkspaceType, Field(use_enum_values=True)], List[WorkspaceName]]

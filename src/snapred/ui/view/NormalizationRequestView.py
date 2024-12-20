@@ -20,7 +20,7 @@ class NormalizationRequestView(BackendRequestView):
 
         # input fields
         self.runNumberField = self._labeledLineEdit("Run Number:")
-        self.litemodeToggle = self._labeledToggle("Lite Mode", True)
+        self.liteModeToggle = self._labeledToggle("Lite Mode", True)
         self.backgroundRunNumberField = self._labeledLineEdit("Background Run Number:")
 
         # drop downs
@@ -28,14 +28,15 @@ class NormalizationRequestView(BackendRequestView):
         self.groupingFileDropdown = self._sampleDropDown("Select Grouping File", groups)
 
         # set field properties
-        self.litemodeToggle.setEnabled(False)
+        self.liteModeToggle.setEnabled(False)
 
         # add all widgets to layout
-        self.layout.addWidget(self.runNumberField, 0, 0)
-        self.layout.addWidget(self.litemodeToggle, 0, 1)
-        self.layout.addWidget(self.backgroundRunNumberField, 1, 0)
-        self.layout.addWidget(self.sampleDropdown, 2, 0)
-        self.layout.addWidget(self.groupingFileDropdown, 2, 1)
+        _layout = self.layout()
+        _layout.addWidget(self.runNumberField, 0, 0)
+        _layout.addWidget(self.liteModeToggle, 0, 1)
+        _layout.addWidget(self.backgroundRunNumberField, 1, 0)
+        _layout.addWidget(self.sampleDropdown, 2, 0)
+        _layout.addWidget(self.groupingFileDropdown, 2, 1)
 
     def populateGroupingDropdown(self, groups):
         self.groupingFileDropdown.setItems(groups)
@@ -53,3 +54,11 @@ class NormalizationRequestView(BackendRequestView):
 
     def getRunNumber(self):
         return self.runNumberField.text()
+
+    def setInteractive(self, flag: bool):
+        # TODO: put widgets here to allow them to be enabled or disabled by the presenter.
+        self.runNumberField.setEnabled(flag)
+        self.backgroundRunNumberField.setEnabled(flag)
+        self.liteModeToggle.setEnabled(flag)
+        self.sampleDropdown.setEnabled(flag)
+        self.groupingFileDropdown.setEnabled(flag)

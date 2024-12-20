@@ -89,9 +89,9 @@ def createNPixelWorkspace(wsname, numberOfPixels, detectorState: DetectorState =
             freq=60.0,
             guideStat=1,
         )
-    logs = detectorState.getLogValues()
+    logs = detectorState.toLogs()
     lognames = list(logs.keys())
-    logvalues = list(logs.values())
+    logvalues = [str(v[0]) for v in logs.values()]
     logtypes = ["Number Series"] * len(lognames)
     addInstrumentLogs(wsname, logNames=lognames, logTypes=logtypes, logValues=logvalues)
     return mtd[wsname]
@@ -185,7 +185,8 @@ def maskFromArray(mask: List[bool], maskWSname: str, parentWSname=None, detector
     maskWS = createCompatibleMask(maskWSname, parentWSname)
     assert len(mask) == maskWS.getNumberHistograms(), "The mask array was incompatible with the parent workspace."
 
-    wkspIndexToMask = np.argwhere(mask == 1)
+    wkspIndexToMask = [int(n) for n in np.flatnonzero(np.array(mask) == 1)]
+
     parentWS = mtd[parentWSname]
     maskSpectra(maskWS, parentWS, wkspIndexToMask)
     return maskWSname
@@ -227,6 +228,7 @@ def maskSpectra(maskWS: MaskWorkspace, inputWS: MatrixWorkspace, nss: Sequence[i
     # Set mask flags for all detectors contributing to each spectrum in the list of spectra
     for ns in nss:
         dets = inputWS.getSpectrum(ns).getDetectorIDs()
+
         for det in dets:
             maskWS.setValue(det, True)
 

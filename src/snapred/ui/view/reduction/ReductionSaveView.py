@@ -22,7 +22,7 @@ class ReductionSaveView(BackendRequestView):
         self.signalSavePath.connect(self._updateSavePath)
 
         self.saveMessage = QLabel("Please use available Workbench tools to save your workspaces before proceeding.")
-        self.layout.addWidget(self.saveMessage)
+        self.layout().addWidget(self.saveMessage)
 
     def updateContinueAnyway(self, continueAnywayFlags: ContinueWarning.Type):
         self.signalContinueAnyway.emit(continueAnywayFlags)
@@ -61,3 +61,7 @@ class ReductionSaveView(BackendRequestView):
 
     def verify(self):
         return True
+
+    def setInteractive(self, flag: bool):
+        # TODO: put widgets here to allow them to be enabled or disabled by the presenter.
+        pass
