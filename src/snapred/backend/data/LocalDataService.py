@@ -1271,7 +1271,7 @@ class LocalDataService:
 
         # Normalize to an actual "URL" and then strip off the protocol (not actually "http") and port:
         #   `liveDataAddress` returns a string similar to "bl3-daq1.sns.gov:31415".
-        """
+
         hostname = urlparse("http://" + ConfigService.getFacility(facility).instrument(instrument).liveDataAddress()).hostname
         status = True
         try:
@@ -1283,6 +1283,7 @@ class LocalDataService:
         """
         # *** DEBUG *** mock
         return True
+        """
         
     def _liveMetadataFromRun(self, run: Run) -> LiveMetadata:
         """Construct a 'LiveMetadata' instance from a 'mantid.api.Run' instance."""
@@ -1320,19 +1321,19 @@ class LocalDataService:
         
         # TODO: duplicated at `FetchGroceriesAlgorithm`.  Probably that should be called here.    
         with self._useFacility(facility):
-            self.mantidsnapper.LoadLiveData(
+            self.mantidSnapper.LoadLiveData(
+                "load live-data chunk",
                 OutputWorkspace=ws,
                 Instrument=instrument,
                 AccumulationMethod=Config["liveData.accumulationMethod"],
                 StartTime=startTime
             )
-            self.mantidsnapper.executeQueue()
+            self.mantidSnapper.executeQueue()
         
         return ws
 
     def readLiveMetadata(self, facility: str = Config["liveData.facility.name"], instrument: str = Config["liveData.instrument.name"]) -> LiveMetadata:
-        """
-        ws = self.mantidsnapper.mtd.unique_hidden_name()
+        ws = self.mantidSnapper.mtd.unique_hidden_name()
         
         # Retrieve the smallest possible data increment, in order to read the logs:
         ws = self._readLiveData(ws, duration=1, facility=facility, instrument=instrument)
@@ -1341,8 +1342,7 @@ class LocalDataService:
         self.mantidsnapper.DeleteWorkspace(ws)
         self.mantidsnapper.executeQueue()
         return metadata
-        """
-                  
+        """                  
         # *** DEBUG *** : mock
         duration = datetime.timedelta(minutes=1)
         now = datetime.datetime.utcnow()
@@ -1360,7 +1360,7 @@ class LocalDataService:
             ),
             protonCharge=0.0
         )
-        
+        """
         
     def readLiveData(
         self,
