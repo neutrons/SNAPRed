@@ -468,6 +468,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.groceries["previousCalibration"] = self.prevDiffCal
 
+        # perform the group calibration
         payload = SimpleDiffCalRequest(
             ingredients=self.ingredients,
             groceries=self.groceries,

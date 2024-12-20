@@ -13,20 +13,12 @@ from util.helpers import maskSpectra, setSpectraToZero
 from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as Recipe
 from snapred.meta.Config import Config
 
-"""
-NOTE this is in fact a test of a recipe.  Its location and name are a
-TEMPORARY assignment as part of a refactor.  This helps the git diff
-be as useful as possible to reviewing devs.
-As soon as the change with this string is merged, this file can be
-renamed to `test_PixelDiffCalReipe.py` and moved to the recipe tests folder
-"""
-
 
 class TestPixelDiffCalRecipe(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         inputs = SyntheticData()
-        self.ingredients = inputs.ingredients
+        self.ingredients = inputs.ingredients.copy()
 
         runNumber = self.ingredients.runConfig.runNumber
         fakeRawData = f"_test_pixelcal_{runNumber}"
@@ -53,7 +45,18 @@ class TestPixelDiffCalRecipe(unittest.TestCase):
         assert rx.runNumber == self.ingredients.runConfig.runNumber
         assert rx.overallDMin == min(self.ingredients.pixelGroup.dMin())
         assert rx.overallDMax == max(self.ingredients.pixelGroup.dMax())
-        assert rx.dBin == max([abs(db) for db in self.ingredients.pixelGroup.dBin()])
+        assert rx.dBin == min([abs(db) for db in self.ingredients.pixelGroup.dBin()])
+
+    def test_removeBackground(self):
+        ingredients = self.ingredients.copy()
+        ingredients.removeBackground = True
+
+        rx = Recipe()
+        rx.chopIngredients(ingredients)
+        rx.unbagGroceries(self.groceries)
+        algoQueue = rx.mantidSnapper._algorithmQueue
+        algoNames = [x[0] for x in algoQueue]
+        assert "RemoveSmoothedBackground" in algoNames
 
     def test_execute(self):
         """Test that the algorithm executes"""

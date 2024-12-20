@@ -2,17 +2,18 @@ import unittest
 
 from mantid.simpleapi import (
     ConvertToEventWorkspace,
+    Rebin,
     mtd,
 )
 from util.diffraction_calibration_synthetic_data import SyntheticData
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.recipe.algorithm.RemoveEventBackground import RemoveEventBackground as Algo
+from snapred.backend.recipe.algorithm.RemoveSmoothedBackground import RemoveSmoothedBackground as Algo
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.pointer import create_pointer
 
 
-class TestRemoveEventBackground(unittest.TestCase):
+class TestRemoveSmoothedBackground(unittest.TestCase):
     def setUp(self):
         inputs = SyntheticData()
         self.fakeIngredients = inputs.ingredients
@@ -22,6 +23,16 @@ class TestRemoveEventBackground(unittest.TestCase):
         self.fakeGroupingWorkspace = f"_test_remove_event_background_{runNumber}_grouping"
         self.fakeMaskWorkspace = f"_test_remove_event_background_{runNumber}_mask"
         inputs.generateWorkspaces(self.fakeData, self.fakeGroupingWorkspace, self.fakeMaskWorkspace)
+        # this algorithm requires event workspacws
+        ConvertToEventWorkspace(
+            InputWorkspace=self.fakeData,
+            OutputWorkspace=self.fakeData,
+        )
+        Rebin(
+            InputWorkspace=self.fakeData,
+            OutputWorkspace=self.fakeData,
+            Params=self.fakeIngredients.pixelGroup.timeOfFlight.params,
+        )
 
     def tearDown(self) -> None:
         mtd.clear()
@@ -37,6 +48,12 @@ class TestRemoveEventBackground(unittest.TestCase):
         ]
         return peaks
 
+    def test_validate_inputs(self):
+        algo = Algo()
+        algo.initialize()
+        err = algo.validateInputs()
+        assert "DetectorPeaks" in err
+
     def test_chop_ingredients(self):
         peaks = self.create_test_peaks()
 
@@ -49,37 +66,12 @@ class TestRemoveEventBackground(unittest.TestCase):
 
         for peakList in peaks:
             groupID = peakList.groupID
-            assert groupID in algo.maskRegions, f"Group ID {groupID} not found in maskRegions"
-
-            expected_peak_count = len(peakList.peaks)
-            actual_peak_count = len(algo.maskRegions[groupID])
-            assert (
-                actual_peak_count == expected_peak_count
-            ), f"Mismatch in number of peaks for group {groupID}: expected {expected_peak_count}, found {actual_peak_count}"  # noqa: E501
-
-            for peak, mask in zip(peakList.peaks, algo.maskRegions[groupID]):
-                assert (
-                    mask == (peak.minimum, peak.maximum)
-                ), f"Mask region mismatch for group {groupID}, peak {peak}: expected {(peak.minimum, peak.maximum)}, found {mask}"  # noqa: E501
+            assert groupID in algo.groupIDs, f"Group ID {groupID} not found in maskRegions"
 
         expected_group_ids = [peakList.groupID for peakList in peaks]
         assert (
             algo.groupIDs == expected_group_ids
         ), f"Group IDs in workspace and peak list do not match: {algo.groupIDs} vs {expected_group_ids}"
-
-    def test_execute(self):
-        peaks = self.create_test_peaks()
-        ConvertToEventWorkspace(
-            InputWorkspace=self.fakeData,
-            OutputWorkspace=self.fakeData,
-        )
-        algo = Algo()
-        algo.initialize()
-        algo.setProperty("InputWorkspace", self.fakeData)
-        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("DetectorPeaks", create_pointer(peaks))
-        algo.setProperty("OutputWorkspace", "output_test_ws")
-        assert algo.execute()
 
     def test_incorrect_group_ids(self):
         peaks = [
@@ -107,11 +99,6 @@ class TestRemoveEventBackground(unittest.TestCase):
         with self.assertRaises(RuntimeError):  # noqa: PT027
             algo.execute()
 
-        ConvertToEventWorkspace(
-            InputWorkspace=self.fakeData,
-            OutputWorkspace=self.fakeData,
-        )
-
         algo = Algo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeData)
@@ -129,10 +116,6 @@ class TestRemoveEventBackground(unittest.TestCase):
             algo.execute()
 
     def test_smoothing_parameter_edge_cases(self):
-        ConvertToEventWorkspace(
-            InputWorkspace=self.fakeData,
-            OutputWorkspace=self.fakeData,
-        )
         algo = Algo()
         algo.initialize()
 
@@ -146,35 +129,22 @@ class TestRemoveEventBackground(unittest.TestCase):
             algo.setProperty("SmoothingParameter", value)
             assert value == algo.getProperty("SmoothingParameter").value
 
-    def test_output_workspace_creation(self):
+    def test_execute(self):
         peaks = self.create_test_peaks()
-
-        ConvertToEventWorkspace(
-            InputWorkspace=self.fakeData,
-            OutputWorkspace=self.fakeData,
-        )
-
         algo = Algo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeData)
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
         algo.setProperty("DetectorPeaks", create_pointer(peaks))
         algo.setProperty("OutputWorkspace", "output_test_ws")
-
         assert algo.execute()
-
         assert "output_test_ws" in mtd, "Output workspace not found in the Mantid workspace dictionary"
-        output_ws = mtd["output_test_ws"]  # noqa: F841
 
     def test_execute_from_mantidSnapper(self):
         peaks = self.create_test_peaks()
-        ConvertToEventWorkspace(
-            InputWorkspace=self.fakeData,
-            OutputWorkspace=self.fakeData,
-        )
         utensils = Utensils()
         utensils.PyInit()
-        utensils.mantidSnapper.RemoveEventBackground(
+        utensils.mantidSnapper.RemoveSmoothedBackground(
             "Run in mantid snapper",
             InputWorkspace=self.fakeData,
             GroupingWorkspace=self.fakeGroupingWorkspace,
