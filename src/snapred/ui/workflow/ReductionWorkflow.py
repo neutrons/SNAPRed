@@ -82,6 +82,9 @@ class ReductionWorkflow(WorkflowImplementer):
         self.liveDataDuration: timedelta = timedelta(seconds=0)
         # Control of live-data metadata update:
         self._liveDataUpdateTimer = QTimer()
+        self.addResetHook(
+            lambda: self._reductionRequestView.setLiveDataToggleEnabled(True) if not self.liveDataMode else None
+        )
         
         # Control of live-data reduction workflow loop:
         self._workflowTimer = QTimer()
@@ -111,9 +114,14 @@ class ReductionWorkflow(WorkflowImplementer):
     def _nothing(self, workflowPresenter):  # noqa: ARG002
         return SNAPResponse(code=200)
 
+    def start(self):
+        self._reductionRequestView.setLiveDataToggleEnabled(False)
+        super().start()
+
     def cancelWorkflow(self):
         # This method exists in order to correctly shut down the live-data loop.
         def _safeShutdown():
+            self._reductionRequestView.setLiveDataToggleEnabled(True)
             if self._workflowTimer.isActive():
                 self._workflowTimer.stop()
             self.workflow.presenter.safeShutdown()
