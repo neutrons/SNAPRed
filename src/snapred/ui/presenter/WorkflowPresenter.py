@@ -22,8 +22,12 @@ class WorkflowPresenter(QObject):
     enableAllWorkflows = Signal()
     disableOtherWorkflows = Signal()
 
-    # Allow an observer (e.g. `qtbot`) to monitor action completion.
+    # Allow an observer (e.g. `qtbot` or the `reductionWorkflow` itself) to monitor action completion.
     actionCompleted = Signal()
+    
+    # Sent at the end of the reset method -- this is necessary to allow the parent workflow to override reset specifics.
+    # (Arguably, this is less than ideal, but the workflow's <reset hooks> are called at the _start_ of the reset method.)
+    resetCompleted = Signal()
 
     def __init__(
         self,
@@ -104,9 +108,12 @@ class WorkflowPresenter(QObject):
         self._resetLambda()
         self.resetSoft()
         self._iteration = 1
-
+                
         # Workflow is complete: enable the other workflow tabs.
         self.enableAllWorkflows.emit()
+
+        # Signal that the reset sequence is complete.
+        self.resetCompleted.emit()
 
     def safeShutdown(self):
         # Request any executing worker thread to shut down.

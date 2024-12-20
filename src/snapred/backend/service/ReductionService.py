@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from snapred.backend.dao import LiveMetadata
 from snapred.backend.dao.ingredients import (
     ArtificialNormalizationIngredients,
     GroceryListItem,
@@ -85,6 +86,8 @@ class ReductionService(Service):
         self.registerPath("validate", self.validateReduction)
         self.registerPath("artificialNormalization", self.artificialNormalization)
         self.registerPath("grabWorkspaceforArtificialNorm", self.grabWorkspaceforArtificialNorm)
+        self.registerPath("hasLiveDataConnection", self.hasLiveDataConnection)
+        self.registerPath("getLiveMetadata", self.getLiveMetadata)       
         return
 
     @staticmethod
@@ -528,16 +531,9 @@ class ReductionService(Service):
 
     def grabWorkspaceforArtificialNorm(self, request: ReductionRequest):
         # 1. Load raw run data
-        """
-        # *** DEBUG *** : Previous lines:
-        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
-        """
         inputItemBuilder = self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode)
         if request.liveDataMode:
-            inputItemBuilder.loader(
-                loader="LiveDataMode",
-                loaderArgs=f"{{'Duration': {request.duration}, 'Facility': {request.facility}, 'Instrument': {request.instrument}}}"
-            )
+            inputItemBuilder.liveData(duration=request.duration)
         inputItemBuilder.add()
         
         runWorkspace = self.groceryService.fetchGroceryList(self.groceryClerk.buildList())[0]
@@ -557,3 +553,10 @@ class ReductionService(Service):
         }
         # 3. Diffraction Focus Spectra
         return ReductionGroupProcessingRecipe().cook(ingredients.groupProcessing(0), groceries)
+    
+    def hasLiveDataConnection(self) -> bool:
+        """For 'live data' methods: test if there is a listener connection to the instrument."""
+        return self.dataFactoryService.hasLiveDataConnection()
+
+    def getLiveMetadata(self) -> LiveMetadata:
+        return self.dataFactoryService.getLiveMetadata()

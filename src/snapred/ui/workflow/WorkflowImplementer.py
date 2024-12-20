@@ -105,7 +105,7 @@ class WorkflowImplementer(QObject):
         self.collectedOutputs = []
 
         for hook in self.resetHooks:
-            logger.info(f"Calling reset hook: {hook}")
+            logger.debug(f"Calling reset hook: {hook}")
             hook()
 
     def _clearWorkspaces(self, *, exclude: List[str], clearCachedWorkspaces: bool):

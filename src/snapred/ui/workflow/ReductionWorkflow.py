@@ -36,6 +36,10 @@ class ReductionWorkflow(WorkflowImplementer):
             validateRunNumbers=self._validateRunNumbers,
             getLiveMetadata=self._getLiveMetadata
         )
+        if not self._hasLiveDataConnection():
+            # Only enable live-data mode if there is a connection to the listener.
+            self._reductionRequestView.setLiveDataToggleEnabled(False)
+        
         self._compatibleMasks: Dict[str, WorkspaceName] = {}
 
         self._artificialNormalizationView = ArtificialNormalizationView(parent=parent)
@@ -86,8 +90,8 @@ class ReductionWorkflow(WorkflowImplementer):
         # Start automatic update at live-data mode change:
         self._reductionRequestView.liveDataModeChange.connect(self.updateLiveMetadata)
         
-        # Restart automatic update at workflow completion:
-        self.workflow.presenter.actionCompleted.connect(lambda: self.updateLiveMetadata(self.liveDataMode))
+        # Restart automatic update at end-of-reset following workflow completion:
+        self.workflow.presenter.resetCompleted.connect(lambda: self.updateLiveMetadata(self.liveDataMode))
         
         self._artificialNormalizationView.signalValueChanged.connect(self.onArtificialNormalizationValueChange)
         
@@ -159,8 +163,10 @@ class ReductionWorkflow(WorkflowImplementer):
 
     @Slot(bool)
     def updateLiveMetadata(self, liveDataMode: bool):
-        # Start at live-data mode change, 
-        #   or restart at workflow completion.
+        self.liveDataMode = liveDataMode
+    
+        # Start metadata update at live-data mode change, 
+        #   or restart it at the completion of a reduction workflow.
         if self._liveDataUpdateTimer.isActive():
             self._liveDataUpdateTimer.stop()
         if liveDataMode:
@@ -185,24 +191,11 @@ class ReductionWorkflow(WorkflowImplementer):
         updateDuration = self._reductionRequestView.liveDataUpdateInterval().seconds * 1000
         self._liveDataUpdateTimer.singleShot(updateDuration, Qt.CoarseTimer, self._updateLiveMetadata)
     
+    def _hasLiveDataConnection(self) -> bool:
+        return self.request(path="reduction/hasLiveDataConnection").data
+    
     def _getLiveMetadata(self) -> LiveMetadata:
-        # *** DEBUG *** : mock
-        duration = datetime.timedelta(minutes=1)
-        now = datetime.datetime.utcnow()
-        return LiveMetadata.model_construct(
-            runNumber="46680",
-            startTime=now - duration,
-            endTime=now,
-            # WARNING: probably not DetectorState for "46680"
-            detectorState=DetectorState(
-                arc=(-65.3, 104.95),
-                wav=2.1,
-                freq=60.0,
-                guideStat=1,
-                lin=(0.045, 0.043)
-            ),
-            protonCharge=0.0
-        )
+        return self.request(path="reduction/getLiveMetadata").data
 
     def _validateRunNumbers(self, runNumbers: List[str]):
         # For now, all run numbers in a reduction batch must be from the same instrument state.

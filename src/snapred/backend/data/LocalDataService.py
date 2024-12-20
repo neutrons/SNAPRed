@@ -753,10 +753,6 @@ class LocalDataService:
         # read the metadata first, in order to use the workspaceNames list
         record = None
         with h5py.File(filePath, "r") as h5:
-            # *** DEBUG ***
-            _dict = n5m.extractMetadataGroup(h5, "/metadata")
-            print(f"*** {type(_dict['useLiteMode'])}")
-            
             record = ReductionRecord.model_validate(n5m.extractMetadataGroup(h5, "/metadata"))
         for ws in record.workspaceNames:
             if mtd.doesExist(ws):
@@ -1272,9 +1268,10 @@ class LocalDataService:
         # In addition to 'analysis.sns.gov', other nodes on the subnet should be OK as well.
         #   So this check should also return True on those nodes.
         # If this method returns True, then the `SNSLiveEventDataListener` should be able to function.
-        
+
         # Normalize to an actual "URL" and then strip off the protocol (not actually "http") and port:
         #   `liveDataAddress` returns a string similar to "bl3-daq1.sns.gov:31415".
+        """
         hostname = urlparse("http://" + ConfigService.getFacility(facility).instrument(instrument).liveDataAddress()).hostname
         status = True
         try:
@@ -1283,7 +1280,10 @@ class LocalDataService:
             # specifically: expecting a `socket.gaierror`, but any exception will indicate that there's no connection
             status = False
         return status
-    
+        """
+        # *** DEBUG *** mock
+        return True
+        
     def _liveMetadataFromRun(self, run: Run) -> LiveMetadata:
         """Construct a 'LiveMetadata' instance from a 'mantid.api.Run' instance."""
         
@@ -1331,6 +1331,7 @@ class LocalDataService:
         return ws
 
     def readLiveMetadata(self, facility: str = Config["liveData.facility.name"], instrument: str = Config["liveData.instrument.name"]) -> LiveMetadata:
+        """
         ws = self.mantidsnapper.mtd.unique_hidden_name()
         
         # Retrieve the smallest possible data increment, in order to read the logs:
@@ -1340,6 +1341,26 @@ class LocalDataService:
         self.mantidsnapper.DeleteWorkspace(ws)
         self.mantidsnapper.executeQueue()
         return metadata
+        """
+                  
+        # *** DEBUG *** : mock
+        duration = datetime.timedelta(minutes=1)
+        now = datetime.datetime.utcnow()
+        return LiveMetadata.model_construct(
+            runNumber="46680",
+            startTime=now - duration,
+            endTime=now,
+            # WARNING: probably not DetectorState for "46680"
+            detectorState=DetectorState(
+                arc=(-65.3, 104.95),
+                wav=2.1,
+                freq=60.0,
+                guideStat=1,
+                lin=(0.045, 0.043)
+            ),
+            protonCharge=0.0
+        )
+        
         
     def readLiveData(
         self,

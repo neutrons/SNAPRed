@@ -585,7 +585,12 @@ class ReductionRequestView(_RequestViewBase):
     def updateLiveMetadata(self, data: LiveMetadata):
         if self.liveDataMode():
             self._liveDataView.updateLiveMetadata(data)
-                        
+
+    @Slot(bool)
+    def setLiveDataToggleEnabled(self, flag: bool):
+        self._requestView.liveDataToggle.setEnabled(flag)
+        self._liveDataView.liveDataToggle.setEnabled(flag)
+                            
     ###
     ### Abstract methods:
     ###
