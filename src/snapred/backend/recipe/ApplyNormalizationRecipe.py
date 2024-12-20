@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Tuple
 
 from snapred.backend.dao.ingredients import ApplyNormalizationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.RebinFocussedGroupDataRecipe import RebinFocussedGroupDataRecipe
 from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
@@ -26,19 +27,6 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         We are mostly concerned about the drange for a ResampleX operation.
         """
         self.pixelGroup = ingredients.pixelGroup
-        # The adjustment below is a temp fix, will be permanently fixed in EWM 6262
-        lowdSpacingCrop = Config["constants.CropFactors.lowdSpacingCrop"]
-        if lowdSpacingCrop < 0:
-            raise ValueError("Low d-spacing crop factor must be positive")
-        highdSpacingCrop = Config["constants.CropFactors.highdSpacingCrop"]
-        if highdSpacingCrop < 0:
-            raise ValueError("High d-spacing crop factor must be positive")
-        dMin = [x + lowdSpacingCrop for x in self.pixelGroup.dMin()]
-        dMax = [x - highdSpacingCrop for x in self.pixelGroup.dMax()]
-        if not dMax > dMin:
-            raise ValueError("d-spacing crop factors are too large -- resultant dMax must be > resultant dMin")
-        self.dMin = dMin
-        self.dMax = dMax
 
     def unbagGroceries(self, groceries: Dict[str, WorkspaceName]):
         """
@@ -48,6 +36,8 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         The background workspace, backgroundWorkspace, is optional, not implemented, in dspacing.
         """
         self.sampleWs = groceries["inputWorkspace"]
+        # NOTE: the normalization workspace should be appropriately binned
+        # and then converted to a histogram prior to this recipe
         self.normalizationWs = groceries.get("normalizationWorkspace", "")
         self.backgroundWs = groceries.get("backgroundWorkspace", "")
 
@@ -59,11 +49,22 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         if self.backgroundWs != "":
             raise NotImplementedError("Background Subtraction is not implemented for this release.")
 
+    def _rebinSample(self, preserveEvents: bool):
+        """
+        Rebins the sample workspace to the pixel group.
+        """
+        rebinRecipe = RebinFocussedGroupDataRecipe(self.utensils)
+        rebinIngredients = RebinFocussedGroupDataRecipe.Ingredients(
+            pixelGroup=self.pixelGroup, preserveEvents=preserveEvents
+        )
+        rebinRecipe.cook(rebinIngredients, {"inputWorkspace": self.sampleWs})
+
     def queueAlgos(self):
         """
         Queues up the procesing algorithms for the recipe.
         Requires: unbagged groceries and chopped ingredients.
         """
+
         if self.normalizationWs:
             self.mantidSnapper.Divide(
                 "Dividing out the normalization..",
@@ -71,15 +72,6 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
                 RHSWorkspace=self.normalizationWs,
                 OutputWorkspace=self.sampleWs,
             )
-        self.mantidSnapper.RebinRagged(
-            "Resampling X-axis...",
-            InputWorkspace=self.sampleWs,
-            XMin=self.dMin,
-            XMax=self.dMax,
-            Delta=self.pixelGroup.dBin(),
-            OutputWorkspace=self.sampleWs,
-            PreserveEvents=False,
-        )
 
     # NOTE: Metaphorically, would ingredients better have been called Spices?
     # Considering they are mostly never the meat of a recipe.
@@ -90,7 +82,18 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         """
         self.prep(ingredients, groceries)
         self.execute()
+        self.mantidSnapper.mtd[self.sampleWs].setDistribution(True)
         return self.sampleWs
+
+    def execute(self):
+        """
+        Final step in a recipe, executes the queued algorithms.
+        Requires: queued algorithms.
+        """
+        self._rebinSample(preserveEvents=True)
+        self.mantidSnapper.executeQueue()
+        self._rebinSample(preserveEvents=False)
+        return True
 
     def cater(self, shipment: List[Pallet]) -> List[WorkspaceName]:
         """

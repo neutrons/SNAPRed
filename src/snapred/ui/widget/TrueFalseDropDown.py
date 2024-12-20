@@ -29,3 +29,6 @@ class TrueFalseDropDown(QWidget):
 
     def currentText(self):
         return self.dropDown.currentText()
+
+    def getValue(self):
+        return self.currentText() == "True"

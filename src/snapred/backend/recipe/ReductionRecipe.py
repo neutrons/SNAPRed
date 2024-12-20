@@ -148,6 +148,8 @@ class ReductionRecipe(Recipe[Ingredients]):
             if not inputWorkspace:
                 self.logger().debug(f"{recipe.__name__} :: Skipping recipe with default empty input workspace")
                 return
+            if "outputWorkspace" not in kwargs and "outputWorkspace" in self.groceries:
+                del self.groceries["outputWorkspace"]
             if self.mantidSnapper.mtd.doesExist(inputWorkspace):
                 self.groceries.update(kwargs)
                 recipe().cook(ingredients_, self.groceries)
@@ -253,19 +255,22 @@ class ReductionRecipe(Recipe[Ingredients]):
             )
             self._cloneIntermediateWorkspace(normalizationClone, f"normalization_GroupProcessing_{groupingIndex}")
 
+            vanadiumBasisWorkspace = normalizationClone
+            # if there was no normalization and the user elected to use artificial normalization
+            # generate one given the params and the processed sample data
+            if self.ingredients.artificialNormalizationIngredients:
+                vanadiumBasisWorkspace = sampleClone
+                normalizationClone = self._getNormalizationWorkspaceName(groupingIndex)
+
             # 3. GenerateFocussedVanadiumRecipe
             self._applyRecipe(
                 GenerateFocussedVanadiumRecipe,
                 self.ingredients.generateFocussedVanadium(groupingIndex),
-                inputWorkspace=normalizationClone,
+                inputWorkspace=vanadiumBasisWorkspace,
+                outputWorkspace=normalizationClone,
             )
-            self._cloneIntermediateWorkspace(normalizationClone, f"normalization_FoocussedVanadium_{groupingIndex}")
 
-            # if there was no normalization and the user elected to use artificial normalization
-            # generate one given the params and the processed sample data
-            # Skipping the above steps as they are accounted for in generating the artificial normalization
-            if self.ingredients.artificialNormalizationIngredients:
-                normalizationClone = self._prepareArtificialNormalization(sampleClone, groupingIndex)
+            self._cloneIntermediateWorkspace(normalizationClone, f"normalization_FoocussedVanadium_{groupingIndex}")
 
             # 4. ApplyNormalizationRecipe
             self._applyRecipe(

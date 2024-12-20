@@ -14,6 +14,7 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.ui.view.reduction.ArtificialNormalizationView import ArtificialNormalizationView
 from snapred.ui.view.reduction.ReductionRequestView import ReductionRequestView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
@@ -233,7 +234,9 @@ class ReductionWorkflow(WorkflowImplementer):
         # SPECIAL FOR THE REDUCTION WORKFLOW: clear everything _except_ the output workspaces
         #   _before_ transitioning to the "save" panel.
         # TODO: make '_clearWorkspaces' a public method (i.e make this combination a special `cleanup` method).
-        self._clearWorkspaces(exclude=self.outputs, clearCachedWorkspaces=True)
+
+        # NOTE: should this not occur in the 'finalizeReduction' method?
+        # self._clearWorkspaces(exclude=self.outputs, clearCachedWorkspaces=True)
         return self.responses[-1]
 
     def _artificialNormalization(self, workflowPresenter, responseData, runNumber):
@@ -244,9 +247,10 @@ class ReductionWorkflow(WorkflowImplementer):
             useLiteMode=self.useLiteMode,
             peakWindowClippingSize=int(self._artificialNormalizationView.peakWindowClippingSize.field.text()),
             smoothingParameter=self._artificialNormalizationView.getSmoothingParameter(),
-            decreaseParameter=self._artificialNormalizationView.decreaseParameterDropdown.currentIndex() == 1,
-            lss=self._artificialNormalizationView.lssDropdown.currentIndex() == 1,
+            decreaseParameter=self._artificialNormalizationView.decreaseParameterDropdown.getValue(),
+            lss=self._artificialNormalizationView.lssDropdown.getValue(),
             diffractionWorkspace=responseData,
+            outputWorkspace=wng.artificialNormalizationPreview().runNumber(runNumber).group(wng.Groups.COLUMN).build(),
         )
         response = self.request(path="reduction/artificialNormalization", payload=request_)
         # Update artificial normalization view with the response
@@ -272,6 +276,7 @@ class ReductionWorkflow(WorkflowImplementer):
             decreaseParameter=decreaseParameter,
             lss=lss,
             diffractionWorkspace=diffractionWorkspace,
+            outputWorkspace=wng.artificialNormalizationPreview().runNumber(runNumber).group(wng.Groups.COLUMN).build(),
         )
 
         response = self.request(path="reduction/artificialNormalization", payload=request_)

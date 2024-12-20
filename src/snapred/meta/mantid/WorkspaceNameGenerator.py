@@ -69,6 +69,7 @@ class WorkspaceType(str, Enum):
     RAW_VANADIUM = "rawVanadium"
     FOCUSED_RAW_VANADIUM = "focusedRawVanadium"
     SMOOTHED_FOCUSED_RAW_VANADIUM = "smoothedFocusedRawVanadium"
+    ARTIFICIAL_NORMALIZATION_PREVIEW = "artificialNormalizationPreview"
 
     # <reduction tag>_<runNumber>_<timestamp>
     REDUCTION_OUTPUT = "reductionOutput"
@@ -293,6 +294,10 @@ class _WorkspaceNameGenerator:
         TRUE = "lite"
         FALSE = ""
 
+    class ArtificialNormWorkspaceType:
+        PREVIEW = "preview"
+        SOURCE = "source"
+
     # TODO: Return abstract WorkspaceName type to help facilitate control over workspace names
     #       and discourage non-standard names.
     def run(self):
@@ -410,6 +415,16 @@ class _WorkspaceNameGenerator:
             self._delimiter,
             unit=self.Units.DSP,
             version=None,
+        )
+
+    def artificialNormalizationPreview(self):
+        return NameBuilder(
+            WorkspaceType.ARTIFICIAL_NORMALIZATION_PREVIEW,
+            self._normCalArtificialNormalizationPreviewTemplate,
+            self._normCalArtificialNormalizationPreviewTemplateKeys,
+            self._delimiter,
+            unit=self.Units.DSP,
+            type=self.ArtificialNormWorkspaceType.PREVIEW,
         )
 
     def reductionOutput(self):

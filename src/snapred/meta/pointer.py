@@ -15,8 +15,25 @@ def create_pointer(thing: Any) -> int:
     return id(thing)
 
 
-def access_pointer(pointer: int) -> Any:
-    thing = ctypes.cast(pointer, ctypes.py_object).value
+def inspect_pointer(pointer: int) -> Any:
+    """
+    Fetch an object referenced by the pointer, without removing it from the cache.
+    Useful for validateInputs with a pointer property.
+    @param the pointer to the object
+    @return the object pointed to
+    """
     if pointer in OBJCACHE:
-        del OBJCACHE[pointer]
+        return ctypes.cast(pointer, ctypes.py_object).value
+    else:
+        raise RuntimeError(f"No appropriate object held at address {hex(pointer)}")
+
+
+def access_pointer(pointer: int) -> Any:
+    """
+    Fetch an objected referenced by the pointer, and remove it from the cache.
+    @param the pointer to the object
+    @return the object pointed to
+    """
+    thing = inspect_pointer(pointer)
+    del OBJCACHE[pointer]
     return thing

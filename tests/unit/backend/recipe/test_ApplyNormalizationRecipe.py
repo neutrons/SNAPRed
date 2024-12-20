@@ -2,12 +2,10 @@ import unittest
 
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
-from util.Config_helpers import Config_override
 from util.SculleryBoy import SculleryBoy
 
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe, Ingredients
-from snapred.meta.Config import Config
 
 
 class ApplyNormalizationRecipeTest(unittest.TestCase):
@@ -32,17 +30,13 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         recipe = ApplyNormalizationRecipe(utensils=utensils)
         assert recipe.mantidSnapper == utensils.mantidSnapper
 
-    def test_chopIngredients(self):
+    @unittest.mock.patch("snapred.backend.recipe.ApplyNormalizationRecipe.RebinFocussedGroupDataRecipe")
+    def test_chopIngredients(self, mockRebinRecipe):  # noqa: ARG002
         recipe = ApplyNormalizationRecipe()
 
         ingredients = Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
         recipe.chopIngredients(ingredients)
         assert recipe.pixelGroup == ingredients.pixelGroup
-        # Apply adjustment that happens in chopIngredients step
-        dMin = [x + Config["constants.CropFactors.lowdSpacingCrop"] for x in ingredients.pixelGroup.dMin()]
-        dMax = [x - Config["constants.CropFactors.highdSpacingCrop"] for x in ingredients.pixelGroup.dMax()]
-        assert recipe.dMin == dMin
-        assert recipe.dMax == dMax
 
     def test_unbagGroceries(self):
         recipe = ApplyNormalizationRecipe()
@@ -93,25 +87,14 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
 
         queuedAlgos = recipe.mantidSnapper._algorithmQueue
         divideTuple = queuedAlgos[0]
-        rebinRaggedTuple = queuedAlgos[1]
 
         assert divideTuple[0] == "Divide"
-        assert rebinRaggedTuple[0] == "RebinRagged"
-        # Excessive testing maybe?
-        assert divideTuple[1] == "Dividing out the normalization.."
-        assert rebinRaggedTuple[1] == "Resampling X-axis..."
-        assert divideTuple[2]["LHSWorkspace"] == groceries["inputWorkspace"]
-        assert divideTuple[2]["RHSWorkspace"] == groceries["normalizationWorkspace"]
-        assert rebinRaggedTuple[2]["InputWorkspace"] == groceries["inputWorkspace"]
-        # Apply adjustment that happens in chopIngredients step
-        dMin = [x + Config["constants.CropFactors.lowdSpacingCrop"] for x in ingredients.pixelGroup.dMin()]
-        dMax = [x - Config["constants.CropFactors.highdSpacingCrop"] for x in ingredients.pixelGroup.dMax()]
-        assert rebinRaggedTuple[2]["XMin"] == dMin
-        assert rebinRaggedTuple[2]["XMax"] == dMax
 
-    def test_cook(self):
+    @unittest.mock.patch("snapred.backend.recipe.ApplyNormalizationRecipe.RebinFocussedGroupDataRecipe")
+    def test_cook(self, mockRebinRecipe):
         untensils = Utensils()
         mockSnapper = unittest.mock.Mock()
+        mockSnapper.mtd = unittest.mock.MagicMock()
         untensils.mantidSnapper = mockSnapper
         recipe = ApplyNormalizationRecipe(utensils=untensils)
         ingredients = Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
@@ -126,9 +109,10 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
 
         assert mockSnapper.executeQueue.called
         assert mockSnapper.Divide.called
-        assert mockSnapper.RebinRagged.called
+        assert mockRebinRecipe().cook.called
 
-    def test_cater(self):
+    @unittest.mock.patch("snapred.backend.recipe.ApplyNormalizationRecipe.RebinFocussedGroupDataRecipe")
+    def test_cater(self, mockRebinRecipe):
         untensils = Utensils()
         mockSnapper = unittest.mock.Mock()
         untensils.mantidSnapper = mockSnapper
@@ -145,26 +129,4 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
 
         assert mockSnapper.executeQueue.called
         assert mockSnapper.Divide.called
-        assert mockSnapper.RebinRagged.called
-
-    def test_badChopIngredients(self):
-        recipe = ApplyNormalizationRecipe()
-        ingredients = Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
-        with (
-            Config_override("constants.CropFactors.lowdSpacingCrop", 500.0),
-            Config_override("constants.CropFactors.highdSpacingCrop", 1000.0),
-            pytest.raises(ValueError, match="d-spacing crop factors are too large"),
-        ):
-            recipe.chopIngredients(ingredients)
-
-        with (
-            Config_override("constants.CropFactors.lowdSpacingCrop", -10.0),
-            pytest.raises(ValueError, match="Low d-spacing crop factor must be positive"),
-        ):
-            recipe.chopIngredients(ingredients)
-
-        with (
-            Config_override("constants.CropFactors.highdSpacingCrop", -10.0),
-            pytest.raises(ValueError, match="High d-spacing crop factor must be positive"),
-        ):
-            recipe.chopIngredients(ingredients)
+        assert mockRebinRecipe().cook.called

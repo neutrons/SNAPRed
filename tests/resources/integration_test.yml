@@ -12,7 +12,57 @@ IPTS:
 constants:
   # For tests with '46680' this seems to be necessary.
   maskedPixelThreshold: 1.0
+  logsLocation: "/mantid_workspace_1/logs"
+
+  DetectorPeakPredictor:
+    fwhm: 1.17741002252 # used to convert gaussian to fwhm (2 * log_e(2))
 
   RawVanadiumCorrection:
     numberOfSlices: 1
     numberOfAnnuli: 1
+
+instrument:
+  native:
+    pixelResolution: 72
+    definition:
+      file: ${module.root}/resources/ultralite/CRACKLE_Definition.xml
+  lite:
+    pixelResolution: 18
+    definition:
+      file: ${module.root}/resources/ultralite/CRACKLELite_Definition.xml
+    map:
+      file: ${module.root}/resources/ultralite/CRACKLELiteDataMap.xml
+
+mantid:
+  workspace:
+    nameTemplate:
+      delimiter: "_"
+      template:
+        run: "{unit},{group},{lite},{auxiliary},{runNumber}"
+        diffCal:
+          input: "{unit},{runNumber},raw"
+          table: "diffract_consts,{runNumber},{version}"
+          output: "{unit},{group},{runNumber},{version}"
+          diagnostic: "diagnostic,{group},{runNumber},{version}"
+          mask: "diffract_consts,mask,{runNumber},{version}"
+          metric: "calib_metrics,{metricName},{runNumber},{version}"
+          timedMetric: "calib_metrics,{metricName},{runNumber},{timestamp}"
+        normCal:
+          rawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
+          focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
+          smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_corr,{version}"
+
+calibration:
+  parameters:
+    default:
+      alpha: 0.1
+      # alpha: 1.1
+      beta:
+        - 0.02
+        - 0.05
+      # beta:
+      #   - 1
+      #   - 2
+  fitting:
+    # minSignal2Noise: 0.0
+    minSignal2Noise: 10

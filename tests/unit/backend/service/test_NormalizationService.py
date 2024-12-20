@@ -2,7 +2,7 @@
 import unittest
 import unittest.mock as mock
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from mantid.simpleapi import (
@@ -206,7 +206,7 @@ class TestNormalizationService(unittest.TestCase):
         mockRecipeInst.executeRecipe.assert_called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             OutputWorkspace=mockRequest.outputWorkspace,
-            DetectorPeaks=self.instance.sousChef.prepDetectorPeaks(FarmFreshIngredients.return_value),
+            DetectorPeaks=ANY,  # NOTE it is impossible to see this pointer
             SmoothingParameter=mockRequest.smoothingParameter,
         )
 

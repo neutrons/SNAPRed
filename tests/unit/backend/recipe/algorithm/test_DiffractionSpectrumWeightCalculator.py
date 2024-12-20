@@ -1,12 +1,14 @@
 import socket
 import unittest.mock as mock
+from typing import List
 
 import pytest
 from mantid.testing import assert_almost_equal
 from util.diffraction_calibration_synthetic_data import SyntheticData
 
 from snapred.backend.dao import CrystallographicPeak, DetectorPeak, GroupPeakList
-from snapred.meta.redantic import list_to_raw
+from snapred.meta.pointer import create_pointer
+from snapred.meta.redantic import parse_file_as
 
 with mock.patch.dict(
     "sys.modules",
@@ -64,7 +66,7 @@ with mock.patch.dict(
         # initialize the algo and chop ingredients
         weightCalculatorAlgo = DiffractionSpectrumWeightCalculator()
         weightCalculatorAlgo.initialize()
-        weightCalculatorAlgo.setProperty("DetectorPeaks", list_to_raw(peaks))
+        weightCalculatorAlgo.setProperty("DetectorPeaks", create_pointer(peaks))
         weightCalculatorAlgo.chopIngredients(peaks)
 
         # verify result
@@ -157,15 +159,13 @@ with mock.patch.dict(
         )
 
         # create input detector peaks with ONE histogram
-        peaks_json = list_to_raw(
-            [GroupPeakList(peaks=SyntheticData.fakeDetectorPeaks(), groupID=i) for i in range(len_peaks)]
-        )
+        peaks = [GroupPeakList(peaks=SyntheticData.fakeDetectorPeaks(), groupID=i) for i in range(len_peaks)]
 
         # initialize the algo and try to run -- verify that it fails with error
         weightCalculatorAlgo = DiffractionSpectrumWeightCalculator()
         weightCalculatorAlgo.initialize()
         weightCalculatorAlgo.setProperty("InputWorkspace", input_ws_name)
-        weightCalculatorAlgo.setProperty("DetectorPeaks", peaks_json)
+        weightCalculatorAlgo.setProperty("DetectorPeaks", create_pointer(peaks))
         weightCalculatorAlgo.setProperty("WeightWorkspace", weight_ws_name)
         with pytest.raises(RuntimeError) as e:
             weightCalculatorAlgo.execute()
@@ -190,15 +190,13 @@ with mock.patch.dict(
         )
 
         # create input detector peaks
-        peaks_json = list_to_raw(
-            [GroupPeakList(peaks=SyntheticData.fakeDetectorPeaks(), groupID=i) for i in range(len_wksp)]
-        )
+        peaks = [GroupPeakList(peaks=SyntheticData.fakeDetectorPeaks(), groupID=i) for i in range(len_wksp)]
 
         # initialize and run the weight algo -- verify it runs
         weightCalculatorAlgo = DiffractionSpectrumWeightCalculator()
         weightCalculatorAlgo.initialize()
         weightCalculatorAlgo.setProperty("InputWorkspace", input_ws_name)
-        weightCalculatorAlgo.setProperty("DetectorPeaks", peaks_json)
+        weightCalculatorAlgo.setProperty("DetectorPeaks", create_pointer(peaks))
         weightCalculatorAlgo.setProperty("WeightWorkspace", weight_ws_name)
         assert weightCalculatorAlgo.execute()
 
@@ -246,13 +244,13 @@ with mock.patch.dict(
             for x in range(len(peaks))
             if peaks[x] == peak_hi
         ]
-        peaks_json = list_to_raw([GroupPeakList(peaks=peakList, groupID=0)])
+        peaks = [GroupPeakList(peaks=peakList, groupID=0)]
 
         # initialize and run the weight algo
         weightCalculatorAlgo = DiffractionSpectrumWeightCalculator()
         weightCalculatorAlgo.initialize()
         weightCalculatorAlgo.setProperty("InputWorkspace", input_ws_name)
-        weightCalculatorAlgo.setProperty("DetectorPeaks", peaks_json)
+        weightCalculatorAlgo.setProperty("DetectorPeaks", create_pointer(peaks))
         weightCalculatorAlgo.setProperty("WeightWorkspace", weight_ws_name)
         assert weightCalculatorAlgo.execute()
 
@@ -288,13 +286,13 @@ with mock.patch.dict(
         )
 
         # load predicted peaks
-        peaks_json = Resource.read("inputs/weight_spectra/peaks.json")
+        peaks = parse_file_as(List[GroupPeakList], Resource.getPath("inputs/weight_spectra/peaks.json"))
 
         # initialize and run the weight algo
         weightCalculatorAlgo = DiffractionSpectrumWeightCalculator()
         weightCalculatorAlgo.initialize()
         weightCalculatorAlgo.setProperty("InputWorkspace", input_ws_name)
-        weightCalculatorAlgo.setProperty("DetectorPeaks", peaks_json)
+        weightCalculatorAlgo.setProperty("DetectorPeaks", create_pointer(peaks))
         weightCalculatorAlgo.setProperty("WeightWorkspace", weight_ws_name)
         assert weightCalculatorAlgo.execute()
 

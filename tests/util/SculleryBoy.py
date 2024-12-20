@@ -6,6 +6,7 @@ from util.dao import DAOFactory
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import (
+    ArtificialNormalizationIngredients,
     DiffractionCalibrationIngredients,
     NormalizationIngredients,
     ReductionIngredients,
@@ -105,6 +106,9 @@ class SculleryBoy:
             calibrantSample=self.prepCalibrantSample("123"),
             detectorPeaks=self.prepDetectorPeaks(ingredients),
         )
+
+    def prepArtificialNormalizationIngredients(self):
+        return ArtificialNormalizationIngredients(smoothingParameter=0.1)
 
     def verifyCalibrationExists(self, runNumber: str, useLiteMode: bool) -> bool:  # noqa ARG002
         return True
