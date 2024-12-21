@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 import datetime
 import glob
 import h5py
@@ -254,8 +254,22 @@ class LocalDataService:
         # WARNING: 
         #   When successful, `GetIPTS` returns the _likely_ user-data directory for this run number.
         # It does _not_ actually check whether any input-data file for this run number exists.
+        # For example, in live-data mode, the IPTS directory will probably exist,
+        # but the input file will not yet exist.
 
         return str(IPTS)
+        
+    def createNeutronFilePath(self, runNumber: str, useLiteMode: bool) -> Path:
+        # TODO: normalize with `GroceryService` version!
+        
+        # TODO: fully normalize this to pathlib.Path:
+        #   -- problems (among others): `GetIPTS` returns with an '/' at the end?
+        
+        IPTS = self.getIPTS(runNumber)
+        instr = "nexus.lite" if useLiteMode else "nexus.native"
+        pre = instr + ".prefix"
+        ext = instr + ".extension"
+        return Path(IPTS + Config[pre] + str(runNumber) + Config[ext])
 
     def stateExists(self, runId: str) -> bool:
         stateId, _ = self.generateStateId(runId)
@@ -1254,15 +1268,27 @@ class LocalDataService:
     ## LIVE-DATA SUPPORT METHODS
 
     @contextmanager
-    def _useFacility(self, facility: str):
-        _facilitySave: str = ConfigService.getFacility().name()
-        ConfigService.setFacility(facility)
-        yield facility
+    def _useLiveDataFacility(self):
+        # This context manager allows live-data normal usage OR test usage to proceed in a transparent manner,
+        #   without interfering with the function of the normal instrument and facility definitions.
+        
+        facility, instrument = Config["liveData.facility"], Config["liveData.instrument"]
+        kwargs = {}
+        if facility == "TEST_LIVE":
+            inputFilePath = self.createNeutronFilePath(str(Config["liveData.testInput.runNumber"]), False)
+            kwargs["fileeventdatalistener.filename"] = inputFilePath.name
+            kwargs["fileeventdatalistener.chunks"] = str(Config["liveData.testInput.chunks"])
+        _stack = ExitStack()
+        yield _stack.enter_context(amend_config(
+            facility=facility,
+            instrument=instrument,
+            **kwargs
+        ))    
         
         # exit
-        ConfigService.setFacility(_facilitySave)
+        _stack.close()
         
-    def hasLiveDataConnection(self, facility: str = Config["liveData.facility.name"], instrument: str = Config["liveData.instrument.name"]) -> bool:
+    def hasLiveDataConnection(self) -> bool:
         """For 'live data' methods: test if there is a listener connection to the instrument."""
         
         # In addition to 'analysis.sns.gov', other nodes on the subnet should be OK as well.
@@ -1271,19 +1297,16 @@ class LocalDataService:
 
         # Normalize to an actual "URL" and then strip off the protocol (not actually "http") and port:
         #   `liveDataAddress` returns a string similar to "bl3-daq1.sns.gov:31415".
-
-        hostname = urlparse("http://" + ConfigService.getFacility(facility).instrument(instrument).liveDataAddress()).hostname
-        status = True
-        try:
-            socket.gethostbyaddr(hostname)
-        except Exception: 
-            # specifically: expecting a `socket.gaierror`, but any exception will indicate that there's no connection
-            status = False
-        return status
-        """
-        # *** DEBUG *** mock
-        return True
-        """
+        
+        with self._useLiveDataFacility():
+            hostname = urlparse("http://" + ConfigService.getFacility(facility).instrument(instrument).liveDataAddress()).hostname
+            status = True
+            try:
+                socket.gethostbyaddr(hostname)
+            except Exception: 
+                # specifically: expecting a `socket.gaierror`, but any exception will indicate that there's no connection
+                status = False
+            return status
         
     def _liveMetadataFromRun(self, run: Run) -> LiveMetadata:
         """Construct a 'LiveMetadata' instance from a 'mantid.api.Run' instance."""
@@ -1313,14 +1336,14 @@ class LocalDataService:
             raise RuntimeError("unable to extract LiveMetadata from Run") from e
         return metadata
 
-    def _readLiveData(self, ws: WorkspaceName, duration: int, facility: str, instrument: str):
+    def _readLiveData(self, ws: WorkspaceName, duration: int):
         # 'StartTime=""' => read all of the available data
         
         startTime = (datetime.datetime.utcnow() + datetime.timedelta(seconds=-duration)).isoformat()\
             if duration != 0 else ""
         
-        # TODO: duplicated at `FetchGroceriesAlgorithm`.  Probably that should be called here.    
-        with self._useFacility(facility):
+        # TODO: duplicated at `FetchGroceriesAlgorithm`.  Possibly that should be called here.    
+        with self._useLiveDataFacility():
             self.mantidSnapper.LoadLiveData(
                 "load live-data chunk",
                 OutputWorkspace=ws,
@@ -1332,11 +1355,11 @@ class LocalDataService:
         
         return ws
 
-    def readLiveMetadata(self, facility: str = Config["liveData.facility.name"], instrument: str = Config["liveData.instrument.name"]) -> LiveMetadata:
+    def readLiveMetadata(self) -> LiveMetadata:
         ws = self.mantidSnapper.mtd.unique_hidden_name()
         
         # Retrieve the smallest possible data increment, in order to read the logs:
-        ws = self._readLiveData(ws, duration=1, facility=facility, instrument=instrument)
+        ws = self._readLiveData(ws, duration=1)
         metadata = self._liveMetadataFromRun(mtd[ws].getRun())
         
         self.mantidSnapper.DeleteWorkspace(
@@ -1368,9 +1391,7 @@ class LocalDataService:
     def readLiveData(
         self,
         ws: WorkspaceName,
-        duration: int,
-        facility: str = Config["liveData.facility.name"],
-        instrument: str = Config["liveData.instrument.name"]
+        duration: int
     ) -> WorkspaceName:
         # A duration of zero => read all of the available data.
-        return self._readLiveData(ws, duration, facility, instrument)
+        return self._readLiveData(ws, duration)
