@@ -74,7 +74,7 @@ class WorkflowPresenter(QObject):
         self.interfaceController = InterfaceController()
 
         self._hookupSignals()
-	self.cancellationRequest.connect(self.requestCancellation)
+        self.cancellationRequest.connect(self.requestCancellation)
 
         self.responseHandler = SNAPResponseHandler(self.view)
         self.responseHandler.continueAnyway.connect(self.continueAnyway)
@@ -200,13 +200,16 @@ class WorkflowPresenter(QObject):
             return model.continueAction(self)
 
         # do action
-       self.handleAction(verifyAndContinue, None, self.continueOnSuccess)
+        self.handleAction(verifyAndContinue, None, self.continueOnSuccess)
 
     def handleAction(
         self,
         action: Callable[[Any], Any],
         args: Tuple[Any, ...] | Any | None,
         onSuccess: Callable[[None], None],
+        
+        # allow this thread pool to also be used for non-workflow actions
+        isWorkflow=True
     ):
         """
         Send front-end task to a separate worker to complete.
@@ -221,12 +224,16 @@ class WorkflowPresenter(QObject):
         self.worker.finished.connect(self.actionCompleted)
         self.worker.result.connect(self._handleComplications)
         self.worker.success.connect(onSuccess)
-        self._setWorkflowIsRunning(True)
+        
+        if isWorkflow:
+            self.worker.finished.connect(lambda: self._setWorkflowIsRunning(False))            
+            self._setWorkflowIsRunning(True)
+        
         self.worker_pool.submitWorker(self.worker)
 
     def continueOnSuccess(self, success: bool):
         if success:
-	    self.advanceWorkflow()
+            self.advanceWorkflow()
  
     @Slot(bool)
     def _setWorkflowIsRunning(self, flag: bool):

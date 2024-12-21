@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from mantid.dataobjects import MaskWorkspace
-from mantid.kernel import ConfigService, PhysicalConstants
+from mantid.kernel import amend_config, ConfigService, PhysicalConstants
 from mantid.api import Run
 from mantid.simpleapi import GetIPTS, mtd
 
@@ -1272,7 +1272,7 @@ class LocalDataService:
         # This context manager allows live-data normal usage OR test usage to proceed in a transparent manner,
         #   without interfering with the function of the normal instrument and facility definitions.
         
-        facility, instrument = Config["liveData.facility"], Config["liveData.instrument"]
+        facility, instrument = Config["liveData.facility.name"], Config["liveData.instrument.name"]
         kwargs = {}
         if facility == "TEST_LIVE":
             inputFilePath = self.createNeutronFilePath(str(Config["liveData.testInput.runNumber"]), False)
@@ -1298,15 +1298,15 @@ class LocalDataService:
         # Normalize to an actual "URL" and then strip off the protocol (not actually "http") and port:
         #   `liveDataAddress` returns a string similar to "bl3-daq1.sns.gov:31415".
         
-        with self._useLiveDataFacility():
-            hostname = urlparse("http://" + ConfigService.getFacility(facility).instrument(instrument).liveDataAddress()).hostname
-            status = True
-            try:
-                socket.gethostbyaddr(hostname)
-            except Exception: 
-                # specifically: expecting a `socket.gaierror`, but any exception will indicate that there's no connection
-                status = False
-            return status
+        facility, instrument = Config["liveData.facility.name"], Config["liveData.instrument.name"]
+        hostname = urlparse("http://" + ConfigService.getFacility(facility).instrument(instrument).liveDataAddress()).hostname
+        status = True
+        try:
+            socket.gethostbyaddr(hostname)
+        except Exception: 
+            # specifically: we're expecting a `socket.gaierror`, but any exception will indicate that there's no connection
+            status = False
+        return status
         
     def _liveMetadataFromRun(self, run: Run) -> LiveMetadata:
         """Construct a 'LiveMetadata' instance from a 'mantid.api.Run' instance."""
@@ -1347,7 +1347,7 @@ class LocalDataService:
             self.mantidSnapper.LoadLiveData(
                 "load live-data chunk",
                 OutputWorkspace=ws,
-                Instrument=instrument,
+                Instrument=Config["liveData.instrument.name"],
                 AccumulationMethod=Config["liveData.accumulationMethod"],
                 StartTime=startTime
             )

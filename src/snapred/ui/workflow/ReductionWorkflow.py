@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from qtpy.QtCore import Qt, QTimer, Slot
 
@@ -96,10 +96,10 @@ class ReductionWorkflow(WorkflowImplementer):
         ##
         
         # Start automatic update at live-data mode change:
-        self._reductionRequestView.liveDataModeChange.connect(self.updateLiveMetadata)
+        self._reductionRequestView.liveDataModeChange.connect(lambda flag: print('*update at mode change*') or self.updateLiveMetadata(flag))
         
         # Restart automatic update at end-of-reset following workflow completion:
-        self.workflow.presenter.resetCompleted.connect(lambda: self.updateLiveMetadata(self.liveDataMode))
+        self.workflow.presenter.resetCompleted.connect(lambda: print('*update after reset*') or self.updateLiveMetadata(self.liveDataMode))
         
         self._artificialNormalizationView.signalValueChanged.connect(self.onArtificialNormalizationValueChange)
         
@@ -162,32 +162,34 @@ class ReductionWorkflow(WorkflowImplementer):
             
             updateInterval = self._liveDataUpdateInterval()
             
-	    def liveReduce():
-	        # Resubmit the previous request, which will then act on the next live-data chunk.
-	        self._submitActionToPresenter(
-		    lambda: self.request(path="reduction/", payload=request_),
-		    None,
-		    self.workflow.presenter.continueOnSuccess
-		)
-	    
-	    if response.executionTime > updateInterval:
+            def liveReduce():
+                # Resubmit the previous request, which will then act on the next live-data chunk.
+                self._submitActionToPresenter(
+                    lambda: self.request(path="reduction/", payload=request_),
+                    None,
+                    self.workflow.presenter.continueOnSuccess
+                )
+
+            if response.executionTime > updateInterval:
                 # Immediately start the next reduction cycle.
-	        liveReduce()
+                liveReduce()
             else:
-                # Wait and then start the next reduction cycle.
+                # Wait, and then start the next reduction cycle.
                 waitTime = updateInterval - response.executionTime
                 self._workflowTimer.singleShot(waitTime.seconds * 1000, Qt.CoarseTimer, liveReduce)
 
     def _submitActionToPresenter(
         self,
-	action: Callable[[Any], Any],
+        action: Callable[[Any], Any],
         args: Tuple[Any, ...] | Any | None,
-        onSuccess: Callable[[None], None]
-        ):
-	# Submit an action to this workflow's presenter's thread pool.
-        self.workflow.presenter.handleAction(action, args, onSuccess)
+        onSuccess: Callable[[None], None] = lambda: None,
+        isWorkflow: bool = True
+    ):
+        # Submit an action to this workflow's presenter's thread pool.
+        self.workflow.presenter.handleAction(action, args, onSuccess, isWorkflow)
     
     def _setInteractive(self, state: bool):
+        # TODO: actually _use_ this method!
         
         # Sorry! Two proceeding underscores is reserved!
 
@@ -230,26 +232,36 @@ class ReductionWorkflow(WorkflowImplementer):
         if self._liveDataUpdateTimer.isActive():
             self._liveDataUpdateTimer.stop()
         if liveDataMode:
-            self._updateLiveMetadata()
+            # Display the "waiting for listener" (not ready) screen.
+            self._reductionRequestView.updateLiveMetadata(None)
+            
+            # Start the automatic metadata update sequence.
+            self._submitActionToPresenter(self._updateLiveMetadata, None, isWorkflow=False)
         else:
             # WARNING: live-data mode can disable the continue button,
             #   so we need to re-enable it here, just in case.
             self.workflow.presenter.enableButtons(True)
     
     @Slot()
-    def _updateLiveMetadata(self):
+    def _updateLiveMetadata(self) -> SNAPResponse:
+        print('*_one_*') # *** DEBUG ***
+    
         if not self.workflow.presenter.workflowIsRunning:
+            print('*_two_*') # *** DEBUG ***
             # Don't harass the data listener if it's already in a retrieval cycle!
             data = self._getLiveMetadata()
             self._reductionRequestView.updateLiveMetadata(data)
             
-            # Disable buttons in case of "no active run" or "beam down" conditions.
-            if not data.hasActiveRun() or not data.beamState():
-                self.workflow.presenter.enableButtons(False)
+            # Enable buttons only if there is an active run and a live beam.
+            self.workflow.presenter.enableButtons(data.hasActiveRun() and data.beamState())
         
         # Automatically update live metadata every update interval.
+        print('*_three_*') # *** DEBUG ***
         updateInterval = self._liveDataUpdateInterval().seconds * 1000
         self._liveDataUpdateTimer.singleShot(updateInterval, Qt.CoarseTimer, self._updateLiveMetadata)
+        
+        # Return a valid `SNAPResponse` so that we can submit this method to the presenter's `worker_pool`.
+        return SNAPResponse(code=ResponseCode.OK)
     
     def _hasLiveDataConnection(self) -> bool:
         return self.request(path="reduction/hasLiveDataConnection").data

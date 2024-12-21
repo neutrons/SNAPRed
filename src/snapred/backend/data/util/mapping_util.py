@@ -38,7 +38,7 @@ def mappingFromRun(run: Run) -> Mapping:
                     value = self._run.getProtonCharge()
                                         
                 case 'run_number':
-                    value = self._run.getProperty('run_number') if self._run.hasProperty('run_number') else 0
+                    value = self._run.getProperty('run_number').value if self._run.hasProperty('run_number') else 0
                 
                 case _:
                     try:

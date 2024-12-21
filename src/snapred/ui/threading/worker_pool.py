@@ -22,6 +22,7 @@ class Worker(QObject):
 
     def __init__(self, target, args=None):
         super().__init__()
+        self._dryRun = False
         self._thisThread = None
         self.target = target
         self.args = args

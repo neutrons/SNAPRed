@@ -238,9 +238,9 @@ class DataFactoryService:
 
     ##### LIVE-DATA SUPPORT METHODS #####
     
-    def hasLiveDataConnection(self, facility: str = Config["liveData.facility.name"], instrument: str = Config["liveData.instrument.name"]) -> bool:
+    def hasLiveDataConnection(self) -> bool:
         """For 'live data' methods: test if there is a listener connection to the instrument."""
-        return self.lookupService.hasLiveDataConnection(facility=facility, instrument=instrument)
+        return self.lookupService.hasLiveDataConnection()
 
-    def getLiveMetadata(self, facility: str = Config["facility.name"], instrument: str = Config["instrument.name"]) -> LiveMetadata:
-        return self.lookupService.readLiveMetadata(facility, instrument)
+    def getLiveMetadata(self) -> LiveMetadata:
+        return self.lookupService.readLiveMetadata()

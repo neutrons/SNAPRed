@@ -32,6 +32,7 @@ logger = snapredLogger.getLogger(__name__)
 class _RequestViewBase(BackendRequestView):
         
     def preVerify(self) -> bool:
+        # TODO: *** DEBUG *** remove all of these!
         # Determines whether or not continue button is even enabled.
         return True
 
@@ -145,7 +146,7 @@ class _RequestView(_RequestViewBase):
         self.clearButton.clicked.connect(self.clearRunNumbers)
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
         self.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
-        self.liveDataToggle.stateChanged.connect(lambda flag: self.liveDataModeChange.emit(flag))
+        self.liveDataToggle.stateChanged.connect(lambda flag: print(f'request view: mode-change: {flag}') or self.liveDataModeChange.emit(flag))
 
     @Slot()
     def addRunNumber(self):
@@ -363,7 +364,7 @@ class _LiveDataView(_RequestViewBase):
         # Connect signals to slots
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
         self.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
-        self.liveDataToggle.stateChanged.connect(lambda flag: self.liveDataModeChange.emit(flag))
+        self.liveDataToggle.stateChanged.connect(lambda flag: print(f'live-data view: mode-change: {flag}') or self.liveDataModeChange.emit(flag))
         self.durationSlider.valueChanged.connect(self._updateDuration)
         self.updateIntervalSlider.valueChanged.connect(self._updateUpdateInterval)
 
@@ -377,15 +378,22 @@ class _LiveDataView(_RequestViewBase):
 
     @Slot()
     def _updateLiveMetadata(self):    
-
-        TIME_ONLY_UTC = "%H:%M:%S (utc)"
-        TIME_AND_DATE_UTC = "%b %d: %H:%M:%S (utc)"
-        utcnow = datetime.utcnow()
-        
         data = self._liveMetadata
-        timeFormat = TIME_ONLY_UTC if (utcnow - data.startTime < timedelta(hours=12)) else TIME_AND_DATE_UTC
         
-        if data.hasActiveRun():
+        if data is None:
+            self.runNumbers = []
+            self.liveDataStatus.setText(
+                "<font size = 4><b>Live data:</b> connecting to listener...</font>" 
+            )
+            # WARNING (i.e. NOT READY) flash
+            self.liveDataIndicator.setFlashSequence(((QColor(255, 255, 0),), (0.1, 0.4)))
+            self.liveDataIndicator.setFlash(True)        
+        elif data.hasActiveRun():
+            TIME_ONLY_UTC = "%H:%M:%S (utc)"
+            TIME_AND_DATE_UTC = "%b %d: %H:%M:%S (utc)"
+            utcnow = datetime.utcnow()
+            timeFormat = TIME_ONLY_UTC if (utcnow - data.startTime < timedelta(hours=12)) else TIME_AND_DATE_UTC
+            
             if data.beamState():
                 liveStateChange = not self.runNumbers or (self.runNumbers[0] != data.runNumber)
                 if liveStateChange:
@@ -432,7 +440,7 @@ class _LiveDataView(_RequestViewBase):
             self.liveDataStatus.setText(
                 "<font size = 4><b>Live data:</b> no run is active</font>" 
             )
-            # WARNING flash
+            # WARNING (i.e. NOT READY) flash
             self.liveDataIndicator.setFlashSequence(((QColor(255, 255, 0),), (0.1, 0.4)))
             self.liveDataIndicator.setFlash(True)
 
@@ -566,7 +574,7 @@ class ReductionRequestView(_RequestViewBase):
         # Connect signals to slots
         self._requestView.liveDataModeChange.connect(self.liveDataModeChange)
         self._liveDataView.liveDataModeChange.connect(self.liveDataModeChange)
-        self.liveDataModeChange.connect(self._setLiveDataMode)
+        self.liveDataModeChange.connect(lambda flag: print(f'set live-data mode: {flag}') or self._setLiveDataMode(flag))
 
     @Slot(bool)
     def _setLiveDataMode(self, flag: bool):
