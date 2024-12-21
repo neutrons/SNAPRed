@@ -146,7 +146,7 @@ class _RequestView(_RequestViewBase):
         self.clearButton.clicked.connect(self.clearRunNumbers)
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
         self.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
-        self.liveDataToggle.stateChanged.connect(lambda flag: print(f'request view: mode-change: {flag}') or self.liveDataModeChange.emit(flag))
+        self.liveDataToggle.stateChanged.connect(self.liveDataModeChange)
 
     @Slot()
     def addRunNumber(self):
@@ -364,7 +364,7 @@ class _LiveDataView(_RequestViewBase):
         # Connect signals to slots
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
         self.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
-        self.liveDataToggle.stateChanged.connect(lambda flag: print(f'live-data view: mode-change: {flag}') or self.liveDataModeChange.emit(flag))
+        self.liveDataToggle.stateChanged.connect(self.liveDataModeChange)
         self.durationSlider.valueChanged.connect(self._updateDuration)
         self.updateIntervalSlider.valueChanged.connect(self._updateUpdateInterval)
 
@@ -574,7 +574,7 @@ class ReductionRequestView(_RequestViewBase):
         # Connect signals to slots
         self._requestView.liveDataModeChange.connect(self.liveDataModeChange)
         self._liveDataView.liveDataModeChange.connect(self.liveDataModeChange)
-        self.liveDataModeChange.connect(lambda flag: print(f'set live-data mode: {flag}') or self._setLiveDataMode(flag))
+        self.liveDataModeChange.connect(self._setLiveDataMode)
 
     @Slot(bool)
     def _setLiveDataMode(self, flag: bool):

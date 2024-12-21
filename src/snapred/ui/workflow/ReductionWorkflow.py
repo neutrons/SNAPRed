@@ -96,10 +96,10 @@ class ReductionWorkflow(WorkflowImplementer):
         ##
         
         # Start automatic update at live-data mode change:
-        self._reductionRequestView.liveDataModeChange.connect(lambda flag: print('*update at mode change*') or self.updateLiveMetadata(flag))
+        self._reductionRequestView.liveDataModeChange.connect(self.updateLiveMetadata)
         
         # Restart automatic update at end-of-reset following workflow completion:
-        self.workflow.presenter.resetCompleted.connect(lambda: print('*update after reset*') or self.updateLiveMetadata(self.liveDataMode))
+        self.workflow.presenter.resetCompleted.connect(lambda: self.updateLiveMetadata(self.liveDataMode))
         
         self._artificialNormalizationView.signalValueChanged.connect(self.onArtificialNormalizationValueChange)
         
@@ -244,11 +244,9 @@ class ReductionWorkflow(WorkflowImplementer):
     
     @Slot()
     def _updateLiveMetadata(self) -> SNAPResponse:
-        print('*_one_*') # *** DEBUG ***
     
+        # Don't harass the data listener if it's already in a retrieval cycle!
         if not self.workflow.presenter.workflowIsRunning:
-            print('*_two_*') # *** DEBUG ***
-            # Don't harass the data listener if it's already in a retrieval cycle!
             data = self._getLiveMetadata()
             self._reductionRequestView.updateLiveMetadata(data)
             
@@ -256,11 +254,11 @@ class ReductionWorkflow(WorkflowImplementer):
             self.workflow.presenter.enableButtons(data.hasActiveRun() and data.beamState())
         
         # Automatically update live metadata every update interval.
-        print('*_three_*') # *** DEBUG ***
         updateInterval = self._liveDataUpdateInterval().seconds * 1000
         self._liveDataUpdateTimer.singleShot(updateInterval, Qt.CoarseTimer, self._updateLiveMetadata)
         
         # Return a valid `SNAPResponse` so that we can submit this method to the presenter's `worker_pool`.
+        # (Otherwise, the first metadata update time is too long for any end user to put up with!)
         return SNAPResponse(code=ResponseCode.OK)
     
     def _hasLiveDataConnection(self) -> bool:

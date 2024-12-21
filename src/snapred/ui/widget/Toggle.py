@@ -72,7 +72,8 @@ class Toggle(QWidget):
     def setState(self, state):
         if self._state != state:
             self._state = state
-            self.stateChanged.emit(state)
+            if self.isEnabled():
+                self.stateChanged.emit(state)
             self.animateClick()
 
     def connectUpdate(self, update):  # noqa: ARG002
@@ -83,7 +84,7 @@ class Toggle(QWidget):
 
     @Property(QColor)
     def backgroundColor(self):
-        # Be careful: don't hide the widget's `background-color` property (or function)!
+        # Be careful here: don't hide the widget's `background-color` property (or function)!
         return self._backgroundColor
 
     @backgroundColor.setter
