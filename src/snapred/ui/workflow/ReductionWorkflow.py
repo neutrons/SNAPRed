@@ -161,14 +161,32 @@ class ReductionWorkflow(WorkflowImplementer):
             self.workflow.presenter.completeWorkflow(message=None)
             
             updateInterval = self._liveDataUpdateInterval()
-            if response.executionTime > updateInterval:
-                # Immediately start the next reduction.
-                self.request(path="reduction/", payload=request_)
+            
+	    def liveReduce():
+	        # Resubmit the previous request, which will then act on the next live-data chunk.
+	        self._submitActionToPresenter(
+		    lambda: self.request(path="reduction/", payload=request_),
+		    None,
+		    self.workflow.presenter.continueOnSuccess
+		)
+	    
+	    if response.executionTime > updateInterval:
+                # Immediately start the next reduction cycle.
+	        liveReduce()
             else:
-                # Wait and then start the next reduction.
+                # Wait and then start the next reduction cycle.
                 waitTime = updateInterval - response.executionTime
-                self._workflowTimer.singleShot(waitTime.seconds * 1000, Qt.CoarseTimer, lambda: self.request(path="reduction/", request=request_))
+                self._workflowTimer.singleShot(waitTime.seconds * 1000, Qt.CoarseTimer, liveReduce)
 
+    def _submitActionToPresenter(
+        self,
+	action: Callable[[Any], Any],
+        args: Tuple[Any, ...] | Any | None,
+        onSuccess: Callable[[None], None]
+        ):
+	# Submit an action to this workflow's presenter's thread pool.
+        self.workflow.presenter.handleAction(action, args, onSuccess)
+    
     def _setInteractive(self, state: bool):
         
         # Sorry! Two proceeding underscores is reserved!

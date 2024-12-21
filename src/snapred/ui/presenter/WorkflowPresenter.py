@@ -74,6 +74,8 @@ class WorkflowPresenter(QObject):
         self.interfaceController = InterfaceController()
 
         self._hookupSignals()
+	self.cancellationRequest.connect(self.requestCancellation)
+
         self.responseHandler = SNAPResponseHandler(self.view)
         self.responseHandler.continueAnyway.connect(self.continueAnyway)
         self.responseHandler.userCancellation.connect(self.userCancellation)
@@ -198,8 +200,7 @@ class WorkflowPresenter(QObject):
             return model.continueAction(self)
 
         # do action
-        continueOnSuccess = lambda success: self.advanceWorkflow() if success else None  # noqa E731
-        self.handleAction(verifyAndContinue, None, continueOnSuccess)
+       self.handleAction(verifyAndContinue, None, self.continueOnSuccess)
 
     def handleAction(
         self,
@@ -220,10 +221,13 @@ class WorkflowPresenter(QObject):
         self.worker.finished.connect(self.actionCompleted)
         self.worker.result.connect(self._handleComplications)
         self.worker.success.connect(onSuccess)
-        self.cancellationRequest.connect(self.requestCancellation)
         self._setWorkflowIsRunning(True)
         self.worker_pool.submitWorker(self.worker)
 
+    def continueOnSuccess(self, success: bool):
+        if success:
+	    self.advanceWorkflow()
+ 
     @Slot(bool)
     def _setWorkflowIsRunning(self, flag: bool):
         self._workflowIsRunning = flag
@@ -276,7 +280,7 @@ class WorkflowPresenter(QObject):
     @Slot()
     def requestCancellation(self):
         if self.worker:
-            # This supports coarse grained cancellation:
+            # This supports coarse-grained cancellation:
             #   possible only after each service request completes.
             #   Disabling the button here gives the user feedback that their action
             #   has actually had any effect.

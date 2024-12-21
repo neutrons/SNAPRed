@@ -1255,7 +1255,7 @@ class LocalDataService:
 
     @contextmanager
     def _useFacility(self, facility: str):
-        _facilitySave: str = ConfigService.getFacility()
+        _facilitySave: str = ConfigService.getFacility().name()
         ConfigService.setFacility(facility)
         yield facility
         
@@ -1339,8 +1339,11 @@ class LocalDataService:
         ws = self._readLiveData(ws, duration=1, facility=facility, instrument=instrument)
         metadata = self._liveMetadataFromRun(mtd[ws].getRun())
         
-        self.mantidsnapper.DeleteWorkspace(ws)
-        self.mantidsnapper.executeQueue()
+        self.mantidSnapper.DeleteWorkspace(
+	    "delete temporary workspace",
+	    Workspace=ws
+	)
+        self.mantidSnapper.executeQueue()
         return metadata
         """                  
         # *** DEBUG *** : mock

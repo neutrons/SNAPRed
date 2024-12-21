@@ -2,7 +2,7 @@
 
 IPTS:
   default: /SNS
-  root: /mnt/data0/workspaces/ORNL-work/SNAPRed/SNS_root
+  root: /mnt/R5_data1/data1/workspaces/ORNL-work/SNAPRed/SNS_root
 
 orchestration:
   path:
