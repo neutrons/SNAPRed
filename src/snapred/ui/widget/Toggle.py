@@ -42,19 +42,23 @@ class Toggle(QWidget):
         self.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed))
         
         self._state = state
-        self._ellipsePosition = 0.0
+        self._ellipsePosition = 1.0 if state else 0.0
         self.toggleAnimation = QPropertyAnimation(self, b"ellipsePosition")
+        
+        # Complete the animation _first_, and only _then_ emit the stateChange signal:
+        self.toggleAnimation.finished.connect(lambda: self.stateChanged.emit(self._state))
+        self.toggleAnimation.finished.connect(self.update)
         
         # The following properties are now set using the SNAPRed application's style sheet:
         #   fixed height width
         # self.setFixedHeight(30)
         # self.setFixedWidth(60)
-        self._backgroundColor = QColor(0, 128, 0) # will be overriden by the style sheet
+        self._backgroundColor = QColor(0, 128, 0) # will be overridden by the style sheet
         self._gradStartColor = QColor(0, 255, 0)  # " "
         self._gradEndColor = QColor(0, 128, 128)  # " "
         
-        self.toggleAnimation.finished.connect(self.update)
-        self.animateClick()
+        # Do _not_ animate at initial setup!
+        # self.animateClick()
 
     @Property(float)
     def ellipsePosition(self):
@@ -73,9 +77,12 @@ class Toggle(QWidget):
         if self._state != state:
             self._state = state
             if self.isEnabled():
-                self.stateChanged.emit(state)
-            self.animateClick()
-
+                # animate first, _then_ emit the signal
+                self.animateClick()
+            else:
+                # do not animate or emit stateChange when disabled
+                self._ellipsePosition = 1.0 if state else 0.0
+                
     def connectUpdate(self, update):  # noqa: ARG002
         self.toggleAnimation.finished.connect(update)
 
@@ -146,5 +153,5 @@ class Toggle(QWidget):
 
     def mouseReleaseEvent(self, event):
         self.toggle()
-        self.update()
+        # self.update()
         super().mouseReleaseEvent(event)
