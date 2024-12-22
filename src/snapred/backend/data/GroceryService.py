@@ -3,6 +3,7 @@ import json
 import numpy as np
 import os
 from collections.abc import Iterable
+from datetime import datetime
 from pathlib import Path
 from pydantic import validate_call
 from typing import Any, Dict, List, Optional, Tuple
@@ -819,7 +820,7 @@ class GroceryService:
 
                 # When not specified in the `liveDataArgs`,
                 #   default behavior will be to load the entire run.
-                startTime = (datetime.datetime.utcnow() - liveDataArgs.duration).isoformat()\
+                startTime = (datetime.utcnow() - liveDataArgs.duration).isoformat()\
                     if liveDataArgs is not None else ""
 
                 loaderArgs = {
@@ -940,7 +941,7 @@ class GroceryService:
 
                 # When not specified in the `liveDataArgs`,
                 #   default behavior will be to load the entire run.
-                startTime = (datetime.datetime.utcnow() - liveDataArgs.duration).isoformat()\
+                startTime = (datetime.utcnow() - liveDataArgs.duration).isoformat()\
                     if liveDataMode else ""
 
                 loaderArgs = {

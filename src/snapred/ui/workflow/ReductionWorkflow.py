@@ -83,10 +83,11 @@ class ReductionWorkflow(WorkflowImplementer):
         # Control of live-data metadata update:
         self._liveDataUpdateTimer = QTimer()
         self.addResetHook(
+            # Note: this controls the live-data toggle enable _only_ when not actually in live-data mode. 
             lambda: self._reductionRequestView.setLiveDataToggleEnabled(True) if not self.liveDataMode else None
         )
         
-        # Control of live-data reduction workflow loop:
+        # A separate timer for the control of the live-data reduction-workflow loop:
         self._workflowTimer = QTimer()
         
         self.pixelMasks: List[WorkspaceName] = []
@@ -96,6 +97,7 @@ class ReductionWorkflow(WorkflowImplementer):
         ##
         
         # Start automatic update at live-data mode change:
+        #   note that "live-data metadata" here includes the `self.liveDataMode` flag itself!
         self._reductionRequestView.liveDataModeChange.connect(self.updateLiveMetadata)
         
         # Restart automatic update at end-of-reset following workflow completion:
@@ -153,31 +155,54 @@ class ReductionWorkflow(WorkflowImplementer):
             self.workflow.presenter.completeWorkflow(message=panelText)
         else:
             # Live-data loop: exit is by cancellation only:
-            
-            request_: ReductionRequest = self.requests[-1]
-            response: ReductionResponse = self.responses[-1]
-            
-            # -- `presenter.completeWorkflow` will call `reset`, which gets us back to the live-data summary panel.
-            self.workflow.presenter.completeWorkflow(message=None)
-            
-            updateInterval = self._liveDataUpdateInterval()
-            
-            def liveReduce():
-                # Resubmit the previous request, which will then act on the next live-data chunk.
-                self._submitActionToPresenter(
-                    lambda: self.request(path="reduction/", payload=request_),
-                    None,
-                    self.workflow.presenter.continueOnSuccess
-                )
+            self._cycleLiveData()
 
-            if response.executionTime > updateInterval:
-                # Immediately start the next reduction cycle.
-                liveReduce()
-            else:
-                # Wait, and then start the next reduction cycle.
-                waitTime = updateInterval - response.executionTime
-                self._workflowTimer.singleShot(waitTime.seconds * 1000, Qt.CoarseTimer, liveReduce)
+    def _cycleLiveData(self):
+        # Reset the live-data panel,
+        #   and then submit the reduction request for the next live-data chunk.
+        
+        request_: ReductionRequest = self.requests[-2]
+        response_: ReductionResponse = self.responses[-2]
 
+        print(f'**** HERE ****: request: {request_}, response: {response_}') # *** DEBUG ***
+        
+        # `presenter.completeWorkflow` will call `reset`, which gets us back to the live-data summary panel.
+        self.workflow.presenter.completeWorkflow(message=None)
+
+        updateInterval = self._liveDataUpdateInterval()
+
+        def _reduceLiveData():
+
+            response = self.request(path="reduction/", payload=request_)
+            if response.code == ResponseCode.OK:
+                record, unfocusedData = response.data.record, response.data.unfocusedData
+                self._finalizeReduction(record, unfocusedData)
+                
+            # after each cycle, clean workspaces except groupings, calibrations, normalizations, and outputs
+            self._keeps.update(self.outputs)
+            self._clearWorkspaces(exclude=self._keeps, clearCachedWorkspaces=True)
+
+            return self.responses[-1]
+        
+        def _reduceNextChunk():
+            # Resubmit the previous request, which will then act on the next live-data chunk.
+            self._submitActionToPresenter(
+                _reduceLiveData,
+                None,
+                self.workflow.presenter.continueOnSuccess
+            )
+
+        # If the user has set the updateInterval to too small a value, we just do the best we can.
+        # (We do _not_ screw up non-interactivity by spamming the logs with a WARNING!)
+        
+        waitTime: timedelta = updateInterval - response_.executionTime
+        if waitTime < timedelta(seconds=0):
+            waitTime = timedelta(seconds=0)
+        
+        # Submit the reduction request for the next live-data chunk.
+        self._workflowTimer.singleShot(waitTime.seconds * 1000, Qt.CoarseTimer, _reduceNextChunk)
+    
+    
     def _submitActionToPresenter(
         self,
         action: Callable[[Any], Any],
@@ -362,8 +387,9 @@ class ReductionWorkflow(WorkflowImplementer):
         
         # SPECIAL FOR THE REDUCTION WORKFLOW: clear everything _except_ the output workspaces
         #   _before_ transitioning to the "save" panel.
-        # TODO: make '_clearWorkspaces' a public method (i.e make this combination a special `cleanup` method).
-        self._clearWorkspaces(exclude=self.outputs, clearCachedWorkspaces=True)
+        if not self.liveDataMode:
+            # TODO: make '_clearWorkspaces' a public method (i.e make this combination a special `cleanup` method).
+            self._clearWorkspaces(exclude=self.outputs, clearCachedWorkspaces=True)
         
         return self.responses[-1]
 
@@ -444,12 +470,16 @@ class ReductionWorkflow(WorkflowImplementer):
 
     def _finalizeReduction(self, record, unfocusedData):
         """Handles post-reduction tasks, including saving and workspace management."""
-        self.savePath = self.request(path="reduction/getSavePath", payload=record.runNumber).data
+        
         # Save the reduced data. (This is automatic: it happens before the "save" panel opens.)
-        if ContinueWarning.Type.NO_WRITE_PERMISSIONS not in self.continueAnywayFlags:
-            self.request(path="reduction/save", payload=ReductionExportRequest(record=record))
-            # Retain the output workspaces after the workflow is complete.
+        if not self.liveDataMode:
+            self.savePath = self.request(path="reduction/getSavePath", payload=record.runNumber).data
+            if ContinueWarning.Type.NO_WRITE_PERMISSIONS not in self.continueAnywayFlags:
+                self.request(path="reduction/save", payload=ReductionExportRequest(record=record))
+        
+        # Retain the output workspaces after the workflow is complete.
         self.outputs.extend(record.workspaceNames)
+        
         # Also retain the unfocused data after the workflow is complete (if the box was checked),
         #   but do not actually save it as part of the reduction-data file.
         # The unfocused data does not get added to the response.workspaces list.
