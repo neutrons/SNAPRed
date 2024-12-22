@@ -386,7 +386,7 @@ class _LiveDataView(_RequestViewBase):
                 "<font size = 4><b>Live data:</b> connecting to listener...</font>" 
             )
             # WARNING (i.e. NOT READY) flash
-            self.liveDataIndicator.setFlashSequence(((QColor(255, 255, 0),), (0.1, 0.4)))
+            self.liveDataIndicator.setFlashSequence(((QColor(255, 255, 0),), (0.4, 0.6)))
             self.liveDataIndicator.setFlash(True)        
         elif data.hasActiveRun():
             TIME_ONLY_UTC = "%H:%M:%S (utc)"
@@ -406,11 +406,11 @@ class _LiveDataView(_RequestViewBase):
                 # Update the status display
                 self.liveDataStatus.setText(
                     "<p><font size = 4><b>Live data:</font>" 
-                    + "<font size = 3>"
+                    + "<font size = 4>"
                     + f" running: {data.runNumber}, "
                     + f" since: {data.startTime.strftime(timeFormat)}</p>"
                     + "</font>"
-                    + f"<p><font size = 3> &nbsp;&nbsp; t0(now): {utcnow.strftime(TIME_ONLY_UTC)}</font></p>"
+                    + f"<p><font size = 4> &nbsp;&nbsp; t0(now): {utcnow.strftime(TIME_ONLY_UTC)}</font></p>"
                 )
 
                 self.liveDataIndicator.setColor(QColor(255, 255, 0))
@@ -424,11 +424,11 @@ class _LiveDataView(_RequestViewBase):
                 self.runNumbers = []
                 self.liveDataStatus.setText(
                     "<p><font size = 4><b>Live data:</b></font>" 
-                    + "<font size = 3>"
+                    + "<font size = 4>"
                     + f" running: {data.runNumber}, "
                     + f" since: {data.startTime.strftime(timeFormat)}</p>"
                     + "</font>"
-                    + f"<p><font size = 3> &nbsp;&nbsp; t0(now): {utcnow.strftime(TIME_ONLY_UTC)}</font></p>"
+                    + f"<p><font size = 4> &nbsp;&nbsp; t0(now): {utcnow.strftime(TIME_ONLY_UTC)}</font></p>"
                     + "<p><font size = 4><b>BEAM is DOWN.</b></font></p>"
                 )
                 # ERROR flash -- beam is down with a run active.
@@ -441,7 +441,7 @@ class _LiveDataView(_RequestViewBase):
                 "<font size = 4><b>Live data:</b> no run is active</font>" 
             )
             # WARNING (i.e. NOT READY) flash
-            self.liveDataIndicator.setFlashSequence(((QColor(255, 255, 0),), (0.1, 0.4)))
+            self.liveDataIndicator.setFlashSequence(((QColor(255, 255, 0),), (0.4, 0.6)))
             self.liveDataIndicator.setFlash(True)
 
         # Automatically update any fields depending on time of day, once per second.
