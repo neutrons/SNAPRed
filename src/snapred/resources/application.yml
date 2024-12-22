@@ -65,7 +65,7 @@ liveData:
     name: ADARA_FileReader
   accumulationMethod: Replace
   testInput:
-    runNumber: 46680
+    inputFilename: SNAP_46680.nxs.h5
     chunks: 50
     
   # Update-interval slider limits and position in seconds.

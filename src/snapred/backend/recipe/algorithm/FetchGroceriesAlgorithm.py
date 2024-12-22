@@ -1,4 +1,4 @@
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 import datetime
 import json
 from typing import Dict
@@ -12,6 +12,7 @@ from mantid.api import (
     WorkspaceProperty,
 )
 from mantid.kernel import (
+    amend_config,
     ConfigService,
     Direction,
     StringListValidator,
@@ -37,14 +38,15 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             FileProperty(
                 "Filename",
                 defaultValue="",
-                action=FileAction.Load,
+                # `Filename` is an optional property when `loader == 'LoadLiveData'`.
+                action=FileAction.OptionalLoad,
                 extensions=["xml", "h5", "nxs", "hd5"],
                 direction=Direction.Input,
             ),
             doc="Path to file to be loaded",
         )
         self.declareProperty(
-            WorkspaceProperty("OutputWorkspace", "", Direction.Output),
+            WorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="Workspace containing the loaded data",
         )
         self.declareProperty(
@@ -92,23 +94,33 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         # cannot load a grouping workspace with a nexus loader
         issues: Dict[str, str] = {}
         loader = self.getPropertyValue("LoaderType")
+        
+        # `OutputWorkspace` property:
         if loader not in [
             "LoadCalibrationWorkspaces",
-        ]:
+        ]:  
             if self.getProperty("OutputWorkspace").isDefault:
                 issues["OutputWorkspace"] = f"loader '{loader}' requires an 'OutputWorkspace' argument"
-            if not self.getProperty("LoaderArgs").isDefault:
-                issues["LoaderArgs"] = f"loader '{loader}' does not have any keyword arguments"
-        else:
-            if self.getProperty("LoaderArgs").isDefault:
-                issues["LoaderArgs"] = f"Loader '{loader}' requires additional keyword arguments"
+        
+        # `LoaderArgs` property:        
+        if loader in [
+            "LoadCalibrationWorkspaces",
+            "LoadLiveData"
+        ]: 
+            if self.getProperty("LoaderArgs").isDefault:    
+                issues["LoaderArgs"] = f"loader '{loader}' requires additional keyword arguments"
+        elif not self.getProperty("LoaderArgs").isDefault:
+            issues["LoaderArgs"] = f"Loader '{loader}' does not have any keyword arguments"
+
+        # `InstrumentName`, `InstrumentFilename`, and `InstrumentDonor` properties:
         instrumentSources = ["InstrumentName", "InstrumentFilename", "InstrumentDonor"]
         specifiedSources = [s for s in instrumentSources if not self.getProperty(s).isDefault]
         if len(specifiedSources) > 1:
             issue = "Only one of InstrumentName, InstrumentFilename, or InstrumentDonor can be set"
             issues.update({s: issue for s in specifiedSources})
+            
         return issues
-
+    """
     @contextmanager
     def _useFacility(self, facility: str):
         _facilitySave: str = ConfigService.getFacility()
@@ -117,7 +129,26 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
 
         # exit
         ConfigService.setFacility(_facilitySave)
+    """
+    # TODO: *** DEBUG *** : Right now, this partially duplicates what is at `LocalDataService`.
+    #   I still need a way to do this without importing `Config` into an `Algorithm`!
+    @contextmanager
+    def _useFacility(self, facility: str, instrument: str):
+        # This context manager allows live-data normal usage OR test usage to proceed in a transparent manner,
+        #   without interfering with the function of the normal instrument and facility definitions.
+        
+        # IMPORTANT: note that the `ADARA_FileReader` listener requires additional Mantid `ConfigService` keys, and these
+        #   are overridden in `main.py`.
 
+        _stack = ExitStack()
+        yield _stack.enter_context(amend_config(
+            facility=facility,
+            instrument=instrument
+        ))    
+        
+        # exit
+        _stack.close()    
+    
     def PyExec(self) -> None:
         filename = self.getPropertyValue("Filename")
         outWS = self.getPropertyValue("OutputWorkspace")
@@ -158,12 +189,14 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     )
                     self.mantidSnapper.executeQueue()
                 case "LoadLiveData":
-                    loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))                    
-                    with self._useFacility(facility):
+                    loaderArgs = json.loads(self.getPropertyValue("LoaderArgs")) 
+                    with self._useFacility(loaderArgs["Facility"], loaderArgs["Instrument"]):
                         self.mantidSnapper.LoadLiveData(
-                            "Loading live data",
-                            OutputWorkspace=outWs,
-                            **loaderArgs
+                            "loading live-data chunk",
+                            OutputWorkspace=outWS,
+                            Instrument=loaderArgs["Instrument"],
+                            AccumulationMethod=loaderArgs["AccumulationMethod"],
+                            StartTime=loaderArgs["StartTime"]
                         )
                         self.mantidSnapper.executeQueue()
                 case _:

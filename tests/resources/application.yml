@@ -58,10 +58,15 @@ liveData:
   #   in order to use the mock listener for testing
   #   without overriding the real instrument.
   facility: 
-    name: ${facility.name}
+    # name: ${facility.name}
+    name: TEST_LIVE
   instrument:
-    name: ${instrument.name}
+    # name: ${instrument.name}
+    name: ADARA_FileReader
   accumulationMethod: Replace
+  testInput:
+    inputFilename: SNAP_46680.nxs.h5
+    chunks: 50
 
   # Update-interval slider limits and position in seconds.
   updateIntervalMinimum: 60

@@ -30,7 +30,7 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
         InstrumentDonor: str -- name of the instrument donor workspace
         CalibrationTable: str -- name of the output table workspace
         MaskWorkspace: str -- name of the output mask workspace
-        GroupingWorkspace: str -- name of the output mask workspace
+        GroupingWorkspace: str -- name of the output grouping workspace
     """
 
     def category(self):
@@ -65,7 +65,7 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
         )
         self.declareProperty(
             MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Output, PropertyMode.Optional),
-            doc="Name of the output mask workspace",
+            doc="Name of the output grouping workspace",
         )
 
         self.setRethrows(True)

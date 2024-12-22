@@ -319,7 +319,8 @@ class LocalDataService:
     # NOTE `lru_cache` decorator needs to be on the outside
     @lru_cache
     @ExceptionHandler(StateValidationException)
-    def generateStateId(self, runId: str) -> Tuple[str, DetectorState]:
+    def generateStateId(self, runId: str) -> Tuple[str, DetectorState | None]:
+        detectorState = None
         if runId in ReservedRunNumber.values():
             SHA = ObjectSHA(hex=ReservedStateId.forRun(runId))
         else:
@@ -1273,16 +1274,13 @@ class LocalDataService:
         #   without interfering with the function of the normal instrument and facility definitions.
         
         facility, instrument = Config["liveData.facility.name"], Config["liveData.instrument.name"]
-        kwargs = {}
-        if facility == "TEST_LIVE":
-            inputFilePath = self.createNeutronFilePath(str(Config["liveData.testInput.runNumber"]), False)
-            kwargs["fileeventdatalistener.filename"] = inputFilePath.name
-            kwargs["fileeventdatalistener.chunks"] = str(Config["liveData.testInput.chunks"])
+        
+        # IMPORTANT: note that the `ADARA_FileReader` listener requires additional Mantid `ConfigService` keys, and these
+        #   are overridden in `main.py`.
         _stack = ExitStack()
         yield _stack.enter_context(amend_config(
             facility=facility,
-            instrument=instrument,
-            **kwargs
+            instrument=instrument
         ))    
         
         # exit

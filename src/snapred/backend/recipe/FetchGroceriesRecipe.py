@@ -45,7 +45,12 @@ class FetchGroceriesRecipe:
             "result": False,
             "loader": "",
         }
-        logger.info(f"Fetching data from {filename} into {workspace}")
+        liveDataMode = loader == "LoadLiveData"
+        if liveDataMode:
+            logger.info(f"Fetching live data into {workspace}")
+        else:
+            logger.info(f"Fetching data from {filename} into {workspace}")
+            
         algo = FetchGroceriesAlgorithm()
         algo.initialize()
         algo.setPropertyValue("Filename", filename)
@@ -74,5 +79,9 @@ class FetchGroceriesRecipe:
                 self.mantidSnapper.executeQueue()
         except RuntimeError as e:
             raise RuntimeError(str(e).split("\n")[0]) from e
-        logger.info(f"Finished fetching {workspace} from {filename}")
+        
+        if liveDataMode:
+            logger.info(f"Finished fetching {workspace} from live-data listener")
+        else:
+            logger.info(f"Finished fetching {workspace} from {filename}")
         return data

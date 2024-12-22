@@ -836,7 +836,8 @@ class GroceryService:
                     loaderArgs=json.dumps(loaderArgs)
                 )
                 if data["result"]:
-                    liveRunNumber = self.mantidSnapper.mtd[workspaceName].getRun().runNumber()
+                    logs = self.mantidSnapper.mtd[workspaceName].getRun()
+                    liveRunNumber = logs.getProperty('run_number').value if logs.hasProperty('run_number') else 0
                     if int(runNumber) != int(liveRunNumber):
                         self.deleteWorkspaceUnconditional(workspaceName)
                         data = {"result": False}
@@ -957,7 +958,8 @@ class GroceryService:
                     loaderArgs=json.dumps(loaderArgs)
                 )
                 if data["result"]:
-                    liveRunNumber = self.mantidSnapper.mtd[workspace].getRun().runNumber()
+                    logs = self.mantidSnapper.mtd[nativeRawWorkspaceName].getRun()
+                    liveRunNumber = logs.getProperty('run_number').value if logs.hasProperty('run_number') else 0
                     if int(runNumber) != int(liveRunNumber):
                         self.deleteWorkspaceUnconditional(nativeRawWorkspaceName)
                         data = {"result": False}
@@ -967,6 +969,7 @@ class GroceryService:
                         raise RuntimeError(f"Neutron data for run '{runNumber}' is not present on disk, nor is it the live-data run")
                     self._loadedRuns[self._key(runNumber, False)] = 0
                     self._liveDataKeys.append(self._key(runNumber, False))
+                    convertToLiteMode = useLiteMode
                     success = True                                            
             else:
                 if liveDataMode:
