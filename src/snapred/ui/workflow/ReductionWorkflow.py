@@ -11,12 +11,14 @@ from snapred.backend.dao.request import (
     ReductionExportRequest,
     ReductionRequest,
 )
+from snapred.backend.dao.response.ReductionResponse import ReductionResponse
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.ui.presenter.WorkflowPresenter import WorkflowPresenter
 from snapred.ui.view.reduction.ArtificialNormalizationView import ArtificialNormalizationView
 from snapred.ui.view.reduction.ReductionRequestView import ReductionRequestView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
@@ -113,7 +115,7 @@ class ReductionWorkflow(WorkflowImplementer):
         state = self._reductionRequestView.retainUnfocusedDataCheckbox.isChecked()
         self._reductionRequestView.convertUnitsDropdown.setEnabled(state)
 
-    def _nothing(self, workflowPresenter):  # noqa: ARG002
+    def _nothing(self, workflowPresenter: WorkflowPresenter):  # noqa: ARG002
         return SNAPResponse(code=200)
 
     def start(self):
@@ -154,18 +156,21 @@ class ReductionWorkflow(WorkflowImplementer):
                 )
             self.workflow.presenter.completeWorkflow(message=panelText)
         else:
+            # Retain the last completed `ReductionRequest`, and its `ReductionResponse`:
+            request_: ReductionRequest = self.requests[-2].payload
+            response_: ReductionResponse = self.responses[-2].data
+            
+            # Calling `presenter.reset()` gets us back to the live-data summary panel.
+            self.workflow.presenter.reset()
+            
             # Live-data loop: exit is by cancellation only:
-            self._cycleLiveData()
+            self._cycleLiveData(self.workflow.presenter, request_, response_)
 
-    def _cycleLiveData(self):
-        # Reset the live-data panel,
-        #   and then submit the reduction request for the next live-data chunk.
+    def _cycleLiveData(self, workflowPresenter: WorkflowPresenter, request_: ReductionRequest, response_: ReductionResponse):
+        # Submit the reduction request for the next live-data chunk.
         
-        request_: ReductionRequest = self.requests[-2].payload
-        response_: ReductionResponse = self.responses[-2].data
-        
-        # `presenter.completeWorkflow` will call `reset`, which gets us back to the live-data summary panel.
-        self.workflow.presenter.completeWorkflow(message=None)
+        # request_: ReductionRequest = self.requests[-2].payload
+        # response_: ReductionResponse = self.responses[-2].data
 
         updateInterval = self._liveDataUpdateInterval()
 
@@ -179,6 +184,8 @@ class ReductionWorkflow(WorkflowImplementer):
             # after each cycle, clean workspaces except groupings, calibrations, normalizations, and outputs
             self._keeps.update(self.outputs)
             self._clearWorkspaces(exclude=self._keeps, clearCachedWorkspaces=True)
+            
+            self.workflow.presenter.advanceWorkflow()
 
             return self.responses[-1]
         
@@ -187,7 +194,7 @@ class ReductionWorkflow(WorkflowImplementer):
             self._submitActionToPresenter(
                 _reduceLiveData,
                 None,
-                self.workflow.presenter.continueOnSuccess
+                workflowPresenter.continueOnSuccess
             )
 
         # If the user has set the updateInterval to too small a value, we just do the best we can.
@@ -248,6 +255,8 @@ class ReductionWorkflow(WorkflowImplementer):
 
     @Slot(bool)
     def updateLiveMetadata(self, liveDataMode: bool):
+        print(f'updateLiveMetadata: at entry: liveDataMode: {liveDataMode}') # *** DEBUG ***
+        
         self.liveDataMode = liveDataMode
     
         # Start metadata update at live-data mode change, 
@@ -267,7 +276,8 @@ class ReductionWorkflow(WorkflowImplementer):
     
     @Slot()
     def _updateLiveMetadata(self) -> SNAPResponse:
-    
+        print(f'*** WE WOULD BE UPDATING METADATA _HERE_: workflowIsRunning: {self.workflow.presenter.workflowIsRunning} ***') # *** DEBUG ***
+        
         # Don't harass the data listener if it's already in a retrieval cycle!
         if not self.workflow.presenter.workflowIsRunning:
             data = self._getLiveMetadata()
@@ -279,6 +289,8 @@ class ReductionWorkflow(WorkflowImplementer):
         # Automatically update live metadata every update interval.
         updateInterval = self._liveDataUpdateInterval().seconds * 1000
         self._liveDataUpdateTimer.singleShot(updateInterval, Qt.CoarseTimer, self._updateLiveMetadata)
+        
+        print(f'*** metadata timer: isActive: {self._liveDataUpdateTimer.isActive()}, interval(ms): {updateInterval}') # *** DEBUG ***
         
         # Return a valid `SNAPResponse` so that we can submit this method to the presenter's `worker_pool`.
         # (Otherwise, the first metadata update time is too long for any end user to put up with!)
@@ -321,7 +333,7 @@ class ReductionWorkflow(WorkflowImplementer):
             artificialNormalizationIngredients=artificialNormalizationIngredients,
         )
 
-    def _triggerReduction(self, workflowPresenter):
+    def _triggerReduction(self, workflowPresenter: WorkflowPresenter):
         view = workflowPresenter.widget.tabView  # noqa: F841
 
         self.runNumbers = self._reductionRequestView.getRunNumbers()

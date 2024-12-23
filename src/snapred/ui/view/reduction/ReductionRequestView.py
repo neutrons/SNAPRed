@@ -358,8 +358,13 @@ class _LiveDataView(_RequestViewBase):
         _layout.addWidget(self.pixelMaskDropdown, 2, 0, 1, 2)
         _layout.addLayout(self.unfocusedDataLayout, 3, 0, 1, 2)
 
-        # Automatically update fields depending on time of day.
-        self._timeUpdateTimer = QTimer()
+        # Automatically update fields depending on time of day, once per second.
+        self._timeUpdateTimer = QTimer(self)
+        #   A "chain" update is used here, to prevent "runaway" timer issues.
+        self._timeUpdateTimer.setSingleShot(True)
+        self._timeUpdateTimer.setTimerType(Qt.CoarseTimer)
+        self._timeUpdateTimer.setInterval(1000)
+        self._timeUpdateTimer.timeout.connect(self._updateLiveMetadata)
         
         # Connect signals to slots
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
@@ -444,8 +449,11 @@ class _LiveDataView(_RequestViewBase):
             self.liveDataIndicator.setFlashSequence(((QColor(255, 255, 0),), (0.4, 0.6)))
             self.liveDataIndicator.setFlash(True)
 
-        # Automatically update any fields depending on time of day, once per second.
-        self._timeUpdateTimer.singleShot(1000, Qt.CoarseTimer, self._updateLiveMetadata)
+        # Automatically update any fields depending on time of day, once per second:
+        # -- chain single shot.
+        self._timeUpdateTimer.start()
+        
+        print(f'*** time-update timer: isActive: {self._timeUpdateTimer.isActive()} ***') # *** DEBUG ***
 
     def hideEvent(self, event):
         if self._timeUpdateTimer.isActive():

@@ -303,12 +303,11 @@ class WorkflowPresenter(QObject):
         # We've already asked for permission.
         self.reset()
         
-    def completeWorkflow(self, message: Optional[str] = Config["ui.default.workflow.completionMessage"]):
+    def completeWorkflow(self, message: str = Config["ui.default.workflow.completionMessage"]):
         # Directly show the completion message and reset the workflow
-        if message is not None:
-            QMessageBox.information(
-                self.view,
-                "‧₊Workflow Complete‧₊",
-                message,
-            )
+        QMessageBox.information(
+            self.view,
+            "‧₊Workflow Complete‧₊",
+            message,
+        )
         self.reset()
