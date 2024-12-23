@@ -161,10 +161,8 @@ class ReductionWorkflow(WorkflowImplementer):
         # Reset the live-data panel,
         #   and then submit the reduction request for the next live-data chunk.
         
-        request_: ReductionRequest = self.requests[-2]
-        response_: ReductionResponse = self.responses[-2]
-
-        print(f'**** HERE ****: request: {request_}, response: {response_}') # *** DEBUG ***
+        request_: ReductionRequest = self.requests[-2].payload
+        response_: ReductionResponse = self.responses[-2].data
         
         # `presenter.completeWorkflow` will call `reset`, which gets us back to the live-data summary panel.
         self.workflow.presenter.completeWorkflow(message=None)

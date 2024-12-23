@@ -1380,8 +1380,7 @@ class GroceryService:
         :type export: bool
         """
 
-        from snapred.backend.service.LiteDataService import LiteDataService
-
+        from snapred.backend.service.LiteDataService import LiteDataService        
         LiteDataService().createLiteData(workspace, workspace, export=export)
 
     ## CLEANUP METHODS

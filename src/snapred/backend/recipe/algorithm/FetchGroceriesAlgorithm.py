@@ -196,6 +196,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                             OutputWorkspace=outWS,
                             Instrument=loaderArgs["Instrument"],
                             AccumulationMethod=loaderArgs["AccumulationMethod"],
+                            PreserveEvents=loaderArgs["PreserveEvents"],
                             StartTime=loaderArgs["StartTime"]
                         )
                         self.mantidSnapper.executeQueue()
