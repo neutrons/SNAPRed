@@ -283,6 +283,7 @@ class _LiveDataView(_RequestViewBase):
         self.runNumbers = []
         
         self._liveMetadata = None
+        self._reductionInProgress = False
         
         # Display and controls specific to `_LiveDataView`:
         self.liveDataIndicator = LEDIndicator()
@@ -373,6 +374,10 @@ class _LiveDataView(_RequestViewBase):
         self.durationSlider.valueChanged.connect(self._updateDuration)
         self.updateIntervalSlider.valueChanged.connect(self._updateUpdateInterval)
 
+    @Slot(bool)
+    def setReductionInProgress(flag: bool):
+        self._reductionInProgress = flag
+    
     @Slot(LiveMetadata)
     def updateLiveMetadata(self, data: LiveMetadata):
         self._liveMetadata = data
@@ -406,17 +411,34 @@ class _LiveDataView(_RequestViewBase):
                 self.startTime = data.startTime
 
                 # Update the status display
-                self.liveDataStatus.setText(
-                    "<p><font size = 4><b>Live data:</font>" 
-                    + "<font size = 4>"
-                    + f" running: {data.runNumber}, "
-                    + f" since: {data.startTime.strftime(timeFormat)}</p>"
-                    + "</font>"
-                    + f"<p><font size = 4> &nbsp;&nbsp; t0(now): {utcnow.strftime(TIME_ONLY_UTC)}</font></p>"
-                )
+                if not self._reductionInProgress:
+                    self.liveDataStatus.setText(
+                        "<p><font size = 4><b>Live data:</b></font>" 
+                        + "<font size = 4>"
+                        + f" running: {data.runNumber}, "
+                        + f" since: {data.startTime.strftime(timeFormat)}</p>"
+                        + "</font>"
+                        + f"<p><font size = 4> &nbsp;&nbsp; t0(now): {utcnow.strftime(TIME_ONLY_UTC)}</font></p>"
+                    )
 
-                self.liveDataIndicator.setColor(QColor(255, 255, 0))
-                self.liveDataIndicator.setChecked(True)
+                    # Solid color (yellow) "ready" indicator.
+                    self.liveDataIndicator.setColor(QColor(255, 255, 0))
+                    self.liveDataIndicator.setChecked(True)
+                else:
+                    self.liveDataStatus.setText(
+                        "<p><font size = 4><b>Live data:</b></font>" 
+                        + "<font size = 4>"
+                        + f" running: {data.runNumber}, "
+                        + f" since: {data.startTime.strftime(timeFormat)}</p>"
+                        + "</font>"
+                        + f"<p><font size = 4> &nbsp;&nbsp; t0(now): {utcnow.strftime(TIME_ONLY_UTC)}</font></p>"
+                        + f"<p><font size = 4><b>Reducing data</b></p>"
+                    )
+                    
+                    # Green-blue flashing "in progress" indicator.
+                    self.liveDataIndicator.setFlashSequence(((QColor(0, 255, 0),QColor(0, 0, 255)), (1.5, 0.5)))
+                    self.liveDataIndicator.setFlash(True)
+                    
                 
                 self.durationSlider.setEnabled(False)
                 self.durationSlider.setMinimum(0)
@@ -600,6 +622,11 @@ class ReductionRequestView(_RequestViewBase):
     def updateLiveMetadata(self, data: LiveMetadata):
         if self.liveDataMode():
             self._liveDataView.updateLiveMetadata(data)
+
+    @Slot(bool)
+    def setReductionInProgress(self, flag: bool):
+        if self.liveDataMode():
+            self._liveDataView.setReductionInProgress(flag)
 
     @Slot(bool)
     def setLiveDataToggleEnabled(self, flag: bool):

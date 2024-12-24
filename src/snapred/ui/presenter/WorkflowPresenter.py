@@ -19,6 +19,7 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class WorkflowPresenter(QObject):
+    workflowInProgressChange = Signal(bool)
     cancellationRequest = Signal()
     enableAllWorkflows = Signal()
     disableOtherWorkflows = Signal()
@@ -264,6 +265,7 @@ class WorkflowPresenter(QObject):
         #   the workflow has started its first node(i.e. tab).
         
         self._workflowInProgress = flag
+        self.workflowInProgressChange.emit(flag)
         return self._workflowInProgress
     
     @property

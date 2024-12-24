@@ -124,7 +124,10 @@ class ReductionWorkflow(WorkflowImplementer):
         
         # Allow `_getLiveMetadata` to update the live-data view:
         self._liveMetadataUpdate.connect(self._updateLiveMetadata)
-                
+        
+        # Allow the presenter to signal the live-data view that a reduction is in progress:
+        self.workflow.presenter.workflowInProgressChange.connect(self._reductionRequestView.setReductionInProgress)
+             
         self._artificialNormalizationView.signalValueChanged.connect(self.onArtificialNormalizationValueChange)
         
         # Note: in order to simplify the flow-of-control,
