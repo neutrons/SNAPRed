@@ -330,8 +330,10 @@ class ReductionWorkflow(WorkflowImplementer):
         if self._liveDataUpdateTimer.isActive():
             self._liveDataUpdateTimer.stop()
         if self.liveDataMode:
-            # display the "connecting to listener..." message
-            self._updateLiveMetadata(None)
+            # *** DEBUG *** this should no longer be necessary...
+            #   # display the "connecting to listener..." message
+            #   self._updateLiveMetadata(None)
+            
             # start the metadata update sequence:
             self.updateLiveMetadata()
         else:

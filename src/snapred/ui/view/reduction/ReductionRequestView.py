@@ -453,6 +453,10 @@ class _LiveDataView(_RequestViewBase):
     def hideEvent(self, event):
         if self._timeOfDayUpdateTimer.isActive():
             self._timeOfDayUpdateTimer.stop()
+
+    def showEvent(self, event):
+        # Automatically update any fields depending on time of day, once per second:
+        self._updateLiveMetadata()
         
     @Slot(int)
     def _updateDuration(self, seconds: int):
