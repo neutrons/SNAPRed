@@ -182,8 +182,7 @@ class MantidSnapper:
                 self._exportScript += ")\n"
 
             self.reportAndIncrement(algorithmTuple[1])
-            logger.info(algorithmTuple[1])
-            # import pdb; pdb.set_trace()
+            logger.info('%s - %s', *algorithmTuple[0:2])
             self.executeAlgorithm(name=algorithmTuple[0], outputs=algorithmTuple[3], **algorithmTuple[2])
         self.cleanup()
 

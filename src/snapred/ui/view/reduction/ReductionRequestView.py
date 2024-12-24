@@ -359,12 +359,12 @@ class _LiveDataView(_RequestViewBase):
         _layout.addLayout(self.unfocusedDataLayout, 3, 0, 1, 2)
 
         # Automatically update fields depending on time of day, once per second.
-        self._timeUpdateTimer = QTimer(self)
-        #   A "chain" update is used here, to prevent "runaway" timer issues.
-        self._timeUpdateTimer.setSingleShot(True)
-        self._timeUpdateTimer.setTimerType(Qt.CoarseTimer)
-        self._timeUpdateTimer.setInterval(1000)
-        self._timeUpdateTimer.timeout.connect(self._updateLiveMetadata)
+        self._timeOfDayUpdateTimer = QTimer(self)
+        #   A "chain" update is used here, to prevent runaway-timer issues.
+        self._timeOfDayUpdateTimer.setSingleShot(True)
+        self._timeOfDayUpdateTimer.setTimerType(Qt.CoarseTimer)
+        self._timeOfDayUpdateTimer.setInterval(1000)
+        self._timeOfDayUpdateTimer.timeout.connect(self._updateLiveMetadata)
         
         # Connect signals to slots
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
@@ -375,9 +375,6 @@ class _LiveDataView(_RequestViewBase):
 
     @Slot(LiveMetadata)
     def updateLiveMetadata(self, data: LiveMetadata):
-        if self._timeUpdateTimer.isActive():
-            self._timeUpdateTimer.stop()
-            
         self._liveMetadata = data
         self._updateLiveMetadata()
 
@@ -451,13 +448,11 @@ class _LiveDataView(_RequestViewBase):
 
         # Automatically update any fields depending on time of day, once per second:
         # -- chain single shot.
-        self._timeUpdateTimer.start()
-        
-        print(f'*** time-update timer: isActive: {self._timeUpdateTimer.isActive()} ***') # *** DEBUG ***
+        self._timeOfDayUpdateTimer.start()
 
     def hideEvent(self, event):
-        if self._timeUpdateTimer.isActive():
-            self._timeUpdateTimer.stop()
+        if self._timeOfDayUpdateTimer.isActive():
+            self._timeOfDayUpdateTimer.stop()
         
     @Slot(int)
     def _updateDuration(self, seconds: int):

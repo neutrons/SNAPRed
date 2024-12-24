@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
+import threading
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
-from qtpy.QtCore import Qt, QTimer, Slot
+from qtpy.QtCore import Qt, QTimer, Signal, Slot
 
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.LiveMetadata import LiveMetadata
@@ -16,6 +17,7 @@ from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.ui.presenter.WorkflowPresenter import WorkflowPresenter
@@ -29,6 +31,8 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class ReductionWorkflow(WorkflowImplementer):
+    _liveMetadataUpdate = Signal(object)
+    
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -82,15 +86,30 @@ class ReductionWorkflow(WorkflowImplementer):
         
         self.liveDataMode: bool = False
         self.liveDataDuration: timedelta = timedelta(seconds=0)
-        # Control of live-data metadata update:
-        self._liveDataUpdateTimer = QTimer()
+
+        # A mutex to ensure that live-data metadata and data requests don't harass the listener.
+        # (This really should not be necessary, but the ADARA listener system seems quite flakey!)
+        self._liveDataMutex = threading.Lock()
+        
+        # A timer to control the live-data metadata update:
+        self._liveDataUpdateTimer = QTimer(self)
+        #   A "chain" update is used here, to prevent runaway-timer issues.
+        self._liveDataUpdateTimer.setSingleShot(True)
+        self._liveDataUpdateTimer.setTimerType(Qt.CoarseTimer)
+        self._liveDataUpdateTimer.setInterval(Config["liveData.updateIntervalDefault"] * 1000)
+        self._liveDataUpdateTimer.timeout.connect(self.updateLiveMetadata)
+                
         self.addResetHook(
-            # Note: this controls the live-data toggle enable _only_ when not actually in live-data mode. 
+            # Note: when _not_ in live-data mode, this controls the live-data toggle enable.
+            #   In live-data mode, the toggle is enabled when the workflow is not cycling. 
             lambda: self._reductionRequestView.setLiveDataToggleEnabled(True) if not self.liveDataMode else None
         )
         
         # A separate timer for the control of the live-data reduction-workflow loop:
-        self._workflowTimer = QTimer()
+        self._workflowTimer = QTimer(self)
+        self._workflowTimer.setSingleShot(True)
+        self._workflowTimer.setTimerType(Qt.CoarseTimer)
+        self._workflowTimer.setInterval(Config["liveData.updateIntervalDefault"] * 1000)
         
         self.pixelMasks: List[WorkspaceName] = []
         
@@ -98,13 +117,11 @@ class ReductionWorkflow(WorkflowImplementer):
         ## Connect signals to slots:
         ##
         
-        # Start automatic update at live-data mode change:
-        #   note that "live-data metadata" here includes the `self.liveDataMode` flag itself!
-        self._reductionRequestView.liveDataModeChange.connect(self.updateLiveMetadata)
+        self._reductionRequestView.liveDataModeChange.connect(self.setLiveDataMode)
         
-        # Restart automatic update at end-of-reset following workflow completion:
-        self.workflow.presenter.resetCompleted.connect(lambda: self.updateLiveMetadata(self.liveDataMode))
-        
+        # Allow `_getLiveMetadata` to update the live-data view:
+        self._liveMetadataUpdate.connect(self._updateLiveMetadata)
+                
         self._artificialNormalizationView.signalValueChanged.connect(self.onArtificialNormalizationValueChange)
         
         # Note: in order to simplify the flow-of-control,
@@ -163,7 +180,7 @@ class ReductionWorkflow(WorkflowImplementer):
             # Calling `presenter.reset()` gets us back to the live-data summary panel.
             self.workflow.presenter.reset()
             
-            # Live-data loop: exit is by cancellation only:
+            # Continue the live-data loop: exit is by cancellation only:
             self._cycleLiveData(self.workflow.presenter, request_, response_)
 
     def _cycleLiveData(self, workflowPresenter: WorkflowPresenter, request_: ReductionRequest, response_: ReductionResponse):
@@ -176,7 +193,10 @@ class ReductionWorkflow(WorkflowImplementer):
 
         def _reduceLiveData():
 
+            self._liveDataMutex.acquire()
             response = self.request(path="reduction/", payload=request_)
+            self._liveDataMutex.release()
+            
             if response.code == ResponseCode.OK:
                 record, unfocusedData = response.data.record, response.data.unfocusedData
                 self._finalizeReduction(record, unfocusedData)
@@ -205,9 +225,10 @@ class ReductionWorkflow(WorkflowImplementer):
             waitTime = timedelta(seconds=0)
         
         # Submit the reduction request for the next live-data chunk.
-        self._workflowTimer.singleShot(waitTime.seconds * 1000, Qt.CoarseTimer, _reduceNextChunk)
-    
-    
+        self._workflowTimer.timeout.connect(_reduceNextChunk)
+        self._workflowTimer.setInterval(waitTime.seconds * 1000)    
+        self._workflowTimer.start()
+        
     def _submitActionToPresenter(
         self,
         action: Callable[[Any], Any],
@@ -254,53 +275,48 @@ class ReductionWorkflow(WorkflowImplementer):
         return self._reductionRequestView.liveDataUpdateInterval()
 
     @Slot(bool)
-    def updateLiveMetadata(self, liveDataMode: bool):
-        print(f'updateLiveMetadata: at entry: liveDataMode: {liveDataMode}') # *** DEBUG ***
-        
-        self.liveDataMode = liveDataMode
-    
-        # Start metadata update at live-data mode change, 
-        #   or restart it at the completion of a reduction workflow.
+    def setLiveDataMode(self, flag: bool):
+        self.liveDataMode = flag
         if self._liveDataUpdateTimer.isActive():
             self._liveDataUpdateTimer.stop()
-        if liveDataMode:
-            # Display the "waiting for listener" (not ready) screen.
-            self._reductionRequestView.updateLiveMetadata(None)
-            
-            # Start the automatic metadata update sequence.
-            self._submitActionToPresenter(self._updateLiveMetadata, None, isWorkflow=False)
+        if self.liveDataMode:
+            # display the "connecting to listener..." message
+            self._updateLiveMetadata(None)
+            # start the metadata update sequence:
+            self.updateLiveMetadata()
         else:
             # WARNING: live-data mode can disable the continue button,
             #   so we need to re-enable it here, just in case.
             self.workflow.presenter.enableButtons(True)
+
+    def updateLiveMetadata(self):
+        # This method just continues the timer chain.
+        #   The actual update of the live-metadata view occurs
+        #   via the `metadataUpdate` signal, emitted by `_getLiveMetadata`, triggering the `_updateLiveMetadata` slot.
+        if self.liveDataMode:
+            # Don't harass the data listener if it's already in a retrieval cycle!
+            if not self.workflow.presenter.workflowIsRunning:
+                self._submitActionToPresenter(self._getLiveMetadata, None, isWorkflow=False)
+
+            # Continue the automatic metadata update sequence.
+            self._liveDataUpdateTimer.start()
     
-    @Slot()
-    def _updateLiveMetadata(self) -> SNAPResponse:
-        print(f'*** WE WOULD BE UPDATING METADATA _HERE_: workflowIsRunning: {self.workflow.presenter.workflowIsRunning} ***') # *** DEBUG ***
-        
-        # Don't harass the data listener if it's already in a retrieval cycle!
-        if not self.workflow.presenter.workflowIsRunning:
-            data = self._getLiveMetadata()
-            self._reductionRequestView.updateLiveMetadata(data)
-            
-            # Enable buttons only if there is an active run and a live beam.
-            self.workflow.presenter.enableButtons(data.hasActiveRun() and data.beamState())
-        
-        # Automatically update live metadata every update interval.
-        updateInterval = self._liveDataUpdateInterval().seconds * 1000
-        self._liveDataUpdateTimer.singleShot(updateInterval, Qt.CoarseTimer, self._updateLiveMetadata)
-        
-        print(f'*** metadata timer: isActive: {self._liveDataUpdateTimer.isActive()}, interval(ms): {updateInterval}') # *** DEBUG ***
-        
-        # Return a valid `SNAPResponse` so that we can submit this method to the presenter's `worker_pool`.
-        # (Otherwise, the first metadata update time is too long for any end user to put up with!)
-        return SNAPResponse(code=ResponseCode.OK)
+    @Slot(object) # Signal(Optional[LiveMetaData]) as Signal(object)
+    def _updateLiveMetadata(self, data: Optional[LiveMetadata]):
+        self._reductionRequestView.updateLiveMetadata(data)
     
     def _hasLiveDataConnection(self) -> bool:
         return self.request(path="reduction/hasLiveDataConnection").data
     
-    def _getLiveMetadata(self) -> LiveMetadata:
-        return self.request(path="reduction/getLiveMetadata").data
+    def _getLiveMetadata(self) -> SNAPResponse:
+        # This method defines an action so that the live metadata can be retrieved in a background thread.
+        self._liveDataMutex.acquire()
+        response = self.request(path="reduction/getLiveMetadata")
+        self._liveDataMutex.release()
+
+        if response.code == ResponseCode.OK:
+            self._liveMetadataUpdate.emit(response.data)
+        return response
 
     def _validateRunNumbers(self, runNumbers: List[str]):
         # For now, all run numbers in a reduction batch must be from the same instrument state.
@@ -379,13 +395,25 @@ class ReductionWorkflow(WorkflowImplementer):
                 self._artificialNormalizationView.updateRunNumber(runNumber)
                 self._artificialNormalizationView.showAdjustView()
                 request_ = self._createReductionRequest(runNumber)
+                
+                # This can trigger a load of the input workspace via the live-data listener,
+                #   so it needs to be protected.
+                self._liveDataMutex.acquire()
                 response = self.request(path="reduction/grabWorkspaceforArtificialNorm", payload=request_)
+                self._liveDataMutex.release()
+                
                 self._artificialNormalization(workflowPresenter, response.data, runNumber)
         else:
             for runNumber in self.runNumbers:
                 self._artificialNormalizationView.showSkippedView()
                 request_ = self._createReductionRequest(runNumber)
+                                
+                # This can trigger a load of the input workspace via the live-data listener,
+                #   so it needs to be protected.
+                self._liveDataMutex.acquire()
                 response = self.request(path="reduction/", payload=request_)
+                self._liveDataMutex.release()
+                
                 if response.code == ResponseCode.OK:
                     self._finalizeReduction(response.data.record, response.data.unfocusedData)
                 
@@ -471,7 +499,10 @@ class ReductionWorkflow(WorkflowImplementer):
             artificialNormalizationIngredients=artificialNormIngredients
         ) 
 
+        self._liveDataMutex.acquire()
         response = self.request(path="reduction/", payload=request_)
+        self._liveDataMutex.release()
+        
         if response.code == ResponseCode.OK:
             record, unfocusedData = response.data.record, response.data.unfocusedData
             self._finalizeReduction(record, unfocusedData)

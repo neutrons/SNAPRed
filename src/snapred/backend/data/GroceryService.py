@@ -3,7 +3,7 @@ import json
 import numpy as np
 import os
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from pydantic import validate_call
 from typing import Any, Dict, List, Optional, Tuple
@@ -943,7 +943,7 @@ class GroceryService:
                 # When not specified in the `liveDataArgs`,
                 #   default behavior will be to load the entire run.
                 startTime = (datetime.utcnow() - liveDataArgs.duration).isoformat()\
-                    if liveDataMode else ""
+                    if (liveDataMode and liveDataArgs.duration > timedelta(seconds=0)) else ""
 
                 loaderArgs = {
                     "Facility": Config["liveData.facility.name"],
@@ -985,10 +985,15 @@ class GroceryService:
                 self._liveDataKeys.append(key)
                 self.convertToLiteMode(rawWorkspaceName, export=not liveDataMode)
 
+            # *** DEBUG ***
+            print(f'*** DATA: {data}, item: {item}, live-data: {liveDataMode} ***')
+            print(f'   *** cache: {self._loadedRuns} ***')
+            
             # create a copy of the raw data for use
             workspaceName = self._createCopyNeutronWorkspaceName(runNumber, useLiteMode, self._loadedRuns[key] + 1)
             data["result"] = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
             data["workspace"] = workspaceName
+            print(f'   (again?) *** cache: {self._loadedRuns}, key: {key}, {self._loadedRuns.get(key)} ***') # *** DEBUG ***
             self._loadedRuns[key] += 1
 
         return data
