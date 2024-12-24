@@ -110,6 +110,9 @@ class ReductionWorkflow(WorkflowImplementer):
         self._workflowTimer.setSingleShot(True)
         self._workflowTimer.setTimerType(Qt.CoarseTimer)
         self._workflowTimer.setInterval(Config["liveData.updateIntervalDefault"] * 1000)
+        self._lastReductionRequest = None  # used by `_reduceLiveDataChunk`
+        self._lastReductionResponse = None # used by `_reduceLiveDataChunk`
+        self._workflowTimer.timeout.connect(self._reduceLiveDataChunk)
         
         self.pixelMasks: List[WorkspaceName] = []
         
@@ -173,39 +176,49 @@ class ReductionWorkflow(WorkflowImplementer):
                 )
             self.workflow.presenter.completeWorkflow(message=panelText)
         else:
+            # TODO: clean this up!
+            
             # Retain the last completed `ReductionRequest`, and its `ReductionResponse`:
-            request_: ReductionRequest = self.requests[-2].payload
-            response_: ReductionResponse = self.responses[-2].data
+            self._lastReductionRequest: ReductionRequest = self.requests[-2].payload
+            self._lastReductionResponse: ReductionResponse = self.responses[-2].data
             
             # Calling `presenter.reset()` gets us back to the live-data summary panel.
             self.workflow.presenter.reset()
             
             # Continue the live-data loop: exit is by cancellation only:
-            self._cycleLiveData(self.workflow.presenter, request_, response_)
+            self._cycleLiveData(self.workflow.presenter)
 
-    def _cycleLiveData(self, workflowPresenter: WorkflowPresenter, request_: ReductionRequest, response_: ReductionResponse):
+    def _cycleLiveData(self, workflowPresenter: WorkflowPresenter):
         # Submit the reduction request for the next live-data chunk.
         
         # request_: ReductionRequest = self.requests[-2].payload
         # response_: ReductionResponse = self.responses[-2].data
 
+        
         updateInterval = self._liveDataUpdateInterval()
 
+        """
         def _reduceLiveData():
-
+            print('%%%%%%%%%%% START: reduction %%%%%%%%%%%%%') # *** DEBUG ***
+            
             self._liveDataMutex.acquire()
-            response = self.request(path="reduction/", payload=request_)
+            response = self.request(path="reduction/", payload=self._lastReductionRequest)
             self._liveDataMutex.release()
             
             if response.code == ResponseCode.OK:
+                print('%%%%%%%%%%% START: finalize %%%%%%%%%%%%%') # *** DEBUG ***
+                
                 record, unfocusedData = response.data.record, response.data.unfocusedData
                 self._finalizeReduction(record, unfocusedData)
-                
+            
+            print('%%%%%%%%%%% START: clear %%%%%%%%%%%%%') # *** DEBUG ***    
             # after each cycle, clean workspaces except groupings, calibrations, normalizations, and outputs
             self._keeps.update(self.outputs)
             self._clearWorkspaces(exclude=self._keeps, clearCachedWorkspaces=True)
             
             self.workflow.presenter.advanceWorkflow()
+            
+            print('%%%%%%%%%%% END: cycle %%%%%%%%%%%%%') # *** DEBUG ***    
 
             return self.responses[-1]
         
@@ -216,18 +229,55 @@ class ReductionWorkflow(WorkflowImplementer):
                 None,
                 workflowPresenter.continueOnSuccess
             )
-
+        """
+        
         # If the user has set the updateInterval to too small a value, we just do the best we can.
         # (We do _not_ screw up non-interactivity by spamming the logs with a WARNING!)
         
-        waitTime: timedelta = updateInterval - response_.executionTime
+        waitTime: timedelta = updateInterval - self._lastReductionResponse.executionTime
         if waitTime < timedelta(seconds=0):
             waitTime = timedelta(seconds=0)
         
+        print(f'>>>>>>>>>>>>>>> Submitting in {waitTime.seconds}s <<<<<<<<<<<<<<<<<<<<') # *** DEBUG ***
+        
         # Submit the reduction request for the next live-data chunk.
-        self._workflowTimer.timeout.connect(_reduceNextChunk)
+        # self._workflowTimer.timeout.connect(_reduceNextChunk) # => multiple Signals emitted :(
         self._workflowTimer.setInterval(waitTime.seconds * 1000)    
         self._workflowTimer.start()
+        
+    @Slot()
+    def _reduceLiveDataChunk(self):
+
+        def _reduceLiveData():
+            print('%%%%%%%%%%% START: reduction %%%%%%%%%%%%%') # *** DEBUG ***
+            
+            self._liveDataMutex.acquire()
+            response = self.request(path="reduction/", payload=self._lastReductionRequest)
+            self._liveDataMutex.release()
+            
+            if response.code == ResponseCode.OK:
+                print('%%%%%%%%%%% START: finalize %%%%%%%%%%%%%') # *** DEBUG ***
+                
+                record, unfocusedData = response.data.record, response.data.unfocusedData
+                self._finalizeReduction(record, unfocusedData)
+            
+            print('%%%%%%%%%%% START: clear %%%%%%%%%%%%%') # *** DEBUG ***    
+            # after each cycle, clean workspaces except groupings, calibrations, normalizations, and outputs
+            self._keeps.update(self.outputs)
+            self._clearWorkspaces(exclude=self._keeps, clearCachedWorkspaces=True)
+            
+            self.workflow.presenter.advanceWorkflow()
+            
+            print('%%%%%%%%%%% END: cycle %%%%%%%%%%%%%') # *** DEBUG ***    
+
+            return self.responses[-1]
+        
+        # Resubmit the previous request, which will then act on the next live-data chunk.
+        self._submitActionToPresenter(
+            _reduceLiveData,
+            None,
+            self.workflow.presenter.continueOnSuccess
+        )
         
     def _submitActionToPresenter(
         self,
