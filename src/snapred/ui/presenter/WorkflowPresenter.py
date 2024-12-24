@@ -47,9 +47,13 @@ class WorkflowPresenter(QObject):
         #    allows singleton reset during testing.
 
         self.worker = None
+        # No worker thread is actively engaged in running a workflow task.
         self._setWorkflowIsRunning(False)
         self.worker_pool = WorkerPool()
 
+        # The first workflow node (i.e. tab) has not yet been started.
+        self._setWorkflowInProgress(False)
+        
         self.view = WorkflowView(model, parent)
         self._iteration = 1
         self.model = model
@@ -112,6 +116,7 @@ class WorkflowPresenter(QObject):
         self._resetLambda()
         self.resetSoft()
         self._iteration = 1
+        self._setWorkflowInProgress(False)
                 
         # Workflow is complete: enable the other workflow tabs.
         self.enableAllWorkflows.emit()
@@ -187,6 +192,9 @@ class WorkflowPresenter(QObject):
 
             # disable other workflow-tabs during workflow execution
             self.disableOtherWorkflows.emit()
+            
+            # indicate that the first workflow node (i.e. tab) has been started
+            self._setWorkflowInProgress(True)
 
         # disable navigation buttons during run
         self.enableButtons(False)
@@ -237,6 +245,9 @@ class WorkflowPresenter(QObject):
  
     @Slot(bool)
     def _setWorkflowIsRunning(self, flag: bool):
+        # `workflowIsRunning` property:
+        #   a worker thread is actively engaged in processing a workflow-related task.
+        
         self._workflowIsRunning = flag
         if not flag:
             # Transfer ownership to `worker_pool` for final deletion.
@@ -246,6 +257,18 @@ class WorkflowPresenter(QObject):
     @property
     def workflowIsRunning(self):
         return self._workflowIsRunning
+ 
+    @Slot(bool)
+    def _setWorkflowInProgress(self, flag: bool):
+        # `workflowInProgress` property:
+        #   the workflow has started its first node(i.e. tab).
+        
+        self._workflowInProgress = flag
+        return self._workflowInProgress
+    
+    @property
+    def workflowInProgress(self):
+        return self._workflowInProgress
     
     @Slot(bool)
     def enableButtons(self, enable):

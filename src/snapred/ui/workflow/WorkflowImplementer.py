@@ -38,6 +38,7 @@ class WorkflowImplementer(QObject):
 
         # Output workspaces from each workflow node.
         self.outputs = []
+        
         # Collected output workspaces from all iterations
         #   of the current workflow node.
         self.collectedOutputs = []

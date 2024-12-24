@@ -182,8 +182,8 @@ class ReductionWorkflow(WorkflowImplementer):
             self._lastReductionRequest: ReductionRequest = self.requests[-2].payload
             self._lastReductionResponse: ReductionResponse = self.responses[-2].data
             
-            # Calling `presenter.reset()` gets us back to the live-data summary panel.
-            self.workflow.presenter.reset()
+            # Calling `presenter.resetSoft()` gets us back to the live-data summary panel.
+            self.workflow.presenter.resetSoft()
             
             # Continue the live-data loop: exit is by cancellation only:
             self._cycleLiveData(self.workflow.presenter)
