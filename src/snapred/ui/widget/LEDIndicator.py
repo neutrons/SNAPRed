@@ -52,7 +52,13 @@ class LEDIndicator(QAbstractButton):
         """
         self._flashColors = (QColor(0, 0, 255), QColor(0, 255, 0))
         self._flashDurations = (0.2, 1.80)
+        
         self._flashTimer = QTimer(self)
+        #   A "chain" update is used here, to prevent runaway-timer issues.
+        self._flashTimer.setSingleShot(True)
+        self._flashTimer.setTimerType(Qt.CoarseTimer)
+        self._flashTimer.timeout.connect(self._continueFlash)
+        
         
         # Override to Red using the style sheet:
         self.setStyleSheet(_styleSheet)  # THIS works!
@@ -117,7 +123,8 @@ class LEDIndicator(QAbstractButton):
             ms = int(round(self._flashDurations[self._flashIndex] * 1000.0))
             self._flashIndex += 1
             self._flashIndex %= len(self._flashDurations)
-            self._flashTimer.singleShot(ms, Qt.CoarseTimer, self._continueFlash)
+            self._flashTimer.setInterval(ms)
+            self._flashTimer.start()
                     
     @Property(QColor)
     def color(self) -> QColor:
@@ -184,8 +191,13 @@ class LEDIndicator(QAbstractButton):
                 self._resetFlash()
     """
     def hideEvent(self, event):
-        self.setFlash(False)
-      
+        if self._flash:
+            self._resetFlash()
+
+    def showEvent(self, event):
+        if self._flash:
+            self._continueFlash()
+                  
     def resizeEvent(self, QResizeEvent):
         self.update()
 

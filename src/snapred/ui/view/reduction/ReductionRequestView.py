@@ -375,7 +375,7 @@ class _LiveDataView(_RequestViewBase):
         self.updateIntervalSlider.valueChanged.connect(self._updateUpdateInterval)
 
     @Slot(bool)
-    def setReductionInProgress(flag: bool):
+    def setReductionInProgress(self, flag: bool):
         self._reductionInProgress = flag
     
     @Slot(LiveMetadata)
@@ -393,7 +393,7 @@ class _LiveDataView(_RequestViewBase):
                 "<font size = 4><b>Live data:</b> connecting to listener...</font>" 
             )
             # WARNING (i.e. NOT READY) flash
-            self.liveDataIndicator.setFlashSequence(((QColor(255, 255, 0),), (0.4, 0.6)))
+            self.liveDataIndicator.setFlashSequence(((QColor(255, 255, 0),), (0.5, 0.5)))
             self.liveDataIndicator.setFlash(True)        
         elif data.hasActiveRun():
             TIME_ONLY_UTC = "%H:%M:%S (utc)"
@@ -436,10 +436,9 @@ class _LiveDataView(_RequestViewBase):
                     )
                     
                     # Green-blue flashing "in progress" indicator.
-                    self.liveDataIndicator.setFlashSequence(((QColor(0, 255, 0),QColor(0, 0, 255)), (1.5, 0.5)))
+                    self.liveDataIndicator.setFlashSequence(((QColor(0, 255, 0), QColor(127, 0, 255)), (2.0, 2.0)))
                     self.liveDataIndicator.setFlash(True)
-                    
-                
+                                    
                 self.durationSlider.setEnabled(False)
                 self.durationSlider.setMinimum(0)
                 self.durationSlider.setMaximum((utcnow - data.startTime).seconds)
