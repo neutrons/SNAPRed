@@ -127,6 +127,7 @@ mantid:
           focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
           smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_corr,{version}"
           artificialNormalizationPreview: "artificial_norm,{unit},{group},{runNumber},{type}"
+          residual: "{unit},{runNumber},residual"
         reduction:
           output: "reduced,{unit},{group},{runNumber},{timestamp}"
           outputGroup: "reduced,{runNumber},{timestamp}"

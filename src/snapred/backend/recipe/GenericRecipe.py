@@ -1,7 +1,7 @@
 import json
 from typing import Generic, TypeVar, get_args
 
-from mantid.simpleapi import ConvertTableToMatrixWorkspace
+from mantid.simpleapi import ConvertTableToMatrixWorkspace, Minus
 from pydantic import BaseModel
 
 from snapred.backend.log.logger import snapredLogger
@@ -108,4 +108,8 @@ class BufferMissingColumnsRecipe(GenericRecipe[BufferMissingColumnsAlgo]):
 
 
 class ArtificialNormalizationRecipe(GenericRecipe[CreateArtificialNormalizationAlgo]):
+    pass
+
+
+class MinusRecipe(GenericRecipe[Minus]):
     pass

@@ -71,6 +71,8 @@ class WorkspaceType(str, Enum):
     SMOOTHED_FOCUSED_RAW_VANADIUM = "smoothedFocusedRawVanadium"
     ARTIFICIAL_NORMALIZATION_PREVIEW = "artificialNormalizationPreview"
 
+    RESIDUAL = "normCalResidual"
+
     # <reduction tag>_<runNumber>_<timestamp>
     REDUCTION_OUTPUT = "reductionOutput"
     # <reduction tag>_<stateSHA>_<timestamp>
@@ -425,6 +427,16 @@ class _WorkspaceNameGenerator:
             self._delimiter,
             unit=self.Units.DSP,
             type=self.ArtificialNormWorkspaceType.PREVIEW,
+        )
+
+    def normCalResidual(self):
+        return NameBuilder(
+            WorkspaceType.RESIDUAL,
+            self._normCalResidualTemplate,
+            self._normCalResidualTemplateKeys,
+            self._delimiter,
+            unit=self.Units.DSP,
+            version=None,
         )
 
     def reductionOutput(self):
