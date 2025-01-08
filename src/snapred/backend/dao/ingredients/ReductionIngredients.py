@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -22,14 +22,12 @@ class ReductionIngredients(BaseModel):
     useLiteMode: bool
     timestamp: float
 
-    pixelGroups: List[PixelGroup]
+    # Changed to dict keyed by group ID
+    pixelGroups: Dict[int, PixelGroup]
     unmaskedPixelGroups: List[PixelGroup]
 
-    # these should come from calibration / normalization records
-    # But will not exist if we proceed without calibration / normalization
-    # NOTE: These are peaks for normalization, and thus should use the
-    # Calibrant Sample for the Normalization
-    detectorPeaksMany: Optional[List[List[GroupPeakList]]] = None
+    # Peaks now stored in a dict keyed by group ID
+    detectorPeaksMany: Optional[Dict[int, List[GroupPeakList]]] = None
     smoothingParameter: Optional[float]
     calibrantSamplePath: Optional[str]
     peakIntensityThreshold: Optional[float]
@@ -45,28 +43,29 @@ class ReductionIngredients(BaseModel):
         # At present, `PreprocessReductionIngredients` has no required parameters.
         return PreprocessReductionIngredients()
 
-    def getDetectorPeaks(self, groupingIndex: int) -> List[GroupPeakList]:
+    # Consider renaming `groupingIndex` to `groupID` for clarity.
+    def getDetectorPeaks(self, groupID: int) -> Optional[List[GroupPeakList]]:
         if self.detectorPeaksMany is None:
             return None
-        return self.detectorPeaksMany[groupingIndex]
+        return self.detectorPeaksMany.get(groupID)
 
-    def groupProcessing(self, groupingIndex: int) -> ReductionGroupProcessingIngredients:
-        return ReductionGroupProcessingIngredients(pixelGroup=self.pixelGroups[groupingIndex])
+    def groupProcessing(self, groupID: int) -> ReductionGroupProcessingIngredients:
+        return ReductionGroupProcessingIngredients(pixelGroup=self.pixelGroups[groupID])
 
-    def generateFocussedVanadium(self, groupingIndex: int) -> GenerateFocussedVanadiumIngredients:
+    def generateFocussedVanadium(self, groupID: int) -> GenerateFocussedVanadiumIngredients:
         return GenerateFocussedVanadiumIngredients(
             smoothingParameter=self.smoothingParameter,
-            pixelGroup=self.pixelGroups[groupingIndex],
-            detectorPeaks=self.getDetectorPeaks(groupingIndex),
+            pixelGroup=self.pixelGroups[groupID],
+            detectorPeaks=self.getDetectorPeaks(groupID),
         )
 
-    def applyNormalization(self, groupingIndex: int) -> ApplyNormalizationIngredients:
+    def applyNormalization(self, groupID: int) -> ApplyNormalizationIngredients:
         return ApplyNormalizationIngredients(
-            pixelGroup=self.pixelGroups[groupingIndex],
+            pixelGroup=self.pixelGroups[groupID],
         )
 
-    def effectiveInstrument(self, groupingIndex: int) -> EffectiveInstrumentIngredients:
-        return EffectiveInstrumentIngredients(unmaskedPixelGroup=self.unmaskedPixelGroups[groupingIndex])
+    def effectiveInstrument(self, groupID: int) -> EffectiveInstrumentIngredients:
+        return EffectiveInstrumentIngredients(unmaskedPixelGroup=self.unmaskedPixelGroups[groupID])
 
     model_config = ConfigDict(
         extra="forbid",

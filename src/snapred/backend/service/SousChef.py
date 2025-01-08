@@ -265,21 +265,36 @@ class SousChef(Service):
         self, ingredients: FarmFreshIngredients, combinedPixelMask: Optional[WorkspaceName] = None
     ) -> ReductionIngredients:
         ingredients_ = ingredients.model_copy()
-        # some of the reduction ingredients MUST match those used in the calibration/normalization processes
+
+        # Some of the reduction ingredients MUST match those used in the calibration/normalization processes
         ingredients_ = self._pullCalibrationRecordFFI(ingredients_)
         ingredients_, smoothingParameter, calibrantSamplePath = self._pullNormalizationRecordFFI(ingredients_)
         ingredients_.calibrantSamplePath = calibrantSamplePath
 
+        # Convert pixelGroups to a dictionary keyed by group ID
+        pixelGroups_dict = {
+            i: group for i, group in enumerate(self.prepManyPixelGroups(ingredients_, combinedPixelMask))
+        }
+        unmaskedPixelGroups_dict = {i: group for i, group in enumerate(self.prepManyPixelGroups(ingredients_))}
+
+        # Convert detectorPeaksMany to a dictionary if it exists
+        detectorPeaksMany_dict = (
+            {i: peaks for i, peaks in enumerate(self.prepManyDetectorPeaks(ingredients_))}
+            if self.prepManyDetectorPeaks(ingredients_)
+            else None
+        )
+
+        # Create the ReductionIngredients object
         return ReductionIngredients(
             runNumber=ingredients_.runNumber,
             useLiteMode=ingredients_.useLiteMode,
             timestamp=ingredients_.timestamp,
-            pixelGroups=self.prepManyPixelGroups(ingredients_, combinedPixelMask),
-            unmaskedPixelGroups=self.prepManyPixelGroups(ingredients_),
+            pixelGroups=pixelGroups_dict,
+            unmaskedPixelGroups=list(unmaskedPixelGroups_dict.values()),
             smoothingParameter=smoothingParameter,
             calibrantSamplePath=ingredients_.calibrantSamplePath,
             peakIntensityThreshold=self._getThresholdFromCalibrantSample(ingredients_.calibrantSamplePath),
-            detectorPeaksMany=self.prepManyDetectorPeaks(ingredients_),
+            detectorPeaksMany=detectorPeaksMany_dict,
             keepUnfocused=ingredients_.keepUnfocused,
             convertUnitsTo=ingredients_.convertUnitsTo,
         )

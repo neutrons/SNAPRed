@@ -64,7 +64,9 @@ class ReductionRecipe(Recipe[Ingredients]):
         self.sampleWs = groceries["inputWorkspace"]
         self.normalizationWs = groceries.get("normalizationWorkspace", "")
         self.maskWs = groceries.get("combinedPixelMask", "")
-        self.groupingWorkspaces = groceries["groupingWorkspaces"]
+        self.groupingWorkspaces = {
+            groupIndex: workspaceName for groupIndex, workspaceName in enumerate(groceries["groupingWorkspaces"])
+        }
 
     def _cloneWorkspace(self, inputWorkspace: str, outputWorkspace: str) -> str:
         self.mantidSnapper.CloneWorkspace(
@@ -81,7 +83,7 @@ class ReductionRecipe(Recipe[Ingredients]):
                 "Cloning workspace...", InputWorkspace=inputWorkspace, OutputWorkspace=outputWorkspace
             )
             self.mantidSnapper.executeQueue()
-            return inputWorkspace
+            return outputWorkspace
 
     def _deleteWorkspace(self, workspace: str):
         self.mantidSnapper.DeleteWorkspace(
@@ -145,20 +147,18 @@ class ReductionRecipe(Recipe[Ingredients]):
     def _applyRecipe(self, recipe: Type[Recipe], ingredients_, **kwargs):
         if "inputWorkspace" in kwargs:
             inputWorkspace = kwargs["inputWorkspace"]
-            if not inputWorkspace:
-                self.logger().debug(f"{recipe.__name__} :: Skipping recipe with default empty input workspace")
-                return
-            if self.mantidSnapper.mtd.doesExist(inputWorkspace):
-                self.groceries.update(kwargs)
-                recipe().cook(ingredients_, self.groceries)
-            else:
+            if not self.mantidSnapper.mtd.doesExist(inputWorkspace):
                 raise RuntimeError(
-                    (
-                        f"{recipe.__name__} ::"
-                        " Missing non-default input workspace with groceries:"
-                        f" {self.groceries} and kwargs: {kwargs}"
-                    )
+                    f"{recipe.__name__} :: InputWorkspace '{inputWorkspace}' does not exist in Mantid workspace dictionary."  # noqa: E501
                 )
+        if "groupingWorkspace" in kwargs:
+            groupingWorkspace = kwargs["groupingWorkspace"]
+            if not self.mantidSnapper.mtd.doesExist(groupingWorkspace):
+                raise RuntimeError(
+                    f"{recipe.__name__} :: GroupingWorkspace '{groupingWorkspace}' does not exist in Mantid workspace dictionary."  # noqa: E501
+                )
+        self.groceries.update(kwargs)
+        recipe().cook(ingredients_, self.groceries)
 
     def _getNormalizationWorkspaceName(self, groupingIndex: int):
         return f"reduced_normalization_{groupingIndex}_{wnvf.formatTimestamp(self.ingredients.timestamp)}"
@@ -172,8 +172,10 @@ class ReductionRecipe(Recipe[Ingredients]):
 
         groupingName = self.ingredients.pixelGroups[groupingIndex].focusGroup.name.lower()
         reducedOutputWs = wng.reductionOutput().runNumber(runNumber).group(groupingName).timestamp(timestamp).build()
+
         sampleClone = self._cloneWorkspace(self.sampleWs, reducedOutputWs)
         self.groceries["inputWorkspace"] = sampleClone
+
         normalizationClone = None
         if self.normalizationWs:
             normalizationClone = self._cloneWorkspace(
@@ -181,18 +183,17 @@ class ReductionRecipe(Recipe[Ingredients]):
                 self._getNormalizationWorkspaceName(groupingIndex),
             )
             self.groceries["normalizationWorkspace"] = normalizationClone
+
         return sampleClone, normalizationClone
 
     def _checkMaskedPixels(self, groupingWorkspace: str) -> bool:
         try:
             # Extract the focus group name from the grouping workspace name
             focusGroupName = groupingWorkspace.split("__")[1].rsplit("_", 1)[0]
-        # NOTE: This might be jumping the gun a lil bit.
         except IndexError:
-            self.logger().error(
-                f"Unexpected groupingWorkspace format: '{groupingWorkspace}'. " "Skipping this workspace."
-            )
+            self.logger().error(f"Unexpected groupingWorkspace format: '{groupingWorkspace}'. Skipping this workspace.")
             return True  # Skip execution for invalid format
+
         # Retrieve the PixelGroup matching the focus group name
         pixelGroup = next(
             (
@@ -204,25 +205,30 @@ class ReductionRecipe(Recipe[Ingredients]):
         )
         if not pixelGroup:
             self.logger().error(f"No matching PixelGroup found for {groupingWorkspace}")
-            return True  # Skip the grouping if no matching group is found
-        # Check if any subgroup is fully masked
-        for subgroupID, params in pixelGroup.pixelGroupingParameters.items():
-            if params.isMasked:
-                self.logger().warning(
-                    f"Subgroup '{subgroupID}' in group '{focusGroupName}' is fully masked. "
-                    f"Skipping execution for {groupingWorkspace} workspace.\n"
-                    "This will affect future reductions.\n\n"
-                )
-                return True
-        # Check if all subgroups are masked (redundant, as the above already skips if any are masked)
-        if all(param.isMasked for param in pixelGroup.pixelGroupingParameters.values()):
+            return True
+
+        # Check if all pixels in the group are masked
+        allMasked = all(param.isMasked for param in pixelGroup.pixelGroupingParameters.values())
+        if allMasked:
             self.logger().warning(
-                f"All subgroups in the group '{focusGroupName}' from '{groupingWorkspace}' "
-                "are fully masked. Skipping the entire grouping schema.\n"
-                "This will affect future reductions.\n\n"
+                f"All pixels in group '{focusGroupName}' (workspace: '{groupingWorkspace}') are masked. "
+                "Skipping this group for the reduction.\n"
             )
             return True
-        return False  # Proceed if no subgroups are fully masked
+        return False
+
+    def _removeFullyMaskedGroups(self):
+        keysRemoved = [
+            groupIndex
+            for groupIndex, groupingWs in self.groupingWorkspaces.items()
+            if self.maskWs and self._checkMaskedPixels(groupingWs)
+        ]
+
+        for key in keysRemoved:
+            self.groupingWorkspaces.pop(key)
+            self.ingredients.pixelGroups.pop(key)
+            if self.ingredients.detectorPeaksMany is not None:
+                self.ingredients.detectorPeaksMany.pop(key)
 
     def queueAlgos(self):
         pass
@@ -231,8 +237,8 @@ class ReductionRecipe(Recipe[Ingredients]):
         data: Dict[str, Any] = {"result": False}
 
         # Retain unfocused data for comparison.
-        if self.keepUnfocused:
-            data["unfocusedWS"] = self._prepareUnfocusedData(self.sampleWs, self.maskWs, self.convertUnitsTo)
+        if self.maskWs:
+            self._removeFullyMaskedGroups()
 
         # 1. PreprocessReductionRecipe
         outputs = []
@@ -251,7 +257,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         )
         self._cloneIntermediateWorkspace(self.normalizationWs, "normalization_preprocessed")
 
-        for groupingIndex, groupingWs in enumerate(self.groupingWorkspaces):
+        for groupingIndex, groupingWs in self.groupingWorkspaces.items():
             self.groceries["groupingWorkspace"] = groupingWs
 
             if self.maskWs and self._checkMaskedPixels(groupingWs):

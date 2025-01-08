@@ -220,7 +220,8 @@ class ReductionService(Service):
             calibration=calibration,
             normalization=normalization,
             pixelGroupingParameters={
-                pg.focusGroup.name: [pg[gid] for gid in pg.groupIDs] for pg in ingredients.pixelGroups
+                pg.focusGroup.name: [pg.pixelGroupingParameters[gid] for gid in pg.groupIDs]
+                for pg in ingredients.pixelGroups.values()
             },
             workspaceNames=workspaceNames,
         )
