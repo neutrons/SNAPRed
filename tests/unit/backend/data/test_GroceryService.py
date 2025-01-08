@@ -13,12 +13,15 @@ from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
     CloneWorkspace,
+    CreateSampleWorkspace,
     CreateWorkspace,
     DeleteWorkspace,
+    ExtractMask,
     GenerateTableWorkspaceFromListOfDict,
     GroupWorkspaces,
     LoadEmptyInstrument,
     LoadInstrument,
+    MaskDetectors,
     SaveDiffCal,
     SaveNexus,
     SaveNexusProcessed,
@@ -174,7 +177,7 @@ class TestGroceryService(unittest.TestCase):
     def clearoutWorkspaces(self) -> None:
         """Delete the workspaces created by loading"""
         for ws in mtd.getObjectNames():
-            if ws not in self.excludeAtTeardown:
+            if ws not in self.excludeAtTeardown and ws in mtd:
                 DeleteWorkspace(ws)
 
     def tearDown(self):
@@ -190,7 +193,8 @@ class TestGroceryService(unittest.TestCase):
         and remove the test file.
         """
         for ws in mtd.getObjectNames():
-            DeleteWorkspace(ws)
+            if ws in mtd:
+                DeleteWorkspace(ws)
         os.remove(cls.sampleWSFilePath)
         os.remove(cls.sampleDiffCalFilePath)
         os.remove(cls.sampleTarWsFilePath)
@@ -1893,3 +1897,35 @@ class TestGroceryService(unittest.TestCase):
 
         with pytest.raises(RuntimeError, match=r".*Could not find diffcal table in record*"):
             self.instance.lookupDiffcalTableWorkspaceName(runNumber, True, version)
+
+    def test_checkPixelMask(self):
+        # raises an error if workspace not in ADS
+        nonexistent = mtd.unique_name(prefix="_mask_check_")
+        assert not mtd.doesExist(nonexistent)
+        assert not self.instance.checkPixelMask(nonexistent)
+
+        # raises an error if workspace not a mask workspace
+        notamask = mtd.unique_name(prefix="_mask_check_")
+        CreateSampleWorkspace(
+            OutputWorkspace=notamask,
+            NumBanks=1,
+            BankPixelWidth=1,
+        )
+        assert mtd.doesExist(notamask)
+        assert mtd[notamask].id() != "MaskWorkspace"
+        assert not self.instance.checkPixelMask(notamask)
+
+        # return False if nothing is masked
+        emptymask = mtd.unique_name(prefix="_mask_check_")
+        ExtractMask(InputWorkspace=notamask, OutputWorkspace=emptymask)
+        assert mtd[emptymask].id() == "MaskWorkspace"
+        assert mtd[emptymask].getNumberMasked() == 0
+        assert not self.instance.checkPixelMask(emptymask)
+
+        # return True if something is masked
+        nonemptymask = mtd.unique_name(prefix="_mask_check_")
+        MaskDetectors(Workspace=notamask, WorkspaceIndexList=[0])
+        ExtractMask(InputWorkspace=notamask, OutputWorkspace=nonemptymask)
+        assert mtd[nonemptymask].id() == "MaskWorkspace"
+        assert mtd[nonemptymask].getNumberMasked() != 0
+        assert self.instance.checkPixelMask(nonemptymask)

@@ -1,5 +1,4 @@
 import json
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -274,9 +273,7 @@ class ReductionService(Service):
         }
 
     # WARNING: `WorkspaceName` does not work with `@FromString`!
-    def prepCombinedMask(
-        self, runNumber: str, useLiteMode: bool, timestamp: float, pixelMasks: Iterable[WorkspaceName]
-    ) -> WorkspaceName:
+    def prepCombinedMask(self, request: ReductionRequest) -> WorkspaceName:
         """
         Combine all of the individual pixel masks for application and final output
         """
@@ -289,9 +286,42 @@ class ReductionService(Service):
             ==> TO / FROM mask-dropdown in Reduction panel
             This MUST be a list of valid `WorkspaceName` (i.e. containing their original `builder` attribute)
         """
+        runNumber = request.runNumber
+        useLiteMode = request.useLiteMode
+        timestamp = request.timestamp
         combinedMask = wng.reductionPixelMask().runNumber(runNumber).timestamp(timestamp).build()
+
+        # if there is a mask associated with the diffcal file, load it here
+        calVersion = None
+        if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
+            calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(runNumber, useLiteMode)
+        if calVersion is not None:  # WARNING: version may be _zero_!
+            self.groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(runNumber, calVersion).useLiteMode(
+                useLiteMode
+            ).add()
+
+        # if the user specified masks to use, also pull those
+        residentMasks = {}
+        for mask in request.pixelMasks:
+            match mask.tokens("workspaceType"):
+                case wngt.REDUCTION_PIXEL_MASK:
+                    runNumber, time = mask.tokens("runNumber", "timestamp")
+                    self.groceryClerk.name(mask).reduction_pixel_mask(runNumber, time).useLiteMode(useLiteMode).add()
+                case wngt.REDUCTION_USER_PIXEL_MASK:
+                    numberTag = mask.tokens("numberTag")
+                    residentMasks[mask] = wng.reductionUserPixelMask().numberTag(numberTag).build()
+                case _:
+                    raise RuntimeError(
+                        f"reduction pixel mask '{mask}' has unexpected workspace-type '{mask.tokens('workspaceType')}'"  # noqa: E501
+                    )
+        # Load all pixel masks
+        allMasks = self.groceryService.fetchGroceryDict(
+            self.groceryClerk.buildDict(),
+            **residentMasks,
+        )
+
         self.groceryService.fetchCompatiblePixelMask(combinedMask, runNumber, useLiteMode)
-        for n, mask in enumerate(pixelMasks):
+        for n, mask in enumerate(allMasks.values()):
             self.mantidSnapper.BinaryOperateMasks(
                 f"combine from pixel mask {n}...",
                 InputWorkspace1=combinedMask,
@@ -369,37 +399,10 @@ class ReductionService(Service):
                 request.runNumber, request.useLiteMode
             )
 
-        # Fetch pixel masks
-        residentMasks = {}
-        combinedPixelMask = None
-        if request.pixelMasks:
-            for mask in request.pixelMasks:
-                match mask.tokens("workspaceType"):
-                    case wngt.REDUCTION_PIXEL_MASK:
-                        runNumber, timestamp = mask.tokens("runNumber", "timestamp")
-                        self.groceryClerk.name(mask).reduction_pixel_mask(runNumber, timestamp).useLiteMode(
-                            request.useLiteMode
-                        ).add()
-                    case wngt.REDUCTION_USER_PIXEL_MASK:
-                        numberTag = mask.tokens("numberTag")
-                        residentMasks[mask] = wng.reductionUserPixelMask().numberTag(numberTag).build()
-                    case _:
-                        raise RuntimeError(
-                            f"reduction pixel mask '{mask}' has unexpected workspace-type '{mask.tokens('workspaceType')}'"  # noqa: E501
-                        )
-            if calVersion is not None:  # WARNING: version may be _zero_!
-                self.groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
-                    request.useLiteMode
-                ).add()
-            # Load any non-resident pixel masks
-            maskGroceries = self.groceryService.fetchGroceryDict(
-                self.groceryClerk.buildDict(),
-                **residentMasks,
-            )
-            # combine all of the pixel masks, for application and final output
-            combinedPixelMask = self.prepCombinedMask(
-                request.runNumber, request.useLiteMode, request.timestamp, maskGroceries.values()
-            )
+        # Fetch pixel masks -- if nothing is masked, nullify
+        combinedPixelMask = self.prepCombinedMask(request)
+        if not self.groceryService.checkPixelMask(combinedPixelMask):
+            combinedPixelMask = None
 
         # gather the input workspace and the diffcal table
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
@@ -415,8 +418,8 @@ class ReductionService(Service):
             ).add()
 
         groceries = self.groceryService.fetchGroceryDict(
-            groceryDict=self.groceryClerk.buildDict(),
-            **({"combinedPixelMask": combinedPixelMask} if combinedPixelMask else {}),
+            self.groceryClerk.buildDict(),
+            **({"combinedPixelMask": combinedPixelMask} if bool(combinedPixelMask) else {}),
         )
 
         self._markWorkspaceMetadata(request, groceries["inputWorkspace"])

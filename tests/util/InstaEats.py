@@ -3,7 +3,14 @@ import os
 from typing import Any, Dict, List
 from unittest import mock
 
-from mantid.simpleapi import LoadDetectorsGroupingFile, LoadEmptyInstrument, mtd
+from mantid.simpleapi import (
+    CreateEmptyTableWorkspace,
+    CreateSampleWorkspace,
+    ExtractMask,
+    LoadDetectorsGroupingFile,
+    LoadEmptyInstrument,
+    mtd,
+)
 from pydantic import validate_call
 from util.WhateversInTheFridge import WhateversInTheFridge
 
@@ -192,6 +199,29 @@ class InstaEats(GroceryService):
 
         return data
 
+    def fetchCompatiblePixelMask(self, maskWSName, runNumber, useLiteMode):
+        CreateSampleWorkspace(
+            OutputWorkspace=maskWSName,
+            NumBanks=1,
+            BankPixelWidth=1,
+        )
+        ExtractMask(
+            InputWorkspace=maskWSName,
+            OutputWorkspace=maskWSName,
+        )
+
+    def fetchCalibrationWorkspaces(self, item):
+        runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
+        tableWorkspaceName = self.lookupDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
+        maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, useLiteMode, version)
+        self.fetchCompatiblePixelMask(maskWorkspaceName, runNumber, useLiteMode)
+        CreateEmptyTableWorkspace(OutputWorkspace=tableWorkspaceName)
+        return {
+            "result": True,
+            "loader": "LoadCalibrationWorkspaces",
+            "workspace": tableWorkspaceName,
+        }
+
     def fetchGroceryList(self, groceryList: List[GroceryListItem]) -> List[WorkspaceName]:
         """
         :param groceryList: a list of GroceryListItems indicating the workspaces to create
@@ -240,6 +270,8 @@ class InstaEats(GroceryService):
                     res["workspace"] = maskWorkspaceName
                 case "normalization":
                     res = self.fetchNormalizationWorkspace(item)
+                case "reduction_pixel_mask":
+                    res = self.fetchReductionPixelMask(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
             # check that the fetch operation succeeded and if so append the workspace

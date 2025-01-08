@@ -513,6 +513,26 @@ class GroceryService:
         else:
             raise RuntimeError(f"Workspace {workspaceName} does not exist")
 
+    def checkPixelMask(self, pixelMask: WorkspaceName) -> bool:
+        """
+        Check if a pixel mask is valid.
+        :param pixelMask: the name of the MaskWorkspace to check
+        :type pixelMasl: Workspacename
+        :return: True if pixelMask is a non-empty MaskWorkspace in the ADS.  False otherwise.
+        :rtype: bool
+        """
+
+        if not self.mantidSnapper.mtd.doesExist(pixelMask):
+            return False
+        else:
+            mask = self.mantidSnapper.mtd[pixelMask]
+            if mask.id() != "MaskWorkspace":
+                return False
+            elif mask.getNumberMasked() == 0:
+                return False
+            else:
+                return True
+
     ## FETCH METHODS
     """
     The fetch methods orchestrate finding data files, loading them into workspaces,
