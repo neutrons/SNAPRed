@@ -8,11 +8,8 @@ from pydantic import WithJsonSchema
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated, Self
 
+from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.meta.Config import Config
-
-# Bypass circular import:
-VERSION_DEFAULT = Config["version.default"]
-VERSION_DEFAULT_NAME = Config["version.friendlyName.default"]
 
 
 class WorkspaceName(str):
@@ -72,6 +69,7 @@ class WorkspaceType(str, Enum):
     RAW_VANADIUM = "rawVanadium"
     FOCUSED_RAW_VANADIUM = "focusedRawVanadium"
     SMOOTHED_FOCUSED_RAW_VANADIUM = "smoothedFocusedRawVanadium"
+    ARTIFICIAL_NORMALIZATION_PREVIEW = "artificialNormalizationPreview"
 
     # <reduction tag>_<runNumber>_<timestamp>
     REDUCTION_OUTPUT = "reductionOutput"
@@ -179,8 +177,8 @@ class ValueFormatter:
         # in those cases, format will be a user-specified string
 
         formattedVersion = ""
-        if version == VERSION_DEFAULT:
-            formattedVersion = f"v{VERSION_DEFAULT_NAME}"
+        if version == VersionState.DEFAULT:
+            formattedVersion = f"v{VERSION_START}"
         elif isinstance(version, int):
             formattedVersion = fmt.format(version=version)
         elif str(version).isdigit():
@@ -191,8 +189,8 @@ class ValueFormatter:
     def pathVersion(cls, version: int):
         # only one special case: default version
 
-        if version == VERSION_DEFAULT:
-            return f"v_{VERSION_DEFAULT_NAME}"
+        if version == VersionState.DEFAULT:
+            return f"v_{VersionState.DEFAULT}"
         return cls.formatVersion(version, fmt=cls.versionFormat.PATH)
 
     @classmethod
@@ -295,6 +293,10 @@ class _WorkspaceNameGenerator:
     class Lite:
         TRUE = "lite"
         FALSE = ""
+
+    class ArtificialNormWorkspaceType:
+        PREVIEW = "preview"
+        SOURCE = "source"
 
     # TODO: Return abstract WorkspaceName type to help facilitate control over workspace names
     #       and discourage non-standard names.
@@ -413,6 +415,16 @@ class _WorkspaceNameGenerator:
             self._delimiter,
             unit=self.Units.DSP,
             version=None,
+        )
+
+    def artificialNormalizationPreview(self):
+        return NameBuilder(
+            WorkspaceType.ARTIFICIAL_NORMALIZATION_PREVIEW,
+            self._normCalArtificialNormalizationPreviewTemplate,
+            self._normCalArtificialNormalizationPreviewTemplateKeys,
+            self._delimiter,
+            unit=self.Units.DSP,
+            type=self.ArtificialNormWorkspaceType.PREVIEW,
         )
 
     def reductionOutput(self):

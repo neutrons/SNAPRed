@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<detector-grouping idf-date="2018-05-01T00:00:01" instrument="fakeSNAP">
+<!-- EAST -->
+	<group ID="1">
+		<detids>0,1,2,3</detids>
+	</group>
+	<group ID="2">
+		<detids>4,5,6,7</detids>
+	</group>
+	<group ID="3">
+		<detids>8,9,10,11</detids>
+	</group>
+	<group ID="4">
+		<detids>12,13,14,15</detids>
+	</group>
+	<group ID="5">
+		<detids>16,17,18,19</detids>
+	</group>
+	<group ID="6">
+		<detids>20,21,22,23</detids>
+	</group>
+	<group ID="7">
+		<detids>24,25,26,27</detids>
+	</group>
+	<group ID="8">
+		<detids>28,29,30,31</detids>
+	</group>
+	<group ID="9">
+		<detids>32,33,34,35</detids>
+	</group>
+<!-- EAST -->
+	<group ID="10">
+		<detids>36,37,38,39</detids>
+	</group>
+	<group ID="11">
+		<detids>40,41,42,43</detids>
+	</group>
+	<group ID="12">
+		<detids>44,45,46,47</detids>
+	</group>
+	<group ID="13">
+		<detids>48,49,50,51</detids>
+	</group>
+	<group ID="14">
+		<detids>52,53,54,55</detids>
+	</group>
+	<group ID="15">
+		<detids>56,57,58,59</detids>
+	</group>
+	<group ID="16">
+		<detids>60,61,62,63</detids>
+	</group>
+	<group ID="17">
+		<detids>64,65,66,67</detids>
+	</group>
+	<group ID="18">
+		<detids>68,69,70,71</detids>
+	</group>
+</detector-grouping>

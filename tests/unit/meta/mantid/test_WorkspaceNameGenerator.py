@@ -7,12 +7,11 @@ from pydantic import BaseModel, ConfigDict
 
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import (
-    VERSION_DEFAULT,
-    VERSION_DEFAULT_NAME,
-    WorkspaceName,
+    ValueFormatter as wnvf,
 )
 from snapred.meta.mantid.WorkspaceNameGenerator import (
-    ValueFormatter as wnvf,
+    VersionState,
+    WorkspaceName,
 )
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceNameGenerator as wng,
@@ -297,9 +296,9 @@ def test_pathVersion_none():
     assert ans == expected
 
 
-def test_pathVersion_default():
-    expected = f"v_{VERSION_DEFAULT_NAME}"
-    ans = wnvf.pathVersion(VERSION_DEFAULT)
+def test_pathversion_default():
+    expected = f"v_{VersionState.DEFAULT}"
+    ans = wnvf.pathVersion(VersionState.DEFAULT)
     assert ans == expected
 
 

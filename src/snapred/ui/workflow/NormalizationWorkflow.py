@@ -1,7 +1,7 @@
 from qtpy.QtCore import Slot
 
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Versioning import VersionedObject
+from snapred.backend.dao.indexing.Versioning import VersionedObject, VersionState
 from snapred.backend.dao.request import (
     CalibrationWritePermissionsRequest,
     CreateIndexEntryRequest,
@@ -217,10 +217,10 @@ class NormalizationWorkflow(WorkflowImplementer):
     def _saveNormalization(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         runNumber = view.fieldRunNumber.get()
-        version = view.fieldVersion.get()
+        version = view.fieldVersion.get(VersionState.NEXT)
         appliesTo = view.fieldAppliesTo.get(f">={self.calibrationRunNumber}")
         # validate version number
-        version = VersionedObject.parseVersion(version, exclude_default=True)
+        version = VersionedObject(version=version).version
         # validate appliesTo field
         appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
 

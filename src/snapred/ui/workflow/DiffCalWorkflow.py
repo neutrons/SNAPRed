@@ -3,7 +3,7 @@ from qtpy.QtCore import Slot
 
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Versioning import VersionedObject
+from snapred.backend.dao.indexing.Versioning import VersionedObject, VersionState
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.request import (
     CalculateResidualRequest,
@@ -143,6 +143,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def __setInteraction(self, state: bool):
         self._requestView.litemodeToggle.setEnabled(state)
+        self._requestView.skipPixelCalToggle.setEnabled(state)
         self._requestView.groupingFileDropdown.setEnabled(state)
 
     @ExceptionToErrLog
@@ -260,10 +261,6 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._renewFocus(self.prevGroupingIndex)
         self._renewFitPeaks(self.peakFunction)
         response = self._calculateResidual()
-
-        # freeze these toggles, as they can no longer function
-        self._requestView.litemodeToggle.setEnabled(False)
-        self._requestView.skipPixelCalToggle.setEnabled(False)
 
         self._tweakPeakView.updateGraphs(
             self.focusedWorkspace,
@@ -471,6 +468,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.groceries["previousCalibration"] = self.prevDiffCal
 
+        # perform the group calibration
         payload = SimpleDiffCalRequest(
             ingredients=self.ingredients,
             groceries=self.groceries,
@@ -534,10 +532,10 @@ class DiffCalWorkflow(WorkflowImplementer):
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         runNumber = view.fieldRunNumber.get()
-        version = view.fieldVersion.get(None)
+        version = view.fieldVersion.get(VersionState.NEXT)
         appliesTo = view.fieldAppliesTo.get(f">={runNumber}")
         # validate the version number
-        version = VersionedObject.parseVersion(version, exclude_default=True)
+        version = VersionedObject(version=version).version
         # validate appliesTo field
         appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel
 
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -11,13 +11,7 @@ class CreateArtificialNormalizationRequest(BaseModel):
     decreaseParameter: bool = True
     lss: bool = True
     diffractionWorkspace: WorkspaceName
-    outputWorkspace: WorkspaceName = None
-
-    @root_validator(pre=True)
-    def set_output_workspace(cls, values):
-        if values.get("diffractionWorkspace") and not values.get("outputWorkspace"):
-            values["outputWorkspace"] = WorkspaceName(f"{values['diffractionWorkspace']}_artificialNorm")
-        return values
+    outputWorkspace: WorkspaceName
 
     class Config:
         arbitrary_types_allowed = True  # Allow arbitrary types like WorkspaceName

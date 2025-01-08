@@ -1,11 +1,12 @@
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from pydantic import validate_call
 
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.Versioning import Version, VersionState
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
@@ -81,7 +82,7 @@ class DataFactoryService:
         return self.lookupService.calibrationExists(runId, useLiteMode)
 
     @validate_call
-    def getCalibrationDataPath(self, runId: str, useLiteMode: bool, version: int):
+    def getCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Version):
         return self.lookupService.calibrationIndexer(runId, useLiteMode).versionPath(version)
 
     def checkCalibrationStateExists(self, runId: str):
@@ -102,28 +103,22 @@ class DataFactoryService:
         return self.lookupService.calibrationIndexer(runId, useLiteMode).getIndex()
 
     @validate_call
-    def getCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None) -> CalibrationRecord:
+    def getCalibrationRecord(
+        self, runId: str, useLiteMode: bool, version: Version = VersionState.LATEST
+    ) -> CalibrationRecord:
         """
         If no version is passed, will use the latest version applicable to runId
         """
         return self.lookupService.readCalibrationRecord(runId, useLiteMode, version)
 
     @validate_call
-    def getCalibrationDataWorkspace(self, runId: str, useLiteMode: bool, version: int, name: str):
+    def getCalibrationDataWorkspace(self, runId: str, useLiteMode: bool, version: Version, name: str):
         path = self.lookupService.calibrationIndexer(runId, useLiteMode).versionPath(version)
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
     @validate_call
-    def getThisOrCurrentCalibrationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        return self.lookupService.calibrationIndexer(runId, useLiteMode).thisOrCurrentVersion(version)
-
-    @validate_call
-    def getThisOrNextCalibrationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        return self.lookupService.calibrationIndexer(runId, useLiteMode).thisOrNextVersion(version)
-
-    @validate_call
-    def getThisOrLatestCalibrationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        return self.lookupService.calibrationIndexer(runId, useLiteMode).thisOrLatestApplicableVersion(runId, version)
+    def getLatestApplicableCalibrationVersion(self, runId: str, useLiteMode: bool):
+        return self.lookupService.calibrationIndexer(runId, useLiteMode).latestApplicableVersion(runId)
 
     ##### NORMALIZATION METHODS #####
 
@@ -131,7 +126,7 @@ class DataFactoryService:
         return self.lookupService.normalizationExists(runId, useLiteMode)
 
     @validate_call
-    def getNormalizationDataPath(self, runId: str, useLiteMode: bool, version: int):
+    def getNormalizationDataPath(self, runId: str, useLiteMode: bool, version: Version):
         return self.lookupService.normalizationIndexer(runId, useLiteMode).versionPath(version)
 
     def createNormalizationIndexEntry(self, request: NormalizationExportRequest) -> IndexEntry:
@@ -149,28 +144,22 @@ class DataFactoryService:
         return self.lookupService.normalizationIndexer(runId, useLiteMode).getIndex()
 
     @validate_call
-    def getNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+    def getNormalizationRecord(
+        self, runId: str, useLiteMode: bool, version: Version = VersionState.LATEST
+    ) -> NormalizationRecord:
         """
         If no version is passed, will use the latest version applicable to runId
         """
         return self.lookupService.readNormalizationRecord(runId, useLiteMode, version)
 
     @validate_call
-    def getNormalizationDataWorkspace(self, runId: str, useLiteMode: bool, version: int, name: str):
+    def getNormalizationDataWorkspace(self, runId: str, useLiteMode: bool, version: Version, name: str):
         path = self.getNormalizationDataPath(runId, useLiteMode, version)
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
     @validate_call
-    def getThisOrCurrentNormalizationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        return self.lookupService.normalizationIndexer(runId, useLiteMode).thisOrCurrentVersion(version)
-
-    @validate_call
-    def getThisOrNextNormalizationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        return self.lookupService.normalizationIndexer(runId, useLiteMode).thisOrNextVersion(version)
-
-    @validate_call
-    def getThisOrLatestNormalizationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        return self.lookupService.normalizationIndexer(runId, useLiteMode).thisOrLatestApplicableVersion(runId, version)
+    def getLatestApplicableNormalizationVersion(self, runId: str, useLiteMode: bool):
+        return self.lookupService.normalizationIndexer(runId, useLiteMode).latestApplicableVersion(runId)
 
     ##### REDUCTION METHODS #####
 

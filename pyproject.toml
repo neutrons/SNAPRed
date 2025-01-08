@@ -4,7 +4,7 @@ description = "A desktop application for Lifecycle Managment of data collected f
 dynamic = ["version"]
 requires-python = ">=3.10"
 dependencies = [
-    "mantidworkbench >= 6.10.0.2rc1",
+    "mantidworkbench >= 6.11.20241203",
     "pyoncat ~= 1.6"
 ]
 readme = "README.md"
@@ -55,7 +55,8 @@ markers = [
   "integration: mark a test as an integration test",
   "mount_snap: mark a test as using /SNS/SNAP/ data mount",
   "golden_data(*, path=None, short_name=None, date=None): mark golden data to use with a test",
-  "datarepo: mark a test as using snapred-data repo"
+  "datarepo: mark a test as using snapred-data repo",
+  "ui: mark a test as a UI test",
 ]
 # The following will be overridden by the commandline option "-m integration"
 addopts = "-m 'not (integration or datarepo)'"

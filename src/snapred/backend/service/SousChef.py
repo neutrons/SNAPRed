@@ -222,6 +222,8 @@ class SousChef(Service):
         self,
         ingredients: FarmFreshIngredients,
     ) -> FarmFreshIngredients:
+        if ingredients.versions.calibration is None:
+            raise ValueError("Calibration version must be specified")
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(
             ingredients.runNumber, ingredients.useLiteMode, ingredients.versions.calibration
         )

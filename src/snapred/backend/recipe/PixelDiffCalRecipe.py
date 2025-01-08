@@ -51,13 +51,14 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         self.runNumber: str = ingredients.runConfig.runNumber
 
         # from grouping parameters, read the overall min/max d-spacings
-        dMin = ingredients.pixelGroup.dMin()
-        dMax = ingredients.pixelGroup.dMax()
-        dBin = ingredients.pixelGroup.dBin()
+        dMin: List[float] = ingredients.pixelGroup.dMin()
+        dMax: List[float] = ingredients.pixelGroup.dMax()
+        dBin: List[float] = ingredients.pixelGroup.dBin()
         self.overallDMin: float = min(dMin)
         self.overallDMax: float = max(dMax)
-        self.dBin: float = max([abs(d) for d in dBin])
+        self.dBin: float = min([abs(d) for d in dBin])
         self.dSpaceParams = (self.overallDMin, self.dBin, self.overallDMax)
+        self.tofParams = ingredients.pixelGroup.timeOfFlight.params
         self.removeBackground = ingredients.removeBackground
         self.detectorPeaks = ingredients.groupedPeakLists
         self.threshold = ingredients.convergenceThreshold
@@ -82,7 +83,6 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         # the name of the output calibration table
         self.DIFCpixel = groceries["calibrationTable"]
         self.DIFCprev = groceries.get("previousCalibration", "")
-        self.isEventWs = self.mantidSnapper.mtd[self.wsTOF].id() == "EventWorkspace"
         # the input data converted to d-spacing
         self.wsDSP = wng.diffCalInputDSP().runNumber(self.runNumber).build()
         self.convertUnitsAndRebin(self.wsTOF, self.wsDSP)
@@ -124,35 +124,19 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         self.mantidSnapper.executeQueue()
 
     def stripBackground(self, peaks: List[Any], inputWS: WorkspaceName, groupingWS: WorkspaceName):
-        wsBG: str = inputWS + "_bg"
-
-        self.mantidSnapper.CloneWorkspace(
-            "Cloning input workspace for background subtraction",
+        self.mantidSnapper.Rebin(
+            "Rebin thedata before removing baackground",
             InputWorkspace=inputWS,
-            OutPutWorkspace=wsBG,
+            OutputWorkspace=inputWS,
+            Params=self.tofParams,
+            BinningMode="Logarithmic",
         )
-        self.mantidSnapper.RemoveEventBackground(
-            "Extracting background events...",
-            InputWorkspace=wsBG,
-            OutputWorkspace=wsBG,
+        self.mantidSnapper.RemoveSmoothedBackground(
+            "Extracting smoothed background from input data",
+            InputWorkspace=inputWS,
+            OutputWorkspace=inputWS,
             GroupingWorkspace=groupingWS,
             DetectorPeaks=peaks,
-        )
-        if self.isEventWs:
-            self.mantidSnapper.ConvertToEventWorkspace(
-                "Converting TOF data to EventWorkspace...",
-                InputWorkspace=wsBG,
-                OutputWorkspace=wsBG,
-            )
-        self.mantidSnapper.Minus(
-            "Subtracting background from input data",
-            LHSWorkspace=inputWS,
-            RHSWorkspace=wsBG,
-            OutputWorkspace=inputWS,
-        )
-        self.mantidSnapper.WashDishes(
-            "Delete the background after subtraction",
-            Workspace=wsBG,
         )
 
     def convertUnitsAndRebin(self, inputWS: str, outputWS: str) -> None:

@@ -20,6 +20,7 @@ from util.Config_helpers import Config_override
 #   however, for the moment, the reduction-data output relocation fixture is defined in the current file.
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
+from snapred.meta.Enum import StrEnum
 from snapred.ui.main import SNAPRedGUI, prependDataSearchDirectories
 from snapred.ui.view import InitializeStateCheckView
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
@@ -37,6 +38,63 @@ from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
 
 class InterruptWithBlock(BaseException):
     pass
+
+
+class TestSummary:
+    def __init__(self):
+        self._index = 0
+        self._steps = []
+
+    def SUCCESS(self):
+        step = self._steps[self._index]
+        step.status = self.TestStep.StepStatus.SUCCESS
+        self._index += 1
+
+    def FAILURE(self):
+        step = self._steps[self._index]
+        step.status = self.TestStep.StepStatus.FAILURE
+        self._index += 1
+
+    def isComplete(self):
+        return self._index == len(self._steps)
+
+    def isFailure(self):
+        return any(step.status == self.TestStep.StepStatus.FAILURE for step in self._steps)
+
+    def builder():
+        return TestSummary.TestSummaryBuilder()
+
+    def __str__(self):
+        longestStatus = max(len(step.status) for step in self._steps)
+        longestName = max(len(step.name) for step in self._steps)
+        tableCapStr = "#" * (longestName + longestStatus + 6)
+        tableStr = (
+            f"\n{tableCapStr}\n"
+            + "\n".join(f"# {step.name:{longestName}}: {step.status:{longestStatus}} #" for step in self._steps)
+            + f"\n{tableCapStr}\n"
+        )
+        return tableStr
+
+    class TestStep:
+        class StepStatus(StrEnum):
+            SUCCESS = "SUCCESS"
+            FAILURE = "FAILURE"
+            INCOMPLETE = "INCOMPLETE"
+
+        def __init__(self, name: str):
+            self.name = name
+            self.status = self.StepStatus.INCOMPLETE
+
+    class TestSummaryBuilder:
+        def __init__(self):
+            self.summary = TestSummary()
+
+        def step(self, name: str):
+            self.summary._steps.append(TestSummary.TestStep(name))
+            return self
+
+        def build(self):
+            return self.summary
 
 
 @pytest.fixture
@@ -169,7 +227,10 @@ class TestGUIPanels:
             lambda self, *args, **kwargs: QMessageBox.Ok
             if (
                 "The backend has encountered warning(s)" in self.text()
-                and "InstrumentDonor will only be used if GroupingFilename is in XML format." in self.detailedText()
+                and (
+                    "InstrumentDonor will only be used if GroupingFilename is in XML format." in self.detailedText()
+                    or "No valid FocusGroups were specified for mode: 'lite'" in self.detailedText()
+                )
             )
             else pytest.fail(
                 "unexpected QMessageBox.exec:"
@@ -196,7 +257,15 @@ class TestGUIPanels:
         # Establish context for each test: these normally run as part of `src/snapred/__main__.py`.
         self.exitStack = ExitStack()
         self.exitStack.enter_context(amend_config(data_dir=prependDataSearchDirectories(), prepend_datadir=True))
+
+        self.testSummary = None
         yield
+
+        if isinstance(self.testSummary, TestSummary):
+            if not self.testSummary.isComplete():
+                self.testSummary.FAILURE()
+            if self.testSummary.isFailure():
+                pytest.fail(f"Test Summary (-vv for full table): {self.testSummary}")
 
         # teardown...
         self._warningMessageBox.stop()
@@ -722,7 +791,18 @@ class TestGUIPanels:
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
         tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841
-
+        self.testSummary = (
+            TestSummary.builder()
+            .step("Open the GUI")
+            .step("Open the calibration panel")
+            .step("Set the diffraction calibration request")
+            .step("Execute the diffraction calibration request")
+            .step("Tweak the peaks")
+            .step("Assess the peaks")
+            .step("Save the diffraction calibration")
+            .step("Close the GUI")
+            .build()
+        )
         with (
             qtbot.captureExceptions() as exceptions,
             suppress(InterruptWithBlock),
@@ -750,6 +830,7 @@ class TestGUIPanels:
             """
 
             # Open the calibration panel:
+            self.testSummary.SUCCESS()
             # QPushButton* button = pWin->findChild<QPushButton*>("Button name");
             qtbot.mouseClick(gui.calibrationPanelButton, QtCore.Qt.LeftButton)
             if len(exceptions):
@@ -780,30 +861,33 @@ class TestGUIPanels:
 
             requestView = workflowNodeTabs.currentWidget().view
             assert isinstance(requestView, DiffCalRequestView)
+            self.testSummary.SUCCESS()
 
             #    set "Run Number", "Convergence Threshold", ,:
-            requestView.runNumberField.setText("46680")
-            requestView.fieldConvergenceThreshold.setText("0.1")
-            requestView.fieldNBinsAcrossPeakWidth.setText("10")
+            requestView.runNumberField.setText("58882")
+            requestView.litemodeToggle.setState(False)
 
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
-            requestView.sampleDropdown.setCurrentIndex(0)
-            assert requestView.sampleDropdown.currentIndex() == 0
-            assert requestView.sampleDropdown.currentText().endswith("Diamond_001.json")
+            requestView.sampleDropdown.setCurrentIndex(3)
+            assert requestView.sampleDropdown.currentIndex() == 3
+            assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
 
             #    Without this next 'qtbot.wait(1000)',
             #      the 'groupingFileDropdown' gets reset after this successful initialization.
             #    I assume this is because somehow the 'populateGroupingDropdown',
             #    triggered by the 'runNumberField' 'editComplete' hasn't actually occurred yet?
             qtbot.wait(1000)
-            requestView.groupingFileDropdown.setCurrentIndex(1)
-            assert requestView.groupingFileDropdown.currentIndex() == 1
-            assert requestView.groupingFileDropdown.currentText() == "Bank"
+            requestView.groupingFileDropdown.setCurrentIndex(0)
+            assert requestView.groupingFileDropdown.currentIndex() == 0
+            assert requestView.groupingFileDropdown.currentText() == "Column"
 
             requestView.peakFunctionDropdown.setCurrentIndex(0)
             assert requestView.peakFunctionDropdown.currentIndex() == 0
             assert requestView.peakFunctionDropdown.currentText() == "Gaussian"
 
+            requestView.skipPixelCalToggle.setState(False)
+
+            self.testSummary.SUCCESS()
             #    execute the request
 
             # TODO: make sure that there's no initialized state => abort the test if there is!
@@ -858,13 +942,17 @@ class TestGUIPanels:
                 questionMessageBox.stop()
                 successPrompt.stop()
 
+                # Now that there is a new state, we need to reselect the grouping file ... :
+                # Why was this error box being swallowed?
+                requestView.groupingFileDropdown.setCurrentIndex(0)
+
             #    (2) execute the calibration workflow
             with qtbot.waitSignal(actionCompleted, timeout=60000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
             qtbot.waitUntil(
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalTweakPeakView), timeout=60000
             )
-
+            self.testSummary.SUCCESS()
             tweakPeakView = workflowNodeTabs.currentWidget().view
 
             # ---------------------------------------------------------------------------
@@ -878,11 +966,11 @@ class TestGUIPanels:
             warningMessageBox.start()
             # ---------------------------------------------------------------------------
 
-            #    set "xtal dMin", "FWHM left", and "FWHM right": these are sufficient to get "46680" to pass.
+            #    set "xtal dMin", "FWHM left", and "FWHM right": these are sufficient to get "58882" to pass.
             #    TODO: set ALL of the relevant fields, and use a test initialization template for this.
-            tweakPeakView.fieldXtalDMin.setText("0.72")
-            tweakPeakView.fieldFWHMleft.setText("2.0")
-            tweakPeakView.fieldFWHMright.setText("2.0")
+            tweakPeakView.fieldFWHMleft.setText("1.5")
+            tweakPeakView.fieldFWHMright.setText("2")
+            tweakPeakView.maxChiSqField.setText("1000.0")
             tweakPeakView.peakFunctionDropdown.setCurrentIndex(0)
             assert tweakPeakView.peakFunctionDropdown.currentIndex() == 0
             assert tweakPeakView.peakFunctionDropdown.currentText() == "Gaussian"
@@ -896,6 +984,7 @@ class TestGUIPanels:
             #    continue to the next panel
             with qtbot.waitSignal(actionCompleted, timeout=80000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+            self.testSummary.SUCCESS()
 
             qtbot.waitUntil(
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalAssessmentView), timeout=80000
@@ -913,6 +1002,7 @@ class TestGUIPanels:
             #    continue to the next panel
             with qtbot.waitSignal(actionCompleted, timeout=80000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+            self.testSummary.SUCCESS()
 
             qtbot.waitUntil(lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalSaveView), timeout=5000)
             saveView = workflowNodeTabs.currentWidget().view
@@ -924,7 +1014,7 @@ class TestGUIPanels:
             #    continue in order to save workspaces and to finish the workflow
             with qtbot.waitSignal(actionCompleted, timeout=60000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-
+            self.testSummary.SUCCESS()
             #   `ActionPrompt.prompt("..The workflow has completed successfully..)` gives immediate mocked response:
             #      Here we still need to wait until the ADS cleanup has occurred,
             #      or else it will happen in the middle of the next workflow. :(
@@ -938,6 +1028,7 @@ class TestGUIPanels:
 
             calibrationPanel.widget.close()
             gui.close()
+            self.testSummary.SUCCESS()
 
         #####################################################################
         # Force a printout of information about any exceptions that happened#
@@ -955,7 +1046,17 @@ class TestGUIPanels:
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
         tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841
-
+        self.testSummary = (
+            TestSummary.builder()
+            .step("Open the GUI")
+            .step("Open the Normalization panel")
+            .step("Set the normalization request")
+            .step("Execute the normalization request")
+            .step("Tweak the peaks")
+            .step("Save the normalization calibration")
+            .step("Close the GUI")
+            .build()
+        )
         with (
             qtbot.captureExceptions() as exceptions,
             suppress(InterruptWithBlock),
@@ -963,7 +1064,7 @@ class TestGUIPanels:
             gui = SNAPRedGUI(translucentBackground=True)
             gui.show()
             qtbot.addWidget(gui)
-
+            self.testSummary.SUCCESS()
             """
             SNAPRedGUI owns the following widgets:
 
@@ -1013,24 +1114,28 @@ class TestGUIPanels:
 
             requestView = workflowNodeTabs.currentWidget().view
             assert isinstance(requestView, NormalizationRequestView)
+            self.testSummary.SUCCESS()
 
             #    set "Run Number", "Background run number":
-            requestView.runNumberField.setText("46680")
-            requestView.backgroundRunNumberField.setText("46680")
+            requestView.runNumberField.setText("58882")
+            requestView.backgroundRunNumberField.setText("58882")
+
+            requestView.litemodeToggle.setState(False)
 
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
-            requestView.sampleDropdown.setCurrentIndex(0)
-            assert requestView.sampleDropdown.currentIndex() == 0
-            assert requestView.sampleDropdown.currentText().endswith("Diamond_001.json")
+            requestView.sampleDropdown.setCurrentIndex(3)
+            assert requestView.sampleDropdown.currentIndex() == 3
+            assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
 
             #    Without this next 'qtbot.wait(1000)',
             #      the 'groupingFileDropdown' gets reset after this successful initialization.
             #    I assume this is because somehow the 'populateGroupingDropdown',
             #    triggered by the 'runNumberField' 'editComplete' hasn't actually occurred yet?
             qtbot.wait(1000)
-            requestView.groupingFileDropdown.setCurrentIndex(1)
-            assert requestView.groupingFileDropdown.currentIndex() == 1
-            assert requestView.groupingFileDropdown.currentText() == "Bank"
+            requestView.groupingFileDropdown.setCurrentIndex(0)
+            assert requestView.groupingFileDropdown.currentIndex() == 0
+            assert requestView.groupingFileDropdown.currentText() == "Column"
+            self.testSummary.SUCCESS()
 
             """ # Why no "peak function" for normalization calibration?!
             requestView.peakFunctionDropdown.setCurrentIndex(0)
@@ -1093,6 +1198,10 @@ class TestGUIPanels:
                 questionMessageBox.stop()
                 successPrompt.stop()
 
+                # Now that there is a new state, we need to reselect the grouping file ... :
+                # Why was this error box being swallowed?
+                requestView.groupingFileDropdown.setCurrentIndex(0)
+
             warningMessageBox = mock.patch(  # noqa: PT008
                 "qtpy.QtWidgets.QMessageBox.warning",
                 lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
@@ -1106,6 +1215,7 @@ class TestGUIPanels:
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationTweakPeakView), timeout=60000
             )
             warningMessageBox.stop()
+            self.testSummary.SUCCESS()
             tweakPeakView = workflowNodeTabs.currentWidget().view
 
             #    set "Smoothing", "xtal dMin", "xtal dMax", "intensity threshold", and "groupingDropDown"
@@ -1117,7 +1227,7 @@ class TestGUIPanels:
             qtbot.wait(1000)
             tweakPeakView.groupingFileDropdown.setCurrentIndex(0)
             assert tweakPeakView.groupingFileDropdown.currentIndex() == 0
-            assert tweakPeakView.groupingFileDropdown.currentText() == "All"
+            assert tweakPeakView.groupingFileDropdown.currentText() == "Column"
 
             #    recalculate using the new values
             #    * recalculate => peak display is recalculated,
@@ -1131,6 +1241,7 @@ class TestGUIPanels:
             qtbot.waitUntil(
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationSaveView), timeout=60000
             )
+            self.testSummary.SUCCESS()
             saveView = workflowNodeTabs.currentWidget().view
 
             #    set "author" and "comment"
@@ -1140,7 +1251,7 @@ class TestGUIPanels:
             #    continue in order to save workspaces and to finish the workflow
             with qtbot.waitSignal(actionCompleted, timeout=60000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-
+            self.testSummary.SUCCESS()
             #   `ActionPrompt.prompt("..The workflow has completed successfully..)` gives immediate mocked response:
             #      Here we still need to wait until the ADS cleanup has occurred,
             #      or else it will happen in the middle of the next workflow. :(
@@ -1154,7 +1265,7 @@ class TestGUIPanels:
 
             calibrationPanel.widget.close()
             gui.close()
-
+            self.testSummary.SUCCESS()
         #####################################################################
         # Force a printout of information about any exceptions that happened#
         #   within the Qt event loop.                                       #
@@ -1174,12 +1285,22 @@ class TestGUIPanels:
         ##
 
         # TODO: these could be initialized in the 'setup', but the current plan is to use a YML test template.
-        reductionRunNumber = "46680"
+        reductionRunNumber = "58882"
         reductionStateId = "04bd2c53f6bf6754"
 
         # Override the standard reduction-output location, using a temporary directory
         #   under the existing location within the mirror.
         tmpReductionHomeDirectory = reduction_home_from_mirror(reductionRunNumber)  # noqa: F841
+
+        self.testSummary = (
+            TestSummary.builder()
+            .step("Open the GUI")
+            .step("Open the Reduction panel")
+            .step("Set the reduction request")
+            .step("Execute the reduction request")
+            .step("Close the GUI")
+            .build()
+        )
 
         self.completionMessageHasAppeared = False
 
@@ -1202,7 +1323,7 @@ class TestGUIPanels:
             gui = SNAPRedGUI(translucentBackground=True)
             gui.show()
             qtbot.addWidget(gui)
-
+            self.testSummary.SUCCESS()
             """
             SNAPRedGUI owns the following widgets:
 
@@ -1250,12 +1371,13 @@ class TestGUIPanels:
 
             requestView = workflowNodeTabs.currentWidget().view
             assert isinstance(requestView, ReductionRequestView)
-
+            self.testSummary.SUCCESS()
             # Without this next wait, the "run number entry" section happens too fast.
             # (And I'd love to understand _why_!  :(  )
             qtbot.wait(1000)
 
             #    enter a "Run Number":
+            requestView.liteModeToggle.setState(False)
             requestView.runNumberInput.setText(reductionRunNumber)
             qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
 
@@ -1263,7 +1385,7 @@ class TestGUIPanels:
             _runNumbers = [requestView.runNumberDisplay.item(x).text() for x in range(_count)]
 
             assert reductionRunNumber in _runNumbers
-
+            self.testSummary.SUCCESS()
             """
             request.liteModeToggle.setState(True);
             request.retainUnfocusedDataCheckbox.setValue(False);
@@ -1344,13 +1466,14 @@ class TestGUIPanels:
                 timeout=60000,
             )
             completionMessageBox.stop()
-
+            self.testSummary.SUCCESS()
             ###############################
             ########### END OF TEST #######
             ###############################
 
             calibrationPanel.widget.close()
             gui.close()
+            self.testSummary.SUCCESS()
 
         #####################################################################
         # Force a printout of information about any exceptions that happened#

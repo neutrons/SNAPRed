@@ -36,9 +36,9 @@ from mantid.simpleapi import (
 from util.dao import DAOFactory
 from util.diffraction_calibration_synthetic_data import SyntheticData
 
-from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_START
+from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.dao.state.DetectorState import DetectorState
@@ -112,7 +112,7 @@ class ImitationDataService(LocalDataService):
         """
         Note this replicates the original in every respect, except using the ImitationGroceryService
         """
-        version = VERSION_DEFAULT
+        version = VERSION_START
         grocer = ImitationGroceryService()
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
         filename = Path(outWS + ".h5")
@@ -294,9 +294,9 @@ class TestVersioning(TestCase):
         assert self.state_exists()
 
         # ensure the new state has grouping map, calibration state, and default diffcal table
-        diffCalTableName = wng.diffCalTable().runNumber("default").version(VERSION_DEFAULT).build()
+        diffCalTableName = wng.diffCalTable().runNumber("default").version(VersionState.DEFAULT).build()
         assert self.localDataService._groupingMapPath(self.stateId).exists()
-        versionDir = wnvf.pathVersion(VERSION_DEFAULT)
+        versionDir = wnvf.pathVersion(VERSION_START)
         assert Path(self.stateRoot, "lite", "diffraction", versionDir, "CalibrationParameters.json").exists()
         assert Path(self.stateRoot, "native", "diffraction", versionDir, "CalibrationParameters.json").exists()
         assert Path(self.stateRoot, "lite", "diffraction", versionDir, diffCalTableName + ".h5").exists()
@@ -306,22 +306,22 @@ class TestVersioning(TestCase):
         assert [] == self.get_index()
 
         # assert the current diffcal version is the default, and the next is the start
-        assert self.indexer.currentVersion() == VERSION_DEFAULT
-        assert self.indexer.latestApplicableVersion(self.runNumber) == VERSION_DEFAULT
-        assert self.indexer.nextVersion() == VERSION_START
+        assert self.indexer.currentVersion() == VERSION_START
+        assert self.indexer.latestApplicableVersion(self.runNumber) == VERSION_START
+        assert self.indexer.nextVersion() == VERSION_START + 1
 
         # run diffraction calibration for the first time, and save
         res = self.run_diffcal()
-        self.save_diffcal(res, version=None)
+        self.save_diffcal(res, version=VersionState.NEXT)
 
         # ensure things saved correctly
-        self.assert_diffcal_saved(VERSION_START)
+        self.assert_diffcal_saved(VERSION_START + 1)
         assert len(self.get_index()) == 1
 
         # run diffraction calibration for a second time, and save
         res = self.run_diffcal()
-        self.save_diffcal(res, version=None)
-        self.assert_diffcal_saved(VERSION_START + 1)
+        self.save_diffcal(res, version=VersionState.NEXT)
+        self.assert_diffcal_saved(VERSION_START + 2)
         assert len(self.get_index()) == 2
 
         # now save at version 7
@@ -334,7 +334,7 @@ class TestVersioning(TestCase):
         # now save at next version -- will be 8
         version = 8
         res = self.run_diffcal()
-        self.save_diffcal(res, version=None)  # NOTE using None points it to next version
+        self.save_diffcal(res, version=VersionState.NEXT)
         self.assert_diffcal_saved(version)
         assert len(self.get_index()) == 4
 
@@ -376,7 +376,7 @@ class TestVersioning(TestCase):
         assert response.code <= ResponseCode.MAX_OK
         return response.data
 
-    def save_diffcal(self, res, version=None):
+    def save_diffcal(self, res, version=VersionState.NEXT):
         # send a request through interface controller to save the diffcal results
         # needs the list of output workspaces, and may take an optional version
         # create an export request using an existing record as a basis
@@ -410,7 +410,7 @@ class TestVersioning(TestCase):
             "createIndexEntryRequest": createIndexEntryRequest,
             "createRecordRequest": createRecordRequest,
         }
-        request = SNAPRequest(path="calibration/save", payload=json.dumps(payload))
+        request = SNAPRequest(path="calibration/save", payload=json.dumps(payload, default=str))
         response = self.api.executeRequest(request)
         assert response.code <= ResponseCode.MAX_OK
         return response.data
@@ -420,13 +420,19 @@ class TestVersioning(TestCase):
         assert self.indexer.versionPath(version).exists()
         assert self.indexer.recordPath(version).exists()
         assert self.indexer.parametersPath(version).exists()
-        savedRecord = parse_file_as(CalibrationRecord, self.indexer.recordPath(version))
+        savedRecord = None
+        if version == VERSION_START:
+            savedRecord = parse_file_as(CalibrationDefaultRecord, self.indexer.recordPath(version))
+        else:
+            savedRecord = parse_file_as(CalibrationRecord, self.indexer.recordPath(version))
+
         assert savedRecord.version == version
         assert savedRecord.calculationParameters.version == version
         # make sure all workspaces exist
         workspaces = savedRecord.workspaces
-        assert (self.indexer.versionPath(version) / (workspaces[wngt.DIFFCAL_OUTPUT][0] + ".nxs.h5")).exists()
-        assert (self.indexer.versionPath(version) / (workspaces[wngt.DIFFCAL_DIAG][0] + ".nxs.h5")).exists()
+        if not version == VERSION_START:
+            assert (self.indexer.versionPath(version) / (workspaces[wngt.DIFFCAL_OUTPUT][0] + ".nxs.h5")).exists()
+            assert (self.indexer.versionPath(version) / (workspaces[wngt.DIFFCAL_DIAG][0] + ".nxs.h5")).exists()
         assert (self.indexer.versionPath(version) / (workspaces[wngt.DIFFCAL_TABLE][0] + ".h5")).exists()
         # assert this version is in the index
         index = self.indexer.readIndex()
@@ -438,7 +444,7 @@ class TestVersioning(TestCase):
         assert self.indexer.latestApplicableVersion(self.runNumber) == version
         assert self.indexer.nextVersion() == version + 1
         # load the previous calibration and verify equality
-        runConfig = {"runNumber": self.runNumber, "useLiteMode": self.useLiteMode}
+        runConfig = {"runConfig": {"runNumber": self.runNumber, "useLiteMode": self.useLiteMode}, "version": version}
         request = SNAPRequest(path="calibration/load", payload=json.dumps(runConfig))
         response = self.api.executeRequest(request)
         assert response.code <= ResponseCode.MAX_OK

@@ -1,8 +1,10 @@
 # Use this script to test Pixel Diffraction Background Subtraction
+import snapred.backend.recipe.algorithm
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
 import json
+import time
 from typing import List
 
 
@@ -18,18 +20,18 @@ from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe as PixelRx
 
 from snapred.meta.Config import Config
+from snapred.meta.pointer import create_pointer
 
 #User input ###########################
 runNumber = "58882"
 groupingScheme = "Column"
-cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/cif/Silicon_NIST_640d.cif"
 calibrantSamplePath = "Silicon_NIST_640D_001.json"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
 removeBackground = True
 Config._config["cis_mode"] = True
-Config._config["diffraction.smoothingParameter"] = 0.01  #This is the smoothing parameter to be set.
+Config._config["diffraction.smoothingParameter"] = 0.5  #This is the smoothing parameter to be set.
 #######################################
 
 ### PREP INGREDIENTS ################
@@ -37,8 +39,8 @@ farmFresh = FarmFreshIngredients(
     runNumber=runNumber,
     useLiteMode=isLite,
     focusGroups=[{"name": groupingScheme, "definition": ""}],
-    cifPath=cifPath,
     calibrantSamplePath=calibrantSamplePath,
+    peakIntensityThreshold=peakThreshold,
     convergenceThreshold=offsetConvergenceLimit,
     maxOffset=100.0,
 )
@@ -57,18 +59,17 @@ groceries = GroceryService().fetchGroceryDict(
     outputWorkspace="_out_",
     diagnosticWorkspace="_diag",
     maskWorkspace="_mask_",
-    calibrationTable="_DIFC_",    
+    calibrationTable="_DIFC_",
 )
 
 ### RUN PIXEL CALIBRATION ##########
 
 pixelRx = PixelRx()
-pixelRx.prep(ingredients, groceries)
-pixelRes = pixelRx.execute()
+pixelRx.cook(ingredients, groceries)
 
 ### PREPARE OUTPUTS ################
 DiffractionFocussing(
-    InputWorkspace=f"dsp_0{runNumber}_raw_startOfPixelDiffCal",
+    InputWorkspace=f"dsp_0{runNumber}_raw_beforeCrossCor",
     OutputWorkspace="BEFORE_REMOVAL",
     GroupingWorkspace=groceries["groupingWorkspace"],
 )
@@ -77,9 +78,4 @@ DiffractionFocussing(
     OutputWorkspace="AFTER_REMOVAL",
     GroupingWorkspace=groceries["groupingWorkspace"],
 )
-DiffractionFocussing(
-    InputWorkspace="tof_all_lite_copy1_058882",
-    OutputWorkspace="FINAL",
-    GroupingWorkspace=groceries["groupingWorkspace"],
-)
- 
+

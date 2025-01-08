@@ -45,7 +45,7 @@ from snapred.backend.dao import StateConfig
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
+from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -128,6 +128,18 @@ def _capture_logging(monkeypatch):
 
 
 fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
+
+
+def entryFromRecord(record):
+    return IndexEntry(
+        runNumber=record.runNumber,
+        useLiteMode=record.useLiteMode,
+        appliesTo=record.runNumber,
+        comments="test comment",
+        author="test author",
+        version=record.version,
+    )
+
 
 ### GENERALIZED METHODS FOR TESTING NORMALIZATION / CALIBRATION METHODS ###
 # Note: the REDUCTION workflow does not use the Indexer system except indirectly.
@@ -231,8 +243,13 @@ def do_test_read_state_no_version(workflow: Literal["Calibration", "Normalizatio
             expectedState = getattr(DAOFactory, f"{workflow.lower()}Parameters")()
             indexer = localDataService.indexer("xyz", useLiteMode, workflow)
             tmpRoot.saveObjectAt(expectedState, indexer.parametersPath(currentVersion))
-            indexer.index = {currentVersion: mock.Mock()}  # NOTE manually update indexer
-            actualState = getattr(localDataService, f"read{workflow}State")("xyz", useLiteMode)  # NOTE no version
+            indexer.index = {
+                currentVersion: mock.MagicMock(appliesTo="123", version=currentVersion)
+            }  # NOTE manually update indexer
+            indexer.dirVersions = [currentVersion]  # NOTE manually update indexer
+            actualState = getattr(localDataService, f"read{workflow}State")(
+                "123", useLiteMode, VersionState.LATEST
+            )  # NOTE no version
         assert actualState == expectedState
 
 
@@ -293,13 +310,16 @@ def getMockInstrumentConfig():
 def test_readStateConfig_default():
     # readstateConfig will load the default parameters file
     groupingMap = DAOFactory.groupingMap_SNAP()
-    parameters = DAOFactory.calibrationParameters("57514", True, VERSION_DEFAULT)
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
         indexer = localDataService.calibrationIndexer("57514", True)
+        parameters = DAOFactory.calibrationParameters("57514", True, indexer.defaultVersion())
         tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
-        tmpRoot.saveObjectAt(parameters, indexer.parametersPath(VERSION_DEFAULT))
-        indexer.index = {VERSION_DEFAULT: mock.Mock()}  # NOTE manually update the Indexer
+        tmpRoot.saveObjectAt(parameters, indexer.parametersPath(indexer.defaultVersion()))
+
+        indexer.index = {
+            VersionState.DEFAULT: mock.MagicMock(appliesTo="57514", version=indexer.defaultVersion())
+        }  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
     assert actual.stateId == DAOFactory.magical_state_id
@@ -315,7 +335,9 @@ def test_readStateConfig_previous():
         indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
         tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
-        indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
+        indexer.index = {
+            version: mock.MagicMock(appliesTo="57514", version=version)
+        }  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
     assert actual.stateId == DAOFactory.magical_state_id
@@ -331,7 +353,9 @@ def test_readStateConfig_attaches_grouping_map():
         indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
         tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
-        indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
+        indexer.index = {
+            version: mock.MagicMock(appliesTo="57514", version=version)
+        }  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     expectedMap = DAOFactory.groupingMap_SNAP()
     assert actual.groupingMap == expectedMap
@@ -348,7 +372,9 @@ def test_readStateConfig_invalid_grouping_map():
         indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
         tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
-        indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
+        indexer.index = {
+            version: mock.MagicMock(appliesTo="57514", version=version)
+        }  # NOTE manually update the Indexer
         # 'GroupingMap.defaultStateId' is _not_ a valid grouping-map 'stateId' for an existing `StateConfig`.
         with pytest.raises(  # noqa: PT012
             RuntimeError,
@@ -366,7 +392,9 @@ def test_readStateConfig_calls_prepareStateRoot():
     with state_root_redirect(localDataService, stateId=expected.instrumentState.id.hex) as tmpRoot:
         indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.saveObjectAt(expected, indexer.parametersPath(version))
-        indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
+        indexer.index = {
+            version: mock.MagicMock(appliesTo="57514", version=version)
+        }  # NOTE manually update the Indexer
         assert not localDataService._groupingMapPath(tmpRoot.stateId).exists()
         localDataService._prepareStateRoot = mock.Mock(
             side_effect=lambda x: tmpRoot.saveObjectAt(  # noqa ARG005
@@ -702,8 +730,9 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
     with state_root_redirect(localDataService) as tmpRoot:
         # move the calculation parameters into correct folder
         indexer = localDataService.calibrationIndexer("57514", True)
-        indexer.writeParameters(DAOFactory.calibrationParameters("57514", True, VERSION_DEFAULT))
-        indexer.index = {VERSION_DEFAULT: mock.Mock()}
+        indexer.writeParameters(DAOFactory.calibrationParameters("57514", True, indexer.defaultVersion()))
+        indexer.index = {indexer.defaultVersion(): mock.MagicMock(appliesTo="57514", version=indexer.defaultVersion())}
+
         # move the grouping map into correct folder
         write_model_pretty(DAOFactory.groupingMap_SNAP(), localDataService._groupingMapPath(tmpRoot.stateId))
 
@@ -1168,10 +1197,11 @@ def test_createCalibrationIndexEntry():
         assert ans.useLiteMode == request.useLiteMode
         assert ans.version == request.version
 
-        request.version = None
-        indexer = localDataService.calibrationIndexer(request.runNumber, request.useLiteMode)
+        request.version = VersionState.NEXT
+        localDataService.calibrationIndexer(request.runNumber, request.useLiteMode)
         ans = localDataService.createCalibrationIndexEntry(request)
-        assert ans.version == indexer.nextVersion()
+        # Set to next version, which on the first call should be the start version
+        assert ans.version == VERSION_START
 
 
 def test_createCalibrationRecord():
@@ -1185,10 +1215,11 @@ def test_createCalibrationRecord():
         assert ans.useLiteMode == request.useLiteMode
         assert ans.version == request.version
 
-        request.version = None
-        indexer = localDataService.calibrationIndexer(request.runNumber, request.useLiteMode)
+        request.version = VersionState.NEXT
+        localDataService.calibrationIndexer(request.runNumber, request.useLiteMode)
         ans = localDataService.createCalibrationRecord(request)
-        assert ans.version == indexer.nextVersion()
+        # Set to next version, which on the first call should be the start version
+        assert ans.version == VERSION_START
 
 
 def test_readCalibrationRecord_with_version():
@@ -1214,6 +1245,8 @@ def test_readWriteCalibrationRecord():
     for useLiteMode in [True, False]:
         record = DAOFactory.calibrationRecord("57514", useLiteMode, version=1)
         with state_root_redirect(localDataService):
+            entry = entryFromRecord(record)
+            localDataService.writeCalibrationIndexEntry(entry)
             localDataService.writeCalibrationRecord(record)
             actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode)
         assert actualRecord.version == record.version
@@ -1311,9 +1344,10 @@ def test_createNormalizationIndexEntry():
         assert ans.version == request.version
 
         request.version = None
-        indexer = localDataService.normalizationIndexer(request.runNumber, request.useLiteMode)
+        localDataService.normalizationIndexer(request.runNumber, request.useLiteMode)
         ans = localDataService.createNormalizationIndexEntry(request)
-        assert ans.version == indexer.nextVersion()
+        # Set to next version, which on the first call should be the start version
+        assert ans.version == VERSION_START
 
 
 def test_createNormalizationRecord():
@@ -1327,10 +1361,9 @@ def test_createNormalizationRecord():
         assert ans.useLiteMode == request.useLiteMode
         assert ans.version == request.version
 
-        request.version = None
-        indexer = localDataService.normalizationIndexer(request.runNumber, request.useLiteMode)
+        request.version = VersionState.NEXT
         ans = localDataService.createNormalizationRecord(request)
-        assert ans.version == indexer.nextVersion()
+        assert ans.version == VERSION_START
 
 
 def test_readNormalizationRecord_with_version():
@@ -1355,11 +1388,18 @@ def test_readWriteNormalizationRecord():
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
         record.useLiteMode = useLiteMode
+        currentVersion = randint(VERSION_START, 120)
+        runNumber = record.runNumber
+        record.version = currentVersion
         # NOTE redirect nested so assertion occurs outside of redirect
         # failing assertions inside tempdirs can create unwanted files
         with state_root_redirect(localDataService):
-            localDataService.writeNormalizationRecord(record)
-            actualRecord = localDataService.readNormalizationRecord("57514", useLiteMode)
+            entry = entryFromRecord(record)
+            localDataService.writeNormalizationRecord(record, entry)
+            indexer = localDataService.normalizationIndexer(runNumber, useLiteMode)
+
+            indexer.index = {currentVersion: mock.MagicMock(appliesTo=runNumber, version=currentVersion)}
+            actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode)
         assert actualRecord.version == record.version
         assert actualRecord.calculationParameters.version == record.calculationParameters.version
         assert actualRecord == record
@@ -1507,7 +1547,7 @@ def test_readWriteReductionRecord():
         localDataService.groceryService = mock.Mock()
         localDataService.writeReductionRecord(testRecord)
         actualRecord = localDataService.readReductionRecord(runNumber, testRecord.useLiteMode, testRecord.timestamp)
-    assert actualRecord == testRecord
+    assert actualRecord.dict() == testRecord.dict()
 
 
 @pytest.fixture
@@ -1833,7 +1873,9 @@ def test_readWriteReductionData(readSyntheticReductionRecord, createReductionWor
             cleanup_workspace_at_exit(_uniquePrefix + ws)
 
         actualRecord = localDataService.readReductionData(runNumber, useLiteMode, timestamp)
-        assert actualRecord == testRecord
+
+        assert actualRecord.normalization.calibrationVersionUsed == testRecord.normalization.calibrationVersionUsed
+        assert actualRecord.dict() == testRecord.dict()
 
         # workspaces should have been reloaded with their original names
         # Implementation note:
@@ -2017,16 +2059,17 @@ def test_readNormalizationState_no_version():
 
 
 def test_readWriteCalibrationState():
-    # NOTE this test is already covered by tests of the Indexer
-    # but it doesn't hurt to retain this test anyway
     runNumber = "123"
     localDataService = LocalDataService()
-    for useLiteMode in [True, False]:
-        calibration = DAOFactory.calibrationParameters(runNumber, useLiteMode)
-        with state_root_redirect(localDataService):
-            localDataService.writeCalibrationState(calibration)
-            ans = localDataService.readCalibrationState(runNumber, useLiteMode)
-        assert ans == calibration
+    mockCalibrationIndexer = mock.Mock()
+
+    localDataService.calibrationIndexer = mock.Mock(return_value=mockCalibrationIndexer)
+    localDataService.calibrationIndexer().latestApplicableVersion = mock.Mock(return_value=1)
+    mockCalibrationIndexer.nextVersion = mock.Mock(return_value=1)
+
+    ans = localDataService.readCalibrationState(runNumber, True, VersionState.LATEST)
+    assert ans == mockCalibrationIndexer.readParameters.return_value
+    mockCalibrationIndexer.readParameters.assert_called_once_with(1)
 
 
 def test_readWriteCalibrationState_noWritePermissions():
@@ -2055,7 +2098,7 @@ def test_readCalibrationState_hasWritePermissions():
 def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorkspaceName):
     # verify that the default diffcal table is being written to the default state directory
     runNumber = "default"
-    version = VERSION_DEFAULT
+    version = VERSION_START
     useLiteMode = True
     # mock the grocery service to return the fake instrument to use for geometry
     idfWS = mtd.unique_name(prefix="_idf_")
@@ -2081,12 +2124,15 @@ def test_readWriteNormalizationState():
     # but it doesn't hurt to retain this test anyway
     runNumber = "123"
     localDataService = LocalDataService()
-    for useLiteMode in [True, False]:
-        normalization = DAOFactory.normalizationParameters(runNumber, useLiteMode)
-        with state_root_redirect(localDataService):
-            localDataService.writeNormalizationState(normalization)
-            ans = localDataService.readNormalizationState(runNumber, useLiteMode)
-        assert ans == normalization
+    mockNormalizationIndexer = mock.Mock()
+
+    localDataService.normalizationIndexer = mock.Mock(return_value=mockNormalizationIndexer)
+    localDataService.normalizationIndexer().latestApplicableVersion = mock.Mock(return_value=1)
+    mockNormalizationIndexer.nextVersion = mock.Mock(return_value=1)
+
+    ans = localDataService.readNormalizationState(runNumber, True, VersionState.LATEST)
+    assert ans == mockNormalizationIndexer.readParameters.return_value
+    mockNormalizationIndexer.readParameters.assert_called_once_with(1)
 
 
 def test_readDetectorState():
@@ -2279,7 +2325,7 @@ def test_initializeState():
     testCalibrationData = DAOFactory.calibrationParameters(
         runNumber=runNumber,
         useLiteMode=useLiteMode,
-        version=VERSION_DEFAULT,
+        version=VERSION_START,
         instrumentState=DAOFactory.pv_instrument_state.copy(),
     )
 

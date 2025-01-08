@@ -1,7 +1,6 @@
 import unittest
 from unittest import mock
 
-import pytest
 from mantid.simpleapi import (
     LoadNexusProcessed,
     mtd,
@@ -56,6 +55,7 @@ class TestGenerateFocussedVanadiumRecipe(unittest.TestCase):
         return super().tearDown()
 
     def test_execute_successful(self):
+        self.recipe._rebinInputWorkspace = mock.Mock()
         mock_instance = self.mockSnapper.SmoothDataExcludingPeaksAlgo.return_value
         mock_instance.execute.return_value = None
         mock_instance.getPropertyValue.return_value = self.fakeOutputWorkspace
@@ -66,14 +66,22 @@ class TestGenerateFocussedVanadiumRecipe(unittest.TestCase):
 
         self.assertEqual(output, expected_output)  # noqa: PT009
 
-    def test_execute_unsuccessful(self):
-        mock_instance = self.mockSnapper.SmoothDataExcludingPeaksAlgo.return_value
-        mock_instance.execute.return_value = None
-        mock_instance.getPropertyValue.return_value = None
+    def test_execute_artificial(self):
+        self.recipe._rebinInputWorkspace = mock.Mock()
+        self.fakeIngredients.artificialNormalizationIngredients = SculleryBoy().prepArtificialNormalizationIngredients()
+        self.recipe.cook(self.fakeIngredients, self.groceryList)
 
-        with pytest.raises(NotImplementedError) as e:
-            self.recipe.cook(self.fakeIngredients, self.errorGroceryList)
-        assert str(e.value) == "Fake Vanadium not implemented yet."  # noqa: PT009
+        self.recipe.mantidSnapper.CreateArtificialNormalizationAlgo.assert_called_once()
+        self.recipe.mantidSnapper.SmoothDataExcludingPeaksAlgo.assert_not_called()
+        self.recipe.mantidSnapper.CreateArtificialNormalizationAlgo.assert_called_with(
+            "Create Artificial Normalization...",
+            InputWorkspace=self.fakeInputWorkspace,
+            OutputWorkspace=self.fakeOutputWorkspace,
+            peakWindowClippingSize=10,
+            smoothingParameter=0.1,
+            decreaseParameter=True,
+            LSS=True,
+        )
 
     def test_catering(self):
         self.recipe.cook = mock.Mock()
@@ -83,3 +91,13 @@ class TestGenerateFocussedVanadiumRecipe(unittest.TestCase):
 
         assert self.recipe.cook.called
         assert output[0] == self.recipe.cook.return_value
+
+    @mock.patch(f"{ThisRecipe}.RebinFocussedGroupDataRecipe")
+    def test_rebinInputWorkspace(self, mockRebinRecipe):
+        self.recipe.prep(self.fakeIngredients, self.groceryList)
+        self.recipe._rebinInputWorkspace()
+
+        mockRebinRecipe().cook.assert_called_with(
+            mockRebinRecipe.Ingredients(pixelGroup=self.fakeIngredients.pixelGroup),
+            {"inputWorkspace": self.fakeInputWorkspace},
+        )

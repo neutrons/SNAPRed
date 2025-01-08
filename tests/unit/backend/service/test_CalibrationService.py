@@ -89,24 +89,12 @@ with mock.patch.dict(
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
         calibrationService.saveCalibrationToIndex(
-            IndexEntry(runNumber="1", useLiteMode=True, comments="", author=""),
+            IndexEntry(runNumber="1", useLiteMode=True, comments="", author="", version=1),
         )
         assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
         savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
         assert savedEntry.appliesTo == ">=1"
         assert savedEntry.timestamp is not None
-
-    def test_exportCalibrationIndex_no_timestamp():
-        calibrationService = CalibrationService()
-        calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
-        calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
-        calibrationService.dataExportService.getUniqueTimestamp = mock.Mock(return_value=123.123)
-        entry = IndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
-        entry.timestamp = None
-        calibrationService.saveCalibrationToIndex(entry)
-        assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
-        savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
-        assert savedEntry.timestamp == calibrationService.dataExportService.getUniqueTimestamp.return_value
 
     def test_save():
         workspace = mtd.unique_name(prefix="_dsp_")
@@ -117,6 +105,7 @@ with mock.patch.dict(
         calibrationService.dataExportService.exportCalibrationWorkspaces = mock.Mock()
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataFactoryService.createCalibrationIndexEntry = mock.Mock()
+        calibrationService.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
         calibrationService.dataFactoryService.createCalibrationRecord = mock.Mock(
             return_value=mock.Mock(
                 runNumber="012345",
@@ -138,6 +127,7 @@ with mock.patch.dict(
         calibrationService.dataExportService.exportCalibrationWorkspaces = mock.Mock()
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataFactoryService.createCalibrationIndexEntry = mock.Mock()
+        calibrationService.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
         calibrationService.dataFactoryService.createCalibrationRecord = mock.Mock(
             return_value=mock.Mock(
                 runNumber="012345",
@@ -157,6 +147,7 @@ with mock.patch.dict(
         calibrationService.dataExportService.exportCalibrationWorkspaces = mock.Mock()
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataFactoryService.createCalibrationIndexEntry = mock.Mock()
+        calibrationService.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
         calibrationService.dataFactoryService.createCalibrationRecord = mock.Mock(
             return_value=mock.Mock(
                 runNumber="012345",
@@ -176,7 +167,7 @@ with mock.patch.dict(
     def test_getCalibrationIndex():
         calibrationService = CalibrationService()
         calibrationService.dataFactoryService.getCalibrationIndex = mock.Mock(
-            return_value=IndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
+            return_value=IndexEntry(runNumber="1", useLiteMode=True, comments="", author="", version=1)
         )
         calibrationService.getCalibrationIndex(mock.MagicMock(run=mock.MagicMock(runNumber="123")))
         assert calibrationService.dataFactoryService.getCalibrationIndex.called
@@ -458,9 +449,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 version=self.version,
                 checkExistent=False,
             )
-            with pytest.raises(ValueError) as excinfo:  # noqa: PT011
+            with pytest.raises(FileNotFoundError) as excinfo:  # noqa: PT011
                 self.instance.loadQualityAssessment(mockRequest)
-            assert str(mockRequest.runId) in str(excinfo.value)
             assert str(mockRequest.version) in str(excinfo.value)
 
     @mock.patch(thisService + "CalibrationMetricsWorkspaceIngredients")
@@ -1046,7 +1036,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert res == FitMultiplePeaksRecipe.return_value.executeRecipe.return_value
 
     def test_matchRuns(self):
-        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(
+        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(
             side_effect=[mock.sentinel.version1, mock.sentinel.version2, mock.sentinel.version3],
         )
         request = mock.Mock(runNumbers=[mock.sentinel.run1, mock.sentinel.run2], useLiteMode=True)

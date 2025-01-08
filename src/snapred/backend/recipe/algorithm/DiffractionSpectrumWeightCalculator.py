@@ -1,14 +1,19 @@
-import json
 from typing import Dict, List
 
 import numpy as np
-import pydantic
-from mantid.api import AlgorithmFactory, IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
+from mantid.api import IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
+from mantid.kernel import ULongLongPropertyWithValue as PointerProperty
+from mantid.simpleapi import (
+    CloneWorkspace,
+    ConvertToEventWorkspace,
+    ConvertToMatrixWorkspace,
+    mtd,
+)
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.pointer import access_pointer, inspect_pointer
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -27,10 +32,12 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             MatrixWorkspaceProperty("WeightWorkspace", "", Direction.Output, PropertyMode.Mandatory),
             doc="The output workspace to be created by the algorithm",
         )
-        self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
+        self.declareProperty(
+            PointerProperty("DetectorPeaks", id(None)),
+            doc="The memory address pointing to the list of grouped peaks.",
+        )
 
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: List[GroupPeakList]):
         self.groupIDs = []
@@ -44,25 +51,22 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
         self.weightWorkspaceName = self.getPropertyValue("WeightWorkspace")
         # clone input workspace to create a weight workspace
-        self.mantidSnapper.CloneWorkspace(
-            "Cloning a weighting workspce...",
+        CloneWorkspace(
             InputWorkspace=self.inputWorkspaceName,
             OutputWorkspace=self.weightWorkspaceName,
         )
         # check if this is event data, and if so covnert it to historgram data
-        self.isEventWorkspace = isinstance(self.mantidSnapper.mtd[self.inputWorkspaceName], IEventWorkspace)
+        self.isEventWorkspace = isinstance(mtd[self.inputWorkspaceName], IEventWorkspace)
         if self.isEventWorkspace:
-            self.mantidSnapper.ConvertToMatrixWorkspace(
-                "Converting event workspace to histogram workspace",
+            ConvertToMatrixWorkspace(
                 InputWorkspace=self.weightWorkspaceName,
                 OutputWorkspace=self.weightWorkspaceName,
             )
-        self.mantidSnapper.executeQueue()
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
         ws = self.getProperty("InputWorkspace").value
-        ingredients = json.loads(self.getPropertyValue("DetectorPeaks"))
+        ingredients = inspect_pointer(self.getProperty("DetectorPeaks").value)
         if ws.getNumberHistograms() != len(ingredients):
             msg = f"""
             Number of histograms {ws.getNumberHistograms()}
@@ -73,13 +77,12 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         return errors
 
     def PyExec(self):
-        predictedPeaksList = pydantic.TypeAdapter(List[GroupPeakList]).validate_json(
-            self.getPropertyValue("DetectorPeaks")
-        )
+        peak_ptr: PointerProperty = self.getProperty("DetectorPeaks").value
+        predictedPeaksList = access_pointer(peak_ptr)
         self.chopIngredients(predictedPeaksList)
         self.unbagGroceries()
 
-        weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
+        weight_ws = mtd[self.weightWorkspaceName]
         for index, groupID in enumerate(self.groupIDs):
             # get spectrum X,Y
             x = weight_ws.readX(index)
@@ -95,13 +98,8 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             weight_ws.setY(index, weights)
 
         if self.isEventWorkspace:
-            self.mantidSnapper.ConvertToEventWorkspace(
-                "Converting histogram workspace back to event workspace",
+            ConvertToEventWorkspace(
                 InputWorkspace=self.weightWorkspaceName,
                 OutputWorkspace=self.weightWorkspaceName,
             )
-        self.mantidSnapper.executeQueue()
         self.setPropertyValue("WeightWorkspace", self.weightWorkspaceName)
-
-
-AlgorithmFactory.subscribe(DiffractionSpectrumWeightCalculator)

@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from snapred.backend.dao.ingredients import (
-    ArtificialNormalizationIngredients,
     GroceryListItem,
     ReductionIngredients,
 )
@@ -15,7 +14,6 @@ from snapred.backend.dao.request import (
     ReductionExportRequest,
     ReductionRequest,
 )
-from snapred.backend.dao.request.ReductionRequest import Versions
 from snapred.backend.dao.response.ReductionResponse import ReductionResponse
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
@@ -28,18 +26,15 @@ from snapred.backend.error.StateValidationException import StateValidationExcept
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe
+from snapred.backend.recipe.RebinFocussedGroupDataRecipe import RebinFocussedGroupDataRecipe
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import (
-    WorkspaceName,
-)
-from snapred.meta.mantid.WorkspaceNameGenerator import (
-    WorkspaceNameGenerator as wng,
-)
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
@@ -324,6 +319,9 @@ class ReductionService(Service):
         :return: The needed reduction ignredients.
         :rtype: ReductionIngredients
         """
+        if request.versions is None or request.versions.calibration is None or request.versions.normalization is None:
+            raise ValueError("Reduction request must have versions set")
+
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -364,11 +362,11 @@ class ReductionService(Service):
         calVersion = None
         normVersion = None
         if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
-            calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(
+            calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
                 request.runNumber, request.useLiteMode
             )
         if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
-            normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
+            normVersion = self.dataFactoryService.getLatestApplicableNormalizationVersion(
                 request.runNumber, request.useLiteMode
             )
 
@@ -417,10 +415,6 @@ class ReductionService(Service):
                 request.useLiteMode
             ).add()
 
-        request.versions = Versions(
-            calVersion,
-            normVersion,
-        )
         groceries = self.groceryService.fetchGroceryDict(
             groceryDict=self.groceryClerk.buildDict(),
             **({"combinedPixelMask": combinedPixelMask} if combinedPixelMask else {}),
@@ -497,7 +491,9 @@ class ReductionService(Service):
         for request in requests:
             runNumber = json.loads(request.payload)["runNumber"]
             useLiteMode = bool(json.loads(request.payload)["useLiteMode"])
-            normalizationVersion = self.dataFactoryService.getThisOrCurrentNormalizationVersion(runNumber, useLiteMode)
+            normalizationVersion = self.dataFactoryService.getLatestApplicableNormalizationVersion(
+                runNumber, useLiteMode
+            )
             version = "normalization_" + str(normalizationVersion)
             if versions.get(version) is None:
                 versions[version] = []
@@ -509,15 +505,12 @@ class ReductionService(Service):
         return self.dataFactoryService.getCompatibleReductionMasks(runNumber, useLiteMode)
 
     def artificialNormalization(self, request: CreateArtificialNormalizationRequest):
-        ingredients = ArtificialNormalizationIngredients(
+        artificialNormWorkspace = ArtificialNormalizationRecipe().executeRecipe(
+            InputWorkspace=request.diffractionWorkspace,
             peakWindowClippingSize=request.peakWindowClippingSize,
             smoothingParameter=request.smoothingParameter,
             decreaseParameter=request.decreaseParameter,
             lss=request.lss,
-        )
-        artificialNormWorkspace = ArtificialNormalizationRecipe().executeRecipe(
-            InputWorkspace=request.diffractionWorkspace,
-            Ingredients=ingredients,
             OutputWorkspace=request.outputWorkspace,
         )
         return artificialNormWorkspace
@@ -536,9 +529,32 @@ class ReductionService(Service):
         request.focusGroups = [columnGroup]
         # 2.5. get ingredients
         ingredients = self.prepReductionIngredients(request)
+
+        artNormBasisWorkspace = (
+            wng.artificialNormalizationPreview()
+            .runNumber(request.runNumber)
+            .group(wng.Groups.COLUMN)
+            .type(wng.ArtificialNormWorkspaceType.SOURCE)
+            .build()
+        )
         groceries = {
             "inputWorkspace": runWorkspace,
             "groupingWorkspace": columnGroupWorkspace,
+            "outputWorkspace": artNormBasisWorkspace,
         }
         # 3. Diffraction Focus Spectra
-        return ReductionGroupProcessingRecipe().cook(ingredients.groupProcessing(0), groceries)
+        ReductionGroupProcessingRecipe().cook(ingredients.groupProcessing(0), groceries)
+
+        # 4. Rebin
+        rebinIngredients = RebinFocussedGroupDataRecipe.Ingredients(
+            pixelGroup=ingredients.pixelGroups[0], preserveEvents=True
+        )
+
+        # NOTE: This is PURPOSELY reinstanced to support testing.
+        #       assert_called_with DOES NOT deep copy the dictionary.
+        #       Thus reusing the above dict would fail the test.
+        groceries = {"inputWorkspace": artNormBasisWorkspace}
+
+        rebinResult = RebinFocussedGroupDataRecipe().cook(rebinIngredients, groceries)
+        # 5. Return the rebin result
+        return rebinResult
