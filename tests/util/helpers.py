@@ -5,7 +5,7 @@
 
 import unittest
 from collections.abc import Sequence
-from typing import Any, Tuple
+from typing import Any, List, Tuple
 
 import numpy
 import numpy as np
@@ -17,8 +17,47 @@ from mantid.simpleapi import (
     CreateWorkspace,
     DeleteWorkspace,
     ExtractMask,
+    LoadInstrument,
+    MaskDetectors,
     mtd,
 )
+
+
+def createArbitraryInstrumentXML(numberOfPixels):
+    """
+    Given a number of pixels, create an arbitrary instrument XML file.
+    Useful for when an instrument definition is required by mantid, but not important to test.
+    """
+    instrumentXML = f"""
+        <instrument xmlns="none"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="none"
+            name="tmp{numberOfPixels}" valid-from="1970-01-01 00:00:00">
+        <!-- Pixel for Detectors-->\n
+        <type name="panel" is="rectangular_detector" type="pixel"
+        xpixels="1" xstart="-0.001" xstep="+0.001"
+        ypixels="1" ystart="-0.078795" ystep="+0.079104" >
+        <properties/>
+        </type>
+    """
+    for n in range(numberOfPixels):
+        instrumentXML += f"""
+            <component type="pixel" idlist="{n}"><location /></component>\n"""
+    for n in range(numberOfPixels):
+        instrumentXML += f"""<idlist idname="{n}"><id val="{n}"/></idlist>\n"""
+    instrumentXML += """
+        <type name="pixel" is="detector">
+        <cuboid id="pixel-shape">
+            <left-front-bottom-point  y="-0.079104" x="-0.0005" z="0.0"/>
+            <left-front-top-point     y="+0.079104" x="-0.0005" z="0.0"/>
+            <left-back-bottom-point   y="-0.079104" x="-0.0005" z="0.0001"/>
+            <right-front-bottom-point y="-0.079104" x="+0.0005" z="0.0"/>
+        </cuboid>
+        <algebra val="pixel-shape"/>
+        </type>
+    """
+    instrumentXML += "</instrument>\n"
+    return instrumentXML
 
 
 def createCompatibleDiffCalTable(tableWSName: str, templateWSName: str) -> ITableWorkspace:
@@ -91,6 +130,36 @@ def arrayFromMask(maskWSName: str) -> numpy.ndarray:
         flags[wi] = mask.readY(wi)[0] != 0.0
     assert mask.getNumberMasked() == np.count_nonzero(flags)
     return flags
+
+
+def maskFromArray(maskWSname: str, mask: List[bool]):
+    """
+    Create a mask workspace with given name, with the indicated pixels masked.
+    """
+
+    nspec = len(mask)
+    CreateWorkspace(
+        OutputWorkspace=maskWSname,
+        DataX=list(range(nspec)),
+        DataY=mask,
+        NSpec=nspec,
+    )
+    LoadInstrument(
+        Workspace=maskWSname,
+        InstrumentName=f"tmp{nspec}",
+        InstrumentXML=createArbitraryInstrumentXML(nspec),
+        RewriteSpectraMap=True,
+    )
+    toMask = np.argwhere(mask == 1)
+    MaskDetectors(
+        Workspace=maskWSname,
+        WorkspaceIndexList=toMask,
+    )
+    ExtractMask(
+        InputWorkspace=maskWSname,
+        OutputWorkspace=maskWSname,
+    )
+    return maskWSname
 
 
 def initializeRandomMask(maskWSName: str, fraction: float) -> MaskWorkspace:

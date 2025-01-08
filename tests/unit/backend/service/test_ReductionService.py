@@ -10,9 +10,11 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
+from mantid.testing import assert_almost_equal as wksp_almost_equal
 from util.helpers import (
     arrayFromMask,
     createCompatibleMask,
+    maskFromArray,
 )
 from util.InstaEats import InstaEats
 from util.SculleryBoy import SculleryBoy
@@ -742,7 +744,6 @@ class TestReductionServiceMasks:
                 timestamp=timestamp,
                 versions=Versions(1, 2),
                 pixelMasks=[self.maskWS1, self.maskWS2, self.maskWS5],
-                focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
             )
 
             # prepare the expected grocery dicionary
@@ -766,6 +767,72 @@ class TestReductionServiceMasks:
             assert realArgs == loadableMaskGroceryItems
             assert realKwargs == residentMaskGroceryKwargs
             mockFetchGroceryDict.assert_called_with(loadableMaskGroceryItems, **residentMaskGroceryKwargs)
+
+    def test_prepCombinedMask_only_diffcal(self):
+        """
+        Check that prepCombinedMask will still work if only a diffcal file is present
+        Logic:
+            - the grocery service is mocked to create a MaskWorkspace based on the item
+            - if only the diffcal mask is loaded, it will compare equal to itself at the end
+            - if some other mask is loaded, either an error will occur, or it will be unequal
+        """
+
+        def mock_compatible_mask(wsname, runNumber, useLiteMode):  # noqa ARG001
+            return maskFromArray(wsname, [0, 0, 0, 0, 0])
+
+        def mock_fetch_grocery_list(groceryList):
+            import hashlib
+            import json
+
+            groceries = []
+            for item in groceryList:
+                runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
+                workspaceName = f"{runNumber}_{useLiteMode}_v{version}"
+                hasher = hashlib.shake_256()
+                hasher.update(json.dumps(item.__dict__).encode("utf-8"))
+                x = int.from_bytes(hasher.digest(1), "big")
+                mask = [int(x) for x in list("{0:0b}".format(x))]
+                workspaceName = maskFromArray(workspaceName, mask)
+                groceries.append(workspaceName)
+            return groceries
+
+        with (
+            mock.patch.object(
+                self.service.dataFactoryService,
+                "getLatestApplicableCalibrationVersion",
+                return_value=1,
+            ),
+            mock.patch.object(
+                self.service.groceryService,
+                "fetchGroceryList",
+                mock_fetch_grocery_list,
+            ),
+            mock.patch.object(
+                self.service.groceryService,
+                "fetchCompatiblePixelMask",
+                mock_compatible_mask,
+            ),
+        ):
+            # timestamp must be unique: see comment at `test_prepCombinedMask`.
+            timestamp = self.service.getUniqueTimestamp()
+            request = ReductionRequest(
+                runNumber=self.runNumber1,
+                useLiteMode=self.useLiteMode,
+                timestamp=timestamp,
+                versions=Versions(1, 2),
+                pixelMasks=[],
+            )
+
+            # prepare the expected grocery dicionary
+            groceryClerk = self.service.groceryClerk
+            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, 1).useLiteMode(
+                request.useLiteMode
+            ).add()
+            exp = self.service.groceryService.fetchGroceryDict(groceryClerk.buildDict())
+
+            res = self.service.prepCombinedMask(request)
+
+            wksp_almost_equal(exp["diffcalMaskWorkspace"], res, atol=0.0)
 
     def test_fetchReductionGroceries_load(self):
         """
