@@ -149,6 +149,64 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
         # for some reason the spectrum numbers do not correspond...
         assert_almost_equal(wksp, bigwksp, CheckSpectraMap=False)
 
+    def test_bins_dont_match(self):
+        """
+        This test makes sure that workspaces with uneven bins can still be combined.
+        """
+        # group 1
+        name1 = mtd.unique_name(prefix="group1_")
+        group1 = WorkspaceGroup()
+        wksp1 = CreateWorkspace(
+            DataX=[0, 1, 2, 3],
+            DataY=[2, 2, 2],
+            NSpec=1,
+        )
+        group1.addWorkspace(wksp1)
+        mtd.add(name1, group1)
+
+        # group 2
+        name2 = mtd.unique_name(prefix="group2_")
+        group2 = WorkspaceGroup()
+        wksp2 = CreateWorkspace(
+            OutputWorkspace=f"{name2}_dspacing",
+            DataX=[0, 1, 2],
+            DataY=[3, 3],
+            NSpec=1,
+        )
+        group2.addWorkspace(wksp2)
+        mtd.add(name2, group2)
+
+        finalname = mtd.unique_name(prefix="final_")
+
+        # add in the first workspace
+
+        algo = Algo()
+        algo.initialize()
+        algo.diagnosticSuffix = {0: "_dspacing"}
+        algo.setProperty("DiagnosticWorkspace", name1)
+        algo.setProperty("TotalDiagnosticWorkspace", finalname)
+        algo.setProperty("AddAtIndex", 0)
+        algo.execute()
+
+        finalGroup = mtd[finalname]
+        wksp = finalGroup.getItem(0)
+        assert_almost_equal(wksp, wksp1)
+
+        # add in the second workspace
+
+        algo = Algo()
+        algo.initialize()
+        algo.diagnosticSuffix = {0: "_dspacing"}
+        algo.setProperty("DiagnosticWorkspace", name2)
+        algo.setProperty("TotalDiagnosticWorkspace", finalname)
+        algo.setProperty("AddAtIndex", 1)
+        algo.execute()
+
+        finalGroup = mtd[finalname]
+        wksp = finalGroup.getItem(0)
+        # assert a ragged workspace is created
+        assert wksp.isRaggedWorkspace()
+
     def test_simple_success_workspace_single_spectra(self):
         bigwksp = CreateWorkspace(
             DataX=[0, 1, 2, 0, 1, 2],
