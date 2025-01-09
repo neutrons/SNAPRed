@@ -109,7 +109,10 @@ class CalculateDiffCalResidualRecipe(Recipe[Ingredients]):
         combinedWorkspace = processedSpectra[0]
         for spectrum in processedSpectra[1:]:
             self.mantidSnapper.ConjoinWorkspaces(
-                f"Combining spectrum {spectrum}...", InputWorkspace1=combinedWorkspace, InputWorkspace2=spectrum
+                f"Combining spectrum {spectrum}...",
+                InputWorkspace1=combinedWorkspace,
+                InputWorkspace2=spectrum,
+                CheckMatchingBins=False,
             )
 
         # Step 4: Calculate the residual difference between the combined workspace and input workspace
