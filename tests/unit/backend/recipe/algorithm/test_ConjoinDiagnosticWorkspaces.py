@@ -157,6 +157,7 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
         name1 = mtd.unique_name(prefix="group1_")
         group1 = WorkspaceGroup()
         wksp1 = CreateWorkspace(
+            OutputWorkspace=f"{name1}_dspacing",
             DataX=[0, 1, 2, 3],
             DataY=[2, 2, 2],
             NSpec=1,
@@ -169,9 +170,9 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
         group2 = WorkspaceGroup()
         wksp2 = CreateWorkspace(
             OutputWorkspace=f"{name2}_dspacing",
-            DataX=[0, 1, 2],
-            DataY=[3, 3],
-            NSpec=1,
+            DataX=[0, 0, 0, 0, 1, 2],
+            DataY=[1000, 1000, 3, 3],
+            NSpec=2,
         )
         group2.addWorkspace(wksp2)
         mtd.add(name2, group2)
