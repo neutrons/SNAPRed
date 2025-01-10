@@ -12,8 +12,6 @@ import numpy as np
 from mantid.api import IEventWorkspace, ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
 from mantid.simpleapi import (
-    AddSampleLog,
-    AddSampleLogMultiple,
     CompareWorkspaces,
     CreateEmptyTableWorkspace,
     CreateWorkspace,
@@ -22,6 +20,7 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
+from util.instrument_helpers import addInstrumentLogs
 
 from snapred.backend.dao.state.DetectorState import DetectorState
 
@@ -64,36 +63,6 @@ def createNPixelInstrumentXML(numberOfPixels):
     return instrumentXML
 
 
-def addInstrumentParameters(wsname, detectorState: DetectorState = None):
-    if detectorState is None:
-        # if not detector state given, use a default with arbitrary values
-        detectorState = DetectorState(
-            arc=(1, 2),
-            lin=(3, 4),
-            wav=10.0,
-            freq=60.0,
-            guideStat=1,
-        )
-    logs = detectorState.getLogValues()
-    lognames = list(logs.keys())
-    logvalues = list(logs.values())
-    logtypes = ["Number Series"] * len(lognames)
-    AddSampleLogMultiple(
-        Workspace=wsname,
-        LogNames=lognames[:-1],
-        LogValues=logvalues[:-1],
-        LogTypes=logtypes[:-1],
-        ParseType=False,
-    )
-    AddSampleLog(
-        Workspace=wsname,
-        LogName=lognames[-1],
-        LogText=logvalues[-1],
-        LogType=logtypes[-1],
-        UpdateInstrumentParameters=True,
-    )
-
-
 def createNPixelWorkspace(wsname, numberOfPixels, detectorState: DetectorState = None):
     """
     Given a number of pixels, create an workspace with that many pixels.
@@ -112,7 +81,20 @@ def createNPixelWorkspace(wsname, numberOfPixels, detectorState: DetectorState =
         InstrumentXML=createNPixelInstrumentXML(numberOfPixels),
         RewriteSpectraMap=True,
     )
-    addInstrumentParameters(wsname, detectorState)
+    if detectorState is None:
+        # if no detector state given, use a default with arbitrary values
+        detectorState = DetectorState(
+            arc=(1, 2),
+            lin=(3, 4),
+            wav=10.0,
+            freq=60.0,
+            guideStat=1,
+        )
+        logs = detectorState.getLogValues()
+    lognames = list(logs.keys())
+    logvalues = list(logs.values())
+    logtypes = ["Number Series"] * len(lognames)
+    addInstrumentLogs(wsname, logNames=lognames, logTypes=logtypes, logValues=logvalues)
     return mtd[wsname]
 
 
