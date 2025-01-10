@@ -7,6 +7,7 @@ from mantid.api import (
     PythonAlgorithm,
     mtd,
 )
+from mantid.dataobjects import GroupingWorkspace
 from mantid.kernel import Direction, ULongLongPropertyWithValue
 
 from snapred.meta.pointer import create_pointer
@@ -24,7 +25,7 @@ class GroupedDetectorIDs(PythonAlgorithm):
     def validateInputs(self) -> Dict[str, str]:
         err = {}
         focusWS = mtd[self.getPropertyValue("GroupingWorkspace")]
-        if focusWS.id() != "GroupingWorkspace":
+        if not isinstance(focusWS, GroupingWorkspace):
             err["GroupingWorkspace"] = "The workspace must be a GroupingWorkspace"
         return err
 

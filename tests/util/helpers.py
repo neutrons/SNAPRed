@@ -9,7 +9,7 @@ from typing import Any, List, Tuple
 
 import numpy
 import numpy as np
-from mantid.api import ITableWorkspace, MatrixWorkspace
+from mantid.api import IEventWorkspace, ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
 from mantid.simpleapi import (
     AddSampleLog,
@@ -232,7 +232,7 @@ def initializeRandomMask(maskWSName: str, fraction: float) -> MaskWorkspace:
 
 def setSpectraToZero(inputWS: MatrixWorkspace, nss: Sequence[int]):
     # Zero out all spectra in the list of spectra
-    if "EventWorkspace" not in inputWS.id():
+    if not isinstance(inputWS, IEventWorkspace):
         for ns in nss:
             # allow "ragged" case
             zs = np.zeros_like(inputWS.readY(ns))
@@ -255,7 +255,7 @@ def setGroupSpectraToZero(ws: MatrixWorkspace, groupingWS: GroupingWorkspace, gi
     detInfo = ws.detectorInfo()
     for gid in gids:
         dets = groupingWS.getDetectorIDsOfGroup(gid)
-        if "EventWorkspace" not in ws.id():
+        if not isinstance(ws, IEventWorkspace):
             for det in dets:
                 ns = detInfo.indexOf(int(det))
                 # allow "ragged" case

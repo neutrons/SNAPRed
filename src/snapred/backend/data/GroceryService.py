@@ -526,7 +526,7 @@ class GroceryService:
             return False
         else:
             mask = self.mantidSnapper.mtd[pixelMask]
-            if mask.id() != "MaskWorkspace":
+            if not isinstance(mask, MaskWorkspace):
                 return False
             elif mask.getNumberMasked() == 0:
                 return False

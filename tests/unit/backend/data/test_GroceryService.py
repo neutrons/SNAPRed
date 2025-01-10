@@ -1912,13 +1912,13 @@ class TestGroceryService(unittest.TestCase):
             BankPixelWidth=1,
         )
         assert mtd.doesExist(notamask)
-        assert mtd[notamask].id() != "MaskWorkspace"
+        assert not isinstance(mtd[notamask], MaskWorkspace)
         assert not self.instance.checkPixelMask(notamask)
 
         # return False if nothing is masked
         emptymask = mtd.unique_name(prefix="_mask_check_")
         ExtractMask(InputWorkspace=notamask, OutputWorkspace=emptymask)
-        assert mtd[emptymask].id() == "MaskWorkspace"
+        assert isinstance(mtd[emptymask], MaskWorkspace)
         assert mtd[emptymask].getNumberMasked() == 0
         assert not self.instance.checkPixelMask(emptymask)
 
@@ -1926,6 +1926,6 @@ class TestGroceryService(unittest.TestCase):
         nonemptymask = mtd.unique_name(prefix="_mask_check_")
         MaskDetectors(Workspace=notamask, WorkspaceIndexList=[0])
         ExtractMask(InputWorkspace=notamask, OutputWorkspace=nonemptymask)
-        assert mtd[nonemptymask].id() == "MaskWorkspace"
+        assert isinstance(mtd[nonemptymask], MaskWorkspace)
         assert mtd[nonemptymask].getNumberMasked() != 0
         assert self.instance.checkPixelMask(nonemptymask)
