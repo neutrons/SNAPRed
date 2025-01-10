@@ -20,7 +20,6 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     ExtractMask,
     LoadInstrument,
-    MaskDetectors,
     mtd,
 )
 
@@ -200,20 +199,14 @@ def maskFromArray(mask: List[bool], maskWSname: str, parentWSname=None, detector
 
     nspec = len(mask)
     if parentWSname is None:
-        ws = createNPixelWorkspace(maskWSname, nspec, detectorState)
-    else:
-        ws = createCompatibleMask(maskWSname, parentWSname)
-    assert len(mask) == ws.getNumberHistograms(), "The mask array was incompatible with the parent workspace."
+        parentWSname = mtd.unique_name()
+        createNPixelWorkspace(parentWSname, nspec, detectorState)
+    maskWS = createCompatibleMask(maskWSname, parentWSname)
+    assert len(mask) == maskWS.getNumberHistograms(), "The mask array was incompatible with the parent workspace."
 
-    toMask = np.argwhere(mask == 1)
-    MaskDetectors(
-        Workspace=maskWSname,
-        WorkspaceIndexList=toMask,
-    )
-    ExtractMask(
-        InputWorkspace=maskWSname,
-        OutputWorkspace=maskWSname,
-    )
+    wkspIndexToMask = np.argwhere(mask == 1)
+    parentWS = mtd[parentWSname]
+    maskSpectra(maskWS, parentWS, wkspIndexToMask)
     return maskWSname
 
 
