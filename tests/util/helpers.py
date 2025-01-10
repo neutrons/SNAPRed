@@ -12,6 +12,8 @@ import numpy as np
 from mantid.api import ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
 from mantid.simpleapi import (
+    AddSampleLog,
+    AddSampleLogMultiple,
     CompareWorkspaces,
     CreateEmptyTableWorkspace,
     CreateWorkspace,
@@ -22,11 +24,14 @@ from mantid.simpleapi import (
     mtd,
 )
 
+from snapred.backend.dao.state.DetectorState import DetectorState
 
-def createArbitraryInstrumentXML(numberOfPixels):
+
+def createNPixelInstrumentXML(numberOfPixels):
     """
-    Given a number of pixels, create an arbitrary instrument XML file.
-    Useful for when an instrument definition is required by mantid, but not important to test.
+    Given a number of pixels, create an instrument XML file with that many pixels.
+    These pixels have no locations and cannot be used for any valid geometry checks.
+    However, they will allow for certain algorithms, such as MaskDetectors to work.
     """
     instrumentXML = f"""
         <instrument xmlns="none"
@@ -58,6 +63,58 @@ def createArbitraryInstrumentXML(numberOfPixels):
     """
     instrumentXML += "</instrument>\n"
     return instrumentXML
+
+
+def addInstrumentParameters(wsname, detectorState: DetectorState = None):
+    if detectorState is None:
+        # if not detector state given, use a default with arbitrary values
+        detectorState = DetectorState(
+            arc=(1, 2),
+            lin=(3, 4),
+            wav=10.0,
+            freq=60.0,
+            guideStat=1,
+        )
+    logs = detectorState.getLogValues()
+    lognames = list(logs.keys())
+    logvalues = list(logs.values())
+    logtypes = ["Number Series"] * len(lognames)
+    AddSampleLogMultiple(
+        Workspace=wsname,
+        LogNames=lognames[:-1],
+        LogValues=logvalues[:-1],
+        LogTypes=logtypes[:-1],
+        ParseType=False,
+    )
+    AddSampleLog(
+        Workspace=wsname,
+        LogName=lognames[-1],
+        LogText=logvalues[-1],
+        LogType=logtypes[-1],
+        UpdateInstrumentParameters=True,
+    )
+
+
+def createNPixelWorkspace(wsname, numberOfPixels, detectorState: DetectorState = None):
+    """
+    Given a number of pixels, create an workspace with that many pixels.
+    The instrument on the workspace will have that many pixels defined,
+    but they have no locations or geometry.
+    """
+    CreateWorkspace(
+        OutputWorkspace=wsname,
+        DataX=[0] * numberOfPixels,
+        DataY=[0] * numberOfPixels,
+        NSpec=numberOfPixels,
+    )
+    LoadInstrument(
+        Workspace=wsname,
+        InstrumentName=f"tmp{numberOfPixels}",
+        InstrumentXML=createNPixelInstrumentXML(numberOfPixels),
+        RewriteSpectraMap=True,
+    )
+    addInstrumentParameters(wsname, detectorState)
+    return mtd[wsname]
 
 
 def createCompatibleDiffCalTable(tableWSName: str, templateWSName: str) -> ITableWorkspace:
@@ -132,24 +189,22 @@ def arrayFromMask(maskWSName: str) -> numpy.ndarray:
     return flags
 
 
-def maskFromArray(maskWSname: str, mask: List[bool]):
+def maskFromArray(mask: List[bool], maskWSname: str, parentWSname=None, detectorState=None):
     """
     Create a mask workspace with given name, with the indicated pixels masked.
+    If a parent workspace is passed, create the mask workspace compatible with
+    the parent's instrument.
+    If not, but a detector state is passed, will create a mask and load parameters
+    corresponding to the detector state.
     """
 
     nspec = len(mask)
-    CreateWorkspace(
-        OutputWorkspace=maskWSname,
-        DataX=list(range(nspec)),
-        DataY=mask,
-        NSpec=nspec,
-    )
-    LoadInstrument(
-        Workspace=maskWSname,
-        InstrumentName=f"tmp{nspec}",
-        InstrumentXML=createArbitraryInstrumentXML(nspec),
-        RewriteSpectraMap=True,
-    )
+    if parentWSname is None:
+        ws = createNPixelWorkspace(maskWSname, nspec, detectorState)
+    else:
+        ws = createCompatibleMask(maskWSname, parentWSname)
+    assert len(mask) == ws.getNumberHistograms(), "The mask array was incompatible with the parent workspace."
+
     toMask = np.argwhere(mask == 1)
     MaskDetectors(
         Workspace=maskWSname,
@@ -255,7 +310,6 @@ def mutableWorkspaceClones(
     Clone workspaces so that they can be modified by simultaneously running tests.
     Each cloned workspace will have a name: <unique prefix> + <original workspace name>
     """
-    from mantid.simpleapi import mtd
 
     wss = []
     ws_names = []

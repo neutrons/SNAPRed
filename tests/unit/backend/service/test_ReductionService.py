@@ -778,7 +778,7 @@ class TestReductionServiceMasks:
         """
 
         def mock_compatible_mask(wsname, runNumber, useLiteMode):  # noqa ARG001
-            return maskFromArray(wsname, [0, 0, 0, 0, 0])
+            return maskFromArray([0, 0, 0, 0, 0], wsname)
 
         def mock_fetch_grocery_list(groceryList):
             import hashlib
@@ -792,7 +792,7 @@ class TestReductionServiceMasks:
                 hasher.update(json.dumps(item.__dict__).encode("utf-8"))
                 x = int.from_bytes(hasher.digest(1), "big")
                 mask = [int(x) for x in list("{0:0b}".format(x))]
-                workspaceName = maskFromArray(workspaceName, mask)
+                workspaceName = maskFromArray(mask, workspaceName)
                 groceries.append(workspaceName)
             return groceries
 

@@ -305,8 +305,8 @@ class ReductionService(Service):
         for mask in request.pixelMasks:
             match mask.tokens("workspaceType"):
                 case wngt.REDUCTION_PIXEL_MASK:
-                    runNumber, time = mask.tokens("runNumber", "timestamp")
-                    self.groceryClerk.name(mask).reduction_pixel_mask(runNumber, time).useLiteMode(useLiteMode).add()
+                    runNumber, temp_ts = mask.tokens("runNumber", "timestamp")
+                    self.groceryClerk.name(mask).reduction_pixel_mask(runNumber, temp_ts).useLiteMode(useLiteMode).add()
                 case wngt.REDUCTION_USER_PIXEL_MASK:
                     numberTag = mask.tokens("numberTag")
                     residentMasks[mask] = wng.reductionUserPixelMask().numberTag(numberTag).build()
