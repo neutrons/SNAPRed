@@ -152,6 +152,14 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
             ReadWorkspaceMetadata().cook(groceries)
         assert "WorkspaceMetadata" in str(e)
 
+    def test_validateInputs_bad_workspaces(self):
+        groceries = {
+            "workspace": mock.sentinel.input,
+            "notInTheList": mock.sentinel.bad,
+        }
+        with pytest.raises(ValueError, match=r".*input groceries: \{'notInTheList'\}"):
+            ReadWorkspaceMetadata().validateInputs(None, groceries)
+
 
 # this at teardown removes the loggers, eliminating logger error printouts
 # see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873

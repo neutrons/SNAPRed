@@ -43,6 +43,18 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
     def logger(self):
         return logger
 
+    def allGroceryKeys(self) -> Set[str]:
+        return {
+            "inputWorkspace",
+            "groupingWorkspace",
+            "calibrationTable",
+            "maskWorkspace",
+            "previousCalibration",
+            # NOTE these are used only in the entire diff cal workflow
+            "diagnosticWorkspace",
+            "outputWorkspace",
+        }
+
     def mandatoryInputWorkspaces(self) -> Set[str]:
         return {"inputWorkspace", "groupingWorkspace"}
 

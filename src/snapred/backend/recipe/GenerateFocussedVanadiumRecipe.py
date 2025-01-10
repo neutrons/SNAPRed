@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 from snapred.backend.dao.ingredients import GenerateFocussedVanadiumIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
@@ -22,6 +22,12 @@ class GenerateFocussedVanadiumRecipe(Recipe[Ingredients]):
     crystallographic info applied during normalization calibration.
 
     """
+
+    def allGroceryKeys(self) -> Set[str]:
+        return {"inputWorkspace", "outputWorkspace"}
+
+    def mandatoryInputWorkspaces(self) -> Set[str]:
+        return {"inputWorkspace"}
 
     def chopIngredients(self, ingredients: Ingredients):
         self.smoothingParameter = ingredients.smoothingParameter

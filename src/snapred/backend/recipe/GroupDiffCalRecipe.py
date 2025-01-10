@@ -30,17 +30,6 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
     NOYZE_2_MIN = Config["calibration.fitting.minSignal2Noise"]
     MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
-    GROCERIES = {
-        # NOTE this would be better as a StrEnum, which requires python 3.11
-        "inputWorkspace",
-        "groupingWorkspace",
-        "maskWorkspace",
-        "outputWorkspace",
-        "diagnosticWorkspace",
-        "previousCalibration",
-        "calibrationTable",
-    }
-
     def __init__(self, utensils: Utensils = None):
         if utensils is None:
             utensils = Utensils()
@@ -51,17 +40,22 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
     def logger(self):
         return logger
 
-    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+    def allGroceryKeys(self) -> Set[str]:
+        return {
+            "inputWorkspace",
+            "groupingWorkspace",
+            "maskWorkspace",
+            "outputWorkspace",
+            "diagnosticWorkspace",
+            "previousCalibration",
+            "calibrationTable",
+        }
+
+    def mandatoryInputWorkspaces(self) -> Set[str]:
         return {"inputWorkspace", "groupingWorkspace"}
 
     def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
         super().validateInputs(ingredients, groceries)
-
-        # make sure no invalid keys were passed
-        # NOTE this is for safer refactor, but not necessary for proper functioning
-        diff = set(groceries.keys()).difference(self.GROCERIES)
-        if bool(diff):
-            raise RuntimeError(f"The following invalid keys were found in the input groceries: {diff}")
 
         pixelGroupIDs = ingredients.pixelGroup.groupIDs
         groupIDs = [peakList.groupID for peakList in ingredients.groupedPeakLists]

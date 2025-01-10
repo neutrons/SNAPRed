@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Set, Tuple
 
 from snapred.backend.dao.ingredients import RebinFocussedGroupDataIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
@@ -17,7 +17,10 @@ class RebinFocussedGroupDataRecipe(Recipe[Ingredients]):
     NUM_BINS = Config["constants.ResampleX.NumberBins"]
     LOG_BINNING = True
 
-    def mandatoryInputWorkspaces(self):
+    def allGroceryKeys(self) -> Set[str]:
+        return {"inputWorkspace"}
+
+    def mandatoryInputWorkspaces(self) -> Set[str]:
         return {"inputWorkspace"}
 
     def chopIngredients(self, ingredients: Ingredients):

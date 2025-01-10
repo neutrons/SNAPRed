@@ -2,7 +2,7 @@ import time
 from unittest import TestCase, mock
 
 import pytest
-from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
+from mantid.simpleapi import CreateEmptyTableWorkspace, CreateSingleValuedWorkspace, mtd
 from util.Config_helpers import Config_override
 from util.SculleryBoy import SculleryBoy
 
@@ -24,12 +24,27 @@ class ReductionRecipeTest(TestCase):
     def _make_groceries(self):
         sampleWS = mtd.unique_name(prefix="test_applynorm")
         normWS = mtd.unique_name(prefix="test_applynorm")
+        difcWS = mtd.unique_name(prefix="test_applynorm")
         CreateSingleValuedWorkspace(OutputWorkspace=sampleWS)
         CreateSingleValuedWorkspace(OutputWorkspace=normWS)
+        CreateEmptyTableWorkspace(OutputWorkspace=difcWS)
         return {
             "inputWorkspace": sampleWS,
             "normalizationWorkspace": normWS,
+            "diffcalWorkspace": difcWS,
         }
+
+    def test_validateInputs_bad_workspaces(self):
+        groceries = {
+            "inputWorkspace": mock.sentinel.input,
+            "groupingWorkspaces": mock.sentinel.groupws,
+            "diffcalWorkspace": mock.sentinel.difc,
+            "normalizationWorkspace": mock.sentinel.norm,
+            "combinedPixelMask": mock.sentinel.mask,
+            "notInTheList": mock.sentinel.bad,
+        }
+        with pytest.raises(ValueError, match=r".*input groceries: \{'notInTheList'\}"):
+            ReductionRecipe().validateInputs(None, groceries)
 
     def test_chopIngredients(self):
         recipe = ReductionRecipe()
@@ -201,6 +216,7 @@ class ReductionRecipeTest(TestCase):
 
         # Set up other recipe variables
         recipe.sampleWs = "sample"
+        recipe.diffcalWs = "difc"
         recipe.maskWs = "mask"
         recipe.normalizationWs = "norm"
         recipe.groupingWorkspaces = ["group1", "group2"]
@@ -229,8 +245,7 @@ class ReductionRecipeTest(TestCase):
         inputWS = "input"
         recipe._applyRecipe(mockRecipe, recipe.ingredients, inputWorkspace=inputWS)
 
-        assert recipe.groceries["inputWorkspace"] == inputWS
-        mockRecipe().cook.assert_called_once_with(recipe.ingredients, recipe.groceries)
+        mockRecipe().cook.assert_called_once_with(recipe.ingredients, {"inputWorkspace": inputWS})
 
     def test_applyRecipe_no_input_workspace(self):
         recipe = ReductionRecipe()
@@ -354,10 +369,9 @@ class ReductionRecipeTest(TestCase):
         )
 
         mockApplyNormalizationRecipe().cook.assert_called_once_with(
-            recipe.ingredients.applyNormalization(groupingIndex), recipe.groceries
+            recipe.ingredients.applyNormalization(groupingIndex),
+            {"inputWorkspace": "sample", "normalizationWorkspace": "norm"},
         )
-        assert recipe.groceries["inputWorkspace"] == "sample"
-        assert recipe.groceries["normalizationWorkspace"] == "norm"
 
     def test_cloneIntermediateWorkspace(self):
         recipe = ReductionRecipe()
@@ -414,6 +428,7 @@ class ReductionRecipeTest(TestCase):
 
         # Set up other recipe variables
         recipe.sampleWs = "sample"
+        recipe.diffcalWs = "difc"
         recipe.maskWs = "mask"
         recipe.normalizationWs = "norm"
         recipe.groupingWorkspaces = ["group1", "group2"]
@@ -428,21 +443,30 @@ class ReductionRecipeTest(TestCase):
             PreprocessReductionRecipe,
             recipe.ingredients.preprocess(),
             inputWorkspace=recipe.sampleWs,
+            diffcalWorkspace=recipe.diffcalWs,
             maskWorkspace=recipe.maskWs,
         )
         recipe._applyRecipe.assert_any_call(
             PreprocessReductionRecipe,
             recipe.ingredients.preprocess(),
             inputWorkspace=recipe.normalizationWs,
+            diffcalWorkspace=recipe.diffcalWs,
             maskWorkspace=recipe.maskWs,
         )
 
-        recipe._applyRecipe.assert_any_call(
-            ReductionGroupProcessingRecipe, recipe.ingredients.groupProcessing(0), inputWorkspace="sample_grouped"
-        )
-        recipe._applyRecipe.assert_any_call(
-            ReductionGroupProcessingRecipe, recipe.ingredients.groupProcessing(1), inputWorkspace="norm_grouped"
-        )
+        for groupingWS in recipe.groupingWorkspaces:
+            recipe._applyRecipe.assert_any_call(
+                ReductionGroupProcessingRecipe,
+                recipe.ingredients.groupProcessing(0),
+                inputWorkspace="sample_grouped",
+                groupingWorkspace=groupingWS,
+            )
+            recipe._applyRecipe.assert_any_call(
+                ReductionGroupProcessingRecipe,
+                recipe.ingredients.groupProcessing(1),
+                inputWorkspace="norm_grouped",
+                groupingWorkspace=groupingWS,
+            )
 
         recipe._applyRecipe.assert_any_call(
             GenerateFocussedVanadiumRecipe,
@@ -529,6 +553,7 @@ class ReductionRecipeTest(TestCase):
 
             # Set up other recipe variables
             recipe.sampleWs = "sample"
+            recipe.diffcalWs = "difc"
             recipe.maskWs = "mask"
             recipe.normalizationWs = "norm"
             recipe.groupingWorkspaces = ["group1", "group2"]
@@ -539,25 +564,35 @@ class ReductionRecipeTest(TestCase):
             result = recipe.execute()
 
             # Perform assertions
+
             recipe._applyRecipe.assert_any_call(
                 PreprocessReductionRecipe,
                 recipe.ingredients.preprocess(),
                 inputWorkspace=recipe.sampleWs,
+                diffcalWorkspace=recipe.diffcalWs,
                 maskWorkspace=recipe.maskWs,
             )
             recipe._applyRecipe.assert_any_call(
                 PreprocessReductionRecipe,
                 recipe.ingredients.preprocess(),
                 inputWorkspace=recipe.normalizationWs,
+                diffcalWorkspace=recipe.diffcalWs,
                 maskWorkspace=recipe.maskWs,
             )
 
-            recipe._applyRecipe.assert_any_call(
-                ReductionGroupProcessingRecipe, recipe.ingredients.groupProcessing(0), inputWorkspace="sample_grouped"
-            )
-            recipe._applyRecipe.assert_any_call(
-                ReductionGroupProcessingRecipe, recipe.ingredients.groupProcessing(1), inputWorkspace="norm_grouped"
-            )
+            for groupingWS in recipe.groupingWorkspaces:
+                recipe._applyRecipe.assert_any_call(
+                    ReductionGroupProcessingRecipe,
+                    recipe.ingredients.groupProcessing(0),
+                    inputWorkspace="sample_grouped",
+                    groupingWorkspace=groupingWS,
+                )
+                recipe._applyRecipe.assert_any_call(
+                    ReductionGroupProcessingRecipe,
+                    recipe.ingredients.groupProcessing(1),
+                    inputWorkspace="norm_grouped",
+                    groupingWorkspace=groupingWS,
+                )
 
             recipe._applyRecipe.assert_any_call(
                 GenerateFocussedVanadiumRecipe,
@@ -685,6 +720,7 @@ class ReductionRecipeTest(TestCase):
 
         # Set up other recipe variables
         recipe.sampleWs = "sample"
+        recipe.diffcalWs = "difc"
         recipe.normalizationWs = "norm"
         recipe.groupingWorkspaces = ["group1", "group2"]
         recipe.keepUnfocused = True

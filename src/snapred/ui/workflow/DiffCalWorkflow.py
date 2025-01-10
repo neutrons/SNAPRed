@@ -406,7 +406,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         payload = CalculateResidualRequest(
             inputWorkspace=self.focusedWorkspace,
             outputWorkspace=self.residualWorkspace,
-            fitPeaksDiagnostic=self.fitPeaksDiagnostic,
+            fitPeaksDiagnosticWorkspace=self.fitPeaksDiagnostic,
         )
         return self.request(path="calibration/residual", payload=payload)
 

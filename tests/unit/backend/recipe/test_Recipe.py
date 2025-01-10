@@ -8,7 +8,6 @@ from util.SculleryBoy import SculleryBoy
 
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 class Ingredients(BaseModel):
@@ -26,7 +25,10 @@ class DummyRecipe(Recipe[Ingredients]):
     An instantiation with no abstract classes
     """
 
-    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+    def allGroceryKeys(self) -> Set[str]:
+        return {"ws"}
+
+    def mandatoryInputWorkspaces(self) -> Set[str]:
         return {"ws"}
 
     def chopIngredients(self, ingredients: Ingredients):
@@ -76,6 +78,9 @@ class RecipeTest(unittest.TestCase):
         worseGroceries = {}
         with pytest.raises(RuntimeError, match="The workspace property ws was not found in the groceries"):
             recipe.validateInputs(ingredients, worseGroceries)
+        tooManyGroceries = {"ws": groceries["ws"], "another": groceries["ws"]}
+        with pytest.raises(ValueError, match=r".*invalid keys.*"):
+            recipe.validateInputs(ingredients, tooManyGroceries)
 
     def test_validate_grocery(self):
         groceries = self._make_groceries()
@@ -116,6 +121,35 @@ class RecipeTest(unittest.TestCase):
         assert mockSnapper.executeQueue.call_count == 1
 
     ## The below tests verify the abstract methods must be initialized
+
+    def test_allGroceryKeys(self):
+        class RecipeNoGroceryKeys(Recipe[Ingredients]):
+            def unbagGroceries(self, groceries: Dict[str, str]):
+                pass
+
+            def queueAlgos(self):
+                pass
+
+        with pytest.raises(TypeError) as e:
+            RecipeNoGroceryKeys()
+        assert "allGroceryKeys" in str(e)
+        assert "unbagGroceries" not in str(e)
+        assert "queueAlgos" not in str(e)
+
+        class RecipeGroceryKeys(Recipe[Ingredients]):
+            def allGroceryKeys(self):
+                return super().allGroceryKeys()
+
+            def chopIngredients(self, ingredients):
+                pass
+
+            def unbagGroceries(self, groceries):
+                pass
+
+            def queueAlgos(self):
+                pass
+
+        assert set() == RecipeGroceryKeys().allGroceryKeys()
 
     def test_chopIngredients(self):
         class RecipeNoChopIngredients(Recipe[Ingredients]):

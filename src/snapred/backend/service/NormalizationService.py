@@ -152,13 +152,17 @@ class NormalizationService(Service):
         # Apply diffcal and mask
         groceries["inputWorkspace"] = correctedVanadium
         groceries["outputWorkspace"] = focusedVanadium
-        PreprocessReductionRecipe().cook(PreprocessReductionRecipe.Ingredients(), groceries)
+        PreprocessReductionRecipe().cook(
+            PreprocessReductionRecipe.Ingredients(),
+            groceries,
+        )
 
         # focus and normalize by current
         groceries["inputWorkspace"] = focusedVanadium
         groceries["outputWorkspace"] = focusedVanadium
         ReductionGroupProcessingRecipe().cook(
-            ReductionGroupProcessingRecipe.Ingredients(pixelGroup=ingredients.pixelGroup), groceries
+            ReductionGroupProcessingRecipe.Ingredients(pixelGroup=ingredients.pixelGroup),
+            groceries,
         )
 
         # 2. focus

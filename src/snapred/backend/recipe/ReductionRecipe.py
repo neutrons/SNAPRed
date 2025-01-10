@@ -43,7 +43,16 @@ class ReductionRecipe(Recipe[Ingredients]):
     def logger(self):
         return logger
 
-    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+    def allGroceryKeys(self) -> Set[str]:
+        return {
+            "inputWorkspace",
+            "groupingWorkspaces",
+            "diffcalWorkspace",
+            "normalizationWorkspace",
+            "combinedPixelMask",
+        }
+
+    def mandatoryInputWorkspaces(self) -> Set[str]:
         return {"inputWorkspace", "groupingWorkspaces"}
 
     def chopIngredients(self, ingredients: Ingredients):
@@ -62,8 +71,9 @@ class ReductionRecipe(Recipe[Ingredients]):
         """
         self.groceries = groceries.copy()
         self.sampleWs = groceries["inputWorkspace"]
+        self.diffcalWs = groceries.get("diffcalWorkspace", "")
         self.normalizationWs = groceries.get("normalizationWorkspace", "")
-        self.maskWs = groceries.get("combinedMask", "")
+        self.maskWs = groceries.get("combinedPixelMask", "")
         self.groupingWorkspaces = groceries["groupingWorkspaces"]
 
     def _cloneWorkspace(self, inputWorkspace: str, outputWorkspace: str) -> str:
@@ -143,24 +153,21 @@ class ReductionRecipe(Recipe[Ingredients]):
         return normalizationWorkspace
 
     def _applyRecipe(self, recipe: Type[Recipe], ingredients_, **kwargs):
-        if "inputWorkspace" in kwargs:
-            inputWorkspace = kwargs["inputWorkspace"]
-            if not inputWorkspace:
-                self.logger().debug(f"{recipe.__name__} :: Skipping recipe with default empty input workspace")
-                return
-            if "outputWorkspace" not in kwargs and "outputWorkspace" in self.groceries:
-                del self.groceries["outputWorkspace"]
-            if self.mantidSnapper.mtd.doesExist(inputWorkspace):
-                self.groceries.update(kwargs)
-                recipe().cook(ingredients_, self.groceries)
-            else:
-                raise RuntimeError(
-                    (
-                        f"{recipe.__name__} ::"
-                        " Missing non-default input workspace with groceries:"
-                        f" {self.groceries} and kwargs: {kwargs}"
-                    )
+        inws = kwargs.get("inputWorkspace", None)
+        if inws is None or inws == "":
+            self.logger().debug(f"{recipe.__name__} :: Skipping recipe with default empty input workspace")
+            return
+
+        if self.mantidSnapper.mtd.doesExist(kwargs["inputWorkspace"]):
+            recipe().cook(ingredients_, kwargs)
+        else:
+            raise RuntimeError(
+                (
+                    f"{recipe.__name__} ::"
+                    " Missing non-default input workspace with groceries:"
+                    f" {kwargs} and kwargs: {kwargs}"
                 )
+            )
 
     def _getNormalizationWorkspaceName(self, groupingIndex: int):
         return f"reduced_normalization_{groupingIndex}_{wnvf.formatTimestamp(self.ingredients.timestamp)}"
@@ -216,20 +223,20 @@ class ReductionRecipe(Recipe[Ingredients]):
             PreprocessReductionRecipe,
             self.ingredients.preprocess(),
             inputWorkspace=self.sampleWs,
-            **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
+            diffcalWorkspace=self.diffcalWs,
+            maskWorkspace=self.maskWs,
         )
         self._cloneIntermediateWorkspace(self.sampleWs, "sample_preprocessed")
         self._applyRecipe(
             PreprocessReductionRecipe,
             self.ingredients.preprocess(),
             inputWorkspace=self.normalizationWs,
-            **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
+            diffcalWorkspace=self.diffcalWs,
+            maskWorkspace=self.maskWs,
         )
         self._cloneIntermediateWorkspace(self.normalizationWs, "normalization_preprocessed")
 
         for groupingIndex, groupingWs in enumerate(self.groupingWorkspaces):
-            self.groceries["groupingWorkspace"] = groupingWs
-
             if self.maskWs and self._isGroupFullyMasked(groupingWs):
                 # Notify the user of a fully masked group, but continue with the workflow
                 self.logger().warning(
@@ -246,12 +253,14 @@ class ReductionRecipe(Recipe[Ingredients]):
                 ReductionGroupProcessingRecipe,
                 self.ingredients.groupProcessing(groupingIndex),
                 inputWorkspace=sampleClone,
+                groupingWorkspace=groupingWs,
             )
             self._cloneIntermediateWorkspace(sampleClone, f"sample_GroupProcessing_{groupingIndex}")
             self._applyRecipe(
                 ReductionGroupProcessingRecipe,
                 self.ingredients.groupProcessing(groupingIndex),
                 inputWorkspace=normalizationClone,
+                groupingWorkspace=groupingWs,
             )
             self._cloneIntermediateWorkspace(normalizationClone, f"normalization_GroupProcessing_{groupingIndex}")
 
