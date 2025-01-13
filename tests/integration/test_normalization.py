@@ -16,12 +16,12 @@ from qtpy.QtWidgets import (
 )
 from util.Config_helpers import Config_override
 from util.qt_mock_util import MockQMessageBox
+from util.TestSummary import TestSummary
 
 # I would prefer not to access `LocalDataService` within an integration test,
 #   however, for the moment, the reduction-data output relocation fixture is defined in the current file.
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
-from snapred.meta.Enum import StrEnum
 from snapred.ui.main import SNAPRedGUI, prependDataSearchDirectories
 from snapred.ui.view import InitializeStateCheckView
 from snapred.ui.view.NormalizationRequestView import NormalizationRequestView
@@ -31,63 +31,6 @@ from snapred.ui.view.NormalizationTweakPeakView import NormalizationTweakPeakVie
 
 class InterruptWithBlock(BaseException):
     pass
-
-
-class TestSummary:
-    def __init__(self):
-        self._index = 0
-        self._steps = []
-
-    def SUCCESS(self):
-        step = self._steps[self._index]
-        step.status = self.TestStep.StepStatus.SUCCESS
-        self._index += 1
-
-    def FAILURE(self):
-        step = self._steps[self._index]
-        step.status = self.TestStep.StepStatus.FAILURE
-        self._index += 1
-
-    def isComplete(self):
-        return self._index == len(self._steps)
-
-    def isFailure(self):
-        return any(step.status == self.TestStep.StepStatus.FAILURE for step in self._steps)
-
-    def builder():
-        return TestSummary.TestSummaryBuilder()
-
-    def __str__(self):
-        longestStatus = max(len(step.status) for step in self._steps)
-        longestName = max(len(step.name) for step in self._steps)
-        tableCapStr = "#" * (longestName + longestStatus + 6)
-        tableStr = (
-            f"\n{tableCapStr}\n"
-            + "\n".join(f"# {step.name:{longestName}}: {step.status:{longestStatus}} #" for step in self._steps)
-            + f"\n{tableCapStr}\n"
-        )
-        return tableStr
-
-    class TestStep:
-        class StepStatus(StrEnum):
-            SUCCESS = "SUCCESS"
-            FAILURE = "FAILURE"
-            INCOMPLETE = "INCOMPLETE"
-
-        def __init__(self, name: str):
-            self.name = name
-            self.status = self.StepStatus.INCOMPLETE
-
-    class TestSummaryBuilder:
-        def __init__(self):
-            self.summary = TestSummary()
-
-        def step(self, name: str):
-            self.summary._steps.append(TestSummary.TestStep(name))
-            return self
-
-        def build(self):
-            return self.summary
 
 
 @pytest.fixture
@@ -142,58 +85,18 @@ def calibration_home_from_mirror():
 class TestGUIPanels:
     @pytest.fixture(scope="function", autouse=True)  # noqa: PT003
     def _setup_gui(self, qapp):
-        # ---------------------------------------------------------------------------
-        # DEFAULT PATCHES:
-        #   FAIL TEST if any 'warning' OR 'critical' message boxes occur.
-        #   In the test body, these patches are overridden for special cases.
-        # pass
-        # self._warningMessageBox = mock.patch(
-        #     "qtpy.QtWidgets.QMessageBox.warning",
-        #     lambda *args, **kwargs: pytest.fail(
-        #         "WARNING This test seems to be missing expected calibration and/or normalization data", pytrace=False
-        #     )
-        #     if "Reduction is missing calibration data," in args[2]
-        #     else pytest.fail("WARNING messagebox:\n" + f"    args: {args}\n" + f" kwargs: {kwargs}", pytrace=False),
-        # )
-        # self._warningMessageBox.start()
-
-        # self._criticalMessageBox = mock.patch(
-        #     "qtpy.QtWidgets.QMessageBox.critical",
-        #     lambda *args, **kwargs: pytest.fail(
-        #         "CRITICAL messagebox:\n" + f"    args: {args}\n" + f"    kwargs: {kwargs}", pytrace=False
-        #     ),
-        # )
-        # self._criticalMessageBox.start()
-
-        # patch log-warnings QMessage box: runs using `QMessageBox.exec`.
-        self._logWarningsMessageBox = mock.patch(
-            "qtpy.QtWidgets.QMessageBox.exec",
-            lambda self, *args, **kwargs: QMessageBox.Ok
-            if (
-                "The backend has encountered warning(s)" in self.text()
-                and (
-                    "InstrumentDonor will only be used if GroupingFilename is in XML format." in self.detailedText()
-                    or "No valid FocusGroups were specified for mode: 'lite'" in self.detailedText()
-                )
-            )
-            else pytest.fail(
-                "unexpected QMessageBox.exec:"
-                + f"    args: {args}"
-                + f"    kwargs: {kwargs}"
-                + f"    text: '{self.text()}'"
-                + f"    detailed text: '{self.detailedText()}'",
-                pytrace=False,
-            ),
-        )
+        testMock = MockQMessageBox()
+        msg = "No valid FocusGroups were specified for mode: 'lite'"
+        self._logWarningsMessageBox = testMock.exec(testMock, ref=self, msg=msg)
         self._logWarningsMessageBox.start()
 
-        # # Automatically continue at the end of each workflow.
-        # self._actionPrompt = mock.patch(
-        #     "qtpy.QtWidgets.QMessageBox.information",
-        #     lambda *args: TestGUIPanels._actionPromptContinue(*args, match=r".*has been completed successfully.*"),
-        # )
-        # self._actionPrompt.start()
-        # # ---------------------------------------------------------------------------
+        # Automatically continue at the end of each workflow.
+        self._actionPrompt = mock.patch(
+            "qtpy.QtWidgets.QMessageBox.information",
+            lambda *args: TestGUIPanels._actionPromptContinue(*args, match=r".*has been completed successfully.*"),
+        )
+        self._actionPrompt.start()
+        # ---------------------------------------------------------------------------
 
         with Resource.open("../../src/snapred/resources/style.qss", "r") as styleSheet:
             qapp.setStyleSheet(styleSheet.read())
@@ -211,10 +114,8 @@ class TestGUIPanels:
             if self.testSummary.isFailure():
                 pytest.fail(f"Test Summary (-vv for full table): {self.testSummary}")
         # # teardown...
-        # self._warningMessageBox.stop()
-        # self._criticalMessageBox.stop()
-        self._logWarningsMessageBox.stop()
-        # self._actionPrompt.stop()
+        # self._logWarningsMessageBox.stop()
+        self._actionPrompt.stop()
         self.exitStack.close()
 
     @staticmethod
@@ -226,10 +127,13 @@ class TestGUIPanels:
                 + f"    expecting:  QMessageBox.information(...'{message}'...)"
             )
 
-    def test_normalization_regression(self, qtbot, qapp, calibration_home_from_mirror):
+    @pytest.mark.qt_no_exception_capture
+    def test_normalization_regression(self, qtbot, qapp, calibration_home_from_mirror, capsys):  # noqa ARG002
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
         tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841
+        # print(tmpCalibrationHomeDirectory)
+        # assert False
         self.testSummary = (
             TestSummary.builder()
             .step("Open the GUI")
@@ -249,6 +153,7 @@ class TestGUIPanels:
             gui = SNAPRedGUI(translucentBackground=True)
             gui.show()
             qtbot.addWidget(gui)
+            self.testSummary.SUCCESS()
 
             """
             SNAPRedGUI owns the following widgets:
@@ -269,7 +174,6 @@ class TestGUIPanels:
             """
 
             # Open the calibration panel:
-            # QPushButton* button = pWin->findChild<QPushButton*>("Button name");
             qtbot.mouseClick(gui.calibrationPanelButton, QtCore.Qt.LeftButton)
             if len(exceptions):
                 raise InterruptWithBlock
@@ -292,13 +196,14 @@ class TestGUIPanels:
             actionCompleted = (
                 calibrationPanel.presenter.normalizationCalibrationWorkflow.workflow.presenter.actionCompleted
             )
-            ###
 
             # node-tab indices: (0) request view, (1) tweak-peak view, and (3) save view
             workflowNodeTabs = normalizationCalibrationWidget.findChild(QTabWidget, "nodeTabs")
 
             requestView = workflowNodeTabs.currentWidget().view
             assert isinstance(requestView, NormalizationRequestView)
+            requestView.litemodeToggle.setState(False)
+            self.testSummary.SUCCESS()
 
             # Verify tweak peak and save tabs are disabled
 
@@ -306,157 +211,102 @@ class TestGUIPanels:
             # and verify the 2 corresponding msg boxes show up.
             # Repeat for Background Run number box
 
-            # The expected msg is set so that the test should fail, but it fails later
-            # patch log-warnings QMessage box: runs using `QMessageBox.exec`.
-            # self._customlogWarningsMessageBox = mock.patch(
-            #     "qtpy.QtWidgets.QMessageBox.exec",
-            #     lambda self, *args, **kwargs: QMessageBox.Ok
-            #     if (
-            #         "The backend has encountered warning(s)" in self.text()
-            #         and "Run number -2 must be a positive integer" in self.detailedText()
-            #     )
-            #     else pytest.fail(
-            #         "unexpected QMessageBox.exec:"
-            #         + f"    args: {args}"
-            #         + f"    kwargs: {kwargs}"
-            #         + f"    text: '{self.text()}'"
-            #         + f"    detailed text: '{self.detailedText()}'",
-            #         pytrace=True,
-            #     ),
-            # )
-            testMock = MockQMessageBox()
-            self._customlogWarningsMessageBox = testMock.exec(testMock, ref=self, msg="it failed")
-            self._customlogWarningsMessageBox.start()
-            requestView.runNumberField.setText("-1")
-            qtbot.keyPress(requestView.runNumberField.field, Qt.Key_Enter)
-            qtbot.wait(1000)
-            self._customlogWarningsMessageBox.stop()
-            # expect error msg
+            self._logWarningsMessageBox.stop()
+            qtbot.wait(100)
+            msg = "Run number -1 must be a positive integer"
 
+            # @staticmethod # could also be an instance method, if you need to use the "self" for something,
+            # but right now you're not using it!
+            def mock2(msg):
+                # this creates the closure, which includes `msg` but does _not_ include `self_`.
+                def _mockExec(self_):
+                    return (
+                        QMessageBox.Ok
+                        if ("The backend has encountered warning(s)" in self_.text() and msg in self_.detailedText())
+                        else (print(f"Expected warning not found:  {msg}")),
+                    )
+
+                return mock.Mock(side_effect=_mockExec)
+
+            mp = mock.patch("qtpy.QtWidgets.QMessageBox.exec", mock2(msg))
+            mp.start()
+
+            # Code that causes warning box to show up
+            requestView.runNumberField.setText("-2")
+            qtbot.keyPress(requestView.runNumberField.field, Qt.Key_Enter)
+            qtbot.wait(500)
+
+            assert len(exceptions) == 0
+            assert mp.start().call_count == 1
+            # So the whole test does not run
+            assert False  # noqa PT015
+
+            testMock = MockQMessageBox()
+            msg = "Run number 1 is below minimum value"
+            self._customlogWarningsMessageBox = testMock.exec(testMock, ref=self, msg=msg)
+            self._customlogWarningsMessageBox.start()
             requestView.runNumberField.setText("1")
             qtbot.keyPress(requestView.runNumberField.field, Qt.Key_Enter)
-            qtbot.wait(1000)
-            # expect error msg
+            qtbot.wait(100)
+            assert len(exceptions) == 0
+            self._customlogWarningsMessageBox.stop()
 
+            testMock = MockQMessageBox()
+            msg = "Run number -1 must be a positive integer"
+            self._customlogWarningsMessageBox = testMock.exec(testMock, ref=self, msg=msg)
+            self._customlogWarningsMessageBox.start()
             requestView.backgroundRunNumberField.setText("-1")
             qtbot.keyPress(requestView.backgroundRunNumberField.field, Qt.Key_Enter)
-            qtbot.wait(1000)
-            # expect error msg
+            qtbot.wait(100)
+            assert len(exceptions) == 0
+            self._customlogWarningsMessageBox.stop()
 
+            testMock = MockQMessageBox()
+            msg = "Run number 1 is below minimum value"
+            self._customlogWarningsMessageBox = testMock.exec(testMock, ref=self, msg=msg)
+            self._customlogWarningsMessageBox.start()
             requestView.backgroundRunNumberField.setText("1")
             qtbot.keyPress(requestView.backgroundRunNumberField.field, Qt.Key_Enter)
-            qtbot.wait(1000)
-            # expect error msg
+            qtbot.wait(100)
+            assert len(exceptions) == 0
+            self._customlogWarningsMessageBox.stop()
 
             # Enter 58810 for run number and 58813 for background and click continue
-
+            mockCritical = MockQMessageBox()
+            msg = "Please select a sample"
+            self._customlogCriticalMessageBox = mockCritical.critical(mockCritical, msg=msg)
+            self._customlogCriticalMessageBox.start()
             requestView.runNumberField.setText("58810")
             requestView.backgroundRunNumberField.setText("58813")
             qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+            qtbot.wait(100)
 
             # Verify error msg box to select sample shows up
+            self._customlogCriticalMessageBox.stop()
+            assert len(exceptions) == 0
 
             # Select Vanadium Cylinder as sample and click continue
+            mockCritical = MockQMessageBox()
+            msg = "Please select a grouping file"
+            self._customlogCriticalMessageBox = mockCritical.critical(mockCritical, msg=msg)
+            self._customlogCriticalMessageBox.start()
             requestView.sampleDropdown.setCurrentIndex(3)
             assert requestView.sampleDropdown.currentIndex() == 3
             assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
             qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+            qtbot.wait(100)
 
             # Verify error msg box to select grouping shows up
+            self._customlogCriticalMessageBox.stop()
+            assert len(exceptions) == 0
 
             # Select column grouping and click continue
+            qtbot.wait(100)
             requestView.groupingFileDropdown.setCurrentIndex(0)
+            qtbot.wait(100)
             assert requestView.groupingFileDropdown.currentIndex() == 0
             assert requestView.groupingFileDropdown.currentText() == "Column"
-            qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-
-            # On tweak peaks tab, test each text field(3 of these) by putting non numeric chars and verify error msg
-            tweakPeakView = workflowNodeTabs.currentWidget().view
-
-            tweakPeakView.smoothingSlider.field.setValue("a")
-            # expect error msg
-            tweakPeakView.fieldXtalDMin.setText("a")
-            # expect error msg
-            tweakPeakView.fieldXtalDMax.setText("a")
-            # expect error msg
-
-            qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
-            qtbot.wait(5000)
-
-            # Then set negative values and verify errors on recalculate
-            tweakPeakView.smoothingSlider.field.setValue("-1")
-            # expect error msg
-            tweakPeakView.fieldXtalDMin.setText("-1")
-            # expect error msg
-            tweakPeakView.fieldXtalDMax.setText("-1")
-            # expect error msg
-
-            qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
-            qtbot.wait(5000)
-
-            # Set "0" on smoothing param, should error(maybe crash?)
-            tweakPeakView.smoothingSlider.field.setValue("0")
-            # expect error msg
-            qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
-            qtbot.wait(5000)
-
-            # Set Dmin to 1, recalculate
-            qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
-            qtbot.wait(5000)
-
-            # Set Dmax to 2.8, recalculate
-            qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
-            qtbot.wait(5000)
-
-            # check smoothing is logarithmic, go to saving tab
-            qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
-            qtbot.wait(5000)
-            qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
-            qtbot.wait(5000)
-
-            with qtbot.waitSignal(actionCompleted, timeout=60000):
-                qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-            qtbot.waitUntil(
-                lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationSaveView), timeout=60000
-            )
-            saveView = workflowNodeTabs.currentWidget().view
-
-            # Do error checking on all text fields
-
-            # Set Comments to "This is a test"
-            saveView.fieldComments.setText("This is a test")
-
-            # Set author to "Test"
-            saveView.fieldAuthor.setText("Test")
-
-            # Finish and observe "Workflow complete"
-            #    continue in order to save workspaces and to finish the workflow
-            with qtbot.waitSignal(actionCompleted, timeout=60000):
-                qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-
-            #   `ActionPrompt.prompt("..The workflow has completed successfully..)` gives immediate mocked response:
-            #      Here we still need to wait until the ADS cleanup has occurred,
-            #      or else it will happen in the middle of the next workflow. :(
-            qtbot.waitUntil(
-                lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationRequestView), timeout=10000
-            )
-
-            # Verify NormalizationIndex.json is updated
-
-            # Verify 5 output files created
-
-            #    set "Run Number", "Background run number":
-            requestView.runNumberField.setText("58882")
-            requestView.backgroundRunNumberField.setText("58882")
-
-            requestView.litemodeToggle.setState(False)
-
-            #    set all dropdown selections, but make sure that the dropdown contents are as expected
-            requestView.sampleDropdown.setCurrentIndex(3)
-            assert requestView.sampleDropdown.currentIndex() == 3
-            assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
-
-            #    execute the request
+            self.testSummary.SUCCESS()
 
             # TODO: make sure that there's no initialized state => abort the test if there is!
             #   At the moment, we preserve some options here to speed up development.
@@ -511,53 +361,149 @@ class TestGUIPanels:
                 questionMessageBox.stop()
                 successPrompt.stop()
 
-            warningMessageBox = mock.patch(  # noqa: PT008
-                "qtpy.QtWidgets.QMessageBox.warning",
-                lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
-            )
-            warningMessageBox.start()
+            testMock = MockQMessageBox()
+            msg = "No valid FocusGroups were specified for mode: 'lite'"
+            self._logWarningsMessageBox = testMock.exec(testMock, ref=self, msg=msg)
+            self._logWarningsMessageBox.start()
 
-            #    (2) execute the normalization workflow
             with qtbot.waitSignal(actionCompleted, timeout=60000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
             qtbot.waitUntil(
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationTweakPeakView), timeout=60000
             )
-            warningMessageBox.stop()
+            qtbot.wait(100)
+            self.testSummary.SUCCESS()
+
+            # On tweak peaks tab, test each text field(3 of these) by putting non numeric chars and verify error msg
             tweakPeakView = workflowNodeTabs.currentWidget().view
+            self._logWarningsMessageBox.stop()
 
-            #    set "Smoothing", "xtal dMin", "xtal dMax", "intensity threshold", and "groupingDropDown"
-            tweakPeakView.smoothingSlider.field.setValue("0.4")
-            tweakPeakView.fieldXtalDMin.setText("0.4")
-            tweakPeakView.fieldXtalDMax.setText("90.0")
+            testMock = MockQMessageBox()
+            msg = "Smoothing parameter must be a numerical value"
+            self._logWarningsMessageBox = testMock.warning(testMock, msg=msg)
+            self._logWarningsMessageBox.start()
+            tweakPeakView.smoothingSlider.field.setValue("a")
+            qtbot.wait(100)
+            self._logWarningsMessageBox.stop()
+            assert len(exceptions) == 0
 
-            #    See comment at prevous "groupingFileDropdown".
-            qtbot.wait(1000)
-            tweakPeakView.groupingFileDropdown.setCurrentIndex(0)
-            assert tweakPeakView.groupingFileDropdown.currentIndex() == 0
-            assert tweakPeakView.groupingFileDropdown.currentText() == "Column"
+            testMock = MockQMessageBox()
+            msg = "One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid:\
+                    could not convert string to float: 'a'"
+            self._logWarningsMessageBox = testMock.warning(testMock, msg=msg)
+            self._logWarningsMessageBox.start()
+            tweakPeakView.fieldXtalDMin.setText("a")
+            qtbot.wait(100)
+            self._logWarningsMessageBox.stop()
+            assert len(exceptions) == 0
 
-            #    recalculate using the new values
-            #    * recalculate => peak display is recalculated,
-            #      not the entire calibration.
+            testMock = MockQMessageBox()
+            msg = "One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid:\
+                    could not convert string to float: 'a'"
+            self._logWarningsMessageBox = testMock.warning(testMock, msg=msg)
+            self._logWarningsMessageBox.start()
+            tweakPeakView.fieldXtalDMax.setText("a")
+            qtbot.wait(100)
+            self._logWarningsMessageBox.stop()
+            assert len(exceptions) == 0
+
+            testMock = MockQMessageBox()
+            msg = "One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid:\
+                    could not convert string to float: 'a'"
+            self._logWarningsMessageBox = testMock.warning(testMock, msg=msg)
+            self._logWarningsMessageBox.start()
+            qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
+            qtbot.wait(5000)
+            self._logWarningsMessageBox.stop()
+            assert len(exceptions) == 0
+
+            # Then set negative values and verify errors on recalculate
+            testMock = MockQMessageBox()
+            msg = "Smoothing parameter must be a nonnegative number"
+            self._logWarningsMessageBox = testMock.warning(testMock, msg=msg)
+            self._logWarningsMessageBox.start()
+            tweakPeakView.smoothingSlider.field.setValue("-1")
+            qtbot.wait(100)
+            self._logWarningsMessageBox.stop()
+            assert len(exceptions) == 0
+
+            tweakPeakView.fieldXtalDMin.setText("-1")
+            qtbot.wait(100)
+            # expect error msg
+            tweakPeakView.fieldXtalDMax.setText("-1")
+            qtbot.wait(100)
+            # expect error msg
+
+            testMock = MockQMessageBox()
+            msg = "Are you sure you want to do this? This may cause memory overflow or may take a long time to compute."
+            self._logWarningsMessageBox = testMock.warning(testMock, msg=msg)
+            self._logWarningsMessageBox.start()
+            mockCritical = MockQMessageBox()
+            msg = "CrystallographicInfoAlgorithm  -- has failed -- dMin cannot be <= 0."
+            self._customlogCriticalMessageBox = mockCritical.critical(mockCritical, msg=msg)
+            self._customlogCriticalMessageBox.start()
+            qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
+            qtbot.wait(5000)
+            self._logWarningsMessageBox.stop()
+            self._customlogCriticalMessageBox.stop()
+            assert len(exceptions) == 0
+
+            # # Set "0" on smoothing param, should error(maybe crash?)
+            # tweakPeakView.smoothingSlider.field.setValue("0")
+            # qtbot.wait(1000)
+            # # expect error msg
+            # qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
+            # qtbot.wait(5000)
+
+            # Set Dmin to 1, Dmax to 2.8, recalculate
+            tweakPeakView.fieldXtalDMin.setText("1")
+            tweakPeakView.fieldXtalDMax.setText("2.8")
             qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
             qtbot.wait(5000)
 
-            #    continue to the next panel
+            # check smoothing is logarithmic, go to saving tab
+            # qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
+            # qtbot.wait(5000)
+            # qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
+            # qtbot.wait(5000)
+
             with qtbot.waitSignal(actionCompleted, timeout=60000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
             qtbot.waitUntil(
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationSaveView), timeout=60000
             )
+            self.testSummary.SUCCESS()
             saveView = workflowNodeTabs.currentWidget().view
 
-            #    set "author" and "comment"
-            saveView.fieldAuthor.setText("kat")
-            saveView.fieldComments.setText("calibration-panel integration test")
+            # Do error checking on all text fields
 
+            # Set author to "Test"You must specify the author
+            mockCritical = MockQMessageBox()
+            msg = "You must specify the author"
+            self._customlogCriticalMessageBox = mockCritical.critical(mockCritical, msg=msg)
+            self._customlogCriticalMessageBox.start()
+            qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+            qtbot.wait(100)
+            self._customlogCriticalMessageBox.stop()
+            assert len(exceptions) == 0
+            saveView.fieldAuthor.setText("Test")
+
+            # Set Comments to "This is a test"You must add comments
+            mockCritical = MockQMessageBox()
+            msg = "You must add comments"
+            self._customlogCriticalMessageBox = mockCritical.critical(mockCritical, msg=msg)
+            self._customlogCriticalMessageBox.start()
+            qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+            qtbot.wait(100)
+            self._customlogCriticalMessageBox.stop()
+            assert len(exceptions) == 0
+            saveView.fieldComments.setText("This is a test")
+
+            # Finish and observe "Workflow complete"
             #    continue in order to save workspaces and to finish the workflow
             with qtbot.waitSignal(actionCompleted, timeout=60000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+            self.testSummary.SUCCESS()
 
             #   `ActionPrompt.prompt("..The workflow has completed successfully..)` gives immediate mocked response:
             #      Here we still need to wait until the ADS cleanup has occurred,
@@ -566,12 +512,26 @@ class TestGUIPanels:
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationRequestView), timeout=10000
             )
 
+            # Verify NormalizationIndex.json is updated
+
+            # Verify 5 output files created
+            qtbot.wait(5000)
+            folderDir = str(tmpCalibrationHomeDirectory) + "/04bd2c53f6bf6754/native/normalization/v_0000"
+            contents = os.listdir(folderDir)
+
+            assert "NormalizationParameters.json" in contents
+            assert "NormalizationRecord.json" in contents
+            assert "dsp_column_058810_fitted_van_corr_v0000.nxs" in contents
+            assert "tof_column_s+f-vanadium_058810_v0000.nxs" in contents
+            assert "tof_unfoc_058810_raw_van_corr_v0000.nxs" in contents
+
             ###############################
             ########### END OF TEST #######
             ###############################
 
             calibrationPanel.widget.close()
             gui.close()
+            self.testSummary.SUCCESS()
 
         #####################################################################
         # Force a printout of information about any exceptions that happened#

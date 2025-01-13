@@ -79,7 +79,10 @@ class SmoothingSlider(QWidget):
             )
             return
         s = float(text)
-        v = math.log10(s)
+        if s == 0:
+            v = 0
+        else:
+            v = math.log10(s)
         sliderValue = int(v * 100)
         self._slider.setValue(sliderValue)
 

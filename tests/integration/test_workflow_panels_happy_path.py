@@ -15,12 +15,12 @@ from qtpy.QtWidgets import (
     QTabWidget,
 )
 from util.Config_helpers import Config_override
+from util.TestSummary import TestSummary
 
 # I would prefer not to access `LocalDataService` within an integration test,
 #   however, for the moment, the reduction-data output relocation fixture is defined in the current file.
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
-from snapred.meta.Enum import StrEnum
 from snapred.ui.main import SNAPRedGUI, prependDataSearchDirectories
 from snapred.ui.view import InitializeStateCheckView
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
@@ -38,63 +38,6 @@ from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
 
 class InterruptWithBlock(BaseException):
     pass
-
-
-class TestSummary:
-    def __init__(self):
-        self._index = 0
-        self._steps = []
-
-    def SUCCESS(self):
-        step = self._steps[self._index]
-        step.status = self.TestStep.StepStatus.SUCCESS
-        self._index += 1
-
-    def FAILURE(self):
-        step = self._steps[self._index]
-        step.status = self.TestStep.StepStatus.FAILURE
-        self._index += 1
-
-    def isComplete(self):
-        return self._index == len(self._steps)
-
-    def isFailure(self):
-        return any(step.status == self.TestStep.StepStatus.FAILURE for step in self._steps)
-
-    def builder():
-        return TestSummary.TestSummaryBuilder()
-
-    def __str__(self):
-        longestStatus = max(len(step.status) for step in self._steps)
-        longestName = max(len(step.name) for step in self._steps)
-        tableCapStr = "#" * (longestName + longestStatus + 6)
-        tableStr = (
-            f"\n{tableCapStr}\n"
-            + "\n".join(f"# {step.name:{longestName}}: {step.status:{longestStatus}} #" for step in self._steps)
-            + f"\n{tableCapStr}\n"
-        )
-        return tableStr
-
-    class TestStep:
-        class StepStatus(StrEnum):
-            SUCCESS = "SUCCESS"
-            FAILURE = "FAILURE"
-            INCOMPLETE = "INCOMPLETE"
-
-        def __init__(self, name: str):
-            self.name = name
-            self.status = self.StepStatus.INCOMPLETE
-
-    class TestSummaryBuilder:
-        def __init__(self):
-            self.summary = TestSummary()
-
-        def step(self, name: str):
-            self.summary._steps.append(TestSummary.TestStep(name))
-            return self
-
-        def build(self):
-            return self.summary
 
 
 @pytest.fixture
