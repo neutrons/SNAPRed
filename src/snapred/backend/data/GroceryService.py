@@ -522,7 +522,7 @@ class GroceryService:
         :rtype: bool
         """
         # A non-trivial mask is a mask that has a non-zero number of masked pixels.
-        
+
         if not self.mantidSnapper.mtd.doesExist(pixelMask):
             return False
         else:
