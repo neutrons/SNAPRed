@@ -517,11 +517,12 @@ class GroceryService:
         """
         Check if a pixel mask is valid.
         :param pixelMask: the name of the MaskWorkspace to check
-        :type pixelMasl: Workspacename
-        :return: True if pixelMask is a non-empty MaskWorkspace in the ADS.  False otherwise.
+        :type pixelMask: Workspacename
+        :return: True if pixelMask is a non-trivial MaskWorkspace in the ADS.  False otherwise.
         :rtype: bool
         """
-
+        # A non-trivial mask is a mask that has a non-zero number of masked pixels.
+        
         if not self.mantidSnapper.mtd.doesExist(pixelMask):
             return False
         else:

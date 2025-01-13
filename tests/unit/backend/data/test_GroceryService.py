@@ -1904,7 +1904,7 @@ class TestGroceryService(unittest.TestCase):
         assert not mtd.doesExist(nonexistent)
         assert not self.instance.checkPixelMask(nonexistent)
 
-        # raises an error if workspace not a mask workspace
+        # raises an error if the workspace is not a MaskWorkspace
         notamask = mtd.unique_name(prefix="_mask_check_")
         CreateSampleWorkspace(
             OutputWorkspace=notamask,

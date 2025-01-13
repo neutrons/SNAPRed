@@ -699,7 +699,7 @@ class TestReductionServiceMasks:
         request = ReductionRequest(
             runNumber=self.runNumber1,
             useLiteMode=self.useLiteMode,
-            timestamp=timestamp + 1,
+            timestamp=timestamp,
             pixelMasks=masks,
         )
 
