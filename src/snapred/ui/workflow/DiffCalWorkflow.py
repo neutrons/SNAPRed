@@ -253,6 +253,8 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.prevXtalDMax = payload.crystalDMax  # NOTE set in __init__ to defaults
         self.prevFWHM = payload.fwhmMultipliers  # NOTE set in __init__ to defaults
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
+
+        # TODO: These need to be moved to the workspace name generator
         self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}_pre"
 
         self.residualWorkspace = f"diffcal_residual_{self.runNumber}"

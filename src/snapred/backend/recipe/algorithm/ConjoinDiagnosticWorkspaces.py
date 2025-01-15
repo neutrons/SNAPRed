@@ -128,6 +128,7 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
             InputWorkspace1=outws,
             InputWorkspace2=tmpws,
             CheckOverlapping=False,
+            CheckMatchingBins=False,
         )
         if self.autoDelete and inws in mtd:
             DeleteWorkspace(inws)
