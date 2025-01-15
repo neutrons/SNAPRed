@@ -1,6 +1,5 @@
 from unittest import mock
 
-import pytest
 from qtpy.QtCore import Slot
 from qtpy.QtWidgets import (
     QMessageBox,
@@ -15,55 +14,39 @@ class MockQMessageBox(QWidget):
         raise Exception(msg)
 
     @staticmethod
-    def exec(self, ref, msg: str):  # noqa: ARG004
-        return mock.patch(
-            "qtpy.QtWidgets.QMessageBox.exec",
-            lambda ref, *args, **kwargs: QMessageBox.Ok  # noqa: ARG005
-            if ("The backend has encountered warning(s)" in ref.text() and msg in ref.detailedText())
-            else (self.fail(f"Expected error does not match: {msg}")),
-        )
+    def exec(msg):
+        myCounterMock = mock.Mock()
 
-    @staticmethod
-    def mockExec(_self, msg):
-        def _myMessageBoxExecMock(*args, **kwargs):
+        def _mockExec(self_):
+            myCounterMock(self_)
             return (
                 QMessageBox.Ok
-                if ("The backend has encountered warning(s)" in _self.text() and msg in _self.detailedText())
-                else pytest.fail(
-                    "unexpected QMessageBox.exec:"
-                    + f"    args: {args}"
-                    + f"    kwargs: {kwargs}"
-                    + f"    text: '{_self.text()}'"
-                    + f"    detailed text: '{_self.detailedText()}'",
-                    pytrace=False,
-                )
+                if ("The backend has encountered warning(s)" in self_.text() and msg in self_.detailedText())
+                else (MockQMessageBox().fail(f"Expected warning not found:  {msg}")),
             )
 
-        return mock.patch("qtpy.QtWidgets.QMessageBox.exec", side_effect=_myMessageBoxExecMock)
+        return mock.patch("qtpy.QtWidgets.QMessageBox.exec", _mockExec), myCounterMock
 
     @staticmethod
-    def critical(self, msg: str):  # noqa: ARG004
-        return mock.patch(
-            "qtpy.QtWidgets.QMessageBox.critical",
-            lambda *args, **kwargs: QMessageBox.Ok  # noqa: ARG005
-            if msg in args[2]
-            else (self.fail(f"Expected error does not match: {msg}")),
-        )
+    def critical(msg: str):  # noqa: ARG004
+        myCounterMock = mock.Mock()
+
+        def _mockCritical(*args):
+            myCounterMock(*args)
+            return (
+                QMessageBox.Ok if msg in args[2] else (MockQMessageBox().fail(f"Expected error does not match: {msg}")),
+            )
+
+        return mock.patch("qtpy.QtWidgets.QMessageBox.critical", _mockCritical), myCounterMock
 
     @staticmethod
-    def warning(self, msg: str):  # noqa: ARG004
-        return mock.patch(
-            "qtpy.QtWidgets.QMessageBox.warning",
-            lambda *args, **kwargs: QMessageBox.Ok  # noqa: ARG005
-            if msg in args[2]
-            else (self.fail(f"Expected error does not match: {msg}")),
-        )
+    def warning(msg: str):  # noqa: ARG004
+        myCounterMock = mock.Mock()
 
-    @staticmethod
-    def warningNo(self, msg: str):  # noqa: ARG004
-        return mock.patch(
-            "qtpy.QtWidgets.QMessageBox.warning",
-            lambda *args, **kwargs: QMessageBox.No  # noqa: ARG005
-            if msg in args[2]
-            else (self.fail(f"Expected error does not match: {msg}")),
-        )
+        def _mockWarning(*args):
+            myCounterMock(*args)
+            return (
+                QMessageBox.Ok if msg in args[2] else (MockQMessageBox().fail(f"Expected error does not match: {msg}")),
+            )
+
+        return mock.patch("qtpy.QtWidgets.QMessageBox.warning", _mockWarning), myCounterMock
