@@ -50,10 +50,6 @@ class Worker(QObject):
             self.success.emit(results.code < ResponseCode.MAX_OK)
             self.finished.emit()
         else:
-            if self._dryRun:
-                self.result.emit(SNAPResponse(code=ResponseCode.OK))
-                self.success.emit(True)
-                self.finished.emit()
             raise ValueError("Worker target must return a SNAPResponse object.")
 
 

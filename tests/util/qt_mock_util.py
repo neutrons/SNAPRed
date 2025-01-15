@@ -34,7 +34,9 @@ class MockQMessageBox(QWidget):
         def _mockCritical(*args):
             myCounterMock(*args)
             return (
-                QMessageBox.Ok if msg in args[2] else (MockQMessageBox().fail(f"Expected error does not match: {msg}")),
+                QMessageBox.Ok
+                if msg in args[2]
+                else (MockQMessageBox().fail(f"Expected error does not match: {args[2]}")),
             )
 
         return mock.patch("qtpy.QtWidgets.QMessageBox.critical", _mockCritical), myCounterMock
@@ -46,7 +48,9 @@ class MockQMessageBox(QWidget):
         def _mockWarning(*args):
             myCounterMock(*args)
             return (
-                QMessageBox.Ok if msg in args[2] else (MockQMessageBox().fail(f"Expected error does not match: {msg}")),
+                QMessageBox.Ok
+                if msg in args[2]
+                else (MockQMessageBox().fail(f"Expected error does not match: {args[2]}")),
             )
 
         return mock.patch("qtpy.QtWidgets.QMessageBox.warning", _mockWarning), myCounterMock

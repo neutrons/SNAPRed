@@ -215,8 +215,8 @@ class TestGUIPanels:
             self._logWarningsMessageBox[0].stop()
             qtbot.wait(100)
 
-            msg = "Run number -1 must be a positive integer"
-            mp = MockQMessageBox().exec(msg)
+            msg = "Invalid run number: -1"
+            mp = MockQMessageBox().critical(msg)
             with mp[0]:
                 requestView.runNumberField.setText("-1")
                 qtbot.keyPress(requestView.runNumberField.field, Qt.Key_Enter)
@@ -224,8 +224,8 @@ class TestGUIPanels:
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
 
-            msg = "Run number 1 is below minimum value"
-            mp = MockQMessageBox().exec(msg)
+            msg = "Invalid run number: 1"
+            mp = MockQMessageBox().critical(msg)
             with mp[0]:
                 requestView.runNumberField.setText("1")
                 qtbot.keyPress(requestView.runNumberField.field, Qt.Key_Enter)
@@ -233,25 +233,23 @@ class TestGUIPanels:
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
 
-            # TODO: Fix warning box not showing up for background run number field
-            msg = "Run number -1 must be a positive integer"
-            mp = MockQMessageBox().exec(msg)
+            msg = "Invalid run number: -1"
+            mp = MockQMessageBox().critical(msg)
             with mp[0]:
                 requestView.backgroundRunNumberField.setText("-1")
                 qtbot.keyPress(requestView.backgroundRunNumberField.field, Qt.Key_Enter)
                 qtbot.wait(100)
                 assert len(exceptions) == 0
-                # assert mp[1].call_count == 1
+                assert mp[1].call_count == 1
 
-            # TODO: Fix warning box not showing up for background run number field
-            msg = "Run number 1 is below minimum value"
-            mp = MockQMessageBox().exec(msg)
+            msg = "Invalid run number: 1"
+            mp = MockQMessageBox().critical(msg)
             with mp[0]:
                 requestView.backgroundRunNumberField.setText("1")
                 qtbot.keyPress(requestView.backgroundRunNumberField.field, Qt.Key_Enter)
                 qtbot.wait(100)
                 assert len(exceptions) == 0
-                # assert mp[1].call_count == 1
+                assert mp[1].call_count == 1
 
             # Enter 58810 for run number and 58813 for background and click continue
             msg = "Please select a sample"
@@ -366,31 +364,33 @@ class TestGUIPanels:
                 assert len(exceptions) == 0
                 assert mpWarn[1].call_count == 1
 
-            # TODO: Fix fieldXtalDMin not actually throwing error
             msg = (
                 "One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid: "
                 + "could not convert string to float: 'a'"
             )
             mpWarn = MockQMessageBox().warning(msg)
             with mpWarn[0]:
+                tweakPeakView.smoothingSlider.field.setValue("0")
                 tweakPeakView.fieldXtalDMin.setText("a")
+                qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(100)
                 mpWarn[0].stop()
                 assert len(exceptions) == 0
-                # assert mpWarn[1].call_count == 1
+                assert mpWarn[1].call_count == 1
 
-            # TODO: Fix fieldXtalDMax not actually throwing error
             msg = (
                 "One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid: "
                 + "could not convert string to float: 'a'"
             )
             mpWarn = MockQMessageBox().warning(msg)
             with mpWarn[0]:
+                tweakPeakView.fieldXtalDMin.setText("0.1")
                 tweakPeakView.fieldXtalDMax.setText("a")
+                qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(100)
                 mpWarn[0].stop()
                 assert len(exceptions) == 0
-                # assert mpWarn[1].call_count == 1
+                assert mpWarn[1].call_count == 1
 
             msg = (
                 "One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid: "
@@ -408,19 +408,38 @@ class TestGUIPanels:
             msg = "Smoothing parameter must be a nonnegative number"
             mpWarn = MockQMessageBox().warning(msg)
             with mpWarn[0]:
+                tweakPeakView.fieldXtalDMax.setText("1")
                 tweakPeakView.smoothingSlider.field.setValue("-1")
                 qtbot.wait(100)
                 mpWarn[0].stop()
                 assert len(exceptions) == 0
                 assert mpWarn[1].call_count == 1
 
-            # TODO: Fix error not popping up when putting negative number
-            tweakPeakView.fieldXtalDMin.setText("-1")
-            qtbot.wait(100)
-            # expect error msg
-            tweakPeakView.fieldXtalDMax.setText("-1")
-            qtbot.wait(100)
-            # expect error msg
+            msg = (
+                "Are you sure you want to do this?"
+                + " This may cause memory overflow or may take a long time to compute."
+            )
+            mpWarn = MockQMessageBox().warning(msg)
+            msgCrit = "CrystallographicInfoAlgorithm  -- has failed -- dMin cannot be <= 0."
+            mpCrit = MockQMessageBox().critical(msgCrit)
+            with mpWarn[0], mpCrit[0]:
+                tweakPeakView.fieldXtalDMin.setText("-1")
+                qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
+                qtbot.wait(100)
+                mpWarn[0].stop()
+                assert len(exceptions) == 0
+                assert mpWarn[1].call_count == 1
+
+            msg = "The minimum crystal d-spacing exceeds the maximum (-1.0). Please enter a smaller value"
+            mpWarn = MockQMessageBox().warning(msg)
+            with mpWarn[0]:
+                tweakPeakView.fieldXtalDMin.setText("0.1")
+                tweakPeakView.fieldXtalDMax.setText("-1")
+                qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
+                qtbot.wait(100)
+                mpWarn[0].stop()
+                assert len(exceptions) == 0
+                assert mpWarn[1].call_count == 1
 
             msgWarn = (
                 "Are you sure you want to do this? This may cause memory overflow or may take a long time to compute."
@@ -429,6 +448,7 @@ class TestGUIPanels:
             msgCrit = "CrystallographicInfoAlgorithm  -- has failed -- dMin cannot be <= 0."
             mpCrit = MockQMessageBox().critical(msgCrit)
             with mpWarn[0], mpCrit[0]:
+                tweakPeakView.fieldXtalDMin.setText("-1")
                 qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(500)
                 assert len(exceptions) == 0
