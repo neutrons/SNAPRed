@@ -139,9 +139,9 @@ class LiteDataCreationAlgo(PythonAlgorithm):
 
         # Calculate ΔΤ as the negative of the minimum deltaDOverD
         self.mantidSnapper.executeQueue()
-        # resolutionWS = self.mantidSnapper.mtd[resolutionWorkspaceName]
-        # deltaDOverD = resolutionWS.extractY().flatten()
-        # deltaT = -min(deltaDOverD)
+        resolutionWS = self.mantidSnapper.mtd[resolutionWorkspaceName]
+        deltaDOverD = resolutionWS.extractY().flatten()
+        deltaT = -min(deltaDOverD)
 
         # TODO how can this be removed?
         # replace instrument definition with lite
@@ -157,7 +157,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             f"Compressing events in {outputWorkspaceName}...",
             InputWorkspace=outputWorkspaceName,
             OutputWorkspace=outputWorkspaceName,
-            # Tolerance=deltaT, # NOTE: In the latest version of Mantid (January 2025) this causes issues.
+            Tolerance=deltaT,
         )
 
         if autoDelete is True:
