@@ -3,6 +3,7 @@ channels:
 - conda-forge
 - default
 - mantid-ornl/label/rc
+- mantid/label/nightly
 dependencies:
 - python=3.10
 - pip
