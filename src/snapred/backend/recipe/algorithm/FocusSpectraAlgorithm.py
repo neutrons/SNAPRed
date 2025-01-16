@@ -127,6 +127,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
                 Delta=self.dBin,
                 OutputWorkspace=self.outputWSName,
                 PreserveEvents=False,
+                FullBinsOnly=True,
             )
 
         self.mantidSnapper.executeQueue()
