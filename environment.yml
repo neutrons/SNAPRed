@@ -2,12 +2,12 @@ name: SNAPRed
 channels:
 - conda-forge
 - default
-- mantid/label/nightly
+- mantid-ornl/label/rc
 dependencies:
 - python=3.10
 - pip
 - pydantic>=2.7.3,<3
-- mantidworkbench>=6.11.20250101
+- mantidworkbench=6.11.0.3rc2
 - qtpy
 - pre-commit
 - pytest

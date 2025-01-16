@@ -157,7 +157,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             f"Compressing events in {outputWorkspaceName}...",
             InputWorkspace=outputWorkspaceName,
             OutputWorkspace=outputWorkspaceName,
-            Tolerance=deltaT,
+            # Tolerance=deltaT, # NOTE: In the latest version of Mantid (January 2025) this causes issues.
         )
 
         if autoDelete is True:
