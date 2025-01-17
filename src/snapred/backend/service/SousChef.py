@@ -144,18 +144,15 @@ class SousChef(Service):
             return Config["instrument.native.definition.file"]
 
     def prepCrystallographicInfo(self, ingredients: FarmFreshIngredients) -> CrystallographicInfo:
-        if not ingredients.cifPath:
-            samplePath = Path(ingredients.calibrantSamplePath).stem
-            ingredients.cifPath = self.dataFactoryService.getCifFilePath(samplePath)
+        samplePath = Path(ingredients.calibrantSamplePath).stem
+        ingredients.cifPath = self.dataFactoryService.getCifFilePath(samplePath)
         key = (
             ingredients.cifPath,
             ingredients.crystalDBounds.minimum,
             ingredients.crystalDBounds.maximum,
             ingredients.calibrantSamplePath,
         )
-        if key not in self._xtalCache:
-            self._xtalCache[key] = CrystallographicInfoService().ingest(*key)["crystalInfo"]
-        return deepcopy(self._xtalCache[key])
+        return CrystallographicInfoService().ingest(*key)["crystalInfo"]
 
     def prepPeakIngredients(self, ingredients: FarmFreshIngredients) -> PeakIngredients:
         return PeakIngredients(
