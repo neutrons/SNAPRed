@@ -63,7 +63,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         self.groceries = groceries.copy()
         self.sampleWs = groceries["inputWorkspace"]
         self.normalizationWs = groceries.get("normalizationWorkspace", "")
-        self.maskWs = groceries.get("combinedMask", "")
+        self.maskWs = groceries.get("combinedPixelMask", "")
         self.groupingWorkspaces = groceries["groupingWorkspaces"]
 
     def _cloneWorkspace(self, inputWorkspace: str, outputWorkspace: str) -> str:

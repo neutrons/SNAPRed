@@ -1,6 +1,7 @@
 from typing import Dict, List
 
 from mantid.api import (
+    IEventWorkspace,
     IEventWorkspaceProperty,
     MatrixWorkspaceProperty,
     PropertyMode,
@@ -94,7 +95,7 @@ class RemoveSmoothedBackground(PythonAlgorithm):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
         self.outputWorkspaceName = self.getPropertyValue("OutputWorkspace")
         self.focusWorkspace = self.getPropertyValue("GroupingWorkspace")
-        self.isEventWs = mtd[self.inputWorkspaceName].id() == "EventWorkspace"
+        self.isEventWs = isinstance(mtd[self.inputWorkspaceName], IEventWorkspace)
 
     def PyExec(self):
         """
