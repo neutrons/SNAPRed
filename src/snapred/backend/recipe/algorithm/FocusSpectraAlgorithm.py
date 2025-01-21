@@ -7,6 +7,7 @@ from mantid.api import (
     PythonAlgorithm,
     WorkspaceUnitValidator,
 )
+from mantid.dataobjects import GroupingWorkspace
 from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.state.PixelGroup import PixelGroup as Ingredients
@@ -78,7 +79,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         # make sure the input workspace can be reduced by this grouping workspace
         inWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
         groupWS = self.mantidSnapper.mtd[self.getPropertyValue("GroupingWorkspace")]
-        if "Grouping" not in groupWS.id():
+        if not isinstance(groupWS, GroupingWorkspace):
             errors["GroupingWorkspace"] = "Grouping workspace must be an actual GroupingWorkspace"
         elif inWS.getNumberHistograms() == len(groupWS.getGroupIDs()):
             msg = "The data appears to have already been diffraction focused"
@@ -127,6 +128,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
                 Delta=self.dBin,
                 OutputWorkspace=self.outputWSName,
                 PreserveEvents=False,
+                FullBinsOnly=True,
             )
 
         self.mantidSnapper.executeQueue()

@@ -5,19 +5,96 @@
 
 import unittest
 from collections.abc import Sequence
-from typing import Any, Tuple
+from typing import Any, List, Tuple
 
 import numpy
 import numpy as np
-from mantid.api import ITableWorkspace, MatrixWorkspace
+from mantid.api import IEventWorkspace, ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
 from mantid.simpleapi import (
     CreateEmptyTableWorkspace,
     CreateWorkspace,
     DeleteWorkspace,
     ExtractMask,
+    LoadInstrument,
     mtd,
 )
+from util.instrument_helpers import addInstrumentLogs
+
+from snapred.backend.dao.state.DetectorState import DetectorState
+
+
+def createNPixelInstrumentXML(numberOfPixels):
+    """
+    Given a number of pixels, create an instrument XML file with that many pixels.
+    These pixels have no locations and cannot be used for any valid geometry checks.
+    However, they will allow for certain algorithms, such as MaskDetectors to work.
+    """
+    instrumentXML = f"""
+        <instrument xmlns="none"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="none"
+            name="tmp{numberOfPixels}" valid-from="1970-01-01 00:00:00">
+        <!-- Pixel for Detectors-->\n
+        <type name="panel" is="rectangular_detector" type="pixel"
+        xpixels="1" xstart="-0.001" xstep="+0.001"
+        ypixels="1" ystart="-0.078795" ystep="+0.079104" >
+        <properties/>
+        </type>
+    """
+    for n in range(numberOfPixels):
+        instrumentXML += f"""
+            <component type="pixel" idlist="{n}"><location /></component>\n"""
+    for n in range(numberOfPixels):
+        instrumentXML += f"""<idlist idname="{n}"><id val="{n}"/></idlist>\n"""
+    instrumentXML += """
+        <type name="pixel" is="detector">
+        <cuboid id="pixel-shape">
+            <left-front-bottom-point  y="-0.079104" x="-0.0005" z="0.0"/>
+            <left-front-top-point     y="+0.079104" x="-0.0005" z="0.0"/>
+            <left-back-bottom-point   y="-0.079104" x="-0.0005" z="0.0001"/>
+            <right-front-bottom-point y="-0.079104" x="+0.0005" z="0.0"/>
+        </cuboid>
+        <algebra val="pixel-shape"/>
+        </type>
+    """
+    instrumentXML += "</instrument>\n"
+    return instrumentXML
+
+
+def createNPixelWorkspace(wsname, numberOfPixels, detectorState: DetectorState = None):
+    """
+    Given a number of pixels, create an workspace with that many pixels.
+    The instrument on the workspace will have that many pixels defined,
+    but they have no locations or geometry.
+    """
+    CreateWorkspace(
+        OutputWorkspace=wsname,
+        DataX=[0] * numberOfPixels,
+        DataY=[0] * numberOfPixels,
+        NSpec=numberOfPixels,
+    )
+    LoadInstrument(
+        Workspace=wsname,
+        InstrumentName=f"tmp{numberOfPixels}",
+        InstrumentXML=createNPixelInstrumentXML(numberOfPixels),
+        RewriteSpectraMap=True,
+    )
+    if detectorState is None:
+        # if no detector state given, use a default with arbitrary values
+        detectorState = DetectorState(
+            arc=(1, 2),
+            lin=(3, 4),
+            wav=10.0,
+            freq=60.0,
+            guideStat=1,
+        )
+    logs = detectorState.getLogValues()
+    lognames = list(logs.keys())
+    logvalues = list(logs.values())
+    logtypes = ["Number Series"] * len(lognames)
+    addInstrumentLogs(wsname, logNames=lognames, logTypes=logtypes, logValues=logvalues)
+    return mtd[wsname]
 
 
 def createCompatibleDiffCalTable(tableWSName: str, templateWSName: str) -> ITableWorkspace:
@@ -92,6 +169,28 @@ def arrayFromMask(maskWSName: str) -> numpy.ndarray:
     return flags
 
 
+def maskFromArray(mask: List[bool], maskWSname: str, parentWSname=None, detectorState=None):
+    """
+    Create a mask workspace with given name, with the indicated pixels masked.
+    If a parent workspace is passed, create the mask workspace compatible with
+    the parent's instrument.
+    If not, but a detector state is passed, will create a mask and load parameters
+    corresponding to the detector state.
+    """
+
+    nspec = len(mask)
+    if parentWSname is None:
+        parentWSname = mtd.unique_name()
+        createNPixelWorkspace(parentWSname, nspec, detectorState)
+    maskWS = createCompatibleMask(maskWSname, parentWSname)
+    assert len(mask) == maskWS.getNumberHistograms(), "The mask array was incompatible with the parent workspace."
+
+    wkspIndexToMask = np.argwhere(mask == 1)
+    parentWS = mtd[parentWSname]
+    maskSpectra(maskWS, parentWS, wkspIndexToMask)
+    return maskWSname
+
+
 def initializeRandomMask(maskWSName: str, fraction: float) -> MaskWorkspace:
     """
     Initialize an existing mask workspace by masking a random fraction of its values:
@@ -114,7 +213,7 @@ def initializeRandomMask(maskWSName: str, fraction: float) -> MaskWorkspace:
 
 def setSpectraToZero(inputWS: MatrixWorkspace, nss: Sequence[int]):
     # Zero out all spectra in the list of spectra
-    if "EventWorkspace" not in inputWS.id():
+    if not isinstance(inputWS, IEventWorkspace):
         for ns in nss:
             # allow "ragged" case
             zs = np.zeros_like(inputWS.readY(ns))
@@ -137,7 +236,7 @@ def setGroupSpectraToZero(ws: MatrixWorkspace, groupingWS: GroupingWorkspace, gi
     detInfo = ws.detectorInfo()
     for gid in gids:
         dets = groupingWS.getDetectorIDsOfGroup(gid)
-        if "EventWorkspace" not in ws.id():
+        if not isinstance(ws, IEventWorkspace):
             for det in dets:
                 ns = detInfo.indexOf(int(det))
                 # allow "ragged" case
@@ -185,7 +284,6 @@ def mutableWorkspaceClones(
     Clone workspaces so that they can be modified by simultaneously running tests.
     Each cloned workspace will have a name: <unique prefix> + <original workspace name>
     """
-    from mantid.simpleapi import mtd
 
     wss = []
     ws_names = []

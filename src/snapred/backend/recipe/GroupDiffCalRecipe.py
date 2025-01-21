@@ -325,6 +325,7 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
             XMax=self.dMax,
             Delta=self.dBin,
             preserveEvents=keepEvents,
+            FullBinsOnly=True,
         )
 
         if units == "TOF":

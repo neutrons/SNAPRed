@@ -10,9 +10,11 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
+from mantid.testing import assert_almost_equal as wksp_almost_equal
 from util.helpers import (
     arrayFromMask,
     createCompatibleMask,
+    maskFromArray,
 )
 from util.InstaEats import InstaEats
 from util.SculleryBoy import SculleryBoy
@@ -133,6 +135,37 @@ class TestReductionService(unittest.TestCase):
         assert "inputWorkspace" in res
         assert "diffcalWorkspace" in res
         assert "normalizationWorkspace" in res
+
+    def test_fetchReductionGroceries_use_mask(self):
+        """
+        Check that this properly handles using the reduction mask.
+        This actually sets if the mask workspace inside the RECIPE is set.
+        - when a mask is created by prepCombineMask and is non-empty, then should be sent to recipe
+        - otherwise, there should be no mask sent to the recipe
+        """
+        from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
+
+        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
+        self.instance._markWorkspaceMetadata = mock.Mock()
+        self.instance.prepCombinedMask = mock.Mock(return_value=mock.sentinel.mask)
+        self.request.continueFlags = ContinueWarning.Type.UNSET
+
+        rx = ReductionRecipe()
+
+        # situation where mask is true -- ensure mask is set
+        self.instance.groceryService.checkPixelMask = mock.Mock(return_value=True)
+        res = self.instance.fetchReductionGroceries(self.request)
+        res["groupingWorkspaces"] = [mock.sentinel.groupingWS]
+        rx.unbagGroceries(res)
+        assert rx.maskWs == mock.sentinel.mask
+
+        # change mask to be false -- make sure unused
+        self.instance.groceryService.checkPixelMask.return_value = False
+        res = self.instance.fetchReductionGroceries(self.request)
+        res["groupingWorkspaces"] = [mock.sentinel.groupingWS]
+        rx.unbagGroceries(res)
+        assert rx.maskWs == ""
 
     @mock.patch(thisService + "ReductionRecipe")
     def test_reduction(self, mockReductionRecipe):
@@ -652,7 +685,10 @@ class TestReductionServiceMasks:
         # teardown...
         pass
 
-    def test_prepCombinedMask(self):
+    def test_prepCombinedMask_correct(self):
+        """
+        Check that prepCombinedMask correctly combines pixel masks
+        """
         masks = [self.maskWS1, self.maskWS2]
         maskArrays = [arrayFromMask(mask) for mask in masks]
 
@@ -660,24 +696,38 @@ class TestReductionServiceMasks:
         #   otherwise `prepCombinedMask` might overwrite one of the
         #   sample mask workspaces!
         timestamp = self.service.getUniqueTimestamp()
-        combinedMask = self.service.prepCombinedMask(self.runNumber1, self.useLiteMode, timestamp, masks)
+        request = ReductionRequest(
+            runNumber=self.runNumber1,
+            useLiteMode=self.useLiteMode,
+            timestamp=timestamp,
+            pixelMasks=masks,
+        )
+
+        # call code and check result
+        with mock.patch.object(
+            self.service.dataFactoryService,
+            "getLatestApplicableCalibrationVersion",
+            return_value=None,
+        ):
+            combinedMask = self.service.prepCombinedMask(request)
         actual = arrayFromMask(combinedMask)
         expected = np.zeros(maskArrays[0].shape, dtype=bool)
         for mask in maskArrays:
             expected |= mask
-        if not np.all(expected == actual):
-            print(
-                "The expected combined mask doesn't match the calculated mask.\n"
-                + f"  Masking values are incorrect for {np.count_nonzero(expected != actual)} pixels."
-            )
-        assert np.all(expected == actual)
+        failmsg = (
+            "The expected combined mask doesn't match the calculated mask.\n"
+            + f"  Masking values are incorrect for {np.count_nonzero(expected != actual)} pixels."
+        )
+        assert np.all(expected == actual), failmsg
 
-    def test_fetchReductionGroceries_pixelMasks(self):
+    def test_prepCombinedMask_load(self):
+        """
+        Check that prepCombinedMask correctly loads all things it should
+        """
         with (
             mock.patch.object(self.service.groceryService, "fetchGroceryDict") as mockFetchGroceryDict,
-            mock.patch.object(self.service, "prepCombinedMask") as mockPrepCombinedMask,
+            mock.patch.object(self.service.dataFactoryService, "getLatestApplicableCalibrationVersion", return_value=1),
         ):
-            # timestamp must be unique: see comment at `test_prepCombinedMask`.
             fetchGroceryCallArgs = []
 
             def trackFetchGroceryDict(*args, **kwargs):
@@ -686,91 +736,209 @@ class TestReductionServiceMasks:
 
             mockFetchGroceryDict.side_effect = trackFetchGroceryDict
 
+            # timestamp must be unique: see comment at `test_prepCombinedMask`.
             timestamp = self.service.getUniqueTimestamp()
             request = ReductionRequest(
                 runNumber=self.runNumber1,
-                useLiteMode=False,
+                useLiteMode=self.useLiteMode,
                 timestamp=timestamp,
                 versions=Versions(1, 2),
                 pixelMasks=[self.maskWS1, self.maskWS2, self.maskWS5],
-                focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
             )
-            self.service.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
-            self.service.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=2)
-            self.service._markWorkspaceMetadata = mock.Mock()
 
+            # prepare the expected grocery dicionary
             groceryClerk = self.service.groceryClerk
+            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, 1).useLiteMode(
+                request.useLiteMode
+            ).add()
             for mask in (self.maskWS1, self.maskWS2):
                 runNumber, timestamp = mask.tokens("runNumber", "timestamp")
                 groceryClerk.name(mask).reduction_pixel_mask(runNumber, timestamp).useLiteMode(
                     request.useLiteMode
                 ).add()
-            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, 1).useLiteMode(
-                request.useLiteMode
-            ).add()
+
             loadableMaskGroceryItems = groceryClerk.buildDict()
             residentMaskGroceryKwargs = {self.maskWS5.toString(): self.maskWS5}
-            combinedMaskName = wng.reductionPixelMask().runNumber(request.runNumber).build()
-            mockPrepCombinedMask.return_value = combinedMaskName
 
-            groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
-            groceryClerk.name("diffcalWorkspace").diffcal_table(
-                request.runNumber, request.versions.calibration
-            ).useLiteMode(request.useLiteMode).add()
-            groceryClerk.name("normalizationWorkspace").normalization(
-                request.runNumber, request.versions.normalization
-            ).useLiteMode(request.useLiteMode).add()
-            loadableOtherGroceryItems = groceryClerk.buildDict()
-            residentOtherGroceryKwargs = {"combinedPixelMask": combinedMaskName}
-
-            self.service.fetchReductionGroceries(request)
+            self.service.prepCombinedMask(request)
 
             realArgs = fetchGroceryCallArgs[0][0][0]
             realKwargs = fetchGroceryCallArgs[0][1]
             assert realArgs == loadableMaskGroceryItems
             assert realKwargs == residentMaskGroceryKwargs
-            mockFetchGroceryDict.assert_any_call(loadableMaskGroceryItems, **residentMaskGroceryKwargs)
-            mockFetchGroceryDict.assert_any_call(groceryDict=loadableOtherGroceryItems, **residentOtherGroceryKwargs)
+            mockFetchGroceryDict.assert_called_with(loadableMaskGroceryItems, **residentMaskGroceryKwargs)
 
-    def test_fetchReductionGroceries_pixelMasks_not_a_mask(self):
+    def test_prepCombinedMask_only_diffcal(self):
+        """
+        Check that prepCombinedMask will still work if only a diffcal file is present
+        Logic:
+            - the grocery service is mocked to create a MaskWorkspace based on the item
+            - if only the diffcal mask is loaded, it will compare equal to itself at the end
+            - if some other mask is loaded, either an error will occur, or it will be unequal
+        """
+
+        def mock_compatible_mask(wsname, runNumber, useLiteMode):  # noqa ARG001
+            return maskFromArray([0, 0, 0, 0, 0], wsname)
+
+        def mock_fetch_grocery_list(groceryList):
+            import hashlib
+            import json
+
+            groceries = []
+            for item in groceryList:
+                runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
+                workspaceName = f"{runNumber}_{useLiteMode}_v{version}"
+                hasher = hashlib.shake_256()
+                hasher.update(json.dumps(item.__dict__).encode("utf-8"))
+                x = int.from_bytes(hasher.digest(1), "big")
+                mask = [int(x) for x in list("{0:0b}".format(x))]
+                workspaceName = maskFromArray(mask, workspaceName)
+                groceries.append(workspaceName)
+            return groceries
+
         with (
-            mock.patch.object(self.service.groceryService, "fetchGroceryDict"),
-            mock.patch.object(self.service, "prepCombinedMask") as mockPrepCombinedMask,
+            mock.patch.object(
+                self.service.dataFactoryService,
+                "getLatestApplicableCalibrationVersion",
+                return_value=1,
+            ),
+            mock.patch.object(
+                self.service.groceryService,
+                "fetchGroceryList",
+                mock_fetch_grocery_list,
+            ),
+            mock.patch.object(
+                self.service.groceryService,
+                "fetchCompatiblePixelMask",
+                mock_compatible_mask,
+            ),
         ):
-            not_a_mask = (
-                wng.reductionOutput()
-                .unit(wng.Units.DSP)
-                .group("bank")
-                .runNumber(self.runNumber1)
-                .timestamp(self.service.getUniqueTimestamp())
-                .build()
-            )
-
             # timestamp must be unique: see comment at `test_prepCombinedMask`.
             timestamp = self.service.getUniqueTimestamp()
             request = ReductionRequest(
                 runNumber=self.runNumber1,
-                useLiteMode=False,
+                useLiteMode=self.useLiteMode,
                 timestamp=timestamp,
                 versions=Versions(1, 2),
-                pixelMasks=[self.maskWS1, self.maskWS2, self.maskWS5, not_a_mask],
-                focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
+                pixelMasks=[],
             )
-            self.service.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
-            self.service.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=2)
-            combinedMaskName = wng.reductionPixelMask().runNumber(request.runNumber).build()
-            mockPrepCombinedMask.return_value = combinedMaskName
 
-            with pytest.raises(RuntimeError, match=r".*unexpected workspace-type.*"):
-                self.service.fetchReductionGroceries(request)
+            # prepare the expected grocery dicionary
+            groceryClerk = self.service.groceryClerk
+            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, 1).useLiteMode(
+                request.useLiteMode
+            ).add()
+            exp = self.service.groceryService.fetchGroceryDict(groceryClerk.buildDict())
 
-    def test_getCompatibleMasks(self):
-        request = ReductionRequest.model_construct(
+            res = self.service.prepCombinedMask(request)
+
+            wksp_almost_equal(exp["diffcalMaskWorkspace"], res, atol=0.0)
+
+    def test_fetchReductionGroceries_load(self):
+        """
+        Check that fetchReductionGroceries constructs the correct grocery dictionary
+        NOTE this probably belongs more properly to the other test class.
+        However, it was already here, for simplicity of review I am not moving it.
+        """
+
+        # timestamp must be unique: see comment at `test_prepCombinedMask`.
+        timestamp = self.service.getUniqueTimestamp()
+        request = ReductionRequest(
             runNumber=self.runNumber1,
             useLiteMode=False,
+            timestamp=timestamp,
             versions=Versions(1, 2),
             pixelMasks=[self.maskWS1, self.maskWS2, self.maskWS5],
-            focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
+        )
+
+        # prepare mocks
+        self.service._markWorkspaceMetadata = mock.Mock()
+        fetchGroceryCallArgs = []
+
+        def trackFetchGroceryDict(*args, **kwargs):
+            fetchGroceryCallArgs.append((args, kwargs))
+            return mock.MagicMock()
+
+        combinedMaskName = wng.reductionPixelMask().runNumber(request.runNumber).build()
+
+        # construct the expected grocery dictionaries
+        groceryClerk = self.service.groceryClerk
+        groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        groceryClerk.name("diffcalWorkspace").diffcal_table(
+            request.runNumber, request.versions.calibration
+        ).useLiteMode(request.useLiteMode).add()
+        groceryClerk.name("normalizationWorkspace").normalization(
+            request.runNumber, request.versions.normalization
+        ).useLiteMode(request.useLiteMode).add()
+        loadableOtherGroceryItems = groceryClerk.buildDict()
+        residentOtherGroceryKwargs = {"combinedPixelMask": combinedMaskName}
+
+        with (
+            mock.patch.object(self.service.groceryService, "fetchGroceryDict", side_effect=trackFetchGroceryDict),
+            mock.patch.object(self.service, "prepCombinedMask", return_value=combinedMaskName),
+            mock.patch.object(
+                self.service.dataFactoryService,
+                "getLatestApplicableCalibrationVersion",
+                return_value=1,
+            ),
+            mock.patch.object(
+                self.service.dataFactoryService,
+                "getLatestApplicableNormalizationVersion",
+                return_value=2,
+            ),
+            mock.patch.object(self.service.groceryService, "checkPixelMask") as mockCheckPixelMask,
+        ):
+            # check -- with valid combinedPixelMask, it is used as keyword arg to fetchGroceryDict
+            mockCheckPixelMask.return_value = True
+            self.service.fetchReductionGroceries(request)
+            self.service.groceryService.fetchGroceryDict.assert_called_with(
+                loadableOtherGroceryItems, **residentOtherGroceryKwargs
+            )
+
+            # check -- with invalid combinedPixelMask, no mask is added
+            mockCheckPixelMask.return_value = False
+            self.service.fetchReductionGroceries(request)
+            self.service.groceryService.fetchGroceryDict.assert_called_with(
+                loadableOtherGroceryItems,
+            )
+
+    def test_prepCombinedMask_not_a_mask(self):
+        not_a_mask = (
+            wng.reductionOutput()
+            .unit(wng.Units.DSP)
+            .group("bank")
+            .runNumber(self.runNumber1)
+            .timestamp(self.service.getUniqueTimestamp())
+            .build()
+        )
+
+        # timestamp must be unique: see comment at `test_prepCombinedMask`.
+        timestamp = self.service.getUniqueTimestamp()
+        request = ReductionRequest(
+            runNumber=self.runNumber1,
+            useLiteMode=self.useLiteMode,
+            timestamp=timestamp,
+            pixelMasks=[not_a_mask],
+        )
+
+        with (
+            mock.patch.object(
+                self.service.dataFactoryService,
+                "getLatestApplicableCalibrationVersion",
+                return_value=None,
+            ),
+            pytest.raises(RuntimeError, match=r".*unexpected workspace-type.*"),
+        ):
+            self.service.prepCombinedMask(request)
+
+    def test_getCompatibleMasks(self):
+        timestamp = self.service.getUniqueTimestamp()
+        request = ReductionRequest.model_construct(
+            runNumber=self.runNumber1,
+            useLiteMode=self.useLiteMode,
+            timestamp=timestamp,
+            versions=Versions(1, 2),
+            pixelMasks=[self.maskWS1, self.maskWS2, self.maskWS5],
         )
         with mock.patch.object(
             self.service.dataFactoryService, "getCompatibleReductionMasks"
