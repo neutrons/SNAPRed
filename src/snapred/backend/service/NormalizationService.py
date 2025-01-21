@@ -11,6 +11,7 @@ from snapred.backend.dao.normalization import (
     Normalization,
 )
 from snapred.backend.dao.request import (
+    CalculateNormalizationResidualRequest,
     CalibrationWritePermissionsRequest,
     CreateNormalizationRecordRequest,
     FarmFreshIngredients,
@@ -30,6 +31,7 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.GenericRecipe import (
     FocusSpectraRecipe,
+    MinusRecipe,
     RawVanadiumCorrectionRecipe,
     SmoothDataExcludingPeaksRecipe,
 )
@@ -411,3 +413,13 @@ class NormalizationService(Service):
                     request.useLiteMode
                 ).add()
         return set(self.groceryService.fetchGroceryList(self.groceryClerk.buildList())), normalizations
+
+    @Register("calculateResidual")
+    def calculateResidual(self, request: CalculateNormalizationResidualRequest):
+        outputWorkspace = wng.normCalResidual().runNumber(request.runNumber).unit(wng.Units.DSP).build()
+        MinusRecipe().executeRecipe(
+            LHSWorkspace=request.dataWorkspace,
+            RHSWorkspace=request.calculationWorkspace,
+            OutputWorkspace=outputWorkspace,
+        )
+        return outputWorkspace

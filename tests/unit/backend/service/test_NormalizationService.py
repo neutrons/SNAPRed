@@ -4,9 +4,11 @@ import unittest.mock as mock
 from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
+import numpy as np
 import pytest
 from mantid.simpleapi import (
     CreateSingleValuedWorkspace,
+    CreateWorkspace,
     mtd,
 )
 
@@ -405,3 +407,21 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.dataFactoryService.constructStateId = MagicMock()
         self.instance.dataFactoryService.constructStateId.side_effect = ["state", "different_state"]
         assert not self.instance._sameStates("12345", "different_state")
+
+    def test_calcResiduals(self):
+        self.instance = NormalizationService()
+        xVals = [1, 2, 3, 4, 5]
+        yVals = [1, 2, 3, 4]
+        dataWorkspace = CreateWorkspace(xVals, yVals)
+        calculationWorkspace = CreateWorkspace(xVals, yVals)
+
+        assert np.allclose(dataWorkspace.readY(0), np.array(yVals))
+
+        request = mock.Mock(
+            dataWorkspace=dataWorkspace,
+            calculationWorkspace=calculationWorkspace,
+            runNumber="12345",
+        )
+        residual = self.instance.calculateResidual(request)
+        assert mtd.doesExist(residual)
+        assert np.allclose(mtd[residual].readY(0), np.array([0, 0, 0, 0]))

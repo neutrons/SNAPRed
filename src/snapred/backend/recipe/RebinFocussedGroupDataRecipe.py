@@ -71,6 +71,7 @@ class RebinFocussedGroupDataRecipe(Recipe[Ingredients]):
             Delta=self.dBin,
             OutputWorkspace=self.sampleWs,
             PreserveEvents=self.preserveEvents,
+            FullBinsOnly=True,
         )
 
     # NOTE: Metaphorically, would ingredients better have been called Spices?

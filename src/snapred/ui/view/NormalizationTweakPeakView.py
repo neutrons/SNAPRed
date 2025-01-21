@@ -161,9 +161,10 @@ class NormalizationTweakPeakView(BackendRequestView):
             return
         self.signalValueChanged.emit(index, smoothingValue, xtalDMin, xtalDMax)
 
-    def updateWorkspaces(self, focusWorkspace, smoothedWorkspace, peaks):
+    def updateWorkspaces(self, focusWorkspace, smoothedWorkspace, peaks, residualWorkspace):
         self.focusWorkspace = focusWorkspace
         self.smoothedWorkspace = smoothedWorkspace
+        self.residualWorkspace = residualWorkspace
         self.groupingSchema = self.groupingFileDropdown.currentText()
         self._updateGraphs(peaks)
 
@@ -171,6 +172,7 @@ class NormalizationTweakPeakView(BackendRequestView):
         # get the updated workspaces and optimal graph grid
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
+        residualWorkspace = mtd[self.residualWorkspace]
         peaks = pydantic.TypeAdapter(List[GroupPeakList]).validate_python(peaks)
         numGraphs = focusedWorkspace.getNumberHistograms()
         nrows, ncols = self._optimizeRowsAndCols(numGraphs)
@@ -186,6 +188,8 @@ class NormalizationTweakPeakView(BackendRequestView):
 
             ax.plot(focusedWorkspace, wkspIndex=i, label="Focused Data", normalize_by_bin_width=True)
             ax.plot(smoothedWorkspace, wkspIndex=i, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
+            ax.plot(residualWorkspace, wkspIndex=i, label="Residual Data", normalize_by_bin_width=True, linestyle=":")
+
             ax.legend()
             ax.tick_params(direction="in")
             ax.set_title(f"Group ID: {i + 1}")

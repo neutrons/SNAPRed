@@ -112,7 +112,7 @@ class CalculateDiffCalResidualRecipe(Recipe[None]):
                 f"Combining spectrum {spectrum}...",
                 InputWorkspace1=combinedWorkspace,
                 InputWorkspace2=spectrum,
-                CheckMatchingBins=False,
+                # CheckMatchingBins=False, # not available in 6.11.0.3rc2
             )
 
         # Step 4: Calculate the residual difference between the combined workspace and input workspace
