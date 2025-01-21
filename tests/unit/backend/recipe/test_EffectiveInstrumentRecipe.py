@@ -2,6 +2,7 @@ from unittest import mock
 
 import numpy as np
 import pytest
+from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from util.SculleryBoy import SculleryBoy
 
 from snapred.backend.dao.ingredients import EffectiveInstrumentIngredients as Ingredients
@@ -19,6 +20,9 @@ class TestEffectiveInstrumentRecipe:
 
     @pytest.fixture(autouse=True)
     def _setup(self):
+        self.inputWS = mtd.unique_name()
+        CreateSingleValuedWorkspace(OutputWorkspace=self.inputWS)
+
         self.ingredients = mock.Mock(
             spec=Ingredients,
             unmaskedPixelGroup=mock.Mock(
@@ -46,6 +50,10 @@ class TestEffectiveInstrumentRecipe:
         # teardown follows ...
         pass
 
+    def test_allGroceryKeys(self):
+        assert {"inputWorkspace", "outputWorkspace"} == EffectiveInstrumentRecipe().allGroceryKeys()
+        assert {"inputWorkspace"} == EffectiveInstrumentRecipe().mandatoryInputWorkspaces()
+
     def test_chopIngredients(self):
         recipe = EffectiveInstrumentRecipe()
         ingredients = self.ingredients
@@ -54,14 +62,14 @@ class TestEffectiveInstrumentRecipe:
 
     def test_unbagGroceries(self):
         recipe = EffectiveInstrumentRecipe()
-        groceries = {"inputWorkspace": mock.Mock(), "outputWorkspace": mock.Mock()}
+        groceries = {"inputWorkspace": self.inputWS, "outputWorkspace": mock.Mock()}
         recipe.unbagGroceries(groceries)
         assert recipe.inputWS == groceries["inputWorkspace"]
         assert recipe.outputWS == groceries["outputWorkspace"]
 
     def test_unbagGroceries_output_default(self):
         recipe = EffectiveInstrumentRecipe()
-        groceries = {"inputWorkspace": mock.Mock()}
+        groceries = {"inputWorkspace": self.inputWS}
         recipe.unbagGroceries(groceries)
         assert recipe.inputWS == groceries["inputWorkspace"]
         assert recipe.outputWS == groceries["inputWorkspace"]
@@ -69,7 +77,7 @@ class TestEffectiveInstrumentRecipe:
     def test_queueAlgos(self):
         recipe = EffectiveInstrumentRecipe()
         ingredients = self.ingredients
-        groceries = {"inputWorkspace": mock.Mock(), "outputWorkspace": mock.Mock()}
+        groceries = {"inputWorkspace": self.inputWS, "outputWorkspace": mock.Mock()}
         recipe.prep(ingredients, groceries)
         recipe.queueAlgos()
 
@@ -87,7 +95,7 @@ class TestEffectiveInstrumentRecipe:
     def test_queueAlgos_default(self):
         recipe = EffectiveInstrumentRecipe()
         ingredients = self.ingredients
-        groceries = {"inputWorkspace": mock.Mock()}
+        groceries = {"inputWorkspace": self.inputWS}
         recipe.prep(ingredients, groceries)
         recipe.queueAlgos()
 
@@ -103,7 +111,7 @@ class TestEffectiveInstrumentRecipe:
         utensils.mantidSnapper = mockSnapper
         recipe = EffectiveInstrumentRecipe(utensils=utensils)
         ingredients = self.ingredients
-        groceries = {"inputWorkspace": mock.Mock(), "outputWorkspace": mock.Mock()}
+        groceries = {"inputWorkspace": self.inputWS, "outputWorkspace": mock.Mock()}
 
         output = recipe.cook(ingredients, groceries)
 
@@ -130,7 +138,7 @@ class TestEffectiveInstrumentRecipe:
         utensils.mantidSnapper = mockSnapper
         recipe = EffectiveInstrumentRecipe(utensils=utensils)
         ingredients = self.ingredients
-        groceries = {"inputWorkspace": mock.Mock()}
+        groceries = {"inputWorkspace": self.inputWS}
 
         output = recipe.cook(ingredients, groceries)
 
@@ -155,7 +163,7 @@ class TestEffectiveInstrumentRecipe:
         utensils.mantidSnapper = mockSnapper
         recipe = EffectiveInstrumentRecipe(utensils=utensils)
         ingredients = self.ingredients
-        groceries = {"inputWorkspace": mock.Mock()}
+        groceries = {"inputWorkspace": self.inputWS}
 
         with pytest.raises(RuntimeError, match=r".*EditInstrumentGeometry.*"):
             recipe.cook(ingredients, groceries)
@@ -167,7 +175,7 @@ class TestEffectiveInstrumentRecipe:
         recipe = EffectiveInstrumentRecipe(utensils=untensils)
         ingredientss = self.ingredientss
 
-        groceriess = [{"inputWorkspace": mock.Mock()}, {"inputWorkspace": mock.Mock()}]
+        groceriess = [{"inputWorkspace": self.inputWS}, {"inputWorkspace": self.inputWS}]
 
         recipe.cater(zip(ingredientss, groceriess))
 

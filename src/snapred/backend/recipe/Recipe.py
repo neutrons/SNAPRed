@@ -52,13 +52,20 @@ class Recipe(ABC, Generic[Ingredients]):
         Requires: unbagged groceries and chopped ingredients.
         """
 
+    @abstractmethod
+    def allGroceryKeys(self) -> Set[str]:
+        """
+        A set of all possible keys which may be in the grocery dictionary
+        """
+        return set()
+
     # methods which MAY be kept as is
 
-    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+    def mandatoryInputWorkspaces(self) -> Set[str]:
         """
-        A list of workspace names corresponding to mandatory inputs
+        A set of workspace keys corresponding to mandatory inputs
         """
-        return {}
+        return set()
 
     @classmethod
     def Ingredients(cls, **kwargs):
@@ -104,7 +111,14 @@ class Recipe(ABC, Generic[Ingredients]):
         else:
             logger.info("No ingredients given, skipping ingredient validation")
             pass
-        # ensure all of the given workspaces exist
+
+        # make sure no invalid keys were passed
+        if groceries is not None:
+            diff = set(groceries.keys()).difference(self.allGroceryKeys())
+            if bool(diff):
+                raise ValueError(f"The following invalid keys were found in the input groceries: {diff}")
+
+        # ensure all of the mandatory workspaces exist
         # NOTE may need to be tweaked to ignore output workspaces...
         if groceries is not None:
             logger.info(f"Validating the given workspaces: {groceries.values()}")

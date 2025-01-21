@@ -81,6 +81,10 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
             assert run.hasProperty(prop)
             assert value == run.getLogData(prop).value
 
+    def test_validateInputs_bad_workspaces(self):
+        assert {"workspace"} == WriteWorkspaceMetadata().mandatoryInputWorkspaces()
+        assert {"workspace"} == WriteWorkspaceMetadata().allGroceryKeys()
+
     def test_write_metadata(self):
         groceries = self._make_groceries()
 

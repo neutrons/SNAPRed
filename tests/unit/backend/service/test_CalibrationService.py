@@ -23,7 +23,7 @@ from mantid.simpleapi import (
 from util.dao import DAOFactory
 from util.state_helpers import state_root_redirect
 
-from snapred.backend.dao.ingredients import CalculateDiffCalResidualIngredients, CalibrationMetricsWorkspaceIngredients
+from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
 from snapred.backend.dao.request import (
     CalculateResidualRequest,
     CalibrationAssessmentRequest,
@@ -1112,7 +1112,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             spec=CalculateResidualRequest,
             inputWorkspace="inputWS",
             outputWorkspace="outputWS",
-            fitPeaksDiagnostic="fitPeaksDiagWS",
+            fitPeaksDiagnosticWorkspace="fitPeaksDiagWS",
         )
 
         # Mock the recipe instance and its return value
@@ -1125,11 +1125,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Assert: check that the recipe was instantiated and cook was called with the correct ingredients
         MockCalculateDiffCalResidualRecipe.assert_called_once_with()
         mockRecipeInstance.cook.assert_called_once_with(
-            CalculateDiffCalResidualIngredients(
-                inputWorkspace="inputWS",
-                outputWorkspace="outputWS",
-                fitPeaksDiagnosticWorkspace="fitPeaksDiagWS",
-            )
+            None,
+            mockRequest.model_dump(),
         )
 
         # Assert that the result contains the expected output workspace

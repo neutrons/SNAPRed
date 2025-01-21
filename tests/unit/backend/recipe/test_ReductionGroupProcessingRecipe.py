@@ -27,8 +27,6 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
         groceries = {
             "inputWorkspace": "input",
             "outputWorkspace": "output",
-            "geometryOutputWorkspace": "geoWS",
-            "diffFocOutputWorkspace": "diffFocWS",
             "groupingWorkspace": "groupingWS",
         }
         recipe.unbagGroceries(groceries)
@@ -77,8 +75,6 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
         groceries = {
             "inputWorkspace": "input",
             "outputWorkspace": "output",
-            "geometryOutputWorkspace": "geoWS",
-            "diffFocOutputWorkspace": "diffFocWS",
             "groupingWorkspace": "groupingWS",
         }
 
@@ -102,8 +98,6 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
         groceries = {
             "inputWorkspace": "input",
             "outputWorkspace": "output",
-            "geometryOutputWorkspace": "geoWS",
-            "diffFocOutputWorkspace": "diffFocWS",
             "groupingWorkspace": "groupingWS",
         }
 

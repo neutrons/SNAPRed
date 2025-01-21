@@ -11,7 +11,6 @@ from snapred.backend.dao.calibration import (
 from snapred.backend.dao.indexing import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import (
-    CalculateDiffCalResidualIngredients,
     CalibrationMetricsWorkspaceIngredients,
     DiffractionCalibrationIngredients,
     GroceryListItem,
@@ -258,12 +257,9 @@ class CalibrationService(Service):
 
     @FromString
     def calculateResidual(self, request: CalculateResidualRequest):
-        ingredients = CalculateDiffCalResidualIngredients(
-            inputWorkspace=request.inputWorkspace,
-            outputWorkspace=request.outputWorkspace,
-            fitPeaksDiagnosticWorkspace=request.fitPeaksDiagnostic,
-        )
-        return CalculateDiffCalResidualRecipe().cook(ingredients)
+        ingredients = None
+        groceries = request.model_dump()
+        return CalculateDiffCalResidualRecipe().cook(ingredients, groceries)
 
     @FromString
     def focusSpectra(self, request: FocusSpectraRequest):

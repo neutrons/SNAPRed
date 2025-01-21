@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 from snapred.backend.dao.ingredients import ApplyNormalizationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
@@ -18,7 +18,10 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
     NUM_BINS = Config["constants.ResampleX.NumberBins"]
     LOG_BINNING = True
 
-    def mandatoryInputWorkspaces(self):
+    def allGroceryKeys(self) -> Set[str]:
+        return {"inputWorkspace", "normalizationWorkspace", "backgroundWorkspace"}
+
+    def mandatoryInputWorkspaces(self) -> Set[str]:
         return {"inputWorkspace"}
 
     def chopIngredients(self, ingredients: Ingredients):

@@ -13,11 +13,23 @@ Pallet = Tuple[Ingredients, Dict[str, str]]
 
 @Singleton
 class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
+    def allGroceryKeys(self):
+        return {
+            "inputWorkspace",
+            "groupingWorkspace",
+            "outputWorkspace",
+            # the following need to be here for consistency
+            "diffcalWorkspace",
+            "maskWorkspace",
+            "backgroundWorkspace",
+        }
+
+    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+        return {"inputWorkspace", "groupingWorkspace"}
+
     def unbagGroceries(self, groceries: Dict[str, Any]):
         self.rawInput = groceries["inputWorkspace"]
         self.outputWS = groceries.get("outputWorkspace", groceries["inputWorkspace"])
-        # self.geometryOutputWS = groceries["geometryOutputWorkspace"]
-        # self.diffFocOutputWS = groceries["diffFocOutputWorkspace"]
         self.groupingWS = groceries["groupingWorkspace"]
 
     def chopIngredients(self, ingredients):
@@ -49,9 +61,6 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
             InputWorkspace=self.outputWS,
             OutputWorkspace=self.outputWS,
         )
-
-    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
-        return {"inputWorkspace", "groupingWorkspace"}
 
     def execute(self):
         """

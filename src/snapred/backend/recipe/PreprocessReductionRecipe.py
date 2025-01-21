@@ -4,7 +4,6 @@ from snapred.backend.dao.ingredients import PreprocessReductionIngredients as In
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -19,7 +18,17 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
         """
         pass
 
-    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+    def allGroceryKeys(self) -> Set[str]:
+        return {
+            "inputWorkspace",
+            "backgroundWorkspace",
+            "groupingWorkspace",
+            "diffcalWorkspace",
+            "maskWorkspace",
+            "outputWorkspace",
+        }
+
+    def mandatoryInputWorkspaces(self) -> Set[str]:
         return {"inputWorkspace"}
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
@@ -46,16 +55,18 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
                 OutputWorkspace=self.outputWs,
             )
 
-        if self.maskWs:
+        if self.maskWs != "":
             self.mantidSnapper.MaskDetectorFlags(
                 "Applying pixel mask...",
                 MaskWorkspace=self.maskWs,
                 OutputWorkspace=self.outputWs,
             )
 
-        if self.diffcalWs:
+        if self.diffcalWs != "":
             self.mantidSnapper.ApplyDiffCal(
-                "Applying diffcal..", InstrumentWorkspace=self.outputWs, CalibrationWorkspace=self.diffcalWs
+                "Applying diffcal..",
+                InstrumentWorkspace=self.outputWs,
+                CalibrationWorkspace=self.diffcalWs,
             )
 
         # convert to tof if needed

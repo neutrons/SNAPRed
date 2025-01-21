@@ -300,5 +300,5 @@ class TestGroupDiffCalRecipe(unittest.TestCase):
             "notInTheList": str(mock.sentinel.bad),
         }
 
-        with pytest.raises(RuntimeError, match=r".*input groceries: \{'notInTheList'\}"):
+        with pytest.raises(ValueError, match=r".*input groceries: \{'notInTheList'\}"):
             Recipe().validateInputs(self.fakeIngredients, groceries)

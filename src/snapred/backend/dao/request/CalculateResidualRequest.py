@@ -6,7 +6,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 class CalculateResidualRequest(BaseModel):
     inputWorkspace: WorkspaceName
     outputWorkspace: WorkspaceName
-    fitPeaksDiagnostic: WorkspaceName
+    fitPeaksDiagnosticWorkspace: WorkspaceName
 
     model_config = ConfigDict(
         # required in order to use 'WorkspaceName'

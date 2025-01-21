@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 import numpy as np
 
@@ -16,6 +16,12 @@ Pallet = Tuple[Ingredients, Dict[str, str]]
 
 @Singleton
 class EffectiveInstrumentRecipe(Recipe[Ingredients]):
+    def allGroceryKeys(self) -> Set[str]:
+        return {"inputWorkspace", "outputWorkspace"}
+
+    def mandatoryInputWorkspaces(self) -> Set[str]:
+        return {"inputWorkspace"}
+
     def unbagGroceries(self, groceries: Dict[str, Any]):
         self.inputWS = groceries["inputWorkspace"]
         self.outputWS = groceries.get("outputWorkspace", groceries["inputWorkspace"])

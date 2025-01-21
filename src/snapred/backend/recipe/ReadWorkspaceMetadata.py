@@ -16,7 +16,10 @@ Pallet = Tuple[WorkspaceMetadata, Dict[str, WorkspaceName]]
 class ReadWorkspaceMetadata(Recipe[WorkspaceMetadata]):
     TAG_PREFIX = Config["metadata.tagPrefix"]
 
-    def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
+    def allGroceryKeys(self) -> Set[str]:
+        return {"workspace"}
+
+    def mandatoryInputWorkspaces(self) -> Set[str]:
         return {"workspace"}
 
     def chopIngredients(self, ingredients):  # noqa ARG002
