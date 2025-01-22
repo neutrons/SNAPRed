@@ -33,7 +33,10 @@ class WorkspaceMetadataService(Service):
         return ReadWorkspaceMetadata().cook({"workspace": workspace})
 
     def readMetadataTag(self, workspace: WorkspaceName, logname: str) -> str:
-        return self.readMetadataTags(workspace, [logname])[0]
+        tags = self.readMetadataTags(workspace, [logname])
+        if len(tags) == 0:
+            return UNSET
+        return tags[0]
 
     def readMetadataTags(self, workspace: WorkspaceName, lognames: List[str]) -> List[str]:
         metadata = self.readWorkspaceMetadata(workspace)

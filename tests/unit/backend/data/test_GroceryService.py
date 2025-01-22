@@ -720,7 +720,7 @@ class TestGroceryService(unittest.TestCase):
         assert f"Workspace {wsname} does not exist" in str(e1.value)
 
         with pytest.raises(RuntimeError) as e2:
-            self.instance.setWorkspaceTag(workspaceName=wsname, logname=logName, logvalue=tagValues[0])
+            self.instance.setWorkspaceTag(workspaceName=wsname, logname=logName, logvalue=tagValues[1])
         assert f"Workspace {wsname} does not exist" in str(e2.value)
 
         # Make sure default tag value is unset
