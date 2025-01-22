@@ -6,7 +6,6 @@ from unittest import mock
 import pytest
 from mantid.simpleapi import DeleteWorkspace, mtd
 
-from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
@@ -253,66 +252,7 @@ class TestSousChef(unittest.TestCase):
         assert Config["instrument.native.definition.file"] == self.instance._getInstrumentDefinitionFilename(False)
 
     @mock.patch(thisService + "CrystallographicInfoService")
-    def test_prepXtalInfo_nocache(self, XtalService):
-        key = (
-            self.ingredients.cifPath,
-            self.ingredients.crystalDBounds.minimum,
-            self.ingredients.crystalDBounds.maximum,
-            self.ingredients.calibrantSamplePath,
-        )
-        # ensure the cache is clear
-        assert self.instance._xtalCache == {}
-
-        res = self.instance.prepCrystallographicInfo(self.ingredients)
-
-        XtalService.return_value.ingest.assert_called_once_with(*key)
-        assert self.instance._xtalCache == {key: XtalService.return_value.ingest.return_value["crystalInfo"]}
-        assert res == self.instance._xtalCache[key]
-
-    @mock.patch(thisService + "CrystallographicInfoService")
-    def test_prepXtalInfo_cache(self, XtalService):
-        key = (
-            self.ingredients.cifPath,
-            self.ingredients.crystalDBounds.minimum,
-            self.ingredients.crystalDBounds.maximum,
-            self.ingredients.calibrantSamplePath,
-        )
-        # ensure the cache is preped
-        self.instance._xtalCache[key] = mock.sentinel.xtal
-
-        res = self.instance.prepCrystallographicInfo(self.ingredients)
-
-        assert not XtalService.called
-        assert res == self.instance._xtalCache[key]
-
-    def test_prepXtalInfo_cache_not_altered(self):
-        key = (
-            self.ingredients.cifPath,
-            self.ingredients.crystalDBounds.minimum,
-            self.ingredients.crystalDBounds.maximum,
-            self.ingredients.calibrantSamplePath,
-        )
-        # ensure the cache is preped
-        self.instance._xtalCache[key] = CrystallographicInfo.construct(peaks=[2])
-
-        res = self.instance.prepCrystallographicInfo(self.ingredients)
-        res.peaks = [3]
-
-        another = self.instance.prepCrystallographicInfo(self.ingredients)
-        assert another != res
-        assert another == self.instance._xtalCache[key]
-
-    @mock.patch(thisService + "CrystallographicInfoService")
     def test_prepXtalInfo_noCif(self, XtalService):
-        key = (
-            self.ingredients.cifPath,
-            self.ingredients.crystalDBounds.minimum,
-            self.ingredients.crystalDBounds.maximum,
-            self.ingredients.calibrantSamplePath,
-        )
-        # ensure the cache is preped
-        self.instance._xtalCache[key] = mock.sentinel.xtal
-
         # make ingredients with no CIF path
         incompleteIngredients = self.ingredients.model_copy()
         incompleteIngredients.cifPath = None
@@ -321,10 +261,9 @@ class TestSousChef(unittest.TestCase):
         self.instance.dataFactoryService = mock.Mock()
         self.instance.dataFactoryService.getCifFilePath.return_value = self.ingredients.cifPath
 
-        res = self.instance.prepCrystallographicInfo(incompleteIngredients)
+        self.instance.prepCrystallographicInfo(incompleteIngredients)
 
-        assert not XtalService.called
-        assert res == self.instance._xtalCache[key]
+        assert XtalService.called
         assert self.instance.dataFactoryService.getCifFilePath.called
 
     @mock.patch(thisService + "PeakIngredients")
