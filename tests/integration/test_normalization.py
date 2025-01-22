@@ -11,7 +11,7 @@ from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QTabWidget,
 )
-from util.pytest_helpers import handleStateInit
+from util.pytest_helpers import calibration_home_from_mirror, handleStateInit  # noqa: F401
 from util.qt_mock_util import MockQMessageBox
 from util.TestSummary import TestSummary
 

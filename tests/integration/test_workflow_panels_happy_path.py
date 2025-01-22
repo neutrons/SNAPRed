@@ -10,7 +10,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QTabWidget,
 )
-from util.pytest_helpers import handleStateInit
+from util.pytest_helpers import calibration_home_from_mirror, handleStateInit, reduction_home_from_mirror  # noqa: F401
 from util.TestSummary import TestSummary
 
 from snapred.meta.Config import Resource
@@ -124,7 +124,11 @@ class TestGUIPanels:
 
     @pytest.mark.skip(reason="each workflow panel now has a separate test")
     def test_calibration_and_reduction_panels_happy_path(
-        self, qtbot, qapp, calibration_home_from_mirror, reduction_home_from_mirror
+        self,
+        qtbot,
+        qapp,
+        calibration_home_from_mirror,  # noqa: F811
+        reduction_home_from_mirror,  # noqa: F811
     ):
         # TODO: these could be initialized in the 'setup', but the current plan is to use a YML test template.
         reductionRunNumber = "46680"
@@ -488,7 +492,7 @@ class TestGUIPanels:
         # Force a clean exit
         qtbot.wait(5000)
 
-    def test_diffraction_calibration_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):
+    def test_diffraction_calibration_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: F811
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
         tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841
@@ -697,7 +701,7 @@ class TestGUIPanels:
         # Force a clean exit
         qtbot.wait(5000)
 
-    def test_normalization_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):
+    def test_normalization_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: F811
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
         tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841
@@ -886,7 +890,7 @@ class TestGUIPanels:
         # Force a clean exit
         qtbot.wait(5000)
 
-    def test_reduction_panel_happy_path(self, qtbot, qapp, reduction_home_from_mirror):
+    def test_reduction_panel_happy_path(self, qtbot, qapp, reduction_home_from_mirror):  # noqa: F811
         ##
         ## NOTE: WARNING: this test requires EXISTING diffraction-calibration and normalization-calibration data!
         ##   As an alternative `test_calibration_and_reduction_panels_happy_path`, now skipped, could be run instead.
