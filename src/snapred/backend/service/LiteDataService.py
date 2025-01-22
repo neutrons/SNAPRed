@@ -6,6 +6,7 @@ from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.recipe.GenericRecipe import LiteDataRecipe as Recipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
+from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -42,18 +43,24 @@ class LiteDataService(Service):
 
         ffIngredients = FarmFreshIngredients(runNumber=runNumber, useLiteMode=True)
         ingredients = self.sousChef.prepInstrumentState(ffIngredients)
+
+        recipeKwargs = {
+            "InputWorkspace": inputWorkspace,
+            "LiteDataMapWorkspace": liteDataMap,
+            "LiteInstrumentDefinitionFile": instrumentDefinition,
+            "OutputWorkspace": outputWorkspace,
+            "Ingredients": ingredients.model_dump_json(),
+        }
+
+        if Config["constants.LiteDataCreationAlgo.tolerance"] is not None:
+            recipeKwargs["ToleranceOverride"] = Config["constants.LiteDataCreationAlgo.tolerance"]
+
         try:
-            data = Recipe().executeRecipe(
-                InputWorkspace=inputWorkspace,
-                LiteDataMapWorkspace=liteDataMap,
-                LiteInstrumentDefinitionFile=instrumentDefinition,
-                OutputWorkspace=outputWorkspace,
-                Ingredients=ingredients.model_dump_json(),
-            )
+            data, tolerance = Recipe().executeRecipe(**recipeKwargs)
             fullPath = self.dataExportService.getFullLiteDataFilePath(runNumber)
             path = fullPath.parent
             fileName = fullPath.name
             self.dataExportService.exportWorkspace(path, fileName, outputWorkspace)
         except Exception as e:
             raise e
-        return data
+        return data, tolerance

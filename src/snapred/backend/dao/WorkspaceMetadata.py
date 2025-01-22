@@ -1,3 +1,5 @@
+from typing import Literal, Union
+
 from pydantic import BaseModel, ConfigDict
 
 from snapred.meta.Enum import StrEnum
@@ -30,5 +32,7 @@ class WorkspaceMetadata(BaseModel):
 
     diffcalState: DiffcalStateMetadata = UNSET
     normalizationState: NormalizationStateMetadata = UNSET
+    # NOTE: variables not allowed in type declarations
+    liteDataCompressionTolerance: Union[float, Literal["unset"]] = UNSET
 
     model_config = ConfigDict(extra="forbid", use_enum_values=True)

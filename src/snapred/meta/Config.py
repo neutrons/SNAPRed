@@ -196,7 +196,7 @@ class _Config:
     # period delimited key lookup
     def __getitem__(self, key):
         keys = key.split(".")
-        val = self._config[keys[0]]
+        val = self._config.get(keys[0])
         totalProcessed = 0
         for k in keys[1:]:
             if val is None:
