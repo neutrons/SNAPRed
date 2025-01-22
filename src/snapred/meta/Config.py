@@ -193,8 +193,11 @@ class _Config:
 
         return value
 
-    # period delimited key lookup
-    def __getitem__(self, key):
+    def exists(self, key: str) -> bool:
+        val = self._find(key)
+        return val is not None
+
+    def _find(self, key: str) -> Any:
         keys = key.split(".")
         val = self._config.get(keys[0])
         totalProcessed = 0
@@ -208,6 +211,13 @@ class _Config:
 
         if val is not None:
             val = self._replace(val, keys[1 + totalProcessed :])
+        return val
+
+    # period delimited key lookup
+    def __getitem__(self, key):
+        val = self._find(key)
+        if val is None:
+            raise KeyError(f"Key '{key}' not found in configuration")
         return val
 
 

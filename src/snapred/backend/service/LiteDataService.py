@@ -52,7 +52,7 @@ class LiteDataService(Service):
             "Ingredients": ingredients.model_dump_json(),
         }
 
-        if Config["constants.LiteDataCreationAlgo.tolerance"] is not None:
+        if Config.exists("constants.LiteDataCreationAlgo.tolerance"):
             recipeKwargs["ToleranceOverride"] = Config["constants.LiteDataCreationAlgo.tolerance"]
 
         try:
