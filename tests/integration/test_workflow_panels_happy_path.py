@@ -1,9 +1,5 @@
-import os
 import re
-import tempfile
 from contextlib import ExitStack, suppress
-from pathlib import Path
-from typing import Optional
 from unittest import mock
 
 import pytest
@@ -14,15 +10,11 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QTabWidget,
 )
-from util.Config_helpers import Config_override
+from util.pytest_helpers import calibration_home_from_mirror, handleStateInit, reduction_home_from_mirror  # noqa: F401
+from util.TestSummary import TestSummary
 
-# I would prefer not to access `LocalDataService` within an integration test,
-#   however, for the moment, the reduction-data output relocation fixture is defined in the current file.
-from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.meta.Config import Config, Resource
-from snapred.meta.Enum import StrEnum
+from snapred.meta.Config import Resource
 from snapred.ui.main import SNAPRedGUI, prependDataSearchDirectories
-from snapred.ui.view import InitializeStateCheckView
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 from snapred.ui.view.DiffCalRequestView import DiffCalRequestView
 from snapred.ui.view.DiffCalSaveView import DiffCalSaveView
@@ -38,159 +30,6 @@ from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
 
 class InterruptWithBlock(BaseException):
     pass
-
-
-class TestSummary:
-    def __init__(self):
-        self._index = 0
-        self._steps = []
-
-    def SUCCESS(self):
-        step = self._steps[self._index]
-        step.status = self.TestStep.StepStatus.SUCCESS
-        self._index += 1
-
-    def FAILURE(self):
-        step = self._steps[self._index]
-        step.status = self.TestStep.StepStatus.FAILURE
-        self._index += 1
-
-    def isComplete(self):
-        return self._index == len(self._steps)
-
-    def isFailure(self):
-        return any(step.status == self.TestStep.StepStatus.FAILURE for step in self._steps)
-
-    def builder():
-        return TestSummary.TestSummaryBuilder()
-
-    def __str__(self):
-        longestStatus = max(len(step.status) for step in self._steps)
-        longestName = max(len(step.name) for step in self._steps)
-        tableCapStr = "#" * (longestName + longestStatus + 6)
-        tableStr = (
-            f"\n{tableCapStr}\n"
-            + "\n".join(f"# {step.name:{longestName}}: {step.status:{longestStatus}} #" for step in self._steps)
-            + f"\n{tableCapStr}\n"
-        )
-        return tableStr
-
-    class TestStep:
-        class StepStatus(StrEnum):
-            SUCCESS = "SUCCESS"
-            FAILURE = "FAILURE"
-            INCOMPLETE = "INCOMPLETE"
-
-        def __init__(self, name: str):
-            self.name = name
-            self.status = self.StepStatus.INCOMPLETE
-
-    class TestSummaryBuilder:
-        def __init__(self):
-            self.summary = TestSummary()
-
-        def step(self, name: str):
-            self.summary._steps.append(TestSummary.TestStep(name))
-            return self
-
-        def build(self):
-            return self.summary
-
-
-@pytest.fixture
-def calibration_home_from_mirror():
-    # Test fixture to create a copy of the calibration home directory from an existing mirror:
-    # * creates a temporary calibration home directory under the optional `prefix` path;
-    #   when not specified, the temporary directory is created under the existing
-    #   `Config["instrument.calibration.powder.home"]`;
-    # * creates symlinks within the directory to required metadata files and directories
-    #   from the already existing `Config["instrument.calibration.powder.home"]`;
-    # * ignores any existing diffraction-calibration and normalization-calibration subdirectories;
-    # * and finally, overrides the `Config` entry for "instrument.calibration.powder.home".
-
-    # IMPLEMENTATION notes:
-    # * The functionality of this fixture is deliberately NOT implemented as a context manager,
-    #   although certain context-manager features are used.
-    # * If this were a context manager, it would  be terminated at any exception throw.  For example,
-    #   it would be terminated by the "initialize state" `RecoverableException`.  Such termination would interfere with
-    #   the requirements of the integration tests.
-    _stack = ExitStack()
-
-    def _calibration_home_from_mirror(prefix: Optional[Path] = None):
-        originalCalibrationHome: Path = Path(Config["instrument.calibration.powder.home"])
-        if prefix is None:
-            prefix = originalCalibrationHome
-
-        # Override calibration home directory:
-        tmpCalibrationHome = Path(_stack.enter_context(tempfile.TemporaryDirectory(dir=prefix, suffix=os.sep)))
-        assert tmpCalibrationHome.exists()
-        _stack.enter_context(Config_override("instrument.calibration.powder.home", str(tmpCalibrationHome)))
-
-        # WARNING: for these integration tests `LocalDataService` is a singleton.
-        #   The Indexer's `lru_cache` MUST be reset after the Config override, otherwise
-        #     it will return indexers synched to the previous `Config["instrument.calibration.powder.home"]`.
-        LocalDataService()._indexer.cache_clear()
-
-        # Create symlinks to metadata files and directories.
-        metadatas = [Path("LiteGroupMap.hdf"), Path("PixelGroupingDefinitions"), Path("SNAPLite.xml")]
-        for path_ in metadatas:
-            os.symlink(originalCalibrationHome / path_, tmpCalibrationHome / path_)
-        return tmpCalibrationHome
-
-    yield _calibration_home_from_mirror
-
-    # teardown => __exit__
-    _stack.close()
-    LocalDataService()._indexer.cache_clear()
-
-
-@pytest.fixture
-def reduction_home_from_mirror():
-    # Test fixture to write reduction data to a temporary directory under `Config["instrument.reduction.home"]`.
-    # * creates a temporary reduction state root directory under the optional `prefix` path;
-    #   when not specified, the temporary directory is created under the existing
-    #   `Config["instrument.reduction.home"]` (with the substituted 'IPTS' tag).
-    # * overrides the `Config` entry for "instrument.reduction.home".
-
-    # IMPLEMENTATION notes: (see previous).
-    _stack = ExitStack()
-
-    def _reduction_home_from_mirror(runNumber: str, prefix: Optional[Path] = None):
-        if prefix is None:
-            dataService = LocalDataService()
-            originalReductionHome = dataService._constructReductionStateRoot(runNumber)
-
-            # WARNING: this 'mkdir' step will not be reversed at exit,
-            #   but that shouldn't matter very much.
-            originalReductionHome.mkdir(parents=True, exist_ok=True)
-            prefix = originalReductionHome
-
-            tmpReductionHome = Path(_stack.enter_context(tempfile.TemporaryDirectory(dir=prefix, suffix=os.sep)))
-
-            # Ensure that `_createReductionStateRoot` will return the temporary directory,
-            #   while still exercising it's IPTS-substitution functionality.
-            _stack.enter_context(
-                Config_override(
-                    "instrument.reduction.home", Config["instrument.reduction.home"] + os.sep + tmpReductionHome.name
-                )
-            )
-
-            # No `LocalDataService._indexer.cache_clear()` should be required here, but keep it in mind, just in case!
-
-        else:
-            # Specified prefix => just use that, without any substitution.
-            # In this case `_constructReductionStateRoot` will return a path
-            #   which does not depend on the IPTS-directory for the run number.
-            tmpReductionHome = Path(_stack.enter_context(tempfile.TemporaryDirectory(dir=prefix, suffix=os.sep)))
-            _stack.enter_context(Config_override("instrument.reduction.home", str(tmpReductionHome)))
-
-        assert tmpReductionHome.exists()
-        return tmpReductionHome
-
-    yield _reduction_home_from_mirror
-
-    # teardown => __exit__
-    _stack.close()
 
 
 @pytest.mark.datarepo
@@ -283,9 +122,15 @@ class TestGUIPanels:
                 + f"    expecting:  QMessageBox.information(...'{message}'...)"
             )
 
+    # This test exists primarily for use during development, where combining the workflows into one test sequence
+    # allows the convenient generation of input calibration and normalization data for use by the other workflows.
     @pytest.mark.skip(reason="each workflow panel now has a separate test")
     def test_calibration_and_reduction_panels_happy_path(
-        self, qtbot, qapp, calibration_home_from_mirror, reduction_home_from_mirror
+        self,
+        qtbot,
+        qapp,
+        calibration_home_from_mirror,  # noqa: F811
+        reduction_home_from_mirror,  # noqa: F811
     ):
         # TODO: these could be initialized in the 'setup', but the current plan is to use a YML test template.
         reductionRunNumber = "46680"
@@ -384,53 +229,7 @@ class TestGUIPanels:
 
             # TODO: make sure that there's no initialized state => abort the test if there is!
             waitForStateInit = True
-            if (Path(Config["instrument.calibration.powder.home"]) / reductionStateId).exists():
-                # raise RuntimeError(
-                #           f"The state root directory for '{reductionStateId}' already exists! "\
-                #           + " Please move it out of the way."
-                #       )
-                waitForStateInit = False
-
-            if waitForStateInit:
-                # ---------------------------------------------------------------------------
-                # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
-                #   therefore, we cannot patch using a `with` clause!
-                questionMessageBox = mock.patch(  # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.question",
-                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
-                )
-                questionMessageBox.start()
-                successPrompt = mock.patch(
-                    "snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt",
-                    lambda parent: parent.close() if parent is not None else None,
-                )
-                successPrompt.start()
-                # ---------------------------------------------------------------------------
-
-                #    (1) respond to the "initialize state" request
-                with qtbot.waitSignal(actionCompleted, timeout=60000):
-                    qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-                qtbot.waitUntil(
-                    lambda: len(
-                        [
-                            o
-                            for o in qapp.topLevelWidgets()
-                            if isinstance(o, InitializeStateCheckView.InitializationMenu)
-                        ]
-                    )
-                    > 0,
-                    timeout=1000,
-                )
-                stateInitDialog = [
-                    o for o in qapp.topLevelWidgets() if isinstance(o, InitializeStateCheckView.InitializationMenu)
-                ][0]
-
-                stateInitDialog.stateNameField.setText("my happy state")
-                qtbot.mouseClick(stateInitDialog.beginFlowButton, Qt.MouseButton.LeftButton)
-
-                # State initialization dialog is "application modal" => no need to explicitly wait
-                questionMessageBox.stop()
-                successPrompt.stop()
+            handleStateInit(waitForStateInit, reductionStateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
 
             #    (2) execute the calibration workflow
             with qtbot.waitSignal(actionCompleted, timeout=60000):
@@ -556,53 +355,7 @@ class TestGUIPanels:
 
             # TODO: make sure that there's no initialized state => abort the test if there is!
             waitForStateInit = True
-            if (Path(Config["instrument.calibration.powder.home"]) / reductionStateId).exists():
-                # raise RuntimeError(
-                #           f"The state root directory for '{reductionStateId}' already exists! "\
-                #           + "Please move it out of the way."
-                #       )
-                waitForStateInit = False
-
-            if waitForStateInit:
-                # ---------------------------------------------------------------------------
-                # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
-                #   => do _not_ patch using a with clause!
-                questionMessageBox = mock.patch(  # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.question",
-                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
-                )
-                questionMessageBox.start()
-                successPrompt = mock.patch(
-                    "snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt",
-                    lambda parent: parent.close() if parent is not None else None,
-                )
-                successPrompt.start()
-                # ---------------------------------------------------------------------------
-
-                #    (1) respond to the "initialize state" request
-                with qtbot.waitSignal(actionCompleted, timeout=60000):
-                    qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-                qtbot.waitUntil(
-                    lambda: len(
-                        [
-                            o
-                            for o in qapp.topLevelWidgets()
-                            if isinstance(o, InitializeStateCheckView.InitializationMenu)
-                        ]
-                    )
-                    > 0,
-                    timeout=1000,
-                )
-                stateInitDialog = [
-                    o for o in qapp.topLevelWidgets() if isinstance(o, InitializeStateCheckView.InitializationMenu)
-                ][0]
-
-                stateInitDialog.stateNameField.setText("my happy state")
-                qtbot.mouseClick(stateInitDialog.beginFlowButton, Qt.MouseButton.LeftButton)
-
-                # State initialization dialog is "application modal" => no need to explicitly wait
-                questionMessageBox.stop()
-                successPrompt.stop()
+            handleStateInit(waitForStateInit, reductionStateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
 
             #    (2) execute the normalization workflow
             with qtbot.waitSignal(actionCompleted, timeout=60000):
@@ -697,53 +450,7 @@ class TestGUIPanels:
 
             # TODO: make sure that there's no initialized state => abort the test if there is!
             waitForStateInit = True
-            if (Path(Config["instrument.calibration.powder.home"]) / reductionStateId).exists():
-                # raise RuntimeError(
-                #           f"The state root directory for '{reductionStateId}' already exists! "\
-                #           + "Please move it out of the way."
-                #       )
-                waitForStateInit = False
-
-            if waitForStateInit:
-                # ---------------------------------------------------------------------------
-                # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
-                #   => do _not_ patch using a with clause!
-                questionMessageBox = mock.patch(  # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.question",
-                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
-                )
-                questionMessageBox.start()
-                successPrompt = mock.patch(
-                    "snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt",
-                    lambda parent: parent.close() if parent is not None else None,
-                )
-                successPrompt.start()
-                # ---------------------------------------------------------------------------
-
-                #    (1) respond to the "initialize state" request
-                with qtbot.waitSignal(actionCompleted, timeout=60000):
-                    qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-                qtbot.waitUntil(
-                    lambda: len(
-                        [
-                            o
-                            for o in qapp.topLevelWidgets()
-                            if isinstance(o, InitializeStateCheckView.InitializationMenu)
-                        ]
-                    )
-                    > 0,
-                    timeout=1000,
-                )
-                stateInitDialog = [
-                    o for o in qapp.topLevelWidgets() if isinstance(o, InitializeStateCheckView.InitializationMenu)
-                ][0]
-
-                stateInitDialog.stateNameField.setText("my happy state")
-                qtbot.mouseClick(stateInitDialog.beginFlowButton, Qt.MouseButton.LeftButton)
-
-                # State initialization dialog is "application modal" => no need to explicitly wait
-                questionMessageBox.stop()
-                successPrompt.stop()
+            handleStateInit(waitForStateInit, reductionStateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
 
             #    (2) execute the reduction workflow
             with qtbot.waitSignal(actionCompleted, timeout=120000):
@@ -787,7 +494,7 @@ class TestGUIPanels:
         # Force a clean exit
         qtbot.wait(5000)
 
-    def test_diffraction_calibration_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):
+    def test_diffraction_calibration_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: F811
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
         tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841
@@ -894,57 +601,11 @@ class TestGUIPanels:
             #   At the moment, we preserve some options here to speed up development.
             stateId = "04bd2c53f6bf6754"
             waitForStateInit = True
-            if (Path(Config["instrument.calibration.powder.home"]) / stateId).exists():
-                # raise RuntimeError(
-                #           f"The state root directory for '{stateId}' already exists! "\
-                #           + "Please move it out of the way."
-                #       )
-                waitForStateInit = False
+            handleStateInit(waitForStateInit, stateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
 
-            if waitForStateInit:
-                # ---------------------------------------------------------------------------
-                # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
-                #   therefore, we cannot patch using a `with` clause!
-                questionMessageBox = mock.patch(  # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.question",
-                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
-                )
-                questionMessageBox.start()
-                successPrompt = mock.patch(
-                    "snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt",
-                    lambda parent: parent.close() if parent is not None else None,
-                )
-                successPrompt.start()
-                # ---------------------------------------------------------------------------
-
-                #    (1) respond to the "initialize state" request
-                with qtbot.waitSignal(actionCompleted, timeout=60000):
-                    qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-                qtbot.waitUntil(
-                    lambda: len(
-                        [
-                            o
-                            for o in qapp.topLevelWidgets()
-                            if isinstance(o, InitializeStateCheckView.InitializationMenu)
-                        ]
-                    )
-                    > 0,
-                    timeout=1000,
-                )
-                stateInitDialog = [
-                    o for o in qapp.topLevelWidgets() if isinstance(o, InitializeStateCheckView.InitializationMenu)
-                ][0]
-
-                stateInitDialog.stateNameField.setText("my happy state")
-                qtbot.mouseClick(stateInitDialog.beginFlowButton, Qt.MouseButton.LeftButton)
-
-                # State initialization dialog is "application modal" => no need to explicitly wait
-                questionMessageBox.stop()
-                successPrompt.stop()
-
-                # Now that there is a new state, we need to reselect the grouping file ... :
-                # Why was this error box being swallowed?
-                requestView.groupingFileDropdown.setCurrentIndex(0)
+            # Now that there is a new state, we need to reselect the grouping file ... :
+            # Why was this error box being swallowed?
+            requestView.groupingFileDropdown.setCurrentIndex(0)
 
             #    (2) execute the calibration workflow
             with qtbot.waitSignal(actionCompleted, timeout=60000):
@@ -1042,7 +703,7 @@ class TestGUIPanels:
         # Force a clean exit
         qtbot.wait(5000)
 
-    def test_normalization_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):
+    def test_normalization_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: F811
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
         tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841
@@ -1149,58 +810,11 @@ class TestGUIPanels:
             #   At the moment, we preserve some options here to speed up development.
             stateId = "04bd2c53f6bf6754"
             waitForStateInit = True
-            if (Path(Config["instrument.calibration.powder.home"]) / stateId).exists():
-                # raise RuntimeError(
-                #           f"The state root directory for '{stateId}' already exists! "\
-                #           + "Please move it out of the way."
-                #       )
-                waitForStateInit = False
+            handleStateInit(waitForStateInit, stateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
 
-            if waitForStateInit:
-                # ---------------------------------------------------------------------------
-                # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
-                #   => do _not_ patch using a with clause!
-                questionMessageBox = mock.patch(  # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.question",
-                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
-                )
-                questionMessageBox.start()
-                successPrompt = mock.patch(
-                    "snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt",
-                    lambda parent: parent.close() if parent is not None else None,
-                )
-                successPrompt.start()
-                # ---------------------------------------------------------------------------
-
-                #    (1) respond to the "initialize state" request
-                with qtbot.waitSignal(actionCompleted, timeout=60000):
-                    qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-
-                qtbot.waitUntil(
-                    lambda: len(
-                        [
-                            o
-                            for o in qapp.topLevelWidgets()
-                            if isinstance(o, InitializeStateCheckView.InitializationMenu)
-                        ]
-                    )
-                    > 0,
-                    timeout=1000,
-                )
-                stateInitDialog = [
-                    o for o in qapp.topLevelWidgets() if isinstance(o, InitializeStateCheckView.InitializationMenu)
-                ][0]
-
-                stateInitDialog.stateNameField.setText("my happy state")
-                qtbot.mouseClick(stateInitDialog.beginFlowButton, Qt.MouseButton.LeftButton)
-
-                # State initialization dialog is "application modal" => no need to explicitly wait
-                questionMessageBox.stop()
-                successPrompt.stop()
-
-                # Now that there is a new state, we need to reselect the grouping file ... :
-                # Why was this error box being swallowed?
-                requestView.groupingFileDropdown.setCurrentIndex(0)
+            # Now that there is a new state, we need to reselect the grouping file ... :
+            # Why was this error box being swallowed?
+            requestView.groupingFileDropdown.setCurrentIndex(0)
 
             warningMessageBox = mock.patch(  # noqa: PT008
                 "qtpy.QtWidgets.QMessageBox.warning",
@@ -1278,7 +892,7 @@ class TestGUIPanels:
         # Force a clean exit
         qtbot.wait(5000)
 
-    def test_reduction_panel_happy_path(self, qtbot, qapp, reduction_home_from_mirror):
+    def test_reduction_panel_happy_path(self, qtbot, qapp, reduction_home_from_mirror):  # noqa: F811
         ##
         ## NOTE: WARNING: this test requires EXISTING diffraction-calibration and normalization-calibration data!
         ##   As an alternative `test_calibration_and_reduction_panels_happy_path`, now skipped, could be run instead.
@@ -1401,53 +1015,8 @@ class TestGUIPanels:
 
             # TODO: make sure that there's no initialized state => abort the test if there is!
             waitForStateInit = True
-            if (Path(Config["instrument.calibration.powder.home"]) / reductionStateId).exists():
-                # raise RuntimeError(
-                #           f"The state root directory for '{reductionStateId}' already exists! "\
-                #           + "Please move it out of the way."
-                # )
-                waitForStateInit = False
+            handleStateInit(waitForStateInit, reductionStateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
 
-            if waitForStateInit:
-                # ---------------------------------------------------------------------------
-                # IMPORTANT: "initialize state" dialog is triggered by an exception throw:
-                #   => do _not_ patch using a with clause!
-                questionMessageBox = mock.patch(  # noqa: PT008
-                    "qtpy.QtWidgets.QMessageBox.question",
-                    lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
-                )
-                questionMessageBox.start()
-                successPrompt = mock.patch(
-                    "snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt",
-                    lambda parent: parent.close() if parent is not None else None,
-                )
-                successPrompt.start()
-                # ---------------------------------------------------------------------------
-
-                #    (1) respond to the "initialize state" request
-                with qtbot.waitSignal(actionCompleted, timeout=60000):
-                    qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-                qtbot.waitUntil(
-                    lambda: len(
-                        [
-                            o
-                            for o in qapp.topLevelWidgets()
-                            if isinstance(o, InitializeStateCheckView.InitializationMenu)
-                        ]
-                    )
-                    > 0,
-                    timeout=1000,
-                )
-                stateInitDialog = [
-                    o for o in qapp.topLevelWidgets() if isinstance(o, InitializeStateCheckView.InitializationMenu)
-                ][0]
-
-                stateInitDialog.stateNameField.setText("my happy state")
-                qtbot.mouseClick(stateInitDialog.beginFlowButton, Qt.MouseButton.LeftButton)
-
-                # State initialization dialog is "application modal" => no need to explicitly wait
-                questionMessageBox.stop()
-                successPrompt.stop()
             #    (2) execute the reduction workflow
             with qtbot.waitSignal(actionCompleted, timeout=120000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)

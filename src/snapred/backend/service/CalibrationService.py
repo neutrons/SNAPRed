@@ -422,8 +422,7 @@ class CalibrationService(Service):
     def hasState(self, request: HasStateRequest):
         runId = request.runId
         if not RunNumberValidator.validateRunNumber(runId):
-            logger.error(f"Invalid run number: {runId}")
-            return False
+            raise ValueError(f"Invalid run number: {runId}")
         return self.dataFactoryService.checkCalibrationStateExists(runId)
 
     def checkWritePermissions(self, runNumber: str) -> bool:

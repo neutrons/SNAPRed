@@ -16,6 +16,7 @@ from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.EntryExitLogger import EntryExitLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
+from snapred.meta.validator.RunNumberValidator import RunNumberValidator
 from snapred.ui.presenter.WorkflowPresenter import WorkflowPresenter
 from snapred.ui.view.NormalizationRequestView import NormalizationRequestView
 from snapred.ui.view.NormalizationSaveView import NormalizationSaveView
@@ -66,6 +67,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         # connect signal to populate the grouping dropdown after run is selected
         self._requestView.litemodeToggle.stateChanged.connect(self._switchLiteNativeGroups)
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
+        self._requestView.backgroundRunNumberField.editingFinished.connect(self._verifyBackgroundRunNumber)
         self._tweakPeakView.signalValueChanged.connect(self.onNormalizationValueChange)
 
         self.workflow = (
@@ -119,6 +121,23 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         # populate and reenable the drop down
         self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        return SNAPResponse(code=ResponseCode.OK)
+
+    @EntryExitLogger(logger=logger)
+    @ExceptionToErrLog
+    @Slot()
+    def _verifyBackgroundRunNumber(self):
+        backgroundRunNumber = self._requestView.backgroundRunNumberField.text()
+
+        self.workflow.presenter.handleAction(
+            self.verifyBackgroundRunNumber,
+            args=(backgroundRunNumber,),
+            onSuccess=lambda: self._requestView.groupingFileDropdown.setEnabled(True),
+        )
+
+    def verifyBackgroundRunNumber(self, backgroundRunNumber):
+        if not RunNumberValidator.validateRunNumber(backgroundRunNumber):
+            raise Exception(f"Invalid run number: {backgroundRunNumber}")
         return SNAPResponse(code=ResponseCode.OK)
 
     @EntryExitLogger(logger=logger)

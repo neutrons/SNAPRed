@@ -79,7 +79,11 @@ class SmoothingSlider(QWidget):
             )
             return
         s = float(text)
-        v = math.log10(s)
+        # Set v to -10 so that slider gets set to minimum
+        if s == 0:
+            v = -10
+        else:
+            v = math.log10(s)
         sliderValue = int(v * 100)
         self._slider.setValue(sliderValue)
 

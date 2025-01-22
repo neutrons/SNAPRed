@@ -1103,7 +1103,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             runId="5",
             useLiteMode=True,
         )
-        assert not self.instance.hasState(badRequest)
+        with pytest.raises(ValueError, match="Invalid run number: 5"):
+            self.instance.hasState(badRequest)
 
     @mock.patch("snapred.backend.service.CalibrationService.CalculateDiffCalResidualRecipe")
     def test_calculateResidual(self, MockCalculateDiffCalResidualRecipe):
