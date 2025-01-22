@@ -52,7 +52,10 @@ class LiteDataService(Service):
             "Ingredients": ingredients.model_dump_json(),
         }
 
-        if Config.exists("constants.LiteDataCreationAlgo.tolerance"):
+        if (
+            Config.exists("constants.LiteDataCreationAlgo.tolerance")
+            and Config["constants.LiteDataCreationAlgo.toggleCompressionTolerance"]
+        ):
             recipeKwargs["ToleranceOverride"] = Config["constants.LiteDataCreationAlgo.tolerance"]
 
         try:

@@ -28,6 +28,7 @@ from mantid.simpleapi import (
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
+from util.Config_helpers import Config_override
 from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 from util.instrument_helpers import mapFromSampleLogs
 from util.kernel_helpers import tupleFromQuat, tupleFromV3D
@@ -1750,6 +1751,16 @@ class TestGroceryService(unittest.TestCase):
         # assert that the lite data service was created and called
         mockLiteDataService.assert_called_once()
         mockLiteDataService.return_value.reduceLiteData.assert_called_once_with(workspacename, workspacename)
+
+        with Config_override("constants.LiteDataCreationAlgo.toggleCompressionTolerance", True):
+            mockLiteDataService.reset_mock()
+            self.instance.writeWorkspaceMetadataAsTags = mock.Mock()
+
+            expected = WorkspaceMetadata(liteDataCompressionTolerance=0.004)
+
+            self.instance.convertToLiteMode(workspacename)
+
+            self.instance.writeWorkspaceMetadataAsTags.assert_called_once_with(workspacename, expected)
 
     def test_getCachedWorkspaces(self):
         rawWsName = self.instance._createRawNeutronWorkspaceName("556854", False)
