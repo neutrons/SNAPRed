@@ -208,36 +208,31 @@ constants:
   logsLocation: "entry/DASlogs"
   # logsLocation: "/mantid_workspace_1/logs"
 
-
-  CrystallographicInfo:
-    crystalDMin: 0.4
-    crystalDMax: 100.0
-
   ArtificialNormalization:
     peakWindowClippingSize: 10
-
   CalibrationReduction:
     tofMin: 2000
     tofMax: 14500
     rebinParams: [2000, -0.001, 14500]
-
-  DetectorPeakPredictor:
-    fwhm: 1.17741002252 # used to convert gaussian to fwhm (2 * log_e(2))
-
-  GroupDiffractionCalibration:
-    MaxChiSq: 100
-
-  ResampleX:
-    NumberBins: 1500
-
   CropFactors:
     lowWavelengthCrop: 0.05
     lowdSpacingCrop: 0.1
     highdSpacingCrop: 0.15
-
+  CrystallographicInfo:
+    crystalDMin: 0.4
+    crystalDMax: 100.0
+  DetectorPeakPredictor:
+    fwhm: 1.17741002252 # used to convert gaussian to fwhm (2 * log_e(2))
+  LiteDataCreationAlgo:
+    toggleCompressionTolerance: false  # false = no tolerance compression, true = tolerance compression
+    # tolerance: -0.004                 # tolerance override for calculated compression
+  GroupDiffractionCalibration:
+    MaxChiSq: 100
   RawVanadiumCorrection:
     numberOfSlices: 10
     numberOfAnnuli: 10
+  ResampleX:
+    NumberBins: 1500
 
 docs:
   user:

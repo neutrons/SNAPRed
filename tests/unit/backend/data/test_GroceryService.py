@@ -28,6 +28,7 @@ from mantid.simpleapi import (
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
+from util.Config_helpers import Config_override
 from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 from util.instrument_helpers import mapFromSampleLogs
 from util.kernel_helpers import tupleFromQuat, tupleFromV3D
@@ -720,7 +721,7 @@ class TestGroceryService(unittest.TestCase):
         assert f"Workspace {wsname} does not exist" in str(e1.value)
 
         with pytest.raises(RuntimeError) as e2:
-            self.instance.setWorkspaceTag(workspaceName=wsname, logname=logName, logvalue=tagValues[0])
+            self.instance.setWorkspaceTag(workspaceName=wsname, logname=logName, logvalue=tagValues[1])
         assert f"Workspace {wsname} does not exist" in str(e2.value)
 
         # Make sure default tag value is unset
@@ -737,10 +738,10 @@ class TestGroceryService(unittest.TestCase):
     def test_writeWorkspaceMetadataAsTags(self):
         self.instance.setWorkspaceTag = mock.Mock()
         wsName = "testWsName"
-        metadata = WorkspaceMetadata()
+        metadata = WorkspaceMetadata(diffcalState=DiffcalStateMetadata.ALTERNATE, liteDataCompressionTolerance=0.1)
         self.instance.writeWorkspaceMetadataAsTags(wsName, metadata)
-        assert self.instance.setWorkspaceTag.call_count == len(metadata.dict().keys())
-        self.instance.setWorkspaceTag.assert_called_with(wsName, "normalizationState", "unset")
+        assert self.instance.setWorkspaceTag.call_count == 2  # one for each metadata field set
+        self.instance.setWorkspaceTag.assert_called_with(wsName, "liteDataCompressionTolerance", 0.1)
 
     ## TEST CLEANUP METHODS
 
@@ -1738,12 +1739,28 @@ class TestGroceryService(unittest.TestCase):
         #   (which should almost certainly be a service-to-service `InterfaceController` request)
         #   should be checked in `test_LiteDataService`, _not_ here.
 
+        mockLiteDataService().reduceLiteData = mock.Mock()
+        mockLiteDataService().reduceLiteData.return_value = ("ws", 0.004)
+
+        # reset calls
+        mockLiteDataService.reset_mock()
+
         workspacename = self.instance._createNeutronWorkspaceName(self.runNumber, False)
         self.instance.convertToLiteMode(workspacename)
 
         # assert that the lite data service was created and called
         mockLiteDataService.assert_called_once()
         mockLiteDataService.return_value.reduceLiteData.assert_called_once_with(workspacename, workspacename)
+
+        with Config_override("constants.LiteDataCreationAlgo.toggleCompressionTolerance", True):
+            mockLiteDataService.reset_mock()
+            self.instance.writeWorkspaceMetadataAsTags = mock.Mock()
+
+            expected = WorkspaceMetadata(liteDataCompressionTolerance=0.004)
+
+            self.instance.convertToLiteMode(workspacename)
+
+            self.instance.writeWorkspaceMetadataAsTags.assert_called_once_with(workspacename, expected)
 
     def test_getCachedWorkspaces(self):
         rawWsName = self.instance._createRawNeutronWorkspaceName("556854", False)

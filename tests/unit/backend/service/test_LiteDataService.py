@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from mantid.simpleapi import CloneWorkspace, CreateSingleValuedWorkspace
+from util.Config_helpers import Config_override
 
 from snapred.backend.service.LiteDataService import LiteDataService
 from snapred.meta.Config import Resource
@@ -18,9 +19,12 @@ class TestLiteDataService(unittest.TestCase):
         executeRecipe,
     ):
         executeRecipe.return_value = {}
-        executeRecipe.side_effect = lambda **kwargs: CloneWorkspace(
-            InputWorkspace=kwargs["InputWorkspace"],
-            OutputWorkspace=kwargs["OutputWorkspace"],
+        executeRecipe.side_effect = lambda **kwargs: (
+            CloneWorkspace(
+                InputWorkspace=kwargs["InputWorkspace"],
+                OutputWorkspace=kwargs["OutputWorkspace"],
+            ),
+            0.04,
         )
 
         inputWorkspace = "_test_liteservice_555"
@@ -48,6 +52,18 @@ class TestLiteDataService(unittest.TestCase):
             LiteInstrumentDefinitionFile=None,
             Ingredients="{}",
         )
+
+        liteDataService.dataExportService = Mock()
+        with Config_override("constants.LiteDataCreationAlgo.toggleCompressionTolerance", True):
+            liteDataService.reduceLiteData(inputWorkspace, outputWorkspace)
+            executeRecipe.assert_called_with(
+                InputWorkspace=inputWorkspace,
+                OutputWorkspace=outputWorkspace,
+                LiteDataMapWorkspace="lite_map",
+                LiteInstrumentDefinitionFile=None,
+                Ingredients="{}",
+                ToleranceOverride=-0.123,
+            )
 
     @patch("snapred.backend.recipe.GenericRecipe.GenericRecipe.executeRecipe")
     def test_reduceLiteData_fails(self, mock_executeRecipe):

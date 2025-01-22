@@ -31,6 +31,17 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             doc="the workspace reduced to lite resolution and compressed",
         )
         self.declareProperty(
+            "ToleranceOverride",
+            defaultValue=0.0,
+            direction=Direction.Input,
+        )
+        # output float property for the tolerance used
+        self.declareProperty(
+            "Tolerance",
+            defaultValue=0.0,
+            direction=Direction.Output,
+        )
+        self.declareProperty(
             "Ingredients",
             defaultValue="",
             direction=Direction.Input,
@@ -143,6 +154,11 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         deltaDOverD = resolutionWS.extractY().flatten()
         deltaT = -min(deltaDOverD)
 
+        if not self.getProperty("ToleranceOverride").isDefault:
+            deltaT = self.getProperty("ToleranceOverride").value
+
+        self.setProperty("Tolerance", deltaT)
+
         # TODO how can this be removed?
         # replace instrument definition with lite
         self.mantidSnapper.LoadInstrument(
@@ -152,12 +168,16 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             RewriteSpectraMap=False,
         )
 
-        # TODO is this necessary?
+        compressEventsKwargs = {
+            "InputWorkspace": outputWorkspaceName,
+            "OutputWorkspace": outputWorkspaceName,
+        }
+        if Config["constants.LiteDataCreationAlgo.toggleCompressionTolerance"]:
+            compressEventsKwargs["Tolerance"] = deltaT
+
         self.mantidSnapper.CompressEvents(
             f"Compressing events in {outputWorkspaceName}...",
-            InputWorkspace=outputWorkspaceName,
-            OutputWorkspace=outputWorkspaceName,
-            Tolerance=deltaT,
+            **compressEventsKwargs,
         )
 
         if autoDelete is True:
