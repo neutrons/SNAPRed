@@ -122,6 +122,8 @@ class TestGUIPanels:
                 + f"    expecting:  QMessageBox.information(...'{message}'...)"
             )
 
+    # This test exists primarily for use during development, where combining the workflows into one test sequence
+    # allows the convenient generation of input calibration and normalization data for use by the other workflows.
     @pytest.mark.skip(reason="each workflow panel now has a separate test")
     def test_calibration_and_reduction_panels_happy_path(
         self,
