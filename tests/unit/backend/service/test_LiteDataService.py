@@ -18,9 +18,12 @@ class TestLiteDataService(unittest.TestCase):
         executeRecipe,
     ):
         executeRecipe.return_value = {}
-        executeRecipe.side_effect = lambda **kwargs: CloneWorkspace(
-            InputWorkspace=kwargs["InputWorkspace"],
-            OutputWorkspace=kwargs["OutputWorkspace"],
+        executeRecipe.side_effect = lambda **kwargs: (
+            CloneWorkspace(
+                InputWorkspace=kwargs["InputWorkspace"],
+                OutputWorkspace=kwargs["OutputWorkspace"],
+            ),
+            0.04,
         )
 
         inputWorkspace = "_test_liteservice_555"

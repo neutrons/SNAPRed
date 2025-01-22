@@ -207,7 +207,7 @@ class _Config:
             if isinstance(val, str):
                 break
             totalProcessed += 1
-            val = val[k]
+            val = val.get(k)
 
         if val is not None:
             val = self._replace(val, keys[1 + totalProcessed :])

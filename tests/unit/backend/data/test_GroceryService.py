@@ -737,10 +737,10 @@ class TestGroceryService(unittest.TestCase):
     def test_writeWorkspaceMetadataAsTags(self):
         self.instance.setWorkspaceTag = mock.Mock()
         wsName = "testWsName"
-        metadata = WorkspaceMetadata()
+        metadata = WorkspaceMetadata(diffcalState=DiffcalStateMetadata.ALTERNATE, liteDataCompressionTolerance=0.1)
         self.instance.writeWorkspaceMetadataAsTags(wsName, metadata)
-        assert self.instance.setWorkspaceTag.call_count == len(metadata.dict().keys())
-        self.instance.setWorkspaceTag.assert_called_with(wsName, "normalizationState", "unset")
+        assert self.instance.setWorkspaceTag.call_count == 2  # one for each metadata field set
+        self.instance.setWorkspaceTag.assert_called_with(wsName, "liteDataCompressionTolerance", 0.1)
 
     ## TEST CLEANUP METHODS
 
@@ -1737,6 +1737,12 @@ class TestGroceryService(unittest.TestCase):
         # The circular reference from `LiteDataService` back to `GroceryService.fetchLiteDataMap`
         #   (which should almost certainly be a service-to-service `InterfaceController` request)
         #   should be checked in `test_LiteDataService`, _not_ here.
+
+        mockLiteDataService().reduceLiteData = mock.Mock()
+        mockLiteDataService().reduceLiteData.return_value = ("ws", 0.004)
+
+        # reset calls
+        mockLiteDataService.reset_mock()
 
         workspacename = self.instance._createNeutronWorkspaceName(self.runNumber, False)
         self.instance.convertToLiteMode(workspacename)

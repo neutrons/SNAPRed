@@ -1,6 +1,6 @@
 from typing import List
 
-from snapred.backend.dao.WorkspaceMetadata import WorkspaceMetadata
+from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.recipe.ReadWorkspaceMetadata import ReadWorkspaceMetadata
 from snapred.backend.recipe.WriteWorkspaceMetadata import WriteWorkspaceMetadata
 from snapred.backend.service.Service import Service
@@ -37,4 +37,4 @@ class WorkspaceMetadataService(Service):
 
     def readMetadataTags(self, workspace: WorkspaceName, lognames: List[str]) -> List[str]:
         metadata = self.readWorkspaceMetadata(workspace)
-        return [getattr(metadata, logname) for logname in lognames]
+        return [getattr(metadata, logname) for logname in lognames if getattr(metadata, logname) is not UNSET]

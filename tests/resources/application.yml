@@ -238,6 +238,10 @@ constants:
   GroupDiffractionCalibration:
     MaxChiSq: 100
 
+  LiteDataCreationAlgo:
+    toggleCompressionTolerance: false  # false = no tolerance compression, true = tolerance compression
+    # tolerance: -0.004                 # tolerance override for calculated compression
+
   ResampleX:
     NumberBins: 1500
 
