@@ -3,6 +3,7 @@ import glob
 import json
 import os
 import re
+import tempfile
 import time
 from errno import ENOENT as NOT_FOUND
 from functools import lru_cache
@@ -175,10 +176,8 @@ class LocalDataService:
 
     @staticmethod
     def _hasWritePermissionstoPath(filePath: Path) -> bool:
-        import tempfile
-
         if not filePath.is_dir():
-            filePath = filePath.parent()
+            filePath = filePath.parent
         tempfile.tempdir = str(filePath)
         try:
             with tempfile.TemporaryFile() as fp:
