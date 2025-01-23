@@ -50,7 +50,6 @@ class SousChef(Service):
         self.dataFactoryService = DataFactoryService()
         self._pixelGroupCache: Dict[Tuple[str, bool, str], PixelGroup] = {}
         self._peaksCache: Dict[Tuple[str, bool, str, float, float, float], List[GroupPeakList]] = {}
-        self._xtalCache: Dict[Tuple[str, float, float], CrystallographicInfo] = {}
         return
 
     @staticmethod
