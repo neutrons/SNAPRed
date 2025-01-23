@@ -178,13 +178,16 @@ class LocalDataService:
     def _hasWritePermissionstoPath(filePath: Path) -> bool:
         if not filePath.is_dir():
             filePath = filePath.parent
+        result = True
+        preTempDir = tempfile.tempdir
         tempfile.tempdir = str(filePath)
         try:
             with tempfile.TemporaryFile() as fp:
                 fp.write(b"Hello world!")
         except Exception:  # noqa: BLE001
-            return False
-        return True
+            result = False
+        tempfile.tempdir = preTempDir
+        return result
 
     @staticmethod
     def checkWritePermissions(path: Path) -> bool:
