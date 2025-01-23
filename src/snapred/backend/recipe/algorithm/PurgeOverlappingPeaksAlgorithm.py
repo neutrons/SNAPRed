@@ -152,9 +152,6 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         outputPeaks = self.filterNoPeakGroups(outputPeaks)
 
         # NOTE: Some samples have 0 peaks.
-        # if len(outputPeaks) == 0:
-        #     raise RuntimeError("All Peaks were Purged!  Please adjust your parameters!\n\n\n")
-
         self.setProperty("OutputPeakMap", list_to_raw(outputPeaks))
 
         return outputPeaks
