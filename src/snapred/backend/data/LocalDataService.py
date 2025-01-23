@@ -3,7 +3,7 @@ import glob
 import json
 import os
 import re
-import stat
+import tempfile
 import time
 from errno import ENOENT as NOT_FOUND
 from functools import lru_cache
@@ -176,35 +176,18 @@ class LocalDataService:
 
     @staticmethod
     def _hasWritePermissionstoPath(filePath: Path) -> bool:
-        # WARNING: `os.access` does not work correctly on the `/SNS` shared filesystem.
-
-        # formerly:
-        #   `return os.access(filePath, os.W_OK) if filePath.exists() else False`
-
-        # alternative implementation (LINUX specific):
-        hasPermissions = False
-        if filePath.exists():
-            stat_ = os.stat(filePath)
-
-            # Get the path's permissions mode bits.
-            mode = stat.S_IMODE(stat_.st_mode)
-
-            # Get the path owner's user-id, and group-id.
-            fuid = stat_.st_uid
-            fgid = stat_.st_gid
-
-            # Get the current user's user-id and group-ids
-            uid = os.getuid()
-            gids = os.getgroups()
-
-            # Check for any overlap with the write permission's mode bits:
-            #   checking the user-bits, if the current user is the owner;
-            #   then checking the group-bits, if the user belongs to the file-owner's group;
-            #   and finally checking the other-bits.
-            hasPermissions = (
-                (uid == fuid) and bool(mode & 0o200) or (fgid in gids) and bool(mode & 0o020) or bool(mode & 0o002)
-            )
-        return hasPermissions
+        if not filePath.is_dir():
+            filePath = filePath.parent
+        result = True
+        preTempDir = tempfile.tempdir
+        tempfile.tempdir = str(filePath)
+        try:
+            with tempfile.TemporaryFile() as fp:
+                fp.write(b"Hello world!")
+        except Exception:  # noqa: BLE001
+            result = False
+        tempfile.tempdir = preTempDir
+        return result
 
     @staticmethod
     def checkWritePermissions(path: Path) -> bool:

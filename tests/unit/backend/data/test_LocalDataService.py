@@ -871,11 +871,9 @@ def test_CheckFileAndPermission_fileDoesNotExist(mockExists):  # noqa: ARG001
     assert result == (False, False)
 
 
-@mock.patch("stat.S_IMODE", return_value=0o777)
-@mock.patch("os.stat")
+@mock.patch(ThisService + "tempfile.TemporaryFile")
 @mock.patch("pathlib.Path.exists", return_value=True)
-def test_checkFileAndPermission_fileExistsAndWritePermission(mockExists, mockStat, mockS_IMODE):  # noqa: ARG001
-    mockStat.return_value = mock.Mock(st_uid=os.getuid(), st_gid=os.getgroups()[0], st_mode=0o777)
+def test_checkFileAndPermission_fileExistsAndWritePermission(mockExists, mockTempFile):  # noqa: ARG001
     filePath = Path("/some/path/to/file")
     localDS = LocalDataService()
     localDS._hasWritePermissionstoPath = mock.Mock()
@@ -884,11 +882,9 @@ def test_checkFileAndPermission_fileExistsAndWritePermission(mockExists, mockSta
     assert result == (True, True)
 
 
-@mock.patch("stat.S_IMODE", return_value=0o777)
-@mock.patch("os.stat")
+@mock.patch(ThisService + "tempfile.TemporaryFile")
 @mock.patch("pathlib.Path.exists", return_value=True)
-def test__hasWritePermissionsToPath_fileExistsWithPermission(mockExists, mockStat, mockS_IMODE):  # noqa: ARG001
-    mockStat.return_value = mock.Mock(st_uid=os.getuid(), st_gid=os.getgroups()[0], st_mode=0o777)
+def test__hasWritePermissionsToPath_fileExistsWithPermission(mockExists, mockTempFile):  # noqa: ARG001
     filePath = Path("/some/path/to/file")
     localDS = LocalDataService()
     result = localDS._hasWritePermissionstoPath(filePath)
@@ -912,15 +908,17 @@ def test_checkWritePermissions_path_exists():
         assert status
 
 
-@mock.patch("stat.S_IMODE", return_value=0o000)
-def test_checkWritePermissions_path_exists_no_permissions(mockOsAccess):
+@mock.patch(ThisService + "tempfile.TemporaryFile")
+def test_checkWritePermissions_path_exists_no_permissions(mockTempFile):
+    mockTempFile.side_effect = PermissionError
+    mockTempFile.reset_mock()
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         path = Path(tmpDir) / "one" / "two" / "three"
         path.mkdir(parents=True)
         assert path.exists()
         status = LocalDataService().checkWritePermissions(path)
         assert not status
-        mockOsAccess.assert_called_once()
+        mockTempFile.assert_called_once()
 
 
 def test_checkWritePermissions_parent_exists():
@@ -934,8 +932,10 @@ def test_checkWritePermissions_parent_exists():
         assert status
 
 
-@mock.patch("stat.S_IMODE", return_value=0o000)
-def test_checkWritePermissions_parent_exists_no_permissions(mockOsAccess):
+@mock.patch(ThisService + "tempfile.TemporaryFile")
+def test_checkWritePermissions_parent_exists_no_permissions(mockTempFile):
+    mockTempFile.side_effect = PermissionError
+    mockTempFile.reset_mock()
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         path = Path(tmpDir) / "one" / "two" / "three"
         path.mkdir(parents=True)
@@ -943,8 +943,8 @@ def test_checkWritePermissions_parent_exists_no_permissions(mockOsAccess):
         path = path / "four"
         assert not path.exists()
         status = LocalDataService().checkWritePermissions(path)
+        mockTempFile.assert_called_once()
         assert not status
-        mockOsAccess.assert_called_once()
 
 
 def test_checkWritePermissions_path_does_not_exist():
