@@ -55,13 +55,13 @@ def getInstrumentLogDescriptors(detectorState: DetectorState):
             "Number Series",
         ],
         "logValues": [
-            str(detectorState.arc[0]),
-            str(detectorState.arc[1]),
-            str(detectorState.wav),
-            str(detectorState.freq),
-            str(detectorState.guideStat),
-            str(detectorState.lin[0]),
-            str(detectorState.lin[1]),
+            f"{detectorState.arc[0]:.16f}",
+            f"{detectorState.arc[1]:.16f}",
+            f"{detectorState.wav:.16f}",
+            f"{detectorState.freq:.16f}",
+            f"{detectorState.guideStat:.16f}",
+            f"{detectorState.lin[0]:.16f}",
+            f"{detectorState.lin[1]:.16f}",
         ],
     }
 

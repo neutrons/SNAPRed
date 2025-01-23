@@ -3,12 +3,9 @@ import json
 import os
 import shutil
 import time
-import unittest
 from pathlib import Path
 from random import randint
-from unittest import mock
 
-import pytest
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
@@ -27,24 +24,36 @@ from mantid.simpleapi import (
     SaveNexusProcessed,
     mtd,
 )
-from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
-from util.Config_helpers import Config_override
-from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
-from util.instrument_helpers import mapFromSampleLogs
-from util.kernel_helpers import tupleFromQuat, tupleFromV3D
-from util.state_helpers import reduction_root_redirect, state_root_redirect
-from util.WhateversInTheFridge import WhateversInTheFridge
 
 import snapred.backend.recipe.algorithm  # noqa: F401
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, DiffcalStateMetadata, WorkspaceMetadata
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.data.util.PV_logs_util import populateInstrumentParameters
 from snapred.meta.Config import Config, Resource
 from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType
+
+# In order to preserve the import order as much as possible, add test-related imports at the end.
+import unittest
+from unittest import mock
+import pytest
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
+from util.Config_helpers import Config_override
+from util.dao import DAOFactory
+from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
+from util.instrument_helpers import (
+    mapFromSampleLogs,
+    getInstrumentLogDescriptors,
+    addInstrumentLogs
+)    
+from util.kernel_helpers import tupleFromQuat, tupleFromV3D
+from util.state_helpers import reduction_root_redirect, state_root_redirect
+from util.WhateversInTheFridge import WhateversInTheFridge
+
 
 ThisService = "snapred.backend.data.GroceryService."
 
@@ -90,6 +99,19 @@ class TestGroceryService(unittest.TestCase):
             Filename=cls.instrumentFilePath,
             RewriteSpectraMap=True,
         )
+
+        # Clone a copy of the sample workspace, but without any instrument-parameter state.
+        cls.sampleWSBareInstrument = mtd.unique_hidden_name()
+        CloneWorkspace(
+            OutputWorkspace=cls.sampleWSBareInstrument,
+            InputWorkspace=cls.sampleWS
+        )
+        # Add a complete instrument-parameter state to the sample workspace.
+        # This is now required of the instrument-donor workspace for `LoadGroupingDefinition`
+        #   and `LoadCalibrationWorkspaces`.
+        cls.detectorState = DAOFactory.real_detector_state
+        addInstrumentLogs(cls.sampleWS, **getInstrumentLogDescriptors(cls.detectorState))
+        
         SaveNexusProcessed(
             InputWorkspace=cls.sampleWS,
             Filename=cls.sampleWSFilePath,
@@ -841,6 +863,7 @@ class TestGroceryService(unittest.TestCase):
         # assert the correct workspaces exist
         assert not mtd.doesExist(rawWorkspaceName)
         assert mtd.doesExist(workspaceName)
+        
         # test the workspace is correct
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
@@ -1445,7 +1468,7 @@ class TestGroceryService(unittest.TestCase):
     def test_updateInstrumentParameters(self):
         wsName = mtd.unique_hidden_name()
         CloneWorkspace(
-            InputWorkspace=self.sampleWS,
+            InputWorkspace=self.sampleWSBareInstrument,
             OutputWorkspace=wsName,
         )
         assert mtd.doesExist(wsName)

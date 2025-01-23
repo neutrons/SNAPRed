@@ -1,20 +1,25 @@
+import os
 import re
+import tempfile
 from contextlib import ExitStack, suppress
-from unittest import mock
-
-import pytest
-from mantid.kernel import amend_config
+from pathlib import Path
 from qtpy import QtCore
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QMessageBox,
     QTabWidget,
 )
-from util.pytest_helpers import calibration_home_from_mirror, handleStateInit, reduction_home_from_mirror  # noqa: F401
-from util.TestSummary import TestSummary
+from typing import Optional
 
-from snapred.meta.Config import Resource
+from mantid.kernel import amend_config
+
+# I would prefer not to access `LocalDataService` within an integration test,
+#   however, for the moment, the reduction-data output relocation fixture is defined in the current file.
+from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.meta.Config import Config, Resource
+from snapred.meta.Enum import StrEnum
 from snapred.ui.main import SNAPRedGUI, prependDataSearchDirectories
+from snapred.ui.view import InitializeStateCheckView
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 from snapred.ui.view.DiffCalRequestView import DiffCalRequestView
 from snapred.ui.view.DiffCalSaveView import DiffCalSaveView
@@ -27,6 +32,11 @@ from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
 
 # TODO: WorkflowNodeComplete signal, at end of each node!
 
+# Add test-related imports at the end, in order to preserve the import sequence as much as possible.
+from unittest import mock
+import pytest
+from util.Config_helpers import Config_override
+from util.script_as_test import not_a_test
 
 class InterruptWithBlock(BaseException):
     pass
@@ -494,7 +504,7 @@ class TestGUIPanels:
         # Force a clean exit
         qtbot.wait(5000)
 
-    def test_diffraction_calibration_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: F811
+    def test_diffraction_calibration_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
         tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841

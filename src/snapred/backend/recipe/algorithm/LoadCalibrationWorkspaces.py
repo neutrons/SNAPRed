@@ -14,11 +14,13 @@ from mantid.api import (
 from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction
 
+from snapred.backend.data.util.PV_logs_util import populateInstrumentParameters, transferInstrumentPVLogs
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
+
 
 logger = snapredLogger.getLogger(__name__)
-
 
 class LoadCalibrationWorkspaces(PythonAlgorithm):
     """
@@ -30,7 +32,7 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
         InstrumentDonor: str -- name of the instrument donor workspace
         CalibrationTable: str -- name of the output table workspace
         MaskWorkspace: str -- name of the output mask workspace
-        GroupingWorkspace: str -- name of the output mask workspace
+        GroupingWorkspace: str -- name of the output grouping workspace
     """
 
     def category(self):
@@ -65,7 +67,7 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
         )
         self.declareProperty(
             MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Output, PropertyMode.Optional),
-            doc="Name of the output mask workspace",
+            doc="Name of the output grouping workspace",
         )
 
         self.setRethrows(True)
@@ -134,6 +136,22 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
                 OutputWorkspace=self.groupingWorkspace,
             )
         self.mantidSnapper.executeQueue()
+        
+        # Transfer the instrument PV-logs -- not done yet by `LoadDiffCal`.
+        if self.maskWorkspace:
+            transferInstrumentPVLogs(
+                self.mantidSnapper.mtd[self.maskWorkspace].mutableRun(),
+                self.mantidSnapper.mtd[self.getPropertyValue("InstrumentDonor")].run(),
+                Config["instrument.PVLogs.instrumentKeys"]
+            )
+            populateInstrumentParameters(self.maskWorkspace)
+        if self.groupingWorkspace:
+            transferInstrumentPVLogs(
+                self.mantidSnapper.mtd[self.groupingWorkspace].mutableRun(),
+                self.mantidSnapper.mtd[self.getPropertyValue("InstrumentDonor")].run(),
+                Config["instrument.PVLogs.instrumentKeys"]
+            )
+            populateInstrumentParameters(self.groupingWorkspace)
 
         if self.calibrationTable:
             # NOTE ConvertDiffCal has issues ifthe "tofmin" column is present,
