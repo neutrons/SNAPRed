@@ -5,6 +5,7 @@ Developer Docs
    :caption: Index
 
    architecture/index
+   codingStandards
    implFlowchart
    resources
    deploy
