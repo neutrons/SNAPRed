@@ -16,6 +16,7 @@ Provide Intuition
 `````````````````
 
 .. code-block:: python
+
     # GOOD
     # Version may be 0, and interpreted as False
     if version is None:
@@ -39,6 +40,7 @@ Clarify Abnormal Code
 `````````````````````
 
 .. code-block:: python
+
     # GOOD - call out odd and speficic behavior
     # NOTE: This is a hack to work around a bug in the library
     LoadRawData(ws)
@@ -115,6 +117,7 @@ In SNAPRed we use a standardized comment to call out sections of code that need 
 The format is as follows:
 
 .. code-block:: python
+
     # TODO: EWM#{issue_number} - {description of issue}
 
 This covers hacks and workarounds as well as planned refactors.
