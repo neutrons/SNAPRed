@@ -4,6 +4,8 @@ from unittest import mock
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 
+ModulePatch = "snapred.backend.recipe.ReductionGroupProcessingRecipe.{0}"
+
 
 # TODO: Add/update tests when EWM 4798 is complete
 class ReductionGroupProcessingRecipeTest(unittest.TestCase):
@@ -77,8 +79,9 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
             "outputWorkspace": "output",
             "groupingWorkspace": "groupingWS",
         }
-
-        output = recipe.cook(self.mockIngredients(), groceries)
+        with mock.patch(ModulePatch.format("WriteWorkspaceMetadata")) as mockMetadataRecipe:
+            output = recipe.cook(self.mockIngredients(), groceries)
+            assert mockMetadataRecipe.called
 
         assert recipe.rawInput == groceries["inputWorkspace"]
         assert recipe.outputWS == groceries["outputWorkspace"]
@@ -100,8 +103,9 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
             "outputWorkspace": "output",
             "groupingWorkspace": "groupingWS",
         }
-
-        output = recipe.cater([(self.mockIngredients(), groceries)])
+        with mock.patch(ModulePatch.format("WriteWorkspaceMetadata")) as mockMetadataRecipe:
+            output = recipe.cater([(self.mockIngredients(), groceries)])
+            assert mockMetadataRecipe.called
 
         assert recipe.rawInput == groceries["inputWorkspace"]
         assert recipe.outputWS == groceries["outputWorkspace"]

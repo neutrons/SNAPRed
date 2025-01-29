@@ -73,7 +73,7 @@ instrument:
   maxNumberOfRuns: 10
 
 liveData:
-  enabled: true
+  enabled: false
   # Override 'liveData.facility' and 'liveData.instrument'
   #   in order to use the mock listener for testing
   #   without overriding the real instrument.
@@ -157,6 +157,8 @@ reduction:
 
 mantid:
   workspace:
+    normalizeByBeamMonitor: false
+    normMonitorID: 0
     nameTemplate:
       delimiter: "_"
       template:
@@ -170,6 +172,7 @@ mantid:
           mask: "diffract_consts,mask,{runNumber},{version}"
           metric: "calib_metrics,{metricName},{runNumber},{version}"
           timedMetric: "calib_metrics,{metricName},{runNumber},{timestamp}"
+        monitor: "monitor,{lite},{runNumber}"
         normCal:
           rawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
           focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"

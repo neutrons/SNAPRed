@@ -1,9 +1,12 @@
 from typing import Any, Dict, List, Set, Tuple
 
 from snapred.backend.dao.ingredients import ReductionGroupProcessingIngredients as Ingredients
+from snapred.backend.dao.WorkspaceMetadata import ParticleNormalizationMethod, WorkspaceMetadata
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
+from snapred.backend.recipe.WriteWorkspaceMetadata import WriteWorkspaceMetadata
+from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
@@ -56,10 +59,19 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
             RebinOutput=False,
         )
 
+        normalizeArgs = {
+            "InputWorkspace": self.outputWS,
+            "OutputWorkspace": self.outputWS,
+        }
+
+        if Config["mantid.workspace.normalizeByBeamMonitor"]:
+            normalizeArgs["NormalizeByMonitorCounts"] = self.mantidSnapper.mtd.getSNAPRedLog(
+                self.rawInput, "normalizeByMonitorFactor"
+            )
+
         self.mantidSnapper.NormalizeByCurrentButTheCorrectWay(
             "Normalizing Current ... but the correct way!",
-            InputWorkspace=self.outputWS,
-            OutputWorkspace=self.outputWS,
+            **normalizeArgs,
         )
 
     def execute(self):
@@ -69,6 +81,15 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
         """
         try:
             self.mantidSnapper.executeQueue()
+
+            workspaceMetadata = WorkspaceMetadata(particleNormalizationMethod=ParticleNormalizationMethod.PROTON_CHARGE)
+
+            if Config["mantid.workspace.normalizeByBeamMonitor"]:
+                workspaceMetadata = WorkspaceMetadata(
+                    particleNormalizationMethod=ParticleNormalizationMethod.MONITOR_COUNTS
+                )
+            WriteWorkspaceMetadata().cook(workspaceMetadata, {"workspace": self.outputWS})
+
         except AlgorithmException as e:
             errorString = str(e)
             if "NORMALIZATIONFACTOR" in errorString:

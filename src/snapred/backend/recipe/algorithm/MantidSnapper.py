@@ -12,7 +12,7 @@ from snapred.backend.log.logger import snapredLogger
 
 # must import to register with AlgorithmManager
 from snapred.meta.Callback import callback
-from snapred.meta.Config import Resource
+from snapred.meta.Config import Config, Resource
 from snapred.meta.pointer import access_pointer, create_pointer
 
 logger = snapredLogger.getLogger(__name__)
@@ -34,6 +34,15 @@ class _CustomMtd:
 
     def unique_hidden_name(self):
         return mtd.unique_hidden_name()
+
+    def getSNAPRedLog(self, wsName, logname):
+        realLogName = f"{Config['metadata.tagPrefix']}{logname}"
+        try:
+            return self[wsName].getRun().getLogData(realLogName).value
+        except RuntimeError as e:
+            if "Unknown property search object" in str(e):
+                raise KeyError(f"SNAPRed log {realLogName} not found in {wsName}")
+            raise
 
 
 class MantidSnapper:
