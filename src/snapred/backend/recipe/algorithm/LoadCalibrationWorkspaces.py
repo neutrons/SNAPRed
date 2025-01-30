@@ -19,8 +19,8 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 
-
 logger = snapredLogger.getLogger(__name__)
+
 
 class LoadCalibrationWorkspaces(PythonAlgorithm):
     """
@@ -136,20 +136,20 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
                 OutputWorkspace=self.groupingWorkspace,
             )
         self.mantidSnapper.executeQueue()
-        
+
         # Transfer the instrument PV-logs -- not done yet by `LoadDiffCal`.
         if self.maskWorkspace:
             transferInstrumentPVLogs(
                 self.mantidSnapper.mtd[self.maskWorkspace].mutableRun(),
                 self.mantidSnapper.mtd[self.getPropertyValue("InstrumentDonor")].run(),
-                Config["instrument.PVLogs.instrumentKeys"]
+                Config["instrument.PVLogs.instrumentKeys"],
             )
             populateInstrumentParameters(self.maskWorkspace)
         if self.groupingWorkspace:
             transferInstrumentPVLogs(
                 self.mantidSnapper.mtd[self.groupingWorkspace].mutableRun(),
                 self.mantidSnapper.mtd[self.getPropertyValue("InstrumentDonor")].run(),
-                Config["instrument.PVLogs.instrumentKeys"]
+                Config["instrument.PVLogs.instrumentKeys"],
             )
             populateInstrumentParameters(self.groupingWorkspace)
 

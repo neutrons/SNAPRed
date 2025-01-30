@@ -47,13 +47,13 @@ instrument:
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
 
-  PVLogs:        
+  PVLogs:
     # Swap these when running with ultralite data
     rootGroup: "entry/DASlogs"
     # rootGroup: "mantid_workspace_1/logs"
-    
+
     # PV-log keys relating to instrument settings:
-    instrumentKeys: 
+    instrumentKeys:
     - "BL3:Chop:Gbl:WavelengthReq"
     - "BL3:Chop:Skf1:WavelengthUserReq"
     - "det_arc1"
@@ -62,7 +62,7 @@ instrument:
     - "BL3:Mot:OpticsPos:Pos"
     - "det_lin1"
     - "det_lin2"
-    
+
   startingRunNumber: 10000
   minimumRunNumber: 46342
   maxNumberOfRuns: 10

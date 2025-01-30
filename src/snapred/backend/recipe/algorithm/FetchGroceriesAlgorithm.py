@@ -148,17 +148,17 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             logger.warning(f"A workspace with name {outWS} already exists in the ADS, and so will not be loaded")
             loaderType = ""
         self.mantidSnapper.executeQueue()
-            
+
         if loaderType in ["LoadNexus", "LoadEventNexus", "LoadNexusProcessed"]:
             # TODO: See EWM#7437:
             #   this clause is necessary to be able to accurately set detector positions
-            #   on files written prior to the merge of the 
+            #   on files written prior to the merge of the
             #   `SaveNexus` 'instrument_parameter_map' write-precision fix.
             # It probably should not be removed, even after that fix is merged.
             # It should be replaced with `mtd[workspace].updateInstrumentParameters()` after
             #   Mantid PR#38684 has been merged.
             populateInstrumentParameters(outWS)
-         
+
         self.setPropertyValue("OutputWorkspace", outWS)
         self.setPropertyValue("LoaderType", str(loaderType))
 

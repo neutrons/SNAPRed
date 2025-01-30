@@ -1,5 +1,7 @@
-from snapred.meta.Enum import StrEnum
 from util.script_as_test import not_a_test
+
+from snapred.meta.Enum import StrEnum
+
 
 @not_a_test
 class TestSummary:
