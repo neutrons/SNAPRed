@@ -142,7 +142,8 @@ class TestTransferInstrumentPVLogs(unittest.TestCase):
         sourcePixels = mtd[self.wsWithStandardLogs].detectorInfo()
         instrumentUpdateApplied = False
         for n in range(sourcePixels.size()):
-            if sourcePixels.position(n) != originalPixels.position(n) or sourcePixels.rotation(n) != originalPixels.rotation(n):
+            if sourcePixels.position(n) != originalPixels.position(n)\
+              or sourcePixels.rotation(n) != originalPixels.rotation(n):
                 instrumentUpdateApplied = True
                 break
         assert instrumentUpdateApplied
@@ -154,13 +155,15 @@ class TestTransferInstrumentPVLogs(unittest.TestCase):
         )
         populateInstrumentParameters(testWs)
         
-        # Verify that the same instrument transformation has been applied to the source and to the destination workspace.
+        # Verify that the same instrument transformation
+        #   has been applied to the source and to the destination workspace.
         newPixels = mtd[testWs].detectorInfo()
         sourcePixels = mtd[self.wsWithStandardLogs].detectorInfo()
         instrumentUpdateApplied = True
         for n in range(sourcePixels.size()):
             # If these don't match _exactly_, then the values have not been transferred at full precision.
-            if newPixels.position(n) != sourcePixels.position(n) or newPixels.rotation(n) != sourcePixels.rotation(n):
+            if newPixels.position(n) != sourcePixels.position(n)\
+              or newPixels.rotation(n) != sourcePixels.rotation(n):
                 instrumentUpdateApplied = False
                 break
         assert instrumentUpdateApplied
