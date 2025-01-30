@@ -61,6 +61,9 @@ class SousChef(Service):
 
     def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
         calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber, ingredients.useLiteMode)
+        # NOTE: This generates a new instrument state based on the appropriate SNAPInstPrm, as opposed to
+        #       passing the previous instrument state forward.
+        calibration.instrumentState = self.dataFactoryService.getDefaultInstrumentState(ingredients.runNumber)
         calibration.calibrantSamplePath = ingredients.calibrantSamplePath
         calibration.peakIntensityThreshold = self._getThresholdFromCalibrantSample(ingredients.calibrantSamplePath)
         calibration.instrumentState.fwhmMultipliers = ingredients.fwhmMultipliers

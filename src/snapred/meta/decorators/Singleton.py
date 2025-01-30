@@ -4,6 +4,10 @@ from typing import List
 _Singleton_instances: List[type] = []
 
 
+# NOTE: January, 31, 2025 - There may be a race condition between inherited classes of a signleton class
+#       There was some Weirdness observed involving the testfile InstaEats.py where the inheriter of
+#       LocalDataService was just a LocalDataService object and not a WhateversInTheFridge object.
+#       Instantiating the WhateversInTheFridge earlier may have fixed the issue for now.
 def Singleton(orig_cls):
     orig_new = orig_cls.__new__
     orig_init = orig_cls.__init__

@@ -16,6 +16,7 @@ class FetchGroceriesRecipe:
         utensils = Utensils()
         utensils.PyInit()
         self.mantidSnapper = utensils.mantidSnapper
+        self.dataService = LocalDataService()
 
     def executeRecipe(
         self,
@@ -26,6 +27,7 @@ class FetchGroceriesRecipe:
         instrumentSource="",
         *,
         loaderArgs: str = "",
+        runNumber: int = None,
     ) -> Dict[str, Any]:
         """
         Wraps the fetch groceries algorithm
@@ -66,7 +68,9 @@ class FetchGroceriesRecipe:
 
             if data["loader"] in ("LoadEventNexus", "LoadLiveData"):
                 self.dataService = LocalDataService()
-                config = self.dataService.getInstrumentConfig()
+                if runNumber is None:
+                    raise RuntimeError("Code Err: Run number is required for event nexus files so we can remove the prompt pulse")
+                config = self.dataService.readInstrumentConfig(runNumber)
                 width = config.width
                 frequency = config.frequency
                 self.mantidSnapper.RemovePromptPulse(

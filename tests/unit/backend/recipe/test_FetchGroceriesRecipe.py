@@ -128,12 +128,16 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         self.rx.mantidSnapper.RemovePromptPulse = mock.MagicMock()
 
         self.clearoutWorkspaces()
-        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadEventNexus")
+        self.rx.dataService.readInstrumentConfig = mock.MagicMock()
+        res = self.rx.executeRecipe(self.filepath, self.fetchedWSname, "LoadEventNexus", runNumber=555)
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadEventNexus"
         assert res["workspace"] == self.fetchedWSname
         assert self.rx.mantidSnapper.RemovePromptPulse.called
+        
+        with pytest.raises(RuntimeError, match="Run number is required for event nexus files"):
+            self.rx.executeRecipe(self.filepath, self.fetchedWSname, "LoadEventNexus")
 
     @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.logger")
     @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchGroceriesAlgorithm")
