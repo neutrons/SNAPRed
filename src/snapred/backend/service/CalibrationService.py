@@ -31,9 +31,11 @@ from snapred.backend.dao.request import (
     InitializeStateRequest,
     LoadCalibrationRecordRequest,
     MatchRunsRequest,
+    OverrideRequest,
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
+from snapred.backend.dao.state.CalibrantSample import CalibrantSample
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
@@ -102,6 +104,7 @@ class CalibrationService(Service):
         self.registerPath("validateWritePermissions", self.validateWritePermissions)
         self.registerPath("residual", self.calculateResidual)
         self.registerPath("fetchMatches", self.fetchMatchingCalibrations)
+        self.registerPath("override", self.handleOverrides)
         return
 
     @staticmethod
@@ -585,3 +588,11 @@ class CalibrationService(Service):
         )
 
         return CalibrationAssessmentResponse(record=record, metricWorkspaces=metricWorkspaces)
+
+    @FromString
+    def handleOverrides(self, request: OverrideRequest):
+        sample: CalibrantSample = self.dataFactoryService.getCalibrantSample(request.calibrantSamplePath)
+        if sample.overrides:
+            return sample.overrides
+        else:
+            return None

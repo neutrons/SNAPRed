@@ -332,3 +332,21 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     def getSkipPixelCalibration(self):
         return self.skipPixelCalToggle.field.getState()
+
+    def setXtalDMin(self, value):
+        self.fieldXtalDMin.setText(str(value))
+
+    def disableXtalDMin(self):
+        self.fieldXtalDMin.setEnabled(False)
+
+    def enableXtalDMin(self):
+        self.fieldXtalDMin.setEnabled(True)
+
+    def setXtalDMax(self, value):
+        self.fieldXtalDMax.setText(str(value))
+
+    def disableXtalDMax(self):
+        self.fieldXtalDMax.setEnabled(False)
+
+    def enableXtalDMax(self):
+        self.fieldXtalDMax.setEnabled(True)
