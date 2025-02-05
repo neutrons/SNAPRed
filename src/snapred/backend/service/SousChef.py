@@ -302,6 +302,7 @@ class SousChef(Service):
             pixelGroup=self.prepPixelGroup(ingredients),
             calibrantSample=self.prepCalibrantSample(ingredients.calibrantSamplePath),
             detectorPeaks=self.prepDetectorPeaks(ingredients, purgePeaks=False),
+            instrumentState = self.prepInstrumentState(ingredients),
         )
 
     def prepDiffractionCalibrationIngredients(

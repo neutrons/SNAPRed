@@ -85,7 +85,28 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             BinningMode="Logarithmic",
         )
 
-        print(f"/n I AM ABOUT TO CHOP TO THESE: {self.lambdaMin} {self.lambdaMax}\n")
+        #Malcolm added these lines ##################
+        self.mantidSnapper.ConvertUnits(
+            "Convert workspace to wavelength units",
+            InputWorkspace=outputWS,
+            Outputworkspace=outputWS,
+            Target="Wavelength",
+        )
+
+        self.mantidSnapper.CropWorkspace(
+            "crop all events outside of range",
+            InputWorkspace=outputWS,
+            Outputworkspace=outputWS,
+            XMin = self.lambdaMin,
+            XMax = self.lambdaMax)
+
+        self.mantidSnapper.ConvertUnits(
+            "Ensure workspace is in TOF units",
+            InputWorkspace=outputWS,
+            Outputworkspace=outputWS,
+            Target="TOF",
+        )
+        ################################
 
         self.mantidSnapper.MakeDirtyDish(
             "make a copy of data after chop",
