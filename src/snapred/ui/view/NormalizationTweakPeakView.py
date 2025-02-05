@@ -188,7 +188,14 @@ class NormalizationTweakPeakView(BackendRequestView):
 
             ax.plot(focusedWorkspace, wkspIndex=i, label="Focused Data", normalize_by_bin_width=True)
             ax.plot(smoothedWorkspace, wkspIndex=i, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
-            ax.plot(residualWorkspace, wkspIndex=i, label="Residual Data", normalize_by_bin_width=True, linestyle=":")
+            ax.plot(
+                residualWorkspace,
+                wkspIndex=i,
+                label="Residual Data",
+                normalize_by_bin_width=True,
+                color="limegreen",
+                linewidth=2,
+            )
 
             ax.legend()
             ax.tick_params(direction="in")
