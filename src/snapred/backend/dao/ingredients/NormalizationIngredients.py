@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
 from snapred.backend.dao.state.PixelGroup import PixelGroup
+from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 
 class NormalizationIngredients(BaseModel):
@@ -13,3 +14,4 @@ class NormalizationIngredients(BaseModel):
     pixelGroup: PixelGroup
     calibrantSample: CalibrantSample
     detectorPeaks: List[GroupPeakList]
+    instrumentState: InstrumentState
