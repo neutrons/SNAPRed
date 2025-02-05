@@ -50,6 +50,8 @@ class DiffCalTweakPeakView(BackendRequestView):
     signalMaxChiSqUpdate = Signal(float)
     signalContinueAnyway = Signal(bool)
     signalPurgeBadPeaks = Signal(float)
+    signalUpdateXTAL_DMIN = Signal(float)
+    signalUpdateXTAL_DMAX = Signal(float)
 
     def __init__(self, samples=[], groups=[], parent=None):
         super().__init__(parent=parent)
@@ -60,6 +62,8 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.maxChiSqField = self._labeledField("Max Chi Sq", text=str(self.MAX_CHI_SQ))
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
         self.signalMaxChiSqUpdate.connect(self._updateMaxChiSq)
+        self.signalUpdateXTAL_DMIN.connect(self._setXtalDMin)
+        self.signalUpdateXTAL_DMAX.connect(self._setXtalDMax)
 
         # skip pixel calibration toggle
         self.skipPixelCalToggle = self._labeledToggle("Skip Pixel Calibration", False)
@@ -333,7 +337,11 @@ class DiffCalTweakPeakView(BackendRequestView):
     def getSkipPixelCalibration(self):
         return self.skipPixelCalToggle.field.getState()
 
-    def setXtalDMin(self, value):
+    def updateXtalDmin(self, value):
+        self.signalUpdateXTAL_DMIN.emit(value)
+
+    @Slot(float)
+    def _setXtalDMin(self, value):
         self.fieldXtalDMin.setText(str(value))
 
     def disableXtalDMin(self):
@@ -342,7 +350,11 @@ class DiffCalTweakPeakView(BackendRequestView):
     def enableXtalDMin(self):
         self.fieldXtalDMin.setEnabled(True)
 
-    def setXtalDMax(self, value):
+    def updateXtalDmax(self, value):
+        self.signalUpdateXTAL_DMAX.emit(value)
+
+    @Slot(float)
+    def _setXtalDMax(self, value):
         self.fieldXtalDMax.setText(str(value))
 
     def disableXtalDMax(self):
