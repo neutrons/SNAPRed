@@ -216,8 +216,8 @@ constants:
     rebinParams: [2000, -0.001, 14500]
   CropFactors:
     lowWavelengthCrop: -0.04
-    lowdSpacingCrop: 0.05
-    highdSpacingCrop: 0.05
+    lowdSpacingCrop: 0.015
+    highdSpacingCrop: 0.022
   CrystallographicInfo:
     crystalDMin: 0.7
     crystalDMax: 100.0
