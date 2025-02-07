@@ -198,7 +198,7 @@ class DiffCalWorkflow(WorkflowImplementer):
     def handleOverride(self, sampleFile):
         payload = OverrideRequest(calibrantSamplePath=sampleFile)
         overrides = self.request(path="calibration/override", payload=payload.json()).data
-        breakpoint()
+
         if not overrides:
             self._requestView.enablePeakFunction()
             self._tweakPeakView.enablePeakFunction()
@@ -216,13 +216,13 @@ class DiffCalWorkflow(WorkflowImplementer):
             reqComboBox = self._requestView.peakFunctionDropdown.dropDown
             idxRQ = reqComboBox.findText(peakFunction)
             if idxRQ >= 0:
-                reqComboBox.setCurrentIndex(idxRQ + 1)
+                reqComboBox.setCurrentIndex(idxRQ)
             self._requestView.disablePeakFunction()
 
             twkComboBox = self._tweakPeakView.peakFunctionDropdown.dropDown
             idxTW = twkComboBox.findText(peakFunction)
             if idxTW >= 0:
-                twkComboBox.setCurrentIndex(idxTW + 1)
+                twkComboBox.setCurrentIndex(idxTW)
             self._tweakPeakView.disablePeakFunction()
 
         if "crystalDMin" in overrides:
