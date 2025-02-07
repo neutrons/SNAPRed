@@ -201,31 +201,41 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         if not overrides:
             self._requestView.enablePeakFunction()
+            self._tweakPeakView.enablePeakFunction()
+
             self._tweakPeakView.updateXtalDmin(self.prevXtalDMin)
             self._tweakPeakView.enableXtalDMin()
             self._tweakPeakView.updateXtalDmax(self.prevXtalDMax)
             self._tweakPeakView.enableXtalDMax()
+
             return SNAPResponse(code=ResponseCode.OK)
 
-        if "peakFunction" in overrides:
-            peakFunction = overrides["peakFunction"]
-            comboBox = self._tweakPeakView.peakFunctionDropdown.dropDown
-            idx = comboBox.findText(peakFunction)
-            if idx >= 0:
-                comboBox.setCurrentIndex(idx + 1)
+        if "PeakFunction" in overrides:
+            peakFunction = overrides["PeakFunction"]
+
+            reqComboBox = self._requestView.peakFunctionDropdown.dropDown
+            idxRQ = reqComboBox.findText(peakFunction)
+            if idxRQ >= 0:
+                reqComboBox.setCurrentIndex(idxRQ + 1)
             self._requestView.disablePeakFunction()
 
-        if "crystalDMin" in overrides:
-            newDMin = overrides["crystalDMin"]
+            twkComboBox = self._tweakPeakView.peakFunctionDropdown.dropDown
+            idxTW = twkComboBox.findText(peakFunction)
+            if idxTW >= 0:
+                twkComboBox.setCurrentIndex(idxTW + 1)
+            self._tweakPeakView.disablePeakFunction()
+
+        if "CrystalDMin" in overrides:
+            newDMin = overrides["CrystalDMin"]
             self._tweakPeakView.updateXtalDmin(newDMin)
             self._tweakPeakView.disableXtalDMin()
             self.prevXtalDMin = newDMin
         else:
-            self._tweakPeakView.updateXtalDmax(self.prevXtalDMin)
+            self._tweakPeakView.updateXtalDmin(self.prevXtalDMin)
             self._tweakPeakView.enableXtalDMin()
 
-        if "crystalDMax" in overrides:
-            newDMax = overrides["crystalDMax"]
+        if "CrystalDMax" in overrides:
+            newDMax = overrides["CrystalDMax"]
             self._tweakPeakView.updateXtalDmax(newDMax)
             self._tweakPeakView.disableXtalDMax()
             self.prevXtalDMax = newDMax

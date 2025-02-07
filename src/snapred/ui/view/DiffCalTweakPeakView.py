@@ -362,3 +362,9 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     def enableXtalDMax(self):
         self.fieldXtalDMax.setEnabled(True)
+
+    def disablePeakFunction(self):
+        self.peakFunctionDropdown.setEnabled(False)
+
+    def enablePeakFunction(self):
+        self.peakFunctionDropdown.setEnabled(True)
