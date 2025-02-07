@@ -34,9 +34,13 @@ from snapred.backend.dao.request import (
     CreateIndexEntryRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
+    OverrideRequest,
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.CalibrantSample import CalibrantSample
+from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
+from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.error.ContinueWarning import ContinueWarning
@@ -1143,6 +1147,42 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         source = [fakeMetrics.model_dump()]
         assert [fakeMetrics] == self.instance.parseCalibrationMetricList(json.dumps(source))
+
+    def test_handleOverrides(self):
+        service = self.instance
+        service.dataFactoryService.getCalibrantSample = mock.Mock()
+
+        sampleWithOverrides = CalibrantSample(
+            name="diamond",
+            unique_id="0001",
+            geometry=Geometry(shape="Cylinder", radius=1.0, height=1.0, center=[0, 0, 0]),
+            material=Material(massDensity=2.0, chemicalFormula="C"),
+            overrides={"CrystalDMin": 0.3, "CrystalDMax": 99.5, "PeakFunction": "Gaussian"},
+        )
+
+        sampleNoOverrides = CalibrantSample(
+            name="graphite",
+            unique_id="0002",
+            geometry=Geometry(shape="Cylinder", radius=0.5, height=0.5, center=[0, 0, 0]),
+            material=Material(massDensity=1.8, chemicalFormula="C"),
+            overrides=None,
+        )
+
+        service.dataFactoryService.getCalibrantSample.return_value = sampleWithOverrides
+        request = OverrideRequest(calibrantSamplePath="dummy/path/to/calibrant.json")
+        result = service.handleOverrides(request)
+        self.assertEqual(  # noqa: PT009
+            result,
+            sampleWithOverrides.overrides,
+            "Expected handleOverrides to return the sample's overrides dictionary when present.",
+        )
+
+        service.dataFactoryService.getCalibrantSample.return_value = sampleNoOverrides
+        requestNoOvr = OverrideRequest(calibrantSamplePath="dummy/path/no_overrides.json")
+        resultNoOvr = service.handleOverrides(requestNoOvr)
+        self.assertIsNone(  # noqa: PT009
+            resultNoOvr, "Expected handleOverrides to return None when calibrantSample.overrides is None."
+        )
 
 
 from util.diffraction_calibration_synthetic_data import SyntheticData

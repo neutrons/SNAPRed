@@ -16,6 +16,7 @@ from snapred.backend.dao.request import (
     FitMultiplePeaksRequest,
     FocusSpectraRequest,
     HasStateRequest,
+    OverrideRequest,
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
@@ -90,6 +91,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         # connect signal to populate the grouping dropdown after run is selected
         self._requestView.litemodeToggle.stateChanged.connect(self._switchLiteNativeGroups)
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
+        self._requestView.sampleDropdown.dropDown.currentIndexChanged.connect(self._lookForOverrides)
         self._tweakPeakView.signalValueChanged.connect(self.onValueChange)
         self._tweakPeakView.signalPurgeBadPeaks.connect(self.purgeBadPeaks)
 
@@ -141,10 +143,13 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._continueAnywayHandler(continueInfo)
         self._tweakPeakView.updateContinueAnyway(True)
 
-    def __setInteraction(self, state: bool):
-        self._requestView.litemodeToggle.setEnabled(state)
-        self._requestView.skipPixelCalToggle.setEnabled(state)
-        self._requestView.groupingFileDropdown.setEnabled(state)
+    def __setInteraction(self, state: bool, interactionType: str):
+        if interactionType == "populateGroupDropdown":
+            self._requestView.litemodeToggle.setEnabled(state)
+            self._requestView.skipPixelCalToggle.setEnabled(state)
+            self._requestView.groupingFileDropdown.setEnabled(state)
+        elif interactionType == "lookForOverrides":
+            self._requestView.sampleDropdown.setEnabled(state)
 
     @ExceptionToErrLog
     @Slot()
@@ -153,11 +158,24 @@ class DiffCalWorkflow(WorkflowImplementer):
         runNumber = self._requestView.runNumberField.text()
         useLiteMode = self._requestView.litemodeToggle.getState()
 
-        self.__setInteraction(False)
+        self.__setInteraction(False, "populateGroupDropdown")
         self.workflow.presenter.handleAction(
             self.handleDropdown,
             args=(runNumber, useLiteMode),
-            onSuccess=lambda: self.__setInteraction(True),
+            onSuccess=lambda: self.__setInteraction(True, "populateGroupDropdown"),
+        )
+
+    @ExceptionToErrLog
+    @Slot()
+    def _lookForOverrides(self):
+        sampleFile = self._requestView.sampleDropdown.currentText()
+        if not sampleFile:
+            return
+        self.__setInteraction(False, "lookForOverrides")
+        self.workflow.presenter.handleAction(
+            self.handleOverride,
+            args=(sampleFile),
+            onSuccess=lambda: self.__setInteraction(True, "lookForOverrides"),
         )
 
     def handleDropdown(self, runNumber, useLiteMode):
@@ -175,6 +193,56 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # populate and re-enable the drop down
         self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        return SNAPResponse(code=ResponseCode.OK)
+
+    def handleOverride(self, sampleFile):
+        payload = OverrideRequest(calibrantSamplePath=sampleFile)
+        overrides = self.request(path="calibration/override", payload=payload.json()).data
+
+        if not overrides:
+            self._requestView.enablePeakFunction()
+            self._tweakPeakView.enablePeakFunction()
+
+            self._tweakPeakView.updateXtalDmin(self.prevXtalDMin)
+            self._tweakPeakView.enableXtalDMin()
+            self._tweakPeakView.updateXtalDmax(self.prevXtalDMax)
+            self._tweakPeakView.enableXtalDMax()
+
+            return SNAPResponse(code=ResponseCode.OK)
+
+        if "peakFunction" in overrides:
+            peakFunction = overrides["peakFunction"]
+
+            reqComboBox = self._requestView.peakFunctionDropdown.dropDown
+            idxRQ = reqComboBox.findText(peakFunction)
+            if idxRQ >= 0:
+                reqComboBox.setCurrentIndex(idxRQ)
+            self._requestView.disablePeakFunction()
+
+            twkComboBox = self._tweakPeakView.peakFunctionDropdown.dropDown
+            idxTW = twkComboBox.findText(peakFunction)
+            if idxTW >= 0:
+                twkComboBox.setCurrentIndex(idxTW)
+            self._tweakPeakView.disablePeakFunction()
+
+        if "crystalDMin" in overrides:
+            newDMin = overrides["crystalDMin"]
+            self._tweakPeakView.updateXtalDmin(newDMin)
+            self._tweakPeakView.disableXtalDMin()
+            self.prevXtalDMin = newDMin
+        else:
+            self._tweakPeakView.updateXtalDmin(self.prevXtalDMin)
+            self._tweakPeakView.enableXtalDMin()
+
+        if "crystalDMax" in overrides:
+            newDMax = overrides["crystalDMax"]
+            self._tweakPeakView.updateXtalDmax(newDMax)
+            self._tweakPeakView.disableXtalDMax()
+            self.prevXtalDMax = newDMax
+        else:
+            self._tweakPeakView.updateXtalDmax(self.prevXtalDMax)
+            self._tweakPeakView.enableXtalDMax()
+
         return SNAPResponse(code=ResponseCode.OK)
 
     @ExceptionToErrLog

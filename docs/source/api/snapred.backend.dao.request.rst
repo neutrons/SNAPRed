@@ -100,6 +100,14 @@ snapred.backend.dao.request.NormalizationExportRequest module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.dao.request.OverrideRequest module
+--------------------------------------------------
+
+.. automodule:: snapred.backend.dao.request.OverrideRequest
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.dao.request.RenameWorkspaceRequest module
 ---------------------------------------------------------
 

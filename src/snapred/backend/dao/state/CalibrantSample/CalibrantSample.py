@@ -1,5 +1,5 @@
 import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, field_validator
 
@@ -19,6 +19,7 @@ class CalibrantSample(BaseModel):
     material: Material
     crystallography: Optional[Crystallography] = None
     peakIntensityFractionThreshold: Optional[float] = Config["constants.PeakIntensityFractionThreshold"]
+    overrides: Optional[Dict[str, Any]] = None
 
     # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
     # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
