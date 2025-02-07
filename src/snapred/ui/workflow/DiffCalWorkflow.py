@@ -198,7 +198,7 @@ class DiffCalWorkflow(WorkflowImplementer):
     def handleOverride(self, sampleFile):
         payload = OverrideRequest(calibrantSamplePath=sampleFile)
         overrides = self.request(path="calibration/override", payload=payload.json()).data
-
+        breakpoint()
         if not overrides:
             self._requestView.enablePeakFunction()
             self._tweakPeakView.enablePeakFunction()
@@ -210,8 +210,8 @@ class DiffCalWorkflow(WorkflowImplementer):
 
             return SNAPResponse(code=ResponseCode.OK)
 
-        if "PeakFunction" in overrides:
-            peakFunction = overrides["PeakFunction"]
+        if "peakFunction" in overrides:
+            peakFunction = overrides["peakFunction"]
 
             reqComboBox = self._requestView.peakFunctionDropdown.dropDown
             idxRQ = reqComboBox.findText(peakFunction)
@@ -225,8 +225,8 @@ class DiffCalWorkflow(WorkflowImplementer):
                 twkComboBox.setCurrentIndex(idxTW + 1)
             self._tweakPeakView.disablePeakFunction()
 
-        if "CrystalDMin" in overrides:
-            newDMin = overrides["CrystalDMin"]
+        if "crystalDMin" in overrides:
+            newDMin = overrides["crystalDMin"]
             self._tweakPeakView.updateXtalDmin(newDMin)
             self._tweakPeakView.disableXtalDMin()
             self.prevXtalDMin = newDMin
@@ -234,8 +234,8 @@ class DiffCalWorkflow(WorkflowImplementer):
             self._tweakPeakView.updateXtalDmin(self.prevXtalDMin)
             self._tweakPeakView.enableXtalDMin()
 
-        if "CrystalDMax" in overrides:
-            newDMax = overrides["CrystalDMax"]
+        if "crystalDMax" in overrides:
+            newDMax = overrides["crystalDMax"]
             self._tweakPeakView.updateXtalDmax(newDMax)
             self._tweakPeakView.disableXtalDMax()
             self.prevXtalDMax = newDMax
