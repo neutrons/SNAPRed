@@ -1,6 +1,9 @@
+from util.script_as_test import not_a_test
+
 from snapred.meta.Enum import StrEnum
 
 
+@not_a_test
 class TestSummary:
     def __init__(self):
         self._index = 0
