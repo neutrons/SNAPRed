@@ -69,7 +69,9 @@ class FetchGroceriesRecipe:
             if data["loader"] in ("LoadEventNexus", "LoadLiveData"):
                 self.dataService = LocalDataService()
                 if runNumber is None:
-                    raise RuntimeError("Code Err: Run number is required for event nexus files so we can remove the prompt pulse")
+                    raise RuntimeError(
+                        "Code Err: Run number is required for event nexus files so we can remove the prompt pulse"
+                    )
                 config = self.dataService.readInstrumentConfig(runNumber)
                 width = config.width
                 frequency = config.frequency

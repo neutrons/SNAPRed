@@ -938,9 +938,7 @@ class LocalDataService:
 
         # Calculate the derived values
         lambdaLimit = Limit(
-            minimum=detectorState.wav
-            - (instrumentConfig.bandwidth / 2)
-            + instrumentConfig.lowWavelengthCrop,
+            minimum=detectorState.wav - (instrumentConfig.bandwidth / 2) + instrumentConfig.lowWavelengthCrop,
             maximum=detectorState.wav + (instrumentConfig.bandwidth / 2),
         )
         L = instrumentConfig.L1 + instrumentConfig.L2

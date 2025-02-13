@@ -135,7 +135,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["loader"] == "LoadEventNexus"
         assert res["workspace"] == self.fetchedWSname
         assert self.rx.mantidSnapper.RemovePromptPulse.called
-        
+
         with pytest.raises(RuntimeError, match="Run number is required for event nexus files"):
             self.rx.executeRecipe(self.filepath, self.fetchedWSname, "LoadEventNexus")
 
