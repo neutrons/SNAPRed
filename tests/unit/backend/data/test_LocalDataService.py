@@ -2261,8 +2261,9 @@ def test_readDetectorState(monkeypatch):
 def test_readDetectorState_no_PVFile():
     runNumber = "123"
     instance = LocalDataService()
-    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError(""))
-    instance.readLiveMetadata = mock.Mock(return_value=mock.MagicMock(runNumber=0))
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("..."))
+    instance.readLiveMetadata = mock.Mock(return_value=mock.MagicMock(runNumber=-1))
+    instance.hasLiveDataConnection = mock.Mock(return_value=True)
     with pytest.raises(RuntimeError, match="No PVFile exists for run"):
         instance.readDetectorState(runNumber)
 
