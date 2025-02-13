@@ -52,7 +52,7 @@ snapred.ui.view.DiffCalTweakPeakView module
 .. automodule:: snapred.ui.view.DiffCalTweakPeakView
    :members:
    :undoc-members:
-   :exclude-members: signalRunNumberUpdate, signalValueChanged, signalUpdateRecalculationButton, signalPeakThresholdUpdate, signalMaxChiSqUpdate, signalContinueAnyway, signalPurgeBadPeaks
+   :exclude-members: signalRunNumberUpdate, signalValueChanged, signalUpdateRecalculationButton, signalPeakThresholdUpdate, signalMaxChiSqUpdate, signalContinueAnyway, signalPurgeBadPeaks, signalUpdateXTAL_DMIN, signalUpdateXTAL_DMAX
    :show-inheritance:
 
 
@@ -138,7 +138,7 @@ snapred.ui.view.reduction.ReductionRequestView module
 .. automodule:: snapred.ui.view.reduction.ReductionRequestView
    :members:
    :undoc-members:
-   :exclude-members: signalRemoveRunNumber
+   :exclude-members: signalRemoveRunNumber, liveDataModeChange
    :show-inheritance:
 
 snapred.ui.view.TestPanelView module

@@ -67,7 +67,7 @@ snapred.ui.presenter.WorkflowPresenter module
 .. automodule:: snapred.ui.presenter.WorkflowPresenter
    :members:
    :undoc-members:
-   :exclude-members: actionCompleted, disableOtherWorkflows, enableAllWorkflows
+   :exclude-members: actionCompleted, cancellationRequest, disableOtherWorkflows, enableAllWorkflows, resetCompleted, workflowInProgressChange
    :show-inheritance:
 
 Module contents

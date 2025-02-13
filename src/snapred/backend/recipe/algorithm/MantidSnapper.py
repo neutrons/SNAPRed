@@ -1,4 +1,5 @@
 from collections import namedtuple
+from threading import Lock
 
 from mantid.api import AlgorithmManager, Progress, mtd
 from mantid.kernel import Direction
@@ -34,6 +35,11 @@ class _CustomMtd:
 
 
 class MantidSnapper:
+    ##
+    ## KNOWN NON-REENTRANT ALGORITHMS
+    ##
+    _algorithmMutexes = {"LoadLiveData": Lock()}
+
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}
     _mtd = _CustomMtd()
 
@@ -137,7 +143,13 @@ class MantidSnapper:
 
     def executeAlgorithm(self, name, outputs, **kwargs):
         algorithm = self.createAlgorithm(name)
+        mutex = None
         try:
+            # Protect non-reentrant algorithms.
+            mutex = self._algorithmMutexes.get(name)
+            if mutex is not None:
+                mutex.acquire()
+
             for prop, val in kwargs.items():
                 # this line is to appease mantid properties, idk where its pulling empty string from
                 if str(val.__class__) == str(callback(int).__class__):
@@ -167,6 +179,9 @@ class MantidSnapper:
             logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
             self.cleanup()
             raise AlgorithmException(name, str(e)) from e
+        finally:
+            if mutex is not None:
+                mutex.release()
 
     def executeQueue(self):
         if self.parentAlgorithm:
@@ -182,9 +197,12 @@ class MantidSnapper:
                 self._exportScript += ")\n"
 
             self.reportAndIncrement(algorithmTuple[1])
-            logger.info(algorithmTuple[1])
-            # import pdb; pdb.set_trace()
+
+            # TODO: in general, SNAPRed needs "headers-based" logging -- but for the moment,
+            #   at least put the algorithm name into the log message!
+            logger.info("%s - %s", *algorithmTuple[0:2])
             self.executeAlgorithm(name=algorithmTuple[0], outputs=algorithmTuple[3], **algorithmTuple[2])
+
         self.cleanup()
 
     @property

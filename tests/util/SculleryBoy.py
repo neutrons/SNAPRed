@@ -2,7 +2,12 @@ from typing import Dict, List, Optional
 from unittest import mock
 
 import pydantic
+
+##
+## Put test-related imports at the end, so that the normal non-test import sequence is unmodified.
+##
 from util.dao import DAOFactory
+from util.mock_util import mock_instance_methods
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import (
@@ -23,6 +28,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.redantic import parse_file_as
 
 
+@mock_instance_methods
 class SculleryBoy:
     """
     The scullery boy is a poor substitute for a sous chef,
@@ -30,6 +36,8 @@ class SculleryBoy:
 
     Should be able to mock out the SousChef.
     """
+
+    # TODO: Why isn't this `class SculleryBoy(SousChef)`?!
 
     def __init__(
         self,

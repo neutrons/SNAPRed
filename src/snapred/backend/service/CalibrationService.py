@@ -31,9 +31,11 @@ from snapred.backend.dao.request import (
     InitializeStateRequest,
     LoadCalibrationRecordRequest,
     MatchRunsRequest,
+    OverrideRequest,
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
+from snapred.backend.dao.state.CalibrantSample import CalibrantSample
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
@@ -102,6 +104,7 @@ class CalibrationService(Service):
         self.registerPath("validateWritePermissions", self.validateWritePermissions)
         self.registerPath("residual", self.calculateResidual)
         self.registerPath("fetchMatches", self.fetchMatchingCalibrations)
+        self.registerPath("override", self.handleOverrides)
         return
 
     @staticmethod
@@ -314,7 +317,9 @@ class CalibrationService(Service):
 
         # Rebuild the workspace names to strip any "iteration" number:
         savedWorkspaces = {}
-        for key, wsNames in record.workspaces.items():
+        for key_, wsNames in record.workspaces.items():
+            key = wngt(key_)  # TODO: fix usage of `@FromString`. Probably get rid of it!
+
             savedWorkspaces[key] = []
             match key:
                 case wngt.DIFFCAL_OUTPUT:
@@ -389,12 +394,17 @@ class CalibrationService(Service):
     @FromString
     def fetchMatchingCalibrations(self, request: MatchRunsRequest):
         calibrations = self.matchRunsToCalibrationVersions(request)
+        masks = set()
         for runNumber in request.runNumbers:
             if runNumber in calibrations:
                 self.groceryClerk.diffcal_table(runNumber, calibrations[runNumber]).useLiteMode(
                     request.useLiteMode
                 ).add()
-        return set(self.groceryService.fetchGroceryList(self.groceryClerk.buildList())), calibrations
+                # Calibration masks are also required, and are automatically loaded at the same time.
+                masks.add(wng.diffCalMask().runNumber(runNumber).version(calibrations[runNumber]).build())
+        workspaces = set(self.groceryService.fetchGroceryList(self.groceryClerk.buildList()))
+        workspaces.update(masks)
+        return workspaces, calibrations
 
     @FromString
     def saveCalibrationToIndex(self, entry: IndexEntry):
@@ -585,3 +595,11 @@ class CalibrationService(Service):
         )
 
         return CalibrationAssessmentResponse(record=record, metricWorkspaces=metricWorkspaces)
+
+    @FromString
+    def handleOverrides(self, request: OverrideRequest):
+        sample: CalibrantSample = self.dataFactoryService.getCalibrantSample(request.calibrantSamplePath)
+        if sample.overrides:
+            return sample.overrides
+        else:
+            return None

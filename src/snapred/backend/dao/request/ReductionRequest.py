@@ -1,3 +1,4 @@
+import datetime
 from typing import List, NamedTuple, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -15,6 +16,8 @@ Versions = NamedTuple("Versions", [("calibration", Version), ("normalization", V
 class ReductionRequest(BaseModel):
     runNumber: str
     useLiteMode: bool
+    liveDataMode: Optional[bool] = False
+    liveDataDuration: Optional[datetime.timedelta] = None
     timestamp: Optional[float] = None
     focusGroups: List[FocusGroup] = []
 

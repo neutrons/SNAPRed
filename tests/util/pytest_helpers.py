@@ -1,27 +1,37 @@
+## Python standard imports
 import os
 import tempfile
 import time
 from contextlib import ExitStack
 from pathlib import Path
 from typing import List, Optional
+
+##
+## Test-related imports go *LAST*!
+## ----------------
 from unittest import mock
 
 import pytest
+
+## Mantid imports
 from mantid.simpleapi import DeleteWorkspaces, mtd
+
+## Qt imports
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QMessageBox,
 )
 from util.Config_helpers import Config_override
 
+## SNAPRed imports
 # I would prefer not to access `LocalDataService` within an integration test,
 #   however, for the moment, the reduction-data output relocation fixture is defined in the current file.
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config
 from snapred.ui.view import InitializeStateCheckView
 
-# Import required test fixtures at the end of either the main `conftest.py`,
-#   or any `conftest.py` at the test-module level directory.
+## REMINDER: Import required test fixtures at the end of either the main `conftest.py`,
+##   or any `conftest.py` at the test-module level directory.
 
 
 ## WARNING:
@@ -233,6 +243,7 @@ def handleStateInit(waitForStateInit, stateId, qtbot, qapp, actionCompleted, wor
         )
         successPrompt.start()
         # --------------------------------------------------------------------------
+
         #    (1) respond to the "initialize state" request
         with qtbot.waitSignal(actionCompleted, timeout=60000):
             qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
@@ -247,6 +258,7 @@ def handleStateInit(waitForStateInit, stateId, qtbot, qapp, actionCompleted, wor
             o for o in qapp.topLevelWidgets() if isinstance(o, InitializeStateCheckView.InitializationMenu)
         ][0]
         stateInitDialog.stateNameField.setText("my happy state")
+
         qtbot.mouseClick(stateInitDialog.beginFlowButton, Qt.MouseButton.LeftButton)
         # State initialization dialog is "application modal" => no need to explicitly wait
         questionMessageBox.stop()

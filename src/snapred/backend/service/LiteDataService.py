@@ -16,7 +16,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 class LiteDataService(Service):
     def __init__(self):
         super().__init__()
-        self.registerPath("createLiteData", self.reduceLiteData)
+        self.registerPath("createLiteData", self.createLiteData)
         self.dataExportService = DataExportService()
         self.dataFactoryService = DataFactoryService()
         self.sousChef = SousChef()
@@ -24,7 +24,7 @@ class LiteDataService(Service):
 
     @staticmethod
     def name():
-        return "reduceLiteData"
+        return "createLiteData"
 
     def _ensureLiteDataMap(self) -> str:
         from snapred.backend.data.GroceryService import GroceryService
@@ -32,11 +32,12 @@ class LiteDataService(Service):
         return GroceryService().fetchLiteDataMap()
 
     @FromString
-    def reduceLiteData(
+    def createLiteData(
         self,
         inputWorkspace: WorkspaceName,
         outputWorkspace: WorkspaceName,
         instrumentDefinition: str = None,
+        export: bool = True,
     ) -> Dict[Any, Any]:
         liteDataMap = self._ensureLiteDataMap()
         runNumber = inputWorkspace.split("_")[-1].lstrip("0")
@@ -60,10 +61,12 @@ class LiteDataService(Service):
 
         try:
             data, tolerance = Recipe().executeRecipe(**recipeKwargs)
-            fullPath = self.dataExportService.getFullLiteDataFilePath(runNumber)
-            path = fullPath.parent
-            fileName = fullPath.name
-            self.dataExportService.exportWorkspace(path, fileName, outputWorkspace)
+            if export:
+                # Export the converted data to disk
+                fullPath = self.dataExportService.getFullLiteDataFilePath(runNumber)
+                path = fullPath.parent
+                fileName = fullPath.name
+                self.dataExportService.exportWorkspace(path, fileName, outputWorkspace)
         except Exception as e:
             raise e
         return data, tolerance

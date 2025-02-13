@@ -66,10 +66,14 @@ class ReductionRecipe(Recipe[Ingredients]):
     def unbagGroceries(self, groceries: Dict[str, Any]):
         """
         Unpacks the workspace data from the groceries.
-        The input sample data workpsace, inputworkspace, is required, in dspacing
+        The input sample-data workspace should be in units of d-spacing.
 
         """
-        self.groceries = groceries.copy()
+        # Implementation note:
+        # `self.groceries` is no longer passed around _implicitly_:
+        #    anything needed by a sub-recipe should be passed in explicitly,
+        #    and should be unbagged _here_.
+
         self.sampleWs = groceries["inputWorkspace"]
         self.diffcalWs = groceries.get("diffcalWorkspace", "")
         self.normalizationWs = groceries.get("normalizationWorkspace", "")
@@ -100,6 +104,25 @@ class ReductionRecipe(Recipe[Ingredients]):
         )
         self.mantidSnapper.executeQueue()
 
+    def _addOrReplaceToOutput(self, preOutputWsName: WorkspaceName) -> WorkspaceName:
+        nameBuilder = preOutputWsName.builder
+        if nameBuilder is None:
+            raise RuntimeError(
+                "Cannot generate a new name for add-or-replace using an incomplete `WorkspaceName`:\n"
+                + f"    '{preOutputWsName}': {type(preOutputWsName)}"
+            )
+        # Remove the 'hidden' prefix from the original name.
+        finalizedOutputWsName = nameBuilder.hidden(False).build()
+
+        self.mantidSnapper.RenameWorkspace(
+            "Add-or-replace to finalized output",
+            OutputWorkspace=finalizedOutputWsName,
+            InputWorkspace=preOutputWsName,
+            OverwriteExisting=True,
+        )
+        self.mantidSnapper.executeQueue()
+        return finalizedOutputWsName
+
     def _prepareUnfocusedData(
         self, workspace: WorkspaceName, mask: Optional[WorkspaceName], units: str
     ) -> WorkspaceName:
@@ -117,22 +140,42 @@ class ReductionRecipe(Recipe[Ingredients]):
                 raise ValueError(f"cannot convert to unit '{units}'")
 
         runNumber, liteMode = workspace.tokens("runNumber", "lite")
-        self.unfocWs = wng.run().runNumber(runNumber).lite(liteMode).unit(unitsAbrev).group(wng.Groups.UNFOC).build()
-        self._cloneWorkspace(workspace, self.unfocWs)
 
+        # In case of live-data reduction, we need to add-or-replace the unfocused-data workspace in one operation,
+        #   as the user may be viewing a plot of this workspace from a previous live-data cycle.
+        # For this reason, we start with a hidden workspace, and then rename it at the end
+        #   of this method's algorithm sequence.
+        preOutputUnfocWs = (
+            wng.run().runNumber(runNumber).lite(liteMode).unit(unitsAbrev).group(wng.Groups.UNFOC).hidden(True).build()
+        )
+
+        # In order that there be only one algorithm queue here, we do not use `self._cloneWorkspace`.
+        self.mantidSnapper.CloneWorkspace(
+            "Cloning unfocused data", OutputWorkspace=preOutputUnfocWs, InputWorkspace=workspace
+        )
         if mask:
             self.mantidSnapper.MaskDetectorFlags(
                 "Applying pixel mask to unfocused data",
                 MaskWorkspace=mask,
-                OutputWorkspace=self.unfocWs,
+                OutputWorkspace=preOutputUnfocWs,
             )
 
         self.mantidSnapper.ConvertUnits(
-            f"Converting unfocused data to {units} units",
-            InputWorkspace=self.unfocWs,
-            OutputWorkspace=self.unfocWs,
+            f"Converting unfocused data to {units}",
+            InputWorkspace=preOutputUnfocWs,
+            OutputWorkspace=preOutputUnfocWs,
             Target=units,
         )
+
+        # Rename the workspace
+        self.unfocWs = preOutputUnfocWs.builder.hidden(False).build()
+        self.mantidSnapper.RenameWorkspace(
+            "Add-or-replace unfocused data",
+            OutputWorkspace=self.unfocWs,
+            InputWorkspace=preOutputUnfocWs,
+            OverwriteExisting=True,
+        )
+
         self.mantidSnapper.executeQueue()
         return self.unfocWs
 
@@ -149,25 +192,15 @@ class ReductionRecipe(Recipe[Ingredients]):
             Ingredients=self.ingredients.artificialNormalizationIngredients,
             OutputWorkspace=normalizationWorkspace,
         )
-        self.groceries["normalizationWorkspace"] = normalizationWorkspace
         return normalizationWorkspace
 
     def _applyRecipe(self, recipe: Type[Recipe], ingredients_, **kwargs):
-        inws = kwargs.get("inputWorkspace", None)
-        if inws is None or inws == "":
-            self.logger().debug(f"{recipe.__name__} :: Skipping recipe with default empty input workspace")
-            return
+        # Implementation notes:
+        #   * We no longer pass `self.groceries` around _implicitly_: this was a really bad idea!
+        #   * There's not a lot of value added in not letting the recipes deal with their own error messages.
+        #     For this reason, we do _not_ check the presence of, or the existence of any arguments _here_.
 
-        if self.mantidSnapper.mtd.doesExist(kwargs["inputWorkspace"]):
-            recipe().cook(ingredients_, kwargs)
-        else:
-            raise RuntimeError(
-                (
-                    f"{recipe.__name__} ::"
-                    " Missing non-default input workspace with groceries:"
-                    f" {kwargs} and kwargs: {kwargs}"
-                )
-            )
+        recipe().cook(ingredients_, groceries=kwargs)
 
     def _getNormalizationWorkspaceName(self, groupingIndex: int):
         return f"reduced_normalization_{groupingIndex}_{wnvf.formatTimestamp(self.ingredients.timestamp)}"
@@ -180,16 +213,22 @@ class ReductionRecipe(Recipe[Ingredients]):
         runNumber, timestamp = self.ingredients.runNumber, self.ingredients.timestamp
 
         groupingName = self.ingredients.pixelGroups[groupingIndex].focusGroup.name.lower()
-        reducedOutputWs = wng.reductionOutput().runNumber(runNumber).group(groupingName).timestamp(timestamp).build()
+
+        # Reduction of live data requires the reduced output workspace to be updated in _one_ operation,
+        #   at the _end_ of the reduction process.  This allows plotting output workspaces in real time.
+        # We temporarily prefix the output workspace with the double underscore (i.e. the "hidden" attribute),
+        #   which will then be removed during the add-or-replace step (i.e. rename) during finalization.
+        reducedOutputWs = (
+            wng.reductionOutput().runNumber(runNumber).group(groupingName).timestamp(timestamp).hidden(True).build()
+        )
+
         sampleClone = self._cloneWorkspace(self.sampleWs, reducedOutputWs)
-        self.groceries["inputWorkspace"] = sampleClone
         normalizationClone = None
         if self.normalizationWs:
             normalizationClone = self._cloneWorkspace(
                 self.normalizationWs,
                 self._getNormalizationWorkspaceName(groupingIndex),
             )
-            self.groceries["normalizationWorkspace"] = normalizationClone
         return sampleClone, normalizationClone
 
     def _isGroupFullyMasked(self, groupingWorkspace: str) -> bool:
@@ -220,29 +259,33 @@ class ReductionRecipe(Recipe[Ingredients]):
         # 1. PreprocessReductionRecipe
         outputs = []
         self._applyRecipe(
+            # groceries: 'inputWorkspace', 'diffcalWorkspace', 'maskWorkspace' [, 'outputWorkspace']
             PreprocessReductionRecipe,
             self.ingredients.preprocess(),
             inputWorkspace=self.sampleWs,
             diffcalWorkspace=self.diffcalWs,
-            maskWorkspace=self.maskWs,
+            **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
         )
         self._cloneIntermediateWorkspace(self.sampleWs, "sample_preprocessed")
-        self._applyRecipe(
-            PreprocessReductionRecipe,
-            self.ingredients.preprocess(),
-            inputWorkspace=self.normalizationWs,
-            diffcalWorkspace=self.diffcalWs,
-            maskWorkspace=self.maskWs,
-        )
-        self._cloneIntermediateWorkspace(self.normalizationWs, "normalization_preprocessed")
+
+        if self.normalizationWs:
+            # If artificial normalization is being used, there won't be any incoming normalization workspace.
+            self._applyRecipe(
+                # groceries: 'inputWorkspace', 'diffcalWorkspace', 'maskWorkspace' [, 'outputWorkspace']
+                PreprocessReductionRecipe,
+                self.ingredients.preprocess(),
+                inputWorkspace=self.normalizationWs,
+                diffcalWorkspace=self.diffcalWs,
+                **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
+            )
+            self._cloneIntermediateWorkspace(self.normalizationWs, "normalization_preprocessed")
 
         for groupingIndex, groupingWs in enumerate(self.groupingWorkspaces):
             if self.maskWs and self._isGroupFullyMasked(groupingWs):
                 # Notify the user of a fully masked group, but continue with the workflow
                 self.logger().warning(
                     f"\nAll pixels masked within {groupingWs} schema.\n"
-                    + "Skipping all algorithm execution for this group.\n"
-                    + "This will affect future reductions."
+                    + "Skipping all algorithm execution for this group."
                 )
                 continue
 
@@ -250,19 +293,23 @@ class ReductionRecipe(Recipe[Ingredients]):
 
             # 2. ReductionGroupProcessingRecipe
             self._applyRecipe(
+                # groceries: 'inputWorkspace', 'groupingWorkspace' [, 'outputWorkspace']
                 ReductionGroupProcessingRecipe,
                 self.ingredients.groupProcessing(groupingIndex),
                 inputWorkspace=sampleClone,
                 groupingWorkspace=groupingWs,
             )
             self._cloneIntermediateWorkspace(sampleClone, f"sample_GroupProcessing_{groupingIndex}")
-            self._applyRecipe(
-                ReductionGroupProcessingRecipe,
-                self.ingredients.groupProcessing(groupingIndex),
-                inputWorkspace=normalizationClone,
-                groupingWorkspace=groupingWs,
-            )
-            self._cloneIntermediateWorkspace(normalizationClone, f"normalization_GroupProcessing_{groupingIndex}")
+
+            if normalizationClone:
+                self._applyRecipe(
+                    # groceries: 'inputWorkspace', 'groupingWorkspace' [, 'outputWorkspace']
+                    ReductionGroupProcessingRecipe,
+                    self.ingredients.groupProcessing(groupingIndex),
+                    inputWorkspace=normalizationClone,
+                    groupingWorkspace=groupingWs,
+                )
+                self._cloneIntermediateWorkspace(normalizationClone, f"normalization_GroupProcessing_{groupingIndex}")
 
             vanadiumBasisWorkspace = normalizationClone
             # if there was no normalization and the user elected to use artificial normalization
@@ -272,7 +319,16 @@ class ReductionRecipe(Recipe[Ingredients]):
                 normalizationClone = self._getNormalizationWorkspaceName(groupingIndex)
 
             # 3. GenerateFocussedVanadiumRecipe
+
+            ##
+            ## TODO: =====> THIS NEXT SUB-RECIPE modifies its 'inputWorkspace': that behavior is not really OK! <======
+            ##   This workspace will be either of 'normalizationClone' or 'sampleClone':
+            ##     both of these are then used as _input_ for later sub-recipes.
+            ##   In the case that the input workspace is `sampleClone` it should possibly be cloned -again- instead.
+            ##
+
             self._applyRecipe(
+                # groceries: 'inputWorkspace' [, 'outputWorkspace']
                 GenerateFocussedVanadiumRecipe,
                 self.ingredients.generateFocussedVanadium(groupingIndex),
                 inputWorkspace=vanadiumBasisWorkspace,
@@ -283,6 +339,7 @@ class ReductionRecipe(Recipe[Ingredients]):
 
             # 4. ApplyNormalizationRecipe
             self._applyRecipe(
+                # groceries: 'inputWorkspace', ['normalizationWorkspace': ''] [, 'backgroundWorkspace': '']
                 ApplyNormalizationRecipe,
                 self.ingredients.applyNormalization(groupingIndex),
                 inputWorkspace=sampleClone,
@@ -293,13 +350,19 @@ class ReductionRecipe(Recipe[Ingredients]):
             # 5. Replace the instrument with the effective instrument for this grouping
             if Config["reduction.output.useEffectiveInstrument"]:
                 self._applyRecipe(
+                    # groceries: 'inputWorkspace' [, 'outputWorkspace']
                     EffectiveInstrumentRecipe,
                     self.ingredients.effectiveInstrument(groupingIndex),
                     inputWorkspace=sampleClone,
                 )
 
-            # Cleanup
-            outputs.append(sampleClone)
+            ## Finalization:
+
+            # Add-or-replace to the actual reduced output workspace (required for reducing live data).
+            reducedOutputWs = self._addOrReplaceToOutput(sampleClone)
+
+            # Retain the output workspace in the 'outputs' list.
+            outputs.append(reducedOutputWs)
 
             if self.normalizationWs:
                 self._deleteWorkspace(normalizationClone)

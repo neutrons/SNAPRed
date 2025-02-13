@@ -34,15 +34,19 @@ from snapred.backend.dao.request import (
     CreateIndexEntryRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
+    OverrideRequest,
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.CalibrantSample import CalibrantSample
+from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
+from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Config
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
+from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName, WorkspaceType
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import parse_file_as
@@ -431,6 +435,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             ),
             createRecordRequest=CreateCalibrationRecordRequest(**record.model_dump()),
         )
+
         with state_root_redirect(self.localDataService) as tmpRoot:
             self.instance.save(request)
             savedRecord = parse_file_as(
@@ -597,10 +602,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_load_quality_assessment_dsp_and_diag(self):
         calibRecord = DAOFactory.calibrationRecord(
             workspaces={
-                "diffCalOutput": ["_dsp_diffoc_057514"],
-                "diffCalDiagnostic": ["_diagnostic_diffoc_057514"],
-                "diffCalTable": ["_diffract_consts_057514"],
-                "diffCalMask": ["_diffract_consts_mask_057514"],
+                wngt.DIFFCAL_OUTPUT: ["_dsp_diffoc_057514"],
+                wngt.DIFFCAL_DIAG: ["_diagnostic_diffoc_057514"],
+                wngt.DIFFCAL_TABLE: ["_diffract_consts_057514"],
+                wngt.DIFFCAL_MASK: ["_diffract_consts_mask_057514"],
             }
         )
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
@@ -623,10 +628,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_load_quality_assessment_unexpected_type(self):
         calibRecord = DAOFactory.calibrationRecord()
         calibRecord.workspaces = {
-            "diffCalOutput": ["_dsp_diffoc_057514"],
-            "diffCalTable": ["_diffract_consts_057514"],
-            "diffCalMask": ["_diffract_consts_mask_057514"],
-            "rawVanadium": ["_unexpected_workspace_type"],
+            wngt.DIFFCAL_OUTPUT: ["_dsp_diffoc_057514"],
+            wngt.DIFFCAL_TABLE: ["_diffract_consts_057514"],
+            wngt.DIFFCAL_MASK: ["_diffract_consts_mask_057514"],
+            wngt.RAW_VANADIUM: ["_unexpected_workspace_type"],
         }
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
 
@@ -704,7 +709,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     @mock.patch(thisService + "SimpleDiffCalRequest", spec_set=SimpleDiffCalRequest)
     def test_diffractionCalibration_calls_others(self, SimpleDiffCalRequest):
         # mock out external functionalties
-        SimpleDiffCalRequest.return_value = SimpleDiffCalRequest.construct(groceries={"previousCalibration": ""})
+        SimpleDiffCalRequest.return_value = SimpleDiffCalRequest.model_construct(groceries={"previousCalibration": ""})
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value=mock.sentinel.stateroot)
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
@@ -758,7 +763,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     @mock.patch(thisService + "SimpleDiffCalRequest")
     def test_diffractionCalibration_pixel_fail(self, mockSimpleDiffCalRequest):
-        mockSimpleDiffCalRequest.return_value = SimpleDiffCalRequest.construct(groceries={"previousCalibration": ""})
+        mockSimpleDiffCalRequest.return_value = SimpleDiffCalRequest.model_construct(
+            groceries={"previousCalibration": ""}
+        )
         self.instance.validateRequest = mock.Mock()
         mockPixelRxServing = mock.Mock(
             result=False,
@@ -770,14 +777,16 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.pixelCalibration = mock.Mock(return_value=mockPixelRxServing)
 
         # Call the method with the provided parameters
-        request = DiffractionCalibrationRequest.construct()
+        request = DiffractionCalibrationRequest.model_construct()
         with pytest.raises(RuntimeError) as e:
             self.instance.diffractionCalibration(request)
         assert str(e.value) == "Pixel Calibration failed"
 
     @mock.patch(thisService + "SimpleDiffCalRequest")
     def test_diffractionCalibration_group_fail(self, mockSimpleDiffCalRequest):
-        mockSimpleDiffCalRequest.return_value = SimpleDiffCalRequest.construct(groceries={"previousCalibration": ""})
+        mockSimpleDiffCalRequest.return_value = SimpleDiffCalRequest.model_construct(
+            groceries={"previousCalibration": ""}
+        )
         self.instance.validateRequest = mock.Mock()
         mockPixelRxServing = mock.Mock(
             result=True,
@@ -797,20 +806,20 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groupCalibration = mock.Mock(return_value=mockGroupRxServing)
 
         # Call the method with the provided parameters
-        request = DiffractionCalibrationRequest.construct()
+        request = DiffractionCalibrationRequest.model_construct()
         with pytest.raises(RuntimeError) as e:
             self.instance.diffractionCalibration(request)
         assert str(e.value) == "Group Calibration failed"
 
     @mock.patch(thisService + "PixelDiffCalRecipe", spec_set=PixelDiffCalRecipe)
     def test_pixelCalibration_success(self, PixelRx):
-        mock.sentinel.result = PixelDiffCalServing.construct(
+        mock.sentinel.result = PixelDiffCalServing.model_construct(
             maskWorkspace=self.sampleMaskWS,
         )
         PixelRx().cook.return_value = mock.sentinel.result
 
         # Call the method with the provided parameters
-        request = SimpleDiffCalRequest.construct(
+        request = SimpleDiffCalRequest.model_construct(
             ingredients=mock.sentinel.ingredients,
             groceries=mock.sentinel.groceries,
         )
@@ -832,13 +841,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             maskWS.setY(pixel, [1.0])
 
         # mock out the return
-        mock.sentinel.result = PixelDiffCalServing.construct(
+        mock.sentinel.result = PixelDiffCalServing.model_construct(
             maskWorkspace=self.sampleMaskWS,
         )
         PixelRx().cook.return_value = mock.sentinel.result
 
         # Call the method with the provided parameters
-        request = SimpleDiffCalRequest.construct(
+        request = SimpleDiffCalRequest.model_construct(
             ingredients=mock.sentinel.ingredients,
             groceries=mock.sentinel.groceries,
         )
@@ -851,7 +860,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         GroupRx().cook.return_value = mock.sentinel.result
 
         # Call the method with the provided parameters
-        request = SimpleDiffCalRequest.construct(
+        request = SimpleDiffCalRequest.model_construct(
             ingredients=mock.sentinel.ingredients,
             groceries=mock.sentinel.groceries,
         )
@@ -1057,10 +1066,19 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryList = mock.Mock(return_value=mockGroceries)
         self.instance.groceryClerk = mock.Mock()
 
-        request = mock.Mock(runNumbers=[mock.sentinel.run1, mock.sentinel.run2], useLiteMode=True)
-        groceries, cal = self.instance.fetchMatchingCalibrations(request)
-        assert groceries == {mock.sentinel.grocery1, mock.sentinel.grocery2}
-        assert cal == mockCalibrations
+        with mock.patch.object(NameBuilder, "build", autospec=True) as mockNameBuilder_build:
+            mockNameBuilder_build.side_effect = lambda self_: tuple(self_.props.values())
+
+            request = mock.Mock(runNumbers=[mock.sentinel.run1, mock.sentinel.run2], useLiteMode=True)
+            groceries, cal = self.instance.fetchMatchingCalibrations(request)
+            assert groceries == {
+                mock.sentinel.grocery1,  # diffcal-table #1
+                mock.sentinel.grocery2,  # diffcal-table #2
+                # Be careful here: there's some implicit ordering going on in the 'values' tuples.
+                (mock.sentinel.version1, WorkspaceType.DIFFCAL_MASK, False, mock.sentinel.run1),  # diffcal-mask #1
+                (mock.sentinel.version2, WorkspaceType.DIFFCAL_MASK, False, mock.sentinel.run2),  # diffcal-mask #2
+            }
+            assert cal == mockCalibrations
 
     def test_initializeState(self):
         testCalibration = DAOFactory.calibrationParameters()
@@ -1076,7 +1094,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     def test_getState(self):
         testCalibration = DAOFactory.calibrationParameters()
-        testConfig = StateConfig.construct()
+        testConfig = StateConfig.model_construct()
         testConfig.calibration = testCalibration
         states = [deepcopy(testConfig), deepcopy(testConfig), deepcopy(testConfig)]
         states[0].calibration.instrumentState.id = "0000000000000000"
@@ -1143,6 +1161,42 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         source = [fakeMetrics.model_dump()]
         assert [fakeMetrics] == self.instance.parseCalibrationMetricList(json.dumps(source))
+
+    def test_handleOverrides(self):
+        service = self.instance
+        service.dataFactoryService.getCalibrantSample = mock.Mock()
+
+        sampleWithOverrides = CalibrantSample(
+            name="diamond",
+            unique_id="0001",
+            geometry=Geometry(shape="Cylinder", radius=1.0, height=1.0, center=[0, 0, 0]),
+            material=Material(massDensity=2.0, chemicalFormula="C"),
+            overrides={"CrystalDMin": 0.3, "CrystalDMax": 99.5, "PeakFunction": "Gaussian"},
+        )
+
+        sampleNoOverrides = CalibrantSample(
+            name="graphite",
+            unique_id="0002",
+            geometry=Geometry(shape="Cylinder", radius=0.5, height=0.5, center=[0, 0, 0]),
+            material=Material(massDensity=1.8, chemicalFormula="C"),
+            overrides=None,
+        )
+
+        service.dataFactoryService.getCalibrantSample.return_value = sampleWithOverrides
+        request = OverrideRequest(calibrantSamplePath="dummy/path/to/calibrant.json")
+        result = service.handleOverrides(request)
+        self.assertEqual(  # noqa: PT009
+            result,
+            sampleWithOverrides.overrides,
+            "Expected handleOverrides to return the sample's overrides dictionary when present.",
+        )
+
+        service.dataFactoryService.getCalibrantSample.return_value = sampleNoOverrides
+        requestNoOvr = OverrideRequest(calibrantSamplePath="dummy/path/no_overrides.json")
+        resultNoOvr = service.handleOverrides(requestNoOvr)
+        self.assertIsNone(  # noqa: PT009
+            resultNoOvr, "Expected handleOverrides to return None when calibrantSample.overrides is None."
+        )
 
 
 from util.diffraction_calibration_synthetic_data import SyntheticData

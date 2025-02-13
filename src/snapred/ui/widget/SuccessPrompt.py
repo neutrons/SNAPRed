@@ -1,4 +1,4 @@
-from qtpy.QtCore import Qt, Slot
+from qtpy.QtCore import QMetaObject, Qt, Slot
 from qtpy.QtWidgets import QDialog, QLabel, QPushButton, QVBoxLayout
 
 
@@ -20,22 +20,25 @@ class SuccessPrompt(QDialog):
         self.setWindowModality(Qt.ApplicationModal)
         self.setWindowTitle("Success")
         self.setFixedSize(300, 120)
-        layout = QVBoxLayout()
+
+        # Do not hide the `QWidget.layout()` method!
+        layout_ = QVBoxLayout()
 
         label = QLabel("State initialized successfully.")
-        layout.addWidget(label)
+        layout_.addWidget(label)
 
         self.okButton = QPushButton("OK")
-        layout.addWidget(self.okButton)
+        layout_.addWidget(self.okButton)
         self.okButton.clicked.connect(self.accept)
 
-        self.setLayout(layout)
+        self.setLayout(layout_)
 
     @Slot()
     def accept(self):
         super().accept()
         if self.parent():
-            self.parent().close()
+            # Queuing this allows "parent" to close "self".
+            QMetaObject.invokeMethod(self.parent(), "close", Qt.QueuedConnection)
 
     # A static "factory" method to facilitate testing.
     @staticmethod

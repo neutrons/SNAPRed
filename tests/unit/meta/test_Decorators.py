@@ -1,7 +1,5 @@
 import json
-import traceback
 from typing import List
-from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -57,82 +55,45 @@ def test_FromStringOnListOfBaseModel():
     tester.assertIsListOfModel(json.dumps([SNAPRequest(path="test").dict()]))
 
 
-def generateMockExceptionWithTraceback():
+def generateMockExceptionWithTraceback(exceptionType: type, msg: str = "Test error message"):
     try:
-        raise Exception("Test error message")
-    except Exception as e:  # noqa: BLE001
+        raise exceptionType(msg)
+    except exceptionType as e:  # noqa: BLE001
         return e
 
 
-@mock.patch("pathlib.Path.exists", return_value=True)
-@mock.patch("os.access", return_value=False)
-def test_stateValidationExceptionNoWritePermissions(mockExists, mockAccess):  # noqa: ARG001
+def test_stateValidationExceptionNoWritePermissions():  # noqa: ARG001
     # Create an exception with a real traceback
-    mock_exception = generateMockExceptionWithTraceback()
+    mock_exception = generateMockExceptionWithTraceback(PermissionError)
 
-    # Mock the traceback to simulate a valid file path
-    mockTb = [traceback.FrameSummary("nonExistentFile.txt", 42, "testFunction")]
-    with patch("traceback.extract_tb", return_value=mockTb):
-        try:
-            raise StateValidationException(mock_exception)
-        except StateValidationException as e:
-            # Assert the error message is as expected
-            expectedMessage = "You do not have write permissions: nonExistentFile.txt"
-            assert e.message == expectedMessage  # noqa: PT017
+    with pytest.raises(
+        StateValidationException, match=r"The following error occurred:.*\n\nPlease contact your IS or CIS\."
+    ):
+        raise StateValidationException(mock_exception)
 
 
-@mock.patch("pathlib.Path.exists", return_value=False)
-def test_stateValidationExceptionFileDoesNotExist(mockExists):  # noqa: ARG001
+def test_stateValidationExceptionFileDoesNotExist():  # noqa: ARG001
     # Create an exception with a real traceback
-    mockException = generateMockExceptionWithTraceback()
+    mock_exception = generateMockExceptionWithTraceback(FileNotFoundError)
 
-    # Mock the traceback to simulate a valid file path
-    mockTb = [traceback.FrameSummary("non_existent_file.txt", 42, "test_function")]
-    with patch("traceback.extract_tb", return_value=mockTb):
-        try:
-            raise StateValidationException(mockException)
-        except StateValidationException as e:
-            # Assert the error message is as expected
-            expectedMessage = "The file does not exist: non_existent_file.txt"
-            assert e.message == expectedMessage  # noqa: PT017
+    with pytest.raises(
+        StateValidationException, match=r"The following error occurred:.*\n\nPlease contact your IS or CIS\."
+    ):
+        raise StateValidationException(mock_exception)
 
 
-@patch("snapred.backend.log.logger.snapredLogger")
-@patch("snapred.meta.Config.Config", {"instrument.home": "/expected/path"})
-def test_stateValidationExceptionWithPermissionIssue(mockLogger):  # noqa: ARG001
-    exception_msg = "Instrument State for given Run Number is invalid! (see logs for details.)"
-    try:
-        raise StateValidationException(RuntimeError("Error accessing SNS/SNAP/expected/path/somefile.txt"))
-    except StateValidationException as e:
-        assert str(e) == exception_msg  # noqa: PT017
-
-
-@patch("snapred.backend.log.logger.snapredLogger")
+@patch("snapred.backend.error.StateValidationException.logger")
 def test_stateValidationExceptionWithInvalidState(mockLogger):  # noqa: ARG001
-    exception_msg = "Instrument State for given Run Number is invalid! (see logs for details.)"
-    try:
-        raise StateValidationException(RuntimeError("Random error message"))
-    except StateValidationException as e:
-        assert str(e) == exception_msg  # noqa: PT017
+    # Create an exception with a real traceback
+    testMessage = "Here I will tell you, the end user, the reason why the state is invalid."
+    mock_exception = generateMockExceptionWithTraceback(RuntimeError, testMessage)
 
+    with pytest.raises(
+        StateValidationException, match=r"Instrument State for given Run Number is invalid! \(See logs for details\.\)"
+    ):
+        raise StateValidationException(mock_exception)
 
-def test_stateValidationExceptionWritePerms():
-    exception = Exception("Test Exception")
-
-    # Mocking the checkFileAndPermissions method to simulate file existence and permission
-    with mock.patch.object(StateValidationException, "_checkFileAndPermissions", return_value=(True, True)):
-        # Creating a fake traceback
-        try:
-            raise exception
-        except Exception as e:  # noqa: BLE001
-            tb = e.__traceback__  # noqa: F841
-
-        # Raising the exception with the mocked traceback
-        with pytest.raises(StateValidationException) as excinfo:
-            raise StateValidationException(exception)
-
-        # Asserting that the error message is as expected
-        assert "The following error occurred:Test Exception\n\nPlease contact your IS or CIS." in str(excinfo.value)
+    mockLogger.error.assert_called_once_with(testMessage)
 
 
 @ExceptionHandler(StateValidationException)

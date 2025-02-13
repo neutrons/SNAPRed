@@ -16,6 +16,7 @@ from snapred.backend.dao.request import (
     FitMultiplePeaksRequest,
     FocusSpectraRequest,
     HasStateRequest,
+    OverrideRequest,
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
@@ -88,14 +89,15 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._saveView = DiffCalSaveView(parent)
 
         # connect signal to populate the grouping dropdown after run is selected
-        self._requestView.litemodeToggle.stateChanged.connect(self._switchLiteNativeGroups)
+        self._requestView.liteModeToggle.stateChanged.connect(self._switchLiteNativeGroups)
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
+        self._requestView.sampleDropdown.dropDown.currentIndexChanged.connect(self._lookForOverrides)
         self._tweakPeakView.signalValueChanged.connect(self.onValueChange)
         self._tweakPeakView.signalPurgeBadPeaks.connect(self.purgeBadPeaks)
 
         # connect the lite mode toggles across the views
-        self._requestView.litemodeToggle.stateChanged.connect(self._tweakPeakView.litemodeToggle.setState)
-        self._tweakPeakView.litemodeToggle.stateChanged.connect(self._requestView.litemodeToggle.setState)
+        self._requestView.liteModeToggle.stateChanged.connect(self._tweakPeakView.liteModeToggle.setState)
+        self._tweakPeakView.liteModeToggle.stateChanged.connect(self._requestView.liteModeToggle.setState)
 
         # connect the skip pixelcal toggles across the views
         self._requestView.skipPixelCalToggle.stateChanged.connect(self._tweakPeakView.skipPixelCalToggle.setState)
@@ -141,23 +143,39 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._continueAnywayHandler(continueInfo)
         self._tweakPeakView.updateContinueAnyway(True)
 
-    def __setInteraction(self, state: bool):
-        self._requestView.litemodeToggle.setEnabled(state)
-        self._requestView.skipPixelCalToggle.setEnabled(state)
-        self._requestView.groupingFileDropdown.setEnabled(state)
+    def __setInteraction(self, state: bool, interactionType: str):
+        if interactionType == "populateGroupDropdown":
+            self._requestView.liteModeToggle.setEnabled(state)
+            self._requestView.skipPixelCalToggle.setEnabled(state)
+            self._requestView.groupingFileDropdown.setEnabled(state)
+        elif interactionType == "lookForOverrides":
+            self._requestView.sampleDropdown.setEnabled(state)
 
     @ExceptionToErrLog
     @Slot()
     def _populateGroupingDropdown(self):
         # when the run number is updated, freeze the drop down to populate it
         runNumber = self._requestView.runNumberField.text()
-        useLiteMode = self._requestView.litemodeToggle.getState()
+        useLiteMode = self._requestView.liteModeToggle.getState()
 
-        self.__setInteraction(False)
+        self.__setInteraction(False, "populateGroupDropdown")
         self.workflow.presenter.handleAction(
             self.handleDropdown,
             args=(runNumber, useLiteMode),
-            onSuccess=lambda: self.__setInteraction(True),
+            onSuccess=lambda: self.__setInteraction(True, "populateGroupDropdown"),
+        )
+
+    @ExceptionToErrLog
+    @Slot()
+    def _lookForOverrides(self):
+        sampleFile = self._requestView.sampleDropdown.currentText()
+        if not sampleFile:
+            return
+        self.__setInteraction(False, "lookForOverrides")
+        self.workflow.presenter.handleAction(
+            self.handleOverride,
+            args=(sampleFile),
+            onSuccess=lambda: self.__setInteraction(True, "lookForOverrides"),
         )
 
     def handleDropdown(self, runNumber, useLiteMode):
@@ -177,11 +195,61 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
         return SNAPResponse(code=ResponseCode.OK)
 
+    def handleOverride(self, sampleFile):
+        payload = OverrideRequest(calibrantSamplePath=sampleFile)
+        overrides = self.request(path="calibration/override", payload=payload.json()).data
+
+        if not overrides:
+            self._requestView.enablePeakFunction()
+            self._tweakPeakView.enablePeakFunction()
+
+            self._tweakPeakView.updateXtalDmin(self.prevXtalDMin)
+            self._tweakPeakView.enableXtalDMin()
+            self._tweakPeakView.updateXtalDmax(self.prevXtalDMax)
+            self._tweakPeakView.enableXtalDMax()
+
+            return SNAPResponse(code=ResponseCode.OK)
+
+        if "peakFunction" in overrides:
+            peakFunction = overrides["peakFunction"]
+
+            reqComboBox = self._requestView.peakFunctionDropdown.dropDown
+            idxRQ = reqComboBox.findText(peakFunction)
+            if idxRQ >= 0:
+                reqComboBox.setCurrentIndex(idxRQ)
+            self._requestView.disablePeakFunction()
+
+            twkComboBox = self._tweakPeakView.peakFunctionDropdown.dropDown
+            idxTW = twkComboBox.findText(peakFunction)
+            if idxTW >= 0:
+                twkComboBox.setCurrentIndex(idxTW)
+            self._tweakPeakView.disablePeakFunction()
+
+        if "crystalDMin" in overrides:
+            newDMin = overrides["crystalDMin"]
+            self._tweakPeakView.updateXtalDmin(newDMin)
+            self._tweakPeakView.disableXtalDMin()
+            self.prevXtalDMin = newDMin
+        else:
+            self._tweakPeakView.updateXtalDmin(self.prevXtalDMin)
+            self._tweakPeakView.enableXtalDMin()
+
+        if "crystalDMax" in overrides:
+            newDMax = overrides["crystalDMax"]
+            self._tweakPeakView.updateXtalDmax(newDMax)
+            self._tweakPeakView.disableXtalDMax()
+            self.prevXtalDMax = newDMax
+        else:
+            self._tweakPeakView.updateXtalDmax(self.prevXtalDMax)
+            self._tweakPeakView.enableXtalDMax()
+
+        return SNAPResponse(code=ResponseCode.OK)
+
     @ExceptionToErrLog
     @Slot()
     def _switchLiteNativeGroups(self):
         # determine resolution mode
-        useLiteMode = self._requestView.litemodeToggle.getState()
+        useLiteMode = self._requestView.liteModeToggle.getState()
 
         # set default state for skipPixelCalToggle
         # in native mode, skip by default
@@ -207,7 +275,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # fetch the data from the view
         self.runNumber = view.runNumberField.text()
-        self.useLiteMode = view.litemodeToggle.getState()
+        self.useLiteMode = view.liteModeToggle.getState()
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.calibrantSamplePath = view.sampleDropdown.currentText()
         self.peakFunction = view.peakFunctionDropdown.currentText()

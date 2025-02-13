@@ -3,11 +3,11 @@ from snapred.ui.view.ActionPromptView import ActionPromptView
 
 
 class ActionPrompt:
-    def __init__(self, title, message, action, parent=None):
+    def __init__(self, title, message, action, parent=None, buttonNames=("Continue", "Cancel")):
         self.title = title
         self.message = message
         self.action = action
-        self.view = ActionPromptView(self.title, self.message, parent)
+        self.view = ActionPromptView(self.title, self.message, parent=parent, buttonNames=buttonNames)
         self.presenter = ActionPromptPresenter(self.view, self.action)
         self.view.show()
 
@@ -17,5 +17,5 @@ class ActionPrompt:
 
     # A static "factory" method to facilitate testing.
     @staticmethod
-    def prompt(title, message, action, parent=None):
-        ActionPrompt(title, message, action, parent)
+    def prompt(title, message, action, parent=None, buttonNames=("Continue", "Cancel")):
+        ActionPrompt(title, message, action, parent, buttonNames)

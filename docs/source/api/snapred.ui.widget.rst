@@ -44,6 +44,15 @@ snapred.ui.widget.LabeledField module
    :undoc-members:
    :show-inheritance:
 
+snapred.ui.widget.LEDIndicator module
+-------------------------------------
+
+.. automodule:: snapred.ui.widget.LEDIndicator
+   :members:
+   :undoc-members:
+   :exclude-members: bezelColor, color, setColor, setFlashSequence
+   :show-inheritance:
+
 snapred.ui.widget.LogTable module
 ---------------------------------
 
@@ -98,7 +107,7 @@ snapred.ui.widget.Toggle module
 .. automodule:: snapred.ui.widget.Toggle
    :members:
    :undoc-members:
-   :exclude-members: stateChanged
+   :exclude-members: backgroundColor, ellipsePosition, gradEndColor, gradStartColor, stateChanged
    :show-inheritance:
 
 snapred.ui.widget.ToolBar module

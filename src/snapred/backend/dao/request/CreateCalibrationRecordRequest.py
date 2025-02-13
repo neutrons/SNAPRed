@@ -1,6 +1,6 @@
-from typing import Dict, List, Optional
+from typing import Annotated, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
@@ -24,9 +24,9 @@ class CreateCalibrationRecordRequest(BaseModel, extra="forbid"):
     crystalInfo: CrystallographicInfo
     pixelGroups: Optional[List[PixelGroup]] = None
     focusGroupCalibrationMetrics: FocusGroupMetric
-    workspaces: Dict[WorkspaceType, List[WorkspaceName]]
+    workspaces: Dict[Annotated[WorkspaceType, Field(use_enum_values=True)], List[WorkspaceName]]
 
     model_config = ConfigDict(
         # required in order to use 'WorkspaceName'
-        arbitrary_types_allowed=True,
+        arbitrary_types_allowed=True
     )

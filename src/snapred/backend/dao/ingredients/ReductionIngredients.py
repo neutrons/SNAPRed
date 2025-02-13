@@ -69,6 +69,4 @@ class ReductionIngredients(BaseModel):
     def effectiveInstrument(self, groupingIndex: int) -> EffectiveInstrumentIngredients:
         return EffectiveInstrumentIngredients(unmaskedPixelGroup=self.unmaskedPixelGroups[groupingIndex])
 
-    model_config = ConfigDict(
-        extra="forbid",
-    )
+    model_config = ConfigDict(extra="forbid", strict=True)

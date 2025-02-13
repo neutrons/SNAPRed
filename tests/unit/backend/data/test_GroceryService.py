@@ -1,9 +1,16 @@
 # ruff: noqa: E722, PT011, PT012, F811
+import datetime
+import itertools
 import json
 import os
 import shutil
 import time
+
+##
+## In order to preserve the import order as much as possible, add test-related imports at the end.
+##
 import unittest
+from collections import namedtuple
 from pathlib import Path
 from random import randint
 from unittest import mock
@@ -29,17 +36,19 @@ from mantid.simpleapi import (
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from util.Config_helpers import Config_override
+from util.dao import DAOFactory
 from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
-from util.instrument_helpers import mapFromSampleLogs
+from util.instrument_helpers import addInstrumentLogs, getInstrumentLogDescriptors, mapFromSampleLogs
 from util.kernel_helpers import tupleFromQuat, tupleFromV3D
 from util.state_helpers import reduction_root_redirect, state_root_redirect
 from util.WhateversInTheFridge import WhateversInTheFridge
 
 import snapred.backend.recipe.algorithm  # noqa: F401
-from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem, LiveDataArgs
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, DiffcalStateMetadata, WorkspaceMetadata
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.error.LiveDataState import LiveDataState
 from snapred.meta.Config import Config, Resource
 from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -90,6 +99,16 @@ class TestGroceryService(unittest.TestCase):
             Filename=cls.instrumentFilePath,
             RewriteSpectraMap=True,
         )
+
+        # Clone a copy of the sample workspace, but without any instrument-parameter state.
+        cls.sampleWSBareInstrument = mtd.unique_hidden_name()
+        CloneWorkspace(OutputWorkspace=cls.sampleWSBareInstrument, InputWorkspace=cls.sampleWS)
+        # Add a complete instrument-parameter state to the sample workspace.
+        # This is now required of the instrument-donor workspace for `LoadGroupingDefinition`
+        #   and `LoadCalibrationWorkspaces`.
+        cls.detectorState = DAOFactory.real_detector_state
+        addInstrumentLogs(cls.sampleWS, **getInstrumentLogDescriptors(cls.detectorState))
+
         SaveNexusProcessed(
             InputWorkspace=cls.sampleWS,
             Filename=cls.sampleWSFilePath,
@@ -194,8 +213,7 @@ class TestGroceryService(unittest.TestCase):
         and remove the test file.
         """
         for ws in mtd.getObjectNames():
-            if ws in mtd:
-                DeleteWorkspace(ws)
+            DeleteWorkspace(ws)
         os.remove(cls.sampleWSFilePath)
         os.remove(cls.sampleDiffCalFilePath)
         os.remove(cls.sampleTarWsFilePath)
@@ -224,11 +242,13 @@ class TestGroceryService(unittest.TestCase):
     ## TESTS OF FILENAME METHODS
 
     def test_getIPTS(self):
-        # ensure it is calling from the data service
-        res = self.instance.getIPTS(self.runNumber)
-        assert res == self.instance.dataService.getIPTS(self.runNumber, Config["instrument.name"])
-        res = self.instance.getIPTS(self.runNumber, "CRACKLE")
-        assert res == self.instance.dataService.getIPTS(self.runNumber, "CRACKLE")
+        # ensure it is calling to the data service
+        self.instance.getIPTS(self.runNumber)
+        self.instance.dataService.getIPTS.assert_called_once_with(self.runNumber, Config["instrument.name"])
+        self.instance.dataService.getIPTS.reset_mock()
+
+        self.instance.getIPTS(self.runNumber, "CRACKLE")
+        self.instance.dataService.getIPTS.assert_called_once_with(self.runNumber, "CRACKLE")
 
     def test_key_neutron(self):
         """ensure the key is a unique identifier for run number and lite mode"""
@@ -272,14 +292,14 @@ class TestGroceryService(unittest.TestCase):
 
     def test_nexus_filename(self):
         """Test the creation of the nexus filename"""
-        res = self.instance._createNeutronFilename(self.runNumber, False)
+        res = str(self.instance._createNeutronFilePath(self.runNumber, False))
         assert self.instance.dataService.getIPTS(self.runNumber) in res
         assert Config["nexus.native.prefix"] in res
         assert self.runNumber in res
         assert "lite" not in res.lower()
 
         # now use lite mode
-        res = self.instance._createNeutronFilename(self.runNumber, True)
+        res = str(self.instance._createNeutronFilePath(self.runNumber, True))
         assert self.instance.dataService.getIPTS(self.runNumber) in res
         assert Config["nexus.lite.prefix"] in res
         assert self.runNumber in res
@@ -709,6 +729,28 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance._loadedGroupings == {}
         assert self.instance._loadedInstruments == {}
 
+    def test_clearLiveDataCache(self):
+        self.instance._createRawNeutronWorkspaceName = mock.Mock(
+            side_effect=lambda runNumber, useLiteMode: f"_test_ws_{runNumber}_{useLiteMode}"
+        )
+        self.instance.deleteWorkspaceUnconditional = mock.Mock()
+        startKeys = [("23456", True), ("23457", False), ("23458", True)]
+        startRunCache = {k: 0 for k in startKeys}
+        for useLiteMode in (True, False):
+            runNumbers = ("12345", "12346", "12347", "12348", "12349")
+            keys = [(runNumber, useLiteMode) for runNumber in runNumbers]
+            self.instance._loadedRuns = startRunCache.copy()
+            self.instance._loadedRuns.update({k: 0 for k in keys})
+
+            self.instance._liveDataKeys = keys
+            self.instance.clearLiveDataCache()
+            assert self.instance._liveDataKeys == []
+            assert self.instance._loadedRuns == startRunCache
+            for k in keys:
+                self.instance.deleteWorkspaceUnconditional.assert_called_with(
+                    self.instance._createRawNeutronWorkspaceName(*k)
+                )
+
     def test_workspaceTagFunctions(self):
         wsname = mtd.unique_name(prefix="testWorkspaceTags_")
         tagValues = DiffcalStateMetadata.values()
@@ -817,22 +859,31 @@ class TestGroceryService(unittest.TestCase):
 
     def test_fetch_dirty_nexus_native(self):
         """Test the correct behavior when fetching raw nexus data"""
-        # mock out the filename function to point to the test file
-        self.instance.convertToLiteMode = mock.Mock()
-        self.instance._createNeutronFilename = mock.Mock(return_value=self.sampleWSFilePath)
 
-        # easier calls
-        testItem = (self.runNumber, False)
+        self.instance.convertToLiteMode = mock.Mock()
+
+        # mock out _createNeutronFilePath so that only a native version exists on disk
+        nonExistentPath = Path("does/not/exist.nxs")
+        assert not nonExistentPath.exists()
+        self.instance._createNeutronFilePath = mock.Mock(
+            side_effect=lambda _runNumber, useLiteMode: Path(self.sampleWSFilePath)
+            if not useLiteMode
+            else nonExistentPath
+        )
+
+        testItem = mock.Mock(
+            spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=False, loader="", liveDataArgs=None
+        )
 
         # ensure a clean ADS
-        workspaceName = self.instance._createNeutronWorkspaceName(*testItem)
-        rawWorkspaceName = self.instance._createRawNeutronWorkspaceName(*testItem)
+        workspaceName = self.instance._createNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode)
+        rawWorkspaceName = self.instance._createRawNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode)
         assert len(self.instance._loadedRuns) == 0
         assert not mtd.doesExist(workspaceName)
         assert not mtd.doesExist(rawWorkspaceName)
 
         # test that a nexus workspace can be loaded
-        res = self.instance.fetchNeutronDataSingleUse(*testItem)
+        res = self.instance.fetchNeutronDataSingleUse(testItem)
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
@@ -841,7 +892,8 @@ class TestGroceryService(unittest.TestCase):
         # assert the correct workspaces exist
         assert not mtd.doesExist(rawWorkspaceName)
         assert mtd.doesExist(workspaceName)
-        # test the workspace is correct
+
+        # test the workspace readback matches
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
@@ -854,14 +906,14 @@ class TestGroceryService(unittest.TestCase):
         assert not mtd.doesExist(rawWorkspaceName)
         assert not mtd.doesExist(workspaceName)
         # create a clean version so a raw exists in cache
-        res = self.instance.fetchNeutronDataCached(*testItem)
+        res = self.instance.fetchNeutronDataCached(testItem)
         assert mtd.doesExist(rawWorkspaceName)
         assert not mtd.doesExist(workspaceName)
         assert len(self.instance._loadedRuns) == 1
-        testKey = self.instance._key(*testItem)
+        testKey = self.instance._key(testItem.runNumber, testItem.useLiteMode)
         assert self.instance._loadedRuns == {testKey: 1}
         # now load a dirty version, which should clone the raw
-        res = self.instance.fetchNeutronDataSingleUse(*testItem)
+        res = self.instance.fetchNeutronDataSingleUse(testItem)
         assert mtd.doesExist(workspaceName)
         assert res["workspace"] == workspaceName
         assert res["loader"] == "cached"  # this indicates it used a cached value
@@ -873,24 +925,30 @@ class TestGroceryService(unittest.TestCase):
         )
 
         # test calling with Lite data, that it will call to lite service
-        liteItem = (self.runNumber, True)
-        testKeyLite = self.instance._key(*liteItem)
-        res = self.instance.fetchNeutronDataSingleUse(*liteItem)
+        liteItem = mock.Mock(
+            spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=True, loader="", liveDataArgs=None
+        )
+
+        testKeyLite = self.instance._key(liteItem.runNumber, liteItem.useLiteMode)
+        res = self.instance.fetchNeutronDataSingleUse(liteItem)
         assert self.instance._loadedRuns.get(testKeyLite) is None
-        workspaceNameLite = self.instance._createNeutronWorkspaceName(*liteItem)
-        self.instance.convertToLiteMode.assert_called_once_with(workspaceNameLite)
+        workspaceNameLite = self.instance._createNeutronWorkspaceName(liteItem.runNumber, liteItem.useLiteMode)
+        self.instance.convertToLiteMode.assert_called_once_with(workspaceNameLite, export=False)
         assert mtd.doesExist(workspaceNameLite)
 
     def test_fetch_cached_native(self):
         """Test the correct behavior when fetching nexus data"""
-        self.instance._createNeutronFilename = mock.Mock()
+        self.instance._createNeutronFilePath = mock.Mock()
+        self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
 
-        testItem = (self.runNumber, False)
-        testKey = self.instance._key(*testItem)
+        testItem = mock.Mock(
+            spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=False, loader="", liveDataArgs=None
+        )
+        testKey = self.instance._key(testItem.runNumber, testItem.useLiteMode)
 
-        workspaceNameRaw = self.instance._createRawNeutronWorkspaceName(*testItem)
-        workspaceNameCopy1 = self.instance._createCopyNeutronWorkspaceName(*testItem, 1)
-        workspaceNameCopy2 = self.instance._createCopyNeutronWorkspaceName(*testItem, 2)
+        workspaceNameRaw = self.instance._createRawNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode)
+        workspaceNameCopy1 = self.instance._createCopyNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode, 1)
+        workspaceNameCopy2 = self.instance._createCopyNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode, 2)
 
         # make sure the ADS is clean
         self.clearoutWorkspaces()
@@ -899,18 +957,19 @@ class TestGroceryService(unittest.TestCase):
         assert len(self.instance._loadedRuns) == 0
 
         # run with nothing in cache and bad filename -- it will fail
-        self.instance._createNeutronFilename = mock.Mock(return_value="not/a/real/file.txt")
-        assert not os.path.isfile(self.instance._createNeutronFilename.return_value)
-        with pytest.raises(RuntimeError) as e:
-            self.instance.fetchNeutronDataCached(*testItem)
+        self.instance._createNeutronFilePath = mock.Mock(return_value=Path("not/a/real/file.txt"))
+        assert not self.instance._createNeutronFilePath.return_value.exists()
+        with pytest.raises(
+            RuntimeError, match=r".*is not present on disk, and no live-data connection is available.*"
+        ) as e:
+            self.instance.fetchNeutronDataCached(testItem)
         assert self.runNumber in str(e.value)
-        assert self.instance._createNeutronFilename.return_value in str(e.value)
 
         # mock filename to point at test file
-        self.instance._createNeutronFilename.return_value = self.sampleWSFilePath
+        self.instance._createNeutronFilePath.return_value = Path(self.sampleWSFilePath)
 
         # run with nothing loaded -- it will find the file and load it
-        res = self.instance.fetchNeutronDataCached(*testItem)
+        res = self.instance.fetchNeutronDataCached(testItem)
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
         assert res["workspace"] == workspaceNameCopy1
@@ -926,7 +985,7 @@ class TestGroceryService(unittest.TestCase):
         )
 
         # run with a raw workspace in cache -- it will copy it
-        res = self.instance.fetchNeutronDataCached(*testItem)
+        res = self.instance.fetchNeutronDataCached(testItem)
         assert res["result"]
         assert res["loader"] == "cached"  # indicates no loader called
         assert res["workspace"] == workspaceNameCopy2
@@ -948,16 +1007,26 @@ class TestGroceryService(unittest.TestCase):
         This tests cases of using native-resolution data and auto-reducing.
         """
         self.instance.convertToLiteMode = mock.Mock()
-        self.instance._createNeutronFilename = mock.Mock()
+        self.instance._createNeutronFilePath = mock.Mock()
+        self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
 
-        testItem = (self.runNumber, True)
-        testKey = self.instance._key(*testItem)
-        nativeItem = (self.runNumber, False)
-        nativeKey = self.instance._key(*nativeItem)
+        testItem = mock.Mock(
+            spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=True, loader="", liveDataArgs=None
+        )
+        testKey = self.instance._key(testItem.runNumber, testItem.useLiteMode)
 
-        workspaceNameNativeRaw = self.instance._createRawNeutronWorkspaceName(*nativeItem)
-        workspaceNameLiteRaw = self.instance._createRawNeutronWorkspaceName(*testItem)
-        workspaceNameLiteCopy1 = self.instance._createCopyNeutronWorkspaceName(*testItem, 1)
+        nativeItem = mock.Mock(
+            spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=False, loader="", liveDataArgs=None
+        )
+        nativeKey = self.instance._key(nativeItem.runNumber, nativeItem.useLiteMode)
+
+        workspaceNameNativeRaw = self.instance._createRawNeutronWorkspaceName(
+            nativeItem.runNumber, nativeItem.useLiteMode
+        )
+        workspaceNameLiteRaw = self.instance._createRawNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode)
+        workspaceNameLiteCopy1 = self.instance._createCopyNeutronWorkspaceName(
+            testItem.runNumber, testItem.useLiteMode, 1
+        )
 
         # make sure the ADS is clean
         self.clearoutWorkspaces()
@@ -967,26 +1036,27 @@ class TestGroceryService(unittest.TestCase):
 
         # test that trying to load data from a fake file fails
         # will reach the final "else" statement
-        fakeFilename = "not/a/real/file.txt"
-        self.instance._createNeutronFilename.return_value = fakeFilename
-        assert not os.path.isfile(self.instance._createNeutronFilename.return_value)
-        with pytest.raises(RuntimeError) as e:
-            self.instance.fetchNeutronDataCached(*testItem)
+        fakeFilePath = Path("not/a/real/file.txt")
+        self.instance._createNeutronFilePath.return_value = fakeFilePath
+        assert not self.instance._createNeutronFilePath.return_value.exists()
+        with pytest.raises(
+            RuntimeError, match=r".*is not present on disk, and no live-data connection is available.*"
+        ) as e:
+            self.instance.fetchNeutronDataCached(testItem)
         assert self.runNumber in str(e.value)
-        assert fakeFilename in str(e.value)
 
         # mock filename -- create situation where Lite file does not exist, native does
-        self.instance._createNeutronFilename.side_effect = [
-            fakeFilename,  # called in the assert below
-            fakeFilename,  # called at beginning of function looking for Lite file
-            self.sampleWSFilePath,  # called inside elif when looking for Native file
-            self.sampleWSFilePath,  # called inside the block when making the filename variable
+        self.instance._createNeutronFilePath.side_effect = [
+            fakeFilePath,  # called in the assert below
+            fakeFilePath,  # called when testing for Lite on disk
+            Path(self.sampleWSFilePath),  # called when testing for native on disk
         ]
-        assert not os.path.isfile(self.instance._createNeutronFilename(*testItem))
+        assert not self.instance._createNeutronFilePath(testItem.runNumber, testItem.useLiteMode).exists()
 
         # there is no lite file and nothing cached
         # load native resolution from file, then clone/reduce the native data
-        res = self.instance.fetchNeutronDataCached(*testItem)
+
+        res = self.instance.fetchNeutronDataCached(testItem)
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
         assert res["workspace"] == workspaceNameLiteCopy1
@@ -998,7 +1068,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance.convertToLiteMode.reset_mock()
 
         # clear out the Lite workspaces from ADS and the cache
-        self.instance._createNeutronFilename.side_effect = [fakeFilename, self.sampleWSFilePath]
+        self.instance._createNeutronFilePath.side_effect = [fakeFilePath, Path(self.sampleWSFilePath)]
         for ws in [workspaceNameLiteRaw, workspaceNameLiteCopy1]:
             DeleteWorkspace(ws)
             assert not mtd.doesExist(ws)
@@ -1009,7 +1079,7 @@ class TestGroceryService(unittest.TestCase):
         # then clone/reduce the native workspace
         assert mtd.doesExist(workspaceNameNativeRaw)
         assert self.instance._loadedRuns == {nativeKey: 0}
-        res = self.instance.fetchNeutronDataCached(*testItem)
+        res = self.instance.fetchNeutronDataCached(testItem)
         assert res["result"]
         assert res["loader"] == "cached"
         assert res["workspace"] == workspaceNameLiteCopy1
@@ -1018,6 +1088,1219 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance._loadedRuns == {testKey: 1, nativeKey: 0}
         # make sure it calls to convert to lite mode
         self.instance.convertToLiteMode.assert_called_once()
+
+    def test_fetchNeutronDataSingleUse(self):
+        # Test all 16, non-live-data cases.
+        # Note: this test does not test "in cache" cases: those are treated elsewhere
+        runNumber = self.runNumber
+
+        for flags in itertools.product((False, True), repeat=4):
+            useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
+
+            instance = GroceryService()
+            liteModeFilePath = mock.MagicMock(spec=Path)
+            liteModeFilePath.__str__.return_value = "liteModeFilePath"
+
+            nativeModeFilePath = mock.MagicMock(spec=Path)
+            nativeModeFilePath.__str__.return_value = "nativeModeFilePath"
+
+            # In order to avoid contaminating other tests, all mocks must be applied
+            #   as context managers.
+            with (
+                mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
+                mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,
+                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
+                mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
+                mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
+                mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
+                mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
+                mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+            ):
+                # Mocks for flow-control branching:
+                mockHasLiveDataConnection.return_value = False
+
+                if nativeInCache:
+                    mockRunsCache[(runNumber, False)] = 0
+
+                liteModeFilePath.exists.return_value = liteOnDisk
+                nativeModeFilePath.exists.return_value = nativeOnDisk
+
+                mockCreateNeutronFilePath.side_effect = (
+                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                )
+
+                mockCreateNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeWorkspaceName
+                )
+
+                mockCreateRawNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeRawWorkspaceName
+                )
+
+                mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
+
+                workspaceName = mockCreateNeutronWorkspaceName(runNumber, useLiteMode)
+
+                # Action-related mocks:
+                mockFetchGroceriesRecipe.executeRecipe.return_value = {
+                    "result": True,
+                    "loader": mock.sentinel.loader,
+                    "workspace": workspaceName,
+                }
+
+                # BUILD the item argument:
+                item = GroceryListItem(
+                    workspaceType="neutron", runNumber=runNumber, useLiteMode=useLiteMode, loader="", liveDataArgs=None
+                )
+
+                exceptionRaised = None
+                result = None
+                try:
+                    result = instance.fetchNeutronDataSingleUse(item)
+                except RuntimeError as e:
+                    exceptionRaised = e
+
+                mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
+
+                match (useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk):
+                    case (False, True, _, _):
+                        # native mode and native in cache:
+                        #   not tested _here_.
+                        continue
+
+                    case (True, _, True, _):
+                        # lite mode and lite-mode exists on disk
+                        assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
+                        mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                            str(liteModeFilePath), workspaceName, item.loader
+                        )
+                        mockConvertToLiteMode.assert_not_called()
+
+                    case (True, True, _, _):
+                        # lite mode and native is cached
+                        assert result == {"result": True, "loader": "cached", "workspace": workspaceName}
+                        mockGetCloneOfWorkspace.assert_called_once_with(
+                            mockCreateRawNeutronWorkspaceName(runNumber, False), workspaceName
+                        )
+                        mockConvertToLiteMode.assert_called_once_with(workspaceName, export=False)
+
+                    case (True, _, _, True):
+                        # lite mode and native exists on disk
+                        assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
+                        mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                            str(nativeModeFilePath), workspaceName, item.loader
+                        )
+                        mockConvertToLiteMode.assert_called_once_with(workspaceName, export=False)
+
+                    case (False, _, _, True):
+                        # native mode and native exists on disk
+                        assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
+                        mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                            str(nativeModeFilePath), workspaceName, item.loader
+                        )
+                        mockConvertToLiteMode.assert_not_called()
+
+                    case _:
+                        # live data fallback: NOT tested here
+                        assert result is None
+                        mockFetchGroceriesRecipe.executeRecipe.assert_not_called()
+                        mockGetCloneOfWorkspace.assert_not_called()
+                        mockConvertToLiteMode.assert_not_called()
+                        assert isinstance(exceptionRaised, RuntimeError)
+                        assert (
+                            f"Neutron data for run '{runNumber}' is not present on disk, "
+                            + "and no live-data connection is available"
+                            == str(exceptionRaised)
+                        )
+
+    def test_fetchNeutronDataSingleUse_live_data(self):
+        # Test live data, non-fallback cases.
+        runNumber = self.runNumber
+
+        for useLiteMode in (False, True):
+            flags = useLiteMode, False, False, False
+            useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
+
+            instance = GroceryService()
+            liteModeFilePath = mock.MagicMock(spec=Path)
+            liteModeFilePath.__str__.return_value = "liteModeFilePath"
+
+            nativeModeFilePath = mock.MagicMock(spec=Path)
+            nativeModeFilePath.__str__.return_value = "nativeModeFilePath"
+
+            now_ = datetime.datetime.utcnow()
+            duration = datetime.timedelta(seconds=42)
+            expectedStartTime = now_ - duration
+
+            expectedLoaderArgs = {
+                "Facility": Config["liveData.facility.name"],
+                "Instrument": Config["liveData.instrument.name"],
+                "AccumulationMethod": Config["liveData.accumulationMethod"],
+                "PreserveEvents": True,
+                "StartTime": expectedStartTime.isoformat(),
+            }
+
+            # In order to avoid contaminating other tests, all mocks must be applied
+            #   as context managers.
+            with (
+                mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
+                mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
+                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
+                mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
+                mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
+                mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
+                mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
+                mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,  # noqa: F841
+                mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch(ThisService + "datetime", wraps=datetime.datetime) as mockDatetime,
+                mock.patch.object(instance, "mantidSnapper") as mockSnapper,
+            ):
+                mockDatetime.utcnow.return_value = now_
+
+                # Mocks for flow-control branching:
+                mockHasLiveDataConnection.return_value = True
+
+                liteModeFilePath.exists.return_value = liteOnDisk
+                nativeModeFilePath.exists.return_value = nativeOnDisk
+
+                mockCreateNeutronFilePath.side_effect = (
+                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                )
+
+                mockCreateNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeWorkspaceName
+                )
+
+                mockCreateRawNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeRawWorkspaceName
+                )
+
+                mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
+
+                workspaceName = mockCreateNeutronWorkspaceName(runNumber, useLiteMode)
+
+                # Mock `instance.mantidSnapper.mtd` to return a workspace that has the correct run number.
+                def _valid_key(key: str, validKey: str):
+                    if key != validKey:
+                        raise KeyError(f"key '{key}', expecting '{validKey}'")
+                    return True
+
+                mockWs = mock.Mock()
+                RunNumberProperty = namedtuple("RunNumberProperty", "value")
+                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
+                mockWs.getRun.return_value.getProperty.side_effect = (
+                    lambda key: RunNumberProperty(runNumber) if _valid_key(key, "run_number") else None
+                )
+                mockSnapper.mtd.__getitem__.side_effect = (
+                    lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
+                )
+
+                # Action-related mocks:
+                mockFetchGroceriesRecipe.executeRecipe.return_value = {
+                    "result": True,
+                    "loader": "LoadLiveData",
+                    "workspace": workspaceName,
+                }
+
+                # BUILD the item argument:
+                item = GroceryListItem(
+                    workspaceType="neutron",
+                    runNumber=runNumber,
+                    useLiteMode=useLiteMode,
+                    loader="",
+                    liveDataArgs=LiveDataArgs(duration=duration),
+                )
+
+                exceptionRaised = None
+                result = None  # noqa: F841
+                try:
+                    result = instance.fetchNeutronDataSingleUse(item)  # noqa: F841
+                except RuntimeError as e:
+                    exceptionRaised = e
+
+                assert exceptionRaised is None
+                mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
+                mockHasLiveDataConnection.assert_called_once()
+                mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                    workspace=workspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                )
+                if useLiteMode:
+                    mockConvertToLiteMode.assert_called_once_with(workspaceName, export=False)
+                else:
+                    mockConvertToLiteMode.assert_not_called()
+
+    def test_fetchNeutronDataSingleUse_live_data_transition(self):
+        # Test live data, non-fallback cases.
+        runNumber = self.runNumber
+
+        for useLiteMode in (False, True):
+            flags = useLiteMode, False, False, False
+            useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
+
+            instance = GroceryService()
+            liteModeFilePath = mock.MagicMock(spec=Path)
+            liteModeFilePath.__str__.return_value = "liteModeFilePath"
+
+            nativeModeFilePath = mock.MagicMock(spec=Path)
+            nativeModeFilePath.__str__.return_value = "nativeModeFilePath"
+
+            now_ = datetime.datetime.utcnow()
+            duration = datetime.timedelta(seconds=42)
+            expectedStartTime = now_ - duration
+
+            expectedLoaderArgs = {
+                "Facility": Config["liveData.facility.name"],
+                "Instrument": Config["liveData.instrument.name"],
+                "AccumulationMethod": Config["liveData.accumulationMethod"],
+                "PreserveEvents": True,
+                "StartTime": expectedStartTime.isoformat(),
+            }
+
+            # In order to avoid contaminating other tests, all mocks must be applied
+            #   as context managers.
+            with (
+                mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
+                mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
+                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
+                mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
+                mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
+                mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
+                mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
+                mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
+                mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch(ThisService + "datetime", wraps=datetime.datetime) as mockDatetime,
+                mock.patch.object(instance, "mantidSnapper") as mockSnapper,
+            ):
+                mockDatetime.utcnow.return_value = now_
+
+                # Mocks for flow-control branching:
+                mockHasLiveDataConnection.return_value = True
+
+                liteModeFilePath.exists.return_value = liteOnDisk
+                nativeModeFilePath.exists.return_value = nativeOnDisk
+
+                mockCreateNeutronFilePath.side_effect = (
+                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                )
+
+                mockCreateNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeWorkspaceName
+                )
+
+                mockCreateRawNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeRawWorkspaceName
+                )
+
+                mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
+
+                workspaceName = mockCreateNeutronWorkspaceName(runNumber, useLiteMode)
+
+                # Mock `instance.mantidSnapper.mtd` to return a workspace that DOES NOT HAVE the correct run number.
+                def _valid_key(key: str, validKey: str):
+                    if key != validKey:
+                        raise KeyError(f"key '{key}', expecting '{validKey}'")
+                    return True
+
+                mockWs = mock.Mock()
+                RunNumberProperty = namedtuple("RunNumberProperty", "value")
+                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
+                mockWs.getRun.return_value.getProperty.side_effect = (
+                    lambda key: RunNumberProperty(str(int(runNumber) + 1)) if _valid_key(key, "run_number") else None
+                )
+                mockSnapper.mtd.__getitem__.side_effect = (
+                    lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
+                )
+
+                # Action-related mocks:
+                mockFetchGroceriesRecipe.executeRecipe.return_value = {
+                    "result": True,
+                    "loader": "LoadLiveData",
+                    "workspace": workspaceName,
+                }
+
+                # BUILD the item argument:
+                item = GroceryListItem(
+                    workspaceType="neutron",
+                    runNumber=runNumber,
+                    useLiteMode=useLiteMode,
+                    loader="",
+                    liveDataArgs=LiveDataArgs(duration=duration),
+                )
+
+                exceptionRaised = None
+                result = None  # noqa: F841
+                try:
+                    result = instance.fetchNeutronDataSingleUse(item)  # noqa: F841
+                except Exception as e:  # noqa: BLE001
+                    exceptionRaised = e
+
+                assert isinstance(exceptionRaised, LiveDataState)
+                assert (
+                    exceptionRaised.model == LiveDataState.runStateTransition(str(int(runNumber) + 1), runNumber).model
+                )
+                mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
+                mockHasLiveDataConnection.assert_called_once()
+                mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                    workspace=workspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                )
+                mockConvertToLiteMode.assert_not_called()
+                mockDeleteWorkspace.assert_called_once_with(workspaceName)
+
+    def test_fetchNeutronDataSingleUse_live_data_fallback(self):
+        # Test live data fallback cases.
+        runNumber = self.runNumber
+
+        for useLiteMode in (False, True):
+            flags = useLiteMode, False, False, False
+            useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
+
+            instance = GroceryService()
+            liteModeFilePath = mock.MagicMock(spec=Path)
+            liteModeFilePath.__str__.return_value = "liteModeFilePath"
+
+            nativeModeFilePath = mock.MagicMock(spec=Path)
+            nativeModeFilePath.__str__.return_value = "nativeModeFilePath"
+
+            expectedLoaderArgs = {
+                "Facility": Config["liveData.facility.name"],
+                "Instrument": Config["liveData.instrument.name"],
+                "AccumulationMethod": Config["liveData.accumulationMethod"],
+                "PreserveEvents": True,
+                "StartTime": "",
+            }
+
+            # In order to avoid contaminating other tests, all mocks must be applied
+            #   as context managers.
+            with (
+                mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
+                mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
+                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
+                mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
+                mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
+                mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
+                mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
+                mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,  # noqa: F841
+                mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch.object(instance, "mantidSnapper") as mockSnapper,
+            ):
+                # Mocks for flow-control branching:
+                mockHasLiveDataConnection.return_value = True
+
+                liteModeFilePath.exists.return_value = liteOnDisk
+                nativeModeFilePath.exists.return_value = nativeOnDisk
+
+                mockCreateNeutronFilePath.side_effect = (
+                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                )
+
+                mockCreateNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeWorkspaceName
+                )
+
+                mockCreateRawNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeRawWorkspaceName
+                )
+
+                mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
+
+                workspaceName = mockCreateNeutronWorkspaceName(runNumber, useLiteMode)
+
+                # Mock `instance.mantidSnapper.mtd` to return a workspace that has the correct run number.
+                def _valid_key(key: str, validKey: str):
+                    if key != validKey:
+                        raise KeyError(f"key '{key}', expecting '{validKey}'")
+                    return True
+
+                mockWs = mock.Mock()
+                RunNumberProperty = namedtuple("RunNumberProperty", "value")
+                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
+                mockWs.getRun.return_value.getProperty.side_effect = (
+                    lambda key: RunNumberProperty(runNumber) if _valid_key(key, "run_number") else None
+                )
+                mockSnapper.mtd.__getitem__.side_effect = (
+                    lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
+                )
+
+                # Action-related mocks:
+                mockFetchGroceriesRecipe.executeRecipe.return_value = {
+                    "result": True,
+                    "loader": "LoadLiveData",
+                    "workspace": workspaceName,
+                }
+
+                # BUILD the item argument:
+                item = GroceryListItem(workspaceType="neutron", runNumber=runNumber, useLiteMode=useLiteMode, loader="")
+
+                exceptionRaised = None
+                result = None  # noqa: F841
+                try:
+                    result = instance.fetchNeutronDataSingleUse(item)  # noqa: F841
+                except RuntimeError as e:
+                    exceptionRaised = e
+
+                assert exceptionRaised is None
+                mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
+                mockHasLiveDataConnection.assert_called_once()
+                mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                    workspace=workspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                )
+                if useLiteMode:
+                    mockConvertToLiteMode.assert_called_once_with(workspaceName, export=False)
+                else:
+                    mockConvertToLiteMode.assert_not_called()
+
+    def test_fetchNeutronDataSingleUse_live_data_fallback_fails(self):
+        # Test live data, non-fallback cases.
+        runNumber = self.runNumber
+
+        for useLiteMode in (False, True):
+            flags = useLiteMode, False, False, False
+            useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
+
+            instance = GroceryService()
+            liteModeFilePath = mock.MagicMock(spec=Path)
+            liteModeFilePath.__str__.return_value = "liteModeFilePath"
+
+            nativeModeFilePath = mock.MagicMock(spec=Path)
+            nativeModeFilePath.__str__.return_value = "nativeModeFilePath"
+
+            expectedLoaderArgs = {
+                "Facility": Config["liveData.facility.name"],
+                "Instrument": Config["liveData.instrument.name"],
+                "AccumulationMethod": Config["liveData.accumulationMethod"],
+                "PreserveEvents": True,
+                "StartTime": "",
+            }
+
+            # In order to avoid contaminating other tests, all mocks must be applied
+            #   as context managers.
+            with (
+                mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
+                mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
+                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
+                mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
+                mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
+                mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
+                mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
+                mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
+                mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch.object(instance, "mantidSnapper") as mockSnapper,
+            ):
+                # Mocks for flow-control branching:
+                mockHasLiveDataConnection.return_value = True
+
+                liteModeFilePath.exists.return_value = liteOnDisk
+                nativeModeFilePath.exists.return_value = nativeOnDisk
+
+                mockCreateNeutronFilePath.side_effect = (
+                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                )
+
+                mockCreateNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeWorkspaceName
+                )
+
+                mockCreateRawNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeRawWorkspaceName
+                )
+
+                mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
+
+                workspaceName = mockCreateNeutronWorkspaceName(runNumber, useLiteMode)
+
+                # Mock `instance.mantidSnapper.mtd` to return a workspace that DOES NOT HAVE the correct run number.
+                def _valid_key(key: str, validKey: str):
+                    if key != validKey:
+                        raise KeyError(f"key '{key}', expecting '{validKey}'")
+                    return True
+
+                mockWs = mock.Mock()
+                RunNumberProperty = namedtuple("RunNumberProperty", "value")
+                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
+                mockWs.getRun.return_value.getProperty.side_effect = (
+                    lambda key: RunNumberProperty(str(int(runNumber) + 1)) if _valid_key(key, "run_number") else None
+                )
+                mockSnapper.mtd.__getitem__.side_effect = (
+                    lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
+                )
+
+                # Action-related mocks:
+                mockFetchGroceriesRecipe.executeRecipe.return_value = {
+                    "result": True,
+                    "loader": "LoadLiveData",
+                    "workspace": workspaceName,
+                }
+
+                # BUILD the item argument:
+                item = GroceryListItem(workspaceType="neutron", runNumber=runNumber, useLiteMode=useLiteMode, loader="")
+
+                exceptionRaised = None
+                result = None  # noqa: F841
+                try:
+                    result = instance.fetchNeutronDataSingleUse(item)  # noqa: F841
+                except Exception as e:  # noqa: BLE001
+                    exceptionRaised = e
+
+                assert isinstance(exceptionRaised, RuntimeError)
+                assert (
+                    f"Neutron data for run '{runNumber}' is not present on disk, " + "nor is it the live-data run"
+                    in str(exceptionRaised)
+                )
+
+                mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
+                mockHasLiveDataConnection.assert_called_once()
+                mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                    workspace=workspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                )
+                mockConvertToLiteMode.assert_not_called()
+                mockDeleteWorkspace.assert_called_once_with(workspaceName)
+
+    def test_fetchNeutronDataCached(self):
+        # Test all 16, non-live-data cases.
+        # Note: this test does not test "in cache" cases: those are treated elsewhere
+        runNumber = self.runNumber
+
+        for flags in itertools.product((False, True), repeat=4):
+            useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
+
+            instance = GroceryService()
+            liteModeFilePath = mock.MagicMock(spec=Path)
+            liteModeFilePath.__str__.return_value = "liteModeFilePath"
+
+            nativeModeFilePath = mock.MagicMock(spec=Path)
+            nativeModeFilePath.__str__.return_value = "nativeModeFilePath"
+
+            # In order to avoid contaminating other tests, all mocks must be applied
+            #   as context managers.
+            with (
+                mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
+                mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,
+                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
+                mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
+                mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
+                mock.patch.object(instance, "_createCopyNeutronWorkspaceName") as mockCreateCopyNeutronWorkspaceName,
+                mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
+                mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
+                mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+            ):
+                # Mocks for flow-control branching:
+                mockHasLiveDataConnection.return_value = False
+
+                if nativeInCache:
+                    mockRunsCache[(runNumber, False)] = 0
+
+                liteModeFilePath.exists.return_value = liteOnDisk
+                nativeModeFilePath.exists.return_value = nativeOnDisk
+
+                mockCreateNeutronFilePath.side_effect = (
+                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                )
+
+                mockCreateNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeWorkspaceName
+                )
+
+                mockCreateRawNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeRawWorkspaceName
+                )
+
+                mockCreateCopyNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode, _copyNumber: mock.sentinel.liteCopyWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeCopyWorkspaceName
+                )
+
+                mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
+
+                workspaceName = mockCreateNeutronWorkspaceName(runNumber, useLiteMode)
+                nativeRawWorkspaceName = mockCreateRawNeutronWorkspaceName(runNumber, False)
+                liteRawWorkspaceName = mockCreateRawNeutronWorkspaceName(runNumber, True)
+                liteCopyWorkspaceName = mockCreateCopyNeutronWorkspaceName(runNumber, True, 1)
+
+                # Action-related mocks:
+                mockFetchGroceriesRecipe.executeRecipe.return_value = {
+                    "result": True,
+                    "loader": mock.sentinel.loader,
+                    "workspace": workspaceName,
+                }
+
+                # BUILD the item argument:
+                item = GroceryListItem(
+                    workspaceType="neutron", runNumber=runNumber, useLiteMode=useLiteMode, loader="", liveDataArgs=None
+                )
+
+                exceptionRaised = None
+                result = None  # noqa: F841
+                try:
+                    result = instance.fetchNeutronDataCached(item)  # noqa: F841
+                except RuntimeError as e:
+                    exceptionRaised = e
+
+                mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
+
+                match (useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk):
+                    case (False, True, _, _):
+                        # native mode and native in cache:
+                        #   not tested _here_.
+                        continue
+
+                    case (True, _, True, _):
+                        # lite mode and lite-mode exists on disk
+                        assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
+                        assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
+                        mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                            str(liteModeFilePath), liteRawWorkspaceName, item.loader
+                        )
+                        mockConvertToLiteMode.assert_not_called()
+
+                    case (True, True, _, _):
+                        # lite mode and native is cached
+                        assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
+                        assert instance._loadedRuns[(runNumber, False)] == 0
+                        mockGetCloneOfWorkspace.assert_any_call(nativeRawWorkspaceName, liteRawWorkspaceName)
+                        mockGetCloneOfWorkspace.assert_called_with(liteRawWorkspaceName, liteCopyWorkspaceName)
+                        mockConvertToLiteMode.assert_called_once_with(liteRawWorkspaceName, export=True)
+
+                    case (True, _, _, True):
+                        # lite mode and native exists on disk
+                        assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
+                        assert instance._loadedRuns[(runNumber, False)] == 0
+                        assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
+                        mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                            str(nativeModeFilePath), nativeRawWorkspaceName, loader=item.loader
+                        )
+                        mockConvertToLiteMode.assert_called_once_with(liteRawWorkspaceName, export=True)
+
+                    case (False, _, _, True):
+                        # native mode and native exists on disk
+                        assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
+                        assert instance._loadedRuns[(runNumber, useLiteMode)] == (1 if not useLiteMode else 0)
+                        mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                            str(nativeModeFilePath), nativeRawWorkspaceName, item.loader
+                        )
+                        mockConvertToLiteMode.assert_not_called()
+
+                    case _:
+                        # live data fallback: NOT tested here
+                        assert result is None
+                        mockFetchGroceriesRecipe.executeRecipe.assert_not_called()
+                        mockGetCloneOfWorkspace.assert_not_called()
+                        mockConvertToLiteMode.assert_not_called()
+                        assert isinstance(exceptionRaised, RuntimeError)
+                        assert (
+                            f"Neutron data for run '{runNumber}' is not present on disk, "
+                            + "and no live-data connection is available"
+                            == str(exceptionRaised)
+                        )
+
+    def test_fetchNeutronDataCached_live_data(self):
+        # Test live data, non-fallback cases.
+        runNumber = self.runNumber
+
+        for useLiteMode in (False, True):
+            flags = useLiteMode, False, False, False
+            useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
+
+            instance = GroceryService()
+            liteModeFilePath = mock.MagicMock(spec=Path)
+            liteModeFilePath.__str__.return_value = "liteModeFilePath"
+
+            nativeModeFilePath = mock.MagicMock(spec=Path)
+            nativeModeFilePath.__str__.return_value = "nativeModeFilePath"
+
+            now_ = datetime.datetime.utcnow()
+            duration = datetime.timedelta(seconds=42)
+            expectedStartTime = now_ - duration
+
+            expectedLoaderArgs = {
+                "Facility": Config["liveData.facility.name"],
+                "Instrument": Config["liveData.instrument.name"],
+                "AccumulationMethod": Config["liveData.accumulationMethod"],
+                "PreserveEvents": True,
+                "StartTime": expectedStartTime.isoformat(),
+            }
+
+            # In order to avoid contaminating other tests, all mocks must be applied
+            #   as context managers.
+            with (
+                mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
+                mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
+                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
+                mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
+                mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
+                mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
+                mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
+                mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,  # noqa: F841
+                mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch(ThisService + "datetime", wraps=datetime.datetime) as mockDatetime,
+                mock.patch.object(instance, "mantidSnapper") as mockSnapper,
+            ):
+                mockDatetime.utcnow.return_value = now_
+
+                # Mocks for flow-control branching:
+                mockHasLiveDataConnection.return_value = True
+
+                liteModeFilePath.exists.return_value = liteOnDisk
+                nativeModeFilePath.exists.return_value = nativeOnDisk
+
+                mockCreateNeutronFilePath.side_effect = (
+                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                )
+
+                mockCreateNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeWorkspaceName
+                )
+
+                mockCreateRawNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeRawWorkspaceName
+                )
+
+                mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
+
+                workspaceName = mockCreateNeutronWorkspaceName(runNumber, useLiteMode)
+                nativeRawWorkspaceName = mockCreateRawNeutronWorkspaceName(runNumber, False)
+                liteRawWorkspaceName = mockCreateRawNeutronWorkspaceName(runNumber, True)
+
+                # Mock `instance.mantidSnapper.mtd` to return a workspace that has the correct run number.
+                def _valid_key(key: str, validKey: str):
+                    if key != validKey:
+                        raise KeyError(f"key '{key}', expecting '{validKey}'")
+                    return True
+
+                mockWs = mock.Mock()
+                RunNumberProperty = namedtuple("RunNumberProperty", "value")
+                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
+                mockWs.getRun.return_value.getProperty.side_effect = (
+                    lambda key: RunNumberProperty(runNumber) if _valid_key(key, "run_number") else None
+                )
+                mockSnapper.mtd.__getitem__.side_effect = (
+                    lambda wsName: mockWs if _valid_key(wsName, nativeRawWorkspaceName) else None
+                )
+
+                # Action-related mocks:
+                mockFetchGroceriesRecipe.executeRecipe.return_value = {
+                    "result": True,
+                    "loader": "LoadLiveData",
+                    "workspace": workspaceName,
+                }
+
+                # BUILD the item argument:
+                item = GroceryListItem(
+                    workspaceType="neutron",
+                    runNumber=runNumber,
+                    useLiteMode=useLiteMode,
+                    loader="",
+                    liveDataArgs=LiveDataArgs(duration=duration),
+                )
+
+                exceptionRaised = None
+                result = None  # noqa: F841
+                try:
+                    result = instance.fetchNeutronDataCached(item)  # noqa: F841
+                except RuntimeError as e:
+                    exceptionRaised = e
+
+                assert exceptionRaised is None
+                assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
+                assert (runNumber, useLiteMode) in instance._liveDataKeys
+
+                mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
+                mockHasLiveDataConnection.assert_called_once()
+                mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                    workspace=nativeRawWorkspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                )
+                if useLiteMode:
+                    assert instance._loadedRuns[(runNumber, False)] == 0
+                    assert (runNumber, False) in instance._liveDataKeys
+                    mockConvertToLiteMode.assert_called_once_with(liteRawWorkspaceName, export=False)
+                else:
+                    mockConvertToLiteMode.assert_not_called()
+
+    def test_fetchNeutronDataCached_live_data_transition(self):
+        # Test live data, non-fallback cases.
+        runNumber = self.runNumber
+
+        for useLiteMode in (False, True):
+            flags = useLiteMode, False, False, False
+            useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
+
+            instance = GroceryService()
+            liteModeFilePath = mock.MagicMock(spec=Path)
+            liteModeFilePath.__str__.return_value = "liteModeFilePath"
+
+            nativeModeFilePath = mock.MagicMock(spec=Path)
+            nativeModeFilePath.__str__.return_value = "nativeModeFilePath"
+
+            now_ = datetime.datetime.utcnow()
+            duration = datetime.timedelta(seconds=42)
+            expectedStartTime = now_ - duration
+
+            expectedLoaderArgs = {
+                "Facility": Config["liveData.facility.name"],
+                "Instrument": Config["liveData.instrument.name"],
+                "AccumulationMethod": Config["liveData.accumulationMethod"],
+                "PreserveEvents": True,
+                "StartTime": expectedStartTime.isoformat(),
+            }
+
+            # In order to avoid contaminating other tests, all mocks must be applied
+            #   as context managers.
+            with (
+                mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
+                mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
+                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
+                mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
+                mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
+                mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
+                mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
+                mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
+                mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch(ThisService + "datetime", wraps=datetime.datetime) as mockDatetime,
+                mock.patch.object(instance, "mantidSnapper") as mockSnapper,
+            ):
+                mockDatetime.utcnow.return_value = now_
+
+                # Mocks for flow-control branching:
+                mockHasLiveDataConnection.return_value = True
+
+                liteModeFilePath.exists.return_value = liteOnDisk
+                nativeModeFilePath.exists.return_value = nativeOnDisk
+
+                mockCreateNeutronFilePath.side_effect = (
+                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                )
+
+                mockCreateNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeWorkspaceName
+                )
+
+                mockCreateRawNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeRawWorkspaceName
+                )
+
+                mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
+
+                workspaceName = mockCreateNeutronWorkspaceName(runNumber, useLiteMode)
+                nativeRawWorkspaceName = mockCreateRawNeutronWorkspaceName(runNumber, False)
+
+                # Mock `instance.mantidSnapper.mtd` to return a workspace that DOES NOT HAVE the correct run number.
+                def _valid_key(key: str, validKey: str):
+                    if key != validKey:
+                        raise KeyError(f"key '{key}', expecting '{validKey}'")
+                    return True
+
+                mockWs = mock.Mock()
+                RunNumberProperty = namedtuple("RunNumberProperty", "value")
+                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
+                mockWs.getRun.return_value.getProperty.side_effect = (
+                    lambda key: RunNumberProperty(str(int(runNumber) + 1)) if _valid_key(key, "run_number") else None
+                )
+                mockSnapper.mtd.__getitem__.side_effect = (
+                    lambda wsName: mockWs if _valid_key(wsName, nativeRawWorkspaceName) else None
+                )
+
+                # Action-related mocks:
+                mockFetchGroceriesRecipe.executeRecipe.return_value = {
+                    "result": True,
+                    "loader": "LoadLiveData",
+                    "workspace": workspaceName,
+                }
+
+                # BUILD the item argument:
+                item = GroceryListItem(
+                    workspaceType="neutron",
+                    runNumber=runNumber,
+                    useLiteMode=useLiteMode,
+                    loader="",
+                    liveDataArgs=LiveDataArgs(duration=duration),
+                )
+
+                exceptionRaised = None
+                result = None  # noqa: F841
+                try:
+                    result = instance.fetchNeutronDataCached(item)  # noqa: F841
+                except Exception as e:  # noqa: BLE001
+                    exceptionRaised = e
+
+                assert isinstance(exceptionRaised, LiveDataState)
+                assert (
+                    exceptionRaised.model == LiveDataState.runStateTransition(str(int(runNumber) + 1), runNumber).model
+                )
+                mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
+                mockHasLiveDataConnection.assert_called_once()
+                mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                    workspace=nativeRawWorkspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                )
+                mockConvertToLiteMode.assert_not_called()
+                mockDeleteWorkspace.assert_called_once_with(nativeRawWorkspaceName)
+
+    def test_fetchNeutronDataCached_live_data_fallback(self):
+        # Test live data fallback cases.
+        runNumber = self.runNumber
+
+        for useLiteMode in (False, True):
+            flags = useLiteMode, False, False, False
+            useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
+
+            instance = GroceryService()
+            liteModeFilePath = mock.MagicMock(spec=Path)
+            liteModeFilePath.__str__.return_value = "liteModeFilePath"
+
+            nativeModeFilePath = mock.MagicMock(spec=Path)
+            nativeModeFilePath.__str__.return_value = "nativeModeFilePath"
+
+            expectedLoaderArgs = {
+                "Facility": Config["liveData.facility.name"],
+                "Instrument": Config["liveData.instrument.name"],
+                "AccumulationMethod": Config["liveData.accumulationMethod"],
+                "PreserveEvents": True,
+                "StartTime": "",
+            }
+
+            # In order to avoid contaminating other tests, all mocks must be applied
+            #   as context managers.
+            with (
+                mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
+                mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
+                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
+                mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
+                mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
+                mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
+                mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
+                mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,  # noqa: F841
+                mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch.object(instance, "mantidSnapper") as mockSnapper,
+            ):
+                # Mocks for flow-control branching:
+                mockHasLiveDataConnection.return_value = True
+
+                liteModeFilePath.exists.return_value = liteOnDisk
+                nativeModeFilePath.exists.return_value = nativeOnDisk
+
+                mockCreateNeutronFilePath.side_effect = (
+                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                )
+
+                mockCreateNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeWorkspaceName
+                )
+
+                mockCreateRawNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeRawWorkspaceName
+                )
+
+                mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
+
+                workspaceName = mockCreateNeutronWorkspaceName(runNumber, useLiteMode)
+                nativeRawWorkspaceName = mockCreateRawNeutronWorkspaceName(runNumber, False)
+                liteRawWorkspaceName = mockCreateRawNeutronWorkspaceName(runNumber, True)
+
+                # Mock `instance.mantidSnapper.mtd` to return a workspace that has the correct run number.
+                def _valid_key(key: str, validKey: str):
+                    if key != validKey:
+                        raise KeyError(f"key '{key}', expecting '{validKey}'")
+                    return True
+
+                mockWs = mock.Mock()
+                RunNumberProperty = namedtuple("RunNumberProperty", "value")
+                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
+                mockWs.getRun.return_value.getProperty.side_effect = (
+                    lambda key: RunNumberProperty(runNumber) if _valid_key(key, "run_number") else None
+                )
+                mockSnapper.mtd.__getitem__.side_effect = (
+                    lambda wsName: mockWs if _valid_key(wsName, nativeRawWorkspaceName) else None
+                )
+
+                # Action-related mocks:
+                mockFetchGroceriesRecipe.executeRecipe.return_value = {
+                    "result": True,
+                    "loader": "LoadLiveData",
+                    "workspace": workspaceName,
+                }
+
+                # BUILD the item argument:
+                item = GroceryListItem(workspaceType="neutron", runNumber=runNumber, useLiteMode=useLiteMode, loader="")
+
+                exceptionRaised = None
+                result = None  # noqa: F841
+                try:
+                    result = instance.fetchNeutronDataCached(item)  # noqa: F841
+                except RuntimeError as e:
+                    exceptionRaised = e
+
+                assert exceptionRaised is None
+
+                assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
+                assert (runNumber, useLiteMode) in instance._liveDataKeys
+
+                mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
+                mockHasLiveDataConnection.assert_called_once()
+                mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                    workspace=nativeRawWorkspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                )
+                if useLiteMode:
+                    assert instance._loadedRuns[(runNumber, False)] == 0
+                    assert (runNumber, False) in instance._liveDataKeys
+                    mockConvertToLiteMode.assert_called_once_with(liteRawWorkspaceName, export=False)
+                else:
+                    mockConvertToLiteMode.assert_not_called()
+
+    def test_fetchNeutronDataCached_live_data_fallback_fails(self):
+        # Test live data, non-fallback cases.
+        runNumber = self.runNumber
+
+        for useLiteMode in (False, True):
+            flags = useLiteMode, False, False, False
+            useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
+
+            instance = GroceryService()
+            liteModeFilePath = mock.MagicMock(spec=Path)
+            liteModeFilePath.__str__.return_value = "liteModeFilePath"
+
+            nativeModeFilePath = mock.MagicMock(spec=Path)
+            nativeModeFilePath.__str__.return_value = "nativeModeFilePath"
+
+            expectedLoaderArgs = {
+                "Facility": Config["liveData.facility.name"],
+                "Instrument": Config["liveData.instrument.name"],
+                "AccumulationMethod": Config["liveData.accumulationMethod"],
+                "PreserveEvents": True,
+                "StartTime": "",
+            }
+
+            # In order to avoid contaminating other tests, all mocks must be applied
+            #   as context managers.
+            with (
+                mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
+                mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
+                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
+                mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
+                mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
+                mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
+                mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
+                mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
+                mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch.object(instance, "mantidSnapper") as mockSnapper,
+            ):
+                # Mocks for flow-control branching:
+                mockHasLiveDataConnection.return_value = True
+
+                liteModeFilePath.exists.return_value = liteOnDisk
+                nativeModeFilePath.exists.return_value = nativeOnDisk
+
+                mockCreateNeutronFilePath.side_effect = (
+                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                )
+
+                mockCreateNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeWorkspaceName
+                )
+
+                mockCreateRawNeutronWorkspaceName.side_effect = (
+                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
+                    if useLiteMode
+                    else mock.sentinel.nativeRawWorkspaceName
+                )
+
+                mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
+
+                workspaceName = mockCreateNeutronWorkspaceName(runNumber, useLiteMode)
+                nativeRawWorkspaceName = mockCreateRawNeutronWorkspaceName(runNumber, False)
+
+                # Mock `instance.mantidSnapper.mtd` to return a workspace that DOES NOT HAVE the correct run number.
+                def _valid_key(key: str, validKey: str):
+                    if key != validKey:
+                        raise KeyError(f"key '{key}', expecting '{validKey}'")
+                    return True
+
+                mockWs = mock.Mock()
+                RunNumberProperty = namedtuple("RunNumberProperty", "value")
+                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
+                mockWs.getRun.return_value.getProperty.side_effect = (
+                    lambda key: RunNumberProperty(str(int(runNumber) + 1)) if _valid_key(key, "run_number") else None
+                )
+                mockSnapper.mtd.__getitem__.side_effect = (
+                    lambda wsName: mockWs if _valid_key(wsName, nativeRawWorkspaceName) else None
+                )
+
+                # Action-related mocks:
+                mockFetchGroceriesRecipe.executeRecipe.return_value = {
+                    "result": True,
+                    "loader": "LoadLiveData",
+                    "workspace": workspaceName,
+                }
+
+                # BUILD the item argument:
+                item = GroceryListItem(workspaceType="neutron", runNumber=runNumber, useLiteMode=useLiteMode, loader="")
+
+                exceptionRaised = None
+                result = None  # noqa: F841
+                try:
+                    result = instance.fetchNeutronDataCached(item)  # noqa: F841
+                except Exception as e:  # noqa: BLE001
+                    exceptionRaised = e
+
+                assert isinstance(exceptionRaised, RuntimeError)
+                assert (
+                    f"Neutron data for run '{runNumber}' is not present on disk, " + "nor is it the live-data run"
+                    in str(exceptionRaised)
+                )
+
+                mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
+                mockHasLiveDataConnection.assert_called_once()
+                mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
+                    workspace=nativeRawWorkspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                )
+                mockConvertToLiteMode.assert_not_called()
+                mockDeleteWorkspace.assert_called_once_with(nativeRawWorkspaceName)
 
     def test_fetch_grouping(self):
         groupFilepath = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
@@ -1099,11 +2382,7 @@ class TestGroceryService(unittest.TestCase):
         for i, fetchMethod in enumerate(
             [self.instance.fetchNeutronDataCached, self.instance.fetchNeutronDataSingleUse]
         ):
-            fetchMethod.assert_called_once_with(
-                groceryList[i].runNumber,
-                groceryList[i].useLiteMode,
-                groceryList[i].loader,
-            )
+            fetchMethod.assert_called_once_with(groceryList[i])
         self.instance.fetchGroupingDefinition.assert_called_once_with(groceryList[2])
 
     def test_fetch_grocery_list_fails(self):
@@ -1429,23 +2708,17 @@ class TestGroceryService(unittest.TestCase):
         ).add()
         groceryList = clerk.buildList()
 
-        groupItemWithSource = (
-            clerk.native()
-            .fromRun(self.runNumber)
-            .grouping(self.groupingScheme)
-            .source(InstrumentDonor=cleanWorkspace)
-            .build()
-        )
+        inputItem, groupingItemWithSource = groceryList
 
         res = self.instance.fetchGroceryList(groceryList)
         assert res == [cleanWorkspace, groupWorkspace]
-        self.instance.fetchGroupingDefinition.assert_called_with(groupItemWithSource)
-        self.instance.fetchNeutronDataCached.assert_called_with(self.runNumber, False, "")
+        self.instance.fetchGroupingDefinition.assert_called_with(groupingItemWithSource)
+        self.instance.fetchNeutronDataCached.assert_called_with(inputItem)
 
     def test_updateInstrumentParameters(self):
         wsName = mtd.unique_hidden_name()
         CloneWorkspace(
-            InputWorkspace=self.sampleWS,
+            InputWorkspace=self.sampleWSBareInstrument,
             OutputWorkspace=wsName,
         )
         assert mtd.doesExist(wsName)
@@ -1739,8 +3012,8 @@ class TestGroceryService(unittest.TestCase):
         #   (which should almost certainly be a service-to-service `InterfaceController` request)
         #   should be checked in `test_LiteDataService`, _not_ here.
 
-        mockLiteDataService().reduceLiteData = mock.Mock()
-        mockLiteDataService().reduceLiteData.return_value = ("ws", 0.004)
+        mockLiteDataService().createLiteData = mock.Mock()
+        mockLiteDataService().createLiteData.return_value = ("ws", 0.004)
 
         # reset calls
         mockLiteDataService.reset_mock()
@@ -1750,7 +3023,9 @@ class TestGroceryService(unittest.TestCase):
 
         # assert that the lite data service was created and called
         mockLiteDataService.assert_called_once()
-        mockLiteDataService.return_value.reduceLiteData.assert_called_once_with(workspacename, workspacename)
+        mockLiteDataService.return_value.createLiteData.assert_called_once_with(
+            workspacename, workspacename, export=True
+        )
 
         with Config_override("constants.LiteDataCreationAlgo.toggleCompressionTolerance", True):
             mockLiteDataService.reset_mock()

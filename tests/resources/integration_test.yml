@@ -12,7 +12,6 @@ IPTS:
 constants:
   # For tests with '46680' this seems to be necessary.
   maskedPixelThreshold: 1.0
-  logsLocation: "/mantid_workspace_1/logs"
 
   DetectorPeakPredictor:
     fwhm: 1.17741002252 # used to convert gaussian to fwhm (2 * log_e(2))
@@ -32,6 +31,22 @@ instrument:
       file: ${module.root}/resources/ultralite/CRACKLELite_Definition.xml
     map:
       file: ${module.root}/resources/ultralite/CRACKLELiteDataMap.xml
+
+  PVLogs:
+    # Swap these when running with ultralite data
+    # rootGroup: "entry/DASlogs"
+    rootGroup: "/mantid_workspace_1/logs"
+
+    # PV-log keys relating to instrument settings:
+    instrumentPVKeys:
+    - "BL3:Chop:Gbl:WavelengthReq"
+    - "BL3:Chop:Skf1:WavelengthUserReq"
+    - "det_arc1"
+    - "det_arc2"
+    - "BL3:Det:TH:BL:Frequency"
+    - "BL3:Mot:OpticsPos:Pos"
+    - "det_lin1"
+    - "det_lin2"
 
 mantid:
   workspace:

@@ -84,16 +84,17 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.recalculationButton.clicked.connect(self.emitValueChange)
 
         # add all elements to the grid layout
-        self.layout.addWidget(self.navigationBar, 0, 0)
-        self.layout.addWidget(self.canvas, 1, 0, 1, -1)
-        self.layout.addWidget(self.fieldRunNumber, 2, 0)
-        self.layout.addWidget(self.fieldBackgroundRunNumber, 2, 1)
-        self.layout.addLayout(peakControlLayout, 3, 0, 1, 2)
-        self.layout.addWidget(self.sampleDropdown, 4, 0)
-        self.layout.addWidget(self.groupingFileDropdown, 4, 1)
-        self.layout.addWidget(self.recalculationButton, 5, 0, 1, 2)
+        layout_ = self.layout()
+        layout_.addWidget(self.navigationBar, 0, 0)
+        layout_.addWidget(self.canvas, 1, 0, 1, -1)
+        layout_.addWidget(self.fieldRunNumber, 2, 0)
+        layout_.addWidget(self.fieldBackgroundRunNumber, 2, 1)
+        layout_.addLayout(peakControlLayout, 3, 0, 1, 2)
+        layout_.addWidget(self.sampleDropdown, 4, 0)
+        layout_.addWidget(self.groupingFileDropdown, 4, 1)
+        layout_.addWidget(self.recalculationButton, 5, 0, 1, 2)
 
-        self.layout.setRowStretch(1, 10)
+        layout_.setRowStretch(1, 10)
 
         # store the initial layout without graphs
         self.initialLayoutHeight = self.size().height()
@@ -188,7 +189,14 @@ class NormalizationTweakPeakView(BackendRequestView):
 
             ax.plot(focusedWorkspace, wkspIndex=i, label="Focused Data", normalize_by_bin_width=True)
             ax.plot(smoothedWorkspace, wkspIndex=i, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
-            ax.plot(residualWorkspace, wkspIndex=i, label="Residual Data", normalize_by_bin_width=True, linestyle=":")
+            ax.plot(
+                residualWorkspace,
+                wkspIndex=i,
+                label="Residual Data",
+                normalize_by_bin_width=True,
+                color="limegreen",
+                linewidth=2,
+            )
 
             ax.legend()
             ax.tick_params(direction="in")
@@ -242,3 +250,7 @@ class NormalizationTweakPeakView(BackendRequestView):
     def verify(self):
         # TODO what needs to be verified?
         return True
+
+    def setInteractive(self, flag: bool):
+        # TODO: put widgets here to allow them to be enabled or disabled by the presenter.
+        pass

@@ -10,12 +10,14 @@ logger = snapredLogger.getLogger(__name__)
 
 def extractTrueStacktrace() -> str:
     exc_info = sys.exc_info()
-    stack = traceback.extract_stack()
-    tb = traceback.extract_tb(exc_info[2])
-    full_tb = stack[:-1] + tb
-    exc_line = traceback.format_exception_only(*exc_info[:2])
-    stacktraceStr = "\n".join(["".join(traceback.format_list(full_tb)), "".join(exc_line)])
-    return stacktraceStr
+    if exc_info[1] is not None:
+        stack = traceback.extract_stack()
+        tb = traceback.extract_tb(exc_info[2])
+        full_tb = stack[:-1] + tb
+        exc_line = traceback.format_exception_only(*exc_info[:2])
+        stacktraceStr = "\n".join(["".join(traceback.format_list(full_tb)), "".join(exc_line)])
+        return stacktraceStr
+    return "no exception has occurred"
 
 
 def ExceptionHandler(exceptionType: Type[Exception]):

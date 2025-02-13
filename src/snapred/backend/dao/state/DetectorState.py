@@ -28,22 +28,26 @@ class DetectorState(BaseModel):
         return v
 
     @classmethod
-    def constructFromLogValues(cls, logValues):
+    def fromLogs(cls, logs: Dict[str, Number]):
+        # NeXus/HDF5 and `mantid.api.Run` logs are time-series =>
+        #   here we take only the first entry in each series.
         return DetectorState(
-            arc=(float(logValues["det_arc1"]), float(logValues["det_arc2"])),
-            lin=(float(logValues["det_lin1"]), float(logValues["det_lin2"])),
-            wav=float(logValues["BL3:Chop:Skf1:WavelengthUserReq"]),
-            freq=float(logValues["BL3:Det:TH:BL:Frequency"]),
-            guideStat=int(logValues["BL3:Mot:OpticsPos:Pos"]),
+            arc=(logs["det_arc1"][0], logs["det_arc2"][0]),
+            lin=(logs["det_lin1"][0], logs["det_lin2"][0]),
+            wav=logs.get("BL3:Chop:Skf1:WavelengthUserReq", logs.get("BL3:Chop:Gbl:WavelengthReq"))[0],
+            freq=logs["BL3:Det:TH:BL:Frequency"][0],
+            guideStat=int(logs["BL3:Mot:OpticsPos:Pos"][0]),
         )
 
-    def getLogValues(self) -> Dict[str, str]:
+    def toLogs(self) -> Dict[str, Number]:
+        # NeXus/HDF5 and `mantid.api.Run` logs are time-series =>
+        #   here we return each entry as a tuple.
         return {
-            "det_lin1": str(self.lin[0]),
-            "det_lin2": str(self.lin[1]),
-            "det_arc1": str(self.arc[0]),
-            "det_arc2": str(self.arc[1]),
-            "BL3:Chop:Skf1:WavelengthUserReq": str(self.wav),
-            "BL3:Det:TH:BL:Frequency": str(self.freq),
-            "BL3:Mot:OpticsPos:Pos": str(self.guideStat),
+            "det_lin1": (self.lin[0],),
+            "det_lin2": (self.lin[1],),
+            "det_arc1": (self.arc[0],),
+            "det_arc2": (self.arc[1],),
+            "BL3:Chop:Skf1:WavelengthUserReq": (self.wav,),
+            "BL3:Det:TH:BL:Frequency": (self.freq,),
+            "BL3:Mot:OpticsPos:Pos": (self.guideStat,),
         }

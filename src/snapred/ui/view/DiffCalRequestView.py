@@ -23,7 +23,7 @@ class DiffCalRequestView(BackendRequestView):
 
         # input fields
         self.runNumberField = self._labeledField("Run Number")
-        self.litemodeToggle = self._labeledToggle("Lite Mode", True)
+        self.liteModeToggle = self._labeledToggle("Lite Mode", True)
         self.fieldConvergenceThreshold = self._labeledField("Convergence Threshold")
         self.fieldNBinsAcrossPeakWidth = self._labeledField("Bins Across Peak Width")
 
@@ -37,22 +37,23 @@ class DiffCalRequestView(BackendRequestView):
         self.removeBackgroundToggle.setEnabled(True)
 
         # set field properties
-        self.litemodeToggle.setEnabled(True)
+        self.liteModeToggle.setEnabled(True)
         self.peakFunctionDropdown.setCurrentIndex(0)
 
         # skip pixel calibration toggle
         self.skipPixelCalToggle = self._labeledToggle("Skip Pixel Calibration", False)
 
         # add all widgets to layout
-        self.layout.addWidget(self.runNumberField, 0, 0)
-        self.layout.addWidget(self.litemodeToggle, 0, 1)
-        self.layout.addWidget(self.skipPixelCalToggle, 0, 2)
-        self.layout.addWidget(self.fieldConvergenceThreshold, 1, 0)
-        self.layout.addWidget(self.fieldNBinsAcrossPeakWidth, 1, 1)
-        self.layout.addWidget(self.removeBackgroundToggle, 1, 2)
-        self.layout.addWidget(self.sampleDropdown, 2, 0)
-        self.layout.addWidget(self.groupingFileDropdown, 2, 1)
-        self.layout.addWidget(self.peakFunctionDropdown, 2, 2)
+        layout_ = self.layout()
+        layout_.addWidget(self.runNumberField, 0, 0)
+        layout_.addWidget(self.liteModeToggle, 0, 1)
+        layout_.addWidget(self.skipPixelCalToggle, 0, 2)
+        layout_.addWidget(self.fieldConvergenceThreshold, 1, 0)
+        layout_.addWidget(self.fieldNBinsAcrossPeakWidth, 1, 1)
+        layout_.addWidget(self.removeBackgroundToggle, 1, 2)
+        layout_.addWidget(self.sampleDropdown, 2, 0)
+        layout_.addWidget(self.groupingFileDropdown, 2, 1)
+        layout_.addWidget(self.peakFunctionDropdown, 2, 2)
 
     def populateGroupingDropdown(self, groups):
         self.groupingFileDropdown.setItems(groups)
@@ -68,14 +69,33 @@ class DiffCalRequestView(BackendRequestView):
             raise ValueError("Please select a peak function")
         return True
 
+    def setInteractive(self, flag: bool):
+        # TODO: put widgets here to allow them to be enabled or disabled by the presenter.
+        self.runNumberField.setEnabled(flag)
+        self.fieldConvergenceThreshold.setEnabled(flag)
+        self.fieldNBinsAcrossPeakWidth.setEnabled(flag)
+        self.sampleDropdown.setEnabled(flag)
+        self.groupingFileDropdown.setEnabled(flag)
+        self.peakFunctionDropdown.setEnabled(flag)
+
+        self.liteModeToggle.setEnabled(flag)
+        self.removeBackgroundToggle.setEnabled(flag)
+        self.skipPixelCalToggle.setEnabled(flag)
+
     def getRunNumber(self):
         return self.runNumberField.text()
 
     def getLiteMode(self):
-        return self.litemodeToggle.getState()
+        return self.liteModeToggle.getState()
 
     def getRemoveBackground(self):
         return self.removeBackgroundToggle.getState()
 
     def getSkipPixelCalibration(self):
         return self.skipPixelCalToggle.getState()
+
+    def disablePeakFunction(self):
+        self.peakFunctionDropdown.setEnabled(False)
+
+    def enablePeakFunction(self):
+        self.peakFunctionDropdown.setEnabled(True)
