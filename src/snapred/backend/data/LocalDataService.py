@@ -98,9 +98,6 @@ class LocalDataService:
 
     ##### MISCELLANEOUS METHODS #####
 
-    def getInstrumentConfig(self):
-        return self._instrumentConfig
-
     def fileExists(self, path):
         return os.path.isfile(path)
 
