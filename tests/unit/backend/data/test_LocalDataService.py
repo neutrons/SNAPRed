@@ -869,11 +869,7 @@ def test__readRunConfig():
     # Test of private `_readRunConfig` method
     localDataService = LocalDataService()
     localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
-<<<<<<< HEAD
-    localDataService._instrumentConfig = getMockInstrumentConfig()
-=======
     localDataService.readInstrumentConfig = mock.Mock(return_value=getMockInstrumentConfig())
->>>>>>> 1679dc74 (refactor indexer to rounte saves and loads through a generic VersionedObject form of each method)
     actual = localDataService._readRunConfig("57514")
     assert actual is not None
     assert actual.runNumber == "57514"
