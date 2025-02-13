@@ -85,7 +85,7 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             BinningMode="Logarithmic",
         )
 
-        #Malcolm added these lines ##################
+        # Malcolm added these lines ##################
         self.mantidSnapper.ConvertUnits(
             "Convert workspace to wavelength units",
             InputWorkspace=outputWS,
@@ -97,8 +97,9 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             "crop all events outside of range",
             InputWorkspace=outputWS,
             Outputworkspace=outputWS,
-            XMin = self.lambdaMin,
-            XMax = self.lambdaMax)
+            XMin=self.lambdaMin,
+            XMax=self.lambdaMax,
+        )
 
         self.mantidSnapper.ConvertUnits(
             "Ensure workspace is in TOF units",
