@@ -104,9 +104,8 @@ class SNAPResponseHandler(QWidget):
 
     def _handleContinueWarning(self, continueInfo: ContinueWarning.Model):
         if logger.isEnabledFor(logging.DEBUG):
-            import traceback
-
             # print stacktrace
+            import traceback
             logger.debug(f"`_handleContinueWarning`: `continueInfo`: {continueInfo}")
             traceback.print_stack()
 

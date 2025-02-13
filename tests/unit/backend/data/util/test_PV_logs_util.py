@@ -1,12 +1,7 @@
-##
-## In order to keep the rest of the import sequence unmodified: any test-related imports are added at the end.
-##
-import unittest
 from collections.abc import Iterable
-from unittest import mock
-
 import numpy as np
-import pytest
+from typing import List
+
 from mantid.simpleapi import (
     CreateSampleWorkspace,
     DeleteWorkspace,
@@ -14,13 +9,19 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
-from util.dao import DAOFactory
-from util.instrument_helpers import addInstrumentLogs, getInstrumentLogDescriptors
 
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.util.PV_logs_util import *
 from snapred.meta.Config import Config, Resource
 
+##
+## In order to keep the rest of the import sequence unmodified: any test-related imports are added at the end.
+##
+import unittest
+import pytest
+from unittest import mock
+from util.dao import DAOFactory
+from util.instrument_helpers import addInstrumentLogs, getInstrumentLogDescriptors
 
 class TestTransferInstrumentPVLogs(unittest.TestCase):
     @classmethod
@@ -51,7 +52,7 @@ class TestTransferInstrumentPVLogs(unittest.TestCase):
         # Add the standard instrument PV-logs to the workspace's `Run` attribute.
         self.detectorState = DAOFactory.real_detector_state
         self.instrumentKeys = [
-            k for k in Config["instrument.PVLogs.instrumentKeys"] if k != "BL3:Chop:Gbl:WavelengthReq"
+            k if not isinstance(k, List) else k[0] for k in Config["instrument.PVLogs.instrumentKeys"]
         ]
         logsDescriptors = getInstrumentLogDescriptors(self.detectorState)
         addInstrumentLogs(self.wsWithStandardLogs, **logsDescriptors)
@@ -60,7 +61,7 @@ class TestTransferInstrumentPVLogs(unittest.TestCase):
         # Add the alterate instrument PV-logs.
         self.wsWithAlternateLogs = self.createSampleWorkspace()
         self.alternateInstrumentKeys = [
-            k for k in Config["instrument.PVLogs.instrumentKeys"] if k != "BL3:Chop:Skf1:WavelengthUserReq"
+            k if k != "BL3:Chop:Skf1:WavelengthUserReq" else "BL3:Chop:Gbl:WavelengthReq" for k in self.instrumentKeys
         ]
         logsDescriptors["logNames"] = [
             k if k != "BL3:Chop:Skf1:WavelengthUserReq" else "BL3:Chop:Gbl:WavelengthReq"
@@ -76,17 +77,13 @@ class TestTransferInstrumentPVLogs(unittest.TestCase):
         # Verify that the standard instrument PV-logs have been attached to the test workspace.
         # (This test additionally verifies that the `addInstrumentLogs` interface is using the keys from `Config`.)
         run = mtd[self.wsWithStandardLogs].run()
-        for key in Config["instrument.PVLogs.instrumentKeys"]:
-            if key == "BL3:Chop:Gbl:WavelengthReq":
-                continue
+        for key in self.instrumentKeys:
             assert run.hasProperty(key)
             assert f"{run.getProperty(key).value[0]:.16f}" == self.standardLogs[key]
 
         # Verify the test workspace with the alternate instrument PV-logs.
         run = mtd[self.wsWithAlternateLogs].run()
-        for key in Config["instrument.PVLogs.instrumentKeys"]:
-            if key == "BL3:Chop:Skf1:WavelengthUserReq":
-                continue
+        for key in self.alternateInstrumentKeys:
             assert run.hasProperty(key)
             assert f"{run.getProperty(key).value[0]:.16f}" == self.alternateLogs[key]
 

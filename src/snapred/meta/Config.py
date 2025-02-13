@@ -234,6 +234,26 @@ def datasearch_directories(instrumentHome: Path) -> List[str]:
     ]
     return dirs
 
+_pythonLoggingLevelFromString = {
+    "notset":     logging.NOTSET,
+    "critical": logging.CRITICAL,
+    "error":    logging.ERROR,
+    "warning":  logging.WARNING,
+    "info": logging.INFO,
+    "debug":    logging.DEBUG
+}
+
+_pythonLoggingLevelFromMantid = {
+    "none":     logging.NOTSET,
+    "fatal":    logging.CRITICAL + 5, # exists only as a POCO level
+    "critical": logging.CRITICAL,
+    "error":    logging.ERROR,
+    "warning":  logging.WARNING,
+    "notice":   logging.INFO + 5,     # exists only as a POCO level
+    "information": logging.INFO,
+    "debug":    logging.DEBUG,
+    "trace":    logging.DEBUG - 5     # exists only as a POCO level
+}
 
 def fromMantidLoggingLevel(level: str) -> int:
     # Python logging level from Mantid logging level
@@ -246,25 +266,18 @@ def fromMantidLoggingLevel(level: str) -> int:
     # 'none': , 'fatal', 'critical', 'error', 'warning', 'notice', 'information', 'debug', 'trace'
 
     pythonLevel = logging.NOTSET
-    match level.lower():
-        case "none":
-            pythonLevel = logging.NOTSET
-        case "fatal":
-            # this level doesn't really exist in python
-            pythonLevel = logging.CRITICAL + 5
-        case "critical":
-            pythonLevel = logging.CRITICAL
-        case "error":
-            pythonLevel = logging.ERROR
-        case "warning":
-            pythonLevel = logging.WARNING
-        case "notice":
-            pythonLevel = logging.INFO
-        case "debug":
-            pythonLevel = logging.DEBUG
-        case "trace":
-            # this level doesn't really exist in python
-            pythonLevel = logging.DEBUG - 5
-        case _:
-            raise RuntimeError(f"can't convert '{level}' to a Python logging level")
+    try:
+        pythonLevel = _pythonLoggingLevelFromMantid[level.lower()]
+    except KeyError as e:
+        raise RuntimeError(f"can't convert '{e}' to a Python logging level")
     return pythonLevel
+
+def fromPythonLoggingLevel(level: int | str) -> str:
+    # Mantid logging level from Python logging level
+    try:
+       level = level if isinstance(level, int) else _pythonLoggingLevelFromString[level.lower()]
+       mantidLevel = {v: k for k, v in _pythonLoggingLevelFromMantid.items()}[level]
+    except KeyError as e:
+        raise RuntimeError(f"can't convert '{e}' to a Mantid logging level")
+    return mantidLevel
+        

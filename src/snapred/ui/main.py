@@ -21,7 +21,13 @@ from qtpy.QtWidgets import (
 from workbench.plugins.workspacewidget import WorkspaceWidget
 
 from snapred.backend.log.logger import CustomFormatter, snapredLogger
-from snapred.meta.Config import Config, Resource, datasearch_directories, fromMantidLoggingLevel
+from snapred.meta.Config import (
+    Config,
+    datasearch_directories,
+    Resource,
+    fromMantidLoggingLevel,
+    fromPythonLoggingLevel
+)
 from snapred.ui.widget.LogTable import LogTable
 from snapred.ui.widget.TestPanel import TestPanel
 from snapred.ui.widget.ToolBar import ToolBar
@@ -202,9 +208,19 @@ class SNAPRedGUI(QMainWindow):
         self._savedMantidConfigEntries[LOGGERCLASSKEY] = self._mantidConfig[LOGGERCLASSKEY]
         self._savedMantidConfigEntries[LOGGERLEVELKEY] = self._mantidConfig[LOGGERLEVELKEY]
 
-        # Configure Mantid to send messages to Python
-        log_to_python()
         logger = logging.getLogger("Mantid")
+        if ConfigService.getLogLevel().lower() == "debug" and _within_mantid():
+            logger.warning(
+                "WARNING: 'messages' pane is set to 'DEBUG' logging level: this may cause LOCK UP in live-data mode!"
+            )      
+
+        # Configure Mantid to send messages to Python.
+        
+        # Despite what the documentation says:
+        #   the level passed in here _only_ controls the log-level in the "messages" panel.
+        #     For live-data, it's recommended _not_ to set this to *debug*!
+        log_to_python(level=fromPythonLoggingLevel(Config["logging.mantid.root.level"]))
+        
         # NOTE it is necessary to set the log to a nonzero level before adding handlers
         logger.setLevel(logging.DEBUG)
 
@@ -225,7 +241,7 @@ class SNAPRedGUI(QMainWindow):
 
     def _restartMantidConsoleLog(self):
         # return logging to the stream
-        ConfigService.setString(LOGGERCLASSKEY, self._savedMantidConfigEntries[LOGGERCLASSKEY])
+        ConfigService.setString(LOGGERCLASSKEY, self._savedMantidConfigEntries[LOGGERCLASSKEY])        
         ConfigService.setString(LOGGERLEVELKEY, self._savedMantidConfigEntries[LOGGERLEVELKEY])
 
         # TODO: Question: Possibly 'ConfigService.setLogLevel()' should be used here instead?
@@ -233,6 +249,8 @@ class SNAPRedGUI(QMainWindow):
         logger.setLevel(fromMantidLoggingLevel(self._mantidConfig[LOGGERLEVELKEY]))
         logger.handlers.clear()
 
+
+# ------ Duplicate `mantidqt.gui_helper.get_qapplication`, but as two separate methods: ------
 
 # Be careful here: the _key_ pytest-qt fixture is named `qapp`!
 def _qapp():
@@ -242,6 +260,10 @@ def _qapp():
         _app = QApplication(sys.argv)
     return _app
 
+def _within_mantid():
+    return _qapp().applicationName().lower().startswith("mantid")
+
+# ------
 
 def start(options=None):
     logger = snapredLogger.getLogger(__name__)

@@ -645,82 +645,86 @@ def test_writeGroupingMap_relative_paths():
 
 
 @mock.patch("pathlib.Path.exists")
-@mock.patch(ThisService + "GetIPTS")
-def test_calibrationFileExists(GetIPTS, pathExists):  # noqa ARG002
+def test_calibrationFileExists(pathExists):
     pathExists.return_value = True
     localDataService = LocalDataService()
-    stateId = ENDURING_STATE_ID
-    with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
-        tmpRoot.path().mkdir()
-        runNumber = "654321"
-        assert localDataService.checkCalibrationFileExists(runNumber)
+    with mock.patch.object(localDataService, "getIPTS"):
+        stateId = ENDURING_STATE_ID
+        with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
+            tmpRoot.path().mkdir()
+            runNumber = "654321"
+            assert localDataService.checkCalibrationFileExists(runNumber)
 
 
-@mock.patch(ThisService + "GetIPTS")
-def test_calibrationFileExists_stupid_number(mockGetIPTS):
+def test_calibrationFileExists_stupid_number():
     localDataService = LocalDataService()
 
-    # try with a non-number
-    runNumber = "fruitcake"
-    assert not localDataService.checkCalibrationFileExists(runNumber)
-    mockGetIPTS.assert_not_called()
-    mockGetIPTS.reset_mock()
-
-    # try with a too-small number
-    runNumber = "7"
-    assert not localDataService.checkCalibrationFileExists(runNumber)
-    mockGetIPTS.assert_not_called()
-
-
-@mock.patch(ThisService + "GetIPTS")
-def test_calibrationFileExists_not(GetIPTS):  # noqa ARG002
-    localDataService = LocalDataService()
-    stateId = ENDURING_STATE_ID
-    with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
-        nonExistentPath = tmpRoot.path() / "1755"
-        assert not nonExistentPath.exists()
-        runNumber = "654321"
+    with mock.patch.object(localDataService, "getIPTS") as mockGetIPTS:
+        # try with a non-number
+        runNumber = "fruitcake"
         assert not localDataService.checkCalibrationFileExists(runNumber)
+        mockGetIPTS.assert_not_called()
+        mockGetIPTS.reset_mock()
+
+        # try with a too-small number
+        runNumber = "7"
+        assert not localDataService.checkCalibrationFileExists(runNumber)
+        mockGetIPTS.assert_not_called()
 
 
-@mock.patch(ThisService + "GetIPTS")
-def test_calibrationFileExists_no_PV_file(GetIPTS):  # noqa ARG002
+def test_calibrationFileExists_not():
+    localDataService = LocalDataService()
+    with mock.patch.object(localDataService, "getIPTS"):
+        stateId = ENDURING_STATE_ID
+        with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
+            nonExistentPath = tmpRoot.path() / "1755"
+            assert not nonExistentPath.exists()
+            runNumber = "654321"
+            assert not localDataService.checkCalibrationFileExists(runNumber)
+
+
+def test_calibrationFileExists_no_PV_file():
     instance = LocalDataService()
-    stateId = ENDURING_STATE_ID  # noqa: F841
-    runNumber = "654321"
-    with mock.patch.object(instance, "generateStateId") as mockGenerateStateId:
-        # WARNING: the actual exception would normally be re-routed to `StateValidationException`.
-        mockGenerateStateId.side_effect = FileNotFoundError("No PV-file")
-        assert not instance.checkCalibrationFileExists(runNumber)
+    with mock.patch.object(instance, "getIPTS"):
+        stateId = ENDURING_STATE_ID  # noqa: F841
+        runNumber = "654321"
+        with mock.patch.object(instance, "generateStateId") as mockGenerateStateId:
+            # WARNING: the actual exception would normally be re-routed to `StateValidationException`.
+            mockGenerateStateId.side_effect = FileNotFoundError("No PV-file")
+            assert not instance.checkCalibrationFileExists(runNumber)
 
 
-@mock.patch(ThisService + "GetIPTS")
-def test_calibrationFileExists_no_PV_file_exception_routing(GetIPTS):  # noqa ARG002
+def test_calibrationFileExists_no_PV_file_exception_routing():
     instance = LocalDataService()
-    runNumber = "654321"
-    with pytest.raises(StateValidationException):
-        instance.checkCalibrationFileExists(runNumber)
+    with mock.patch.object(instance, "getIPTS"):
+        runNumber = "654321"
+        with pytest.raises(StateValidationException):
+            instance.checkCalibrationFileExists(runNumber)
 
 
 @mock.patch("pathlib.Path.exists")
-@mock.patch(ThisService + "GetIPTS")
-def test_getIPTS(mockGetIPTS, mockPathExists):
+def test_getIPTS(mockPathExists):
     mockPathExists.return_value = True
-    mockGetIPTS.return_value = "nowhere/"
     localDataService = LocalDataService()
-    runNumber = "123456"
-    res = localDataService.getIPTS(runNumber)
-    assert res == mockGetIPTS.return_value
-    mockGetIPTS.assert_called_with(
-        RunNumber=runNumber,
-        Instrument=Config["instrument.name"],
-    )
-    res = localDataService.getIPTS(runNumber, "CRACKLE")
-    assert res == mockGetIPTS.return_value
-    mockGetIPTS.assert_called_with(
-        RunNumber=runNumber,
-        Instrument="CRACKLE",
-    )
+    with mock.patch.object(localDataService, "mantidSnapper") as mockSnapper:
+        mockSnapper.GetIPTS = mock.Mock(return_value = "nowhere/")
+        runNumber = "123456"
+        res = localDataService.getIPTS(runNumber)
+        assert res == mockSnapper.GetIPTS.return_value
+        mockSnapper.GetIPTS.assert_called_with(
+            "get IPTS directory",
+            RunNumber=runNumber,
+            Instrument=Config["instrument.name"],
+        )
+        mockSnapper.GetIPTS.reset_mock()
+        
+        res = localDataService.getIPTS(runNumber, "CRACKLE")
+        assert res == mockSnapper.GetIPTS.return_value
+        mockSnapper.GetIPTS.assert_called_with(
+            "get IPTS directory",
+            RunNumber=runNumber,
+            Instrument="CRACKLE",
+        )
 
 
 # NOTE this test calls `GetIPTS` (via `getIPTS`) with no mocks
@@ -729,8 +733,8 @@ def test_getIPTS(mockGetIPTS, mockPathExists):
 def test_getIPTS_cache(mockPathExists):
     mockPathExists.return_value = True
     localDataService = LocalDataService()
-    localDataService.getIPTS.cache_clear()
-    assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
+    localDataService._getIPTS.cache_clear()
+    assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
 
     # test data
     instrument = "SNAP"
@@ -744,7 +748,7 @@ def test_getIPTS_cache(mockPathExists):
     with amend_config(data_dir=str(correctIPTS / "nexus")):
         res = localDataService.getIPTS(*key)
         assert res == str(correctIPTS) + os.sep
-        assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
+        assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
 
         # call again and make sure the cached value is being returned
         res = localDataService.getIPTS(*key)
@@ -760,37 +764,37 @@ def test_getIPTS_cache(mockPathExists):
         #   but that doesn't mean that changes to the module won't affect
         #   other tests.
 
-        assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=1, misses=1, maxsize=128, currsize=1)
+        assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=1, misses=1, maxsize=128, currsize=1)
 
     # now try it again, but with another IPTS directory
     with amend_config(data_dir=str(incorrectIPTS / "nexus")):
         # previous correct value should still be the cached value
         res = localDataService.getIPTS(*key)
         assert res == str(correctIPTS) + os.sep
-        assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=2, misses=1, maxsize=128, currsize=1)
+        assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=2, misses=1, maxsize=128, currsize=1)
 
         # clear the cache,  make sure the new value is being returned
-        localDataService.getIPTS.cache_clear()
+        localDataService._getIPTS.cache_clear()
         res = localDataService.getIPTS(*key)
         assert res == str(incorrectIPTS) + os.sep
-        assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
+        assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
 
 
-@mock.patch(ThisService + "GetIPTS")
-def test_createNeutronFilePath(mockGetIPTS):
+def test_createNeutronFilePath():
     instance = LocalDataService()
-    mockGetIPTS.return_value = "IPTS-TEST/"
-    runNumbers = {"lite": "12345", "native": "67890"}
+    with mock.patch.object(instance, "getIPTS") as mockGetIPTS:
+        mockGetIPTS.return_value = "IPTS-TEST/"
+        runNumbers = {"lite": "12345", "native": "67890"}
 
-    for mode in ["lite", "native"]:
-        runNumber = runNumbers[mode]  # REMINDER: `LocalDataService.getIPTS` uses `@lru_cache`.
-        expected = Path(
-            mockGetIPTS.return_value + Config[f"nexus.{mode}.prefix"] + runNumber + Config[f"nexus.{mode}.extension"]
-        )
-        actual = instance.createNeutronFilePath(runNumber, mode == "lite")
-        mockGetIPTS.assert_called_once_with(RunNumber=runNumber, Instrument=Config["instrument.name"])
-        assert actual == expected
-        mockGetIPTS.reset_mock()
+        for mode in ["lite", "native"]:
+            runNumber = runNumbers[mode]  # REMINDER: `LocalDataService.getIPTS` uses `@lru_cache`.
+            expected = Path(
+                mockGetIPTS.return_value + Config[f"nexus.{mode}.prefix"] + runNumber + Config[f"nexus.{mode}.extension"]
+            )
+            actual = instance.createNeutronFilePath(runNumber, mode == "lite")
+            mockGetIPTS.assert_called_once_with(runNumber)
+            assert actual == expected
+            mockGetIPTS.reset_mock()
 
 
 def test_workspaceIsInstance(cleanup_workspace_at_exit):
@@ -911,7 +915,6 @@ def test_readPVFile(h5pyMock):  # noqa: ARG001
 def test_readPVFile_does_not_exist(h5pyMock):  # noqa: ARG001
     runNumber = "12345"
     localDataService = LocalDataService()
-    localDataService._instrumentConfig = getMockInstrumentConfig()
 
     PVFilePath = "/the/PVFile.nxs.h5"
     mockPath = mock.MagicMock(spec=Path)
@@ -926,7 +929,6 @@ def test_readPVFile_no_IPTS():
     # test that `_readPVFile` wraps the `RuntimeError` returned by `GetIPTS`.
     runNumber = "12345"
     localDataService = LocalDataService()
-    localDataService._instrumentConfig = getMockInstrumentConfig()
     localDataService._constructPVFilePath = mock.Mock(side_effect=RuntimeError("Cannot find IPTS directory"))
     with pytest.raises(FileNotFoundError, match=f"No PVFile exists for run: '{runNumber}'"):
         localDataService._readPVFile(runNumber)
@@ -936,7 +938,6 @@ def test_readPVFile_exception_passthrough():
     # test that `_readPVFile` does not wrap unrelated exceptions.
     runNumber = "12345"
     localDataService = LocalDataService()
-    localDataService._instrumentConfig = getMockInstrumentConfig()
     localDataService._constructPVFilePath = mock.Mock(side_effect=RuntimeError("lah dee dah"))
     with pytest.raises(RuntimeError, match="lah dee dah"):
         localDataService._readPVFile(runNumber)
@@ -2309,7 +2310,11 @@ def test_readDetectorState_no_PVFile():
     instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists for run"))
     instance.readLiveMetadata = mock.Mock(return_value=mock.MagicMock(runNumber=-1))
     instance.hasLiveDataConnection = mock.Mock(return_value=True)
-    with pytest.raises(RuntimeError, match=f"No PVFile exists for run {runNumber}, and it isn't the live run."):
+    with pytest.raises(
+        RuntimeError,
+        match=(f"No PVFile exists for run: {runNumber}, and it isn't the live run: "
+              + f"{instance.readLiveMetadata.return_value.runNumber}.")
+    ):
         instance.readDetectorState(runNumber)
 
 
@@ -2353,7 +2358,7 @@ def test_readDetectorState_live_run_mismatch():
     instance.hasLiveDataConnection = mock.Mock(return_value=True)
     instance.readLiveMetadata = mock.Mock(return_value=mockLiveMetadata)
 
-    with pytest.raises(RuntimeError, match=f"No PVFile exists for run {runNumber0}, and it isn't the live run."):
+    with pytest.raises(RuntimeError, match=f"No PVFile exists for run: {runNumber0}, and it isn't the live run: {runNumber1}"):
         instance.readDetectorState(runNumber0)
 
 

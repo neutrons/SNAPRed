@@ -154,7 +154,8 @@ class ReductionService(Service):
         continueFlags = ContinueWarning.Type.UNSET
 
         # Check that the user has write permissions to the save directory
-        if not self.checkReductionWritePermissions(request.runNumber):
+        # (In live-data mode, this check should not apply.)
+        if not request.liveDataMode and not self.checkReductionWritePermissions(request.runNumber):
             continueFlags |= ContinueWarning.Type.NO_WRITE_PERMISSIONS
 
         # Remove any continue flags that are present in the request by XOR-ing with the flags

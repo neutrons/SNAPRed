@@ -6,16 +6,32 @@ Python `Mapping`-interface adapters and utility-methods relating to Mantid works
 import datetime
 from collections.abc import Iterable, Mapping
 from typing import Any
-
 import h5py
 import numpy as np
-from mantid.api import Run
+
+from mantid.api import Run, WorkspaceGroup
+from mantid.dataobjects import TableWorkspace
 
 # TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
 from mantid.simpleapi import AddSampleLog, mtd  # noqa : TID251
 
 from snapred.meta.Config import Config
 
+
+def allInstrumentPVLogKeys(keysWithAlternates: Iterable[str | Iterable[str]]):
+    # Flatten a list of keys, with possible alternate keys
+    keys = []
+    
+    for ks in keysWithAlternates:
+        if isinstance(ks, str):
+            # append a single key
+            keys.append(ks)
+        elif isinstance(ks, Iterable):
+            # append several alternate keys
+            keys.extend(ks)
+        else:
+            raise RuntimeError("unexpected format: list of keys with alternates")
+    return keys
 
 def transferInstrumentPVLogs(dest: Run, src: Run, keys: Iterable[str]):
     # Transfer instrument-specific PV-log values, between the `Run` attributes
@@ -24,11 +40,8 @@ def transferInstrumentPVLogs(dest: Run, src: Run, keys: Iterable[str]):
     # Placed here for use by various `FetchGroceriesAlgorithm` loaders.
     for key in keys:
         if src.hasProperty(key):
-            # WARNING: known Mantid defect: `addPropery` 'name' arg will not be used.
-            #   'name' of new property will be taken from the source property.
             dest.addProperty(key, src.getProperty(key), True)
     # REMINDER: the instrument-parameter update still needs to be explicitly triggered!
-
 
 def populateInstrumentParameters(wsName: str):
     # This utility function is a "stand in" until Mantid PR #38684 can be merged.
@@ -37,16 +50,21 @@ def populateInstrumentParameters(wsName: str):
 
     # Any PV-log key will do, so long as it is one that always exists in the logs.
     pvLogKey = "run_title"
-    pvLogValue = mtd[wsName].run().getProperty(pvLogKey).value
 
-    AddSampleLog(
-        Workspace=wsName,
-        LogName=pvLogKey,
-        logText=pvLogValue,
-        logType="String",
-        UpdateInstrumentParameters=True,
-    )
-
+    # In case it's a workspace group: call `populateInstrumentParameters` for each workspace separately.
+    names = [wsName,] if not isinstance(mtd[wsName], WorkspaceGroup) else mtd[wsName].getNames()
+    for name in names:
+        ws = mtd[name]
+        if isinstance(ws, TableWorkspace):
+            continue
+        pvLogValue = ws.run().getProperty(pvLogKey).value
+        AddSampleLog(
+            Workspace=name,
+            LogName=pvLogKey,
+            logText=pvLogValue,
+            logType="String",
+            UpdateInstrumentParameters=True,
+        )
 
 def datetimeFromLogTime(logTime: np.datetime64) -> datetime.datetime:
     # Convert from PV-log time with nanoseconds resolution
@@ -59,7 +77,6 @@ def datetimeFromLogTime(logTime: np.datetime64) -> datetime.datetime:
     return datetime.datetime.replace(
         np.datetime64(logTime, "us").astype(datetime.datetime), tzinfo=datetime.timezone.utc
     )
-
 
 def mappingFromRun(run: Run) -> Mapping:
     # Normalize `mantid.api.run` to a standard Python Mapping.
@@ -94,8 +111,21 @@ def mappingFromRun(run: Run) -> Mapping:
                         value = self._run.getProperty(key).value
                     except RuntimeError as e:
                         if "Unknown property search object" in str(e):
-                            raise KeyError(key) from e
-                        raise
+                            try:
+                                # Attempt to convert from any _alternate_ instrument PV-log key:
+                                for ks in Config["instrument.PVLogs.instrumentKeys"]:
+                                    if not isinstance(ks, str) and isinstance(ks, Iterable) and key == ks[0]:
+                                        for k in ks[1:]:
+                                            if self._run.hasProperty(k):
+                                                value = self._run.getProperty(k).value
+                                                break
+                            except Exception:
+                                # swallow this secondary exception
+                                pass
+                            if value is None:
+                                raise KeyError(key) from e
+                        else:
+                            raise
             return value
 
         def __iter__(self):
@@ -107,13 +137,21 @@ def mappingFromRun(run: Run) -> Mapping:
             return len(self._run.keys())
 
         def __contains__(self, key: str):
-            return self._run.hasProperty(key)
+            if self._run.hasProperty(key):
+                return True
+            # Check for _alternate_ instrument PV-log keys:
+            # TODO: speed this up!
+            for ks in Config["instrument.PVLogs.instrumentKeys"]:
+                if not isinstance(ks, str) and isinstance(ks, Iterable) and key == ks[0]:
+                    for k in ks[1:]:
+                        if self._run.hasProperty(k):
+                            return True
+            return False
 
         def keys(self):
             return self._run.keys()
 
     return _Mapping(run)
-
 
 def mappingFromNeXusLogs(h5: h5py.File) -> Mapping:
     # Normalize NeXus hdf5 logs to a standard Python Mapping.

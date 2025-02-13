@@ -14,7 +14,11 @@ from mantid.api import (
 from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction
 
-from snapred.backend.data.util.PV_logs_util import populateInstrumentParameters, transferInstrumentPVLogs
+from snapred.backend.data.util.PV_logs_util import (
+    allInstrumentPVLogKeys,
+    populateInstrumentParameters,
+    transferInstrumentPVLogs
+)
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
@@ -136,20 +140,20 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
                 OutputWorkspace=self.groupingWorkspace,
             )
         self.mantidSnapper.executeQueue()
-
+                
         # Transfer the instrument PV-logs -- not done yet by `LoadDiffCal`.
         if self.maskWorkspace:
             transferInstrumentPVLogs(
                 self.mantidSnapper.mtd[self.maskWorkspace].mutableRun(),
                 self.mantidSnapper.mtd[self.getPropertyValue("InstrumentDonor")].run(),
-                Config["instrument.PVLogs.instrumentKeys"],
+                allInstrumentPVLogKeys(Config["instrument.PVLogs.instrumentKeys"]),
             )
             populateInstrumentParameters(self.maskWorkspace)
         if self.groupingWorkspace:
             transferInstrumentPVLogs(
                 self.mantidSnapper.mtd[self.groupingWorkspace].mutableRun(),
                 self.mantidSnapper.mtd[self.getPropertyValue("InstrumentDonor")].run(),
-                Config["instrument.PVLogs.instrumentKeys"],
+                allInstrumentPVLogKeys(Config["instrument.PVLogs.instrumentKeys"]),
             )
             populateInstrumentParameters(self.groupingWorkspace)
 

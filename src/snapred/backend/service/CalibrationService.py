@@ -394,16 +394,17 @@ class CalibrationService(Service):
     @FromString
     def fetchMatchingCalibrations(self, request: MatchRunsRequest):
         calibrations = self.matchRunsToCalibrationVersions(request)
-        masks = set()
         for runNumber in request.runNumbers:
             if runNumber in calibrations:
                 self.groceryClerk.diffcal_table(runNumber, calibrations[runNumber]).useLiteMode(
                     request.useLiteMode
                 ).add()
-                # Calibration masks are also required, and are automatically loaded at the same time.
-                masks.add(wng.diffCalMask().runNumber(runNumber).version(calibrations[runNumber]).build())
+                # Calibration masks are also required, and are automatically loaded at the same time,
+                #   however we need the actual mask-workspace name to be in the list.
+                self.groceryClerk.diffcal_mask(runNumber, calibrations[runNumber]).useLiteMode(
+                    request.useLiteMode
+                ).add()
         workspaces = set(self.groceryService.fetchGroceryList(self.groceryClerk.buildList()))
-        workspaces.update(masks)
         return workspaces, calibrations
 
     @FromString
