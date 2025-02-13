@@ -51,6 +51,7 @@ class TestDataFactoryService(unittest.TestCase):
 
         # these are treated specially as returning specific object types
         cls.mockLookupService.getInstrumentConfig.return_value = InstrumentConfig.model_construct({})
+        cls.mockLookupService.readInstrumentConfig = mock.Mock(return_value=InstrumentConfig.model_construct({}))
         #
         # ... allow the `StateConfig` to actually complete validation:
         #   this is required because `getReductionState` is declared in the wrong place... :(

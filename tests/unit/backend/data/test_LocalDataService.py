@@ -2261,8 +2261,9 @@ def test_readDetectorState(monkeypatch):
 def test_readDetectorState_no_PVFile():
     runNumber = "123"
     instance = LocalDataService()
-    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("lah dee dah"))
-    with pytest.raises(FileNotFoundError, match="lah dee dah"):
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError(""))
+    instance.readLiveMetadata = mock.Mock(return_value=mock.MagicMock(runNumber=0))
+    with pytest.raises(RuntimeError, match="No PVFile exists for run"):
         instance.readDetectorState(runNumber)
 
 
@@ -2617,6 +2618,9 @@ def test_initializeState():
     localDataService._instrumentConfig = testCalibrationData.instrumentState.instrumentConfig
     localDataService.writeCalibrationState = mock.Mock()
     localDataService._prepareStateRoot = mock.Mock()
+    localDataService.readInstrumentConfig = mock.MagicMock(
+        return_value=testCalibrationData.instrumentState.instrumentConfig
+    )
 
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         stateId = testCalibrationData.instrumentState.id.hex  # "ab8704b0bc2a2342"
@@ -2648,7 +2652,7 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService._instrumentConfig = testCalibrationData.instrumentState.instrumentConfig
     localDataService.writeCalibrationState = mock.Mock()
     localDataService._readDefaultGroupingMap = mock.Mock(return_value=mock.Mock(isDirty=False))
-
+    localDataService.generateInstrumentState = mock.MagicMock(return_value=testCalibrationData.instrumentState)
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         stateId = ENDURING_STATE_ID
         stateRootPath = Path(tmpDir) / stateId

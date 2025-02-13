@@ -1177,7 +1177,7 @@ class TestGroceryService(unittest.TestCase):
                         # lite mode and lite-mode exists on disk
                         assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                         mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                            str(liteModeFilePath), workspaceName, item.loader
+                            str(liteModeFilePath), workspaceName, item.loader, runNumber=runNumber
                         )
                         mockConvertToLiteMode.assert_not_called()
 
@@ -1193,7 +1193,7 @@ class TestGroceryService(unittest.TestCase):
                         # lite mode and native exists on disk
                         assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                         mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                            str(nativeModeFilePath), workspaceName, item.loader
+                            str(nativeModeFilePath), workspaceName, item.loader, runNumber=runNumber
                         )
                         mockConvertToLiteMode.assert_called_once_with(workspaceName, export=False)
 
@@ -1201,7 +1201,7 @@ class TestGroceryService(unittest.TestCase):
                         # native mode and native exists on disk
                         assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                         mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                            str(nativeModeFilePath), workspaceName, item.loader
+                            str(nativeModeFilePath), workspaceName, item.loader, runNumber=runNumber
                         )
                         mockConvertToLiteMode.assert_not_called()
 
@@ -1332,7 +1332,10 @@ class TestGroceryService(unittest.TestCase):
                 mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                    workspace=workspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                    workspace=workspaceName,
+                    loader="LoadLiveData",
+                    loaderArgs=json.dumps(expectedLoaderArgs),
+                    runNumber=runNumber,
                 )
                 if useLiteMode:
                     mockConvertToLiteMode.assert_called_once_with(workspaceName, export=False)
@@ -1456,7 +1459,10 @@ class TestGroceryService(unittest.TestCase):
                 mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                    workspace=workspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                    workspace=workspaceName,
+                    loader="LoadLiveData",
+                    loaderArgs=json.dumps(expectedLoaderArgs),
+                    runNumber=runNumber,
                 )
                 mockConvertToLiteMode.assert_not_called()
                 mockDeleteWorkspace.assert_called_once_with(workspaceName)
@@ -1562,7 +1568,10 @@ class TestGroceryService(unittest.TestCase):
                 mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                    workspace=workspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                    workspace=workspaceName,
+                    loader="LoadLiveData",
+                    loaderArgs=json.dumps(expectedLoaderArgs),
+                    runNumber=runNumber,
                 )
                 if useLiteMode:
                     mockConvertToLiteMode.assert_called_once_with(workspaceName, export=False)
@@ -1675,7 +1684,10 @@ class TestGroceryService(unittest.TestCase):
                 mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                    workspace=workspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                    workspace=workspaceName,
+                    loader="LoadLiveData",
+                    loaderArgs=json.dumps(expectedLoaderArgs),
+                    runNumber=runNumber,
                 )
                 mockConvertToLiteMode.assert_not_called()
                 mockDeleteWorkspace.assert_called_once_with(workspaceName)
@@ -1779,7 +1791,7 @@ class TestGroceryService(unittest.TestCase):
                         assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                         assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
                         mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                            str(liteModeFilePath), liteRawWorkspaceName, item.loader
+                            str(liteModeFilePath), liteRawWorkspaceName, item.loader, runNumber=runNumber
                         )
                         mockConvertToLiteMode.assert_not_called()
 
@@ -1797,7 +1809,7 @@ class TestGroceryService(unittest.TestCase):
                         assert instance._loadedRuns[(runNumber, False)] == 0
                         assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
                         mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                            str(nativeModeFilePath), nativeRawWorkspaceName, loader=item.loader
+                            str(nativeModeFilePath), nativeRawWorkspaceName, loader=item.loader, runNumber=runNumber
                         )
                         mockConvertToLiteMode.assert_called_once_with(liteRawWorkspaceName, export=True)
 
@@ -1806,7 +1818,7 @@ class TestGroceryService(unittest.TestCase):
                         assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                         assert instance._loadedRuns[(runNumber, useLiteMode)] == (1 if not useLiteMode else 0)
                         mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                            str(nativeModeFilePath), nativeRawWorkspaceName, item.loader
+                            str(nativeModeFilePath), nativeRawWorkspaceName, item.loader, runNumber=runNumber
                         )
                         mockConvertToLiteMode.assert_not_called()
 
@@ -1942,7 +1954,10 @@ class TestGroceryService(unittest.TestCase):
                 mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                    workspace=nativeRawWorkspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                    workspace=nativeRawWorkspaceName,
+                    loader="LoadLiveData",
+                    loaderArgs=json.dumps(expectedLoaderArgs),
+                    runNumber=runNumber,
                 )
                 if useLiteMode:
                     assert instance._loadedRuns[(runNumber, False)] == 0
@@ -2069,7 +2084,10 @@ class TestGroceryService(unittest.TestCase):
                 mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                    workspace=nativeRawWorkspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                    workspace=nativeRawWorkspaceName,
+                    loader="LoadLiveData",
+                    loaderArgs=json.dumps(expectedLoaderArgs),
+                    runNumber=runNumber,
                 )
                 mockConvertToLiteMode.assert_not_called()
                 mockDeleteWorkspace.assert_called_once_with(nativeRawWorkspaceName)
@@ -2181,7 +2199,10 @@ class TestGroceryService(unittest.TestCase):
                 mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                    workspace=nativeRawWorkspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                    workspace=nativeRawWorkspaceName,
+                    loader="LoadLiveData",
+                    loaderArgs=json.dumps(expectedLoaderArgs),
+                    runNumber=runNumber,
                 )
                 if useLiteMode:
                     assert instance._loadedRuns[(runNumber, False)] == 0
@@ -2297,7 +2318,10 @@ class TestGroceryService(unittest.TestCase):
                 mockUpdateNeutronCache.assert_called_once_with(runNumber, useLiteMode)
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                    workspace=nativeRawWorkspaceName, loader="LoadLiveData", loaderArgs=json.dumps(expectedLoaderArgs)
+                    workspace=nativeRawWorkspaceName,
+                    loader="LoadLiveData",
+                    loaderArgs=json.dumps(expectedLoaderArgs),
+                    runNumber=runNumber,
                 )
                 mockConvertToLiteMode.assert_not_called()
                 mockDeleteWorkspace.assert_called_once_with(nativeRawWorkspaceName)

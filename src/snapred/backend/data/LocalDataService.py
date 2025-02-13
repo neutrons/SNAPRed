@@ -18,7 +18,7 @@ from mantid.api import Run
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import ConfigService, PhysicalConstants
 from mantid.simpleapi import GetIPTS, mtd
-from pydantic import ValidationError, validate_call
+from pydantic import ValidationError
 
 from snapred.backend.dao import (
     GSASParameters,
@@ -71,7 +71,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
-from snapred.meta.redantic import parse_file_as, write_model_pretty
+from snapred.meta.redantic import parse_file_as, validate_call, write_model_pretty
 
 logger = snapredLogger.getLogger(__name__)
 

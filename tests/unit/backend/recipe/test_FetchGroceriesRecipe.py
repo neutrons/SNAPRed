@@ -129,7 +129,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
 
         self.clearoutWorkspaces()
         self.rx.dataService.readInstrumentConfig = mock.MagicMock()
-        res = self.rx.executeRecipe(self.filepath, self.fetchedWSname, "LoadEventNexus", runNumber=555)
+        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadEventNexus", runNumber=555)
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadEventNexus"
@@ -137,7 +137,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert self.rx.mantidSnapper.RemovePromptPulse.called
 
         with pytest.raises(RuntimeError, match="Run number is required for event nexus files"):
-            self.rx.executeRecipe(self.filepath, self.fetchedWSname, "LoadEventNexus")
+            self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadEventNexus")
 
     @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.logger")
     @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchGroceriesAlgorithm")
@@ -149,8 +149,8 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         self.rx.mantidSnapper.RemovePromptPulse = mock.MagicMock()
 
         self.clearoutWorkspaces()
-
-        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadEventNexus")
+        self.rx.dataService.readInstrumentConfig = mock.MagicMock()
+        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadEventNexus", runNumber=555)
         mockLogger.info.assert_called_with(f"Fetching data from {self.filePath} into {res['workspace']}")
         mockLogger.debug.assert_called_with(f"Finished fetching {res['workspace']} from {self.filePath}")
 
@@ -164,8 +164,8 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         self.rx.mantidSnapper.RemovePromptPulse = mock.MagicMock()
 
         self.clearoutWorkspaces()
-
-        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveData")
+        self.rx.dataService.readInstrumentConfig = mock.MagicMock()
+        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveData", runNumber=555)
         mockLogger.info.assert_called_with(f"Fetching live data into {res['workspace']}")
         mockLogger.debug.assert_called_with(f"Finished fetching {res['workspace']} from live-data listener")
 
@@ -178,7 +178,8 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         self.rx.mantidSnapper.RemovePromptPulse = mock.Mock()
 
         self.clearoutWorkspaces()
-        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveData")
+        self.rx.dataService.readInstrumentConfig = mock.MagicMock()
+        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveData", runNumber=555)
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadLiveData"
