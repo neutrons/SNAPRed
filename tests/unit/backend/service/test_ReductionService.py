@@ -1,25 +1,33 @@
+## Python standard imports.
+import hashlib
+import json
+
+##
+## In order to preserve the normal import order as much as possible,
+##    test-related imports go last.
+##
 import unittest
 import unittest.mock as mock
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List
 
 import numpy as np
 import pydantic
 import pytest
+
+## Mantid imports
 from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
-from mantid.testing import assert_almost_equal as wksp_almost_equal
-from util.helpers import (
-    arrayFromMask,
-    createCompatibleMask,
-    maskFromArray,
-)
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
+from util.helpers import arrayFromMask, createCompatibleMask, maskFromArray
 from util.InstaEats import InstaEats
 from util.SculleryBoy import SculleryBoy
 from util.state_helpers import reduction_root_redirect
 
+## SNAPRed imports
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import WorkspaceMetadata
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
@@ -43,6 +51,7 @@ from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 localMock = mock.Mock()
+
 
 thisService = "snapred.backend.service.ReductionService."
 
@@ -136,6 +145,27 @@ class TestReductionService(unittest.TestCase):
         assert "diffcalWorkspace" in res
         assert "normalizationWorkspace" in res
 
+    def test_fetchReductionGroceries_live_data(self):
+        # Verify that the live-data settings are passed correctly to the fetch methods.
+
+        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
+        self.instance._markWorkspaceMetadata = mock.Mock()
+        self.instance.groceryService.dataService.hasLiveDataConnection = mock.Mock(return_value=True)
+
+        request = self.request
+        request.continueFlags = ContinueWarning.Type.UNSET
+        request.liveDataMode = True
+        request.liveDataDuration = timedelta(seconds=123)
+
+        self.instance.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).liveData(duration=request.liveDataDuration).add()
+        liveDataInputGroceryItem = self.instance.groceryClerk.buildList()[0]
+
+        res = self.instance.fetchReductionGroceries(request)  # noqa: F841
+        self.instance.groceryService.fetchNeutronDataCached.assert_called_with(liveDataInputGroceryItem)
+
     def test_fetchReductionGroceries_use_mask(self):
         """
         Check that this properly handles using the reduction mask.
@@ -191,12 +221,19 @@ class TestReductionService(unittest.TestCase):
         mockReductionRecipe.return_value.cook.assert_called_once_with(ingredients, groceries)
         assert result.record.workspaceNames == mockReductionRecipe.return_value.cook.return_value["outputs"]
 
+    @mock.patch(thisService + "datetime")
     @mock.patch(thisService + "ReductionResponse")
     @mock.patch(thisService + "ReductionRecipe")
-    def test_reduction_full_sequence(self, mockReductionRecipe, mockReductionResponse):
+    def test_reduction_full_sequence(self, mockReductionRecipe, mockReductionResponse, mock_datetime):
         mockReductionRecipe.return_value = mock.Mock()
         mockResult = {"result": True, "outputs": ["one", "two", "three"], "unfocusedWS": mock.Mock()}
         mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
+
+        startTime = datetime.utcnow()
+        executionTime = timedelta(microseconds=116)
+        endTime = startTime + executionTime
+        mock_datetime.utcnow = mock.Mock(side_effect=[startTime, endTime])
+
         self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.stateExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
@@ -233,6 +270,7 @@ class TestReductionService(unittest.TestCase):
         mockReductionResponse.assert_called_once_with(
             record=self.instance._createReductionRecord.return_value,
             unfocusedData=mockReductionRecipe.return_value.cook.return_value["unfocusedWS"],
+            executionTime=executionTime,
         )
 
     def test_reduction_noState_withWritePerms(self):
@@ -569,6 +607,70 @@ class TestReductionService(unittest.TestCase):
         rebinIngredients = mockRebinFocussedGroupDataRecipe.Ingredients()
         mockRebinFocussedGroupDataRecipe().cook.assert_called_once_with(rebinIngredients, groceries)
 
+    @mock.patch(thisService + "RebinFocussedGroupDataRecipe")
+    @mock.patch(thisService + "ReductionGroupProcessingRecipe")
+    @mock.patch(thisService + "GroceryService")
+    @mock.patch(thisService + "DataFactoryService")
+    def test_grabWorkspaceforArtificialNorm_live_data(
+        self,
+        mockDataFactoryService,
+        mockGroceryService,
+        mockReductionGroupProcessingRecipe,  # noqa: ARG002
+        mockRebinFocussedGroupDataRecipe,  # noqa: ARG002
+    ):
+        # This test verifies that live-data args are passed correctly to the fetch methods.
+
+        self.instance.groceryService = mockGroceryService
+        self.instance.dataFactoryService = mockDataFactoryService
+        request = ReductionRequest(
+            runNumber="123",
+            useLiteMode=False,
+            timestamp=self.instance.getUniqueTimestamp(),
+            versions=(1, 2),
+            pixelMasks=[],
+            focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
+            liveDataMode=True,
+            liveDataDuration=timedelta(seconds=123),
+        )
+
+        mockIngredients = mock.Mock()
+        mockIngredients.pixelGroups = [mock.Mock()]
+
+        runWorkspaceName = "runworkspace"
+        columnGroupingWS = "columnGroupingWS"
+        self.instance.groceryService.fetchGroceryList.return_value = [runWorkspaceName]
+        self.instance.loadAllGroupings = mock.Mock(
+            return_value={
+                "groupingWorkspaces": [columnGroupingWS],
+                "focusGroups": [mock.MagicMock(name="columnFocusGroup")],
+            }
+        )
+        self.instance.prepReductionIngredients = mock.Mock(return_value=mockIngredients)
+
+        self.instance.grabWorkspaceforArtificialNorm(request)
+
+        self.instance.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).liveData(duration=request.liveDataDuration).add()
+        liveDataInputGroceryList = self.instance.groceryClerk.buildList()
+        self.instance.groceryService.fetchGroceryList.assert_called_with(liveDataInputGroceryList)
+
+    @mock.patch(thisService + "DataFactoryService")
+    def test_hasLiveDataConnection(self, mockDataFactoryService):
+        mockDataFactoryService.hasLiveDataConnection.return_value = mock.sentinel.hasLiveDataConnection
+        self.instance.dataFactoryService = mockDataFactoryService
+        result = self.instance.hasLiveDataConnection()
+        mockDataFactoryService.hasLiveDataConnection.assert_called_once()
+        assert result == mock.sentinel.hasLiveDataConnection
+
+    @mock.patch(thisService + "DataFactoryService")
+    def test_getLiveMetadata(self, mockDataFactoryService):
+        mockDataFactoryService.getLiveMetadata.return_value = mock.sentinel.liveMetadata
+        self.instance.dataFactoryService = mockDataFactoryService
+        result = self.instance.getLiveMetadata()
+        mockDataFactoryService.getLiveMetadata.assert_called_once()
+        assert result == mock.sentinel.liveMetadata
+
 
 class TestReductionServiceMasks:
     @pytest.fixture(autouse=True, scope="class")
@@ -778,12 +880,9 @@ class TestReductionServiceMasks:
         """
 
         def mock_compatible_mask(wsname, runNumber, useLiteMode):  # noqa ARG001
-            return maskFromArray([0, 0, 0, 0, 0], wsname)
+            return maskFromArray([0, 0, 0, 0, 0, 0], wsname)
 
         def mock_fetch_grocery_list(groceryList):
-            import hashlib
-            import json
-
             groceries = []
             for item in groceryList:
                 runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
@@ -831,8 +930,7 @@ class TestReductionServiceMasks:
             exp = self.service.groceryService.fetchGroceryDict(groceryClerk.buildDict())
 
             res = self.service.prepCombinedMask(request)
-
-            wksp_almost_equal(exp["diffcalMaskWorkspace"], res, atol=0.0)
+            assert_wksp_almost_equal(exp["diffcalMaskWorkspace"], res, atol=0.0)
 
     def test_fetchReductionGroceries_load(self):
         """
@@ -939,6 +1037,7 @@ class TestReductionServiceMasks:
             timestamp=timestamp,
             versions=Versions(1, 2),
             pixelMasks=[self.maskWS1, self.maskWS2, self.maskWS5],
+            focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
         )
         with mock.patch.object(
             self.service.dataFactoryService, "getCompatibleReductionMasks"

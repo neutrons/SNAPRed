@@ -14,6 +14,7 @@ from mantid.kernel import (
     StringListValidator,
 )
 
+from snapred.backend.data.util.PV_logs_util import populateInstrumentParameters
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -22,7 +23,7 @@ logger = snapredLogger.getLogger(__name__)
 
 class FetchGroceriesAlgorithm(PythonAlgorithm):
     """
-    For general-purpose loading of nexus data, or grouping workspaces
+    For general-purpose loading of nexus data, or any workspace type that uses a loader algorithm
     """
 
     def category(self):
@@ -34,14 +35,15 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             FileProperty(
                 "Filename",
                 defaultValue="",
-                action=FileAction.Load,
+                # `Filename` is an optional property when `loader == 'LoadLiveData'`.
+                action=FileAction.OptionalLoad,
                 extensions=["xml", "h5", "nxs", "hd5"],
                 direction=Direction.Input,
             ),
             doc="Path to file to be loaded",
         )
         self.declareProperty(
-            WorkspaceProperty("OutputWorkspace", "", Direction.Output),
+            WorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="Workspace containing the loaded data",
         )
         self.declareProperty(
@@ -50,10 +52,11 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             StringListValidator(
                 [
                     "",
-                    "LoadGroupingDefinition",
                     "LoadCalibrationWorkspaces",
-                    "LoadNexus",
                     "LoadEventNexus",
+                    "LoadGroupingDefinition",
+                    "LoadLiveData",
+                    "LoadNexus",
                     "LoadNexusProcessed",
                 ]
             ),
@@ -88,65 +91,101 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         # cannot load a grouping workspace with a nexus loader
         issues: Dict[str, str] = {}
         loader = self.getPropertyValue("LoaderType")
+
+        # `OutputWorkspace` property:
         if loader not in [
             "LoadCalibrationWorkspaces",
         ]:
             if self.getProperty("OutputWorkspace").isDefault:
                 issues["OutputWorkspace"] = f"loader '{loader}' requires an 'OutputWorkspace' argument"
-            if not self.getProperty("LoaderArgs").isDefault:
-                issues["LoaderArgs"] = f"loader '{loader}' does not have any keyword arguments"
-        else:
+
+        # `LoaderArgs` property:
+        if loader in ["LoadCalibrationWorkspaces", "LoadLiveData"]:
             if self.getProperty("LoaderArgs").isDefault:
-                issues["LoaderArgs"] = f"Loader '{loader}' requires additional keyword arguments"
+                issues["LoaderArgs"] = f"loader '{loader}' requires additional keyword arguments"
+        elif not self.getProperty("LoaderArgs").isDefault:
+            issues["LoaderArgs"] = f"Loader '{loader}' does not have any keyword arguments"
+
+        # `InstrumentName`, `InstrumentFilename`, and `InstrumentDonor` properties:
         instrumentSources = ["InstrumentName", "InstrumentFilename", "InstrumentDonor"]
         specifiedSources = [s for s in instrumentSources if not self.getProperty(s).isDefault]
         if len(specifiedSources) > 1:
             issue = "Only one of InstrumentName, InstrumentFilename, or InstrumentDonor can be set"
             issues.update({s: issue for s in specifiedSources})
+
         return issues
 
     def PyExec(self) -> None:
         filename = self.getPropertyValue("Filename")
         outWS = self.getPropertyValue("OutputWorkspace")
         loaderType = self.getPropertyValue("LoaderType")
-        # TODO: do we need to guard this with an if?
-        if not self.mantidSnapper.mtd.doesExist(outWS):
-            if loaderType == "":
-                _, loaderType, _ = self.mantidSnapper.Load(
-                    "Loading with unspecified loader",
-                    Filename=filename,
-                    OutputWorkspace=outWS,
-                )
-            elif loaderType == "LoadGroupingDefinition":
-                for x in ["InstrumentName", "InstrumentFilename", "InstrumentDonor"]:
-                    if not self.getProperty(x).isDefault:
-                        instrumentPropertySource = x
-                        instrumentSource = self.getPropertyValue(x)
-                self.mantidSnapper.LoadGroupingDefinition(
-                    "Loading grouping definition",
-                    GroupingFilename=filename,
-                    OutputWorkspace=outWS,
-                    **{instrumentPropertySource: instrumentSource},
-                )
-            elif loaderType == "LoadCalibrationWorkspaces":
-                loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))
-                self.mantidSnapper.LoadCalibrationWorkspaces(
-                    "Loading diffraction-calibration workspaces",
-                    Filename=filename,
-                    InstrumentDonor=self.getPropertyValue("InstrumentDonor"),
-                    **loaderArgs,
-                )
-            else:
-                getattr(self.mantidSnapper, loaderType)(
-                    f"Loading data using {loaderType}",
-                    Filename=filename,
-                    OutputWorkspace=outWS,
-                )
+
+        # Allow live-data mode to replace an existing workspace
+        addOrReplace = loaderType == "LoadLiveData"
+
+        # TODO: the `if .. doesExist` should be centralized to cache treatment
+        #    here, it is redundant.
+        if addOrReplace or not self.mantidSnapper.mtd.doesExist(outWS):
+            match loaderType:
+                case "":
+                    _, loaderType, _ = self.mantidSnapper.Load(
+                        "Loading with unspecified loader",
+                        Filename=filename,
+                        OutputWorkspace=outWS,
+                    )
+                case "LoadCalibrationWorkspaces":
+                    loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))
+                    self.mantidSnapper.LoadCalibrationWorkspaces(
+                        "Loading diffraction-calibration workspaces",
+                        Filename=filename,
+                        InstrumentDonor=self.getPropertyValue("InstrumentDonor"),
+                        **loaderArgs,
+                    )
+                case "LoadGroupingDefinition":
+                    for x in ["InstrumentName", "InstrumentFilename", "InstrumentDonor"]:
+                        if not self.getProperty(x).isDefault:
+                            instrumentPropertySource = x
+                            instrumentSource = self.getPropertyValue(x)
+                    self.mantidSnapper.LoadGroupingDefinition(
+                        "Loading grouping definition",
+                        GroupingFilename=filename,
+                        OutputWorkspace=outWS,
+                        **{instrumentPropertySource: instrumentSource},
+                    )
+                case "LoadLiveData":
+                    loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))
+                    self.mantidSnapper.LoadLiveData(
+                        "loading live-data chunk",
+                        OutputWorkspace=outWS,
+                        Instrument=loaderArgs["Instrument"],
+                        AccumulationMethod=loaderArgs["AccumulationMethod"],
+                        PreserveEvents=loaderArgs["PreserveEvents"],
+                        StartTime=loaderArgs["StartTime"],
+                    )
+                case _:
+                    getattr(self.mantidSnapper, loaderType)(
+                        f"Loading data using {loaderType}",
+                        Filename=filename,
+                        OutputWorkspace=outWS,
+                    )
+
+            self.mantidSnapper.executeQueue()
+
         else:
-            # TODO: should this throw a warning?  Or warn in logger?
-            logger.warning(f"A workspace with name {outWS} already exists in the ADS, and so will not be loaded")
+            logger.debug(f"A workspace with name {outWS} already exists in the ADS, and so will not be loaded")
             loaderType = ""
-        self.mantidSnapper.executeQueue()
+
+        if loaderType in ["LoadNexus", "LoadEventNexus", "LoadNexusProcessed"]:
+            # TODO: (1) Does `LoadLiveData` correctly set the instrument parameters?
+            # TODO: (2) See EWM#7437:
+            #   this clause is necessary to be able to accurately set detector positions
+            #   on files written prior to the merge of the
+            #   `SaveNexus` 'instrument_parameter_map' write-precision fix.
+            # It probably should not be removed, even after that fix is merged.
+            # It should be replaced with `mtd[workspace].updateInstrumentParameters()` after
+            #   Mantid PR#38684 has been merged.
+            populateInstrumentParameters(outWS)
+
         self.setPropertyValue("OutputWorkspace", outWS)
         self.setPropertyValue("LoaderType", str(loaderType))
 

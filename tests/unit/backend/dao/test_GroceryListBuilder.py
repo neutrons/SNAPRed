@@ -1,6 +1,7 @@
 # ruff: noqa: E722, PT011, PT012
-
+# Add test-related imports last.
 import unittest
+from datetime import timedelta
 
 import pytest
 from mantid.simpleapi import (
@@ -9,6 +10,7 @@ from mantid.simpleapi import (
 )
 from pydantic import ValidationError
 
+from snapred.backend.dao.ingredients.GroceryListItem import LiveDataArgs
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Resource
 
@@ -57,6 +59,11 @@ class TestGroceryListBuilder(unittest.TestCase):
             assert item.runNumber == self.runNumber
             assert item.useLiteMode == useLite
             assert item.workspaceType == "neutron"
+
+    def test_nexus_liveData(self):
+        duration = timedelta(seconds=123)
+        item = GroceryListBuilder().neutron(self.runNumber).native().liveData(duration=duration).build()
+        assert item.liveDataArgs == LiveDataArgs(duration=duration)
 
     def test_nexus_propname(self):
         propertyName = "inputWorkspace"

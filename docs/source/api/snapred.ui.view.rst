@@ -138,7 +138,7 @@ snapred.ui.view.reduction.ReductionRequestView module
 .. automodule:: snapred.ui.view.reduction.ReductionRequestView
    :members:
    :undoc-members:
-   :exclude-members: signalRemoveRunNumber
+   :exclude-members: signalRemoveRunNumber, liveDataModeChange
    :show-inheritance:
 
 snapred.ui.view.TestPanelView module

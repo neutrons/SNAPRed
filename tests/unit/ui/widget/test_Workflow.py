@@ -25,8 +25,15 @@ class _TestView(QWidget):
     def handleContinueButtonClicked(self):
         pass
 
+    ##
+    ## Required abstract methods from `BackendRequestView`.
+    ##
+
     def verify(self):
         return True
+
+    def setInteractive(self, flag: bool):
+        pass
 
 
 def _generateWorkflow():

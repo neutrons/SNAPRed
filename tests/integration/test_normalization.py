@@ -150,7 +150,7 @@ class TestNormalizationPanels:
 
             requestView = workflowNodeTabs.currentWidget().view
             assert isinstance(requestView, NormalizationRequestView)
-            requestView.litemodeToggle.setState(False)
+            requestView.liteModeToggle.setState(False)
             self.testSummary.SUCCESS()
 
             # Verify tweak peak and save tabs are disabled
@@ -203,7 +203,11 @@ class TestNormalizationPanels:
             mpCrit = MockQMessageBox().critical(msg)
             with mpCrit[0]:
                 requestView.runNumberField.setText("58810")
+                qtbot.keyClick(requestView.runNumberField._field, Qt.Key_Return)
                 requestView.backgroundRunNumberField.setText("58813")
+                qtbot.keyClick(requestView.backgroundRunNumberField._field, Qt.Key_Return)
+                qapp.processEvents()
+
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(100)
                 # Verify error msg box to select sample shows up

@@ -1,15 +1,17 @@
 from typing import Callable, List
 
-from qtpy.QtCore import QObject, Signal
+from qtpy.QtCore import QObject, QThread
 
 from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao import SNAPRequest
 from snapred.backend.dao.request import (
     ClearWorkspacesRequest,
     ListWorkspacesRequest,
     RenameWorkspacesFromTemplateRequest,
 )
+from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.error.UserCancellation import UserCancellation
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
@@ -19,8 +21,6 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class WorkflowImplementer(QObject):
-    enableAllWorkflows = Signal()
-
     def __init__(self, parent=None):
         super().__init__()
         self.parent = parent
@@ -38,6 +38,7 @@ class WorkflowImplementer(QObject):
 
         # Output workspaces from each workflow node.
         self.outputs = []
+
         # Collected output workspaces from all iterations
         #   of the current workflow node.
         self.collectedOutputs = []
@@ -104,7 +105,7 @@ class WorkflowImplementer(QObject):
         self.continueAnywayFlags = ContinueWarning.Type.UNSET
 
         for hook in self.resetHooks:
-            logger.info(f"Calling reset hook: {hook}")
+            logger.debug(f"Calling reset hook: {hook}")
             hook()
 
     def _clearWorkspaces(self, *, exclude: List[str], clearCachedWorkspaces: bool):
@@ -123,6 +124,17 @@ class WorkflowImplementer(QObject):
         return Config["ui.default.workflow.completionMessage"]
 
     def _request(self, request: SNAPRequest):
+        # Coarse-granularity user-cancellation request:
+        #   this supports a possible cancellation, but only between each service call.
+        if QThread.currentThread().isInterruptionRequested():
+            logger.error("User cancellation request")
+            return SNAPResponse(
+                code=ResponseCode.USER_CANCELLATION,
+                message=UserCancellation(
+                    f"WorkflowImplementer: user cancellation: before execution of: {request.json()}."
+                ).model.model_dump_json(),
+            )
+
         response = self.interfaceController.executeRequest(request)
         self._handleComplications(response)
         return response

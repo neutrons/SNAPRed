@@ -36,6 +36,9 @@ except ImportError:
 LOGGERCLASSKEY = "logging.channels.consoleChannel.class"
 LOGGERLEVELKEY = "logging.loggers.root.level"
 DATASEARCH_DIR_KEY = "datasearch.directories"
+DEFAULT_FACILITY_KEY = "default.facility"
+FILEEVENTDATALISTENER_FILENAME_KEY = "fileeventdatalistener.filename"
+FILEEVENTDATALISTENER_CHUNKS_KEY = "fileeventdatalistener.chunks"
 
 
 # This method is also used by tests, so it's declared outside of the `SNAPRedGUI` class
@@ -70,6 +73,9 @@ class SNAPRedGUI(QMainWindow):
 
         # Redirect the IPTS search directories
         self._redirectIPTSSearchDirectories()
+
+        # Add any required live-data config values
+        self._addLiveDataMantidConfigEntries()
 
         # make sure mantid console logging is disabled
         self._redirectMantidConsoleLog()
@@ -138,6 +144,7 @@ class SNAPRedGUI(QMainWindow):
     def closeEvent(self, event):
         self._restartMantidConsoleLog()
         self._restoreIPTSSearchDirectories()
+        self._restoreLiveDataMantidConfigEntries()
         event.accept()
 
     def changeEvent(self, event):
@@ -156,6 +163,39 @@ class SNAPRedGUI(QMainWindow):
 
     def _restoreIPTSSearchDirectories(self):
         self._mantidConfig.setString(DATASEARCH_DIR_KEY, self._savedMantidConfigEntries[DATASEARCH_DIR_KEY])
+
+    def _addLiveDataMantidConfigEntries(self):
+        # Save any current default-facility setting:
+        self._savedMantidConfigEntries[DEFAULT_FACILITY_KEY] = self._mantidConfig[DEFAULT_FACILITY_KEY]
+
+        # Add the required default-facility value:
+        self._mantidConfig.setString(DEFAULT_FACILITY_KEY, Config["liveData.facility.name"])
+
+        if Config["liveData.facility.name"] == "TEST_LIVE":
+            # Save any current values from the file-listener keys:
+            self._savedMantidConfigEntries[FILEEVENTDATALISTENER_FILENAME_KEY] = self._mantidConfig[
+                FILEEVENTDATALISTENER_FILENAME_KEY
+            ]
+            self._savedMantidConfigEntries[FILEEVENTDATALISTENER_CHUNKS_KEY] = self._mantidConfig[
+                FILEEVENTDATALISTENER_CHUNKS_KEY
+            ]
+
+            # Add the required 'ADARA_FileReader' values:
+            self._mantidConfig.setString(FILEEVENTDATALISTENER_FILENAME_KEY, Config["liveData.testInput.inputFilename"])
+            self._mantidConfig.setString(FILEEVENTDATALISTENER_CHUNKS_KEY, str(Config["liveData.testInput.chunks"]))
+
+    def _restoreLiveDataMantidConfigEntries(self):
+        # Restore any previous default-facility setting:
+        self._mantidConfig.setString(DEFAULT_FACILITY_KEY, self._savedMantidConfigEntries[DEFAULT_FACILITY_KEY])
+
+        if Config["liveData.facility.name"] == "TEST_LIVE":
+            # Restore any previous values to the file-listener keys:
+            self._mantidConfig.setString(
+                FILEEVENTDATALISTENER_FILENAME_KEY, self._savedMantidConfigEntries[FILEEVENTDATALISTENER_FILENAME_KEY]
+            )
+            self._mantidConfig.setString(
+                FILEEVENTDATALISTENER_CHUNKS_KEY, self._savedMantidConfigEntries[FILEEVENTDATALISTENER_CHUNKS_KEY]
+            )
 
     def _redirectMantidConsoleLog(self):
         # Save the current Mantid logging configuration
@@ -194,7 +234,8 @@ class SNAPRedGUI(QMainWindow):
         logger.handlers.clear()
 
 
-def qapp():
+# Be careful here: the _key_ pytest-qt fixture is named `qapp`!
+def _qapp():
     if QApplication.instance():
         _app = QApplication.instance()
     else:
@@ -205,7 +246,7 @@ def qapp():
 def start(options=None):
     logger = snapredLogger.getLogger(__name__)
 
-    app = qapp()
+    app = _qapp()
     with Resource.open("style.qss", "r") as styleSheet:
         app.setStyleSheet(styleSheet.read())
 

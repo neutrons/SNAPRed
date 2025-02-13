@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -13,7 +13,8 @@ class CreateArtificialNormalizationRequest(BaseModel):
     diffractionWorkspace: WorkspaceName
     outputWorkspace: WorkspaceName
 
-    class Config:
-        arbitrary_types_allowed = True  # Allow arbitrary types like WorkspaceName
-        extra = "forbid"  # Forbid extra fields
-        validate_assignment = True  # Enable dynamic validation
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,  # Allow arbitrary types like WorkspaceName
+        extra="forbid",  # Forbid extra fields
+        validate_assignment=True,  # Enable dynamic validation
+    )

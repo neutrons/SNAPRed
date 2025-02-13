@@ -1,5 +1,6 @@
 import re
 import sys
+from copy import deepcopy
 from datetime import datetime
 from enum import Enum
 from typing import Any, List, NamedTuple, Optional, Tuple
@@ -10,49 +11,6 @@ from typing_extensions import Annotated, Self
 
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.meta.Config import Config
-
-
-class WorkspaceName(str):
-    def __new__(cls, value: Any) -> Self:
-        # Allow use of `WorkspaceName` with `pydantic.BaseModel`:
-        obj = super().__new__(cls, value)
-        obj._builder = getattr(value, "_builder", None)
-        return obj
-
-    def __str__(self):
-        return self
-
-    def toString(self) -> str:
-        # return an actual string, not a `WorkspaceName`
-        return super(self.__class__, self).__str__()
-
-    def tokens(self, *args: Tuple[str]):
-        # return multiple token values:
-        #   usage:
-        #     multiple-value: runNumber, useLiteMode, version = <builder>.tokens("runNumber", "useLiteMode", "version")
-        #     or single-value: runNumber = <builder>.tokens("runNumber")
-        if self._builder is None:
-            raise RuntimeError(f"no '_builder' attribute is retained for 'WorkspaceName' {self}")
-        values = self._builder.tokens(*args)
-        return tuple(values) if len(values) > 1 else values[0]
-
-    @classmethod
-    def instance(cls, value, builder=None):
-        # factory method
-        wsName = cls(value)
-        wsName._builder = builder
-        return wsName
-
-
-### THIS IS A KLUGE: 'sphinx' does not like `typing.Annotated`
-if "sphinx" not in sys.modules:
-    _WorkspaceName = WorkspaceName
-    WorkspaceName = Annotated[
-        _WorkspaceName,
-        BeforeValidator(lambda v: _WorkspaceName(v) if isinstance(v, str) else v),
-        WithJsonSchema({"type": "string"}, mode="serialization"),
-        WithJsonSchema({"type": "string"}, mode="validation"),
-    ]
 
 
 class WorkspaceType(str, Enum):
@@ -66,12 +24,16 @@ class WorkspaceType(str, Enum):
     DIFFCAL_MASK = "diffCalMask"
     DIFFCAL_METRIC = "diffCalMetric"
     DIFFCAL_TIMED_METRIC = "diffCalTimedMetric"
+
+    # TODO: REBASE NOTE: inconsistent naming:
+    #   these next should be `NORMCAL_RAW_VANADIUM` and etc.
     RAW_VANADIUM = "rawVanadium"
     FOCUSED_RAW_VANADIUM = "focusedRawVanadium"
     SMOOTHED_FOCUSED_RAW_VANADIUM = "smoothedFocusedRawVanadium"
+    RESIDUAL = "normCalResidual"
     ARTIFICIAL_NORMALIZATION_PREVIEW = "artificialNormalizationPreview"
 
-    RESIDUAL = "normCalResidual"
+    LITE_DATA_MAP = "liteDataMap"
 
     # <reduction tag>_<runNumber>_<timestamp>
     REDUCTION_OUTPUT = "reductionOutput"
@@ -94,7 +56,15 @@ class NameBuilder:
         self.keys.append("workspaceType")
         self.props["workspaceType"] = wsType
 
+        # implicitly support the 'hidden' property on all template types
+        self.keys.append("hidden")
+        self.props["hidden"] = False
+
     def __getattr__(self, key):
+        # Pass through for 'magic' attributes (e.g. `__deepcopy__`).
+        if key.startswith("__") and key.endswith("__"):
+            return super().__getattr__(key)
+
         if key not in self.keys:
             raise RuntimeError(f"Key '{key}' not a valid property for workspace-type '{self.props['workspaceType']}'.")
 
@@ -122,7 +92,61 @@ class NameBuilder:
         formattedProperties = {key: ValueFormatter.formatValueByKey(key, value) for key, value in self.props.items()}
         tokens = self.template.format(**formattedProperties).split(",")
         tokens = [token for token in tokens if token != ""]
+        if self.props["hidden"]:
+            tokens.insert(0, "__")
         return WorkspaceName.instance(self.delimiter.join(tokens), self)
+
+
+class WorkspaceName(str):
+    def __new__(cls, value: Any) -> Self:
+        # Allow use of `WorkspaceName` with `pydantic.BaseModel`:
+        obj = super().__new__(cls, value)
+        obj._builder = getattr(value, "_builder", None)
+        return obj
+
+    def __str__(self):
+        return self
+
+    def toString(self) -> str:
+        # return an actual string, not a `WorkspaceName`
+        return super(self.__class__, self).__str__()
+
+    def tokens(self, *args: Tuple[str]):
+        # return multiple token values:
+        #   usage:
+        #     multiple-value: runNumber, useLiteMode, version = <builder>.tokens("runNumber", "useLiteMode", "version")
+        #     or single-value: runNumber = <builder>.tokens("runNumber")
+        if self._builder is None:
+            raise RuntimeError(f"no '_builder' attribute is retained for 'WorkspaceName' {self}")
+        values = self._builder.tokens(*args)
+        return tuple(values) if len(values) > 1 else values[0]
+
+    @property
+    def builder(self) -> Optional[NameBuilder]:
+        # Return a deepcopy of the builder,
+        #   so that the original `WorkspaceName` isn't modified
+        #   when the new copy is actually used.
+        if self._builder is not None:
+            return deepcopy(self._builder)
+        return None
+
+    @classmethod
+    def instance(cls, value, builder: Optional[NameBuilder] = None):
+        # factory method
+        wsName = cls(value)
+        wsName._builder = builder
+        return wsName
+
+
+### THIS IS A KLUGE: 'sphinx' does not like `typing.Annotated`
+if "sphinx" not in sys.modules:
+    _WorkspaceName = WorkspaceName
+    WorkspaceName = Annotated[
+        _WorkspaceName,
+        BeforeValidator(lambda v: _WorkspaceName(v) if isinstance(v, str) else v),
+        WithJsonSchema({"type": "string"}, mode="serialization"),
+        WithJsonSchema({"type": "string"}, mode="validation"),
+    ]
 
 
 class ValueFormatter:
@@ -312,6 +336,11 @@ class _WorkspaceNameGenerator:
             unit=self.Units.TOF,
             group=self.Groups.ALL,
             lite=self.Lite.FALSE,
+        )
+
+    def liteDataMap(self):
+        return NameBuilder(
+            WorkspaceType.LITE_DATA_MAP, self._liteDataMapTemplate, self._liteDataMapTemplateKeys, self._delimiter
         )
 
     def diffCalInput(self):

@@ -3,7 +3,7 @@ from qtpy.QtWidgets import QDesktopWidget, QGridLayout, QLabel, QMainWindow, QPu
 
 
 class ActionPromptView(QMainWindow):
-    def __init__(self, title, message, parent=None):
+    def __init__(self, title, message, parent=None, buttonNames=("Continue", "Cancel")):
         super(ActionPromptView, self).__init__(parent)
         self.title = title
         self.message = message
@@ -20,8 +20,8 @@ class ActionPromptView(QMainWindow):
         self.messageLabel = QLabel(self.message)
         self.grid.addWidget(self.messageLabel)
 
-        self.continueButton = QPushButton("Continue")
-        self.cancelButton = QPushButton("Cancel")
+        self.continueButton = QPushButton(buttonNames[0])
+        self.cancelButton = QPushButton(buttonNames[1])
         self.buttonLayout = QGridLayout()
         self.buttonLayout.addWidget(self.continueButton, 0, 0)
         self.buttonLayout.addWidget(self.cancelButton, 0, 1)

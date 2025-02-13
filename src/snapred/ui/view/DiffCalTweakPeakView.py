@@ -58,7 +58,7 @@ class DiffCalTweakPeakView(BackendRequestView):
 
         # create the run number field and lite mode toggle
         self.runNumberField = self._labeledField("Run Number")
-        self.litemodeToggle = self._labeledToggle("Lite Mode", True)
+        self.liteModeToggle = self._labeledToggle("Lite Mode", True)
         self.maxChiSqField = self._labeledField("Max Chi Sq", text=str(self.MAX_CHI_SQ))
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
         self.signalMaxChiSqUpdate.connect(self._updateMaxChiSq)
@@ -82,7 +82,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
 
         # disable run number, lite mode, sample, peak function -- cannot be changed now
-        for x in [self.runNumberField, self.litemodeToggle, self.sampleDropdown]:
+        for x in [self.runNumberField, self.liteModeToggle, self.sampleDropdown]:
             x.setEnabled(False)
 
         # create the peak adjustment controls
@@ -106,19 +106,20 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.purgePeaksButton.clicked.connect(self.emitPurge)
 
         # add all elements to the grid layout
-        self.layout.addWidget(self.runNumberField, 0, 0)
-        self.layout.addWidget(self.litemodeToggle, 0, 1, 1, 2)
-        self.layout.addWidget(self.skipPixelCalToggle, 0, 2)
-        self.layout.addWidget(self.navigationBar, 1, 0)
-        self.layout.addWidget(self.canvas, 2, 0, 1, -1)
-        self.layout.addLayout(peakControlLayout, 3, 0, 1, 2)
-        self.layout.addWidget(self.sampleDropdown, 4, 0)
-        self.layout.addWidget(self.groupingFileDropdown, 4, 1)
-        self.layout.addWidget(self.peakFunctionDropdown, 4, 2)
-        self.layout.addWidget(self.purgePeaksButton, 4, 3)
-        self.layout.addWidget(self.recalculationButton, 5, 0, 1, 4)
+        layout_ = self.layout()
+        layout_.addWidget(self.runNumberField, 0, 0)
+        layout_.addWidget(self.liteModeToggle, 0, 1, 1, 2)
+        layout_.addWidget(self.skipPixelCalToggle, 0, 2)
+        layout_.addWidget(self.navigationBar, 1, 0)
+        layout_.addWidget(self.canvas, 2, 0, 1, -1)
+        layout_.addLayout(peakControlLayout, 3, 0, 1, 2)
+        layout_.addWidget(self.sampleDropdown, 4, 0)
+        layout_.addWidget(self.groupingFileDropdown, 4, 1)
+        layout_.addWidget(self.peakFunctionDropdown, 4, 2)
+        layout_.addWidget(self.purgePeaksButton, 4, 3)
+        layout_.addWidget(self.recalculationButton, 5, 0, 1, 4)
 
-        self.layout.setRowStretch(2, 10)
+        layout_.setRowStretch(2, 10)
 
         # store the initial layout without graphs
         self.initialLayoutHeight = self.size().height()
@@ -333,6 +334,10 @@ class DiffCalTweakPeakView(BackendRequestView):
             self._testContinueAnywayStates()
 
         return True
+
+    def setInteractive(self, flag: bool):
+        # TODO: put widgets here to allow them to be enabled or disabled by the presenter.
+        pass
 
     def getSkipPixelCalibration(self):
         return self.skipPixelCalToggle.field.getState()

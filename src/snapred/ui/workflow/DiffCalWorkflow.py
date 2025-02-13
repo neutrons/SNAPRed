@@ -89,15 +89,15 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._saveView = DiffCalSaveView(parent)
 
         # connect signal to populate the grouping dropdown after run is selected
-        self._requestView.litemodeToggle.stateChanged.connect(self._switchLiteNativeGroups)
+        self._requestView.liteModeToggle.stateChanged.connect(self._switchLiteNativeGroups)
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
         self._requestView.sampleDropdown.dropDown.currentIndexChanged.connect(self._lookForOverrides)
         self._tweakPeakView.signalValueChanged.connect(self.onValueChange)
         self._tweakPeakView.signalPurgeBadPeaks.connect(self.purgeBadPeaks)
 
         # connect the lite mode toggles across the views
-        self._requestView.litemodeToggle.stateChanged.connect(self._tweakPeakView.litemodeToggle.setState)
-        self._tweakPeakView.litemodeToggle.stateChanged.connect(self._requestView.litemodeToggle.setState)
+        self._requestView.liteModeToggle.stateChanged.connect(self._tweakPeakView.liteModeToggle.setState)
+        self._tweakPeakView.liteModeToggle.stateChanged.connect(self._requestView.liteModeToggle.setState)
 
         # connect the skip pixelcal toggles across the views
         self._requestView.skipPixelCalToggle.stateChanged.connect(self._tweakPeakView.skipPixelCalToggle.setState)
@@ -145,7 +145,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def __setInteraction(self, state: bool, interactionType: str):
         if interactionType == "populateGroupDropdown":
-            self._requestView.litemodeToggle.setEnabled(state)
+            self._requestView.liteModeToggle.setEnabled(state)
             self._requestView.skipPixelCalToggle.setEnabled(state)
             self._requestView.groupingFileDropdown.setEnabled(state)
         elif interactionType == "lookForOverrides":
@@ -156,7 +156,7 @@ class DiffCalWorkflow(WorkflowImplementer):
     def _populateGroupingDropdown(self):
         # when the run number is updated, freeze the drop down to populate it
         runNumber = self._requestView.runNumberField.text()
-        useLiteMode = self._requestView.litemodeToggle.getState()
+        useLiteMode = self._requestView.liteModeToggle.getState()
 
         self.__setInteraction(False, "populateGroupDropdown")
         self.workflow.presenter.handleAction(
@@ -249,7 +249,7 @@ class DiffCalWorkflow(WorkflowImplementer):
     @Slot()
     def _switchLiteNativeGroups(self):
         # determine resolution mode
-        useLiteMode = self._requestView.litemodeToggle.getState()
+        useLiteMode = self._requestView.liteModeToggle.getState()
 
         # set default state for skipPixelCalToggle
         # in native mode, skip by default
@@ -275,7 +275,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # fetch the data from the view
         self.runNumber = view.runNumberField.text()
-        self.useLiteMode = view.litemodeToggle.getState()
+        self.useLiteMode = view.liteModeToggle.getState()
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.calibrantSamplePath = view.sampleDropdown.currentText()
         self.peakFunction = view.peakFunctionDropdown.currentText()

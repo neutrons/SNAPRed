@@ -1,4 +1,4 @@
-from qtpy.QtCore import Slot
+from qtpy.QtCore import QMetaObject, Qt, Slot
 from qtpy.QtWidgets import (
     QDialog,
     QGridLayout,
@@ -13,7 +13,12 @@ from snapred.ui.presenter.InitializeStatePresenter import InitializeStatePresent
 
 class InitializationMenu(QDialog):
     def __init__(self, runNumber=None, parent=None, useLiteMode=None):
-        super(InitializationMenu, self).__init__(parent)
+        super().__init__(parent)
+
+        # This dialog is using `show`, which by default produces modeless dialogs,
+        #   so we need to explicitly specify that we want it to be modal.
+        self.setWindowModality(Qt.ApplicationModal)
+
         self.setWindowTitle("Initialization Menu")
         self.setFixedSize(400, 300)
 
@@ -43,19 +48,21 @@ class InitializationMenu(QDialog):
 
         self.beginFlowButton.clicked.connect(self.handleButtonClicked)
 
-    def showEvent(self, event):
+    def showEvent(self, event):  # noqa: ARG002
+        # Using `self.parent()` here instead of just `self` makes this dialog modal with respect to the workflow,
+        #   which is what we want.
         reply = QMessageBox.question(
-            self,
+            self.parent(),
             "Initialize State",
             "Warning! This run number does not have an initialized state. Do you want to initialize it?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.Yes,
         )
-
-        if reply == QMessageBox.Yes:
-            super(InitializationMenu, self).showEvent(event)
-        elif reply == QMessageBox.No:
-            self.close()
+        if reply == QMessageBox.No:
+            # Here we Allow the `showEvent` to actually complete,
+            #   so that the widget is in a defined state,
+            #   before actually processing the `close`.
+            QMetaObject.invokeMethod(self, "close", Qt.QueuedConnection)
 
     def getRunNumber(self):
         return self.runNumberField.text() if self.runNumberField else ""

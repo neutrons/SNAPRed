@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from pydantic import validate_call
 
@@ -8,12 +8,14 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
+from snapred.backend.dao.LiveMetadata import LiveMetadata
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
 from snapred.backend.dao.request.NormalizationExportRequest import NormalizationExportRequest
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -47,12 +49,12 @@ class DataFactoryService:
         return self.lookupService.readRunConfig(runId)
 
     def getInstrumentConfig(self, runId: str) -> InstrumentConfig:  # noqa: ARG002
-        return self.lookupService.readInstrumentConfig()
+        return self.lookupService.getInstrumentConfig()
 
     def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:  # noqa: ARG002
         return self.lookupService.readStateConfig(runId, useLiteMode)
 
-    def constructStateId(self, runId: str):
+    def constructStateId(self, runId: str) -> Tuple[str, DetectorState]:
         return self.lookupService.generateStateId(runId)
 
     def stateExists(self, runId: str):
@@ -74,7 +76,7 @@ class DataFactoryService:
         return self.lookupService.readDefaultGroupingMap()
 
     def getDefaultInstrumentState(self, runId: str):
-        return self.lookupService.generateInstrumentStateFromRoot(runId)
+        return self.lookupService.generateInstrumentState(runId)
 
     ##### CALIBRATION METHODS #####
 
@@ -219,3 +221,12 @@ class DataFactoryService:
 
     def deleteWorkspaceUnconditional(self, name):
         return self.groceryService.deleteWorkspaceUnconditional(name)
+
+    ##### LIVE-DATA SUPPORT METHODS #####
+
+    def hasLiveDataConnection(self) -> bool:
+        """For 'live data' methods: test if there is a listener connection to the instrument."""
+        return self.lookupService.hasLiveDataConnection()
+
+    def getLiveMetadata(self) -> LiveMetadata:
+        return self.lookupService.readLiveMetadata()

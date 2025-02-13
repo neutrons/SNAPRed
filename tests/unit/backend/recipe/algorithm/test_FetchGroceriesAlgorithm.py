@@ -74,7 +74,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         """
-        Delete all workspaces created by this test, and remove the ceated filed.
+        Delete all workspaces created by this test, and remove any created files.
         This is run once at the end of this test suite.
         """
         for ws in mtd.getObjectNames():
@@ -279,4 +279,4 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert algo.execute()
         algo.mantidSnapper.LoadGroupingDefinition.assert_called_once()
         assert algo.mantidSnapper.mtd.doesExist.call_count == 2
-        assert algo.mantidSnapper.executeQueue.call_count == 2
+        assert algo.mantidSnapper.executeQueue.call_count == 1

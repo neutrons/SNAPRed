@@ -49,10 +49,12 @@ class DiffCalAssessmentView(BackendRequestView):
 
         self.signalError.connect(self._displayError)
 
-        self.layout.addWidget(self.interactionText, 0, 0)
-        self.layout.addWidget(self.calibrationRecordField, 1, 0)
-        self.layout.addWidget(self.loadButton, 1, 1)
-        self.layout.addWidget(self.placeHolder)
+        # IMPORTANT: do not hide the "layout" method!
+        _layout = self.layout()
+        _layout.addWidget(self.interactionText, 0, 0)
+        _layout.addWidget(self.calibrationRecordField, 1, 0)
+        _layout.addWidget(self.loadButton, 1, 1)
+        _layout.addWidget(self.placeHolder)
 
         self.signalRunNumberUpdate.connect(self.presenter.loadCalibrationIndex)
 
@@ -95,3 +97,7 @@ class DiffCalAssessmentView(BackendRequestView):
     def verify(self):
         # TODO: what fields need to be verified?
         return True
+
+    def setInteractive(self, flag: bool):
+        # TODO: put widgets here to allow them to be enabled or disabled by the presenter.
+        pass

@@ -12,6 +12,7 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
+from snapred.backend.data.util.PV_logs_util import populateInstrumentParameters, transferInstrumentPVLogs
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
@@ -69,7 +70,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
         )
         self.declareProperty(
             MatrixWorkspaceProperty("InstrumentDonor", "", Direction.Input, PropertyMode.Optional),
-            doc="Workspace to optionally take the instrument from, when GroupingFilename is in XML format",
+            doc="Workspace to optionally take the instrument from",
         )
         self.declareProperty(
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
@@ -145,6 +146,15 @@ class LoadGroupingDefinition(PythonAlgorithm):
                 InputWorkspace=self.outputWorkspaceName + "_group",
                 OutputWorkspace=self.outputWorkspaceName,
             )
+            self.mantidSnapper.executeQueue()
+            if not self.getProperty("InstrumentDonor").isDefault:
+                # Transfer the instrument PV-logs -- not done yet by `LoadDiffCal`.
+                transferInstrumentPVLogs(
+                    self.mantidSnapper.mtd[self.outputWorkspaceName].mutableRun(),
+                    self.mantidSnapper.mtd[self.getPropertyValue("InstrumentDonor")].run(),
+                    Config["instrument.PVLogs.instrumentKeys"],
+                )
+                populateInstrumentParameters(self.outputWorkspaceName)
         elif self.groupingFileExt in self.supported_xml_file_extensions:
             instrument_donor = self.getPropertyValue("InstrumentDonor")
             preserve_donor = True if instrument_donor else False
@@ -168,12 +178,14 @@ class LoadGroupingDefinition(PythonAlgorithm):
                     "Deleting instrument definition workspace...",
                     Workspace=instrument_donor,
                 )
+            self.mantidSnapper.executeQueue()
         elif self.groupingFileExt in self.supported_nexus_file_extensions:  # must be a NEXUS file
             self.mantidSnapper.LoadNexusProcessed(
                 "Loading grouping definition from grouping workspace...",
                 Filename=self.groupingFilePath,
                 OutputWorkspace=self.outputWorkspaceName,
             )
+            self.mantidSnapper.executeQueue()
         else:
             raise RuntimeError(
                 f"""
@@ -182,7 +194,6 @@ class LoadGroupingDefinition(PythonAlgorithm):
                 extensions are {self.all_extensions}
                 """
             )
-        self.mantidSnapper.executeQueue()
         self.setPropertyValue("OutputWorkspace", self.outputWorkspaceName)
 
 

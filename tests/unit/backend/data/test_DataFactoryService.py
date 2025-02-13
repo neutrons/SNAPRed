@@ -39,27 +39,27 @@ class TestDataFactoryService(unittest.TestCase):
             if callable(getattr(LocalDataService, func)) and not func.startswith("__")
         ]
         # these are treated specially for specific returns
-        exceptions = ["readInstrumentConfig", "readStateConfig", "readRunConfig"]
+        exceptions = ["getInstrumentConfig", "readStateConfig", "readRunConfig"]
         needIndexer = ["calibrationIndexer", "normalizationIndexer"]
         method_list = [method for method in method_list if method not in exceptions and method not in needIndexer]
         for x in method_list:
             setattr(getattr(cls.mockLookupService, x), "side_effect", lambda *x: cls.expected(cls, *x))
 
         mockStateId = "04bd2c53f6bf6754"
-        mockInstrumentState = InstrumentState.construct(id=mockStateId)
-        mockCalibration = Calibration.construct(instrumentState=mockInstrumentState)
+        mockInstrumentState = InstrumentState.model_construct(id=mockStateId)
+        mockCalibration = Calibration.model_construct(instrumentState=mockInstrumentState)
 
         # these are treated specially as returning specific object types
-        cls.mockLookupService.readInstrumentConfig.return_value = InstrumentConfig.construct({})
+        cls.mockLookupService.getInstrumentConfig.return_value = InstrumentConfig.model_construct({})
         #
         # ... allow the `StateConfig` to actually complete validation:
         #   this is required because `getReductionState` is declared in the wrong place... :(
         #
-        cls.mockLookupService.readStateConfig.return_value = StateConfig.construct(
+        cls.mockLookupService.readStateConfig.return_value = StateConfig.model_construct(
             stateId=mockStateId,
             calibration=mockCalibration,
         )
-        cls.mockLookupService.readRunConfig.return_value = RunConfig.construct({})
+        cls.mockLookupService.readRunConfig.return_value = RunConfig.model_construct({})
 
         cls.mockLookupService.fileExists.return_value = lambda filePath: Path(filePath).exists()
 
@@ -134,9 +134,9 @@ class TestDataFactoryService(unittest.TestCase):
         assert actual == self.instance.lookupService.readDefaultGroupingMap.return_value
 
     def test_getDefaultInstrumentState(self):
-        self.instance.lookupService.generateInstrumentStateFromRoot = mock.Mock()
+        self.instance.lookupService.generateInstrumentState = mock.Mock()
         actual = self.instance.getDefaultInstrumentState("123")
-        assert actual == self.instance.lookupService.generateInstrumentStateFromRoot.return_value
+        assert actual == self.instance.lookupService.generateInstrumentState.return_value
 
     ## TEST CALIBRATION METHODS
 
@@ -238,7 +238,7 @@ class TestDataFactoryService(unittest.TestCase):
         assert type(actual) is ReductionState
 
     def test_getReductionState_cache(self):
-        previous = ReductionState.construct()
+        previous = ReductionState.model_construct()
         self.instance.cache["456"] = previous
         actual = self.instance.getReductionState("456", False)
         assert actual == previous
@@ -286,7 +286,7 @@ class TestDataFactoryService(unittest.TestCase):
         ws2.delete()
         assert not self.instance.workspaceDoesExist(wsname)
 
-    def test_getCloneOfWprkspace(self):
+    def test_getCloneOfWorkspace(self):
         wsname1 = mtd.unique_name()
         wsname2 = mtd.unique_name()
         assert not self.instance.workspaceDoesExist(wsname1)
@@ -338,3 +338,9 @@ class TestDataFactoryService(unittest.TestCase):
         assert self.instance.workspaceDoesExist(wsname)
         self.instance.deleteWorkspaceUnconditional(wsname)
         assert not self.instance.workspaceDoesExist(wsname)
+
+    ##### TEST LIVE-DATA SUPPORT METHODS ####
+
+    def test_getLiveMetadata(self):
+        actual = self.instance.getLiveMetadata()
+        assert actual == self.expected()

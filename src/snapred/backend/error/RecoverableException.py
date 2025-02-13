@@ -1,3 +1,4 @@
+import logging
 from enum import Flag, auto
 from typing import Any, Optional
 
@@ -39,13 +40,17 @@ class RecoverableException(Exception):
     def __init__(self, message: str, flags: "Type" = 0, data: Optional[Any] = None):
         RecoverableException.Model.model_rebuild(force=True)  # replaces: `update_forward_refs` method
         self.model = RecoverableException.Model(message=message, flags=flags, data=data)
-        logger.error(f"{extractTrueStacktrace()}")
+        if logger.isEnabledFor(logging.DEBUG):
+            # This is a `RecoverableException`, which is barely even an error, so we do NOT spam the logs!
+            logger.error(f"{extractTrueStacktrace()}")
         super().__init__(message)
 
+    @staticmethod
     def parse_raw(raw):
         raw = RecoverableException.Model.model_validate_json(raw)
         return RecoverableException(**raw.dict())
 
+    @staticmethod
     def stateUninitialized(runNumber: str, useLiteMode: bool):
         return RecoverableException(
             "State uninitialized",

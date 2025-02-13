@@ -3,7 +3,11 @@
 import importlib
 import logging
 import tempfile
+
+# Place test-specific imports after other required imports, in order to retain the import order
+#   as much as possible.
 import unittest
+from datetime import datetime
 from pathlib import Path
 from random import randint
 from typing import List
@@ -93,7 +97,7 @@ class TestIndexer(unittest.TestCase):
             instrumentState=self.instrumentState,
             seedRun=randint(1000, 5000),
             useLiteMode=bool(randint(0, 1)),
-            creationDate=0,
+            creationDate=datetime.today().isoformat(),
             name="",
             version=version,
         )
@@ -535,10 +539,13 @@ class TestIndexer(unittest.TestCase):
         assert indexer.nextVersion() == here + 1
 
         record = self.record(here + 1)
-        # NOTE: Writing aribitrary records to disk is not allowed.
+        # NOTE: Writing arbitrary records to disk is not allowed.
         #       Our code should never produce an unindexed record.
         #       What value is there in writing a record that is
         #       inherently missing metadata supplied by the index?
+
+        # Which kind of suggests that that data should have been a part of the record, does it not?  :)
+
         with pytest.raises(ValueError, match=".*not found in index, please write an index entry first.*"):
             indexer.writeRecord(record)
 

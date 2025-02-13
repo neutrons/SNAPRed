@@ -12,19 +12,19 @@ class LabeledToggle(QWidget):
         self.setStyleSheet("background-color: #F5E9E2;")
 
         self._label = QLabel(label + ":", self)
-        self._toggle = Toggle(state=state, parent=self)
+        self.toggle = Toggle(state=state, parent=self)
 
-        layout = QHBoxLayout()
-        layout.addWidget(self._label)
-        layout.addWidget(self._toggle)
-        layout.addStretch(1)
-        layout.setContentsMargins(5, 5, 5, 5)
-        self.setLayout(layout)
+        _layout = QHBoxLayout()
+        _layout.addWidget(self._label)
+        _layout.addWidget(self.toggle)
+        _layout.addStretch(1)
+        _layout.setContentsMargins(5, 5, 5, 5)
+        self.setLayout(_layout)
 
-        self._toggle.stateChanged.connect(self.stateChanged)
+        self.toggle.stateChanged.connect(self.stateChanged)
 
     def getState(self):
-        return self._toggle.getState()
+        return self.toggle.getState()
 
     def setState(self, state):
-        self._toggle.setState(state)
+        self.toggle.setState(state)
