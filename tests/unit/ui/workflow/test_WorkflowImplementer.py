@@ -10,7 +10,7 @@ from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 @pytest.mark.ui
 def test_rename_on_iterate_list(qtbot):  # noqa: ARG001
     """
-    Test that on iteration, a list of workspaces will be renamed according to the iteration template.
+    Test that on iteration, a set of workspaces will be renamed according to the iteration template.
     """
     # setup a list of workspaces to be renamed
     oldNames = ["old1", "old2"]
@@ -21,9 +21,9 @@ def test_rename_on_iterate_list(qtbot):  # noqa: ARG001
 
     instance = WorkflowImplementer()
     newNames = [instance.renameTemplate.format(workspaceName=ws, iteration=mockPresenter.iteration) for ws in oldNames]
-    instance.outputs = oldNames
+    instance.outputs = set(oldNames)
     instance.iterate(mockPresenter)
-    assert instance.collectedOutputs == newNames
+    assert instance.collectedOutputs == set(newNames)
 
 
 @pytest.mark.ui
@@ -45,9 +45,9 @@ def test_rename_on_iterate_group(qtbot):  # noqa: ARG001
         assert mtd.doesExist(old)
         assert not mtd.doesExist(new)
 
-    instance.outputs = [oldNames[0]]
+    instance.outputs = set([oldNames[0]])
     instance.iterate(mockPresenter)
-    assert instance.collectedOutputs == [newNames[0]]
+    assert instance.collectedOutputs == set([newNames[0]])
     for old, new in zip(oldNames, newNames):
         assert not mtd.doesExist(old)
         assert mtd.doesExist(new)

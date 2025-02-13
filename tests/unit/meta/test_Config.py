@@ -1,15 +1,28 @@
 import logging
 import os
+from pathlib import Path
 import shutil
 import sys
-from pathlib import Path
 from tempfile import TemporaryDirectory
-from unittest import mock
 
-import pytest
-
+from snapred.backend.log.logger import snapredLogger
 import snapred.meta.Config as Config_module
-from snapred.meta.Config import Config, Resource, _find_root_dir, fromMantidLoggingLevel
+from snapred.meta.Config import (
+    Config,
+    Resource,
+    _find_root_dir,
+    _pythonLoggingLevelFromMantid,
+    _pythonLoggingLevelFromString,
+    fromMantidLoggingLevel,
+    fromPythonLoggingLevel,
+)
+
+##
+## In order to preserve the normal import order as much as possible,
+##   place test-specific imports last.
+##
+from unittest import mock
+import pytest
 
 
 def test_environment():
@@ -190,7 +203,7 @@ def test_resource_packageMode_open():
             mockResourcesPath.assert_called_once_with("snapred.resources", test_path)
 
 
-def test_config_accessor():
+def test_Config_accessor():
     # these values are copied from tests/resources/application.yml
     assert Config["environment"] == "test"
     assert Config["instrument.name"] == "SNAP"
@@ -216,40 +229,83 @@ def test_multi_level_substitution():
     assert Config["test.data.home.read"] == f'{Config["test.config.home"]}/data/{Config["test.config.name"]}'
 
 
+def test_Config_validate(caplog):
+    # `caplog` doesn't work with the `snapredLogger`.
+    with mock.patch.object(snapredLogger, "getLogger", lambda name: logging.getLogger(name)):
+        logging_SNAP_stream_format = Config["logging.SNAP.stream.format"]
+        def mock__getitem__(key: str, liveDataFlag: bool, normalizeByBeamMonitorFlag: bool):
+            match key:
+                case "liveData.enabled":
+                    return liveDataFlag
+                case "mantid.workspace.normalizeByBeamMonitor":
+                    return normalizeByBeamMonitorFlag
+                case "logging.SNAP.stream.format":
+                    return logging_SNAP_stream_format
+                case _:
+                    raise RuntimeError(f"unexpected key: {key}")
+
+        # -------- WARNING if both are set: 'liveData.enabled' and 'mantid.workbench.normalizeByBeamMonitor' --------
+        # Test positive case:        
+        with mock.patch.object(Config_module._Config, "__getitem__", lambda _self, key: mock__getitem__(key, True, True)):
+            assert Config["liveData.enabled"]
+            assert Config["mantid.workspace.normalizeByBeamMonitor"]
+            with caplog.at_level(logging.WARNING, logger="snapred.meta.Config.Config"):
+                Config.validate()
+            assert "'mantid.workspace.normalizeByBeamMonitor' and 'liveData.enabled'" in caplog.text
+            caplog.clear()
+
+        # Test negative cases:        
+        with mock.patch.object(Config_module._Config, "__getitem__", lambda _self, key: mock__getitem__(key, False, True)):
+            assert not Config["liveData.enabled"]
+            assert Config["mantid.workspace.normalizeByBeamMonitor"]
+            with caplog.at_level(logging.WARNING, logger="snapred.meta.Config.Config"):
+                Config.validate()
+            assert caplog.text == ""
+            caplog.clear()
+
+        with mock.patch.object(Config_module._Config, "__getitem__", lambda _self, key: mock__getitem__(key, True, False)):
+            assert Config["liveData.enabled"]
+            assert not Config["mantid.workspace.normalizeByBeamMonitor"]
+            with caplog.at_level(logging.WARNING, logger="snapred.meta.Config.Config"):
+                Config.validate()
+            assert caplog.text == ""
+            caplog.clear()
+
+    
+    
+        
 def test_fromMantidLoggingLevel():
-    for mantidLevel, pythonLevel in zip(
-        ["none", "fatal", "critical", "error", "warning", "notice", "debug", "trace"],
-        [
-            logging.NOTSET,
-            logging.CRITICAL + 5,
-            logging.CRITICAL,
-            logging.ERROR,
-            logging.WARNING,
-            logging.INFO,
-            logging.DEBUG,
-            logging.DEBUG - 5,
-        ],
-    ):
+    for mantidLevel, pythonLevel in _pythonLoggingLevelFromMantid.items():
         assert pythonLevel == fromMantidLoggingLevel(mantidLevel)
 
 
 def test_fromMantidLoggingLevel__uppercase():
-    for mantidLevel, pythonLevel in zip(
-        ["none", "fatal", "critical", "error", "warning", "notice", "debug", "trace"],
-        [
-            logging.NOTSET,
-            logging.CRITICAL + 5,
-            logging.CRITICAL,
-            logging.ERROR,
-            logging.WARNING,
-            logging.INFO,
-            logging.DEBUG,
-            logging.DEBUG - 5,
-        ],
-    ):
+    for mantidLevel, pythonLevel in _pythonLoggingLevelFromMantid.items():
         assert pythonLevel == fromMantidLoggingLevel(mantidLevel.upper())
 
 
 def test_fromMantidLoggingLevel__unknown():
     with pytest.raises(RuntimeError, match=r".*can't convert.* to a Python logging level.*"):
         pythonLevel = fromMantidLoggingLevel("not_a_log_level")  # noqa: F841
+
+
+def test_fromPythonLoggingLevel_int():
+    mantidLoggingLevelFromPython_ = {v: k for k, v in _pythonLoggingLevelFromMantid.items()}
+    for _, pythonLevel in _pythonLoggingLevelFromString.items():
+        assert fromPythonLoggingLevel(pythonLevel) == mantidLoggingLevelFromPython_[pythonLevel]
+
+
+def test_fromPythonLoggingLevel_str():
+    mantidLoggingLevelFromPython_ = {v: k for k, v in _pythonLoggingLevelFromMantid.items()}
+    for pythonLevelString, pythonLevel in _pythonLoggingLevelFromString.items():
+        assert fromPythonLoggingLevel(pythonLevelString) == mantidLoggingLevelFromPython_[pythonLevel]
+
+
+def test_fromPythonLoggingLevel__unknown_int():
+    with pytest.raises(RuntimeError, match=r".*can't convert.* to a Mantid logging level.*"):
+        pythonLevel = fromPythonLoggingLevel(1000)  # noqa: F841
+
+
+def test_fromPythonLoggingLevel__unknown_str():
+    with pytest.raises(RuntimeError, match=r".*can't convert.* to a Mantid logging level.*"):
+        pythonLevel = fromPythonLoggingLevel("not a log level")  # noqa: F841

@@ -1,3 +1,4 @@
+from qtpy.QtCore import Slot
 from qtpy.QtWidgets import QGridLayout, QPushButton, QWidget
 
 
@@ -36,9 +37,11 @@ class WorkflowNodeView(QWidget):
         self.cancelButton = QPushButton("Cancel \U0000274c", self)
         layout_.addWidget(self.cancelButton, 2, 1)
 
+    @Slot()
     def reset(self):
         self.view.reset()
 
+    @Slot()
     def enableSkip(self):
         layout_ = self.layout()
         layout_.removeWidget(self.continueButton)
@@ -48,6 +51,7 @@ class WorkflowNodeView(QWidget):
         layout_.addWidget(self.cancelButton, 2, 2)
         self.skipButton.setVisible(True)
 
+    @Slot()
     def enableIterate(self):
         layout_ = self.layout()
         layout_.removeWidget(self.continueButton)

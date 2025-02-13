@@ -347,7 +347,6 @@ class WorkflowPresenter(QObject):
         QMessageBox.information(self.view, "Live Data:", liveDataInfo.message)
         # Any live-data transition resets the workflow:
         #   at which point the live-data part of the request view should display the new live-data status.
-        self.reset()
 
     @Slot()
     def requestCancellation(self):

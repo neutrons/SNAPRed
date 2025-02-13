@@ -17,7 +17,7 @@ import h5py
 from mantid.api import Run
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import ConfigService, PhysicalConstants
-from pydantic import ValidationError
+from pydantic import ValidationError, validate_call
 
 from snapred.backend.dao import (
     GSASParameters,
@@ -70,7 +70,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
-from snapred.meta.redantic import parse_file_as, validate_call, write_model_pretty
+from snapred.meta.redantic import parse_file_as, write_model_pretty
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -188,17 +188,35 @@ class LocalDataService:
         return nextTimestamp
 
     @lru_cache
+    def _getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str | None:
+        # Fully cached version of `GetIPTS`:
+        #   returns the IPTS-directory for the run or None if no IPTS directory exists.
+
+        # Implementation notes:
+        #
+        #   * The primary purpose of this method is to _also_ cache the <no IPTS-directory exists> case,
+        #   so that `GetIPTS` isn't called repeatedly for this case during reduction with live data;
+        #
+        #   * When successful, `GetIPTS` returns the _likely_ user-data directory for this run number.
+        #   It does _not_ actually check whether any input-data file for this run number exists.
+        #   For example, in live-data mode, the IPTS directory may or may not exist,
+        #   but the input-data file will not yet exist on the filesystem.
+
+        try:
+            IPTS = self.mantidSnapper.GetIPTS("get IPTS directory", RunNumber=runNumber, Instrument=instrumentName)
+            self.mantidSnapper.executeQueue()
+            return str(IPTS)  # "collapse" the `Callback`
+        except RuntimeError as e:
+            if "Cannot find IPTS directory" not in str(e):
+                raise  # the existing exception is sufficient
+
+        return None
+
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
-        IPTS = self.mantidSnapper.GetIPTS("GetIPTS", RunNumber=runNumber, Instrument=instrumentName)
-        self.mantidSnapper.executeQueue()
-
-        # WARNING:
-        #   When successful, `GetIPTS` returns the _likely_ user-data directory for this run number.
-        # It does _not_ actually check whether any input-data file for this run number exists.
-        # For example, in live-data mode, the IPTS directory will probably exist,
-        # but the input file will not yet exist.
-
-        return str(IPTS)
+        IPTS = self._getIPTS(runNumber, instrumentName)
+        if IPTS is None:
+            raise RuntimeError(f"Cannot find IPTS directory for run '{runNumber}'")
+        return IPTS
 
     def createNeutronFilePath(self, runNumber: str, useLiteMode: bool) -> Path:
         # TODO: normalize with `GroceryService` version!
@@ -238,17 +256,16 @@ class LocalDataService:
             maskFileDirectory=iptsPath + instrumentConfig.sharedDirectory,
             gsasFileDirectory=iptsPath + instrumentConfig.reducedDataDirectory,
             calibrationState=None,
-        )  # TODO: where to find case? "before" "after"
+        )
 
     def _constructPVFilePath(self, runId: str) -> Path:
         return self.createNeutronFilePath(runId, False)
 
     def _readPVFile(self, runId: str):
         try:
-            fileName: Path = self._constructPVFilePath(runId)
-
-            if fileName.exists():
-                return h5py.File(fileName, "r")
+            filePath: Path = self._constructPVFilePath(runId)
+            if filePath.exists():
+                return h5py.File(filePath, "r")
         except RuntimeError as e:
             if "Cannot find IPTS directory" not in str(e):
                 raise  # the existing exception is sufficient
@@ -362,14 +379,19 @@ class LocalDataService:
         # NOTE: fix this, double check with WORKSPACE name generator for formatting numbers, check consistency
         runNumberFormat = re.compile(r"\d{5,}$")
         mode = "lite" if useLiteMode else "native"
-        stateModeRoot = self._constructReductionStateRoot(runNumber) / mode
         runs = []
-        if stateModeRoot.exists():
-            with os.scandir(stateModeRoot) as entries:
-                for entry in entries:
-                    if entry.is_dir():
-                        if runNumberFormat.match(entry.name):
-                            runs.append(entry.name)
+        try:
+            stateRoot = self._constructReductionStateRoot(runNumber) / mode
+            if stateRoot.exists():
+                with os.scandir(stateRoot) as entries:
+                    for entry in entries:
+                        if entry.is_dir():
+                            if runNumberFormat.match(entry.name):
+                                runs.append(entry.name)
+        except RuntimeError as e:
+            # In live-data mode, an IPTS-directory may not exist.
+            if "Cannot find IPTS directory" not in str(e):
+                raise
         return runs
 
     @validate_call
@@ -880,18 +902,33 @@ class LocalDataService:
             raise RuntimeError("Logs have an unexpected format.  Cannot assemble a DetectorState.") from e
         return detectorState
 
-    def readDetectorState(self, runNumber: str) -> DetectorState:
+    @lru_cache
+    def readDetectorState(self, runNumber: str) -> DetectorState | None:
+        success = False
         detectorState = None
         try:
             detectorState = self._detectorStateFromMapping(mappingFromNeXusLogs(self._readPVFile(runNumber)))
+            success = True
         except FileNotFoundError as e:
-            if "PVFile" not in str(e) or not self.hasLiveDataConnection():
+            if "No PVFile exists" not in str(e) or not self.hasLiveDataConnection():
                 raise  # the existing exception is sufficient
+
+        if not success:
             metadata = self.readLiveMetadata()
+
             if metadata.runNumber == runNumber:
+                # WARNING: `detectorState` may still be `None` in live-data case.
                 detectorState = metadata.detectorState
+                success = True
             else:
-                raise RuntimeError(f"No PVFile exists for run {runNumber}, and it isn't the live run.")
+                raise RuntimeError(
+                    f"No PVFile exists for run: {runNumber}, "
+                    + (
+                        f"and it isn't the live run: {metadata.runNumber}."
+                        if metadata.hasActiveRun()
+                        else "and no live run is active."
+                    )
+                )
         return detectorState
 
     def detectorStateFromWorkspace(self, wsName: WorkspaceName) -> DetectorState:
@@ -919,9 +956,10 @@ class LocalDataService:
         #   and generate the stateID SHA.
         stateId, detectorState = self.generateStateId(runId)
 
-        # then read data from the common calibration state parameters stored at root of calibration directory
+        # read data from the common calibration state parameters stored at root of calibration directory
         instrumentConfig = self.readInstrumentConfig(runId)
-        # then pull static values specified by Malcolm from resources
+
+        # pull static values from resources
         defaultGroupSliceValue = Config["calibration.parameters.default.groupSliceValue"]
         fwhmMultipliers = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
         peakTailCoefficient = Config["calibration.parameters.default.peakTailCoefficient"]
@@ -1311,15 +1349,15 @@ class LocalDataService:
                 protonCharge=proton_charge,
             )
         except (KeyError, RuntimeError, ValidationError) as e:
-            raise RuntimeError("unable to extract LiveMetadata from Run") from e
+            raise RuntimeError(f"Unable to extract LiveMetadata from Run:\n  {e}") from e
         return metadata
 
-    def _readLiveData(self, ws: WorkspaceName, duration: int):
-        # 'StartTime=""' => read all of the available data
-
+    def _readLiveData(self, ws: WorkspaceName, duration: int, *, accumulationMethod="Replace", preserveEvents=False):
         # Initialize `startTime` to indicate that we want `duration` seconds of data prior to the current time.
         startTime = (
-            (datetime.datetime.utcnow() + datetime.timedelta(seconds=-duration)).isoformat() if duration != 0 else ""
+            LiveMetadata.FROM_NOW_ISO8601
+            if duration == 0
+            else (datetime.datetime.utcnow() + datetime.timedelta(seconds=-duration)).isoformat()
         )
 
         # TODO: this call is partially duplicated at `FetchGroceriesAlgorithm`.
@@ -1328,8 +1366,9 @@ class LocalDataService:
             "load live-data chunk",
             OutputWorkspace=ws,
             Instrument=Config["liveData.instrument.name"],
-            AccumulationMethod=Config["liveData.accumulationMethod"],
+            AccumulationMethod=accumulationMethod,
             StartTime=startTime,
+            PreserveEvents=preserveEvents,
         )
         self.mantidSnapper.executeQueue()
 
@@ -1339,7 +1378,7 @@ class LocalDataService:
         ws = self.mantidSnapper.mtd.unique_hidden_name()
 
         # Retrieve the smallest possible data increment, in order to read the logs:
-        ws = self._readLiveData(ws, duration=1)
+        ws = self._readLiveData(ws, duration=0)
         metadata = self._liveMetadataFromRun(self.mantidSnapper.mtd[ws].getRun())
 
         self.mantidSnapper.DeleteWorkspace("delete temporary workspace", Workspace=ws)

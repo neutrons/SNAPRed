@@ -3,7 +3,7 @@ from collections import namedtuple
 from threading import Lock
 from typing import Any, Dict
 
-from mantid.api import AlgorithmManager, IWorkspaceProperty, Progress, mtd
+from mantid.api import AlgorithmManager, IAlgorithm, IWorkspaceProperty, Progress, mtd
 from mantid.kernel import Direction
 from mantid.kernel import ULongLongPropertyWithValue as PointerProperty
 
@@ -54,8 +54,24 @@ class MantidSnapper:
     ##
     _nonReentrantMutexes = {"LoadLiveData": Lock()}
 
+    ##
+    ## KNOWN NON-CONCURRENT ALGORITHMS
+    ##
     _nonConcurrentAlgorithms = "SaveNexus", "SaveNexusESS", "SaveDiffCal", "RenameWorkspace"
     _nonConcurrentAlgorithmMutex = Lock()
+
+    ##
+    ## ALGORITHMS WITH LOGGING DISABLED
+    ##
+
+    # Important: completely disable logging from `GetIPTS` and `LoadLiveData`.
+    # TODO:  Poco::Logger may have a race condition (, with respect to the GIL),
+    #   when called from Python in async mode.
+    _quietAlgorithms = "GetIPTS", "LoadLiveData"
+
+    # Timeout sequencing
+    _timeout = 60.0  # seconds
+    _checkInterval = 0.05  # 50 ms
 
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}
     _mtd = _CustomMtd()
@@ -98,8 +114,6 @@ class MantidSnapper:
         self._algorithmQueue = []
         self._exportScript = ""
         self._export = False
-        self.timeout = 60  # seconds
-        self.checkInterval = 0.05  # 50 ms
         if self._export:
             self._cleanOldExport()
 
@@ -113,18 +127,18 @@ class MantidSnapper:
             # inspect mantid algorithm for output properties
             # if there are any, add them to a list for return
             outputProperties = {}
-            mantidAlgorithm = AlgorithmManager.create(key)
-            # get all output props
+            mantidAlgorithm = self._createAlgorithm(key)
+            # Get all `Output` properties.
             for prop in mantidAlgorithm.getProperties():
                 if Direction.values[prop.direction] == Direction.Output:
                     outputProperties[prop.name] = self.createOutputCallback(prop)
-            # get only set inout props
+            # Get any `InOut` properties that are actually referenced in the kwargs.
             for propName in set(kwargs.keys()).difference(mantidAlgorithm.getProperties()):
                 prop = mantidAlgorithm.getProperty(propName)
                 if Direction.values[prop.direction] == Direction.InOut:
                     outputProperties[prop.name] = self.createOutputCallback(prop)
 
-            # TODO: Special cases are bad
+            # TODO: Special cases are bad.
             if key == "LoadDiffCal":
                 if kwargs.get("MakeGroupingWorkspace", True):
                     outputProperties["GroupingWorkspace"] = kwargs["WorkspaceName"] + "_group"
@@ -133,16 +147,16 @@ class MantidSnapper:
                 if kwargs.get("MakeCalWorkspace", True):
                     outputProperties["CalWorkspace"] = kwargs["WorkspaceName"] + "_cal"
 
-            # remove mantid algorithm from managed algorithms
-            AlgorithmManager.removeById(mantidAlgorithm.getAlgorithmID())
-            # if only one property is returned, return it directly
+            # We're done with the instance for now, so remove it from managed algorithms.
+            self._removeAlgorithm(mantidAlgorithm)
 
             self._algorithmQueue.append((key, message, kwargs, outputProperties))
 
             if len(outputProperties) == 1:
+                # If there's only one output property, return it directly.
                 (outputProperties,) = outputProperties.values()
             else:
-                # Convert to tuple for a more pythonic return
+                # For multiple outputs, convert to a tuple for a more pythonic return.
                 NamedOutputsTuple = namedtuple("{}Outputs".format(key), outputProperties.keys())
                 outputProperties = NamedOutputsTuple(**outputProperties)
 
@@ -156,34 +170,46 @@ class MantidSnapper:
         self._prog_reporter.reportIncrement(self._progressCounter, message)
         self._progressCounter += 1
 
-    def createAlgorithm(self, name):
+    @classmethod
+    def _createAlgorithm(cls, name):
         alg = AlgorithmManager.create(name)
+
         alg.setChild(True)
         alg.setAlwaysStoreInADS(True)
         alg.setRethrows(True)
         return alg
 
-    def _waitForAlgorithmCompletion(self, name):
+    @classmethod
+    def _removeAlgorithm(cls, alg: IAlgorithm):
+        # Remove a Mantid-managed algorithm.
+
+        # TODO: this implicitly assumes that the algorithm is not running -- any cancellation
+        #   sequence should be done elsewhere!
+        AlgorithmManager.removeById(alg.getAlgorithmID())
+
+    @classmethod
+    def _waitForAlgorithmCompletion(cls, name):
         currentTimeout = 0
         while len(AlgorithmManager.runningInstancesOf(name)) > 0:
-            if currentTimeout >= self.timeout:
+            if currentTimeout >= cls._timeout:
                 raise TimeoutError(f"Timeout occurred while waiting for instance of {name} to cleanup")
-            currentTimeout += self.checkInterval
-            time.sleep(self.checkInterval)
+            currentTimeout += cls._checkInterval
+            time.sleep(cls._checkInterval)
 
-    def obtainMutex(self, name):
-        mutex = self._nonReentrantMutexes.get(name)
-        if mutex is None and name in self._nonConcurrentAlgorithms:
-            mutex = self._nonConcurrentAlgorithmMutex
+    @classmethod
+    def _obtainMutex(cls, name):
+        mutex = cls._nonReentrantMutexes.get(name)
+        if mutex is None and name in cls._nonConcurrentAlgorithms:
+            mutex = cls._nonConcurrentAlgorithmMutex
         return mutex
 
     def executeAlgorithm(self, name, outputs, **kwargs):
-        algorithm = self.createAlgorithm(name)
+        algorithm = self._createAlgorithm(name)
         mutex = None
         try:
             # Protect non-reentrant algorithms.
 
-            mutex = self.obtainMutex(name)
+            mutex = self._obtainMutex(name)
             if mutex is not None:
                 mutex.acquire()
 
@@ -228,10 +254,11 @@ class MantidSnapper:
             if mutex is not None:
                 mutex.release()
 
-    def _cleanupNonConcurrent(self, name, algorithm):
-        if name in self._nonConcurrentAlgorithms:
-            self._waitForAlgorithmCompletion(name)
-            AlgorithmManager.removeById(algorithm.getAlgorithmID())
+    @classmethod
+    def _cleanupNonConcurrent(cls, name, algorithm):
+        if name in cls._nonConcurrentAlgorithms:
+            cls._waitForAlgorithmCompletion(name)
+            cls._removeAlgorithm(algorithm)
 
     def executeQueue(self):
         if self.parentAlgorithm:

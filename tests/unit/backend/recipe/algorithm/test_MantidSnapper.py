@@ -42,47 +42,54 @@ class TestMantidSnapper(unittest.TestCase):
         mockAlgorithmManager.runningInstancesOf = mock.Mock(return_value=["theAlgoThatNeverEnds"])
         mockAlgorithmManager.create.return_value = self.fakeFunction
 
-        mantidSnapper = MantidSnapper(parentAlgorithm=None, name="")
-        mantidSnapper.timeout = 0.2
-        mantidSnapper.fakeFunction("test", fakeOutput="output")
-        mantidSnapper._nonConcurrentAlgorithms = mantidSnapper._nonConcurrentAlgorithms + ("fakeFunction",)
-        mantidSnapper._nonConcurrentAlgorithmMutex = mock.Mock()
+        with (
+            mock.patch.object(MantidSnapper, "_timeout", 0.2),
+            mock.patch.object(MantidSnapper, "_nonConcurrentAlgorithms", ["fakeFunction"]),
+            mock.patch.object(MantidSnapper, "_nonConcurrentAlgorithmMutex", mock.Mock()),
+        ):
+            mantidSnapper = MantidSnapper(parentAlgorithm=None, name="")
+            mantidSnapper.fakeFunction("test", fakeOutput="output")
 
-        with pytest.raises(TimeoutError, match="Timeout occurred while waiting for instance of"):
-            mantidSnapper.executeQueue()
+            with pytest.raises(TimeoutError, match="Timeout occurred while waiting for instance of"):
+                mantidSnapper.executeQueue()
 
     @mock.patch(PatchRoot.format("AlgorithmManager"))
     def test_timeout_concurrent(self, mockAlgorithmManager):
         mockAlgorithmManager.runningInstancesOf = mock.Mock(return_value=["theAlgoThatNeverEnds"])
         mockAlgorithmManager.create.return_value = self.fakeFunction
 
-        mantidSnapper = MantidSnapper(parentAlgorithm=None, name="")
-        mantidSnapper.timeout = 0.2
-        mantidSnapper.fakeFunction("test", fakeOutput="output")
-        mantidSnapper._nonConcurrentAlgorithmMutex = mock.Mock()
+        with (
+            mock.patch.object(MantidSnapper, "_timeout", 0.2),
+            mock.patch.object(MantidSnapper, "_nonConcurrentAlgorithmMutex", mock.Mock()),
+        ):
+            mantidSnapper = MantidSnapper(parentAlgorithm=None, name="")
+            mantidSnapper.fakeFunction("test", fakeOutput="output")
 
-        mantidSnapper.executeQueue()
-        assert not mantidSnapper._nonConcurrentAlgorithmMutex.acquire.called
+            mantidSnapper.executeQueue()
+            assert not MantidSnapper._nonConcurrentAlgorithmMutex.acquire.called
 
     @mock.patch(PatchRoot.format("AlgorithmManager"))
     def test_mutexIsObtained_nonConcurrent(self, mockAlgorithmManager):
         mockAlgorithmManager.create.return_value = self.fakeFunction
-        mantidSnapper = MantidSnapper(parentAlgorithm=None, name="")
-        mantidSnapper.fakeFunction("test", fakeOutput="output")
-        mantidSnapper._nonConcurrentAlgorithms = mantidSnapper._nonConcurrentAlgorithms + ("fakeFunction",)
-        mantidSnapper._nonConcurrentAlgorithmMutex = mock.Mock()
 
-        mantidSnapper.executeQueue()
-        assert mantidSnapper._nonConcurrentAlgorithmMutex.acquire.called
-        assert mantidSnapper._nonConcurrentAlgorithmMutex.release.called
+        with (
+            mock.patch.object(MantidSnapper, "_nonConcurrentAlgorithms", ["fakeFunction"]),
+            mock.patch.object(MantidSnapper, "_nonConcurrentAlgorithmMutex", mock.Mock()),
+        ):
+            mantidSnapper = MantidSnapper(parentAlgorithm=None, name="")
+            mantidSnapper.fakeFunction("test", fakeOutput="output")
+
+            mantidSnapper.executeQueue()
+            assert MantidSnapper._nonConcurrentAlgorithmMutex.acquire.called
+            assert MantidSnapper._nonConcurrentAlgorithmMutex.release.called
 
     @mock.patch(PatchRoot.format("AlgorithmManager"))
     def test_mutexIsObtained_nonReentrant(self, mockAlgorithmManager):
         mockAlgorithmManager.create.return_value = self.fakeFunction
-        mantidSnapper = MantidSnapper(parentAlgorithm=None, name="")
-        mantidSnapper.fakeFunction("test", fakeOutput="output")
-        mantidSnapper._nonReentrantMutexes["fakeFunction"] = mock.Mock()
+        with mock.patch.object(MantidSnapper, "_nonReentrantMutexes", {"fakeFunction": mock.Mock()}):
+            mantidSnapper = MantidSnapper(parentAlgorithm=None, name="")
+            mantidSnapper.fakeFunction("test", fakeOutput="output")
 
-        mantidSnapper.executeQueue()
-        assert mantidSnapper._nonReentrantMutexes["fakeFunction"].acquire.called
-        assert mantidSnapper._nonReentrantMutexes["fakeFunction"].release.called
+            mantidSnapper.executeQueue()
+            assert MantidSnapper._nonReentrantMutexes["fakeFunction"].acquire.called
+            assert MantidSnapper._nonReentrantMutexes["fakeFunction"].release.called

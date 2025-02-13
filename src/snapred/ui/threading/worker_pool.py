@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List
 
 from qtpy.QtCore import QObject, QThread, Signal, Slot
@@ -49,11 +50,12 @@ class Worker(QObject):
         except RecoverableException as e:
             results = SNAPResponse(code=ResponseCode.RECOVERABLE, message=e.model.json())
         except Exception as e:  # noqa: BLE001
-            # print stacktrace
-            import traceback
+            logger.error(e)
+            if logger.isEnabledFor(logging.DEBUG):
+                # print stacktrace
+                import traceback
 
-            print(e)
-            traceback.print_exc()
+                traceback.print_exc()
 
             results = SNAPResponse(code=ResponseCode.ERROR, message=str(e))
 

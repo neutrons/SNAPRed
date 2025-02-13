@@ -11,9 +11,11 @@ from pydantic import validate_call
 
 from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionState
 from snapred.backend.dao.ingredients import GroceryListItem
+from snapred.backend.dao.LiveMetadata import LiveMetadata
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.backend.data.util.PV_logs_util import mappingFromRun
 from snapred.backend.error.LiveDataState import LiveDataState
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -401,7 +403,7 @@ class GroceryService:
         """
         if oldName != newName:
             self.mantidSnapper.RenameWorkspace(
-                f"Renaming {oldName} to {newName}",
+                f"Renaming '{oldName}' to '{newName}'",
                 InputWorkspace=oldName,
                 OutputWorkspace=newName,
             )
@@ -440,20 +442,16 @@ class GroceryService:
         else:
             return None
 
-    def getCloneOfWorkspace(self, name: WorkspaceName, copy: WorkspaceName):
+    def getCloneOfWorkspace(self, name: WorkspaceName, copy: WorkspaceName) -> WorkspaceName:
         """
         Simple wrapper to clone a workspace, for the service layer.
-        Returns a pointer to the cloned workspace, if the original workspace exists.
-
-        If you are doing anything with the pointer beyond checking it is non-null,
-        you are probably doing something wrong.
 
         :param name: the name of the workspace to clone in the ADS
         :type name: WorkspaceName
         :param copy: the name of the resulting cloned workspace
         :type copy: WorkspaceName
-        :return: a pointer to the cloned workspace in the ADS
-        :rtype: a python wrapped, C++ shared pointer to a Workspace
+        :return: the name of the cloned workspace
+        :rtype: WorkspaceName
         """
         self.mantidSnapper.CloneWorkspace(
             f"Cloning {name} to {copy}",
@@ -798,9 +796,17 @@ class GroceryService:
         workspaceName: WorkspaceName = self._createNeutronWorkspaceName(runNumber, useLiteMode)
         # Live-data fallback
         if self.dataService.hasLiveDataConnection():
-            # When not specified in the `liveDataArgs`,
-            #   default behavior will be to load the entire run.
-            startTime = (datetime.utcnow() - liveDataArgs.duration).isoformat() if liveDataArgs is not None else ""
+            if liveDataArgs is None:
+                # Only warn if live-data mode hasn't been explicitly requested.
+                logger.warning(f"Input data for run '{runNumber}' was not found in IPTS, trying live-data fallback...")
+
+            # When not specified in the `liveDataArgs` or when `liveDataArgs.duration == 0`,
+            #   the default behavior will be to load the entire run.
+            startTime = (
+                (datetime.utcnow() - liveDataArgs.duration).isoformat()
+                if liveDataArgs is not None and liveDataArgs.duration != 0
+                else LiveMetadata.FROM_START_ISO8601
+            )
 
             loaderArgs = {
                 "Facility": Config["liveData.facility.name"],
@@ -812,13 +818,14 @@ class GroceryService:
             data = self.grocer.executeRecipe(workspace=workspaceName, loader=loader, loaderArgs=json.dumps(loaderArgs))
             data["fromLiveData"] = True
             if data["result"]:
-                logs = self.mantidSnapper.mtd[workspaceName].getRun()
-                liveRunNumber = logs.getProperty("run_number").value if logs.hasProperty("run_number") else 0
+                logs = mappingFromRun(self.mantidSnapper.mtd[workspaceName].getRun())
+                liveRunNumber = str(logs["run_number"])
+
                 if int(runNumber) != int(liveRunNumber):
+                    # Live run number is unexpected => there has been a live-data run-state change.
                     self.deleteWorkspaceUnconditional(workspaceName)
                     data = {"result": False}
                     if liveDataArgs is not None:
-                        # the live-data run isn't the expected one => a live-data state change has occurred
                         raise LiveDataState.runStateTransition(liveRunNumber, runNumber)
                     raise RuntimeError(
                         f"Neutron data for run '{runNumber}' is not present on disk, " + "nor is it the live-data run"
@@ -1026,14 +1033,14 @@ class GroceryService:
         tableWorkspaceName = self.lookupDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
         maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, useLiteMode, version)
 
-        if self.workspaceDoesExist(tableWorkspaceName):
+        # Table + mask are in the same hdf5 file: all of these clauses must deal with _both_!
+        if self.workspaceDoesExist(tableWorkspaceName) and self.workspaceDoesExist(maskWorkspaceName):
             data = {
                 "result": True,
                 "loader": "cached",
                 "workspace": tableWorkspaceName,
             }
         else:
-            # table + mask are in the same hdf5 file:
             filename = self._createDiffcalTableFilepathFromWsName(runNumber, useLiteMode, version, tableWorkspaceName)
 
             # Unless overridden: use a cached workspace as the instrument donor.
@@ -1448,6 +1455,7 @@ class GroceryService:
             Width=width,
             Frequency=frequency,
         )
+        self.mantidSnapper.executeQueue()
 
     def _processNeutronDataCopy(self, item: GroceryListItem, workspaceName):
         runNumber = item.runNumber

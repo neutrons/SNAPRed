@@ -397,7 +397,7 @@ class _LiveDataView(_RequestViewBase):
         elif not data.hasActiveRun():
             status = ReductionStatus.NO_ACTIVE_RUN
         elif not data.beamState():
-            status = ReductionStatus.NO_BEAM
+            status = ReductionStatus.ZERO_PROTON_CHARGE
 
         # Keep track of the displayed status, so that the flash sequences aren't constantly restarted.
         statusChange = status != self._lastDisplayedStatus
@@ -439,7 +439,7 @@ class _LiveDataView(_RequestViewBase):
                     self.liveDataIndicator.setFlashSequence(((QColor(255, 255, 0),), (0.4, 0.6)))
                     self.liveDataIndicator.setFlash(True)
 
-            case ReductionStatus.NO_BEAM:
+            case ReductionStatus.ZERO_PROTON_CHARGE:
                 self.runNumbers = []
                 self.liveDataStatus.setText(
                     "<p><font size = 4><b>Live data:</b></font>"
@@ -451,7 +451,7 @@ class _LiveDataView(_RequestViewBase):
                     + f"<p><font size = 4><b>{str(status).upper()}.</b></font></p>"
                 )
 
-                # ERROR flash -- beam is down with a run active.
+                # ERROR flash -- proton charge is zero, with a run active.
                 if statusChange:
                     self.liveDataIndicator.setFlashSequence(((QColor(255, 0, 0),), (0.1, 0.4)))
                     self.liveDataIndicator.setFlash(True)
@@ -571,9 +571,9 @@ class _LiveDataView(_RequestViewBase):
 
         # -- For completeness, these checks should also be here, but they are redundant: --
         if not self._liveMetadata.hasActiveRun():
-            raise ValueError("No live-data run is active.")
+            raise ValueError("No run is active.")
         if not self._liveMetadata.beamState():
-            raise ValueError("The beam is down")
+            raise ValueError("The proton charge is zero")
         # -- end: redundant checks --
 
         if self.keepUnfocused():

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set, Tuple
 
 import pydantic
 
@@ -55,6 +55,7 @@ from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.validator.RunNumberValidator import RunNumberValidator
@@ -394,18 +395,19 @@ class CalibrationService(Service):
         return response
 
     @FromString
-    def fetchMatchingCalibrations(self, request: MatchRunsRequest):
+    def fetchMatchingCalibrations(self, request: MatchRunsRequest) -> Tuple[Set[WorkspaceName], Dict[str, Any]]:
         calibrations = self.matchRunsToCalibrationVersions(request)
-        masks = set()
         for runNumber in request.runNumbers:
             if runNumber in calibrations:
                 self.groceryClerk.diffcal_table(runNumber, calibrations[runNumber]).useLiteMode(
                     request.useLiteMode
                 ).add()
-                # Calibration masks are also required, and are automatically loaded at the same time.
-                masks.add(wng.diffCalMask().runNumber(runNumber).version(calibrations[runNumber]).build())
+                # Calibration masks are also required, and are automatically loaded at the same time,
+                #   however we need the actual mask-workspace name to be in the returned workspaces set.
+                self.groceryClerk.diffcal_mask(runNumber, calibrations[runNumber]).useLiteMode(
+                    request.useLiteMode
+                ).add()
         workspaces = set(self.groceryService.fetchGroceryList(self.groceryClerk.buildList()))
-        workspaces.update(masks)
         return workspaces, calibrations
 
     @FromString
