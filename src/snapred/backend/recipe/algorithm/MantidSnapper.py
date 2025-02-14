@@ -1,3 +1,4 @@
+import time
 from collections import namedtuple
 from threading import Lock
 
@@ -38,7 +39,10 @@ class MantidSnapper:
     ##
     ## KNOWN NON-REENTRANT ALGORITHMS
     ##
-    _algorithmMutexes = {"LoadLiveData": Lock()}
+    _nonReentrantMutexes = {"LoadLiveData": Lock()}
+
+    _nonConcurrentAlgorithms = "SaveNexus", "SaveNexusESS", "SaveDiffCal", "RenameWorkspace"
+    _nonConcurrentAlgorithmMutex = Lock()
 
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}
     _mtd = _CustomMtd()
@@ -141,12 +145,29 @@ class MantidSnapper:
         alg.setRethrows(True)
         return alg
 
+    def _waitForAlgorithmCompletion(self, name):
+        timeout = 60  # seconds
+        checkInterval = 0.05  # 50 ms
+        currentTimeout = 0
+        while len(AlgorithmManager.runningInstancesOf(name)) > 0:
+            if currentTimeout >= timeout:
+                raise RuntimeError(f"Timeout occured while waiting for instance of {name} to cleanup")
+            currentTimeout += checkInterval
+            time.sleep(checkInterval)
+
+    def obtainMutex(self, name):
+        mutex = self._nonReentrantMutexes.get(name)
+        if mutex is None and name in self._nonConcurrentAlgorithms:
+            mutex = self._nonConcurrentAlgorithmMutex
+        return mutex
+
     def executeAlgorithm(self, name, outputs, **kwargs):
         algorithm = self.createAlgorithm(name)
         mutex = None
         try:
             # Protect non-reentrant algorithms.
-            mutex = self._algorithmMutexes.get(name)
+
+            mutex = self.obtainMutex(name)
             if mutex is not None:
                 mutex.acquire()
 
@@ -180,6 +201,8 @@ class MantidSnapper:
             self.cleanup()
             raise AlgorithmException(name, str(e)) from e
         finally:
+            self._waitForAlgorithmCompletion(name)
+            AlgorithmManager.removeById(algorithm.getAlgorithmID())
             if mutex is not None:
                 mutex.release()
 
