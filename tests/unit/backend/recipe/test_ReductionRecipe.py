@@ -9,7 +9,7 @@ from util.Config_helpers import Config_override
 from util.SculleryBoy import SculleryBoy
 
 from snapred.backend.dao.ingredients import ReductionIngredients
-from snapred.backend.dao.state import FocusGroup, PixelGroup
+from snapred.backend.dao.state import FocusGroup, PixelGroup, PixelGroupingParameters
 from snapred.backend.recipe.ReductionRecipe import (
     ApplyNormalizationRecipe,
     EffectiveInstrumentRecipe,
@@ -37,7 +37,27 @@ class ReductionRecipeTest(TestCase):
             "normalizationWorkspace": normWS,
             "diffcalWorkspace": difcWS,
         }
-
+        
+    def mockPixelGroup(self, name: str, isFullyMasked: bool, N_gid: int):
+        # Create a mock `PixelGroup` named `name` with `N_gid` mock subgroup PGPs:
+        #   `isFullyMasked` => all subgroups will have their `isMasked` flags set,
+        #   otherwise, only some will have the `isMasked` flag set.
+        return mock.Mock(
+            spec=PixelGroup,
+            pixelGroupingParameters={
+                gid: mock.Mock(
+                    spec=PixelGroupingParameters,
+                    # Unless it's fully masked,
+                    #   generate sometimes masked subgroups when N_gid > 1.
+                    isMasked=True if isFullyMasked else (gid % 2 == 0)
+                ) for gid in range(N_gid)
+            },
+            focusGroup=FocusGroup(
+                name=name,
+                definition=f"path_for_focus_group_{name}"
+            )
+        )
+            
     def test_validateInputs_bad_workspaces(self):
         groceries = {
             "inputWorkspace": mock.sentinel.input,
@@ -250,7 +270,18 @@ class ReductionRecipeTest(TestCase):
             runNumber="12345",
             useLiteMode=True,
             timestamp=time.time(),
-            pixelGroups=[mock.Mock(), mock.Mock()],
+            pixelGroups=[
+                self.mockPixelGroup(
+                    name="Column",
+                    isFullyMasked=False,
+                    N_gid=6
+                ),
+                self.mockPixelGroup(
+                    name="Bank",
+                    isFullyMasked=False,
+                    N_gid=2
+                )
+            ],
             detectorPeaksMany=[["peaks"], ["peaks2"]],
         )
         recipe.ingredients.artificialNormalizationIngredients = None
@@ -441,6 +472,14 @@ class ReductionRecipeTest(TestCase):
             mock.ANY, InputWorkspace="input", OutputWorkspace="output"
         )
 
+    def test_queueAlgos(self):
+        # Mostly this is to make code-coverage happy.
+        mockMantidSnapper = mock.Mock()
+        recipe = ReductionRecipe()
+        recipe.mantidSnapper = mockMantidSnapper
+        recipe.queueAlgos()
+        assert mockMantidSnapper.mock_calls == []
+    
     @mock.patch("mantid.simpleapi.mtd", create=True)
     def test_execute(self, mockMtd):
         mockMantidSnapper = mock.Mock()
@@ -466,7 +505,18 @@ class ReductionRecipeTest(TestCase):
             runNumber="12345",
             useLiteMode=True,
             timestamp=time.time(),
-            pixelGroups=[mock.Mock(), mock.Mock()],
+            pixelGroups=[
+                self.mockPixelGroup(
+                    name="Column",
+                    isFullyMasked=False,
+                    N_gid=6
+                ),
+                self.mockPixelGroup(
+                    name="Bank",
+                    isFullyMasked=False,
+                    N_gid=2
+                )
+            ],
             detectorPeaksMany=[["peaks"], ["peaks2"]],
         )
 
@@ -598,7 +648,18 @@ class ReductionRecipeTest(TestCase):
                 runNumber="12345",
                 useLiteMode=True,
                 timestamp=time.time(),
-                pixelGroups=[mock.Mock(), mock.Mock()],
+                pixelGroups=[
+                    self.mockPixelGroup(
+                        name="Column",
+                        isFullyMasked=False,
+                        N_gid=6
+                    ),
+                    self.mockPixelGroup(
+                        name="Bank",
+                        isFullyMasked=False,
+                        N_gid=2
+                    )
+                ],
                 detectorPeaksMany=[["peaks"], ["peaks2"]],
             )
 
@@ -659,51 +720,51 @@ class ReductionRecipeTest(TestCase):
             finalReducedOutputWs = preReducedOutputWs.builder.hidden(False).build()
             assert result["outputs"][0] == finalReducedOutputWs
 
-    @mock.patch("mantid.simpleapi.mtd", create=True)
-    def test_isGroupFullyMasked(self, mockMtd):
-        mockMantidSnapper = mock.Mock()
-
-        # Mock the group and mask workspaces
-        mockMaskWorkspace = mock.Mock()
-        mockGroupWorkspace = mock.Mock()
-
-        # Case 1: All pixels are masked
-        mockGroupWorkspace.getNumberHistograms.return_value = 10
-        mockGroupWorkspace.readY.side_effect = lambda i: [i]  # Assume each group has a single index per spectrum
-        mockMaskWorkspace.readY.side_effect = lambda i: [1]  # Assume every pixel is masked # noqa: ARG005
-
-        # Mock mtd to return the group and mask workspaces
-        mockMtd.__getitem__.side_effect = lambda ws_name: mockMaskWorkspace if ws_name == "mask" else mockGroupWorkspace
-
-        # Attach mocked mantidSnapper to recipe and assign mocked mtd
+    def test__isGroupFullyMasked(self):
         recipe = ReductionRecipe()
-        recipe.mantidSnapper = mockMantidSnapper
-        recipe.mantidSnapper.mtd = mockMtd
-        recipe.maskWs = "mask"
 
-        # Test when all pixels are masked
-        result = recipe._isGroupFullyMasked("groupWorkspace")
-        assert result is True, "Expected _isGroupFullyMasked to return True when all pixels are masked."
-
-        # Case 2: Not all pixels are masked
-        mockMaskWorkspace.readY.side_effect = lambda i: [0] if i % 2 == 0 else [1]  # Only half the pixels are masked
-
-        # Test when not all pixels are masked
-        result = recipe._isGroupFullyMasked("groupWorkspace")
-        assert result is False, "Expected _isGroupFullyMasked to return False when not all pixels are masked."
+        recipe.ingredients = mock.Mock(
+            spec=ReductionIngredients,
+            runNumber="12345",
+            useLiteMode=True,
+            timestamp=time.time(),
+            pixelGroups=[
+                self.mockPixelGroup(
+                    name="Column",
+                    isFullyMasked=False,
+                    N_gid=6
+                ),
+                self.mockPixelGroup(
+                    name="Bank",
+                    isFullyMasked=False,
+                    N_gid=2
+                ),
+                self.mockPixelGroup(
+                    name="Column2",
+                    isFullyMasked=True,
+                    N_gid=6
+                ),
+                self.mockPixelGroup(
+                    name="Bank2",
+                    isFullyMasked=True,
+                    N_gid=2
+                ),                                
+            ],
+        )
+        
+        for n, flag in enumerate((False, False, True, True)):
+            result = recipe._isGroupFullyMasked(n)
+            assert result == flag
 
     @mock.patch("mantid.simpleapi.mtd", create=True)
     def test_execute_with_fully_masked_group(self, mockMtd):
         mock_mantid_snapper = mock.Mock()
 
-        # Mock the mask and group workspaces
-        mockMaskWorkspace = mock.Mock()
-        mockGroupWorkspace = mock.Mock()
-
-        # Mock groupWorkspace to have all pixels masked
-        mockGroupWorkspace.getNumberHistograms.return_value = 10
-        mockGroupWorkspace.readY.side_effect = lambda i: [i]  # Spectrum index per spectrum
-        mockMaskWorkspace.readY.side_effect = lambda i: [1]  # All pixels are masked # noqa: ARG005
+        # Mock the mask and group workspaces:
+        #   for this test, these don't actually determine which groups are fully masked;
+        #   that's determined by the `recipe.ingredients.pixelGroups[n].pixelGroupingParameters.isMasked` flags.
+        mockMaskWorkspace = mock.sentinel.mask
+        mockGroupWorkspace = mock.sentinel.grouping
 
         # Mock mtd to return the group and mask workspaces
         mockMtd.__getitem__.side_effect = lambda ws_name: mockMaskWorkspace if ws_name == "mask" else mockGroupWorkspace
@@ -718,7 +779,24 @@ class ReductionRecipeTest(TestCase):
         recipe.logger = mock.Mock()
 
         # Set up ingredients and other variables for the recipe
-        recipe.ingredients = mock.Mock()
+        recipe.ingredients = mock.Mock(
+            spec=ReductionIngredients,
+            runNumber="12345",
+            useLiteMode=True,
+            timestamp=time.time(),
+            pixelGroups=[
+                self.mockPixelGroup(
+                    name="The_column_grouping",
+                    isFullyMasked=True,
+                    N_gid=6
+                ),
+                self.mockPixelGroup(
+                    name="The_bank_grouping",
+                    isFullyMasked=True,
+                    N_gid=2
+                ),                                
+            ],
+        )
         recipe.ingredients.groupProcessing = mock.Mock(
             return_value=lambda groupingIndex: f"groupProcessing_{groupingIndex}"
         )
@@ -750,12 +828,16 @@ class ReductionRecipeTest(TestCase):
         result = recipe.execute()
 
         # Assertions for both groups being fully masked
+        groupNames = (
+            recipe.ingredients.pixelGroups[0].focusGroup.name,
+            recipe.ingredients.pixelGroups[1].focusGroup.name,
+        )
         expected_warning_message_group1 = (
-            "\nAll pixels masked within group1 schema.\n" "Skipping all algorithm execution for this group."
+            f"\nAll pixels within the '{groupNames[0]}' grouping are masked.\n" "Skipping all algorithm execution for this grouping."
         )
 
         expected_warning_message_group2 = (
-            "\nAll pixels masked within group2 schema.\n" "Skipping all algorithm execution for this group."
+            f"\nAll pixels within the '{groupNames[1]}' grouping are masked.\n" "Skipping all algorithm execution for this grouping."
         )
 
         # Check that the warnings were logged for both groups
@@ -774,7 +856,7 @@ class ReductionRecipeTest(TestCase):
 
         # Check the output result contains the mask workspace
         assert result["outputs"][0] == "mask", "Expected the mask workspace to be included in the outputs."
-
+        
     def test_cook(self):
         recipe = ReductionRecipe()
         recipe.prep = mock.Mock()
