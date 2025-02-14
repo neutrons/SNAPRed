@@ -222,18 +222,18 @@ class TestGUIPanels:
             qtbot.wait(1000)
 
             #    enter a "Run Number":
-            requestView.liteModeToggle.setState(False)
+            requestView._requestView.liteModeToggle.setState(False)
             qtbot.wait(1000)
 
             # # Test case of using non numeric
             msg = (
-                "Bad input was given for Reduction runs,"
-                + "please read mantid docs for IntArrayProperty on how to format input"
+                "Reduction run numbers were incorrectly formatted: please read mantid docs"
+                + " for `IntArrayProperty` on how to format input"
             )
             mp = MockQMessageBox().warning(msg)
             with mp[0]:
-                requestView.runNumberInput.setText("a")
-                qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
+                requestView._requestView.runNumberInput.setText("a")
+                qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(100)
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
@@ -245,18 +245,18 @@ class TestGUIPanels:
             )
             mp = MockQMessageBox().exec(msg)
             with mp[0]:
-                requestView.runNumberInput.setText("-1")
-                qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
+                requestView._requestView.runNumberInput.setText("-1")
+                qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(100)
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
 
-            requestView.runNumberInput.setText(reductionRunNumber)
-            qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
+            requestView._requestView.runNumberInput.setText(reductionRunNumber)
+            qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
             qtbot.wait(1000)
 
-            _count = requestView.runNumberDisplay.count()
-            _runNumbers = [requestView.runNumberDisplay.item(x).text() for x in range(_count)]
+            _count = requestView._requestView.runNumberDisplay.count()
+            _runNumbers = [requestView._requestView.runNumberDisplay.item(x).text() for x in range(_count)]
 
             assert reductionRunNumber in _runNumbers
             self.testSummary.SUCCESS()
@@ -323,8 +323,8 @@ class TestGUIPanels:
 
             # Test retain unfocused data
             def testRetainUnfocusedData(dropdownIndex: int, unit: str):
-                requestView.retainUnfocusedDataCheckbox.setChecked(True)
-                requestView.convertUnitsDropdown.setCurrentIndex(dropdownIndex)
+                requestView._requestView.retainUnfocusedDataCheckbox.setChecked(True)
+                requestView._requestView.convertUnitsDropdown.setCurrentIndex(dropdownIndex)
                 with qtbot.waitSignal(actionCompleted, timeout=120000):
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(1000)
@@ -336,7 +336,7 @@ class TestGUIPanels:
                 #     timeout=60000,
                 # )
                 # qtbot.wait(1000)
-                requestView.retainUnfocusedDataCheckbox.setChecked(False)
+                requestView._requestView.retainUnfocusedDataCheckbox.setChecked(False)
                 gui.workspaceWidget._ads.clear()
 
             testRetainUnfocusedData(0, "tof")
@@ -348,9 +348,9 @@ class TestGUIPanels:
             # Artificial Normalization
             def testArtificialNormalization():
                 # Use run number that forces artificial normalization
-                requestView.clearRunNumbers()
-                requestView.runNumberInput.setText("58810")
-                qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
+                requestView._requestView.clearRunNumbers()
+                requestView._requestView.runNumberInput.setText("58810")
+                qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(1000)
 
                 handleStateInit(waitForStateInit, reductionStateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
@@ -403,14 +403,14 @@ class TestGUIPanels:
                 qtbot.wait(1000)
 
                 gui.workspaceWidget._ads.clear()
-                requestView.clearRunNumbers()
+                requestView._requestView.clearRunNumbers()
 
             testArtificialNormalization()
             self.testSummary.SUCCESS()
 
             def testNoWritePermissions():
-                requestView.runNumberInput.setText(reductionRunNumber)
-                qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
+                requestView._requestView.runNumberInput.setText(reductionRunNumber)
+                qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(1000)
 
                 handleStateInit(waitForStateInit, reductionStateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
@@ -447,7 +447,7 @@ class TestGUIPanels:
                 folders = list_folders(folderDir)
                 assert len(folders) == 0
 
-                requestView.clearRunNumbers()
+                requestView._requestView.clearRunNumbers()
 
             testNoWritePermissions()
             self.testSummary.SUCCESS()
@@ -456,8 +456,8 @@ class TestGUIPanels:
             def testPixelMask():
                 def executeReduction():
                     # Add run number to run list
-                    requestView.runNumberInput.setText(reductionRunNumber)
-                    qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
+                    requestView._requestView.runNumberInput.setText(reductionRunNumber)
+                    qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
                     qtbot.wait(1000)
 
                     handleStateInit(waitForStateInit, reductionStateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
@@ -480,14 +480,14 @@ class TestGUIPanels:
                 qtbot.wait(1000)
 
                 # Make sure a pixelmask exists and set and check the pixelmask
-                numOfPixelMasks = len(requestView.pixelMaskDropdown._items)
+                numOfPixelMasks = len(requestView._requestView.pixelMaskDropdown._items)
                 assert numOfPixelMasks > 0
-                requestView.pixelMaskDropdown.dropDown.setCurrentIndex(1)
-                requestView.pixelMaskDropdown.dropDown.model().item(1).setCheckState(Qt.Checked)
-                qtbot.mouseClick(requestView.pixelMaskDropdown.dropDown, Qt.MouseButton.LeftButton)
+                requestView._requestView.pixelMaskDropdown.dropDown.setCurrentIndex(1)
+                requestView._requestView.pixelMaskDropdown.dropDown.model().item(1).setCheckState(Qt.Checked)
+                qtbot.mouseClick(requestView._requestView.pixelMaskDropdown.dropDown, Qt.MouseButton.LeftButton)
                 qtbot.wait(1000)
 
-                qtbot.mouseClick(requestView.pixelMaskDropdown.dropDown, Qt.MouseButton.LeftButton)
+                qtbot.mouseClick(requestView._requestView.pixelMaskDropdown.dropDown, Qt.MouseButton.LeftButton)
                 qtbot.wait(1000)
 
                 with qtbot.waitSignal(actionCompleted, timeout=120000):
@@ -502,14 +502,14 @@ class TestGUIPanels:
 
             # Test multiple run numbers
             def testMultipleRunNumbers():
-                requestView.clearRunNumbers()
+                requestView._requestView.clearRunNumbers()
 
-                requestView.runNumberInput.setText("58813")
-                qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
+                requestView._requestView.runNumberInput.setText("58813")
+                qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(1000)
 
-                requestView.runNumberInput.setText("58810")
-                qtbot.mouseClick(requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
+                requestView._requestView.runNumberInput.setText("58810")
+                qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(1000)
 
                 msg = (
@@ -529,6 +529,8 @@ class TestGUIPanels:
                     assert len(exceptions) == 0
                     assert mp[1].call_count == 1
                     assert mc[1].call_count == 1
+
+                gui.workspaceWidget._ads.clear()
 
             testMultipleRunNumbers()
             self.testSummary.SUCCESS()
