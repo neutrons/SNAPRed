@@ -21,7 +21,6 @@ class MockQMessageBox(QWidget):
             myCounterMock(self_)
             return (
                 QMessageBox.Ok
-                # if ("The backend has encountered warning(s)" in self_.text() and msg in self_.detailedText())
                 if (msg in self_.detailedText())
                 else (MockQMessageBox().fail(f"Expected warning not found:  {msg}")),
             )
