@@ -431,10 +431,7 @@ class TestGUIPanels:
                     return False
 
                 with patch.object(ReductionService, "checkReductionWritePermissions", denyPerm):
-                    msg2 = (
-                        "<p>It looks like you don't have permissions to write to <br><b>"
-                        + "/home/8l2/workspace/SNAPRed/tests/data/snapred-data/SNS/SNAP/IPTS-24641/shared/SNAPRed/tmp"
-                    )
+                    msg2 = "<p>It looks like you don't have permissions to write to <br><b>"
                     mp2 = MockQMessageBox().continueWarning(msg2)
                     with mp2[0]:
                         qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
