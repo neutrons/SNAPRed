@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- For help on the notation used to specify an Instrument Definition File
+     see http://www.mantidproject.org/IDF -->
+<instrument xmlns="http://www.mantidproject.org/IDF/1.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://www.mantidproject.org/IDF/1.0 http://schema.mantidproject.org/IDF/1.0/IDFSchema.xsd"
+            name="POP" valid-from="1970-01-01 00:00:00">
+  <!--THIS IS A FAKE INSTRUMENT DEFINITION FOR TESTING ONLY-->
+  <!--POP defines a 16-pixel simple instrument suitable for most tests-->
+  <!--DEFAULTS-->
+  <defaults>
+    <length unit="metre"/>
+    <angle unit="degree"/>
+    <reference-frame>
+      <along-beam axis="z"/>
+      <pointing-up axis="y"/>
+      <handedness val="right"/>
+      <theta-sign axis="x"/>
+    </reference-frame>
+  </defaults>
+
+  <!--SOURCE-->
+  <component type="source">
+    <location z="15.0"/>
+  </component>
+  <type name="source" is="Source"/>
+
+  <!--SAMPLE-->
+  <component type="sample-position">
+    <location y="0.0" x="0.0" z="0.0"/>
+  </component>
+  <type name="sample-position" is="SamplePos"/>
+
+  <!--
+    the monitor was removed due to inconsistencies with
+    loading the instrument into a created sample workspace
+  -->
+
+  <!--DETECTORS-->
+  <component type="Column1">
+    <location x="-2.0+value" z="-5.0+value"/>
+  </component>
+  <component type="Column2">
+    <location x="+2.0+value" z="-5.0+value"/>
+  </component>
+
+  <type name="Column1">
+    <component type="panel" idstart="0" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank1">
+        <trans x="0.0" y="+1" />
+      </location>
+    </component>
+    <component type="panel" idstart="4" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank2">
+        <trans x="0.0" y="-1" />
+      </location>
+    </component>
+  </type>
+
+  <type name="Column2">
+    <component type="panel" idstart="8" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank3">
+        <trans x="0.0" y="+1" />
+      </location>
+    </component>
+    <component type="panel" idstart="12" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank4">
+        <trans x="0.0" y="-1" />
+      </location>
+    </component>
+  </type>
+
+<!-- Rectangular Detector Panel -->
+<type name="panel" is="rectangular_detector" type="pixel"
+    xpixels="2" xstart="-0.5" xstep="+1"
+    ypixels="2" ystart="-0.5" ystep="+1" >
+  <properties/>
+</type>
+
+<!-- Pixel for Detectors-->
+<type name="pixel" is="detector">
+  <cuboid id="pixel-shape">
+    <left-front-bottom-point  y="-0.25" x="-0.25" z="0.0"/>
+    <left-front-top-point     y="+0.25" x="-0.25" z="0.0"/>
+    <left-back-bottom-point   y="-0.25" x="-0.25" z="0.01"/>
+    <right-front-bottom-point y="-0.25" x="+0.25" z="0.0"/>
+  </cuboid>
+  <algebra val="pixel-shape"/>
+</type>
+</instrument>
