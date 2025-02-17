@@ -39,7 +39,7 @@ class TestDataFactoryService(unittest.TestCase):
             if callable(getattr(LocalDataService, func)) and not func.startswith("__")
         ]
         # these are treated specially for specific returns
-        exceptions = ["readStateConfig", "readRunConfig"]
+        exceptions = ["readInstrumentConfig", "readStateConfig", "readRunConfig"]
         needIndexer = ["calibrationIndexer", "normalizationIndexer"]
         method_list = [method for method in method_list if method not in exceptions and method not in needIndexer]
         for x in method_list:
@@ -50,7 +50,7 @@ class TestDataFactoryService(unittest.TestCase):
         mockCalibration = Calibration.model_construct(instrumentState=mockInstrumentState)
 
         # these are treated specially as returning specific object types
-        cls.mockLookupService.readInstrumentConfig = mock.Mock(return_value=InstrumentConfig.model_construct({}))
+        cls.mockLookupService.readInstrumentConfig.return_value = InstrumentConfig.model_construct({})
         #
         # ... allow the `StateConfig` to actually complete validation:
         #   this is required because `getReductionState` is declared in the wrong place... :(
