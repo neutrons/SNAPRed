@@ -201,10 +201,14 @@ class MantidSnapper:
             self.cleanup()
             raise AlgorithmException(name, str(e)) from e
         finally:
-            self._waitForAlgorithmCompletion(name)
-            AlgorithmManager.removeById(algorithm.getAlgorithmID())
+            self._cleanupNonConcurrent(name, algorithm)
             if mutex is not None:
                 mutex.release()
+
+    def _cleanupNonConcurrent(self, name, algorithm):
+        if name in self._nonConcurrentAlgorithms:
+            self._waitForAlgorithmCompletion(name)
+            AlgorithmManager.removeById(algorithm.getAlgorithmID())
 
     def executeQueue(self):
         if self.parentAlgorithm:
