@@ -82,6 +82,8 @@ class MantidSnapper:
         self._algorithmQueue = []
         self._exportScript = ""
         self._export = False
+        self.timeout = 60  # seconds
+        self.checkInterval = 0.05  # 50 ms
         if self._export:
             self._cleanOldExport()
 
@@ -146,14 +148,12 @@ class MantidSnapper:
         return alg
 
     def _waitForAlgorithmCompletion(self, name):
-        timeout = 60  # seconds
-        checkInterval = 0.05  # 50 ms
         currentTimeout = 0
         while len(AlgorithmManager.runningInstancesOf(name)) > 0:
-            if currentTimeout >= timeout:
-                raise RuntimeError(f"Timeout occured while waiting for instance of {name} to cleanup")
-            currentTimeout += checkInterval
-            time.sleep(checkInterval)
+            if currentTimeout >= self.timeout:
+                raise TimeoutError(f"Timeout occured while waiting for instance of {name} to cleanup")
+            currentTimeout += self.checkInterval
+            time.sleep(self.checkInterval)
 
     def obtainMutex(self, name):
         mutex = self._nonReentrantMutexes.get(name)
