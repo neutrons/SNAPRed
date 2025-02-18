@@ -151,7 +151,7 @@ class MantidSnapper:
         currentTimeout = 0
         while len(AlgorithmManager.runningInstancesOf(name)) > 0:
             if currentTimeout >= self.timeout:
-                raise TimeoutError(f"Timeout occured while waiting for instance of {name} to cleanup")
+                raise TimeoutError(f"Timeout occurred while waiting for instance of {name} to cleanup")
             currentTimeout += self.checkInterval
             time.sleep(self.checkInterval)
 

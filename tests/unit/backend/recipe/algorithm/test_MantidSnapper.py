@@ -48,7 +48,7 @@ class TestMantidSnapper(unittest.TestCase):
         mantidSnapper._nonConcurrentAlgorithms = mantidSnapper._nonConcurrentAlgorithms + ("fakeFunction",)
         mantidSnapper._nonConcurrentAlgorithmMutex = mock.Mock()
 
-        with pytest.raises(TimeoutError, match="Timeout occured while waiting for instance of"):
+        with pytest.raises(TimeoutError, match="Timeout occurred while waiting for instance of"):
             mantidSnapper.executeQueue()
 
     @mock.patch(PatchRoot.format("AlgorithmManager"))
