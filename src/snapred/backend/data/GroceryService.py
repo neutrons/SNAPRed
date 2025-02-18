@@ -9,6 +9,7 @@ import numpy as np
 from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import (
     CreateWorkspace,
+    CropWorkspace,
     ExtractMask,
     mtd,
 )
@@ -877,6 +878,14 @@ class GroceryService:
             # fetch single-use does not export converted to lite data
             self.convertToLiteMode(workspaceName, export=False)
             data["workspace"] = workspaceName
+            print(f"Cropping {workspaceName}")
+            instrumentState = self.dataService.generateInstrumentState(runNumber)
+            CropWorkspace(
+                InputWorkspace=workspaceName,
+                OutputWorkspace=workspaceName,
+                XMin=instrumentState.particleBounds.tof.minimum,
+                XMax=instrumentState.particleBounds.tof.maximum,
+            )
 
         return data
 
@@ -1012,7 +1021,16 @@ class GroceryService:
 
             # create a copy of the raw data for use
             workspaceName = self._createCopyNeutronWorkspaceName(runNumber, useLiteMode, self._loadedRuns[key] + 1)
-            data["result"] = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
+            wsClone = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
+            print(f"Cropping {workspaceName}")
+            instrumentState = self.dataService.generateInstrumentState(runNumber)
+            CropWorkspace(
+                InputWorkspace=workspaceName,
+                OutputWorkspace=workspaceName,
+                XMin=instrumentState.particleBounds.tof.minimum,
+                XMax=instrumentState.particleBounds.tof.maximum,
+            )
+            data["result"] = wsClone
             data["workspace"] = workspaceName
             self._loadedRuns[key] += 1
 
