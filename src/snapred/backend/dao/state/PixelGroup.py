@@ -82,7 +82,7 @@ class PixelGroup(BaseModel):
         #   different Mantid algorithms use either "0.0" or "NaN" to indicate an unspecified value,
         #   so these values may need to be filtered.
         return [
-            self.pixelGroupingParameters[gid].dResolution.maximum + Config["constants.CropFactors.highdSpacingCrop"]
+            self.pixelGroupingParameters[gid].dResolution.maximum - Config["constants.CropFactors.highdSpacingCrop"]
             if not self.pixelGroupingParameters[gid].isMasked
             else default
             for gid in self.groupIDs
@@ -93,7 +93,7 @@ class PixelGroup(BaseModel):
         #   different Mantid algorithms use either "0.0" or "NaN" to indicate an unspecified value,
         #   so these values may need to be filtered.
         return [
-            self.pixelGroupingParameters[gid].dResolution.minimum - Config["constants.CropFactors.lowdSpacingCrop"]
+            self.pixelGroupingParameters[gid].dResolution.minimum + Config["constants.CropFactors.lowdSpacingCrop"]
             if not self.pixelGroupingParameters[gid].isMasked
             else default
             for gid in self.groupIDs

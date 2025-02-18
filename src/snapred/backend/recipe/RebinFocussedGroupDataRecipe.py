@@ -29,23 +29,16 @@ class RebinFocussedGroupDataRecipe(Recipe[Ingredients]):
         We are mostly concerned about the drange for a ResampleX operation.
         """
         self.pixelGroup = ingredients.pixelGroup
-        # The adjustment below is a temp fix, will be permanently fixed in EWM 6262
-        lowdSpacingCrop = Config["constants.CropFactors.lowdSpacingCrop"]
-        if lowdSpacingCrop < 0:
-            raise ValueError("Low d-spacing crop factor must be positive")
+        dMin = self.pixelGroup.dMin()
+        dMax = self.pixelGroup.dMax()
+        dBin = self.pixelGroup.dBin()
 
-        highdSpacingCrop = Config["constants.CropFactors.highdSpacingCrop"]
-        if highdSpacingCrop < 0:
-            raise ValueError("High d-spacing crop factor must be positive")
+        if not all(_dMax > _dMin for _dMin, _dMax in zip(dMin, dMax)):
+            raise ValueError("Invalid d-spacing range detected: some dMax <= dMin.")
 
-        dMin = [x + lowdSpacingCrop for x in self.pixelGroup.dMin()]
-        dMax = [x - highdSpacingCrop for x in self.pixelGroup.dMax()]
-
-        if not dMax > dMin:
-            raise ValueError("d-spacing crop factors are too large -- resultant dMax must be > resultant dMin")
         self.dMin = dMin
         self.dMax = dMax
-        self.dBin = self.pixelGroup.dBin()
+        self.dBin = dBin
 
         self.preserveEvents = ingredients.preserveEvents
 
