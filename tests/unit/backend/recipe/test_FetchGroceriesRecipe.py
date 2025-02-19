@@ -125,7 +125,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         mock_instance = mockAlgo.return_value
         mock_instance.execute.return_value = "data"
         mock_instance.getPropertyValue.return_value = "LoadEventNexus"
-        self.rx.mantidSnapper.RemovePromptPulse = mock.MagicMock()
 
         self.clearoutWorkspaces()
         res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadEventNexus")
@@ -133,7 +132,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["result"]
         assert res["loader"] == "LoadEventNexus"
         assert res["workspace"] == self.fetchedWSname
-        assert self.rx.mantidSnapper.RemovePromptPulse.called
 
     @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.logger")
     @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchGroceriesAlgorithm")
@@ -142,7 +140,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         mock_instance = mockAlgo.return_value
         mock_instance.execute.return_value = "data"
         mock_instance.getPropertyValue.return_value = "LoadEventNexus"
-        self.rx.mantidSnapper.RemovePromptPulse = mock.MagicMock()
 
         self.clearoutWorkspaces()
 
@@ -157,7 +154,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         mock_instance = mockAlgo.return_value
         mock_instance.execute.return_value = "data"
         mock_instance.getPropertyValue.return_value = "LoadLiveData"
-        self.rx.mantidSnapper.RemovePromptPulse = mock.MagicMock()
 
         self.clearoutWorkspaces()
 
@@ -171,7 +167,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         mock_instance = mockAlgo.return_value
         mock_instance.execute.return_value = "data"
         mock_instance.getPropertyValue.return_value = "LoadLiveData"
-        self.rx.mantidSnapper.RemovePromptPulse = mock.Mock()
 
         self.clearoutWorkspaces()
         res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveData")
@@ -179,7 +174,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["result"]
         assert res["loader"] == "LoadLiveData"
         assert res["workspace"] == self.fetchedWSname
-        assert self.rx.mantidSnapper.RemovePromptPulse.called
 
     def test_fetch_failed(self):
         # this is some file that it can't load

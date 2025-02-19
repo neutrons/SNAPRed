@@ -878,6 +878,7 @@ class GroceryService:
             print(f"Cropping {workspaceName}")
             instrumentState = self.dataService.generateInstrumentState(runNumber)
             self.mantidSnapper.CropWorkspace(
+                "Cropping workspace",
                 InputWorkspace=workspaceName,
                 OutputWorkspace=workspaceName,
                 XMin=instrumentState.particleBounds.tof.minimum,
@@ -1033,6 +1034,7 @@ class GroceryService:
             print(f"Cropping {workspaceName}")
             instrumentState = self.dataService.generateInstrumentState(runNumber)
             self.mantidSnapper.CropWorkspace(
+                "Cropping workspace",
                 InputWorkspace=workspaceName,
                 OutputWorkspace=workspaceName,
                 XMin=instrumentState.particleBounds.tof.minimum,
@@ -1285,6 +1287,7 @@ class GroceryService:
         pixelCount = mtd[templateWSName].getInstrument().getNumberDetectors(True)
 
         mask = self.mantidSnapper.CreateWorkspace(
+            "Creating pixel mask workspace",
             OutputWorkspace=maskWSName,
             NSpec=pixelCount,
             DataX=list(np.zeros((pixelCount,))),
@@ -1292,6 +1295,7 @@ class GroceryService:
             ParentWorkspace=templateWSName,
         )
         self.mantidSnapper.executeQueue()
+        mask = self.mantidSnapper.mtd[mask]
 
         # Rebuild the spectra map "by hand" to exclude detectors which are monitors.
         info = mask.detectorInfo()
@@ -1308,7 +1312,7 @@ class GroceryService:
             wi += 1
 
         # Convert workspace to a MaskWorkspace instance.
-        self.mantidSnapper.ExtractMask(OutputWorkspace=maskWSName, InputWorkspace=maskWSName)
+        self.mantidSnapper.ExtractMask("Extracting mask", OutputWorkspace=maskWSName, InputWorkspace=maskWSName)
         self.mantidSnapper.executeQueue()
         assert isinstance(mtd[maskWSName], MaskWorkspace)
 

@@ -861,6 +861,7 @@ class TestGroceryService(unittest.TestCase):
         """Test the correct behavior when fetching raw nexus data"""
 
         self.instance.convertToLiteMode = mock.Mock()
+        self.instance.mantidSnapper = mock.MagicMock()
 
         # mock out _createNeutronFilePath so that only a native version exists on disk
         nonExistentPath = Path("does/not/exist.nxs")
@@ -940,6 +941,7 @@ class TestGroceryService(unittest.TestCase):
         """Test the correct behavior when fetching nexus data"""
         self.instance._createNeutronFilePath = mock.Mock()
         self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
+        self.instance.mantidSnapper = mock.MagicMock()
 
         testItem = mock.Mock(
             spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=False, loader="", liveDataArgs=None
@@ -1009,6 +1011,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance.convertToLiteMode = mock.Mock()
         self.instance._createNeutronFilePath = mock.Mock()
         self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
+        self.instance.mantidSnapper = mock.MagicMock()
 
         testItem = mock.Mock(
             spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=True, loader="", liveDataArgs=None
@@ -1116,6 +1119,7 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
                 mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch.object(instance, "mantidSnapper") as mockSnapper,  # noqa F841
             ):
                 # Mocks for flow-control branching:
                 mockHasLiveDataConnection.return_value = False
@@ -1708,6 +1712,7 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
                 mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch.object(instance, "mantidSnapper") as mockSnapper,  # noqa F841
             ):
                 # Mocks for flow-control branching:
                 mockHasLiveDataConnection.return_value = False
