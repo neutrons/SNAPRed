@@ -8,9 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import (
-    CreateWorkspace,
     CropWorkspace,
-    ExtractMask,
     mtd,
 )
 from pydantic import validate_call
@@ -1264,13 +1262,14 @@ class GroceryService:
         # Number of non-monitor pixels
         pixelCount = mtd[templateWSName].getInstrument().getNumberDetectors(True)
 
-        mask = CreateWorkspace(
+        mask = self.mantidSnapper.CreateWorkspace(
             OutputWorkspace=maskWSName,
             NSpec=pixelCount,
             DataX=list(np.zeros((pixelCount,))),
             DataY=list(np.zeros((pixelCount,))),
             ParentWorkspace=templateWSName,
         )
+        self.mantidSnapper.executeQueue()
 
         # Rebuild the spectra map "by hand" to exclude detectors which are monitors.
         info = mask.detectorInfo()
@@ -1287,7 +1286,8 @@ class GroceryService:
             wi += 1
 
         # Convert workspace to a MaskWorkspace instance.
-        ExtractMask(OutputWorkspace=maskWSName, InputWorkspace=maskWSName)
+        self.mantidSnapper.ExtractMask(OutputWorkspace=maskWSName, InputWorkspace=maskWSName)
+        self.mantidSnapper.executeQueue()
         assert isinstance(mtd[maskWSName], MaskWorkspace)
 
         return maskWSName
