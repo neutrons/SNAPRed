@@ -1,6 +1,5 @@
 from typing import Any, Dict
 
-from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm
 from snapred.backend.recipe.algorithm.Utensils import Utensils
@@ -63,20 +62,6 @@ class FetchGroceriesRecipe:
             data["result"] = algo.execute()
             data["loader"] = algo.getPropertyValue("LoaderType")
             data["workspace"] = workspace
-
-            if data["loader"] in ("LoadEventNexus", "LoadLiveData"):
-                self.dataService = LocalDataService()
-                config = self.dataService.getInstrumentConfig()
-                width = config.width
-                frequency = config.frequency
-                self.mantidSnapper.RemovePromptPulse(
-                    "Removing prompt pulse",
-                    InputWorkspace=workspace,
-                    OutputWorkspace=workspace,
-                    Width=width,
-                    Frequency=frequency,
-                )
-                self.mantidSnapper.executeQueue()
         except RuntimeError as e:
             raise RuntimeError(str(e).split("\n")[0]) from e
 

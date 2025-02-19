@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import (
-    CropWorkspace,
     mtd,
 )
 from pydantic import validate_call
@@ -878,12 +877,23 @@ class GroceryService:
             data["workspace"] = workspaceName
             print(f"Cropping {workspaceName}")
             instrumentState = self.dataService.generateInstrumentState(runNumber)
-            CropWorkspace(
+            self.mantidSnapper.CropWorkspace(
                 InputWorkspace=workspaceName,
                 OutputWorkspace=workspaceName,
                 XMin=instrumentState.particleBounds.tof.minimum,
                 XMax=instrumentState.particleBounds.tof.maximum,
             )
+            config = self.dataService.getInstrumentConfig()
+            width = config.width
+            frequency = config.frequency
+            self.mantidSnapper.RemovePromptPulse(
+                "Removing prompt pulse",
+                InputWorkspace=workspaceName,
+                OutputWorkspace=workspaceName,
+                Width=width,
+                Frequency=frequency,
+            )
+            self.mantidSnapper.executeQueue()
 
         return data
 
@@ -1022,12 +1032,24 @@ class GroceryService:
             wsClone = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
             print(f"Cropping {workspaceName}")
             instrumentState = self.dataService.generateInstrumentState(runNumber)
-            CropWorkspace(
+            self.mantidSnapper.CropWorkspace(
                 InputWorkspace=workspaceName,
                 OutputWorkspace=workspaceName,
                 XMin=instrumentState.particleBounds.tof.minimum,
                 XMax=instrumentState.particleBounds.tof.maximum,
             )
+            # self.dataService = LocalDataService()
+            config = self.dataService.getInstrumentConfig()
+            width = config.width
+            frequency = config.frequency
+            self.mantidSnapper.RemovePromptPulse(
+                "Removing prompt pulse",
+                InputWorkspace=workspaceName,
+                OutputWorkspace=workspaceName,
+                Width=width,
+                Frequency=frequency,
+            )
+            self.mantidSnapper.executeQueue()
             data["result"] = wsClone
             data["workspace"] = workspaceName
             self._loadedRuns[key] += 1
