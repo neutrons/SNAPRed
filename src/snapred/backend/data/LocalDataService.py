@@ -18,7 +18,7 @@ from mantid.api import Run
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import ConfigService, PhysicalConstants
 from mantid.simpleapi import GetIPTS, mtd
-from pydantic import ValidationError, validate_call
+from pydantic import ValidationError
 
 from snapred.backend.dao import (
     GSASParameters,
@@ -71,7 +71,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
-from snapred.meta.redantic import parse_file_as, write_model_pretty
+from snapred.meta.redantic import parse_file_as, validate_call, write_model_pretty
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -93,59 +93,21 @@ class LocalDataService:
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
     def __init__(self) -> None:
-        self._verifyPaths = Config["localdataservice.config.verifypaths"]
-        self._instrumentConfig = self._readInstrumentConfig()
+        self.verifyPaths = Config["localdataservice.config.verifypaths"]
         self.mantidSnapper = MantidSnapper(None, "Utensils")
 
     ##### MISCELLANEOUS METHODS #####
 
-    def getInstrumentConfig(self):
-        return self._instrumentConfig
-
     def fileExists(self, path):
         return os.path.isfile(path)
 
-    def _determineInstrConfigPaths(self) -> None:
-        """This method locates the instrument configuration path and
-        sets the instance variable ``_instrumentConfigPath``."""
-        # verify parent directory exists
-        self._instrumentHomePath = Path(Config["instrument.home"])
-        if self._verifyPaths and not self._instrumentHomePath.exists():
-            raise _createFileNotFoundError(Config["instrument.home"], self._instrumentHomePath)
-
-        # look for the config file and verify it exists
-        self._instrumentConfigPath = Config["instrument.config"]
-        if self._verifyPaths and not Path(self._instrumentConfigPath).exists():
-            raise _createFileNotFoundError("Missing Instrument Config", Config["instrument.config"])
-
-    def _readInstrumentConfig(self) -> InstrumentConfig:
-        self._determineInstrConfigPaths()
-
-        instrumentParameterMap = self._readInstrumentParameters()
-        try:
-            instrumentParameterMap["bandwidth"] = instrumentParameterMap.pop("neutronBandwidth")
-            instrumentParameterMap["maxBandwidth"] = instrumentParameterMap.pop("extendedNeutronBandwidth")
-            instrumentParameterMap["delTOverT"] = instrumentParameterMap.pop("delToT")
-            instrumentParameterMap["delLOverL"] = instrumentParameterMap.pop("delLoL")
-            instrumentParameterMap["version"] = str(instrumentParameterMap["version"])
-            instrumentConfig = InstrumentConfig(**instrumentParameterMap)
-        except KeyError as e:
-            raise KeyError(f"{e}: while reading instrument configuration '{self._instrumentConfigPath}'") from e
-        if self._instrumentHomePath:
-            instrumentConfig.calibrationDirectory = Path(Config["instrument.calibration.home"])
-            if self._verifyPaths and not instrumentConfig.calibrationDirectory.exists():
-                raise _createFileNotFoundError("[calibration directory]", instrumentConfig.calibrationDirectory)
+    def readInstrumentConfig(self, runNumber: str) -> InstrumentConfig:
+        instrumentConfig = self.readInstrumentParameters(runNumber)
+        instrumentConfig.calibrationDirectory = Config["instrument.calibration.home"]
+        if self.verifyPaths and not Path(instrumentConfig.calibrationDirectory).exists():
+            raise _createFileNotFoundError("[calibration directory]", instrumentConfig.calibrationDirectory)
 
         return instrumentConfig
-
-    def _readInstrumentParameters(self) -> Dict[str, Any]:
-        instrumentParameterMap: Dict[str, Any] = {}
-        try:
-            with open(self._instrumentConfigPath, "r") as json_file:
-                instrumentParameterMap = json.load(json_file)
-            return instrumentParameterMap
-        except FileNotFoundError as e:
-            raise _createFileNotFoundError("Instrument configuration file", self._instrumentConfigPath) from e
 
     def readStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
         indexer = self.calibrationIndexer(runId, useLiteMode)
@@ -268,22 +230,23 @@ class LocalDataService:
     def _readRunConfig(self, runId: str) -> RunConfig:
         # lookup path for IPTS number
         iptsPath = self.getIPTS(runId)
-
+        instrumentConfig = self.readInstrumentConfig(runId)
         return RunConfig(
             IPTS=iptsPath,
             runNumber=runId,
             maskFileName="",
-            maskFileDirectory=iptsPath + self._instrumentConfig.sharedDirectory,
-            gsasFileDirectory=iptsPath + self._instrumentConfig.reducedDataDirectory,
+            maskFileDirectory=iptsPath + instrumentConfig.sharedDirectory,
+            gsasFileDirectory=iptsPath + instrumentConfig.reducedDataDirectory,
             calibrationState=None,
         )  # TODO: where to find case? "before" "after"
 
     def _constructPVFilePath(self, runId: str) -> Path:
         runConfig = self._readRunConfig(runId)
+        instrumentConfig = self.readInstrumentConfig(runId)
         return Path(
             runConfig.IPTS,
-            self._instrumentConfig.nexusDirectory,
-            f"SNAP_{str(runConfig.runNumber)}{self._instrumentConfig.nexusFileExtension}",
+            instrumentConfig.nexusDirectory,
+            f"SNAP_{str(runConfig.runNumber)}{instrumentConfig.nexusFileExtension}",
         )
 
     def _readPVFile(self, runId: str):
@@ -476,6 +439,11 @@ class LocalDataService:
     def normalizationIndexer(self, runId: str, useLiteMode: bool):
         return self.indexer(runId, useLiteMode, IndexerType.NORMALIZATION)
 
+    def instrumentParameterIndexer(self):
+        return Indexer(
+            indexerType=IndexerType.INSTRUMENT_PARAMETER, directory=Path(Config["instrument.parameters.home"])
+        )
+
     def writeCalibrationIndexEntry(self, entry: IndexEntry):
         """
         The entry must have correct version.
@@ -487,6 +455,31 @@ class LocalDataService:
         The entry must have correct version.
         """
         self.normalizationIndexer(entry.runNumber, entry.useLiteMode).addIndexEntry(entry)
+
+    ##### Instrument Parameter Methods #####
+
+    # 1. write new instrumen param file 2. read appropriate instrument param file
+    def writeInstrumentParameters(self, instrumentParameters: InstrumentConfig, appliesTo: str, author: str):
+        """
+        Writes the instrument parameters to disk.
+        """
+        indexer = self.instrumentParameterIndexer()
+        newEntry = indexer.createIndexEntry(
+            runNumber=ReservedRunNumber.NATIVE,
+            useLiteMode=False,
+            # The above two fields are irrelevant for instrument parameters, but required by the IndexEntry model.
+            version=VersionState.NEXT,
+            appliesTo=appliesTo,
+            author=author,
+        )
+        indexer.writeNewVersionedObject(instrumentParameters, newEntry)
+
+    def readInstrumentParameters(self, runNumber: str):
+        indexer = self.instrumentParameterIndexer()
+        version = indexer.latestApplicableVersion(runNumber)
+        if version is None:
+            raise FileNotFoundError(f"No instrument parameters found for run {runNumber}")
+        return indexer.readVersionedObject(InstrumentConfig, version)
 
     ##### NORMALIZATION METHODS #####
 
@@ -930,7 +923,9 @@ class LocalDataService:
         #   and generate the stateID SHA.
         stateId, detectorState = self.generateStateId(runId)
 
-        # Pull static values from resources
+        # then read data from the common calibration state parameters stored at root of calibration directory
+        instrumentConfig = self.readInstrumentConfig(runId)
+        # then pull static values specified by Malcolm from resources
         defaultGroupSliceValue = Config["calibration.parameters.default.groupSliceValue"]
         fwhmMultipliers = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
         peakTailCoefficient = Config["calibration.parameters.default.peakTailCoefficient"]
@@ -940,12 +935,10 @@ class LocalDataService:
 
         # Calculate the derived values
         lambdaLimit = Limit(
-            minimum=detectorState.wav
-            - (self._instrumentConfig.bandwidth / 2)
-            + self._instrumentConfig.lowWavelengthCrop,
-            maximum=detectorState.wav + (self._instrumentConfig.bandwidth / 2),
+            minimum=detectorState.wav - (instrumentConfig.bandwidth / 2) + instrumentConfig.lowWavelengthCrop,
+            maximum=detectorState.wav + (instrumentConfig.bandwidth / 2),
         )
-        L = self._instrumentConfig.L1 + self._instrumentConfig.L2
+        L = instrumentConfig.L1 + instrumentConfig.L2
         tofLimit = Limit(
             minimum=lambdaLimit.minimum * L / self.CONVERSION_FACTOR,
             maximum=lambdaLimit.maximum * L / self.CONVERSION_FACTOR,
@@ -954,7 +947,7 @@ class LocalDataService:
 
         return InstrumentState(
             id=stateId,
-            instrumentConfig=self._instrumentConfig,
+            instrumentConfig=instrumentConfig,
             detectorState=detectorState,
             gsasParameters=gsasParameters,
             particleBounds=particleBounds,

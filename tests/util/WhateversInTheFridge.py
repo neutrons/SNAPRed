@@ -48,8 +48,7 @@ class WhateversInTheFridge(LocalDataService):
     iptsCache: Dict[Tuple[str, str], Any] = {}
 
     def __init__(self) -> None:
-        self._verifyPaths = False
-        self._instrumentConfig = self._readInstrumentConfig()
+        self.verifyPaths = False
         self.mantidSnapper = MantidSnapper(None, "Utensils")
         self.latestVersion = Config["version.start"]
 

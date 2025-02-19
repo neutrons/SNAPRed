@@ -1,10 +1,18 @@
+import functools
 import json
 from pathlib import Path
 from typing import Any, List, Type, TypeVar, Union
 
 from pydantic import BaseModel, TypeAdapter
+from pydantic import validate_call as pydantic_validate_call
 
 T = TypeVar("T")
+
+
+def validate_call(func: callable):
+    # wraps lets us get a stack trace that makes sense instead of 50 lines of pydantic internals
+    wrapped = pydantic_validate_call(func)
+    return functools.update_wrapper(wrapped, func)
 
 
 def parse_obj_as(type_: Type[T], obj: Any) -> T:

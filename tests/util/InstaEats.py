@@ -45,6 +45,8 @@ class InstaEats(GroceryService):
 
     def __init__(self):
         super().__init__(dataService=WhateversInTheFridge())
+        self.dataService = WhateversInTheFridge()
+        assert isinstance(self.dataService, WhateversInTheFridge)
         self.groupingMap = self.dataService._readDefaultGroupingMap()
         self.testInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         self.instrumentDonorWorkspace = mtd.unique_name(prefix="_instrument_donor")

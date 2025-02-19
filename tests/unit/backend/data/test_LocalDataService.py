@@ -311,6 +311,18 @@ def do_test_read_state_no_version(workflow: Literal["Calibration", "Normalizatio
         assert actualState == expectedState
 
 
+def test_write_instrument_parameters():
+    localDataService = LocalDataService()
+    localDataService.instrumentParameterIndexer = mock.Mock()
+    mockIndexer = mock.Mock()
+    mockEntry = mock.Mock()
+    mockIndexer.createIndexEntry = mock.Mock(return_value=mockEntry)
+    localDataService.instrumentParameterIndexer.return_value = mockIndexer
+    instrumentParameters = _readInstrumentParameters()
+    localDataService.writeInstrumentParameters(instrumentParameters, ">1,<2", "test author")
+    mockIndexer.writeNewVersionedObject.assert_called_with(instrumentParameters, mockEntry)
+
+
 ### TESTS OF MISCELLANEOUS METHODS ###
 
 
@@ -335,19 +347,12 @@ def _readInstrumentParameters():
     return instrumentParameters
 
 
-def test__readInstrumentConfig():
-    localDataService = LocalDataService()
-    localDataService._readInstrumentParameters = _readInstrumentParameters
-    actual = localDataService._readInstrumentConfig()
-    assert actual is not None
-    assert actual.version == "1.4"
-    assert actual.name == "SNAP"
-
-
 def test_readInstrumentParameters():
     localDataService = LocalDataService()
-    localDataService._instrumentConfigPath = Resource.getPath("inputs/SNAPInstPrm.json")
-    actual = localDataService._readInstrumentParameters()
+    mockIndexer = mock.Mock()
+    mockIndexer.readVersionedObject = mock.Mock(return_value=_readInstrumentParameters())
+    localDataService.instrumentParameterIndexer = mock.Mock(return_value=mockIndexer)
+    actual = localDataService.readInstrumentParameters(123)
     assert actual is not None
     assert actual["version"] == 1.4
     assert actual["name"] == "SNAP"
@@ -822,6 +827,9 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
     with state_root_redirect(localDataService) as tmpRoot:
         # move the calculation parameters into correct folder
         indexer = localDataService.calibrationIndexer("57514", True)
+        record = DAOFactory.calibrationRecord("57514", True, indexer.defaultVersion())
+        entry = entryFromRecord(record)
+        indexer.writeNewVersion(record, entry)
         indexer.writeParameters(DAOFactory.calibrationParameters("57514", True, indexer.defaultVersion()))
         indexer.index = {indexer.defaultVersion(): mock.MagicMock(appliesTo="57514", version=indexer.defaultVersion())}
 
@@ -861,7 +869,7 @@ def test__readRunConfig():
     # Test of private `_readRunConfig` method
     localDataService = LocalDataService()
     localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
-    localDataService._instrumentConfig = getMockInstrumentConfig()
+    localDataService.readInstrumentConfig = mock.Mock(return_value=getMockInstrumentConfig())
     actual = localDataService._readRunConfig("57514")
     assert actual is not None
     assert actual.runNumber == "57514"
@@ -874,6 +882,7 @@ def test_constructPVFilePath():
     mockIPTS = Resource.getPath("inputs/testInstrument/IPTS-456")
     mockRunConfig = mock.Mock(IPTS=mockIPTS)
     localDataService._readRunConfig = mock.Mock(return_value=mockRunConfig)
+    localDataService.readInstrumentConfig = mock.Mock(return_value=getMockInstrumentConfig())
     path = localDataService._constructPVFilePath("123")
     # the path should be /path/to/testInstrument/IPTS-456/nexus/SNAP_123.nxs.h5
     assert mockIPTS == str(path.parents[1])
@@ -2252,8 +2261,10 @@ def test_readDetectorState(monkeypatch):
 def test_readDetectorState_no_PVFile():
     runNumber = "123"
     instance = LocalDataService()
-    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("lah dee dah"))
-    with pytest.raises(FileNotFoundError, match="lah dee dah"):
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("..."))
+    instance.readLiveMetadata = mock.Mock(return_value=mock.MagicMock(runNumber=-1))
+    instance.hasLiveDataConnection = mock.Mock(return_value=True)
+    with pytest.raises(RuntimeError, match="No PVFile exists for run"):
         instance.readDetectorState(runNumber)
 
 
@@ -2608,6 +2619,9 @@ def test_initializeState():
     localDataService._instrumentConfig = testCalibrationData.instrumentState.instrumentConfig
     localDataService.writeCalibrationState = mock.Mock()
     localDataService._prepareStateRoot = mock.Mock()
+    localDataService.readInstrumentConfig = mock.MagicMock(
+        return_value=testCalibrationData.instrumentState.instrumentConfig
+    )
 
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         stateId = testCalibrationData.instrumentState.id.hex  # "ab8704b0bc2a2342"
@@ -2639,7 +2653,7 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService._instrumentConfig = testCalibrationData.instrumentState.instrumentConfig
     localDataService.writeCalibrationState = mock.Mock()
     localDataService._readDefaultGroupingMap = mock.Mock(return_value=mock.Mock(isDirty=False))
-
+    localDataService.generateInstrumentState = mock.MagicMock(return_value=testCalibrationData.instrumentState)
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         stateId = ENDURING_STATE_ID
         stateRootPath = Path(tmpDir) / stateId
@@ -2661,7 +2675,7 @@ def test_badPaths():
     service.verifyPaths = True  # override test setting
     with Config_override("instrument.home", "this/path/does/not/exist"):
         with pytest.raises(FileNotFoundError):
-            service._readInstrumentConfig()
+            service.readInstrumentConfig(12345)
     service.verifyPaths = False  # put the setting back
 
 
@@ -2670,9 +2684,10 @@ def test_noInstrumentConfig():
     # get a handle on the service
     service = LocalDataService()
     service.verifyPaths = True  # override test setting
-    with Config_override("instrument.config", "this/path/does/not/exist"):
-        with pytest.raises(FileNotFoundError):
-            service._readInstrumentConfig()
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+        with Config_override("instrument.parameters.home", str(tempdir)):
+            with pytest.raises(FileNotFoundError):
+                service.readInstrumentConfig(12345)
     service.verifyPaths = False  # put the setting back
 
 

@@ -71,7 +71,7 @@ class DAOFactory:
     ## INSTRUMENT CONFIG
 
     instrument_config_boilerplate = {
-        "version": "1.4",
+        "version": 0,
         "facility": "SNS",
         "name": "SNAP",
         "nexusFileExtension": ".nxs.h5",
