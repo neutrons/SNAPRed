@@ -34,6 +34,8 @@ instrument:
 
   # Swap the commented out fields when using ultralite data
   config: ${instrument.calibration.home}/SNAPInstPrm.json
+  parameters:
+    home: ${instrument.calibration.home}/SNAPInstPrm
   native:
     pixelResolution: 1179648
     # pixelResolution: 72

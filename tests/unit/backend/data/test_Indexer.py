@@ -16,13 +16,11 @@ from unittest import mock
 import pytest
 from util.dao import DAOFactory
 
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
-from snapred.backend.dao.normalization.Normalization import Normalization
+from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionedObject, VersionState
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.data.Indexer import DEFAULT_RECORD_TYPE, Indexer, IndexerType
 from snapred.meta.Config import Resource
@@ -850,7 +848,7 @@ class TestIndexer(unittest.TestCase):
         version = randint(1, 11)
         indexer = self.initIndexer()
         assert not self.recordPath(version).exists()
-        with pytest.raises(FileNotFoundError, match=r".*No record found at*"):
+        with pytest.raises(FileNotFoundError, match=r".*No Record found at*"):
             indexer.readRecord(version)
 
     def test_readRecord(self):
@@ -936,64 +934,47 @@ class TestIndexer(unittest.TestCase):
 
     ### TEST STATE PARAMETER READ / WRITE METHODS ###
 
-    def test_readParameters_nope(self):
-        indexer = self.initIndexer()
-        assert not indexer.parametersPath(1).exists()
-        with pytest.raises(FileNotFoundError):
-            indexer.readParameters(1)
-
-    def test_readWriteParameters(self):
-        version = randint(1, 10)
-        params = self.calculationParameters(version)
-
-        indexer = self.initIndexer()
-        indexer.writeParameters(params)
-        res = indexer.readParameters(version)
-        assert res.version == version
-        assert res == params
-
-    def test_readWriteParameters_warn_overwrite(self):
+    def test_readVersionedObject_none(self):
         version = randint(1, 100)
-
         indexer = self.initIndexer()
+        assert not self.parametersPath(version).exists()
+        with pytest.raises(FileNotFoundError, match=r".*No CalculationParameters found at*"):
+            indexer.readParameters(version)
 
-        # write some parameters at a version
-        params1 = self.calculationParameters(version)
-        indexer.writeParameters(params1)
-        assert indexer.parametersPath(version).exists()
+    def test_readWriteVersionedObject(self):
+        version = VersionState.NEXT
+        indexer = self.initIndexer()
+        versionedObj = VersionedObject(version=version)
+        indexer.writeNewVersionedObject(versionedObj, self.indexEntry(version))
+        assert indexer.versionedObjectPath(VersionedObject, 0).exists()
+        res = indexer.readVersionedObject(VersionedObject, 0)
+        assert res == versionedObj
+        assert res.version == 0
 
-        # now try to overwrite parameters at same version
-        # make sure a warning is logged
-        with self.assertLogs(logger=IndexerModule.logger, level=logging.WARNING) as cm:
-            params2 = self.calculationParameters(version)
-            indexer.writeParameters(params2)
-        assert f"Overwriting  parameters at {indexer.parametersPath(version)}" in cm.output[0]
+        with pytest.raises(ValueError, match=r".*already exists in index, please write a new version.*"):
+            indexer.writeNewVersionedObject(versionedObj, self.indexEntry(0))
 
-    # make sure the indexer can read/write specific state parameter types #
+    def test_readWriteVersionedObject_next_overwrite(self):
+        version = VersionState.NEXT
+        indexer = self.initIndexer()
+        versionedObj = VersionedObject(version=version)
+        indexer.writeNewVersionedObject(versionedObj, self.indexEntry(version))
+        assert indexer.versionedObjectPath(VersionedObject, 0).exists()
+        res = indexer.readVersionedObject(VersionedObject, 0)
+        assert res == versionedObj
+        assert res.version == 0
 
-    def test_readWriteParameters_calibration(self):
-        params = DAOFactory.calibrationParameters()
-        indexer = self.initIndexer(IndexerType.CALIBRATION)
-        indexer.writeParameters(params)
-        res = indexer.readParameters(params.version)
-        assert type(res) is Calibration
-        assert res == params
+        versionedObj = VersionedObject(version=version)
+        indexer.writeNewVersionedObject(versionedObj, self.indexEntry(version))
+        res = indexer.readVersionedObject(VersionedObject, 1)
+        assert res == versionedObj
+        assert res.version == 1
 
-    def test_readWriteParameters_normalization(self):
-        params = DAOFactory.normalizationParameters()
-        indexer = self.initIndexer(IndexerType.NORMALIZATION)
-        indexer.writeParameters(params)
-        res = indexer.readParameters(params.version)
-        assert type(res) is Normalization
-        assert res == params
-
-    def test_readWriteParameters_reduction(self):
-        params = CalculationParameters(**DAOFactory.calibrationParameters().model_dump())
-        indexer = self.initIndexer(IndexerType.REDUCTION)
-        indexer.writeParameters(params)
-        res = indexer.readParameters(params.version)
-        assert type(res) is CalculationParameters
-        assert res == params
+        # Overwrite the versioned object
+        versionedObj = VersionedObject(version=1)
+        indexer.writeVersionedObject(versionedObj)
+        latestVersion = indexer.latestApplicableVersion(9999)
+        assert latestVersion == 1
 
     def test__determineRecordType(self):
         indexer = self.initIndexer(IndexerType.CALIBRATION)

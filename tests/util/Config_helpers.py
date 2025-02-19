@@ -38,15 +38,17 @@ def Config_override(key: str, value: Any):
         return Node(val, ks[-1])
 
     # __enter__
-    _savedNode: Tuple[Dict[str, Any], str] = lookupNode(Config._config, key)
-    _savedValue: Any = _savedNode.dict[_savedNode.key]
-    _savedNode.dict[_savedNode.key] = value
-    yield Config
-
-    # __exit__
-    del _savedNode.dict[_savedNode.key]
-    if _savedValue is not None:
-        _savedNode.dict[_savedNode.key] = _savedValue
+    # test failing with exepction will pollute other tests with this config change if not caught up the stack
+    try:
+        _savedNode: Tuple[Dict[str, Any], str] = lookupNode(Config._config, key)
+        _savedValue: Any = _savedNode.dict[_savedNode.key]
+        _savedNode.dict[_savedNode.key] = value
+        yield Config
+    finally:
+        # __exit__
+        del _savedNode.dict[_savedNode.key]
+        if _savedValue is not None:
+            _savedNode.dict[_savedNode.key] = _savedValue
 
 
 @pytest.fixture

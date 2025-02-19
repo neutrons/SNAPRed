@@ -37,6 +37,8 @@ instrument:
     home: ${instrument.home}/{IPTS}/shared/SNAPRed
 
   config: ${instrument.calibration.home}/SNAPInstPrm.json
+  parameters:
+    home: ${instrument.calibration.home}/SNAPInstPrm
   native:
     pixelResolution: 1179648
     # "instrument.native.definition" is overridden in "test.yml":

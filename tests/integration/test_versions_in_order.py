@@ -92,6 +92,12 @@ class ImitationDataService(LocalDataService):
         if self._outputPath.exists():
             shutil.rmtree(self._outputPath)
 
+    def readInstrumentParameters(self, runNumber):  # noqa: ARG002
+        return DAOFactory.default_instrument_config
+
+    def readInstrumentConfig(self, runNumber):  # noqa: ARG002
+        return DAOFactory.default_instrument_config
+
     def readCifFilePath(self, sampleId: str):
         return Resource.getPath("inputs/crystalInfo/example.cif")
 

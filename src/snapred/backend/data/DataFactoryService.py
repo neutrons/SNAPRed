@@ -49,7 +49,7 @@ class DataFactoryService:
         return self.lookupService.readRunConfig(runId)
 
     def getInstrumentConfig(self, runId: str) -> InstrumentConfig:  # noqa: ARG002
-        return self.lookupService.getInstrumentConfig()
+        return self.lookupService.readInstrumentConfig(runId)
 
     def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:  # noqa: ARG002
         return self.lookupService.readStateConfig(runId, useLiteMode)

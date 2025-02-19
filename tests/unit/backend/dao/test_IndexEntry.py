@@ -35,6 +35,18 @@ def test_appliesTo():
         assert symbol in entry.appliesTo
 
 
+def test_appliesToMultiple():
+    """
+    Test that the appliesTo property is correctly parsed.
+    """
+    # Arrange
+    testDataSymbol = testData.copy()
+    testDataSymbol["appliesTo"] = ">=1234,<=4321"
+    entry = IndexEntry(**testDataSymbol)
+    assert "1234" in entry.appliesTo
+    assert "4321" in entry.appliesTo
+
+
 def test_appliesToFailsValidation():
     """
     Test that the appliesTo property fails validation when the input is incorrect.
@@ -42,6 +54,18 @@ def test_appliesToFailsValidation():
     # Arrange
     testDataSymbol = testData.copy()
     testDataSymbol["appliesTo"] = "1234a"
+
+    with pytest.raises(ValueError, match="appliesTo must be in the format of"):
+        IndexEntry(**testDataSymbol)
+
+
+def test_appliesToMultipleFailsValidation():
+    """
+    Test that the appliesTo property fails validation when the input is incorrect.
+    """
+    # Arrange
+    testDataSymbol = testData.copy()
+    testDataSymbol["appliesTo"] = ">=1234,<=4321,1234a"
 
     with pytest.raises(ValueError, match="appliesTo must be in the format of"):
         IndexEntry(**testDataSymbol)

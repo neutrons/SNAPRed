@@ -70,7 +70,7 @@ def mockPVFile(detectorState: DetectorState) -> mock.Mock:
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "generateStateId")
 @mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
-@mock.patch.object(LocalDataService, "getInstrumentConfig")
+@mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
 def test_state_root_override_enter(
     mockReadPVFile,
@@ -105,7 +105,7 @@ def test_state_root_override_enter(
 
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
-@mock.patch.object(LocalDataService, "getInstrumentConfig")
+@mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
 def test_state_root_override_exit(
     mockReadPVFile,
@@ -134,7 +134,7 @@ def test_state_root_override_exit(
 
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
-@mock.patch.object(LocalDataService, "getInstrumentConfig")
+@mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
 def test_state_root_override_exit_no_delete(
     mockReadPVFile,

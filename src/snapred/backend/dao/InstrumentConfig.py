@@ -1,12 +1,10 @@
-from pydantic import BaseModel
-
+from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.meta.Config import Config
 
 
-class InstrumentConfig(BaseModel):
+class InstrumentConfig(VersionedObject):
     """Class to hold the instrument parameters."""
 
-    version: str
     facility: str
     name: str
     nexusFileExtension: str
