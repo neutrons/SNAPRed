@@ -804,7 +804,7 @@ class GroceryService:
 
                 case (True, _, True, _):
                     # lite mode and lite-mode exists on disk
-                    data = self.grocer.executeRecipe(str(liteModeFilePath), workspaceName, loader, runNumber=runNumber)
+                    data = self.grocer.executeRecipe(str(liteModeFilePath), workspaceName, loader)
                     success = True
 
                 case (True, True, _, _):
@@ -819,17 +819,13 @@ class GroceryService:
 
                 case (True, _, _, True):
                     # lite mode and native exists on disk
-                    data = self.grocer.executeRecipe(
-                        str(nativeModeFilePath), workspaceName, loader, runNumber=runNumber
-                    )
+                    data = self.grocer.executeRecipe(str(nativeModeFilePath), workspaceName, loader)
                     convertToLiteMode = True
                     success = True
 
                 case (False, _, _, True):
                     # native mode and native exists on disk
-                    data = self.grocer.executeRecipe(
-                        str(nativeModeFilePath), workspaceName, loader, runNumber=runNumber
-                    )
+                    data = self.grocer.executeRecipe(str(nativeModeFilePath), workspaceName, loader)
                     success = True
 
                 case _:
@@ -855,7 +851,6 @@ class GroceryService:
                     workspace=workspaceName,
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(loaderArgs),
-                    runNumber=runNumber,
                 )
                 if data["result"]:
                     logs = self.mantidSnapper.mtd[workspaceName].getRun()
@@ -895,7 +890,7 @@ class GroceryService:
                 raise RuntimeError(
                     "Code Err: Run number is required for event nexus files so we can remove the prompt pulse"
                 )
-            config = self.dataService.readInstrumentConfig(runNumber)
+            config = instrumentState.instrumentConfig
             width = config.width
             frequency = config.frequency
             self.mantidSnapper.RemovePromptPulse(
@@ -957,9 +952,7 @@ class GroceryService:
 
                 case (True, _, True, _):
                     # lite mode and lite-mode exists on disk
-                    data = self.grocer.executeRecipe(
-                        str(liteModeFilePath), rawWorkspaceName, loader, runNumber=runNumber
-                    )
+                    data = self.grocer.executeRecipe(str(liteModeFilePath), rawWorkspaceName, loader)
                     self._loadedRuns[key] = 0
                     success = True
 
@@ -972,18 +965,14 @@ class GroceryService:
                 case (True, _, _, True):
                     # lite mode and native exists on disk
                     goingNative = self._key(runNumber, False)
-                    data = self.grocer.executeRecipe(
-                        str(nativeModeFilePath), nativeRawWorkspaceName, loader="", runNumber=runNumber
-                    )
+                    data = self.grocer.executeRecipe(str(nativeModeFilePath), nativeRawWorkspaceName, loader="")
                     self._loadedRuns[self._key(*goingNative)] = 0
                     convertToLiteMode = True
                     success = True
 
                 case (False, _, _, True):
                     # native mode and native exists on disk
-                    data = self.grocer.executeRecipe(
-                        str(nativeModeFilePath), nativeRawWorkspaceName, loader, runNumber=runNumber
-                    )
+                    data = self.grocer.executeRecipe(str(nativeModeFilePath), nativeRawWorkspaceName, loader)
                     self._loadedRuns[key] = 0
                     success = True
 
@@ -1011,7 +1000,6 @@ class GroceryService:
                     workspace=nativeRawWorkspaceName,
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(loaderArgs),
-                    runNumber=runNumber,
                 )
                 if data["result"]:
                     logs = self.mantidSnapper.mtd[nativeRawWorkspaceName].getRun()
@@ -1064,7 +1052,7 @@ class GroceryService:
                 raise RuntimeError(
                     "Code Err: Run number is required for event nexus files so we can remove the prompt pulse"
                 )
-            config = self.dataService.readInstrumentConfig(runNumber)
+            config = instrumentState.instrumentConfig
             width = config.width
             frequency = config.frequency
             self.mantidSnapper.RemovePromptPulse(
