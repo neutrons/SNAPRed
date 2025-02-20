@@ -92,6 +92,7 @@ class TestSousChef(unittest.TestCase):
     def test_prepCalibration(self):
         mockCalibration = mock.Mock()
         self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
+        self.instance.dataFactoryService.getDefaultInstrumentState = mock.Mock(return_value=mock.Mock())
         self.instance.prepCalibrantSample = mock.Mock()
         self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
 
@@ -107,6 +108,7 @@ class TestSousChef(unittest.TestCase):
     def test_prepCalibration_userFWHM(self):
         mockCalibration = mock.Mock()
         self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
+        self.instance.dataFactoryService.getDefaultInstrumentState = mock.Mock(return_value=mock.Mock())
         self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
         fakeLeft = 116
         fakeRight = 17

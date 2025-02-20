@@ -15,6 +15,8 @@ def extractTrueStacktrace() -> str:
         tb = traceback.extract_tb(exc_info[2])
         full_tb = stack[:-1] + tb
         exc_line = traceback.format_exception_only(*exc_info[:2])
+        # filter for lines in SNAPREd/tests or SNAPREd/src
+        full_tb = [line for line in full_tb if "SNAPRed/tests" in line.filename or "SNAPRed/src" in line.filename]
         stacktraceStr = "\n".join(["".join(traceback.format_list(full_tb)), "".join(exc_line)])
         return stacktraceStr
     return "no exception has occurred"

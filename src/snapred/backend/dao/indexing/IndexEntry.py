@@ -28,13 +28,19 @@ class IndexEntry(VersionedObject, extra="ignore"):
     author: Optional[str] = None
     timestamp: float = Field(default_factory=lambda: time.time())
 
-    def parseAppliesTo(appliesTo: str):
+    @classmethod
+    def parseConditional(cls, conditional: str):
         symbols = [">=", "<=", "<", ">"]
         # find first
-        symbol = next((s for s in symbols if s in appliesTo), "")
+        symbol = next((s for s in symbols if s in conditional), "")
         # parse runnumber
-        runNumber = appliesTo if symbol == "" else appliesTo.split(symbol)[-1]
+        runNumber = conditional if symbol == "" else conditional.split(symbol)[-1]
         return symbol, runNumber
+
+    @classmethod
+    def parseAppliesTo(cls, appliesTo: str):
+        conditionals = appliesTo.split(",")
+        return [cls.parseConditional(c.strip()) for c in conditionals]
 
     @field_validator("appliesTo", mode="before")
     def appliesToFormatChecker(cls, v):
@@ -44,16 +50,16 @@ class IndexEntry(VersionedObject, extra="ignore"):
         """
         testValue = v
         if testValue is not None:
-            symbol, _ = cls.parseAppliesTo(v)
-            if symbol != "":
-                testValue = testValue.split(symbol)[-1]
-            try:
-                int(testValue)
-            except ValueError:
-                raise ValueError(
-                    "appliesTo must be in the format of 'runNumber',"
-                    "or '{{symbol}}runNumber' where symbol is one of '>', '<', '>=', '<='.."
-                )
+            conditionals = cls.parseAppliesTo(v)
+            for _, runNumber in conditionals:
+                try:
+                    # if runnumber isnt just an int, there were extra unrecognized characters
+                    int(runNumber)
+                except ValueError:
+                    raise ValueError(
+                        "appliesTo must be in the format of 'runNumber',"
+                        "or '{{symbol}}runNumber, ...' where symbol is one of '>', '<', '>=', '<='.."
+                    )
 
         return v
 

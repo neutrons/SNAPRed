@@ -85,8 +85,8 @@ class SNAPRedGUI(QMainWindow):
         self.calibrationPanelButton.clicked.connect(self.openCalibrationPanel)
         splitter.addWidget(self.calibrationPanelButton)
 
-        workspaceWidget = WorkspaceWidget(self)
-        splitter.addWidget(workspaceWidget)
+        self.workspaceWidget = WorkspaceWidget(self)
+        splitter.addWidget(self.workspaceWidget)
 
         splitter.addWidget(AlgorithmProgressWidget())
 
