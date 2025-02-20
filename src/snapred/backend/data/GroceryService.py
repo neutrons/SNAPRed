@@ -886,10 +886,6 @@ class GroceryService:
                 XMin=instrumentState.particleBounds.tof.minimum,
                 XMax=instrumentState.particleBounds.tof.maximum,
             )
-            if runNumber is None:
-                raise RuntimeError(
-                    "Code Err: Run number is required for event nexus files so we can remove the prompt pulse"
-                )
             config = instrumentState.instrumentConfig
             width = config.width
             frequency = config.frequency
@@ -1048,10 +1044,6 @@ class GroceryService:
                 XMin=instrumentState.particleBounds.tof.minimum,
                 XMax=instrumentState.particleBounds.tof.maximum,
             )
-            if runNumber is None:
-                raise RuntimeError(
-                    "Code Err: Run number is required for event nexus files so we can remove the prompt pulse"
-                )
             config = instrumentState.instrumentConfig
             width = config.width
             frequency = config.frequency
