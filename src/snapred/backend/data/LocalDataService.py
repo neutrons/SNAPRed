@@ -229,7 +229,7 @@ class LocalDataService:
 
     def _readRunConfig(self, runId: str) -> RunConfig:
         # lookup path for IPTS number
-        iptsPath = self.getIPTS(runId)
+        iptsPath = self.getIPTS(runId)        
         instrumentConfig = self.readInstrumentConfig(runId)
         return RunConfig(
             IPTS=iptsPath,
@@ -241,22 +241,18 @@ class LocalDataService:
         )  # TODO: where to find case? "before" "after"
 
     def _constructPVFilePath(self, runId: str) -> Path:
-        runConfig = self._readRunConfig(runId)
-        instrumentConfig = self.readInstrumentConfig(runId)
-        return Path(
-            runConfig.IPTS,
-            instrumentConfig.nexusDirectory,
-            f"SNAP_{str(runConfig.runNumber)}{instrumentConfig.nexusFileExtension}",
-        )
+        return self.createNeutronFilePath(runId, False)
 
     def _readPVFile(self, runId: str):
-        fileName: Path = self._constructPVFilePath(runId)
+        try:
+            fileName: Path = self._constructPVFilePath(runId)
 
-        if fileName.exists():
-            h5 = h5py.File(fileName, "r")
-        else:
-            raise FileNotFoundError(f"PVFile '{fileName}' does not exist")
-        return h5
+            if fileName.exists():
+                return h5py.File(fileName, "r")
+        except RuntimeError as e:
+            if not "Cannot find IPTS directory" in str(e):
+                raise # the existing exception is sufficient
+        raise FileNotFoundError(f"No PVFile exists for run: '{runId}'")
 
     # NOTE `lru_cache` decorator needs to be on the outside
     @lru_cache
@@ -888,14 +884,15 @@ class LocalDataService:
         detectorState = None
         try:
             detectorState = self._detectorStateFromMapping(mappingFromNeXusLogs(self._readPVFile(runNumber)))
-        except FileNotFoundError:
-            if not self.hasLiveDataConnection():
+        except FileNotFoundError as e:
+        
+            if not "PVFile" in str(e) or not self.hasLiveDataConnection():
                 raise  # the existing exception is sufficient
             metadata = self.readLiveMetadata()
             if metadata.runNumber == runNumber:
                 detectorState = metadata.detectorState
             else:
-                raise RuntimeError(f"No PVFile exists for run {runNumber}, and it isn't a live run.")
+                raise RuntimeError(f"No PVFile exists for run {runNumber}, and it isn't the live run.")
         return detectorState
 
     def detectorStateFromWorkspace(self, wsName: WorkspaceName) -> DetectorState:
@@ -1265,21 +1262,24 @@ class LocalDataService:
         #   So this check should also return True on those nodes.
         # If this method returns True, then the `SNSLiveEventDataListener` should be able to function.
 
-        # Normalize to an actual "URL" and then strip off the protocol (not actually "http") and port:
-        #   `liveDataAddress` returns a string similar to "bl3-daq1.sns.gov:31415".
+        status = False
+        if Config["liveData.enabled"]:
+            # Normalize to an actual "URL" and then strip off the protocol (not actually "http") and port:
+            #   `liveDataAddress` returns a string similar to "bl3-daq1.sns.gov:31415".
 
-        facility, instrument = Config["liveData.facility.name"], Config["liveData.instrument.name"]
-        hostname = urlparse(
-            "http://" + ConfigService.getFacility(facility).instrument(instrument).liveDataAddress()
-        ).hostname
-        status = True
-        try:
-            socket.gethostbyaddr(hostname)
-        except Exception as e:  # noqa: BLE001
-            # specifically:
-            #   we're expecting a `socket.gaierror`, but any exception will indicate that there's no connection
-            logger.debug(f"`hasLiveDataConnection` returns `False`: exception: {e}")
-            status = False
+            facility, instrument = Config["liveData.facility.name"], Config["liveData.instrument.name"]
+            hostname = urlparse(
+                "http://" + ConfigService.getFacility(facility).instrument(instrument).liveDataAddress()
+            ).hostname
+            status = True
+            try:
+                socket.gethostbyaddr(hostname)
+            except Exception as e:  # noqa: BLE001
+                # specifically:
+                #   we're expecting a `socket.gaierror`, but any exception will indicate that there's no connection
+                logger.debug(f"`hasLiveDataConnection` returns `False`: exception: {e}")
+                status = False
+        
         return status
 
     def _liveMetadataFromRun(self, run: Run) -> LiveMetadata:

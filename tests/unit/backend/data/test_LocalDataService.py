@@ -506,6 +506,17 @@ def test_hasLiveDataConnection_no_connection(mockGetHostByAddr):
     assert not instance.hasLiveDataConnection()
 
 
+@mock.patch("socket.gethostbyaddr")
+def test_hasLiveDataConnection_config_disabled(mockGetHostByAddr):
+    # Live data should be enabled by default.
+    assert Config["liveData.enabled"]
+    with Config_override("liveData.enabled", False):
+        assert not Config["liveData.enabled"]
+        instance = LocalDataService()
+        assert not instance.hasLiveDataConnection()
+        mockGetHostByAddr.assert_not_called()
+
+
 def test_prepareStateRoot_creates_state_root_directory():
     # Test that the <state root> directory is created when it doesn't exist.
     localDataService = LocalDataService()
@@ -877,25 +888,68 @@ def test__readRunConfig():
 
 def test_constructPVFilePath():
     # ensure the file path points to inside the IPTS folder
+    runNumber = "12345"
     localDataService = LocalDataService()
     # mock the IPTS to point to somewhere then construct the path
-    mockIPTS = Resource.getPath("inputs/testInstrument/IPTS-456")
-    mockRunConfig = mock.Mock(IPTS=mockIPTS)
-    localDataService._readRunConfig = mock.Mock(return_value=mockRunConfig)
-    localDataService.readInstrumentConfig = mock.Mock(return_value=getMockInstrumentConfig())
-    path = localDataService._constructPVFilePath("123")
-    # the path should be /path/to/testInstrument/IPTS-456/nexus/SNAP_123.nxs.h5
-    assert mockIPTS == str(path.parents[1])
+    mockIPTS: str = Resource.getPath("inputs/testInstrument/IPTS-456/")
+    with mock.patch.object(localDataService, "getIPTS", mock.Mock(return_value=mockIPTS)):
+        path = localDataService._constructPVFilePath(runNumber)
+        # the path should be /path/to/testInstrument/IPTS-456/nexus/SNAP_<runNumber>.nxs.h5
+        assert Path(mockIPTS) == path.parents[1]
+        localDataService.getIPTS.assert_called_once_with(
+            runNumber
+        )
 
 
 @mock.patch("h5py.File", return_value="not None")
 def test_readPVFile(h5pyMock):  # noqa: ARG001
     localDataService = LocalDataService()
-    localDataService._instrumentConfig = getMockInstrumentConfig()
-    localDataService._constructPVFilePath = mock.Mock()
-    localDataService._constructPVFilePath.return_value = Path(Resource.getPath("./"))
+    localDataService._constructPVFilePath = mock.Mock(
+        return_value=mock.Mock(spec=Path)
+    )
     actual = localDataService._readPVFile(mock.Mock())
     assert actual is not None
+
+
+@mock.patch("h5py.File", return_value="not None")
+def test_readPVFile_does_not_exist(h5pyMock):  # noqa: ARG001
+    runNumber = "12345"
+    localDataService = LocalDataService()
+    localDataService._instrumentConfig = getMockInstrumentConfig()
+    
+    PVFilePath = "/the/PVFile.nxs.h5"
+    mockPath = mock.MagicMock(spec=Path)
+    mockPath.__str__.return_value = PVFilePath
+    mockPath.exists.return_value = False
+    localDataService._constructPVFilePath = mock.Mock(
+        return_value=mockPath
+    )
+    with pytest.raises(FileNotFoundError, match=f"No PVFile exists for run: '{runNumber}'"):
+        localDataService._readPVFile(runNumber)
+
+
+def test_readPVFile_no_IPTS():
+    # test that `_readPVFile` wraps the `RuntimeError` returned by `GetIPTS`.
+    runNumber = "12345"
+    localDataService = LocalDataService()
+    localDataService._instrumentConfig = getMockInstrumentConfig()
+    localDataService._constructPVFilePath = mock.Mock(
+        side_effect=RuntimeError("Cannot find IPTS directory")
+    )
+    with pytest.raises(FileNotFoundError, match=f"No PVFile exists for run: '{runNumber}'"): 
+        localDataService._readPVFile(runNumber)
+
+
+def test_readPVFile_exception_passthrough():
+    # test that `_readPVFile` does not wrap unrelated exceptions.
+    runNumber = "12345"
+    localDataService = LocalDataService()
+    localDataService._instrumentConfig = getMockInstrumentConfig()
+    localDataService._constructPVFilePath = mock.Mock(
+        side_effect=RuntimeError("lah dee dah")
+    )
+    with pytest.raises(RuntimeError, match="lah dee dah"): 
+        localDataService._readPVFile(runNumber)
 
 
 def test_generateStateId():
@@ -2259,12 +2313,16 @@ def test_readDetectorState(monkeypatch):
 
 
 def test_readDetectorState_no_PVFile():
+    # test live-data fallback, with run number mismatch
     runNumber = "123"
     instance = LocalDataService()
-    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("..."))
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists for run"))
     instance.readLiveMetadata = mock.Mock(return_value=mock.MagicMock(runNumber=-1))
     instance.hasLiveDataConnection = mock.Mock(return_value=True)
-    with pytest.raises(RuntimeError, match="No PVFile exists for run"):
+    with pytest.raises(
+        RuntimeError,
+        match=f"No PVFile exists for run {runNumber}, and it isn't the live run."
+    ):
         instance.readDetectorState(runNumber)
 
 
@@ -2283,7 +2341,7 @@ def test_readDetectorState_live_run():
     mockLiveMetadata = mock.Mock(spec=LiveMetadata, runNumber=runNumber, detectorState=expected, protonCharge=1000.0)
 
     instance = LocalDataService()
-    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("lah dee dah"))
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists for run"))
     instance.hasLiveDataConnection = mock.Mock(return_value=True)
     instance.readLiveMetadata = mock.Mock(return_value=mockLiveMetadata)
 
@@ -2304,11 +2362,11 @@ def test_readDetectorState_live_run_mismatch():
     )
 
     instance = LocalDataService()
-    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("lah dee dah"))
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists for run"))
     instance.hasLiveDataConnection = mock.Mock(return_value=True)
     instance.readLiveMetadata = mock.Mock(return_value=mockLiveMetadata)
 
-    with pytest.raises(RuntimeError, match=f"No PVFile exists for run {runNumber0}, and it isn't a live run."):
+    with pytest.raises(RuntimeError, match=f"No PVFile exists for run {runNumber0}, and it isn't the live run."):
         instance.readDetectorState(runNumber0)
 
 
@@ -2613,7 +2671,7 @@ def test_initializeState():
         runNumber=runNumber,
         useLiteMode=useLiteMode,
         version=VERSION_START,
-        instrumentState=DAOFactory.pv_instrument_state.copy(),
+        instrumentState=DAOFactory.pv_instrument_state.model_copy(),
     )
 
     localDataService._instrumentConfig = testCalibrationData.instrumentState.instrumentConfig
