@@ -28,6 +28,17 @@ class RebinFocussedGroupDataRecipe(Recipe[Ingredients]):
         Chops off the needed elements of the ingredients.
         We are mostly concerned about the drange for a ResampleX operation.
         """
+        lowdSpacingCrop = Config["constants.CropFactors.lowdSpacingCrop"]
+        highdSpacingCrop = Config["constants.CropFactors.highdSpacingCrop"]
+
+        if lowdSpacingCrop < 0:
+            raise ValueError("Low d-spacing crop factor must be positive")
+        if highdSpacingCrop < 0:
+            raise ValueError("High d-spacing crop factor must be positive")
+
+        if (lowdSpacingCrop > 100) or (highdSpacingCrop > 100):
+            raise ValueError("d-spacing crop factors are too large")
+
         self.pixelGroup = ingredients.pixelGroup
         dMin = self.pixelGroup.dMin()
         dMax = self.pixelGroup.dMax()
