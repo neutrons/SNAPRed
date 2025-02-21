@@ -84,6 +84,7 @@ class MantidSnapper:
         self._export = False
         self.timeout = 60  # seconds
         self.checkInterval = 0.05  # 50 ms
+        self.workspaceDict = {}
         if self._export:
             self._cleanOldExport()
 
@@ -196,6 +197,7 @@ class MantidSnapper:
                 if isinstance(algorithm.getProperty(prop), PointerProperty):
                     returnVal = access_pointer(returnVal)
                 val.update(returnVal)
+                self._addWorkspaceToDict(prop, val, name)
         except (RuntimeError, TypeError) as e:
             logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
             self.cleanup()
@@ -254,3 +256,18 @@ class MantidSnapper:
             self._prog_reporter.report(self._endrange, "Done")
         self._progressCounter = 0
         self._algorithmQueue = []
+
+    def _addWorkspaceToDict(self, prop, val, name):
+        if prop == "OutputWorkspace":
+            if self.mtd.doesExist(val):
+                self.workspaceDict[val] = (self.mtd[val], name)
+            elif val in self.workspaceDict:
+                del self.workspaceDict[val]
+
+    def getWorkspace(self, workspace: str):
+        if self.mtd.doesExist(workspace):
+            return self.workspaceDict[workspace]
+        elif workspace in self.workspaceDict:
+            del self.workspaceDict[workspace]
+        else:
+            raise ValueError(f"Workspace name {workspace} does not exist in MantidSnapper")
