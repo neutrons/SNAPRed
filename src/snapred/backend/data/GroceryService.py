@@ -877,26 +877,7 @@ class GroceryService:
             # fetch single-use does not export converted to lite data
             self.convertToLiteMode(workspaceName, export=False)
             data["workspace"] = workspaceName
-            print(f"Cropping {workspaceName}")
-            instrumentState = self.dataService.generateInstrumentState(runNumber)
-            self.mantidSnapper.CropWorkspace(
-                "Cropping workspace",
-                InputWorkspace=workspaceName,
-                OutputWorkspace=workspaceName,
-                XMin=instrumentState.particleBounds.tof.minimum,
-                XMax=instrumentState.particleBounds.tof.maximum,
-            )
-            config = instrumentState.instrumentConfig
-            width = config.width
-            frequency = config.frequency
-            self.mantidSnapper.RemovePromptPulse(
-                "Removing prompt pulse",
-                InputWorkspace=workspaceName,
-                OutputWorkspace=workspaceName,
-                Width=width,
-                Frequency=frequency,
-            )
-            self.mantidSnapper.executeQueue()
+            self._processNeutronDataCopy(runNumber, workspaceName)
 
         return data
 
@@ -1035,26 +1016,7 @@ class GroceryService:
             # create a copy of the raw data for use
             workspaceName = self._createCopyNeutronWorkspaceName(runNumber, useLiteMode, self._loadedRuns[key] + 1)
             wsClone = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
-            print(f"Cropping {workspaceName}")
-            instrumentState = self.dataService.generateInstrumentState(runNumber)
-            self.mantidSnapper.CropWorkspace(
-                "Cropping workspace",
-                InputWorkspace=workspaceName,
-                OutputWorkspace=workspaceName,
-                XMin=instrumentState.particleBounds.tof.minimum,
-                XMax=instrumentState.particleBounds.tof.maximum,
-            )
-            config = instrumentState.instrumentConfig
-            width = config.width
-            frequency = config.frequency
-            self.mantidSnapper.RemovePromptPulse(
-                "Removing prompt pulse",
-                InputWorkspace=workspaceName,
-                OutputWorkspace=workspaceName,
-                Width=width,
-                Frequency=frequency,
-            )
-            self.mantidSnapper.executeQueue()
+            self._processNeutronDataCopy(runNumber, workspaceName)
             data["result"] = wsClone
             data["workspace"] = workspaceName
             self._loadedRuns[key] += 1
@@ -1534,3 +1496,24 @@ class GroceryService:
         if excludeCache:
             workspaces = workspaces.difference(self.getCachedWorkspaces())
         return list(workspaces)
+
+    def _processNeutronDataCopy(self, runNumber, workspaceName):
+        instrumentState = self.dataService.generateInstrumentState(runNumber)
+        self.mantidSnapper.CropWorkspace(
+            "Cropping workspace",
+            InputWorkspace=workspaceName,
+            OutputWorkspace=workspaceName,
+            XMin=instrumentState.particleBounds.tof.minimum,
+            XMax=instrumentState.particleBounds.tof.maximum,
+        )
+        config = instrumentState.instrumentConfig
+        width = config.width
+        frequency = config.frequency
+        self.mantidSnapper.RemovePromptPulse(
+            "Removing prompt pulse",
+            InputWorkspace=workspaceName,
+            OutputWorkspace=workspaceName,
+            Width=width,
+            Frequency=frequency,
+        )
+        self.mantidSnapper.executeQueue()
