@@ -266,6 +266,16 @@ class MantidSnapper:
                 del self.workspaceDict[val]
 
     def getWorkspaceInfo(self, workspace: str) -> Dict[str, str]:
+        """
+        Grab info about a workspace that exists in MantidSnapper.
+        If the workspace no longer exists in mtd, delete the workspace from the dictionary.
+        Raise an error if the workspace does not exist in mtd and MantidSnapper
+
+        :param workspace: the name of the workspace of the desired info
+        :type workspace: str
+        :return: dictionary containing the workspace name and which algo created it
+        :rtype: Dict[str, str]
+        """
         if self.mtd.doesExist(workspace):
             return self.workspaceDict[workspace]
         elif workspace in self.workspaceDict:
