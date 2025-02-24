@@ -202,14 +202,7 @@ class GroceryService:
         return str(ipts)
 
     def _createNeutronFilePath(self, runNumber: str, useLiteMode: bool) -> Path:
-        # TODO: fully normalize this to pathlib.Path:
-        #   -- problems (among others): `GetIPTS` returns with an '/' at the end?
-
-        IPTS = self.getIPTS(runNumber)
-        instr = "nexus.lite" if useLiteMode else "nexus.native"
-        pre = instr + ".prefix"
-        ext = instr + ".extension"
-        return Path(IPTS + Config[pre] + str(runNumber) + Config[ext])
+        return self.dataService.createNeutronFilePath(runNumber, useLiteMode)
 
     @validate_call
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:

@@ -292,18 +292,10 @@ class TestGroceryService(unittest.TestCase):
 
     def test_nexus_filename(self):
         """Test the creation of the nexus filename"""
-        res = str(self.instance._createNeutronFilePath(self.runNumber, False))
-        assert self.instance.dataService.getIPTS(self.runNumber) in res
-        assert Config["nexus.native.prefix"] in res
-        assert self.runNumber in res
-        assert "lite" not in res.lower()
-
-        # now use lite mode
-        res = str(self.instance._createNeutronFilePath(self.runNumber, True))
-        assert self.instance.dataService.getIPTS(self.runNumber) in res
-        assert Config["nexus.lite.prefix"] in res
-        assert self.runNumber in res
-        assert "lite" in res.lower()
+        for useLiteMode in (False, True):
+            self.instance._createNeutronFilePath(self.runNumber, useLiteMode)
+            self.instance.dataService.createNeutronFilePath.assert_called_once_with(self.runNumber, useLiteMode)
+            self.instance.dataService.createNeutronFilePath.reset_mock()
 
     def test_grouping_filename(self):
         """Test the creation of the grouping filename"""
