@@ -1,6 +1,7 @@
 import time
 from collections import namedtuple
 from threading import Lock
+from typing import Dict
 
 from mantid.api import AlgorithmManager, Progress, mtd
 from mantid.kernel import Direction
@@ -46,6 +47,7 @@ class MantidSnapper:
 
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}
     _mtd = _CustomMtd()
+    workspaceDict: Dict[str, Dict[str, str]] = {}
 
     def __init__(self, parentAlgorithm, name):
         """
@@ -84,7 +86,6 @@ class MantidSnapper:
         self._export = False
         self.timeout = 60  # seconds
         self.checkInterval = 0.05  # 50 ms
-        self.workspaceDict = {}
         if self._export:
             self._cleanOldExport()
 
@@ -197,7 +198,7 @@ class MantidSnapper:
                 if isinstance(algorithm.getProperty(prop), PointerProperty):
                     returnVal = access_pointer(returnVal)
                 val.update(returnVal)
-                self._addWorkspaceToDict(prop, val, name)
+                self._addWorkspaceToDict(prop, returnVal, name)
         except (RuntimeError, TypeError) as e:
             logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
             self.cleanup()
@@ -260,11 +261,11 @@ class MantidSnapper:
     def _addWorkspaceToDict(self, prop, val, name):
         if prop == "OutputWorkspace":
             if self.mtd.doesExist(val):
-                self.workspaceDict[val] = (self.mtd[val], name)
+                self.workspaceDict[val] = {"name": val, "algorithm": name}
             elif val in self.workspaceDict:
                 del self.workspaceDict[val]
 
-    def getWorkspace(self, workspace: str):
+    def getWorkspaceInfo(self, workspace: str) -> Dict[str, str]:
         if self.mtd.doesExist(workspace):
             return self.workspaceDict[workspace]
         elif workspace in self.workspaceDict:
