@@ -229,7 +229,7 @@ class LocalDataService:
 
     def _readRunConfig(self, runId: str) -> RunConfig:
         # lookup path for IPTS number
-        iptsPath = self.getIPTS(runId)        
+        iptsPath = self.getIPTS(runId)
         instrumentConfig = self.readInstrumentConfig(runId)
         return RunConfig(
             IPTS=iptsPath,
@@ -250,8 +250,8 @@ class LocalDataService:
             if fileName.exists():
                 return h5py.File(fileName, "r")
         except RuntimeError as e:
-            if not "Cannot find IPTS directory" in str(e):
-                raise # the existing exception is sufficient
+            if "Cannot find IPTS directory" not in str(e):
+                raise  # the existing exception is sufficient
         raise FileNotFoundError(f"No PVFile exists for run: '{runId}'")
 
     # NOTE `lru_cache` decorator needs to be on the outside
@@ -885,8 +885,7 @@ class LocalDataService:
         try:
             detectorState = self._detectorStateFromMapping(mappingFromNeXusLogs(self._readPVFile(runNumber)))
         except FileNotFoundError as e:
-        
-            if not "PVFile" in str(e) or not self.hasLiveDataConnection():
+            if "PVFile" not in str(e) or not self.hasLiveDataConnection():
                 raise  # the existing exception is sufficient
             metadata = self.readLiveMetadata()
             if metadata.runNumber == runNumber:
@@ -1279,7 +1278,7 @@ class LocalDataService:
                 #   we're expecting a `socket.gaierror`, but any exception will indicate that there's no connection
                 logger.debug(f"`hasLiveDataConnection` returns `False`: exception: {e}")
                 status = False
-        
+
         return status
 
     def _liveMetadataFromRun(self, run: Run) -> LiveMetadata:

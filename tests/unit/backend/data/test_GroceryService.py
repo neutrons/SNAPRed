@@ -294,10 +294,7 @@ class TestGroceryService(unittest.TestCase):
         """Test the creation of the nexus filename"""
         for useLiteMode in (False, True):
             self.instance._createNeutronFilePath(self.runNumber, useLiteMode)
-            self.instance.dataService.createNeutronFilePath.assert_called_once_with(
-                self.runNumber,
-                useLiteMode
-            )
+            self.instance.dataService.createNeutronFilePath.assert_called_once_with(self.runNumber, useLiteMode)
             self.instance.dataService.createNeutronFilePath.reset_mock()
 
     def test_grouping_filename(self):

@@ -896,17 +896,13 @@ def test_constructPVFilePath():
         path = localDataService._constructPVFilePath(runNumber)
         # the path should be /path/to/testInstrument/IPTS-456/nexus/SNAP_<runNumber>.nxs.h5
         assert Path(mockIPTS) == path.parents[1]
-        localDataService.getIPTS.assert_called_once_with(
-            runNumber
-        )
+        localDataService.getIPTS.assert_called_once_with(runNumber)
 
 
 @mock.patch("h5py.File", return_value="not None")
 def test_readPVFile(h5pyMock):  # noqa: ARG001
     localDataService = LocalDataService()
-    localDataService._constructPVFilePath = mock.Mock(
-        return_value=mock.Mock(spec=Path)
-    )
+    localDataService._constructPVFilePath = mock.Mock(return_value=mock.Mock(spec=Path))
     actual = localDataService._readPVFile(mock.Mock())
     assert actual is not None
 
@@ -916,14 +912,12 @@ def test_readPVFile_does_not_exist(h5pyMock):  # noqa: ARG001
     runNumber = "12345"
     localDataService = LocalDataService()
     localDataService._instrumentConfig = getMockInstrumentConfig()
-    
+
     PVFilePath = "/the/PVFile.nxs.h5"
     mockPath = mock.MagicMock(spec=Path)
     mockPath.__str__.return_value = PVFilePath
     mockPath.exists.return_value = False
-    localDataService._constructPVFilePath = mock.Mock(
-        return_value=mockPath
-    )
+    localDataService._constructPVFilePath = mock.Mock(return_value=mockPath)
     with pytest.raises(FileNotFoundError, match=f"No PVFile exists for run: '{runNumber}'"):
         localDataService._readPVFile(runNumber)
 
@@ -933,10 +927,8 @@ def test_readPVFile_no_IPTS():
     runNumber = "12345"
     localDataService = LocalDataService()
     localDataService._instrumentConfig = getMockInstrumentConfig()
-    localDataService._constructPVFilePath = mock.Mock(
-        side_effect=RuntimeError("Cannot find IPTS directory")
-    )
-    with pytest.raises(FileNotFoundError, match=f"No PVFile exists for run: '{runNumber}'"): 
+    localDataService._constructPVFilePath = mock.Mock(side_effect=RuntimeError("Cannot find IPTS directory"))
+    with pytest.raises(FileNotFoundError, match=f"No PVFile exists for run: '{runNumber}'"):
         localDataService._readPVFile(runNumber)
 
 
@@ -945,10 +937,8 @@ def test_readPVFile_exception_passthrough():
     runNumber = "12345"
     localDataService = LocalDataService()
     localDataService._instrumentConfig = getMockInstrumentConfig()
-    localDataService._constructPVFilePath = mock.Mock(
-        side_effect=RuntimeError("lah dee dah")
-    )
-    with pytest.raises(RuntimeError, match="lah dee dah"): 
+    localDataService._constructPVFilePath = mock.Mock(side_effect=RuntimeError("lah dee dah"))
+    with pytest.raises(RuntimeError, match="lah dee dah"):
         localDataService._readPVFile(runNumber)
 
 
@@ -2319,10 +2309,7 @@ def test_readDetectorState_no_PVFile():
     instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists for run"))
     instance.readLiveMetadata = mock.Mock(return_value=mock.MagicMock(runNumber=-1))
     instance.hasLiveDataConnection = mock.Mock(return_value=True)
-    with pytest.raises(
-        RuntimeError,
-        match=f"No PVFile exists for run {runNumber}, and it isn't the live run."
-    ):
+    with pytest.raises(RuntimeError, match=f"No PVFile exists for run {runNumber}, and it isn't the live run."):
         instance.readDetectorState(runNumber)
 
 
