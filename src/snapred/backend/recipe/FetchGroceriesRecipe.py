@@ -1,6 +1,5 @@
 from typing import Any, Dict
 
-from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm
 from snapred.backend.recipe.algorithm.Utensils import Utensils
@@ -16,7 +15,6 @@ class FetchGroceriesRecipe:
         utensils = Utensils()
         utensils.PyInit()
         self.mantidSnapper = utensils.mantidSnapper
-        self.dataService = LocalDataService()
 
     def executeRecipe(
         self,
@@ -27,7 +25,6 @@ class FetchGroceriesRecipe:
         instrumentSource="",
         *,
         loaderArgs: str = "",
-        runNumber: int = None,
     ) -> Dict[str, Any]:
         """
         Wraps the fetch groceries algorithm
@@ -65,24 +62,6 @@ class FetchGroceriesRecipe:
             data["result"] = algo.execute()
             data["loader"] = algo.getPropertyValue("LoaderType")
             data["workspace"] = workspace
-
-            if data["loader"] in ("LoadEventNexus", "LoadLiveData"):
-                self.dataService = LocalDataService()
-                if runNumber is None:
-                    raise RuntimeError(
-                        "Code Err: Run number is required for event nexus files so we can remove the prompt pulse"
-                    )
-                config = self.dataService.readInstrumentConfig(runNumber)
-                width = config.width
-                frequency = config.frequency
-                self.mantidSnapper.RemovePromptPulse(
-                    "Removing prompt pulse",
-                    InputWorkspace=workspace,
-                    OutputWorkspace=workspace,
-                    Width=width,
-                    Frequency=frequency,
-                )
-                self.mantidSnapper.executeQueue()
         except RuntimeError as e:
             raise RuntimeError(str(e).split("\n")[0]) from e
 
