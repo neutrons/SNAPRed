@@ -28,24 +28,28 @@ class RebinFocussedGroupDataRecipe(Recipe[Ingredients]):
         Chops off the needed elements of the ingredients.
         We are mostly concerned about the drange for a ResampleX operation.
         """
-        self.pixelGroup = ingredients.pixelGroup
-        # The adjustment below is a temp fix, will be permanently fixed in EWM 6262
         lowdSpacingCrop = Config["constants.CropFactors.lowdSpacingCrop"]
+        highdSpacingCrop = Config["constants.CropFactors.highdSpacingCrop"]
+
         if lowdSpacingCrop < 0:
             raise ValueError("Low d-spacing crop factor must be positive")
-
-        highdSpacingCrop = Config["constants.CropFactors.highdSpacingCrop"]
         if highdSpacingCrop < 0:
             raise ValueError("High d-spacing crop factor must be positive")
 
-        dMin = [x + lowdSpacingCrop for x in self.pixelGroup.dMin()]
-        dMax = [x - highdSpacingCrop for x in self.pixelGroup.dMax()]
+        if (lowdSpacingCrop > 100) or (highdSpacingCrop > 100):
+            raise ValueError("d-spacing crop factors are too large")
 
-        if not dMax > dMin:
-            raise ValueError("d-spacing crop factors are too large -- resultant dMax must be > resultant dMin")
+        self.pixelGroup = ingredients.pixelGroup
+        dMin = self.pixelGroup.dMin()
+        dMax = self.pixelGroup.dMax()
+        dBin = self.pixelGroup.dBin()
+
+        if not all(_dMax > _dMin for _dMin, _dMax in zip(dMin, dMax)):
+            raise ValueError("Invalid d-spacing range detected: some dMax <= dMin.")
+
         self.dMin = dMin
         self.dMax = dMax
-        self.dBin = self.pixelGroup.dBin()
+        self.dBin = dBin
 
         self.preserveEvents = ingredients.preserveEvents
 
