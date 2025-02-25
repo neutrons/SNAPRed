@@ -199,7 +199,8 @@ class MantidSnapper:
                     returnVal = access_pointer(returnVal)
                 val.update(returnVal)
                 if "Workspace" in str(algorithm.getProperty(prop)):
-                    MantidSnapper._addWorkspaceInfo(returnVal, name)
+                    if returnVal != "":
+                        MantidSnapper._addWorkspaceInfo(returnVal, name)
         except (RuntimeError, TypeError) as e:
             logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
             self.cleanup()
