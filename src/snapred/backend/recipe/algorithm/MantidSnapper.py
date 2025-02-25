@@ -47,7 +47,7 @@ class MantidSnapper:
 
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}
     _mtd = _CustomMtd()
-    workspaceDict: Dict[str, Dict[str, str]] = {}
+    _workspaceInfo: Dict[str, Dict[str, str]] = {}
 
     def __init__(self, parentAlgorithm, name):
         """
@@ -198,7 +198,8 @@ class MantidSnapper:
                 if isinstance(algorithm.getProperty(prop), PointerProperty):
                     returnVal = access_pointer(returnVal)
                 val.update(returnVal)
-                self._addWorkspaceToDict(prop, returnVal, name)
+                if "Workspace" in str(algorithm.getProperty(prop)):
+                    MantidSnapper._addWorkspaceInfo(returnVal, name)
         except (RuntimeError, TypeError) as e:
             logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
             self.cleanup()
@@ -258,27 +259,16 @@ class MantidSnapper:
         self._progressCounter = 0
         self._algorithmQueue = []
 
-    def _addWorkspaceToDict(self, prop, val, name):
-        if prop == "OutputWorkspace":
-            if self.mtd.doesExist(val):
-                self.workspaceDict[val] = {"name": val, "algorithm": name}
-            elif val in self.workspaceDict:
-                del self.workspaceDict[val]
+    @classmethod
+    def _addWorkspaceInfo(cls, val, name):
+        cls._workspaceInfo[val] = {"name": val, "algorithm": name}
 
-    def getWorkspaceInfo(self, workspace: str) -> Dict[str, str]:
+    @classmethod
+    def getWorkspaceInfo(cls) -> Dict[str, Dict[str, str]]:
         """
-        Grab info about a workspace that exists in MantidSnapper.
-        If the workspace no longer exists in mtd, delete the workspace from the dictionary.
-        Raise an error if the workspace does not exist in mtd and MantidSnapper
+        Grab dictionary of workspaces created by MantidSnapper
 
-        :param workspace: the name of the workspace of the desired info
-        :type workspace: str
-        :return: dictionary containing the workspace name and which algo created it
-        :rtype: Dict[str, str]
+        :return: dict of workspace names containing dicts of the workspace name and which algo created it
+        :rtype: Dict[str, Dict[str, str]]
         """
-        if self.mtd.doesExist(workspace):
-            return self.workspaceDict[workspace]
-        elif workspace in self.workspaceDict:
-            del self.workspaceDict[workspace]
-        else:
-            raise ValueError(f"Workspace name {workspace} does not exist in MantidSnapper")
+        return cls._workspaceInfo
