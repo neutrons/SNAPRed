@@ -3,7 +3,7 @@ from collections import namedtuple
 from threading import Lock
 from typing import Dict
 
-from mantid.api import AlgorithmManager, Progress, mtd
+from mantid.api import AlgorithmManager, IWorkspaceProperty, Progress, mtd
 from mantid.kernel import Direction
 from mantid.kernel import ULongLongPropertyWithValue as PointerProperty
 
@@ -198,9 +198,11 @@ class MantidSnapper:
                 if isinstance(algorithm.getProperty(prop), PointerProperty):
                     returnVal = access_pointer(returnVal)
                 val.update(returnVal)
-                if "Workspace" in str(algorithm.getProperty(prop)):
-                    if returnVal != "":
-                        MantidSnapper._addWorkspaceInfo(returnVal, name)
+                if (
+                    isinstance(algorithm.getProperty(prop), IWorkspaceProperty)
+                    and not algorithm.getProperty(prop).isDefault
+                ):
+                    MantidSnapper._addWorkspaceInfo(returnVal, name)
         except (RuntimeError, TypeError) as e:
             logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
             self.cleanup()
