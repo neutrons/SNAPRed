@@ -292,18 +292,10 @@ class TestGroceryService(unittest.TestCase):
 
     def test_nexus_filename(self):
         """Test the creation of the nexus filename"""
-        res = str(self.instance._createNeutronFilePath(self.runNumber, False))
-        assert self.instance.dataService.getIPTS(self.runNumber) in res
-        assert Config["nexus.native.prefix"] in res
-        assert self.runNumber in res
-        assert "lite" not in res.lower()
-
-        # now use lite mode
-        res = str(self.instance._createNeutronFilePath(self.runNumber, True))
-        assert self.instance.dataService.getIPTS(self.runNumber) in res
-        assert Config["nexus.lite.prefix"] in res
-        assert self.runNumber in res
-        assert "lite" in res.lower()
+        for useLiteMode in (False, True):
+            self.instance._createNeutronFilePath(self.runNumber, useLiteMode)
+            self.instance.dataService.createNeutronFilePath.assert_called_once_with(self.runNumber, useLiteMode)
+            self.instance.dataService.createNeutronFilePath.reset_mock()
 
     def test_grouping_filename(self):
         """Test the creation of the grouping filename"""
@@ -861,6 +853,11 @@ class TestGroceryService(unittest.TestCase):
         """Test the correct behavior when fetching raw nexus data"""
 
         self.instance.convertToLiteMode = mock.Mock()
+        self.instance.mantidSnapper = mock.MagicMock()
+        testCalibrationData = DAOFactory.calibrationParameters()
+        self.instance.dataService.generateInstrumentState = mock.MagicMock(
+            return_value=testCalibrationData.instrumentState
+        )
 
         # mock out _createNeutronFilePath so that only a native version exists on disk
         nonExistentPath = Path("does/not/exist.nxs")
@@ -940,6 +937,11 @@ class TestGroceryService(unittest.TestCase):
         """Test the correct behavior when fetching nexus data"""
         self.instance._createNeutronFilePath = mock.Mock()
         self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
+        self.instance.mantidSnapper = mock.MagicMock()
+        testCalibrationData = DAOFactory.calibrationParameters()
+        self.instance.dataService.generateInstrumentState = mock.MagicMock(
+            return_value=testCalibrationData.instrumentState
+        )
 
         testItem = mock.Mock(
             spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=False, loader="", liveDataArgs=None
@@ -1009,6 +1011,11 @@ class TestGroceryService(unittest.TestCase):
         self.instance.convertToLiteMode = mock.Mock()
         self.instance._createNeutronFilePath = mock.Mock()
         self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
+        self.instance.mantidSnapper = mock.MagicMock()
+        testCalibrationData = DAOFactory.calibrationParameters()
+        self.instance.dataService.generateInstrumentState = mock.MagicMock(
+            return_value=testCalibrationData.instrumentState
+        )
 
         testItem = mock.Mock(
             spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=True, loader="", liveDataArgs=None
@@ -1104,6 +1111,11 @@ class TestGroceryService(unittest.TestCase):
             nativeModeFilePath = mock.MagicMock(spec=Path)
             nativeModeFilePath.__str__.return_value = "nativeModeFilePath"
 
+            testCalibrationData = DAOFactory.calibrationParameters()
+            instance.dataService.generateInstrumentState = mock.MagicMock(
+                return_value=testCalibrationData.instrumentState
+            )
+
             # In order to avoid contaminating other tests, all mocks must be applied
             #   as context managers.
             with (
@@ -1116,6 +1128,7 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
                 mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch.object(instance, "mantidSnapper") as mockSnapper,  # noqa F841
             ):
                 # Mocks for flow-control branching:
                 mockHasLiveDataConnection.return_value = False
@@ -1177,7 +1190,7 @@ class TestGroceryService(unittest.TestCase):
                         # lite mode and lite-mode exists on disk
                         assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                         mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                            str(liteModeFilePath), workspaceName, item.loader, runNumber=runNumber
+                            str(liteModeFilePath), workspaceName, item.loader
                         )
                         mockConvertToLiteMode.assert_not_called()
 
@@ -1193,7 +1206,7 @@ class TestGroceryService(unittest.TestCase):
                         # lite mode and native exists on disk
                         assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                         mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                            str(nativeModeFilePath), workspaceName, item.loader, runNumber=runNumber
+                            str(nativeModeFilePath), workspaceName, item.loader
                         )
                         mockConvertToLiteMode.assert_called_once_with(workspaceName, export=False)
 
@@ -1201,7 +1214,7 @@ class TestGroceryService(unittest.TestCase):
                         # native mode and native exists on disk
                         assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                         mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                            str(nativeModeFilePath), workspaceName, item.loader, runNumber=runNumber
+                            str(nativeModeFilePath), workspaceName, item.loader
                         )
                         mockConvertToLiteMode.assert_not_called()
 
@@ -1244,6 +1257,11 @@ class TestGroceryService(unittest.TestCase):
                 "PreserveEvents": True,
                 "StartTime": expectedStartTime.isoformat(),
             }
+
+            testCalibrationData = DAOFactory.calibrationParameters()
+            instance.dataService.generateInstrumentState = mock.MagicMock(
+                return_value=testCalibrationData.instrumentState
+            )
 
             # In order to avoid contaminating other tests, all mocks must be applied
             #   as context managers.
@@ -1335,7 +1353,6 @@ class TestGroceryService(unittest.TestCase):
                     workspace=workspaceName,
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(expectedLoaderArgs),
-                    runNumber=runNumber,
                 )
                 if useLiteMode:
                     mockConvertToLiteMode.assert_called_once_with(workspaceName, export=False)
@@ -1368,6 +1385,11 @@ class TestGroceryService(unittest.TestCase):
                 "PreserveEvents": True,
                 "StartTime": expectedStartTime.isoformat(),
             }
+
+            testCalibrationData = DAOFactory.calibrationParameters()
+            instance.dataService.generateInstrumentState = mock.MagicMock(
+                return_value=testCalibrationData.instrumentState
+            )
 
             # In order to avoid contaminating other tests, all mocks must be applied
             #   as context managers.
@@ -1462,7 +1484,6 @@ class TestGroceryService(unittest.TestCase):
                     workspace=workspaceName,
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(expectedLoaderArgs),
-                    runNumber=runNumber,
                 )
                 mockConvertToLiteMode.assert_not_called()
                 mockDeleteWorkspace.assert_called_once_with(workspaceName)
@@ -1489,6 +1510,11 @@ class TestGroceryService(unittest.TestCase):
                 "PreserveEvents": True,
                 "StartTime": "",
             }
+
+            testCalibrationData = DAOFactory.calibrationParameters()
+            instance.dataService.generateInstrumentState = mock.MagicMock(
+                return_value=testCalibrationData.instrumentState
+            )
 
             # In order to avoid contaminating other tests, all mocks must be applied
             #   as context managers.
@@ -1571,7 +1597,6 @@ class TestGroceryService(unittest.TestCase):
                     workspace=workspaceName,
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(expectedLoaderArgs),
-                    runNumber=runNumber,
                 )
                 if useLiteMode:
                     mockConvertToLiteMode.assert_called_once_with(workspaceName, export=False)
@@ -1600,6 +1625,11 @@ class TestGroceryService(unittest.TestCase):
                 "PreserveEvents": True,
                 "StartTime": "",
             }
+
+            testCalibrationData = DAOFactory.calibrationParameters()
+            instance.dataService.generateInstrumentState = mock.MagicMock(
+                return_value=testCalibrationData.instrumentState
+            )
 
             # In order to avoid contaminating other tests, all mocks must be applied
             #   as context managers.
@@ -1687,7 +1717,6 @@ class TestGroceryService(unittest.TestCase):
                     workspace=workspaceName,
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(expectedLoaderArgs),
-                    runNumber=runNumber,
                 )
                 mockConvertToLiteMode.assert_not_called()
                 mockDeleteWorkspace.assert_called_once_with(workspaceName)
@@ -1707,6 +1736,13 @@ class TestGroceryService(unittest.TestCase):
             nativeModeFilePath = mock.MagicMock(spec=Path)
             nativeModeFilePath.__str__.return_value = "nativeModeFilePath"
 
+            testCalibrationData = DAOFactory.calibrationParameters()
+            instance.dataService.generateInstrumentState = mock.MagicMock(
+                return_value=testCalibrationData.instrumentState
+            )
+
+            # instance.dataService.readInstrumentConfig
+
             # In order to avoid contaminating other tests, all mocks must be applied
             #   as context managers.
             with (
@@ -1720,6 +1756,7 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
                 mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch.object(instance, "mantidSnapper") as mockSnapper,  # noqa F841
             ):
                 # Mocks for flow-control branching:
                 mockHasLiveDataConnection.return_value = False
@@ -1791,7 +1828,7 @@ class TestGroceryService(unittest.TestCase):
                         assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                         assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
                         mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                            str(liteModeFilePath), liteRawWorkspaceName, item.loader, runNumber=runNumber
+                            str(liteModeFilePath), liteRawWorkspaceName, item.loader
                         )
                         mockConvertToLiteMode.assert_not_called()
 
@@ -1809,7 +1846,7 @@ class TestGroceryService(unittest.TestCase):
                         assert instance._loadedRuns[(runNumber, False)] == 0
                         assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
                         mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                            str(nativeModeFilePath), nativeRawWorkspaceName, loader=item.loader, runNumber=runNumber
+                            str(nativeModeFilePath), nativeRawWorkspaceName, loader=item.loader
                         )
                         mockConvertToLiteMode.assert_called_once_with(liteRawWorkspaceName, export=True)
 
@@ -1818,7 +1855,7 @@ class TestGroceryService(unittest.TestCase):
                         assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                         assert instance._loadedRuns[(runNumber, useLiteMode)] == (1 if not useLiteMode else 0)
                         mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                            str(nativeModeFilePath), nativeRawWorkspaceName, item.loader, runNumber=runNumber
+                            str(nativeModeFilePath), nativeRawWorkspaceName, item.loader
                         )
                         mockConvertToLiteMode.assert_not_called()
 
@@ -1861,6 +1898,11 @@ class TestGroceryService(unittest.TestCase):
                 "PreserveEvents": True,
                 "StartTime": expectedStartTime.isoformat(),
             }
+
+            testCalibrationData = DAOFactory.calibrationParameters()
+            instance.dataService.generateInstrumentState = mock.MagicMock(
+                return_value=testCalibrationData.instrumentState
+            )
 
             # In order to avoid contaminating other tests, all mocks must be applied
             #   as context managers.
@@ -1957,7 +1999,6 @@ class TestGroceryService(unittest.TestCase):
                     workspace=nativeRawWorkspaceName,
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(expectedLoaderArgs),
-                    runNumber=runNumber,
                 )
                 if useLiteMode:
                     assert instance._loadedRuns[(runNumber, False)] == 0
@@ -2087,7 +2128,6 @@ class TestGroceryService(unittest.TestCase):
                     workspace=nativeRawWorkspaceName,
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(expectedLoaderArgs),
-                    runNumber=runNumber,
                 )
                 mockConvertToLiteMode.assert_not_called()
                 mockDeleteWorkspace.assert_called_once_with(nativeRawWorkspaceName)
@@ -2202,7 +2242,6 @@ class TestGroceryService(unittest.TestCase):
                     workspace=nativeRawWorkspaceName,
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(expectedLoaderArgs),
-                    runNumber=runNumber,
                 )
                 if useLiteMode:
                     assert instance._loadedRuns[(runNumber, False)] == 0
@@ -2321,7 +2360,6 @@ class TestGroceryService(unittest.TestCase):
                     workspace=nativeRawWorkspaceName,
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(expectedLoaderArgs),
-                    runNumber=runNumber,
                 )
                 mockConvertToLiteMode.assert_not_called()
                 mockDeleteWorkspace.assert_called_once_with(nativeRawWorkspaceName)

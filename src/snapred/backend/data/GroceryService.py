@@ -8,8 +8,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import (
-    CreateWorkspace,
-    ExtractMask,
     mtd,
 )
 from pydantic import validate_call
@@ -204,14 +202,7 @@ class GroceryService:
         return str(ipts)
 
     def _createNeutronFilePath(self, runNumber: str, useLiteMode: bool) -> Path:
-        # TODO: fully normalize this to pathlib.Path:
-        #   -- problems (among others): `GetIPTS` returns with an '/' at the end?
-
-        IPTS = self.getIPTS(runNumber)
-        instr = "nexus.lite" if useLiteMode else "nexus.native"
-        pre = instr + ".prefix"
-        ext = instr + ".extension"
-        return Path(IPTS + Config[pre] + str(runNumber) + Config[ext])
+        return self.dataService.createNeutronFilePath(runNumber, useLiteMode)
 
     @validate_call
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
@@ -806,7 +797,7 @@ class GroceryService:
 
                 case (True, _, True, _):
                     # lite mode and lite-mode exists on disk
-                    data = self.grocer.executeRecipe(str(liteModeFilePath), workspaceName, loader, runNumber=runNumber)
+                    data = self.grocer.executeRecipe(str(liteModeFilePath), workspaceName, loader)
                     success = True
 
                 case (True, True, _, _):
@@ -821,17 +812,13 @@ class GroceryService:
 
                 case (True, _, _, True):
                     # lite mode and native exists on disk
-                    data = self.grocer.executeRecipe(
-                        str(nativeModeFilePath), workspaceName, loader, runNumber=runNumber
-                    )
+                    data = self.grocer.executeRecipe(str(nativeModeFilePath), workspaceName, loader)
                     convertToLiteMode = True
                     success = True
 
                 case (False, _, _, True):
                     # native mode and native exists on disk
-                    data = self.grocer.executeRecipe(
-                        str(nativeModeFilePath), workspaceName, loader, runNumber=runNumber
-                    )
+                    data = self.grocer.executeRecipe(str(nativeModeFilePath), workspaceName, loader)
                     success = True
 
                 case _:
@@ -857,7 +844,6 @@ class GroceryService:
                     workspace=workspaceName,
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(loaderArgs),
-                    runNumber=runNumber,
                 )
                 if data["result"]:
                     logs = self.mantidSnapper.mtd[workspaceName].getRun()
@@ -884,6 +870,7 @@ class GroceryService:
             # fetch single-use does not export converted to lite data
             self.convertToLiteMode(workspaceName, export=False)
             data["workspace"] = workspaceName
+            self._processNeutronDataCopy(runNumber, workspaceName)
 
         return data
 
@@ -935,9 +922,7 @@ class GroceryService:
 
                 case (True, _, True, _):
                     # lite mode and lite-mode exists on disk
-                    data = self.grocer.executeRecipe(
-                        str(liteModeFilePath), rawWorkspaceName, loader, runNumber=runNumber
-                    )
+                    data = self.grocer.executeRecipe(str(liteModeFilePath), rawWorkspaceName, loader)
                     self._loadedRuns[key] = 0
                     success = True
 
@@ -950,18 +935,14 @@ class GroceryService:
                 case (True, _, _, True):
                     # lite mode and native exists on disk
                     goingNative = self._key(runNumber, False)
-                    data = self.grocer.executeRecipe(
-                        str(nativeModeFilePath), nativeRawWorkspaceName, loader="", runNumber=runNumber
-                    )
+                    data = self.grocer.executeRecipe(str(nativeModeFilePath), nativeRawWorkspaceName, loader="")
                     self._loadedRuns[self._key(*goingNative)] = 0
                     convertToLiteMode = True
                     success = True
 
                 case (False, _, _, True):
                     # native mode and native exists on disk
-                    data = self.grocer.executeRecipe(
-                        str(nativeModeFilePath), nativeRawWorkspaceName, loader, runNumber=runNumber
-                    )
+                    data = self.grocer.executeRecipe(str(nativeModeFilePath), nativeRawWorkspaceName, loader)
                     self._loadedRuns[key] = 0
                     success = True
 
@@ -989,7 +970,6 @@ class GroceryService:
                     workspace=nativeRawWorkspaceName,
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(loaderArgs),
-                    runNumber=runNumber,
                 )
                 if data["result"]:
                     logs = self.mantidSnapper.mtd[nativeRawWorkspaceName].getRun()
@@ -1028,7 +1008,9 @@ class GroceryService:
 
             # create a copy of the raw data for use
             workspaceName = self._createCopyNeutronWorkspaceName(runNumber, useLiteMode, self._loadedRuns[key] + 1)
-            data["result"] = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
+            wsClone = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
+            self._processNeutronDataCopy(runNumber, workspaceName)
+            data["result"] = wsClone
             data["workspace"] = workspaceName
             self._loadedRuns[key] += 1
 
@@ -1262,13 +1244,16 @@ class GroceryService:
         # Number of non-monitor pixels
         pixelCount = mtd[templateWSName].getInstrument().getNumberDetectors(True)
 
-        mask = CreateWorkspace(
+        mask = self.mantidSnapper.CreateWorkspace(
+            "Creating pixel mask workspace",
             OutputWorkspace=maskWSName,
             NSpec=pixelCount,
             DataX=list(np.zeros((pixelCount,))),
             DataY=list(np.zeros((pixelCount,))),
             ParentWorkspace=templateWSName,
         )
+        self.mantidSnapper.executeQueue()
+        mask = self.mantidSnapper.mtd[mask]
 
         # Rebuild the spectra map "by hand" to exclude detectors which are monitors.
         info = mask.detectorInfo()
@@ -1285,7 +1270,8 @@ class GroceryService:
             wi += 1
 
         # Convert workspace to a MaskWorkspace instance.
-        ExtractMask(OutputWorkspace=maskWSName, InputWorkspace=maskWSName)
+        self.mantidSnapper.ExtractMask("Extracting mask", OutputWorkspace=maskWSName, InputWorkspace=maskWSName)
+        self.mantidSnapper.executeQueue()
         assert isinstance(mtd[maskWSName], MaskWorkspace)
 
         return maskWSName
@@ -1503,3 +1489,24 @@ class GroceryService:
         if excludeCache:
             workspaces = workspaces.difference(self.getCachedWorkspaces())
         return list(workspaces)
+
+    def _processNeutronDataCopy(self, runNumber, workspaceName):
+        instrumentState = self.dataService.generateInstrumentState(runNumber)
+        self.mantidSnapper.CropWorkspace(
+            "Cropping workspace",
+            InputWorkspace=workspaceName,
+            OutputWorkspace=workspaceName,
+            XMin=instrumentState.particleBounds.tof.minimum,
+            XMax=instrumentState.particleBounds.tof.maximum,
+        )
+        config = instrumentState.instrumentConfig
+        width = config.width
+        frequency = config.frequency
+        self.mantidSnapper.RemovePromptPulse(
+            "Removing prompt pulse",
+            InputWorkspace=workspaceName,
+            OutputWorkspace=workspaceName,
+            Width=width,
+            Frequency=frequency,
+        )
+        self.mantidSnapper.executeQueue()
