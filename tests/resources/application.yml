@@ -292,8 +292,8 @@ constants:
 
   CropFactors:
     lowWavelengthCrop: 0.05
-    lowdSpacingCrop: 0.0
-    highdSpacingCrop: 0.0
+    lowdSpacingCrop: 0.1
+    highdSpacingCrop: 0.15
 
   RawVanadiumCorrection:
     numberOfSlices: 1
