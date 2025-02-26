@@ -262,11 +262,10 @@ class MantidSnapper:
         self._algorithmQueue = []
 
     @classmethod
-    def _addWorkspaceInfo(cls, name, workspaceProperty: Property):
+    def _addWorkspaceInfo(cls, algorithmName: str, workspaceProperty: Property):
         cls._workspacesInfo[workspaceProperty.valueAsStr] = {
-            "name": workspaceProperty.valueAsStr,
-            "algorithm": name,
-            "Direction": workspaceProperty.direction,
+            "propertyName": workspaceProperty.name,
+            "algorithm": algorithmName,
         }
 
     @classmethod
@@ -274,7 +273,7 @@ class MantidSnapper:
         """
         Grab dictionary of workspaces created by MantidSnapper
 
-        :return: dict of workspace names containing dicts of the workspace name and which algo created it
+        :return: dict by workspace-name key of information about the output workspaces
         :rtype: Dict[str, Dict[str, Any]]
         """
         return cls._workspacesInfo
