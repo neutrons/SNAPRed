@@ -1,10 +1,10 @@
 import time
 from collections import namedtuple
 from threading import Lock
-from typing import Dict
+from typing import Any, Dict
 
 from mantid.api import AlgorithmManager, IWorkspaceProperty, Progress, mtd
-from mantid.kernel import Direction
+from mantid.kernel import Direction, Property
 from mantid.kernel import ULongLongPropertyWithValue as PointerProperty
 
 from snapred.backend.error.AlgorithmException import AlgorithmException
@@ -47,7 +47,7 @@ class MantidSnapper:
 
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}
     _mtd = _CustomMtd()
-    _workspaceInfo: Dict[str, Dict[str, str]] = {}
+    _workspacesInfo: Dict[str, Dict[str, Any]] = {}
 
     def __init__(self, parentAlgorithm, name):
         """
@@ -198,11 +198,10 @@ class MantidSnapper:
                 if isinstance(algorithm.getProperty(prop), PointerProperty):
                     returnVal = access_pointer(returnVal)
                 val.update(returnVal)
-                if (
-                    isinstance(algorithm.getProperty(prop), IWorkspaceProperty)
-                    and not algorithm.getProperty(prop).isDefault
+                if isinstance(algorithm.getProperty(prop), IWorkspaceProperty) and not (
+                    algorithm.getProperty(prop).isDefault and algorithm.getProperty(prop).isOptional()
                 ):
-                    MantidSnapper._addWorkspaceInfo(returnVal, name)
+                    MantidSnapper._addWorkspaceInfo(name, algorithm.getProperty(prop))
         except (RuntimeError, TypeError) as e:
             logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
             self.cleanup()
@@ -263,15 +262,19 @@ class MantidSnapper:
         self._algorithmQueue = []
 
     @classmethod
-    def _addWorkspaceInfo(cls, val, name):
-        cls._workspaceInfo[val] = {"name": val, "algorithm": name}
+    def _addWorkspaceInfo(cls, name, workspaceProperty: Property):
+        cls._workspacesInfo[workspaceProperty.valueAsStr] = {
+            "name": workspaceProperty.valueAsStr,
+            "algorithm": name,
+            "Direction": workspaceProperty.direction,
+        }
 
     @classmethod
-    def getWorkspaceInfo(cls) -> Dict[str, Dict[str, str]]:
+    def getWorkspacesInfo(cls) -> Dict[str, Dict[str, Any]]:
         """
         Grab dictionary of workspaces created by MantidSnapper
 
         :return: dict of workspace names containing dicts of the workspace name and which algo created it
-        :rtype: Dict[str, Dict[str, str]]
+        :rtype: Dict[str, Dict[str, Any]]
         """
-        return cls._workspaceInfo
+        return cls._workspacesInfo
