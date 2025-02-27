@@ -47,6 +47,8 @@ class MantidSnapper:
 
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}
     _mtd = _CustomMtd()
+
+    _infoMutex = Lock()
     _workspacesInfo: Dict[str, Dict[str, Any]] = {}
 
     def __init__(self, parentAlgorithm, name):
@@ -265,11 +267,13 @@ class MantidSnapper:
         self._algorithmQueue = []
 
     @classmethod
-    def _addWorkspaceInfo(cls, workspaceName: str, algorithmName: str, workspaceProperty: str):
+    def _addWorkspaceInfo(cls, workspaceName: str, algorithmName: str, propertyName: str):
+        cls._infoMutex.acquire()
         cls._workspacesInfo[workspaceName] = {
-            "propertyName": workspaceProperty,
+            "propertyName": propertyName,
             "algorithm": algorithmName,
         }
+        cls._infoMutex.release()
 
     @classmethod
     def getWorkspacesInfo(cls) -> Dict[str, Dict[str, Any]]:
@@ -279,4 +283,5 @@ class MantidSnapper:
         :return: dict by workspace-name key of information about the output workspaces
         :rtype: Dict[str, Dict[str, Any]]
         """
+        # WARNING: for access that isn't READ-ONLY, synchronization will be required!
         return cls._workspacesInfo
