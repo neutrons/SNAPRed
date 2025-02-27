@@ -142,6 +142,8 @@ class NormalizationWorkflow(WorkflowImplementer):
         return SNAPResponse(code=ResponseCode.OK)
 
     def handleRunFeedback(self, runNumber):
+        if not RunNumberValidator.validateRunNumber(runNumber):
+            return SNAPResponse(code=ResponseCode.OK)
         payload = RunFeedbackRequest(
             runId=runNumber,
         )

@@ -213,7 +213,7 @@ class _RequestView(_RequestViewBase):
                 if self.retrieveRunFeedbackCallback:
                     for rn in runNumberList:
                         stateId, runTitle = self.retrieveRunFeedbackCallback(rn)
-                        lineText = f"{rn}, StateId={stateId}, Title={runTitle}"
+                        lineText = f"{rn},    StateId = {stateId},    Title = {runTitle}"
                         self.runNumberDisplay.addItem(lineText)
                 self.runNumberInput.clear()
                 self._populatePixelMaskDropdown(self.useLiteMode())
