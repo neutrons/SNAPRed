@@ -216,7 +216,7 @@ class TestMappingFromRun(unittest.TestCase):
 
 
 class TestMappingFromNeXusLogs(unittest.TestCase):
-    def _mockPVFile(self, detectorState: DetectorState) -> mock.Mock:
+    def _mockPVFile(self, detectorState: DetectorState, hasTitle: bool) -> mock.Mock:
         def _mockH5Dataset(array_value):
             ds = mock.MagicMock(spec=h5py.Dataset)
             ds.__getitem__.side_effect = lambda x: array_value  # noqa: ARG005
@@ -233,8 +233,17 @@ class TestMappingFromNeXusLogs(unittest.TestCase):
             "det_lin1/value": np.array([detectorState.lin[0]]),
             "det_lin2/value": np.array([detectorState.lin[1]]),
         }
+        if hasTitle:
+            dict_["/entry/title"] = _mockH5Dataset(np.array([b"MyTestTitle"]))
         mock_ = mock.MagicMock(spec=h5py.Group)
-        mock_.__getitem__.side_effect = lambda key: (mock_ if key == "entry/DASlogs" else dict_[key])
+
+        def side_effect_getitem(key: str):
+            if key == "entry/DASlogs":
+                return mock_
+            else:
+                return dict_[key]
+
+        mock_.__getitem__.side_effect = side_effect_getitem
         mock_.__setitem__.side_effect = dict_.__setitem__
         mock_.__contains__.side_effect = dict_.__contains__
         mock_.keys.side_effect = dict_.keys
@@ -242,17 +251,39 @@ class TestMappingFromNeXusLogs(unittest.TestCase):
 
     def setUp(self):
         self.detectorState = DetectorState(arc=(1.0, 2.0), wav=1.1, freq=1.2, guideStat=1, lin=(1.0, 2.0))
-        self.mockPVFile = self._mockPVFile(self.detectorState)
+        self.mockPVFile = self._mockPVFile(self.detectorState, hasTitle=False)
 
     def tearDown(self):
         pass
 
     def test_init(self):
-        map_ = mappingFromNeXusLogs(self.mockPVFile)  # noqa: F841
+        mockFile = self._mockPVFile(self.detectorState, hasTitle=False)
+        map_ = mappingFromNeXusLogs(mockFile)  # noqa: F841
 
     def test_get_item(self):
-        map_ = mappingFromNeXusLogs(self.mockPVFile)
+        mockFile = self._mockPVFile(self.detectorState, hasTitle=False)
+        map_ = mappingFromNeXusLogs(mockFile)
         assert map_["BL3:Chop:Skf1:WavelengthUserReq"][0] == 1.1
+
+    def test_get_item_title(self):
+        mockFile = self._mockPVFile(self.detectorState, hasTitle=True)
+        map_ = mappingFromNeXusLogs(mockFile)
+        assert "title" in map_
+        titleValue = map_["title"]
+        assert titleValue[0] == b"MyTestTitle"
+
+    def test_keys_includes_title(self):
+        mockFile = self._mockPVFile(self.detectorState, hasTitle=True)
+        map_ = mappingFromNeXusLogs(mockFile)
+        keys_ = map_.keys()
+        assert "title" in keys_
+        for expected in [
+            "BL3:Chop:Skf1:WavelengthUserReq",
+            "det_arc1",
+            "det_arc2",
+            # etc
+        ]:
+            assert expected in keys_
 
     def test_get_item_key_error(self):
         map_ = mappingFromNeXusLogs(self.mockPVFile)
