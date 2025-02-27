@@ -4,7 +4,7 @@ from threading import Lock
 from typing import Any, Dict
 
 from mantid.api import AlgorithmManager, IWorkspaceProperty, Progress, mtd
-from mantid.kernel import Direction, Property
+from mantid.kernel import Direction
 from mantid.kernel import ULongLongPropertyWithValue as PointerProperty
 
 from snapred.backend.error.AlgorithmException import AlgorithmException
@@ -191,6 +191,9 @@ class MantidSnapper:
                 # TODO: Special cases are bad
                 if name == "LoadDiffCal":
                     if prop in ["GroupingWorkspace", "MaskWorkspace", "CalWorkspace"]:
+                        suffix = {"GroupingWorkspace": "_group", "MaskWorkspace": "_mask", "CalWorkspace": "_cal"}
+                        wsname = algorithm.getProperty("WorkspaceName").valueAsStr + suffix[prop]
+                        MantidSnapper._addWorkspaceInfo(wsname, name, prop)
                         continue
                 returnVal = getattr(algorithm.getProperty(prop), "value", None)
                 if returnVal is None:
@@ -201,7 +204,7 @@ class MantidSnapper:
                 if isinstance(algorithm.getProperty(prop), IWorkspaceProperty) and not (
                     algorithm.getProperty(prop).isDefault and algorithm.getProperty(prop).isOptional()
                 ):
-                    MantidSnapper._addWorkspaceInfo(name, algorithm.getProperty(prop))
+                    MantidSnapper._addWorkspaceInfo(algorithm.getProperty(prop).valueAsStr, name, prop)
         except (RuntimeError, TypeError) as e:
             logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
             self.cleanup()
@@ -262,9 +265,9 @@ class MantidSnapper:
         self._algorithmQueue = []
 
     @classmethod
-    def _addWorkspaceInfo(cls, algorithmName: str, workspaceProperty: Property):
-        cls._workspacesInfo[workspaceProperty.valueAsStr] = {
-            "propertyName": workspaceProperty.name,
+    def _addWorkspaceInfo(cls, workspaceName: str, algorithmName: str, workspaceProperty: str):
+        cls._workspacesInfo[workspaceName] = {
+            "propertyName": workspaceProperty,
             "algorithm": algorithmName,
         }
 
