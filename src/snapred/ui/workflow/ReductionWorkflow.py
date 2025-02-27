@@ -10,6 +10,7 @@ from snapred.backend.dao.request import (
     MatchRunsRequest,
     ReductionExportRequest,
     ReductionRequest,
+    RunFeedbackRequest,
 )
 from snapred.backend.dao.response.ReductionResponse import ReductionResponse
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
@@ -66,6 +67,9 @@ class ReductionWorkflow(WorkflowImplementer):
             validateRunNumbers=self._validateRunNumbers,
             getLiveMetadata=self._getLiveMetadata,
         )
+
+        self._reductionRequestView._requestView.setRetrieveRunFeedbackCallback(self.handleRunFeedback)
+
         if not self._hasLiveDataConnection():
             # Only enable live-data mode if there is a connection to the listener.
             self._reductionRequestView.setLiveDataToggleEnabled(False)
@@ -173,6 +177,20 @@ class ReductionWorkflow(WorkflowImplementer):
         # Following `Qt` style, this is _not_ @<property>.setter!
         self._status = status
         self._statusUpdate.emit(status)
+
+    def handleRunFeedback(self, runNumber: str) -> tuple:
+        payload = RunFeedbackRequest(runId=runNumber)
+        response = self.request(path="calibration/runFeedback", payload=payload.json())
+        stateId = ""
+        runTitle = ""
+        if response.code == ResponseCode.OK:
+            data = response.data
+            if isinstance(data, tuple) and len(data) == 2:
+                stateId = data[0]
+                detectorState = data[1]
+                if hasattr(detectorState, "title"):
+                    runTitle = detectorState.title
+        return (stateId, runTitle)
 
     def _nothing(self, workflowPresenter: WorkflowPresenter):  # noqa: ARG002
         return SNAPResponse(code=200)

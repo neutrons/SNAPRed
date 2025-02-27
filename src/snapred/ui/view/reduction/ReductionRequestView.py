@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from datetime import datetime, timedelta
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 
 from qtpy.QtCore import Qt, QTimer, Signal, Slot
 from qtpy.QtGui import QColor
@@ -46,6 +46,8 @@ class _RequestViewBase(BackendRequestView):
         self.validateRunNumbers = validateRunNumbers
         self.getLiveMetadata = getLiveMetadata
 
+        self.retrieveRunFeedbackCallback: Optional[Callable[[str], Tuple[str, str]]] = None
+
         self.runNumbers = []
         self.pixelMaskDropdown = self._multiSelectDropDown("Select Pixel Mask(s)", [])
 
@@ -77,6 +79,9 @@ class _RequestViewBase(BackendRequestView):
         self.retainUnfocusedDataCheckbox.checkedChanged.connect(self.convertUnitsDropdown.setEnabled)
         self.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
         self.liveDataToggle.stateChanged.connect(self.liveDataModeChange)
+
+    def setRetrieveRunFeedbackCallback(self, cb: Callable[[str], Tuple[str, str]]):
+        self.retrieveRunFeedbackCallback = cb
 
     @ExceptionToErrLog
     @Slot(bool)
@@ -145,6 +150,8 @@ class _RequestViewBase(BackendRequestView):
 
 
 class _RequestView(_RequestViewBase):
+    signalUpdateRunFeedback = Signal(str, str)
+
     def __init__(
         self,
         parent=None,
@@ -189,6 +196,8 @@ class _RequestView(_RequestViewBase):
         self.enterRunNumberButton.clicked.connect(self.addRunNumber)
         self.clearButton.clicked.connect(self.clearRunNumbers)
 
+        self.signalUpdateRunFeedback.connect(self._setRunFeedback)
+
     @Slot()
     def addRunNumber(self):
         try:
@@ -201,7 +210,11 @@ class _RequestView(_RequestViewBase):
                 if self.validateRunNumbers is not None:
                     self.validateRunNumbers(noDuplicates)
                 self.runNumbers = noDuplicates
-                self.updateRunNumberList()
+                if self.retrieveRunFeedbackCallback:
+                    for rn in runNumberList:
+                        stateId, runTitle = self.retrieveRunFeedbackCallback(rn)
+                        lineText = f"{rn}, StateId={stateId}, Title={runTitle}"
+                        self.runNumberDisplay.addItem(lineText)
                 self.runNumberInput.clear()
                 self._populatePixelMaskDropdown(self.useLiteMode())
         except ValueError as e:
@@ -235,12 +248,21 @@ class _RequestView(_RequestViewBase):
 
     def updateRunNumberList(self):
         self.runNumberDisplay.clear()
-        self.runNumberDisplay.addItems(self.runNumbers)
 
     def clearRunNumbers(self):
         self.runNumbers.clear()
         self.runNumberDisplay.clear()
         self.pixelMaskDropdown.setItems([])
+
+    def updateRunFeedback(self, stateId: str, runTitle: str):
+        self.signalUpdateRunFeedback.emit(stateId, runTitle)
+
+    @Slot(str, str)
+    def _setRunFeedback(self, stateId: str, runTitle: str):
+        if not stateId and not runTitle:
+            return
+        itemText = f"StateId={stateId}, Title={runTitle}"
+        self.runNumberDisplay.addItem(itemText)
 
     ###
     ### Abstract methods:
@@ -251,12 +273,10 @@ class _RequestView(_RequestViewBase):
         if not runNumbers:
             raise ValueError("Please enter at least one run number.")
         if runNumbers != self.runNumbers:
-            raise ValueError("Unexpected issue verifying run numbers.  Please clear and re-enter.")
+            raise ValueError("Unexpected issue verifying run numbers. Please clear and re-enter.")
         for runNumber in runNumbers:
             if not runNumber.isdigit():
-                raise ValueError(
-                    "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
-                )
+                pass
         if self.keepUnfocused():
             if self.convertUnitsDropdown.currentIndex() < 0:
                 raise ValueError("Please select units to convert to")
@@ -627,6 +647,10 @@ class ReductionRequestView(QWidget):
             view.liveDataToggle.setState(False)
 
         view.liveDataToggle.toggle.setEnabled(True)
+
+    def updateRunFeedback(self, stateId: str, runTitle: str):
+        if not self.liveDataMode():
+            self._requestView.updateRunFeedback(stateId, runTitle)
 
     @Slot(LiveMetadata)
     def updateLiveMetadata(self, data: LiveMetadata):
