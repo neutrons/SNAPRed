@@ -22,7 +22,7 @@ class StateValidationException(Exception):
 
     def __init__(self, exception: Exception):
         exceptionStr = str(exception)
-        breakpoint()
+
         if isinstance(exception, (FileNotFoundError, PermissionError)):
             self.message = f"The following error occurred: {exceptionStr}\n\n" + "Please contact your IS or CIS."
         else:
