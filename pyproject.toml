@@ -69,8 +69,9 @@ select = ["A", "ARG", "BLE", "E", "F", "I", "PT"]
 ignore = ["F403", "F405", # wild imports and  unknown names
 ]
 extend-exclude = ["conftest.py"]
-banned-modules =
-mantid.simpleapi = In the SNAPRed backend, any calls to 'mantid.simpleapi' algorithms should be routed through 'MantidSnapper'.
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"mantid.simpleapi".msg = "In the SNAPRed backend, any calls to 'mantid.simpleapi' algorithms should be routed through 'MantidSnapper'."
 exclude = [
 "tests/",
 "src/snapred/backend/recipe/algorithm",
