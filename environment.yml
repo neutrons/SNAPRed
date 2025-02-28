@@ -16,7 +16,6 @@ dependencies:
 - pytest-qt
 - pytest-cov
 - flake8
-- flake8-tidy-imports
 - erdantic>=1.0.3
 - versioningit
 - anaconda-client

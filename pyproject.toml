@@ -69,8 +69,6 @@ select = ["A", "ARG", "BLE", "E", "F", "I", "PT"]
 ignore = ["F403", "F405", # wild imports and  unknown names
 ]
 extend-exclude = ["conftest.py"]
-
-[tool.flake8]
 banned-modules =
 mantid.simpleapi = In the SNAPRed backend, any calls to 'mantid.simpleapi' algorithms should be routed through 'MantidSnapper'.
 exclude = [
