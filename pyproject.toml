@@ -65,13 +65,18 @@ addopts = "-m 'not (integration or datarepo)'"
 [tool.ruff]
 line-length = 120
 # https://beta.ruff.rs/docs/rules/
-select = ["A", "ARG", "BLE", "E", "F", "I", "PT"]
+select = ["A", "ARG", "BLE", "E", "F", "I", "PT", "TID251"]
 ignore = ["F403", "F405", # wild imports and  unknown names
 ]
 extend-exclude = ["conftest.py"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "mantid.simpleapi".msg = "In the SNAPRed backend, any calls to 'mantid.simpleapi' algorithms should be routed through 'MantidSnapper'."
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["TID251"]
+"src/snapred/backend/recipe/algorithm*" = ["TID251"]
+"src/snapred/resources/ultralite*" = ["TID251"]
 
 [tool.mypy]
 plugins = [
