@@ -15,7 +15,10 @@ constants:
 
   DetectorPeakPredictor:
     fwhm: 1.17741002252 # used to convert gaussian to fwhm (2 * log_e(2))
-
+  CropFactors:
+    lowWavelengthCrop: 0.05
+    lowdSpacingCrop: 0.1
+    highdSpacingCrop: 0.15
   RawVanadiumCorrection:
     numberOfSlices: 1
     numberOfAnnuli: 1

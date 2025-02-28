@@ -1,8 +1,9 @@
 import time
 from collections import namedtuple
 from threading import Lock
+from typing import Any, Dict
 
-from mantid.api import AlgorithmManager, Progress, mtd
+from mantid.api import AlgorithmManager, IWorkspaceProperty, Progress, mtd
 from mantid.kernel import Direction
 from mantid.kernel import ULongLongPropertyWithValue as PointerProperty
 
@@ -46,6 +47,9 @@ class MantidSnapper:
 
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}
     _mtd = _CustomMtd()
+
+    _infoMutex = Lock()
+    _workspacesInfo: Dict[str, Dict[str, Any]] = {}
 
     def __init__(self, parentAlgorithm, name):
         """
@@ -189,6 +193,9 @@ class MantidSnapper:
                 # TODO: Special cases are bad
                 if name == "LoadDiffCal":
                     if prop in ["GroupingWorkspace", "MaskWorkspace", "CalWorkspace"]:
+                        suffix = {"GroupingWorkspace": "_group", "MaskWorkspace": "_mask", "CalWorkspace": "_cal"}
+                        wsname = algorithm.getProperty("WorkspaceName").valueAsStr + suffix[prop]
+                        MantidSnapper._addWorkspaceInfo(wsname, name, prop)
                         continue
                 returnVal = getattr(algorithm.getProperty(prop), "value", None)
                 if returnVal is None:
@@ -196,6 +203,10 @@ class MantidSnapper:
                 if isinstance(algorithm.getProperty(prop), PointerProperty):
                     returnVal = access_pointer(returnVal)
                 val.update(returnVal)
+                if isinstance(algorithm.getProperty(prop), IWorkspaceProperty) and not (
+                    algorithm.getProperty(prop).isDefault and algorithm.getProperty(prop).isOptional()
+                ):
+                    MantidSnapper._addWorkspaceInfo(algorithm.getProperty(prop).valueAsStr, name, prop)
         except (RuntimeError, TypeError) as e:
             logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
             self.cleanup()
@@ -254,3 +265,23 @@ class MantidSnapper:
             self._prog_reporter.report(self._endrange, "Done")
         self._progressCounter = 0
         self._algorithmQueue = []
+
+    @classmethod
+    def _addWorkspaceInfo(cls, workspaceName: str, algorithmName: str, propertyName: str):
+        cls._infoMutex.acquire()
+        cls._workspacesInfo[workspaceName] = {
+            "propertyName": propertyName,
+            "algorithm": algorithmName,
+        }
+        cls._infoMutex.release()
+
+    @classmethod
+    def getWorkspacesInfo(cls) -> Dict[str, Dict[str, Any]]:
+        """
+        Grab dictionary of workspaces created by MantidSnapper
+
+        :return: dict by workspace-name key of information about the output workspaces
+        :rtype: Dict[str, Dict[str, Any]]
+        """
+        # WARNING: for access that isn't READ-ONLY, synchronization will be required!
+        return cls._workspacesInfo
