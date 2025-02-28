@@ -1,4 +1,5 @@
-from mantid.simpleapi import (
+# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
+from mantid.simpleapi import (  # noqa : TID251
     DeleteWorkspace,
 )
 

@@ -1,7 +1,8 @@
 import json
 from typing import Generic, TypeVar, get_args
 
-from mantid.simpleapi import ConvertTableToMatrixWorkspace, Minus
+# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
+from mantid.simpleapi import ConvertTableToMatrixWorkspace, Minus  # noqa : TID251
 from pydantic import BaseModel
 
 from snapred.backend.log.logger import snapredLogger

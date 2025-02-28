@@ -17,7 +17,9 @@ import h5py
 from mantid.api import Run
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import ConfigService, PhysicalConstants
-from mantid.simpleapi import GetIPTS, mtd
+
+# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
+from mantid.simpleapi import GetIPTS, mtd  # noqa : TID251
 from pydantic import ValidationError
 
 from snapred.backend.dao import (
