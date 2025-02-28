@@ -72,11 +72,6 @@ extend-exclude = ["conftest.py"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "mantid.simpleapi".msg = "In the SNAPRed backend, any calls to 'mantid.simpleapi' algorithms should be routed through 'MantidSnapper'."
-exclude = [
-"tests/",
-"src/snapred/backend/recipe/algorithm",
-"src/snapred/resources/ultralite"
-]
 
 [tool.mypy]
 plugins = [
