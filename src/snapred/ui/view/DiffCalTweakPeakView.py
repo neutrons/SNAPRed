@@ -3,7 +3,9 @@ from typing import List
 import matplotlib.pyplot as plt
 import pydantic
 from mantid.plots.datafunctions import get_spectrum
-from mantid.simpleapi import mtd
+
+# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
+from mantid.simpleapi import mtd  # noqa : TID251
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import (
     QHBoxLayout,
