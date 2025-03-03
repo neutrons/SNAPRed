@@ -7,7 +7,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from mantid.dataobjects import MaskWorkspace
-from mantid.simpleapi import (
+
+# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
+from mantid.simpleapi import (  # noqa : TID251
     mtd,
 )
 from pydantic import validate_call
@@ -456,7 +458,7 @@ class GroceryService:
         :return: a pointer to the cloned workspace in the ADS
         :rtype: a python wrapped, C++ shared pointer to a Workspace
         """
-        from mantid.simpleapi import CloneWorkspace
+        from mantid.simpleapi import CloneWorkspace  # noqa : TID251
 
         if self.workspaceDoesExist(name):
             ws = CloneWorkspace(InputWorkspace=name, OutputWorkspace=copy)

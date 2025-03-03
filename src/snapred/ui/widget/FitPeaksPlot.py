@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from mantid.api import mtd
-from mantid.simpleapi import Minus
+
+# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
+from mantid.simpleapi import Minus  # noqa : TID251
 
 
 def FitPeaksPlot(wsName):

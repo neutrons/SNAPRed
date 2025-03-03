@@ -10,7 +10,9 @@ from typing import Any
 import h5py
 import numpy as np
 from mantid.api import Run
-from mantid.simpleapi import AddSampleLog, mtd
+
+# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
+from mantid.simpleapi import AddSampleLog, mtd  # noqa : TID251
 
 from snapred.meta.Config import Config
 
