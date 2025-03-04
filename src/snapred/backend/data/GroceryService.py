@@ -1205,7 +1205,10 @@ class GroceryService:
         return maskWSName
 
     def _createMonitorWorkspaceName(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:
-        return wng.monitor().runNumber(runNumber).lite(useLiteMode).build()
+        builder = wng.monitor().runNumber(runNumber)
+        if useLiteMode:
+            builder.lite(wng.Lite.TRUE)
+        return builder.build()
 
     def fetchMonitorWorkspace(self, item: GroceryListItem) -> WorkspaceName:
         runNumber, useLiteMode = item.runNumber, False
