@@ -1204,15 +1204,13 @@ class GroceryService:
 
         return maskWSName
 
-    def _createMonitorWorkspaceName(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:
-        builder = wng.monitor().runNumber(runNumber)
-        if useLiteMode:
-            builder.lite(wng.Lite.TRUE)
-        return builder.build()
+    def _createMonitorWorkspaceName(self, runNumber: str) -> WorkspaceName:
+        # a monitor cannot be lite
+        return wng.monitor().runNumber(runNumber).build()
 
     def fetchMonitorWorkspace(self, item: GroceryListItem) -> WorkspaceName:
         runNumber, useLiteMode = item.runNumber, False
-        workspaceName = self._createMonitorWorkspaceName(runNumber, useLiteMode)
+        workspaceName = self._createMonitorWorkspaceName(runNumber)
 
         # monitors take ~1 second to load, probably unnecessary to cache
 

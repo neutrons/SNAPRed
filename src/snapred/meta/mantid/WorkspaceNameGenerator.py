@@ -461,7 +461,12 @@ class _WorkspaceNameGenerator:
         )
 
     def monitor(self):
-        return NameBuilder(WorkspaceType.MONITOR, self._monitorTemplate, self._monitorTemplateKeys, self._delimiter)
+        return NameBuilder(
+            WorkspaceType.MONITOR,
+            self._monitorTemplate,
+            self._monitorTemplateKeys,
+            self._delimiter,
+        )
 
     def normCalResidual(self):
         return NameBuilder(

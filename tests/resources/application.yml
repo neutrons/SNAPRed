@@ -173,7 +173,7 @@ mantid:
             mask: "_diffract_consts,mask,{runNumber},{version}"
             metric: "_calib_metrics,{metricName},{runNumber},{version}"
             timedMetric: "_calib_metrics,{metricName},{runNumber},{timestamp}"
-          monitor: "monitor,{lite},{runNumber}"
+          monitor: "monitor,{runNumber}"
           normCal:
             rawVanadium: "_{unit},{group},raw_van_corr,{runNumber},{version}"
             focusedRawVanadium: "_{unit},{group},raw_van_corr,{runNumber},{version}"

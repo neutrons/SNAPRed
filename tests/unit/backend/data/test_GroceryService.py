@@ -3476,11 +3476,11 @@ class TestGroceryService(unittest.TestCase):
             mock.patch.object(instance, "_createNeutronFilePath", wraps=instance._createNeutronFilePath) as _,
             mock.patch.object(instance, "grocer") as _,
         ):
-            instance.fetchMonitorWorkspace(item)
+            name = instance.fetchMonitorWorkspace(item)
 
+            assert name == wng.monitor().runNumber("123").build()
             assert instance._createMonitorWorkspaceName.call_count == 1
             assert instance._createMonitorWorkspaceName.call_args[0][0] == item.runNumber
-            assert not instance._createMonitorWorkspaceName.call_args[0][1]
 
             assert instance._createNeutronFilePath.call_count == 1
             assert instance._createNeutronFilePath.call_args[0][0] == item.runNumber
