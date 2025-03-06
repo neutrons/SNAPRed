@@ -120,33 +120,23 @@ def mappingFromNeXusLogs(h5: h5py.File) -> Mapping:
 
     class _Mapping(Mapping):
         def __init__(self, h5: h5py.File):
-            self._logGroup = h5[Config["instrument.PVLogs.rootGroup"]]
-            self._h5 = h5
+            self._logs = h5[Config["instrument.PVLogs.rootGroup"]]
 
         def __getitem__(self, key: str) -> Any:
-            if key == "title":
-                return self._h5["/entry/title"][...]
-            else:
-                return self._logGroup[f"{key}/value"][...]
-
-        def __contains__(self, key: str) -> bool:
-            if key == "title":
-                return "/entry/title" in self._h5
-            return f"{key}/value" in self._logGroup
-
-        def keys(self):
-            baseKeys = []
-            for fullKey in self._logGroup.keys():
-                if fullKey.endswith("/value"):
-                    baseKeys.append(fullKey[: fullKey.rfind("/value")])
-            if "/entry/title" in self._h5:
-                baseKeys.append("title")
-            return baseKeys
+            return self._logs[key + "/value"]
 
         def __iter__(self):
-            return iter(self.keys())
+            return self.keys().__iter__()
 
-        def __len__(self):
-            return len(self.keys())
+        def __len__(
+            self,
+        ):
+            return len(self._logs.keys())
+
+        def __contains__(self, key: str):
+            return self._logs.__contains__(key + "/value")
+
+        def keys(self):
+            return [k[0 : k.rfind("/value")] for k in self._logs.keys()]
 
     return _Mapping(h5)

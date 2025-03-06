@@ -102,12 +102,6 @@ def mockDetectorState(runId: str) -> DetectorState:
     return None
 
 
-def mockH5Dataset(value):
-    dset = mock.MagicMock(spec=h5py.Dataset)
-    dset.__getitem__.side_effect = lambda x: value  # noqa: ARG005
-    return dset
-
-
 def mockPVFile(detectorState: DetectorState) -> mock.Mock:
     # See also: `tests/unit/backend/data/util/test_PV_logs_util.py`.
 
@@ -116,26 +110,32 @@ def mockPVFile(detectorState: DetectorState) -> mock.Mock:
 
     # For the HDF5-file, each key requires the "/value" suffix.
     dict_ = {
-        "run_number/value": np.array([123456], dtype=int),
-        "start_time/value": np.array(["2023-06-14T14:06:40.429048667"]),
-        "end_time/value": np.array(["2023-06-14T14:07:56.123123123"]),
-        "BL3:Chop:Skf1:WavelengthUserReq/value": mockH5Dataset(np.array([detectorState.wav])),
-        "det_arc1/value": np.array([detectorState.arc[0]]),
-        "det_arc2/value": np.array([detectorState.arc[1]]),
-        "BL3:Det:TH:BL:Frequency/value": np.array([detectorState.freq]),
-        "BL3:Mot:OpticsPos:Pos/value": np.array([detectorState.guideStat]),
-        "det_lin1/value": np.array([detectorState.lin[0]]),
-        "det_lin2/value": np.array([detectorState.lin[1]]),
+        "run_number/value": "123456",
+        "start_time/value": "2023-06-14T14:06:40.429048667",
+        "end_time/value": "2023-06-14T14:07:56.123123123",
+        "BL3:Chop:Skf1:WavelengthUserReq/value": [detectorState.wav],
+        "det_arc1/value": [detectorState.arc[0]],
+        "det_arc2/value": [detectorState.arc[1]],
+        "BL3:Det:TH:BL:Frequency/value": [detectorState.freq],
+        "BL3:Mot:OpticsPos:Pos/value": [detectorState.guideStat],
+        "det_lin1/value": [detectorState.lin[0]],
+        "det_lin2/value": [detectorState.lin[1]],
     }
+
+    def del_item(key: str):
+        # bypass <class>.__delitem__
+        del dict_[key]
 
     mock_ = mock.MagicMock(spec=h5py.Group)
 
-    def side_effect_getitem(key: str):
-        if key == "entry/DASlogs":
-            return mock_
-        return dict_[key]
+    mock_.get = lambda key, default=None: dict_.get(key, default)
+    mock_.del_item = del_item
 
-    mock_.__getitem__.side_effect = side_effect_getitem
+    # Use of the h5py.File starts with access to the "entry/DASlogs" group:
+    mock_.__getitem__.side_effect = lambda key: mock_ if key == "entry/DASlogs" else dict_[key]
+
+    mock_.__contains__.side_effect = dict_.__contains__
+    mock_.keys.side_effect = dict_.keys
     return mock_
 
 

@@ -1,6 +1,6 @@
 from enum import IntEnum
 from numbers import Number
-from typing import Dict, Literal, Optional, Tuple
+from typing import Dict, Literal, Tuple
 
 from pydantic import BaseModel, field_validator
 
@@ -17,7 +17,6 @@ class DetectorState(BaseModel):
     guideStat: Literal[1, 2]
     # two additional values that don't define state, but are useful
     lin: Tuple[float, float]
-    title: Optional[str] = None
 
     @field_validator("guideStat", mode="before")
     @classmethod
@@ -32,21 +31,13 @@ class DetectorState(BaseModel):
     def fromLogs(cls, logs: Dict[str, Number]):
         # NeXus/HDF5 and `mantid.api.Run` logs are time-series =>
         #   here we take only the first entry in each series.
-        ds = DetectorState(
+        return DetectorState(
             arc=(logs["det_arc1"][0], logs["det_arc2"][0]),
             lin=(logs["det_lin1"][0], logs["det_lin2"][0]),
             wav=logs.get("BL3:Chop:Skf1:WavelengthUserReq", logs.get("BL3:Chop:Gbl:WavelengthReq"))[0],
             freq=logs["BL3:Det:TH:BL:Frequency"][0],
             guideStat=int(logs["BL3:Mot:OpticsPos:Pos"][0]),
         )
-        if "title" in logs:
-            raw = logs["title"]
-            val = raw[0] if hasattr(raw, "__getitem__") else raw
-            if hasattr(val, "decode"):
-                val = val.decode("utf-8")
-            ds.title = str(val)
-
-        return ds
 
     def toLogs(self) -> Dict[str, Number]:
         # NeXus/HDF5 and `mantid.api.Run` logs are time-series =>
