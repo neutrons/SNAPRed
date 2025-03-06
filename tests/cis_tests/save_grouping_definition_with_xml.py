@@ -33,7 +33,7 @@ LoadEmptyInstrument(
 )
 assert mtd.doesExist(instrumentDonor)
 
-Config._config["cis_mode"] = True
+Config._Config["cis_mode.enabled"] = True
 
 grwsXML = "gr_ws_from_XML"
 grwsHDF = "gr_ws_from_HDF"

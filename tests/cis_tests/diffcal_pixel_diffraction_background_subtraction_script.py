@@ -30,7 +30,7 @@ peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
 removeBackground = True
-Config._config["cis_mode"] = True
+Config._Config["cis_mode.enabled"] = True
 Config._config["diffraction.smoothingParameter"] = 0.5  #This is the smoothing parameter to be set.
 #######################################
 

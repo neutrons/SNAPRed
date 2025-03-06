@@ -18,7 +18,7 @@ class MakeDirtyDish(PythonAlgorithm):
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)  # noqa: F821
         self.setRethrows(True)
-        self._CISmode: bool = Config["cis_mode"]
+        self._CISmode: bool = Config["cis_mode.enabled"]
 
     def PyExec(self) -> None:
         if self._CISmode:

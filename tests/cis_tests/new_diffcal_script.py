@@ -32,7 +32,7 @@ calibrantSamplePath = "Silicon_NIST_640D_001.json"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
-Config._config["cis_mode"] = False
+Config._Config["cis_mode.enabled"] = False
 #######################################
 
 ### PREP INGREDIENTS ################

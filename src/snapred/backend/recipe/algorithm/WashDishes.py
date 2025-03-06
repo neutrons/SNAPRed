@@ -18,19 +18,27 @@ class WashDishes(PythonAlgorithm):
         # declare properties
         self.declareProperty("Workspace", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty(StringArrayProperty(name="WorkspaceList", values=[], direction=Direction.Input))
+
+        cisModeConfig = Config._config.get("cis_mode", {})
+        self._CISmode = cisModeConfig.get("enabled", False)
+        self._preserveDiagnosticWorkspaces = cisModeConfig.get("preserveDiagnosticWorkspaces", False)
+
         self.setRethrows(True)
-        self._CISmode: bool = Config._config.get("cis_mode", False)
 
     def PyExec(self) -> None:
         self.log().notice("Washing the dishes...")
+
         workspace = self.getProperty("Workspace").value
-        if workspace != "" and mtd.doesExist(workspace) and not self._CISmode:
-            DeleteWorkspace(Workspace=workspace)
+        if workspace and mtd.doesExist(workspace):
+            if not self._CISmode:
+                DeleteWorkspace(Workspace=workspace)
+
         workspaces = self.getProperty("WorkspaceList").value
         workspaces = [w for w in workspaces if mtd.doesExist(w)]
-        if workspaces != [] and not self._CISmode:
-            DeleteWorkspaces(workspaces)
+        if workspaces:
+            if not self._CISmode:
+                DeleteWorkspaces(WorkspaceList=workspaces)
 
 
-# Register algorithm with Mantid
+# Register algorithm
 AlgorithmFactory.subscribe(WashDishes)
