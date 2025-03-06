@@ -32,7 +32,6 @@ from snapred.backend.dao.request import (
     LoadCalibrationRecordRequest,
     MatchRunsRequest,
     OverrideRequest,
-    RunFeedbackRequest,
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
@@ -106,7 +105,6 @@ class CalibrationService(Service):
         self.registerPath("residual", self.calculateResidual)
         self.registerPath("fetchMatches", self.fetchMatchingCalibrations)
         self.registerPath("override", self.handleOverrides)
-        self.registerPath("runFeedback", self.runFeedback)
         return
 
     @staticmethod
@@ -605,8 +603,3 @@ class CalibrationService(Service):
             return sample.overrides
         else:
             return None
-
-    @FromString
-    def runFeedback(self, request: RunFeedbackRequest):
-        stateId = self.dataFactoryService.constructStateId(request.runId)
-        return stateId
