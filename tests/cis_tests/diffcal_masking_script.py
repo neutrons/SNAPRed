@@ -92,7 +92,7 @@ peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
 instrumentFilePath = SNAPLiteInstrumentFilePath if isLite else SNAPInstrumentFilePath
-Config._Config["cis_mode.enabled"] = False
+Config._Config["cis_mode"]["enabled"] = False
 #######################################
 
 ### PREP INGREDIENTS ##################

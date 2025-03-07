@@ -321,12 +321,12 @@ class TestDataFactoryService(unittest.TestCase):
         assert self.instance.workspaceDoesExist(wsname)
 
         # won't delete in cis mode
-        Config._config["cis_mode.enabled"] = True
+        Config._config["cis_mode"]["enabled"] = True
         self.instance.deleteWorkspace(wsname)
         assert self.instance.workspaceDoesExist(wsname)
 
         # will delete otherwise
-        Config._config["cis_mode.enabled"] = False
+        Config._config["cis_mode"]["enabled"] = False
         self.instance.deleteWorkspace(wsname)
         assert not self.instance.workspaceDoesExist(wsname)
 
