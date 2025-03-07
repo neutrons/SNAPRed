@@ -888,7 +888,7 @@ class TestGroceryService(unittest.TestCase):
             )
 
         testItem = generateTestItem()
-        testItem.copy.side_effect = generateTestItem
+        testItem.model_copy.side_effect = generateTestItem
 
         # ensure a clean ADS
         workspaceName = self.instance._createNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode)
@@ -947,7 +947,7 @@ class TestGroceryService(unittest.TestCase):
             m = mock.Mock(
                 spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=True, loader="", liveDataArgs=None
             )
-            m.copy.side_effect = generateTestItem
+            m.model_copy.side_effect = generateTestItem
             return m
 
         liteItem = generateTestItem()
@@ -985,7 +985,7 @@ class TestGroceryService(unittest.TestCase):
             )
 
         testItem = generateTestItem()
-        testItem.copy.side_effect = generateTestItem
+        testItem.model_copy.side_effect = generateTestItem
         testKey = self.instance._key(testItem.runNumber, testItem.useLiteMode)
 
         workspaceNameRaw = self.instance._createRawNeutronWorkspaceName(testItem.runNumber, testItem.useLiteMode)
@@ -1075,7 +1075,7 @@ class TestGroceryService(unittest.TestCase):
             m = mock.Mock(
                 spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=True, loader="", liveDataArgs=None
             )
-            m.copy.side_effect = generateTestItem
+            m.model_copy.side_effect = generateTestItem
             return m
 
         testItem = generateTestItem()
@@ -1088,7 +1088,7 @@ class TestGroceryService(unittest.TestCase):
             )
 
         nativeItem = generateTestItem()
-        nativeItem.copy.side_effect = generateTestItem
+        nativeItem.model_copy.side_effect = generateTestItem
 
         nativeKey = self.instance._key(nativeItem.runNumber, nativeItem.useLiteMode)
 

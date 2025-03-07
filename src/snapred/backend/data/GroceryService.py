@@ -835,7 +835,7 @@ class GroceryService:
         return data
 
     def _fetchNeutronDataNative(self, item: GroceryListItem) -> Dict[str, Any]:
-        _item = item.copy(deep=True)
+        _item = item.model_copy(deep=True)
         _item.useLiteMode = False
 
         def tryLiveData():
@@ -852,7 +852,7 @@ class GroceryService:
         return self._fetchNeutronDataSingleUse(_item, tryLiveData)
 
     def _fetchNeutronDataLite(self, item: GroceryListItem, export=False) -> Dict[str, Any]:
-        _item = item.copy(deep=True)
+        _item = item.model_copy(deep=True)
         _item.useLiteMode = True
 
         def tryNative():
