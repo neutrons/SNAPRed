@@ -55,6 +55,7 @@ class GroceryListItem(BaseModel):
     loader: Literal[
         "",
         "LoadCalibrationWorkspaces",
+        "LoadNexusMonitors",
         "LoadEventNexus",
         "LoadGroupingDefinition",
         "LoadLiveData",

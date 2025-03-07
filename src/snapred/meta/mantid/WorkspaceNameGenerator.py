@@ -25,6 +25,8 @@ class WorkspaceType(str, Enum):
     DIFFCAL_METRIC = "diffCalMetric"
     DIFFCAL_TIMED_METRIC = "diffCalTimedMetric"
 
+    MONITOR = "monitor"
+
     # TODO: REBASE NOTE: inconsistent naming:
     #   these next should be `NORMCAL_RAW_VANADIUM` and etc.
     RAW_VANADIUM = "rawVanadium"
@@ -456,6 +458,14 @@ class _WorkspaceNameGenerator:
             self._delimiter,
             unit=self.Units.DSP,
             type=self.ArtificialNormWorkspaceType.PREVIEW,
+        )
+
+    def monitor(self):
+        return NameBuilder(
+            WorkspaceType.MONITOR,
+            self._monitorTemplate,
+            self._monitorTemplateKeys,
+            self._delimiter,
         )
 
     def normCalResidual(self):

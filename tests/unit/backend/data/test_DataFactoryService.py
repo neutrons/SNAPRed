@@ -296,7 +296,7 @@ class TestDataFactoryService(unittest.TestCase):
         mtd.add(wsname1, ws1)
         assert self.instance.workspaceDoesExist(wsname1)
         ws2 = self.instance.getCloneOfWorkspace(wsname1, wsname2)
-        assert ws1.getComment() == ws2.getComment()
+        assert mtd[str(ws1)].getComment() == mtd[str(ws2)].getComment()
         DeleteWorkspace(wsname1)
         assert self.instance.workspaceDoesExist(wsname2)
         DeleteWorkspace(wsname2)

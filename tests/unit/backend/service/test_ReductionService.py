@@ -138,6 +138,7 @@ class TestReductionService(unittest.TestCase):
     def test_fetchReductionGroceries(self):
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
+        self.instance.groceryService._processNeutronDataCopy = mock.Mock()
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.request.continueFlags = ContinueWarning.Type.UNSET
         res = self.instance.fetchReductionGroceries(self.request)
@@ -150,6 +151,7 @@ class TestReductionService(unittest.TestCase):
 
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
+        self.instance.groceryService._processNeutronDataCopy = mock.Mock()
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.instance.groceryService.dataService.hasLiveDataConnection = mock.Mock(return_value=True)
 
@@ -177,6 +179,7 @@ class TestReductionService(unittest.TestCase):
 
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
+        self.instance.groceryService._processNeutronDataCopy = mock.Mock()
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.instance.prepCombinedMask = mock.Mock(return_value=mock.sentinel.mask)
         self.request.continueFlags = ContinueWarning.Type.UNSET
@@ -210,6 +213,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
+        self.instance.groceryService._processNeutronDataCopy = mock.Mock()
         self.instance._markWorkspaceMetadata = mock.Mock()
 
         result = self.instance.reduction(self.request)

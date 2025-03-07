@@ -41,3 +41,18 @@ class TestNormalizeByCurrent(unittest.TestCase):
         assert ws.run().hasProperty("NormalizationFactor")
         print(ws.run().getProperty("NormalizationFactor").value)
         assert ws.dataY(0) == [value]
+
+    def test_normalize_by_monitor(self):
+        value = 16
+        wsname = mtd.unique_name()
+        ws = CreateWorkspace(OutputWorkspace=wsname, DataX=[1], DataY=[value])
+        ws = NormalizeByCurrentButTheCorrectWay(
+            InputWorkspace=wsname,
+            OutputWorkspace=wsname,
+            NormalizeByMonitorCounts=4,
+        )
+
+        assert ws.name() == wsname
+        assert ws.run().hasProperty("NormalizationFactor")
+        assert ws.run().getProperty("NormalizationFactor").value == 1 / 4
+        assert ws.dataY(0) == [value / 4]
