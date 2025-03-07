@@ -10,7 +10,6 @@ from snapred.backend.dao.request import (
     HasStateRequest,
     NormalizationExportRequest,
     NormalizationRequest,
-    RunFeedbackRequest,
 )
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
@@ -101,26 +100,9 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.useLiteMode = self._requestView.liteModeToggle.getState()
 
         self._setInteractive(False)
-
-        def _onDropdownSuccess():
-            self._setInteractive(True)
-            self._populateRunFeedback(runNumber)
-
         self.workflow.presenter.handleAction(
             self.handleDropdown,
             args=(runNumber, self.useLiteMode),
-            onSuccess=_onDropdownSuccess,
-        )
-
-    @ExceptionToErrLog
-    @Slot()
-    def _populateRunFeedback(self, runNumber: str):
-        if not runNumber:
-            self._requestView.updateRunFeedback("", "")
-            return
-        self.workflow.presenter.handleAction(
-            self.handleRunFeedback,
-            args=(runNumber),
             onSuccess=lambda: self._setInteractive(True),
         )
 
@@ -139,18 +121,6 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         # populate and reenable the drop down
         self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
-        return SNAPResponse(code=ResponseCode.OK)
-
-    def handleRunFeedback(self, runNumber):
-        if not RunNumberValidator.validateRunNumber(runNumber):
-            return SNAPResponse(code=ResponseCode.OK)
-        payload = RunFeedbackRequest(
-            runId=runNumber,
-        )
-        response = self.request(path="calibration/runFeedback", payload=payload.json()).data
-        stateId, detectorState = response
-        runTitle = detectorState.title
-        self._requestView.updateRunFeedback(stateId, runTitle)
         return SNAPResponse(code=ResponseCode.OK)
 
     @EntryExitLogger(logger=logger)
