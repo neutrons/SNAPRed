@@ -84,7 +84,7 @@ runNumber = "58882"
 groupingScheme = 'Column'
 isLite = True
 instrumentFilePath = SNAPLiteInstrumentFilePath
-Config._Config["cis_mode"]["enabled"] = False
+Config._config["cis_mode"]["enabled"] = False
 #######################################
 
 ## PREP INGREDIENTS ###################
