@@ -94,7 +94,11 @@ class TestGUIPanels:
         self.exitStack.enter_context(amend_config(data_dir=prependDataSearchDirectories(), prepend_datadir=True))
 
         self.testSummary = None
+        import faulthandler
+
+        faulthandler.enable()
         yield
+        faulthandler.disable()
 
         if isinstance(self.testSummary, TestSummary):
             if not self.testSummary.isComplete():
