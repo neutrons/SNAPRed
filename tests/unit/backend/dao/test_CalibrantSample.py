@@ -39,10 +39,10 @@ class TestCalibrantSample(unittest.TestCase):
         ref = f"""
         <type name="userShape">
             <{self.geo.shape.lower()} id="sample-shape">
-                <centre-of-bottom-base x="0" y="{-round(self.geo.height*0.005,3)}" z="0"/>
+                <centre-of-bottom-base x="0" y="{-round(self.geo.height * 0.005, 3)}" z="0"/>
                 <axis x="0" y="1" z="0"/>
-                <height val="{round(self.geo.height*0.01,3)}"/>
-                <radius val="{round(self.geo.radius*0.01,3)}"/>
+                <height val="{round(self.geo.height * 0.01, 3)}"/>
+                <radius val="{round(self.geo.radius * 0.01, 3)}"/>
             </{self.geo.shape.lower()}>
         </type>
         """

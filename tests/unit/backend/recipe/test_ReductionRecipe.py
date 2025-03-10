@@ -797,14 +797,14 @@ class ReductionRecipeTest(TestCase):
         recipe.logger().warning.assert_any_call(expected_warning_message_group2)
 
         # Ensure the warning was called twice (once per group)
-        assert (
-            recipe.logger().warning.call_count == 2
-        ), "Expected warning to be logged twice for the fully masked groups."
+        assert recipe.logger().warning.call_count == 2, (
+            "Expected warning to be logged twice for the fully masked groups."
+        )
 
         # Ensure no algorithms were applied for the fully masked groups
-        assert (
-            recipe._applyRecipe.call_count == 2
-        ), "Expected _applyRecipe to not be called for the fully masked groups."
+        assert recipe._applyRecipe.call_count == 2, (
+            "Expected _applyRecipe to not be called for the fully masked groups."
+        )
 
         # Check the output result contains the mask workspace
         assert result["outputs"][0] == "mask", "Expected the mask workspace to be included in the outputs."

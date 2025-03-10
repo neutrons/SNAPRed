@@ -90,10 +90,10 @@ class TestGeometry(unittest.TestCase):
         ref = f"""
         <type name="userShape">
             <{self.cylinder.shape.lower()} id="sample-shape">
-                <centre-of-bottom-base x="0" y="{-self.cylinder.height*0.005}" z="0"/>
+                <centre-of-bottom-base x="0" y="{-self.cylinder.height * 0.005}" z="0"/>
                 <axis x="0" y="1" z="0"/>
-                <height val="{self.cylinder.height*0.01}"/>
-                <radius val="{self.cylinder.radius*0.01}"/>
+                <height val="{self.cylinder.height * 0.01}"/>
+                <radius val="{self.cylinder.radius * 0.01}"/>
             </{self.cylinder.shape.lower()}>
         </type>
         """
@@ -111,7 +111,7 @@ class TestGeometry(unittest.TestCase):
         <type name="userShape">
             <{self.sphere.shape.lower()} id="sphere">
                 <center x="0" y="0" z="0"/>
-                <radius val="{self.sphere.radius*0.01}"/>
+                <radius val="{self.sphere.radius * 0.01}"/>
             </{self.sphere.shape.lower()}>
         </type>
         """
@@ -138,10 +138,10 @@ class TestGeometry(unittest.TestCase):
         ref = f"""
         <type name="userShape">
             <{self.cylinder.shape.lower()} id="sample-shape">
-                <centre-of-bottom-base x="0" y="{-self.cylinder.height*0.005}" z="0"/>
+                <centre-of-bottom-base x="0" y="{-self.cylinder.height * 0.005}" z="0"/>
                 <axis x="0" y="1" z="0"/>
-                <height val="{self.cylinder.height*0.01}"/>
-                <radius val="{self.cylinder.radius*0.01}"/>
+                <height val="{self.cylinder.height * 0.01}"/>
+                <radius val="{self.cylinder.radius * 0.01}"/>
             </{self.cylinder.shape.lower()}>
         </type>
         """
@@ -159,7 +159,7 @@ class TestGeometry(unittest.TestCase):
         <type name="userShape">
             <{self.sphere.shape.lower()} id="sphere">
                 <center x="0" y="0" z="0"/>
-                <radius val="{self.sphere.radius*0.01}"/>
+                <radius val="{self.sphere.radius * 0.01}"/>
             </{self.sphere.shape.lower()}>
         </type>
         """
