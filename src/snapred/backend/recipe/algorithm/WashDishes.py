@@ -20,8 +20,8 @@ class WashDishes(PythonAlgorithm):
         self.declareProperty(StringArrayProperty(name="WorkspaceList", values=[], direction=Direction.Input))
 
         cisModeConfig = Config["cis_mode"]
-        self._CISmode: bool = cisModeConfig.get("enabled", False)
-        self._preserveDiagnosticWorkspaces: bool = cisModeConfig.get("preserveDiagnosticWorkspaces", False)
+        self._CISmode: bool = cisModeConfig.get("enabled")
+        self._preserveDiagnosticWorkspaces: bool = cisModeConfig.get("preserveDiagnosticWorkspaces")
 
         self.setRethrows(True)
 
