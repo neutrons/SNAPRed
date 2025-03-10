@@ -7,7 +7,7 @@ from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 
 from snapred.meta.Config import Config
-Config._config["cis_mode"]["enabled"] = False
+Config._config["cis_mode.enabled"] = False
 
 #User input ###########################
 runNumber = "46680"

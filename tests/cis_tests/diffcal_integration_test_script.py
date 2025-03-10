@@ -62,7 +62,7 @@ def script(goldenData):
     peakThreshold = 0.05
     offsetConvergenceLimit = 0.1
     isLite = True
-    Config._config["cis_mode"]["enabled"] = False
+    Config._config["cis_mode.enabled"] = False
     #######################################
 
     ### OVERRIDE IPTS location (optional), re-initialize STATE ###         

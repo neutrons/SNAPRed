@@ -37,7 +37,7 @@ calibrantSamplePath = "Diamond_001.json"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
-Config._config["cis_mode"]["enabled"] = False
+Config._config["cis_mode.enabled"] = False
 #######################################
 
 focusGroup = {"name": groupingScheme, "definition": ""}

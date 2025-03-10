@@ -19,7 +19,7 @@ class WashDishes(PythonAlgorithm):
         self.declareProperty("Workspace", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty(StringArrayProperty(name="WorkspaceList", values=[], direction=Direction.Input))
 
-        cisModeConfig = Config._config.get("cis_mode", {})
+        cisModeConfig = Config["cis_mode"]
         self._CISmode: bool = cisModeConfig.get("enabled", False)
         self._preserveDiagnosticWorkspaces: bool = cisModeConfig.get("preserveDiagnosticWorkspaces", False)
 

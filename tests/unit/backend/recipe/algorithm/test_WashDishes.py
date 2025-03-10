@@ -50,7 +50,7 @@ class TestWashDishes(unittest.TestCase):
     def test_wash_dish_using_yaml(self):
         # verify that the algorithm will behave as expected with the config key
         wsname = "_test_wash_one_dish"
-        cismode = Config["cis_mode"]["enabled"]
+        cismode = Config["cis_mode.enabled"]
         CreateWorkspace(OutputWorkspace=wsname, DataX=1, DataY=1)
         assert wsname in mtd
         algo = WashDishes()
