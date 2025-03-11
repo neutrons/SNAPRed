@@ -24,7 +24,7 @@ class MakeDirtyDish(PythonAlgorithm):
         self.preserve: bool = cisModeConfig.get("preserveDiagnosticWorkspaces")
 
         if self.enabled != self.preserve:
-            self.log().notice(
+            self.log().warning(
                 f"Mismatch in config: cis_mode.enabled={self.enabled}, "
                 f"cis_mode.preserveDiagnosticWorkspaces={self.preserve}."
             )

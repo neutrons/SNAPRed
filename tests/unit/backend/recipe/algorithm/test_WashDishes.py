@@ -61,3 +61,20 @@ class TestWashDishes(unittest.TestCase):
             assert wsname in mtd
         elif not cismode:
             assert wsname not in mtd
+
+    def test_wash_dish_with_improper_flags(self):
+        from util.Config_helpers import Config_override
+
+        wsname = "_test_wash_one_dish"
+        CreateWorkspace(OutputWorkspace=wsname, DataX=1, DataY=1)
+        assert wsname in mtd
+
+        algo = WashDishes()
+        algo.initialize()
+        algo.setProperty("Workspace", wsname)
+
+        with Config_override("cis_mode.enabled", True):
+            with Config_override("cis_mode.preserveDiagnosticWorkspaces", False):
+                algo.execute()
+
+        assert wsname not in mtd
