@@ -248,7 +248,9 @@ version:
     default: 0 # alphanumeric
   start: 0   # MUST be nonnegative integer
 
-cis_mode: false
+cis_mode:
+  enabled: false
+  preserveDiagnosticWorkspaces: false
 
 constants:
   millisecondsPerSecond: 1000
