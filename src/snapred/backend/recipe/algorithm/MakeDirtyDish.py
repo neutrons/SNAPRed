@@ -19,9 +19,10 @@ class MakeDirtyDish(PythonAlgorithm):
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)  # noqa: F821
         self.setRethrows(True)
         self._CISmode: bool = Config["cis_mode.enabled"]
+        self._preserveDiagnosticWorkspaces: bool = Config["cis_mode.preserveDiagnosticWorkspaces"]
 
     def PyExec(self) -> None:
-        if self._CISmode:
+        if self._preserveDiagnosticWorkspaces:
             inWS = self.getProperty("InputWorkspace").value
             outWS = self.getProperty("OutputWorkspace").value
             self.log().debug(f"Dirtying up dish {inWS} --> {outWS}")
