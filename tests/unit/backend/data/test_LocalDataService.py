@@ -10,6 +10,7 @@ import tempfile
 import time
 import typing
 import unittest.mock as mock
+from collections import namedtuple
 from collections.abc import Mapping
 from contextlib import ExitStack
 from pathlib import Path
@@ -1331,6 +1332,12 @@ def test_calibrationIndexer():
     do_test_workflow_indexer("Calibration")
 
 
+def test_calibrationIndexer_alternate():
+    localDataService = LocalDataService()
+    indexer = localDataService.calibrationIndexer("57514", True, alternativeState="altStateTest")
+    assert "altStateTest" in str(indexer.rootDirectory)
+
+
 def test_normalizationIndexer():
     do_test_workflow_indexer("Normalization")
 
@@ -1529,6 +1536,69 @@ def test_writeCalibrationWorkspaces(cleanup_workspace_at_exit):
         diffCalFilename = Path(wng.diffCalTable().runNumber(runNumber).version(version).build() + ".h5")
         for filename in [outputFilename, diagnosticFilename, diffCalFilename]:
             assert (basePath / filename).exists()
+
+
+def test_copyCalibration():
+    # create base calibration folder for copying
+    localDataService = LocalDataService()
+    for useLiteMode in [True, False]:
+        record = DAOFactory.calibrationRecord("57514", useLiteMode, version=1)
+        with state_root_redirect(localDataService):
+            entry = entryFromRecord(record)
+            localDataService.writeCalibrationIndexEntry(entry)
+            localDataService.writeCalibrationRecord(record)
+            # now use python to copy the avove folder
+            import shutil
+
+            stateId = ENDURING_STATE_ID
+            stateRoot = localDataService.constructCalibrationStateRoot()
+            altStateRoot = Resource.getPath("outputs/myAltState")
+
+            # create dummy workspace files in stateRoot
+            basePath = localDataService.calibrationIndexer("57514", useLiteMode).versionPath(1)
+            for workspaceType, workspaceNames in record.workspaces.items():
+                for wsName in workspaceNames:
+                    if workspaceType == wngt.DIFFCAL_OUTPUT:
+                        ext = Config["calibration.diffraction.output.extension"]
+                    elif workspaceType == wngt.DIFFCAL_DIAG:
+                        ext = Config["calibration.diffraction.diagnostic.extension"]
+                    elif workspaceType == wngt.DIFFCAL_TABLE:
+                        ext = ".h5"
+                    elif workspaceType == wngt.DIFFCAL_MASK:
+                        continue
+
+                    wsPath = basePath / (wsName + ext)
+                    wsPath.touch()
+            orig_constructCalibrationStatePath = localDataService._constructCalibrationStatePath
+            try:
+                shutil.copytree(stateRoot, altStateRoot)
+                liteOrNative = "lite" if useLiteMode else "native"
+                assert (Path(altStateRoot) / liteOrNative / "diffraction" / "v_0001").exists()
+                assert not (Path(altStateRoot) / liteOrNative / "diffraction" / "v_0002").exists()
+                # now that there is a compatible state, try to copy a calibration from the original to the new state
+                newEntry = entryFromRecord(DAOFactory.calibrationRecord("57514", useLiteMode, version=2))
+
+                localDataService._constructCalibrationStatePath = mock.Mock()
+
+                def correctStatePath(stateId, _):
+                    if stateId == "myAltState":
+                        return Path(altStateRoot) / liteOrNative / "diffraction"
+                    return Path(stateRoot) / liteOrNative / "diffraction"
+
+                localDataService._constructCalibrationStatePath.side_effect = correctStatePath
+
+                localDataService.copyCalibration(stateId, "myAltState", newEntry)
+                # now check that the new entry exists in the new state
+
+                assert (Path(altStateRoot) / liteOrNative / "diffraction" / "v_0002").exists()
+                assert (
+                    Path(altStateRoot) / liteOrNative / "diffraction" / "v_0002" / "_dsp_column_057514_v0002.nxs.h5"
+                ).exists()
+
+            finally:
+                localDataService._constructCalibrationStatePath = orig_constructCalibrationStatePath
+                shutil.rmtree(altStateRoot)
+                pass
 
 
 ### TESTS OF NORMALIZATION METHODS ###
@@ -3464,4 +3534,76 @@ class TestReductionPixelMasks:
     def test__reducedRuns_other_runtime_error(self):
         with Config_override("instrument.reduction.home", "a.string.with.{IPTS}.in.it"):
             with pytest.raises(RuntimeError, match="Some other runtime error"):
-                runs = self.service._reducedRuns(self.runNumber6, True)  # noqa: F841
+                self.service._reducedRuns(self.runNumber6, True)  # noqa: F841
+                
+    @mock.patch(ThisService + "Path")
+    def test_findCompatibleStates(self, mockPath):
+        compatibleDetectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+        compatibleDetectorState2 = DetectorState(
+            arc=compatibleDetectorState1.arc,
+            wav=9.0,
+            freq=10.0,
+            guideStat=compatibleDetectorState1.guideStat,
+            lin=(11.0, 12.0),
+        )
+        incompatibleDetectorState = DetectorState(arc=(7.0, 8.0), wav=9.0, freq=10.0, guideStat=2, lin=(11.0, 12.0))
+
+        pathTuple = namedtuple("Path", ["name", "is_dir"])
+
+        mockPath().iterdir.return_value = [
+            pathTuple(name="123456(comp)", is_dir=lambda: True),
+            pathTuple(name="123457(comp)", is_dir=lambda: True),
+            pathTuple(name="123458(incomp)", is_dir=lambda: True),
+        ]
+
+        mockIndexer = mock.MagicMock()
+        self.service._indexer = mock.Mock(return_value=mockIndexer)
+        mockIndexer.defaultVersion.return_value = "-1"
+        mockIndexer.currentVersion.return_value = "0"
+        mockIndexer.latestApplicableVersion.return_value = "0"
+        mockIndexer.readParameters.side_effect = [
+            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=compatibleDetectorState1)),
+            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=compatibleDetectorState2)),
+            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=incompatibleDetectorState)),
+        ]
+
+        self.service.readDetectorState = mock.Mock()
+        self.service.readDetectorState.return_value = compatibleDetectorState1
+
+        result = self.service.findCompatibleStates("123", True)
+        assert len(result) == 2
+        assert "123456(comp)" in result
+        assert "123457(comp)" in result
+        assert "123458(incomp)" not in result
+
+    @mock.patch(ThisService + "Path")
+    def test_findCompatibleStates_butLacksCalibration(self, mockPath):
+        compatibleDetectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+        incompatibleDetectorState = DetectorState(arc=(7.0, 8.0), wav=9.0, freq=10.0, guideStat=2, lin=(11.0, 12.0))
+
+        pathTuple = namedtuple("Path", ["name", "is_dir"])
+
+        mockPath().iterdir.return_value = [
+            pathTuple(name="123456(comp)", is_dir=lambda: True),
+            pathTuple(name="123457(comp)", is_dir=lambda: True),
+            pathTuple(name="123458(incomp)", is_dir=lambda: True),
+        ]
+
+        mockIndexer = mock.MagicMock()
+        self.service._indexer = mock.Mock(return_value=mockIndexer)
+        mockIndexer.defaultVersion.return_value = "-1"
+        mockIndexer.currentVersion.side_effect = ["0", "-1", "0"]
+        mockIndexer.latestApplicableVersion.return_value = "0"
+        mockIndexer.readParameters.side_effect = [
+            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=compatibleDetectorState1)),
+            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=incompatibleDetectorState)),
+        ]
+
+        self.service.readDetectorState = mock.Mock()
+        self.service.readDetectorState.return_value = compatibleDetectorState1
+
+        result = self.service.findCompatibleStates("123", True)
+        assert len(result) == 1
+        assert "123456(comp)" in result
+        assert "123457(comp)" not in result
+        assert "123458(incomp)" not in result

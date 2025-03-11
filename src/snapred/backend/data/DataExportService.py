@@ -7,6 +7,7 @@ from pydantic import validate_call
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.Versioning import Version, VersionState
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
@@ -53,6 +54,15 @@ class DataExportService:
         return self.dataService.checkWritePermissions(path)
 
     ##### CALIBRATION METHODS #####
+
+    def copyCalibration(
+        self,
+        sourceStateID: str,
+        targetStateID: str,
+        targetIndexEntry: IndexEntry,
+        sourceVersion: Version = VersionState.LATEST,
+    ):
+        return self.dataService.copyCalibration(sourceStateID, targetStateID, targetIndexEntry, sourceVersion)
 
     @validate_call
     def initializeState(self, runId: str, useLiteMode: bool, name: str):

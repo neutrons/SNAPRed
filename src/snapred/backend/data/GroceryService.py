@@ -229,9 +229,16 @@ class GroceryService:
         )
 
     def _createDiffcalTableFilepathFromWsName(
-        self, runNumber: str, useLiteMode: bool, version: Optional[int], wsName: WorkspaceName
+        self,
+        runNumber: str,
+        useLiteMode: bool,
+        version: Optional[int],
+        wsName: WorkspaceName,
+        alternativeState: str = None,
     ) -> str:
-        calibrationDataPath = self._getCalibrationDataPath(runNumber, useLiteMode, version)
+        calibrationDataPath = self._getCalibrationDataPath(
+            runNumber, useLiteMode, version, alternativeState=alternativeState
+        )
         expectedWsName = self.createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
         if wsName != expectedWsName:
             record = self.dataService.calibrationIndexer(runNumber, useLiteMode).readRecord(version)
@@ -307,9 +314,9 @@ class GroceryService:
         )
 
     def lookupDiffcalTableWorkspaceName(
-        self, runNumber: str, useLiteMode: bool, version: Optional[int]
+        self, runNumber: str, useLiteMode: bool, version: Optional[int], alternativeState: str = None
     ) -> WorkspaceName:
-        indexer = self.dataService.calibrationIndexer(runNumber, useLiteMode)
+        indexer = self.dataService.calibrationIndexer(runNumber, useLiteMode, alternativeState=alternativeState)
         if not isinstance(version, int):
             version = indexer.latestApplicableVersion(runNumber)
 
@@ -673,7 +680,9 @@ class GroceryService:
         return self.dataService.readDetectorState(runNumber)
 
     @validate_call
-    def _getCalibrationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
+    def _getCalibrationDataPath(
+        self, runNumber: str, useLiteMode: bool, version: Optional[int], alternativeState: Optional[str] = None
+    ) -> str:
         """
         Get a path to the directory with the calibration data
 
@@ -682,7 +691,9 @@ class GroceryService:
         :param version: the calibration version to use in the lookup
         :type version: int
         """
-        return self.dataService.calibrationIndexer(runNumber, useLiteMode).versionPath(version)
+        return self.dataService.calibrationIndexer(
+            runNumber, useLiteMode, alternativeState=alternativeState
+        ).versionPath(version)
 
     @validate_call
     def _getNormalizationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
@@ -1029,8 +1040,15 @@ class GroceryService:
 
         :rtype: Dict[str, Any]
         """
-        runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
-        tableWorkspaceName = self.lookupDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
+        runNumber, version, useLiteMode, alternativeState = (
+            item.runNumber,
+            item.version,
+            item.useLiteMode,
+            item.alternativeState,
+        )
+        tableWorkspaceName = self.lookupDiffcalTableWorkspaceName(
+            runNumber, useLiteMode, version, alternativeState=alternativeState
+        )
         maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, useLiteMode, version)
 
         # Table + mask are in the same hdf5 file: all of these clauses must deal with _both_!
@@ -1041,7 +1059,10 @@ class GroceryService:
                 "workspace": tableWorkspaceName,
             }
         else:
-            filename = self._createDiffcalTableFilepathFromWsName(runNumber, useLiteMode, version, tableWorkspaceName)
+            # table + mask are in the same hdf5 file:
+            filename = self._createDiffcalTableFilepathFromWsName(
+                runNumber, useLiteMode, version, tableWorkspaceName, alternativeState=alternativeState
+            )
 
             # Unless overridden: use a cached workspace as the instrument donor.
             instrumentPropertySource, instrumentSource = (
@@ -1260,7 +1281,10 @@ class GroceryService:
                         loader="LoadNexusProcessed",
                     )
                 case "diffcal_table":
-                    indexer = self.dataService.calibrationIndexer(item.runNumber, item.useLiteMode)
+                    alternativeState = item.alternativeState
+                    indexer = self.dataService.calibrationIndexer(
+                        item.runNumber, item.useLiteMode, alternativeState=alternativeState
+                    )
                     if not isinstance(item.version, int):
                         item.version = indexer.latestApplicableVersion(item.runNumber)
                     record = indexer.readRecord(item.version)
@@ -1272,12 +1296,15 @@ class GroceryService:
                     # the behavior of the mask workspace, the workspace name is overridden here.
 
                     tableWorkspaceName = self.lookupDiffcalTableWorkspaceName(
-                        item.runNumber, item.useLiteMode, item.version
+                        item.runNumber, item.useLiteMode, item.version, alternativeState=alternativeState
                     )
                     res = self.fetchCalibrationWorkspaces(item)
                     res["workspace"] = tableWorkspaceName
                 case "diffcal_mask":
-                    indexer = self.dataService.calibrationIndexer(item.runNumber, item.useLiteMode)
+                    alternativeState = item.alternativeState
+                    indexer = self.dataService.calibrationIndexer(
+                        item.runNumber, item.useLiteMode, alternativeState=alternativeState
+                    )
                     if not isinstance(item.version, int):
                         item.version = indexer.latestApplicableVersion(item.runNumber)
                     record = indexer.readRecord(item.version)
