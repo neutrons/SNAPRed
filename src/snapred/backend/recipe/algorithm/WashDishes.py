@@ -20,8 +20,14 @@ class WashDishes(PythonAlgorithm):
         self.declareProperty(StringArrayProperty(name="WorkspaceList", values=[], direction=Direction.Input))
 
         cisModeConfig = Config["cis_mode"]
-        self._CISmode: bool = cisModeConfig.get("enabled")
-        self._preserveDiagnosticWorkspaces: bool = cisModeConfig.get("preserveDiagnosticWorkspaces")
+        self.enabled: bool = cisModeConfig.get("enabled")
+        self.preserve: bool = cisModeConfig.get("preserveDiagnosticWorkspaces")
+
+        if self.enabled != self.preserve:
+            self.log().notice(
+                f"Mismatch in config: cis_mode.enabled={self.enabled}, "
+                f"cis_mode.preserveDiagnosticWorkspaces={self.preserve}."
+            )
 
         self.setRethrows(True)
 
@@ -30,14 +36,16 @@ class WashDishes(PythonAlgorithm):
 
         workspace = self.getProperty("Workspace").value
         if workspace and mtd.doesExist(workspace):
-            if not self._CISmode:
-                DeleteWorkspace(Workspace=workspace)
+            if not self.enabled:
+                if not self.preserve:
+                    DeleteWorkspace(Workspace=workspace)
 
         workspaces = self.getProperty("WorkspaceList").value
         workspaces = [w for w in workspaces if mtd.doesExist(w)]
         if workspaces:
-            if not self._CISmode:
-                DeleteWorkspaces(WorkspaceList=workspaces)
+            if not self.enabled:
+                if not self.preserve:
+                    DeleteWorkspaces(WorkspaceList=workspaces)
 
 
 # Register algorithm
