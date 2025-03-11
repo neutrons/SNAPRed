@@ -143,9 +143,9 @@ calibration:
       beta:
         - 0.02
         - 0.05
-      FWHMMultiplier: {left: 2.0, right: 2.0}
+      FWHMMultiplier: {left: 1.5, right: 1.5}
       peakTailCoefficient: 2.0
-      smoothing: 0.5
+      smoothing: 0.000001
   fitting:
     minSignal2Noise: 0.0
 
@@ -272,7 +272,7 @@ constants:
     toggleCompressionTolerance: false  # false = no tolerance compression, true = tolerance compression
     # tolerance: -0.004                 # tolerance override for calculated compression
   GroupDiffractionCalibration:
-    MaxChiSq: 100
+    MaxChiSq: 10000
   RawVanadiumCorrection:
     numberOfSlices: 10
     numberOfAnnuli: 10
