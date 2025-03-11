@@ -8,6 +8,7 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 
 from snapred.meta.Config import Config
 Config._config["cis_mode.enabled"] = False
+Config._config["cis_mode.preserveDiagnosticWorkspaces"] = False
 
 #User input ###########################
 runNumber = "46680"

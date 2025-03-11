@@ -85,6 +85,7 @@ groupingScheme = 'Column'
 isLite = True
 instrumentFilePath = SNAPLiteInstrumentFilePath
 Config._config["cis_mode.enabled"] = False
+Config._config["cis_mode.preserveDiagnosticWorkspaces"] = False
 #######################################
 
 ## PREP INGREDIENTS ###################

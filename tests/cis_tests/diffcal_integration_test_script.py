@@ -63,6 +63,7 @@ def script(goldenData):
     offsetConvergenceLimit = 0.1
     isLite = True
     Config._config["cis_mode.enabled"] = False
+    Config._config["cis_mode.preserveDiagnosticWorkspaces"] = False
     #######################################
 
     ### OVERRIDE IPTS location (optional), re-initialize STATE ###         

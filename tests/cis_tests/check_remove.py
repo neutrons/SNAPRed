@@ -25,6 +25,7 @@ peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
 Config._config["cis_mode.enabled"] = True
+Config._config["cis_mode.preserveDiagnosticWorkspaces"] = True
 #######################################
 
 ### PREP INGREDIENTS ################

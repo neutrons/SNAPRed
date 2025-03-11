@@ -17,11 +17,14 @@ class TestWashDishes(unittest.TestCase):
         algo.initialize()
         algo.setProperty("Workspace", wsname)
         # verify workspace not deleted when in CIS mode
-        algo.enabled = True
+        algo.cis_enabled = True
+        algo.cis_preserve = True
+
         algo.execute()
         assert wsname in mtd
         # verify workspace deleted when not in CIS mode
-        algo.enabled = False
+        algo.cis_enabled = False
+        algo.cis_preserve = False
         algo.execute()
         assert wsname not in mtd
 
@@ -37,12 +40,14 @@ class TestWashDishes(unittest.TestCase):
         algo.initialize()
         algo.setProperty("WorkspaceList", wsnames)
         # verify no workapces deleted when in CIS mode
-        algo.enabled = True
+        algo.cis_enabled = True
+        algo.cis_preserve = True
         algo.execute()
         for wsname in wsnames:
             assert wsname in mtd
         # verify all workspaces deleted when not in CIS mode
-        algo.enabled = False
+        algo.cis_enabled = False
+        algo.cis_preserve = False
         algo.execute()
         for wsname in wsnames:
             assert wsname not in mtd
@@ -74,7 +79,6 @@ class TestWashDishes(unittest.TestCase):
         algo.setProperty("Workspace", wsname)
 
         with Config_override("cis_mode.enabled", True):
-            with Config_override("cis_mode.preserveDiagnosticWorkspaces", False):
-                algo.execute()
+            algo.execute()
 
         assert wsname not in mtd

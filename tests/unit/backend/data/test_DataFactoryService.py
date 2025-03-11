@@ -322,13 +322,15 @@ class TestDataFactoryService(unittest.TestCase):
 
         # won't delete in cis mode
         with Config_override("cis_mode.enabled", True):
-            self.instance.deleteWorkspace(wsname)
-            assert self.instance.workspaceDoesExist(wsname)
+            with Config_override("cis_mode.preserveDiagnosticWorkspaces", True):
+                self.instance.deleteWorkspace(wsname)
+                assert self.instance.workspaceDoesExist(wsname)
 
         # will delete otherwise
         with Config_override("cis_mode.enabled", False):
-            self.instance.deleteWorkspace(wsname)
-            assert not self.instance.workspaceDoesExist(wsname)
+            with Config_override("cis_mode.preserveDiagnosticWorkspaces", False):
+                self.instance.deleteWorkspace(wsname)
+                assert not self.instance.workspaceDoesExist(wsname)
 
     def test_deleteWorkspaceUnconditional(self):
         wsname = mtd.unique_name()

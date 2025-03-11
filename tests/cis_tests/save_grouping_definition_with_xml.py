@@ -34,6 +34,7 @@ LoadEmptyInstrument(
 assert mtd.doesExist(instrumentDonor)
 
 Config._config["cis_mode.enabled"] = True
+Config._config["cis_mode.preserveDiagnosticWorkspaces"] = True
 
 grwsXML = "gr_ws_from_XML"
 grwsHDF = "gr_ws_from_HDF"

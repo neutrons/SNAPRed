@@ -93,6 +93,7 @@ offsetConvergenceLimit = 0.1
 isLite = True
 instrumentFilePath = SNAPLiteInstrumentFilePath if isLite else SNAPInstrumentFilePath
 Config._config["cis_mode.enabled"] = False
+Config._config["cis_mode.preserveDiagnosticWorkspaces"] = False
 #######################################
 
 ### PREP INGREDIENTS ##################

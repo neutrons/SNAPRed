@@ -25,6 +25,7 @@ groceryService = GroceryService()
 runNumber = "46680" #"57482"
 isLite = True
 Config._config["cis_mode.enabled"] = True
+Config._config["cis_mode.preserveDiagnosticWorkspaces"] = True
 version=None
 
 
