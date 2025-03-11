@@ -60,7 +60,9 @@ class SousChef(Service):
         return logger
 
     def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
-        calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber, ingredients.useLiteMode)
+        calibration = self.dataFactoryService.getCalibrationState(
+            ingredients.runNumber, ingredients.useLiteMode, ingredients.alternativeState
+        )
         # NOTE: This generates a new instrument state based on the appropriate SNAPInstPrm, as opposed to
         #       passing the previous instrument state forward.
         calibration.instrumentState = self.dataFactoryService.getDefaultInstrumentState(ingredients.runNumber)
@@ -72,10 +74,19 @@ class SousChef(Service):
     def prepInstrumentState(self, ingredients: FarmFreshIngredients) -> InstrumentState:
         # check if a calibration exists else just use default state
         instrumentState = None
-        if self.dataFactoryService.calibrationExists(ingredients.runNumber, ingredients.useLiteMode):
+        if self.dataFactoryService.calibrationExists(
+            ingredients.runNumber, ingredients.useLiteMode, ingredients.alternativeState
+        ):
             calibration = self.prepCalibration(ingredients)
             instrumentState = calibration.instrumentState
         else:
+            if ingredients.alternativeState is not None:
+                raise ValueError(
+                    (
+                        f"Alternative calibration state {ingredients.alternativeState}",
+                        f" not found for run {ingredients.runNumber}.",
+                    )
+                )
             mode = "lite" if ingredients.useLiteMode else "native"
             self.logger().info(
                 f"No calibration found for run {ingredients.runNumber} in {mode} mode.  Using default instrument state."
@@ -224,7 +235,10 @@ class SousChef(Service):
         if ingredients.versions.calibration is None:
             raise ValueError("Calibration version must be specified")
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(
-            ingredients.runNumber, ingredients.useLiteMode, ingredients.versions.calibration
+            ingredients.runNumber,
+            ingredients.useLiteMode,
+            ingredients.versions.calibration,
+            ingredients.alternativeState,
         )
         if calibrationRecord is not None:
             ingredients.calibrantSamplePath = calibrationRecord.calculationParameters.calibrantSamplePath

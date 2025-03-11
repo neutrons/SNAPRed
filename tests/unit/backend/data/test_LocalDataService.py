@@ -10,6 +10,7 @@ import tempfile
 import time
 import typing
 import unittest.mock as mock
+from collections import namedtuple
 from collections.abc import Mapping
 from contextlib import ExitStack
 from pathlib import Path
@@ -1274,6 +1275,12 @@ def test_index_reduction(Indexer):
 
 def test_calibrationIndexer():
     do_test_workflow_indexer("Calibration")
+
+
+def test_calibrationIndexer_alternate():
+    localDataService = LocalDataService()
+    indexer = localDataService.calibrationIndexer("57514", True, alternativeState="altStateTest")
+    assert "altStateTest" in str(indexer.rootDirectory)
 
 
 def test_normalizationIndexer():
@@ -3375,3 +3382,75 @@ class TestReductionPixelMasks:
             if name in duplicates:
                 pytest.fail("masks list contains duplicate entries")
             duplicates.add(name)
+
+    @mock.patch(ThisService + "Path")
+    def test_findCompatibleStates(self, mockPath):
+        compatibleDetectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+        compatibleDetectorState2 = DetectorState(
+            arc=compatibleDetectorState1.arc,
+            wav=9.0,
+            freq=10.0,
+            guideStat=compatibleDetectorState1.guideStat,
+            lin=(11.0, 12.0),
+        )
+        incompatibleDetectorState = DetectorState(arc=(7.0, 8.0), wav=9.0, freq=10.0, guideStat=2, lin=(11.0, 12.0))
+
+        pathTuple = namedtuple("Path", ["name", "is_dir"])
+
+        mockPath().iterdir.return_value = [
+            pathTuple(name="123456(comp)", is_dir=lambda: True),
+            pathTuple(name="123457(comp)", is_dir=lambda: True),
+            pathTuple(name="123458(incomp)", is_dir=lambda: True),
+        ]
+
+        mockIndexer = mock.MagicMock()
+        self.service._indexer = mock.Mock(return_value=mockIndexer)
+        mockIndexer.defaultVersion.return_value = "-1"
+        mockIndexer.currentVersion.return_value = "0"
+        mockIndexer.latestApplicableVersion.return_value = "0"
+        mockIndexer.readParameters.side_effect = [
+            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=compatibleDetectorState1)),
+            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=compatibleDetectorState2)),
+            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=incompatibleDetectorState)),
+        ]
+
+        self.service.readDetectorState = mock.Mock()
+        self.service.readDetectorState.return_value = compatibleDetectorState1
+
+        result = self.service.findCompatibleStates("123", True)
+        assert len(result) == 2
+        assert "123456(comp)" in result
+        assert "123457(comp)" in result
+        assert "123458(incomp)" not in result
+
+    @mock.patch(ThisService + "Path")
+    def test_findCompatibleStates_butLacksCalibration(self, mockPath):
+        compatibleDetectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+        incompatibleDetectorState = DetectorState(arc=(7.0, 8.0), wav=9.0, freq=10.0, guideStat=2, lin=(11.0, 12.0))
+
+        pathTuple = namedtuple("Path", ["name", "is_dir"])
+
+        mockPath().iterdir.return_value = [
+            pathTuple(name="123456(comp)", is_dir=lambda: True),
+            pathTuple(name="123457(comp)", is_dir=lambda: True),
+            pathTuple(name="123458(incomp)", is_dir=lambda: True),
+        ]
+
+        mockIndexer = mock.MagicMock()
+        self.service._indexer = mock.Mock(return_value=mockIndexer)
+        mockIndexer.defaultVersion.return_value = "-1"
+        mockIndexer.currentVersion.side_effect = ["0", "-1", "0"]
+        mockIndexer.latestApplicableVersion.return_value = "0"
+        mockIndexer.readParameters.side_effect = [
+            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=compatibleDetectorState1)),
+            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=incompatibleDetectorState)),
+        ]
+
+        self.service.readDetectorState = mock.Mock()
+        self.service.readDetectorState.return_value = compatibleDetectorState1
+
+        result = self.service.findCompatibleStates("123", True)
+        assert len(result) == 1
+        assert "123456(comp)" in result
+        assert "123457(comp)" not in result
+        assert "123458(incomp)" not in result

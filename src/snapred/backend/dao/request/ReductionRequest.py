@@ -34,6 +34,8 @@ class ReductionRequest(BaseModel):
     # TODO: Move to SNAPRequest
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
 
+    alternativeState: Optional[str] = None
+
     @field_validator("versions")
     @classmethod
     def validate_versions(cls, v) -> Versions:

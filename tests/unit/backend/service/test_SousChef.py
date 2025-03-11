@@ -101,6 +101,7 @@ class TestSousChef(unittest.TestCase):
         self.instance.dataFactoryService.getCalibrationState.assert_called_once_with(
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
+            None,
         )
         assert res == self.instance.dataFactoryService.getCalibrationState.return_value
         assert res.instrumentState.fwhmMultipliers.dict() == Config["calibration.parameters.default.FWHMMultiplier"]
@@ -121,6 +122,7 @@ class TestSousChef(unittest.TestCase):
         self.instance.dataFactoryService.getCalibrationState.assert_called_once_with(
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
+            None,
         )
         assert res == self.instance.dataFactoryService.getCalibrationState.return_value
         assert res.instrumentState.fwhmMultipliers == self.ingredients.fwhmMultipliers
@@ -142,6 +144,7 @@ class TestSousChef(unittest.TestCase):
             spec=FarmFreshIngredients,
             runNumber="12345",
             useLiteMode=True,
+            alternativeState=None,
         )
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
         self.instance.dataFactoryService.getDefaultInstrumentState = mock.Mock(return_value=mock.Mock())
@@ -149,6 +152,7 @@ class TestSousChef(unittest.TestCase):
         self.instance.dataFactoryService.calibrationExists.assert_called_once_with(
             ingredients.runNumber,
             ingredients.useLiteMode,
+            None,
         )
         self.instance.dataFactoryService.getDefaultInstrumentState.assert_called_once_with(
             ingredients.runNumber,

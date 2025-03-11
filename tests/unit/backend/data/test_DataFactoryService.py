@@ -1,4 +1,3 @@
-import hashlib
 import time
 import unittest
 import unittest.mock as mock
@@ -18,11 +17,9 @@ from snapred.backend.data.LocalDataService import LocalDataService
 
 
 class TestDataFactoryService(unittest.TestCase):
-    def expected(cls, *args):
-        hasher = hashlib.shake_256()
-        decodedArgs = str(args).encode("utf-8")
-        hasher.update(decodedArgs)
-        return hasher.digest(8).hex()
+    def expected(cls, *args, **kwargs):
+        # NOTE: hasher removed as it obscures what actually is wrong when a test fails
+        return str((args, kwargs))
 
     @classmethod
     def setUpClass(cls):
@@ -43,7 +40,9 @@ class TestDataFactoryService(unittest.TestCase):
         needIndexer = ["calibrationIndexer", "normalizationIndexer"]
         method_list = [method for method in method_list if method not in exceptions and method not in needIndexer]
         for x in method_list:
-            setattr(getattr(cls.mockLookupService, x), "side_effect", lambda *x: cls.expected(cls, *x))
+            setattr(
+                getattr(cls.mockLookupService, x), "side_effect", lambda *x, **kwargs: cls.expected(cls, *x, **kwargs)
+            )
 
         mockStateId = "04bd2c53f6bf6754"
         mockInstrumentState = InstrumentState.model_construct(id=mockStateId)
@@ -163,7 +162,7 @@ class TestDataFactoryService(unittest.TestCase):
     def test_getCalibrationState(self):
         for useLiteMode in [True, False]:
             actual = self.instance.getCalibrationState("123", useLiteMode)
-            assert actual == self.expected("123", useLiteMode)
+            assert actual == self.expected("123", useLiteMode, alternativeState=None)
 
     def test_getCalibrationIndex(self):
         run = "123"
@@ -175,7 +174,7 @@ class TestDataFactoryService(unittest.TestCase):
         runId = "345"
         for useLiteMode in [True, False]:
             actual = self.instance.getCalibrationRecord(runId, useLiteMode, self.version)
-            assert actual == self.expected(runId, useLiteMode, self.version)
+            assert actual == self.expected(runId, useLiteMode, self.version, alternativeState=None)
 
     def test_getCalibrationDataWorkspace(self):
         self.instance.groceryService.fetchWorkspace = mock.Mock()
