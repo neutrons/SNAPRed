@@ -23,12 +23,6 @@ class MakeDirtyDish(PythonAlgorithm):
         self.enabled: bool = cisModeConfig.get("enabled")
         self.preserve: bool = cisModeConfig.get("preserveDiagnosticWorkspaces")
 
-        if self.enabled != self.preserve:
-            self.log().warning(
-                f"Mismatch in config: cis_mode.enabled={self.enabled}, "
-                f"cis_mode.preserveDiagnosticWorkspaces={self.preserve}."
-            )
-
     def PyExec(self) -> None:
         if self.enabled and self.preserve:
             inWS = self.getProperty("InputWorkspace").value
