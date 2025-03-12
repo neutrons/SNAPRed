@@ -808,8 +808,9 @@ class GroceryService:
             # When not specified in the `liveDataArgs`,
             #   default behavior will be to load the entire run.
             startTime = (
-                datetime.utcnow() - liveDataArgs.duration).isoformat()
-                if liveDataArgs is not None else LiveMetadata.FROM_START_ISO8601
+                (datetime.utcnow() - liveDataArgs.duration).isoformat()
+                if liveDataArgs is not None
+                else LiveMetadata.FROM_START_ISO8601
             )
    
             loaderArgs = {
