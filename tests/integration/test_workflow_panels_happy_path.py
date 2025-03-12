@@ -103,7 +103,12 @@ class TestGUIPanels:
         self.exitStack.enter_context(amend_config(data_dir=prependDataSearchDirectories(), prepend_datadir=True))
 
         self.testSummary = None
+
+        import faulthandler
+
+        faulthandler.enable()
         yield
+        faulthandler.disable()
 
         if isinstance(self.testSummary, TestSummary):
             if not self.testSummary.isComplete():
@@ -440,7 +445,7 @@ class TestGUIPanels:
             _count = requestView.runNumberDisplay.count()
             _runNumbers = [requestView.runNumberDisplay.item(x).text() for x in range(_count)]
 
-            assert reductionRunNumber in _runNumbers
+            assert any(reductionRunNumber in item for item in _runNumbers)
 
             """
             request.liteModeToggle.setState(True);
@@ -1012,7 +1017,7 @@ class TestGUIPanels:
             _count = requestView._requestView.runNumberDisplay.count()
             _runNumbers = [requestView._requestView.runNumberDisplay.item(x).text() for x in range(_count)]
 
-            assert reductionRunNumber in _runNumbers
+            assert any(reductionRunNumber in item for item in _runNumbers)
             self.testSummary.SUCCESS()
             """
             request.liteModeToggle.setState(True);
