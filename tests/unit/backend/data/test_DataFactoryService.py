@@ -296,7 +296,7 @@ class TestDataFactoryService(unittest.TestCase):
         mtd.add(wsname1, ws1)
         assert self.instance.workspaceDoesExist(wsname1)
         ws2 = self.instance.getCloneOfWorkspace(wsname1, wsname2)
-        assert ws1.getComment() == ws2.getComment()
+        assert mtd[str(ws1)].getComment() == mtd[str(ws2)].getComment()
         DeleteWorkspace(wsname1)
         assert self.instance.workspaceDoesExist(wsname2)
         DeleteWorkspace(wsname2)
@@ -312,7 +312,7 @@ class TestDataFactoryService(unittest.TestCase):
         assert self.instance.groceryService.fetchNeutronDataSingleUse.called
 
     def test_deleteWorkspace(self):
-        from snapred.meta.Config import Config
+        from util.Config_helpers import Config_override
 
         wsname = mtd.unique_name()
         assert not self.instance.workspaceDoesExist(wsname)
@@ -321,14 +321,16 @@ class TestDataFactoryService(unittest.TestCase):
         assert self.instance.workspaceDoesExist(wsname)
 
         # won't delete in cis mode
-        Config._config["cis_mode"] = True
-        self.instance.deleteWorkspace(wsname)
-        assert self.instance.workspaceDoesExist(wsname)
+        with Config_override("cis_mode.enabled", True):
+            with Config_override("cis_mode.preserveDiagnosticWorkspaces", True):
+                self.instance.deleteWorkspace(wsname)
+                assert self.instance.workspaceDoesExist(wsname)
 
         # will delete otherwise
-        Config._config["cis_mode"] = False
-        self.instance.deleteWorkspace(wsname)
-        assert not self.instance.workspaceDoesExist(wsname)
+        with Config_override("cis_mode.enabled", False):
+            with Config_override("cis_mode.preserveDiagnosticWorkspaces", False):
+                self.instance.deleteWorkspace(wsname)
+                assert not self.instance.workspaceDoesExist(wsname)
 
     def test_deleteWorkspaceUnconditional(self):
         wsname = mtd.unique_name()

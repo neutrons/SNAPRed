@@ -124,15 +124,29 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
         self.chopNeutronData(self.inputVanadiumWS, self.outputVanadiumWS)
         self.chopNeutronData(self.inputBackgroundWS, self.outputBackgroundWS)
 
-        pcV = self.mantidSnapper.mtd[self.outputVanadiumWS].run().getProtonCharge()
-        pcB = self.mantidSnapper.mtd[self.outputBackgroundWS].run().getProtonCharge()
-        protonCharge = pcV / pcB
+        if Config["mantid.workspace.normalizeByBeamMonitor"]:
+            # the background workspace gets deleted
+            # so theres not point to log its normalization method
+            # right now
+            pcV = self.mantidSnapper.mtd.getSNAPRedLog(self.outputVanadiumWS, "normalizeByMonitorFactor")
+            pcB = self.mantidSnapper.mtd.getSNAPRedLog(self.outputBackgroundWS, "normalizeByMonitorFactor")
+        else:
+            pcV = self.mantidSnapper.mtd[self.outputVanadiumWS].run().getProtonCharge()
+            pcB = self.mantidSnapper.mtd[self.outputBackgroundWS].run().getProtonCharge()
+
+        normFactor = pcV / pcB
 
         self.mantidSnapper.Scale(
             "Scale entire workspace by factor value",
             InputWorkspace=self.outputBackgroundWS,
             Outputworkspace=self.outputBackgroundWS,
-            Factor=protonCharge,
+            Factor=normFactor,
+        )
+
+        self.mantidSnapper.mtd[self.outputBackgroundWS].mutableRun().addProperty(
+            "NormalizationFactor",
+            normFactor,
+            False,
         )
 
         # take difference

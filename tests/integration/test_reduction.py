@@ -258,7 +258,7 @@ class TestGUIPanels:
             _count = requestView._requestView.runNumberDisplay.count()
             _runNumbers = [requestView._requestView.runNumberDisplay.item(x).text() for x in range(_count)]
 
-            assert any(reductionRunNumber in item for item in _runNumbers)
+            assert reductionRunNumber in _runNumbers
             self.testSummary.SUCCESS()
 
             """

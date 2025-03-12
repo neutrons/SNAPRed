@@ -58,6 +58,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     "LoadLiveData",
                     "LoadNexus",
                     "LoadNexusProcessed",
+                    "LoadNexusMonitors",
                 ]
             ),
             direction=Direction.InOut,

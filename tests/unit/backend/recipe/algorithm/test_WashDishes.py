@@ -17,11 +17,14 @@ class TestWashDishes(unittest.TestCase):
         algo.initialize()
         algo.setProperty("Workspace", wsname)
         # verify workspace not deleted when in CIS mode
-        algo._CISmode = True
+        algo.cis_enabled = True
+        algo.cis_preserve = True
+
         algo.execute()
         assert wsname in mtd
         # verify workspace deleted when not in CIS mode
-        algo._CISmode = False
+        algo.cis_enabled = False
+        algo.cis_preserve = False
         algo.execute()
         assert wsname not in mtd
 
@@ -37,12 +40,14 @@ class TestWashDishes(unittest.TestCase):
         algo.initialize()
         algo.setProperty("WorkspaceList", wsnames)
         # verify no workapces deleted when in CIS mode
-        algo._CISmode = True
+        algo.cis_enabled = True
+        algo.cis_preserve = True
         algo.execute()
         for wsname in wsnames:
             assert wsname in mtd
         # verify all workspaces deleted when not in CIS mode
-        algo._CISmode = False
+        algo.cis_enabled = False
+        algo.cis_preserve = False
         algo.execute()
         for wsname in wsnames:
             assert wsname not in mtd
@@ -50,7 +55,7 @@ class TestWashDishes(unittest.TestCase):
     def test_wash_dish_using_yaml(self):
         # verify that the algorithm will behave as expected with the config key
         wsname = "_test_wash_one_dish"
-        cismode = Config["cis_mode"]
+        cismode = Config["cis_mode.enabled"]
         CreateWorkspace(OutputWorkspace=wsname, DataX=1, DataY=1)
         assert wsname in mtd
         algo = WashDishes()
@@ -61,3 +66,19 @@ class TestWashDishes(unittest.TestCase):
             assert wsname in mtd
         elif not cismode:
             assert wsname not in mtd
+
+    def test_wash_dish_with_improper_flags(self):
+        from util.Config_helpers import Config_override
+
+        wsname = "_test_wash_one_dish"
+        CreateWorkspace(OutputWorkspace=wsname, DataX=1, DataY=1)
+        assert wsname in mtd
+
+        algo = WashDishes()
+        algo.initialize()
+        algo.setProperty("Workspace", wsname)
+
+        with Config_override("cis_mode.enabled", True):
+            algo.execute()
+
+        assert wsname not in mtd

@@ -73,7 +73,7 @@ instrument:
   maxNumberOfRuns: 10
 
 liveData:
-  enabled: true
+  enabled: false
   # Override 'liveData.facility' and 'liveData.instrument'
   #   in order to use the mock listener for testing
   #   without overriding the real instrument.
@@ -143,9 +143,9 @@ calibration:
       beta:
         - 0.02
         - 0.05
-      FWHMMultiplier: {left: 2.0, right: 2.0}
+      FWHMMultiplier: {left: 1.5, right: 1.5}
       peakTailCoefficient: 2.0
-      smoothing: 0.5
+      smoothing: 0.000001
   fitting:
     minSignal2Noise: 0.0
 
@@ -157,6 +157,8 @@ reduction:
 
 mantid:
   workspace:
+    normalizeByBeamMonitor: false
+    normMonitorID: 0
     nameTemplate:
       delimiter: "_"
       template:
@@ -170,6 +172,7 @@ mantid:
           mask: "diffract_consts,mask,{runNumber},{version}"
           metric: "calib_metrics,{metricName},{runNumber},{version}"
           timedMetric: "calib_metrics,{metricName},{runNumber},{timestamp}"
+        monitor: "monitor,{runNumber}"
         normCal:
           rawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
           focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
@@ -245,7 +248,9 @@ version:
     default: 0 # alphanumeric
   start: 0   # MUST be nonnegative integer
 
-cis_mode: false
+cis_mode:
+  enabled: false
+  preserveDiagnosticWorkspaces: false
 
 constants:
   millisecondsPerSecond: 1000
@@ -272,7 +277,7 @@ constants:
     toggleCompressionTolerance: false  # false = no tolerance compression, true = tolerance compression
     # tolerance: -0.004                 # tolerance override for calculated compression
   GroupDiffractionCalibration:
-    MaxChiSq: 100
+    MaxChiSq: 10000
   RawVanadiumCorrection:
     numberOfSlices: 10
     numberOfAnnuli: 10
