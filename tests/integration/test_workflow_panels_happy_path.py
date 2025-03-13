@@ -255,7 +255,7 @@ class TestGUIPanels:
                 lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
             )
             warningMessageBox.start()
-            mb = MockQMessageBox().continueButton()
+            mb = MockQMessageBox().continueButton("Yes")
             mb[0].start()
             # ---------------------------------------------------------------------------
 
@@ -638,7 +638,7 @@ class TestGUIPanels:
                 lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
             )
             warningMessageBox.start()
-            mb = MockQMessageBox().continueButton()
+            mb = MockQMessageBox().continueButton("Yes")
             mb[0].start()
             # ---------------------------------------------------------------------------
 

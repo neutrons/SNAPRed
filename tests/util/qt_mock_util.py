@@ -73,14 +73,14 @@ class MockQMessageBox(QWidget):
         return mock.patch("qtpy.QtWidgets.QMessageBox.exec", _mockExec), myCounterMock
 
     @staticmethod
-    def continueButton():
+    def continueButton(buttonText):
         myCounterMock = mock.Mock()
 
         def _mockButton(self_):
             myCounterMock(self_)
 
             def text(self):  # noqa: ARG001
-                return "Yes"
+                return buttonText
 
             myCounterMock.side_effect = text
             return myCounterMock
