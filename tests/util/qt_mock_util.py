@@ -56,15 +56,30 @@ class MockQMessageBox(QWidget):
         return mock.patch("qtpy.QtWidgets.QMessageBox.warning", _mockWarning), myCounterMock
 
     @staticmethod
-    def continueWarning(msg: str):  # noqa: ARG004
+    def continueWarning(msg):
         myCounterMock = mock.Mock()
 
-        def _mockWarning(*args, **kwargs):
-            myCounterMock(*args, **kwargs)
+        def _mockExec(self_):
+            myCounterMock(self_)
             return (
                 QMessageBox.Yes
-                if msg in args[2]
-                else (MockQMessageBox().fail(f"Expected error:\n {msg} does not match:\n {args[2]}"))
+                if (msg in self_.text())
+                else (MockQMessageBox().fail(f"Expected warning not found:  {msg}, not match {self_.detailedText()}")),
             )
 
-        return mock.patch("qtpy.QtWidgets.QMessageBox.warning", _mockWarning), myCounterMock
+        return mock.patch("qtpy.QtWidgets.QMessageBox.exec", _mockExec), myCounterMock
+
+    @staticmethod
+    def continueButton():
+        myCounterMock = mock.Mock()
+
+        def _mockButton(self_):
+            myCounterMock(self_)
+
+            def text(self):  # noqa: ARG001
+                return "Yes"
+
+            myCounterMock.side_effect = text
+            return myCounterMock
+
+        return mock.patch("qtpy.QtWidgets.QMessageBox.clickedButton", _mockButton), myCounterMock

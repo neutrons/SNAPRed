@@ -119,10 +119,11 @@ class SNAPResponseHandler(QWidget):
             parent=self,
         )
         continueAnyway.setDefaultButton(QMessageBox.No)
-        continueAnyway.addButton("Continue without Norm", QMessageBox.YesRole)
+        if continueInfo.flags == ContinueWarning.Type.MISSING_NORMALIZATION:
+            continueAnyway.addButton("Continue without Normalization", QMessageBox.YesRole)
         continueAnyway.exec()
         clickedButton = continueAnyway.clickedButton().text()
-        if clickedButton == "Continue without Norm":
+        if clickedButton == "Continue without Normalization":
             continueInfo.flags |= ContinueWarning.Type.CONTINUE_WITHOUT_NORMALIZATION
         return continueAnyway.clickedButton().text()
 

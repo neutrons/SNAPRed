@@ -105,7 +105,7 @@ class TestGUIPanels:
         # teardown...
         self._warningMessageBox.stop()
         self._criticalMessageBox.stop()
-        # self._logWarningsMessageBox.stop()
+        self._logWarningsMessageBox.stop()
         self._actionPrompt.stop()
         self.exitStack.close()
 
@@ -238,6 +238,8 @@ class TestGUIPanels:
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
 
+            self._logWarningsMessageBox.stop()
+
             # # Test case of using low run number
             msg = (
                 "Value error, Run number -1 is below the minimum value or data does not exist."
@@ -250,6 +252,8 @@ class TestGUIPanels:
                 qtbot.wait(100)
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
+
+            self._logWarningsMessageBox.start()
 
             requestView._requestView.runNumberInput.setText(reductionRunNumber)
             qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
@@ -361,7 +365,8 @@ class TestGUIPanels:
                     + " Would you like to continue?"
                 )
                 mp = MockQMessageBox().continueWarning(msg)
-                with mp[0]:
+                mb = MockQMessageBox().continueButton()
+                with mp[0], mb[0]:
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                     qtbot.wait(1000)
                     assert len(exceptions) == 0
@@ -433,7 +438,8 @@ class TestGUIPanels:
                 with patch.object(ReductionService, "checkReductionWritePermissions", denyPerm):
                     msg2 = "<p>It looks like you don't have permissions to write to <br><b>"
                     mp2 = MockQMessageBox().continueWarning(msg2)
-                    with mp2[0]:
+                    mb = MockQMessageBox().continueButton()
+                    with mp2[0], mb[0]:
                         qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                         qtbot.wait(1000)
                         assert len(exceptions) == 0
@@ -520,7 +526,8 @@ class TestGUIPanels:
                 )
                 mp = MockQMessageBox().continueWarning(msg)
                 mc = MockQMessageBox().critical(critMsg)
-                with mp[0], mc[0]:
+                mb = MockQMessageBox().continueButton()
+                with mp[0], mc[0], mb[0]:
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                     qtbot.wait(10000)
                     assert len(exceptions) == 0
