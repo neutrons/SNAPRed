@@ -16,6 +16,7 @@ from qtpy.QtWidgets import (
     QTabWidget,
 )
 from util.pytest_helpers import handleStateInit
+from util.qt_mock_util import MockQMessageBox
 from util.TestSummary import TestSummary
 
 # I would prefer not to access `LocalDataService` within an integration test,
@@ -248,11 +249,14 @@ class TestGUIPanels:
             # Required patch for "TweakPeakView": ensure continuation if only two peaks are found.
             # IMPORTANT: "greater than two peaks" warning is triggered by an exception throw:
             #   => do _not_ patch using a with clause!
+            self._logWarningsMessageBox.stop()
             warningMessageBox = mock.patch(  # noqa: PT008
-                "qtpy.QtWidgets.QMessageBox.warning",
+                "qtpy.QtWidgets.QMessageBox.exec",
                 lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
             )
             warningMessageBox.start()
+            mb = MockQMessageBox().continueButton()
+            mb[0].start()
             # ---------------------------------------------------------------------------
 
             #    set "xtal dMin", "FWHM left", and "FWHM right": these are sufficient to get "46680" to pass.
@@ -283,6 +287,8 @@ class TestGUIPanels:
             # So, for this reason this stop is placed _after_ the `waitUntil`.
             #   ("Tweak peaks" view should have definitely completed by this point.)
             warningMessageBox.stop()
+            mb[0].stop()
+            self._logWarningsMessageBox.start()
 
             assessmentView = workflowNodeTabs.currentWidget().view  # noqa: F841
             #    nothing to do here, for this test
@@ -626,11 +632,14 @@ class TestGUIPanels:
             # Required patch for "TweakPeakView": ensure continuation if only two peaks are found.
             # IMPORTANT: "greater than two peaks" warning is triggered by an exception throw:
             #   => do _not_ patch using a with clause!
+            self._logWarningsMessageBox.stop()
             warningMessageBox = mock.patch(  # noqa: PT008
-                "qtpy.QtWidgets.QMessageBox.warning",
+                "qtpy.QtWidgets.QMessageBox.exec",
                 lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
             )
             warningMessageBox.start()
+            mb = MockQMessageBox().continueButton()
+            mb[0].start()
             # ---------------------------------------------------------------------------
 
             #    set "xtal dMin", "FWHM left", and "FWHM right": these are sufficient to get "58882" to pass.
@@ -662,6 +671,8 @@ class TestGUIPanels:
             # So, for this reason this stop is placed _after_ the `waitUntil`.
             # ("Tweak peaks" view should have definitely completed by this point.)
             warningMessageBox.stop()
+            mb[0].stop()
+            self._logWarningsMessageBox.start()
 
             assessmentView = workflowNodeTabs.currentWidget().view  # noqa: F841
             #    nothing to do here, for this test
