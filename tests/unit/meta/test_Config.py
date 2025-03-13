@@ -9,7 +9,15 @@ from unittest import mock
 import pytest
 
 import snapred.meta.Config as Config_module
-from snapred.meta.Config import Config, Resource, _find_root_dir, fromMantidLoggingLevel
+from snapred.meta.Config import (
+    Config,
+    _find_root_dir,
+    fromMantidLoggingLevel,
+    fromPythonLoggingLevel,
+    _pythonLoggingLevelFromString,
+    _pythonLoggingLevelFromMantid,    
+    Resource
+)
 
 
 def test_environment():
@@ -217,39 +225,37 @@ def test_multi_level_substitution():
 
 
 def test_fromMantidLoggingLevel():
-    for mantidLevel, pythonLevel in zip(
-        ["none", "fatal", "critical", "error", "warning", "notice", "debug", "trace"],
-        [
-            logging.NOTSET,
-            logging.CRITICAL + 5,
-            logging.CRITICAL,
-            logging.ERROR,
-            logging.WARNING,
-            logging.INFO,
-            logging.DEBUG,
-            logging.DEBUG - 5,
-        ],
-    ):
+    for mantidLevel, pythonLevel in _pythonLoggingLevelFromMantid.items():
         assert pythonLevel == fromMantidLoggingLevel(mantidLevel)
 
 
 def test_fromMantidLoggingLevel__uppercase():
-    for mantidLevel, pythonLevel in zip(
-        ["none", "fatal", "critical", "error", "warning", "notice", "debug", "trace"],
-        [
-            logging.NOTSET,
-            logging.CRITICAL + 5,
-            logging.CRITICAL,
-            logging.ERROR,
-            logging.WARNING,
-            logging.INFO,
-            logging.DEBUG,
-            logging.DEBUG - 5,
-        ],
-    ):
+    for mantidLevel, pythonLevel in _pythonLoggingLevelFromMantid.items():
         assert pythonLevel == fromMantidLoggingLevel(mantidLevel.upper())
 
 
 def test_fromMantidLoggingLevel__unknown():
     with pytest.raises(RuntimeError, match=r".*can't convert.* to a Python logging level.*"):
         pythonLevel = fromMantidLoggingLevel("not_a_log_level")  # noqa: F841
+
+
+def test_fromPythonLoggingLevel_int():
+    mantidLoggingLevelFromPython_ = {v: k for k, v in _pythonLoggingLevelFromMantid.items()}
+    for _, pythonLevel in _pythonLoggingLevelFromString.items():
+        assert fromPythonLoggingLevel(pythonLevel) == mantidLoggingLevelFromPython_[pythonLevel]
+        
+
+def test_fromPythonLoggingLevel_str():
+    mantidLoggingLevelFromPython_ = {v: k for k, v in _pythonLoggingLevelFromMantid.items()}
+    for pythonLevelString, pythonLevel in _pythonLoggingLevelFromString.items():
+        assert fromPythonLoggingLevel(pythonLevelString) == mantidLoggingLevelFromPython_[pythonLevel]
+
+
+def test_fromPythonLoggingLevel__unknown_int():
+    with pytest.raises(RuntimeError, match=r".*can't convert.* to a Mantid logging level.*"):
+        pythonLevel = fromPythonLoggingLevel(1000)  # noqa: F841
+        
+
+def test_fromPythonLoggingLevel__unknown_str():
+    with pytest.raises(RuntimeError, match=r".*can't convert.* to a Mantid logging level.*"):
+        pythonLevel = fromPythonLoggingLevel("not a log level")  # noqa: F841

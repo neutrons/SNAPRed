@@ -71,7 +71,7 @@ class WorkflowImplementer(QObject):
             ),
         )
         response = self.request(path="workspace/renameFromTemplate", payload=payload.model_dump_json())
-        self.outputs.update(response.data)
+        self.outputs = set(response.data)
 
         # Add output workspaces to the list of outputs including all iterations
         self.collectedOutputs.update(self.outputs)

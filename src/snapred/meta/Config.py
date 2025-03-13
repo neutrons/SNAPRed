@@ -234,6 +234,7 @@ def datasearch_directories(instrumentHome: Path) -> List[str]:
     ]
     return dirs
 
+# `Logging.Level` is not an `Enum`.
 _pythonLoggingLevelFromString = {
     "notset":     logging.NOTSET,
     "critical": logging.CRITICAL,

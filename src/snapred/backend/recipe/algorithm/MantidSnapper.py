@@ -67,7 +67,7 @@ class MantidSnapper:
     _quietAlgorithms = "GetIPTS", "LoadLiveData"
 
     # Timeout sequencing
-    _timeout = 60          # seconds
+    _timeout = 60.0        # seconds
     _checkInterval = 0.05  # 50 ms
     
         

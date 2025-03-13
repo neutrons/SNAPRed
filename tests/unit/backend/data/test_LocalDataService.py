@@ -491,25 +491,25 @@ def test_getUniqueTimestamp():
 
 @mock.patch("socket.gethostbyaddr")
 def test_hasLiveDataConnection(mockGetHostByAddr):
-    liveDataHostname = "bl3-daq1.sns.gov"
-    liveDataIPV4 = "10.111.6.150"
-    mockGetHostByAddr.return_value = (liveDataHostname, [], [liveDataIPV4])
-    instance = LocalDataService()
-    assert instance.hasLiveDataConnection()
-    mockGetHostByAddr.assert_called_once_with(liveDataHostname)
+    with Config_override("liveData.enabled", True):
+        liveDataHostname = "bl3-daq1.sns.gov"
+        liveDataIPV4 = "10.111.6.150"
+        mockGetHostByAddr.return_value = (liveDataHostname, [], [liveDataIPV4])
+        instance = LocalDataService()
+        assert instance.hasLiveDataConnection()
+        mockGetHostByAddr.assert_called_once_with(liveDataHostname)
 
 
 @mock.patch("socket.gethostbyaddr")
 def test_hasLiveDataConnection_no_connection(mockGetHostByAddr):
-    mockGetHostByAddr.side_effect = RuntimeError("no live connection")
-    instance = LocalDataService()
-    assert not instance.hasLiveDataConnection()
+    with Config_override("liveData.enabled", True):
+        mockGetHostByAddr.side_effect = RuntimeError("no live connection")
+        instance = LocalDataService()
+        assert not instance.hasLiveDataConnection()
 
 
 @mock.patch("socket.gethostbyaddr")
 def test_hasLiveDataConnection_config_disabled(mockGetHostByAddr):
-    # Live data should be enabled by default.
-    assert Config["liveData.enabled"]
     with Config_override("liveData.enabled", False):
         assert not Config["liveData.enabled"]
         instance = LocalDataService()
@@ -2486,31 +2486,30 @@ def test__readLiveData(mockSnapper):
             Instrument=Config["liveData.instrument.name"],
             AccumulationMethod=Config["liveData.accumulationMethod"],
             StartTime=expectedStartTime,
+            PreserveEvents=False
         )
         mockSnapper.return_value.executeQueue.assert_called_once()
         assert result == testWs
 
 
 @mock.patch(ThisService + "MantidSnapper")
-def test__readLiveData_all_data(mockSnapper):
+def test__readLiveData_from_now(mockSnapper):
     now_ = datetime.datetime.utcnow()
     duration = 0
-    # _zero_ is special case => "": <StartTime: default value> => read all-available data
-    expectedStartTime = ""
+    # _zero_ is a special case => read from _now_: <StartTime: EPOCH_ZERO>
+    expectedStartTime = LiveMetadata.FROM_NOW_ISO8601
     testWs = "testWs"
 
-    with mock.patch(ThisService + "datetime.datetime", wraps=datetime.datetime) as mockDatetime:
-        mockDatetime.utcnow.return_value = now_
-
-        instance = LocalDataService()
-        result = instance._readLiveData(testWs, duration)  # noqa: F841
-        mockSnapper.return_value.LoadLiveData.assert_called_with(
-            "load live-data chunk",
-            OutputWorkspace=testWs,
-            Instrument=Config["liveData.instrument.name"],
-            AccumulationMethod=Config["liveData.accumulationMethod"],
-            StartTime=expectedStartTime,
-        )
+    instance = LocalDataService()
+    result = instance._readLiveData(testWs, duration)  # noqa: F841
+    mockSnapper.return_value.LoadLiveData.assert_called_with(
+        "load live-data chunk",
+        OutputWorkspace=testWs,
+        Instrument=Config["liveData.instrument.name"],
+        AccumulationMethod=Config["liveData.accumulationMethod"],
+        StartTime=expectedStartTime,
+        PreserveEvents=False
+    )
 
 
 @mock.patch(ThisService + "MantidSnapper")
@@ -2530,7 +2529,7 @@ def test_readLiveMetadata(mockSnapper):
         mock__readLiveData.return_value = testWs
         mock__liveMetadataFromRun.return_value = mock.sentinel.metadata
         actual = instance.readLiveMetadata()
-        mock__readLiveData.assert_called_once_with(testWs, duration=1)
+        mock__readLiveData.assert_called_once_with(testWs, duration=0)
         mock__liveMetadataFromRun.assert_called_once_with(mock.sentinel.run)
         mockSnapper.return_value.DeleteWorkspace.assert_called_once_with("delete temporary workspace", Workspace=testWs)
         mockSnapper.return_value.executeQueue.call_count == 2
