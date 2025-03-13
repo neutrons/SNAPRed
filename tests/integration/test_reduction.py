@@ -105,7 +105,7 @@ class TestGUIPanels:
         # teardown...
         self._warningMessageBox.stop()
         self._criticalMessageBox.stop()
-        self._logWarningsMessageBox.stop()
+        # self._logWarningsMessageBox.stop()
         self._actionPrompt.stop()
         self.exitStack.close()
 
@@ -238,8 +238,6 @@ class TestGUIPanels:
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
 
-            self._logWarningsMessageBox.stop()
-
             # # Test case of using low run number
             msg = (
                 "Value error, Run number -1 is below the minimum value or data does not exist."
@@ -252,8 +250,6 @@ class TestGUIPanels:
                 qtbot.wait(100)
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
-
-            self._logWarningsMessageBox.start()
 
             requestView._requestView.runNumberInput.setText(reductionRunNumber)
             qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
