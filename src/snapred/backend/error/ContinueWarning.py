@@ -16,6 +16,7 @@ class ContinueWarning(Exception):
         MISSING_NORMALIZATION = auto()
         LOW_PEAK_COUNT = auto()
         NO_WRITE_PERMISSIONS = auto()
+        CONTINUE_WITHOUT_NORMALIZATION = auto()
 
     class Model(BaseModel):
         message: str
