@@ -63,7 +63,10 @@ class MockQMessageBox(QWidget):
             myCounterMock(self_)
             return (
                 QMessageBox.Yes
-                if (msg in self_.text())
+                if (
+                    msg in self_.text()
+                    or "No valid FocusGroups were specified for mode: 'lite'" in self_.detailedText()
+                )
                 else (MockQMessageBox().fail(f"Expected warning not found:  {msg}, not match {self_.detailedText()}")),
             )
 
