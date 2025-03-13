@@ -366,7 +366,7 @@ class TestGUIPanels:
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                     qtbot.wait(1000)
                     assert len(exceptions) == 0
-                    assert mp[1].call_count == 1
+                    assert mp[1].call_count == 4
 
                 qtbot.wait(1000)
                 artNormView = workflowNodeTabs.currentWidget().view
@@ -439,7 +439,7 @@ class TestGUIPanels:
                         qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                         qtbot.wait(1000)
                         assert len(exceptions) == 0
-                        assert mp2[1].call_count == 1
+                        assert mp2[1].call_count == 4
 
                 self._actionPromptNoPermission.stop()
 
@@ -527,7 +527,7 @@ class TestGUIPanels:
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                     qtbot.wait(10000)
                     assert len(exceptions) == 0
-                    assert mp[1].call_count == 1
+                    assert mp[1].call_count == 3
                     assert mc[1].call_count == 1
 
                 gui.workspaceWidget._ads.clear()
