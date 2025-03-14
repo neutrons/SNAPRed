@@ -11,9 +11,6 @@ import h5py
 import numpy as np
 from mantid.api import Run
 
-# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
-from mantid.simpleapi import AddSampleLog, mtd  # noqa : TID251
-
 from snapred.meta.Config import Config
 
 
@@ -31,21 +28,35 @@ def transferInstrumentPVLogs(dest: Run, src: Run, keys: Iterable[str]):
 
 
 def populateInstrumentParameters(wsName: str):
+    from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+
+    mantidSnapper = MantidSnapper(None, "Utensils")
     # This utility function is a "stand in" until Mantid PR #38684 can be merged.
     # (see https://github.com/mantidproject/mantid/pull/38684)
     # After that, `mtd[wsName].populateInstrumentParameters()` should be used instead.
 
     # Any PV-log key will do, so long as it is one that always exists in the logs.
     pvLogKey = "run_title"
-    pvLogValue = mtd[wsName].run().getProperty(pvLogKey).value
+    pvLogValue = mantidSnapper.mtd[wsName].run().getProperty(pvLogKey).value
+    # pvLogValue = mtd[wsName].run().getProperty(pvLogKey).value
 
-    AddSampleLog(
+    # AddSampleLog(
+    #     "Adding sample log",
+    #     Workspace=wsName,
+    #     LogName=pvLogKey,
+    #     logText=pvLogValue,
+    #     logType="String",
+    #     UpdateInstrumentParameters=True,
+    # )
+    mantidSnapper.AddSampleLog(
+        "Adding sample log",
         Workspace=wsName,
         LogName=pvLogKey,
         logText=pvLogValue,
         logType="String",
         UpdateInstrumentParameters=True,
     )
+    mantidSnapper.executeQueue()
 
 
 def datetimeFromLogTime(logTime: np.datetime64) -> datetime.datetime:

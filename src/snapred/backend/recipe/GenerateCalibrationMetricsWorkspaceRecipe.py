@@ -1,8 +1,3 @@
-# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
-from mantid.simpleapi import (  # noqa : TID251
-    DeleteWorkspace,
-)
-
 from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients as Ingredients
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
@@ -38,7 +33,7 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
     """
 
     def __init__(self):
-        self.mantidSnapper = MantidSnapper(self, self.__class__.__name__)
+        self.mantidSnapper = MantidSnapper(None, self.__class__.__name__)
 
     def executeRecipe(self, ingredients: Ingredients):
         runId = ingredients.calibrationRecord.runNumber
@@ -75,7 +70,12 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
                     OutputWorkspace=ws_metric,
                 )
                 outputs.append(ws_metric)
-            DeleteWorkspace(Workspace=ws_table)
+
+            self.mantidSnapper.DeleteWorkspace(
+                message="Deleting workspace",
+                Workspace=ws_table,
+            )
+            self.mantidSnapper.executeQueue()
             logger.info("Finished generating calibration metrics workspace.")
             return outputs
         except (RuntimeError, AlgorithmException) as e:

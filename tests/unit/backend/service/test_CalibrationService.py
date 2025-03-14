@@ -325,13 +325,16 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         assert metric == FocusGroupMetric.return_value
 
+    @mock.patch("snapred.backend.recipe.algorithm.MantidSnapper")
     @mock.patch(thisService + "FarmFreshIngredients")
     @mock.patch(thisService + "FitMultiplePeaksRecipe")
-    def test_assessQuality(
-        self,
-        FitMultiplePeaksRecipe,
-        FarmFreshIngredients,
-    ):
+    def test_assessQuality(self, FitMultiplePeaksRecipe, FarmFreshIngredients, mockGCMWRecipe):
+        mockGCMWRecipe.MantidSnapper = mock.Mock()
+        # mockGCMWRecipe.return_value.MantidSnapepr.return_value.DeleteWorkspace.return_value = True
+        # self.instance.GenerateCalibrationMetricsWorkspaceRecipe.mantidSnapper = mock.Mock()
+        # mockGCMWRecipe.mantidSnapper.DeleteWorkspace = mock.MagicMock(
+        #     side_effect=lambda _, **kwargs: DeleteWorkspace(**kwargs)
+        # )
         # Mock input data
         timestamp = time.time()
         mockFarmFreshIngredients = mock.Mock(

@@ -17,9 +17,6 @@ import h5py
 from mantid.api import Run
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import ConfigService, PhysicalConstants
-
-# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
-from mantid.simpleapi import GetIPTS, mtd  # noqa : TID251
 from pydantic import ValidationError
 
 from snapred.backend.dao import (
@@ -192,7 +189,8 @@ class LocalDataService:
 
     @lru_cache
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
-        IPTS = GetIPTS(RunNumber=runNumber, Instrument=instrumentName)
+        IPTS = self.mantidSnapper.GetIPTS("GetIPTS", RunNumber=runNumber, Instrument=instrumentName)
+        self.mantidSnapper.executeQueue()
 
         # WARNING:
         #   When successful, `GetIPTS` returns the _likely_ user-data directory for this run number.
@@ -222,9 +220,9 @@ class LocalDataService:
 
     def workspaceIsInstance(self, wsName: str, wsType: Any) -> bool:
         # Is the workspace an instance of the specified type.
-        if not mtd.doesExist(wsName):
+        if not self.mantidSnapper.mtd.doesExist(wsName):
             return False
-        return isinstance(mtd[wsName], wsType)
+        return isinstance(self.mantidSnapper.mtd[wsName], wsType)
 
     def readRunConfig(self, runId: str) -> RunConfig:
         return self._readRunConfig(runId)
@@ -760,7 +758,7 @@ class LocalDataService:
         with h5py.File(filePath, "r") as h5:
             record = ReductionRecord.model_validate(n5m.extractMetadataGroup(h5, "/metadata"))
         for ws in record.workspaceNames:
-            if mtd.doesExist(ws):
+            if self.mantidSnapper.mtd.doesExist(ws):
                 raise RuntimeError(f"[readReductionData]: workspace '{ws}' already exists in the ADS")
 
         # Read the workspaces, one by one;
@@ -897,7 +895,7 @@ class LocalDataService:
         return detectorState
 
     def detectorStateFromWorkspace(self, wsName: WorkspaceName) -> DetectorState:
-        return self._detectorStateFromMapping(mappingFromRun(mtd[wsName].getRun()))
+        return self._detectorStateFromMapping(mappingFromRun(self.mantidSnapper.mtd[wsName].getRun()))
 
     @validate_call
     def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool):
@@ -1106,12 +1104,12 @@ class LocalDataService:
         * a compatible mask has the same number of spectra as non-monitor pixels in the instrument.
         * a compatible mask has the same instrument state as the run number;
         """
-        if not isinstance(mtd[wsName], MaskWorkspace):
+        if not isinstance(self.mantidSnapper.mtd[wsName], MaskWorkspace):
             return False
         targetPixelCount = (
             Config["instrument.lite.pixelResolution"] if useLiteMode else Config["instrument.native.pixelResolution"]
         )
-        if mtd[wsName].getNumberHistograms() != targetPixelCount:
+        if self.mantidSnapper.mtd[wsName].getNumberHistograms() != targetPixelCount:
             return False
         expectedStateId, _ = self.generateStateId(runNumber)
         actualStateId, _ = self.stateIdFromWorkspace(wsName)
@@ -1137,7 +1135,9 @@ class LocalDataService:
 
                 if maskName not in masks and maskFilePath.exists():
                     # Ensure that any _resident_ mask is compatible:
-                    if mtd.doesExist(maskName) and not self.isCompatibleMask(maskName, runNumber, useLiteMode):
+                    if self.mantidSnapper.mtd.doesExist(maskName) and not self.isCompatibleMask(
+                        maskName, runNumber, useLiteMode
+                    ):
                         # There is a possible name collision
                         # between reduction pixel masks from different lite-mode settings.
                         #   This clause bypasses that collision in the most straightforward way:
@@ -1149,7 +1149,8 @@ class LocalDataService:
 
         # Next: add compatible user-created masks that are already resident in the ADS
         mantidMaskName = re.compile(r"MaskWorkspace(_([0-9]+))?")
-        wsNames = mtd.getObjectNames()
+        # add function to snapper
+        wsNames = self.mantidSnapper.mtd.getObjectNames()
         for ws in wsNames:
             match_ = mantidMaskName.match(ws)
             if match_:

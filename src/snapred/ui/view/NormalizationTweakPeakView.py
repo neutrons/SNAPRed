@@ -3,9 +3,6 @@ from typing import List
 import matplotlib.pyplot as plt
 import pydantic
 from mantid.plots.datafunctions import get_spectrum
-
-# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
-from mantid.simpleapi import mtd  # noqa : TID251
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import (
     QHBoxLayout,
@@ -16,6 +13,7 @@ from workbench.plotting.figuremanager import MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.backend.dao import GroupPeakList
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.plotting.Factory import mantidAxisFactory
@@ -51,6 +49,8 @@ class NormalizationTweakPeakView(BackendRequestView):
 
     def __init__(self, samples=[], groups=[], parent=None):
         super().__init__(parent=parent)
+
+        self.mantidSnapper = MantidSnapper(None, "Utensils")
 
         # create the run number fields
         self.fieldRunNumber = self._labeledField("Run Number")
@@ -173,9 +173,9 @@ class NormalizationTweakPeakView(BackendRequestView):
 
     def _updateGraphs(self, peaks):
         # get the updated workspaces and optimal graph grid
-        focusedWorkspace = mtd[self.focusWorkspace]
-        smoothedWorkspace = mtd[self.smoothedWorkspace]
-        residualWorkspace = mtd[self.residualWorkspace]
+        focusedWorkspace = self.mantidSnapper.mtd[self.focusWorkspace]
+        smoothedWorkspace = self.mantidSnapper.mtd[self.smoothedWorkspace]
+        residualWorkspace = self.mantidSnapper.mtd[self.residualWorkspace]
         peaks = pydantic.TypeAdapter(List[GroupPeakList]).validate_python(peaks)
         numGraphs = focusedWorkspace.getNumberHistograms()
         nrows, ncols = self._optimizeRowsAndCols(numGraphs)
