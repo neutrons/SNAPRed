@@ -1,8 +1,5 @@
 import matplotlib.pyplot as plt
 from mantid.plots.datafunctions import get_spectrum
-
-# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
-from mantid.simpleapi import mtd  # noqa : TID251
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import (
     QFrame,
@@ -15,6 +12,7 @@ from qtpy.QtWidgets import (
 from workbench.plotting.figuremanager import MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.plotting.Factory import mantidAxisFactory
@@ -30,6 +28,8 @@ class ArtificialNormalizationView(BackendRequestView):
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
+
+        self.mantidSnapper = MantidSnapper(None, "Utensils")
 
         # create the run number field
         self.fieldRunNumber = self._labeledField("Run Number", QLineEdit())
@@ -127,8 +127,8 @@ class ArtificialNormalizationView(BackendRequestView):
 
     def _updateGraphs(self):
         # get the updated workspaces and optimal graph grid
-        diffractionWorkspace = mtd[self.diffractionWorkspace]
-        artificialNormWorkspace = mtd[self.artificialNormWorkspace]
+        diffractionWorkspace = self.mantidSnapper.mtd[self.diffractionWorkspace]
+        artificialNormWorkspace = self.mantidSnapper.mtd[self.artificialNormWorkspace]
         numGraphs = diffractionWorkspace.getNumberHistograms()
         nrows, ncols = self._optimizeRowsAndCols(numGraphs)
 

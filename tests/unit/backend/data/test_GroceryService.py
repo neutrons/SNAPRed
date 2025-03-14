@@ -872,6 +872,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance.dataService.generateInstrumentState = mock.MagicMock(
             return_value=testCalibrationData.instrumentState
         )
+        self.instance.mantidSnapper.mtd = mtd
 
         # mock out _createNeutronFilePath so that only a native version exists on disk
         nonExistentPath = Path("does/not/exist.nxs")
@@ -973,6 +974,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance.mantidSnapper.RenameWorkspace = mock.MagicMock(
             side_effect=lambda _, **kwargs: RenameWorkspace(**kwargs)
         )
+        self.instance.mantidSnapper.mtd = mtd
 
         testCalibrationData = DAOFactory.calibrationParameters()
         self.instance.dataService.generateInstrumentState = mock.MagicMock(
@@ -1065,6 +1067,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance.mantidSnapper.RenameWorkspace = mock.MagicMock(
             side_effect=lambda _, **kwargs: RenameWorkspace(**kwargs)
         )
+        self.instance.mantidSnapper.mtd = mtd
 
         testCalibrationData = DAOFactory.calibrationParameters()
         self.instance.dataService.generateInstrumentState = mock.MagicMock(
@@ -3068,10 +3071,9 @@ class TestGroceryService(unittest.TestCase):
             # Mask shall be blank.
             assert mtd[maskWsName].getNumberMasked() == 0
 
-    @mock.patch(ThisService + "mtd")
-    def test_unique_hidden_name(self, mockADS):
+    def test_unique_hidden_name(self):
         testWSName = "not_any_workspace"
-        mockADS.unique_hidden_name.return_value = testWSName
+        self.instance.mantidSnapper.mtd.unique_hidden_name = mock.Mock(return_value=testWSName)
         wsName = self.instance.uniqueHiddenName()
         assert wsName == testWSName
 

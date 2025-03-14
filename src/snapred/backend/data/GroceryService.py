@@ -7,11 +7,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 from mantid.dataobjects import MaskWorkspace
-
-# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
-from mantid.simpleapi import (  # noqa : TID251
-    mtd,
-)
 from pydantic import validate_call
 
 from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionState
@@ -382,7 +377,7 @@ class GroceryService:
         :return: the unqiue hidden name
         :rtype: WorkspaceName
         """
-        return mtd.unique_hidden_name()
+        return self.mantidSnapper.mtd.unique_hidden_name()
 
     def workspaceDoesExist(self, name: WorkspaceName):
         """
@@ -393,7 +388,7 @@ class GroceryService:
         :return: True if the workspace exists, False if it does not exist
         :rtype: bool
         """
-        return mtd.doesExist(name)
+        return self.mantidSnapper.mtd.doesExist(name)
 
     def renameWorkspace(self, oldName: WorkspaceName, newName: WorkspaceName) -> WorkspaceName:
         """
@@ -441,7 +436,7 @@ class GroceryService:
         :rtype: a C++ shared pointer to a MatrixWorkspace
         """
         if self.workspaceDoesExist(name):
-            return mtd[name]
+            return self.mantidSnapper.mtd[name]
         else:
             return None
 
@@ -1170,7 +1165,7 @@ class GroceryService:
         ###     `tests/util/helpers.py`::`createCompatibleMask`: ###
 
         # Number of non-monitor pixels
-        pixelCount = mtd[templateWSName].getInstrument().getNumberDetectors(True)
+        pixelCount = self.mantidSnapper.mtd[templateWSName].getInstrument().getNumberDetectors(True)
 
         mask = self.mantidSnapper.CreateWorkspace(
             "Creating pixel mask workspace",
@@ -1200,7 +1195,7 @@ class GroceryService:
         # Convert workspace to a MaskWorkspace instance.
         self.mantidSnapper.ExtractMask("Extracting mask", OutputWorkspace=maskWSName, InputWorkspace=maskWSName)
         self.mantidSnapper.executeQueue()
-        assert isinstance(mtd[maskWSName], MaskWorkspace)
+        assert isinstance(self.mantidSnapper.mtd[maskWSName], MaskWorkspace)
 
         return maskWSName
 
@@ -1406,13 +1401,13 @@ class GroceryService:
         :param clearCache: whether or not to clear cached workspaces
         :type clearCache: bool
         """  # noqa E501
-        workspacesToClear = set(mtd.getObjectNames())
+        workspacesToClear = set(self.mantidSnapper.mtd.getObjectNames())
         # filter exclude
         workspacesToClear = workspacesToClear.difference(exclude)
         # properly handle workspace groups -- also exclude deleting their constituents
         for ws in exclude:
-            if self.workspaceDoesExist(ws) and mtd[ws].isGroup():
-                workspacesToClear = workspacesToClear.difference(mtd[ws].getNames())
+            if self.workspaceDoesExist(ws) and self.mantidSnapper.mtd[ws].isGroup():
+                workspacesToClear = workspacesToClear.difference(self.mantidSnapper.mtd[ws].getNames())
         # filter caches
         if not clearCache:
             workspacesToClear = workspacesToClear.difference(self.getCachedWorkspaces())
@@ -1429,7 +1424,7 @@ class GroceryService:
 
         - optionally exclude the cached workspaces from this list.
         """
-        workspaces = set(mtd.getObjectNames())
+        workspaces = set(self.mantidSnapper.mtd.getObjectNames())
         if excludeCache:
             workspaces = workspaces.difference(self.getCachedWorkspaces())
         return list(workspaces)

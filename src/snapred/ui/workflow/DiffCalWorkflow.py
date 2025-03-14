@@ -1,5 +1,3 @@
-# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
-from mantid.simpleapi import mtd  # noqa : TID251
 from qtpy.QtCore import Slot
 
 from snapred.backend.dao import RunConfig
@@ -24,6 +22,7 @@ from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
@@ -60,6 +59,8 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        self.mantidSnapper = MantidSnapper(None, "Utensils")
         # create a tree of flows for the user to successfully execute diffraction calibration
         # DiffCal Request ->
         # Check Peaks     ->
@@ -495,7 +496,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         # update the max chi sq
         self.maxChiSq = maxChiSq
         allPeaks = self.ingredients.groupedPeakLists
-        param_table = mtd[self.fitPeaksDiagnostic].getItem(FitOutputEnum.Parameters.value).toDict()
+        param_table = self.mantidSnapper.mtd[self.fitPeaksDiagnostic].getItem(FitOutputEnum.Parameters.value).toDict()
         index = param_table["wsindex"]
         allChi2 = param_table["chi2"]
         goodPeaks = []

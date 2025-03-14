@@ -44,6 +44,9 @@ class _CustomMtd:
                 raise KeyError(f"SNAPRed log {realLogName} not found in {wsName}")
             raise
 
+    def getObjectNames(self):
+        return mtd.getObjectNames()
+
 
 class MantidSnapper:
     ##

@@ -3,9 +3,6 @@ from typing import List
 import matplotlib.pyplot as plt
 import pydantic
 from mantid.plots.datafunctions import get_spectrum
-
-# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
-from mantid.simpleapi import mtd  # noqa : TID251
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import (
     QHBoxLayout,
@@ -18,6 +15,7 @@ from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 from snapred.backend.dao import GroupPeakList
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
@@ -57,6 +55,8 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     def __init__(self, samples=[], groups=[], parent=None):
         super().__init__(parent=parent)
+
+        self.mantidSnapper = MantidSnapper(None, "Utensils")
 
         # create the run number field and lite mode toggle
         self.runNumberField = self._labeledField("Run Number")
@@ -216,8 +216,8 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.goodPeaksCount = [0] * numGraphs
         self.badPeaks = [[]] * numGraphs
         nrows, ncols = self._optimizeRowsAndCols(numGraphs)
-        fitted_peaks = mtd[diagnostic].getItem(FitOutputEnum.Workspace.value)
-        param_table = mtd[diagnostic].getItem(FitOutputEnum.Parameters.value).toDict()
+        fitted_peaks = self.mantidSnapper.mtd[diagnostic].getItem(FitOutputEnum.Workspace.value)
+        param_table = self.mantidSnapper.mtd[diagnostic].getItem(FitOutputEnum.Parameters.value).toDict()
         index = param_table["wsindex"]
         allChisq = param_table["chi2"]
         maxChiSq = float(self.maxChiSqField.text())
@@ -241,12 +241,12 @@ class DiffCalTweakPeakView(BackendRequestView):
             ax.tick_params(direction="in")
             ax.set_title(f"Group ID: {wkspIndex + 1}")
             # plot the data and fitted curve
-            ax.plot(mtd[workspace], wkspIndex=wkspIndex, label="data", normalize_by_bin_width=True)
+            ax.plot(self.mantidSnapper.mtd[workspace], wkspIndex=wkspIndex, label="data", normalize_by_bin_width=True)
             ax.plot(fitted_peaks, wkspIndex=wkspIndex, label="fit", color="black", normalize_by_bin_width=True)
 
             # plot the residual data
             ax.plot(
-                mtd[residual],
+                self.mantidSnapper.mtd[residual],
                 wkspIndex=wkspIndex,
                 label="residual",
                 color="limegreen",
@@ -257,7 +257,7 @@ class DiffCalTweakPeakView(BackendRequestView):
             ax.legend(loc=1)
 
             # fill in the discovered peaks for easier viewing
-            x, y, _, _ = get_spectrum(mtd[workspace], wkspIndex, normalize_by_bin_width=True)
+            x, y, _, _ = get_spectrum(self.mantidSnapper.mtd[workspace], wkspIndex, normalize_by_bin_width=True)
             # for each detected peak in this group, shade in the peak region
             for chi2, peak in zip(chisq, peaks):
                 # areas inside peak bounds (to be shaded)
