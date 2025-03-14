@@ -753,6 +753,8 @@ class LocalDataService:
                     self.mantidSnapper.executeQueue()
         else:
             workspaces = record.workspaceNames
+            pixelMasks = [ws for ws in workspaces if ws.tokens("workspaceType") == wngt.REDUCTION_PIXEL_MASK]
+            workspaces = [ws for ws in workspaces if ws not in pixelMasks]
             self.mantidSnapper.GroupWorkspaces(
                 "Group workspaces for reduction output",
                 InputWorkspaces=workspaces,
@@ -765,6 +767,9 @@ class LocalDataService:
                 Append=False,
             )
             self.mantidSnapper.executeQueue()
+            for ws in pixelMasks:
+                maskFilename = ws + ".h5"
+                self.writePixelMask(filePath.parent, Path(maskFilename), ws)
         # Append the "metadata" group, containing the `ReductionRecord` metadata
         with h5py.File(filePath, "a") as h5:
             n5m.insertMetadataGroup(h5, record.dict(), "/metadata")
