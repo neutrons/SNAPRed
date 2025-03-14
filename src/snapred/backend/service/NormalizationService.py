@@ -29,9 +29,9 @@ from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import (
     FocusSpectraRecipe,
-    MinusRecipe,
     RawVanadiumCorrectionRecipe,
     SmoothDataExcludingPeaksRecipe,
 )
@@ -71,6 +71,7 @@ class NormalizationService(Service):
         self.groceryClerk = GroceryListItem.builder()
         self.diffractionCalibrationService = CalibrationService()
         self.sousChef = SousChef()
+        self.mantidSnapper = MantidSnapper(None, "Utensils")
         return
 
     @staticmethod
@@ -417,9 +418,11 @@ class NormalizationService(Service):
     @Register("calculateResidual")
     def calculateResidual(self, request: CalculateNormalizationResidualRequest):
         outputWorkspace = wng.normCalResidual().runNumber(request.runNumber).unit(wng.Units.DSP).build()
-        MinusRecipe().executeRecipe(
+        self.mantidSnapper.Minus(
+            "Subtracting calculation from data workspace",
             LHSWorkspace=request.dataWorkspace,
             RHSWorkspace=request.calculationWorkspace,
             OutputWorkspace=outputWorkspace,
         )
+        self.mantidSnapper.executeQueue()
         return outputWorkspace
