@@ -245,6 +245,9 @@ class TestMappingFromRun(unittest.TestCase):
     def test_contains_direct(self, mockHasProperty):
         mockHasProperty.return_value = True
         map_ = mappingFromRun(self.ws.getRun())
+        
+        # NOTE: `<run>.hasProperty()` is also called during `mappingFromRun.__init__()`.
+        mockHasProperty.reset_mock()
         assert "anything" in map_
         mockHasProperty.assert_called_once_with("anything")
 

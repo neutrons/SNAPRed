@@ -84,11 +84,21 @@ def mappingFromRun(run: Run) -> Mapping:
     
     # TODO: a possible alternative implementation would be to just construct a `dict` from the `Run` instance.
     #   It was an optimization choice not to use this approach, although once alternative PV-log keys are considered,
-    #   the code would be much simpler.
+    #   the code would probably be much simpler.
 
     class _Mapping(Mapping):
         def __init__(self, run: Run):
             self._run = run
+            
+            # A primary key may be used to reference values at an alternative key, if they exist.
+            self._alternateKeys: Dict[str, str] = {}
+            for ks in Config["instrument.PVLogs.instrumentKeys"]:
+               if isinstance(ks, str):
+                   continue
+               for k in ks[1:]:
+                   if run.hasProperty(k):
+                       self._alternateKeys[ks[0]] = k
+                       break
 
         def __getitem__(self, key: str) -> Any:
             # Deal with PV-logs special cases:
@@ -117,21 +127,11 @@ def mappingFromRun(run: Run) -> Mapping:
                     try:
                         value = self._run.getProperty(key).value
                     except RuntimeError as e:
-                        # A primary PV-log key may be used to reference an alternative key's value.
+                        # A primary PV-log key may be used to reference a value at an alternative key.
                         if "Unknown property search object" in str(e):
-                            try:
-                                # Attempt to convert from any _alternative_ instrument PV-log key, if such exists:
-                                #   functionally, this allows referencing the alternative-key values, by the primary key.
-                                for ks in Config["instrument.PVLogs.instrumentKeys"]:
-                                    if not isinstance(ks, str) and isinstance(ks, Iterable) and key == ks[0]:
-                                        for k in ks[1:]:
-                                            if self._run.hasProperty(k):
-                                                value = self._run.getProperty(k).value
-                                                break
-                            except Exception:
-                                # swallow this secondary exception
-                                pass
-                            if value is None:
+                            if key in self._alternateKeys:
+                                value = self._run.getProperty(self._alternateKeys[key]).value
+                            else:
                                 raise KeyError(key) from e
                         else:
                             raise
@@ -151,26 +151,15 @@ def mappingFromRun(run: Run) -> Mapping:
             # Check for special cases:
             if key in ("end_time", "start_time", "proton_charge", "run_number"):
                 return True
-            # Check for _alternate_ instrument PV-log keys, if such exist:
-            #   functionally, this allows referencing the alternative-key by the primary key.
-            for ks in Config["instrument.PVLogs.instrumentKeys"]:
-                if not isinstance(ks, str) and isinstance(ks, Iterable) and key == ks[0]:
-                    for k in ks[1:]:
-                        if self._run.hasProperty(k):
-                            return True
+            # Check for _alternate_ instrument PV-log keys:
+            if key in self._alternateKeys:
+                return True
             return False
 
         def keys(self):
-            keys_ = set(["end_time", "start_time", "proton_charge", "run_number"])
-            keys_.update(self._run.keys())
-            
-            # Add any primary PV-log keys, but only if an alternative key actually exists.
-            for ks in Config["instrument.PVLogs.instrumentKeys"]:
-                if not isinstance(ks, str) and isinstance(ks, Iterable):
-                    if ks[0] in keys_:
-                        continue
-                    if self.__contains__(ks[0]):
-                        keys_.add(ks[0])
+            keys_ = set(self._run.keys())
+            keys_.update(["end_time", "start_time", "proton_charge", "run_number"])
+            keys_.update(self._alternateKeys.keys())
             return list(keys_)
 
     return _Mapping(run)
