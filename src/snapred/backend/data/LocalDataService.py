@@ -725,40 +725,46 @@ class LocalDataService:
             raise RuntimeError(f"reduction version directories {filePath.parent} do not exist")
 
         useEffectiveInstrument = Config["reduction.output.useEffectiveInstrument"]
+        if useEffectiveInstrument:
+            for ws in record.workspaceNames:
+                # Append workspaces to hdf5 file, in order of the `workspaces` list
 
-        for ws in record.workspaceNames:
-            # Append workspaces to hdf5 file, in order of the `workspaces` list
-
-            if ws.tokens("workspaceType") == wngt.REDUCTION_PIXEL_MASK:
-                # The mask workspace always uses the non-reduced instrument.
-                self.mantidSnapper.SaveNexus(
-                    f"Append workspace '{ws}' to reduction output",
-                    InputWorkspace=ws,
-                    Filename=str(filePath),
-                    Append=True,
-                )
-                self.mantidSnapper.executeQueue()
-
-                # Write an additional copy of the combined pixel mask as a separate `SaveDiffCal`-format file
-                maskFilename = ws + ".h5"
-                self.writePixelMask(filePath.parent, Path(maskFilename), ws)
-            else:
-                if useEffectiveInstrument:
-                    self.mantidSnapper.SaveNexusESS(
-                        f"Append workspace '{ws}' to reduction output",
-                        InputWorkspace=ws,
-                        Filename=str(filePath),
-                        Append=True,
-                    )
-                else:
+                if ws.tokens("workspaceType") == wngt.REDUCTION_PIXEL_MASK:
+                    # The mask workspace always uses the non-reduced instrument.
                     self.mantidSnapper.SaveNexus(
                         f"Append workspace '{ws}' to reduction output",
                         InputWorkspace=ws,
                         Filename=str(filePath),
                         Append=True,
                     )
-                self.mantidSnapper.executeQueue()
+                    self.mantidSnapper.executeQueue()
 
+                    # Write an additional copy of the combined pixel mask as a separate `SaveDiffCal`-format file
+                    maskFilename = ws + ".h5"
+                    self.writePixelMask(filePath.parent, Path(maskFilename), ws)
+                else:
+                    self.mantidSnapper.SaveNexusESS(
+                        f"Append workspace '{ws}' to reduction output",
+                        InputWorkspace=ws,
+                        Filename=str(filePath),
+                        Append=True,
+                    )
+
+                    self.mantidSnapper.executeQueue()
+        else:
+            workspaces = record.workspaceNames
+            self.mantidSnapper.GroupWorkspaces(
+                "Group workspaces for reduction output",
+                InputWorkspaces=workspaces,
+                OutputWorkspace=f"reduction_output_{timestamp}",
+            )
+            self.mantidSnapper.SaveNexus(
+                "Save workspaces to reduction output",
+                InputWorkspace=f"reduction_output_{timestamp}",
+                Filename=str(filePath),
+                Append=False,
+            )
+            self.mantidSnapper.executeQueue()
         # Append the "metadata" group, containing the `ReductionRecord` metadata
         with h5py.File(filePath, "a") as h5:
             n5m.insertMetadataGroup(h5, record.dict(), "/metadata")
