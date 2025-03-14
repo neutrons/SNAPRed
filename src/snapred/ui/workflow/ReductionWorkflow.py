@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
-from qtpy.QtCore import Qt, QTimer, Signal, Slot
+from qtpy.QtCore import QMetaObject, Qt, QTimer, Signal, Slot
 
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.LiveMetadata import LiveMetadata
@@ -501,7 +501,8 @@ class ReductionWorkflow(WorkflowImplementer):
                 self._keeps.update(self.outputs)
                 self._clearWorkspaces(exclude=self._keeps, clearCachedWorkspaces=True)
 
-            workflowPresenter.advanceWorkflow()
+            # Here we are probably not on the GUI thread, so we cannot call this directly.
+            QMetaObject.invokeMethod(workflowPresenter, "advanceWorkflow", Qt.QueuedConnection)
 
         return self.responses[-1]
 
