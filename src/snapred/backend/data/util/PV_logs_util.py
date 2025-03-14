@@ -38,16 +38,7 @@ def populateInstrumentParameters(wsName: str):
     # Any PV-log key will do, so long as it is one that always exists in the logs.
     pvLogKey = "run_title"
     pvLogValue = mantidSnapper.mtd[wsName].run().getProperty(pvLogKey).value
-    # pvLogValue = mtd[wsName].run().getProperty(pvLogKey).value
 
-    # AddSampleLog(
-    #     "Adding sample log",
-    #     Workspace=wsName,
-    #     LogName=pvLogKey,
-    #     logText=pvLogValue,
-    #     logType="String",
-    #     UpdateInstrumentParameters=True,
-    # )
     mantidSnapper.AddSampleLog(
         "Adding sample log",
         Workspace=wsName,
