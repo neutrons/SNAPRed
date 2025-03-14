@@ -66,6 +66,8 @@ class FarmFreshIngredients(BaseModel):
 
     focusGroups: Optional[List[FocusGroup]] = None
 
+    alternativeState: Optional[str] = None
+
     # Allow 'focusGroups' to be accessed as a single 'focusGroup'
     @property
     def focusGroup(self) -> FocusGroup:

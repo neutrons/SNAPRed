@@ -40,6 +40,7 @@ class WorkspaceMetadata(BaseModel):
     """Class to hold tags related to a workspace"""
 
     diffcalState: DiffcalStateMetadata = UNSET
+    altDiffcalPath: Union[str, Literal["unset"]] = UNSET
     normalizationState: NormalizationStateMetadata = UNSET
     # NOTE: variables not allowed in type declarations
     liteDataCompressionTolerance: Union[float, Literal["unset"]] = UNSET

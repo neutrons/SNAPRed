@@ -87,7 +87,9 @@ class WhateversInTheFridge(LocalDataService):
         )
 
     @validate_call
-    def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+    def readCalibrationRecord(
+        self, runId: str, useLiteMode: bool, version: Optional[int] = None, alternativeState: Optional[str] = None
+    ):
         version = version if version is not None else self.latestVersion
         record = CalibrationRecord.model_construct(
             runNumber=runId,

@@ -268,6 +268,43 @@ class LocalDataService:
             SHA = self._stateIdFromDetectorState(detectorState)
         return SHA.hex, detectorState
 
+    def findCompatibleStates(self, runId: str, useLiteMode: bool) -> List[str]:
+        # 1. collect list of all existing states
+        statesPath = Path(Config["instrument.calibration.powder.home"])
+        stateFolders = [f for f in statesPath.iterdir() if f.is_dir()]
+        targetMode = "lite" if useLiteMode else "native"
+        # filter stateFolders to only ones that contain the targetMode folder
+        # i.e. ignore PixelGroupingDefinition and other folders
+        calibrationStateFolders = []
+        for stateFolder in stateFolders:
+            if (statesPath / stateFolder / targetMode).exists():
+                calibrationStateFolders.append(stateFolder.name)
+
+        stateCalibMap = []
+        indexerType = IndexerType.CALIBRATION
+        for stateId in calibrationStateFolders:
+            indexer = self._indexer(stateId, useLiteMode, indexerType)
+            defaultVersion = indexer.defaultVersion()
+            # must have a real calibration and not just default.
+            if defaultVersion != indexer.currentVersion() and indexer.latestApplicableVersion(runId) is not None:
+                stateCalibMap.append((stateId, indexer.readParameters(defaultVersion)))
+
+        # 2. pull instrumentState.detectorState from each
+        currentDetectorState = self.readDetectorState(runId)
+        referenceArc = currentDetectorState.arc
+        referenceGuideStat = currentDetectorState.guideStat
+        # 3. compare to current runId, if they match add to list
+        compatibleStates = []
+        for state, params in stateCalibMap:
+            detectorState = params.instrumentState.detectorState
+            arc = detectorState.arc
+            guideStat = detectorState.guideStat
+            # in the comparison we only care about the arc position and guidestat
+            if arc == referenceArc and guideStat == referenceGuideStat:
+                compatibleStates.append(state)
+
+        return compatibleStates
+
     def _stateIdFromDetectorState(self, detectorState: DetectorState) -> ObjectSHA:
         stateID = StateId(
             vdet_arc1=detectorState.arc[0],
@@ -431,8 +468,12 @@ class LocalDataService:
         stateId, _ = self.generateStateId(runNumber)
         return self._indexer(stateId, useLiteMode, indexerType)
 
-    def calibrationIndexer(self, runId: str, useLiteMode: bool):
-        return self.indexer(runId, useLiteMode, IndexerType.CALIBRATION)
+    def calibrationIndexer(self, runId: str, useLiteMode: bool, alternativeState: Optional[str] = None):
+        if alternativeState is None:
+            return self.indexer(runId, useLiteMode, IndexerType.CALIBRATION)
+        else:
+            path = self._constructCalibrationStatePath(alternativeState, useLiteMode)
+            return Indexer(indexerType=IndexerType.CALIBRATION, directory=path)
 
     def normalizationIndexer(self, runId: str, useLiteMode: bool):
         return self.indexer(runId, useLiteMode, IndexerType.NORMALIZATION)
@@ -555,17 +596,23 @@ class LocalDataService:
         indexer = self.calibrationIndexer(request.runNumber, request.useLiteMode)
         return indexer.createRecord(**request.model_dump())
 
-    def calibrationExists(self, runId: str, useLiteMode: bool) -> bool:
-        version = self.calibrationIndexer(runId, useLiteMode).latestApplicableVersion(runId)
+    def calibrationExists(self, runId: str, useLiteMode: bool, alternativeState: Optional[str] = None) -> bool:
+        version = self.calibrationIndexer(runId, useLiteMode, alternativeState).latestApplicableVersion(runId)
         return version is not None
 
     @validate_call
-    def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Version = VersionState.LATEST):
+    def readCalibrationRecord(
+        self,
+        runId: str,
+        useLiteMode: bool,
+        version: Version = VersionState.LATEST,
+        alternativeState: Optional[str] = None,
+    ):
         """
         Will return a calibration record for the given version.
         If no version given, will choose the latest applicable version from the index.
         """
-        indexer = self.calibrationIndexer(runId, useLiteMode)
+        indexer = self.calibrationIndexer(runId, useLiteMode, alternativeState)
         if version is VersionState.LATEST:
             version = indexer.latestApplicableVersion(runId)
         record = None
@@ -718,7 +765,6 @@ class LocalDataService:
                     Append=True,
                 )
                 self.mantidSnapper.executeQueue()
-
                 # Write an additional copy of the combined pixel mask as a separate `SaveDiffCal`-format file
                 maskFilename = ws + ".h5"
                 self.writePixelMask(filePath.parent, Path(maskFilename), ws)
@@ -830,8 +876,14 @@ class LocalDataService:
     ##### READ / WRITE STATE METHODS #####
 
     @validate_call
-    def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[Version] = VersionState.LATEST):
-        if not self.calibrationExists(runId, useLiteMode):
+    def readCalibrationState(
+        self,
+        runId: str,
+        useLiteMode: bool,
+        version: Optional[Version] = VersionState.LATEST,
+        alternativeState: Optional[str] = None,
+    ):
+        if not self.calibrationExists(runId, useLiteMode, alternativeState=alternativeState):
             if self._hasWritePermissionsCalibrationStateRoot():
                 raise RecoverableException.stateUninitialized(runId, useLiteMode)
             else:
@@ -840,7 +892,7 @@ class LocalDataService:
                     " Please contact your IS or CIS."  # fmt: skip
                 )
 
-        indexer = self.calibrationIndexer(runId, useLiteMode)
+        indexer = self.calibrationIndexer(runId, useLiteMode, alternativeState=alternativeState)
         # NOTE if we prefer latest version in index, uncomment below
         parameters = None
         if version is VersionState.LATEST:

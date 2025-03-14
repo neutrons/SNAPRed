@@ -48,16 +48,18 @@ class GroceryListBuilder:
         self._tokens["version"] = version
         return self
 
-    def diffcal_table(self, runId: str, version: int):
+    def diffcal_table(self, runId: str, version: int, alternativeState: str = None):
         self._tokens["workspaceType"] = "diffcal_table"
         self._tokens["runNumber"] = runId
         self._tokens["version"] = version
+        self._tokens["alternativeState"] = alternativeState
         return self
 
-    def diffcal_mask(self, runId: str, version: int):
+    def diffcal_mask(self, runId: str, version: int, alternativeState: str = None):
         self._tokens["workspaceType"] = "diffcal_mask"
         self._tokens["runNumber"] = runId
         self._tokens["version"] = version
+        self._tokens["alternativeState"] = alternativeState
         return self
 
     def normalization(self, runId: str, version: int):
