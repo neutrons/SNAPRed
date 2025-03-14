@@ -1,7 +1,8 @@
 from collections.abc import Iterable
 import numpy as np
-from typing import List
+from typing import Any, Dict, List
 
+from mantid.kernel import DateAndTime
 from mantid.simpleapi import (
     CreateSampleWorkspace,
     DeleteWorkspace,
@@ -179,6 +180,45 @@ class TestMappingFromRun(unittest.TestCase):
     def tearDown(self):
         DeleteWorkspace(self.wsName)
 
+    class _mockProperty():
+
+        def __init__(self, value):
+            self.value = value
+
+    class _mockRun():
+
+        def __init__(
+            self,
+            dict_: Dict[str, Any],
+            end_time: DateAndTime,
+            start_time: DateAndTime,
+            proton_charge: float
+        ):
+            self._dict = dict_
+            self._end_time = end_time
+            self._start_time = start_time
+            self._proton_charge = proton_charge
+
+        def endTime(self) -> DateAndTime:
+            return self._end_time
+
+        def startTime(self) -> DateAndTime:
+            return self._start_time
+
+        def protonCharge(self) -> float:
+            return self._proton_charge
+
+        def hasProperty(self, key: str) -> bool:
+            return key in self._dict
+
+        def getProperty(self, key: str) -> "TestMappingFromRun._mockProperty":
+            if key not in self._dict:
+                raise RuntimeError(f"Unknown property search object {key}")
+            return TestMappingFromRun._mockProperty(self._dict[key])
+
+        def keys(self):
+            return self._dict.keys()
+            
     def test_init(self):
         map_ = mappingFromRun(self.ws.getRun())  # noqa: F841
 
@@ -191,24 +231,294 @@ class TestMappingFromRun(unittest.TestCase):
 
     def test_iter(self):
         map_ = mappingFromRun(self.ws.getRun())
-        assert [k for k in map_] == ["run_title", "start_time", "end_time", "run_start", "run_end"]
+        expectedKeys = ["run_title", "start_time", "end_time", "proton_charge", "run_number", "run_start", "run_end"]
+        for k in map_:
+            assert k in expectedKeys
 
     def test_len(self):
         map_ = mappingFromRun(self.ws.getRun())
-        assert len(map_) == 5
+        print([k for k in self.ws.getRun().keys()])
+        print(map_.keys())
+        assert len(map_) == 7
 
     @mock.patch("mantid.api.Run.hasProperty")
-    def test_contains(self, mockHasProperty):
+    def test_contains_direct(self, mockHasProperty):
         mockHasProperty.return_value = True
         map_ = mappingFromRun(self.ws.getRun())
         assert "anything" in map_
         mockHasProperty.assert_called_once_with("anything")
 
+    def test_contains_indirect_special_cases(self):
+        map_ = mappingFromRun(self.ws.getRun())
+        assert "start_time" in map_
+        assert "end_time" in map_
+        assert "proton_charge" in map_
+        assert "run_number" in map_
+
+    def test_contains_primary(self):
+        # Test that any '__contains__' with a primary key references the primary-key only.
+        """
+        EXAMPLE: 'instrument.PVLogs.instrumentKeys' section from 'application.yml':
+         -
+           - "BL3:Chop:Skf1:WavelengthUserReq"
+           - "BL3:Chop:Gbl:WavelengthReq"
+           - "BL3:Det:TH:BL:Lambda"
+         - "det_arc1"
+         - "det_arc2"
+         - "BL3:Det:TH:BL:Frequency"
+         - 
+           - "BL3:Mot:OpticsPos:Pos"
+           - "optics"
+         - "det_lin1"
+         - "det_lin2"       
+        """
+        _mockRun = TestMappingFromRun._mockRun
+        _run = _mockRun(
+            {
+              "BL3:Chop:Skf1:WavelengthUserReq": [24.0],
+              "det_arc1": [1.25],
+              "det_arc2": [2.26],
+              "BL3:Det:TH:BL:Frequency": [35.0],
+              "BL3:Mot:OpticsPos:Pos": [10.0],
+              "det_lin1": [1.0],
+              "det_lin2": [2.0]
+            },
+            start_time="2010-01-01T00:00:00",
+            end_time="2010-01-01T01:00:00",
+            proton_charge=1000.0
+        )
+        mockRun = mock.Mock(
+            wraps=_mockRun,
+            return_value=_run
+        )
+        map_ = mappingFromRun(mockRun())
+        for ks in Config["instrument.PVLogs.instrumentKeys"]:
+            if isinstance(ks, str):
+                # make sure keys have been initialized for this test
+                assert ks in _run._dict
+                # make sure all keys are in the mapping
+                assert ks in map_
+            else:
+                # make sure that only the primary key is referencable
+                assert ks[0] in _run._dict
+                assert ks[0] in map_
+                for k in ks[1:]:
+                    assert not k in map_
+
+    def test_contains_alternatives(self):
+        # Test that any '__contains__' with a primary key references the alternative-key.
+        """
+        EXAMPLE: 'instrument.PVLogs.instrumentKeys' section from 'application.yml':
+         -
+           - "BL3:Chop:Skf1:WavelengthUserReq"
+           - "BL3:Chop:Gbl:WavelengthReq"
+           - "BL3:Det:TH:BL:Lambda"
+         - "det_arc1"
+         - "det_arc2"
+         - "BL3:Det:TH:BL:Frequency"
+         - 
+           - "BL3:Mot:OpticsPos:Pos"
+           - "optics"
+         - "det_lin1"
+         - "det_lin2"       
+        """
+        _mockRun = TestMappingFromRun._mockRun
+        _run = _mockRun(
+            {
+              "BL3:Chop:Gbl:WavelengthReq": [24.0],
+              "det_arc1": [1.25],
+              "det_arc2": [2.26],
+              "BL3:Det:TH:BL:Frequency": [35.0],
+              "optics": [10.0],
+              "det_lin1": [1.0],
+              "det_lin2": [2.0]
+            },
+            start_time="2010-01-01T00:00:00",
+            end_time="2010-01-01T01:00:00",
+            proton_charge=1000.0
+        )
+        mockRun = mock.Mock(
+            wraps=_mockRun,
+            return_value=_run
+        )
+        map_ = mappingFromRun(mockRun())
+        for ks in Config["instrument.PVLogs.instrumentKeys"]:
+            if isinstance(ks, str):
+                # make sure keys have been initialized for this test
+                assert ks in _run._dict
+                # make sure all keys are in the mapping
+                assert ks in map_
+            else:
+                # primary key references alternative key
+                assert not ks[0] in _run._dict
+                assert ks[0] in map_
+                # alternative key continues to reference itself
+                assert ks[1] in map_
+                    
+    def test_keys_special_cases(self):
+        map_ = mappingFromRun(self.ws.getRun())
+        keys_ = map_.keys()
+        assert "start_time" in keys_
+        assert "end_time" in keys_
+        assert "proton_charge" in keys_
+        assert "run_number" in keys_    
+    
+    def test_keys_alternatives(self):
+        # Test that both primary keys and any existing altarnative-keys show up in the 'keys()' return value.
+        """
+        EXAMPLE: 'instrument.PVLogs.instrumentKeys' section from 'application.yml':
+         -
+           - "BL3:Chop:Skf1:WavelengthUserReq"
+           - "BL3:Chop:Gbl:WavelengthReq"
+           - "BL3:Det:TH:BL:Lambda"
+         - "det_arc1"
+         - "det_arc2"
+         - "BL3:Det:TH:BL:Frequency"
+         - 
+           - "BL3:Mot:OpticsPos:Pos"
+           - "optics"
+         - "det_lin1"
+         - "det_lin2"       
+        """
+        _mockRun = TestMappingFromRun._mockRun
+        _run = _mockRun(
+            {
+              "BL3:Chop:Gbl:WavelengthReq": [24.0],
+              "det_arc1": [1.25],
+              "det_arc2": [2.26],
+              "BL3:Det:TH:BL:Frequency": [35.0],
+              "optics": [10.0],
+              "det_lin1": [1.0],
+              "det_lin2": [2.0]
+            },
+            start_time="2010-01-01T00:00:00",
+            end_time="2010-01-01T01:00:00",
+            proton_charge=1000.0
+        )
+        mockRun = mock.Mock(
+            wraps=_mockRun,
+            return_value=_run
+        )
+        map_ = mappingFromRun(mockRun())
+        keys_ = map_.keys()
+        for ks in Config["instrument.PVLogs.instrumentKeys"]:
+            if isinstance(ks, str):
+                # make sure keys have been initialized for this test
+                assert ks in _run._dict
+                # make sure all keys are in the mapping
+                assert ks in keys_
+            else:
+                # primary key references alternative key
+                assert not ks[0] in _run._dict
+                assert ks[0] in keys_
+                # alternative key continues to reference itself
+                assert ks[1] in keys_
+
+    def test_get_alternatives(self):
+        # Test that any 'get' with a primary key references the altarnative-key value.
+        """
+        EXAMPLE: 'instrument.PVLogs.instrumentKeys' section from 'application.yml':
+         -
+           - "BL3:Chop:Skf1:WavelengthUserReq"
+           - "BL3:Chop:Gbl:WavelengthReq"
+           - "BL3:Det:TH:BL:Lambda"
+         - "det_arc1"
+         - "det_arc2"
+         - "BL3:Det:TH:BL:Frequency"
+         - 
+           - "BL3:Mot:OpticsPos:Pos"
+           - "optics"
+         - "det_lin1"
+         - "det_lin2"       
+        """
+        _mockRun = TestMappingFromRun._mockRun
+        _run = _mockRun(
+            {
+              "BL3:Chop:Gbl:WavelengthReq": [24.0],
+              "det_arc1": [1.25],
+              "det_arc2": [2.26],
+              "BL3:Det:TH:BL:Frequency": [35.0],
+              "optics": [10.0],
+              "det_lin1": [1.0],
+              "det_lin2": [2.0]
+            },
+            start_time="2010-01-01T00:00:00",
+            end_time="2010-01-01T01:00:00",
+            proton_charge=1000.0
+        )
+        mockRun = mock.Mock(
+            wraps=_mockRun,
+            return_value=_run
+        )
+        map_ = mappingFromRun(mockRun())
+        for ks in Config["instrument.PVLogs.instrumentKeys"]:
+            if isinstance(ks, str):
+                assert map_[ks] == _run._dict[ks]
+            else:
+                # primary key references alternative key
+                assert map_[ks[0]] == _run._dict[ks[1]]
+                # alternative key continues to reference itself
+                assert map_[ks[1]] == _run._dict[ks[1]]
+        
+    def test_default_run_number(self):
+        # test that default 'run_number' is int(0)
+        _mockRun = TestMappingFromRun._mockRun
+        _run = _mockRun(
+            {
+              "BL3:Chop:Skf1:WavelengthUserReq": [24.0],
+              "det_arc1": [1.25],
+              "det_arc2": [2.26],
+              "BL3:Det:TH:BL:Frequency": [35.0],
+              "BL3:Mot:OpticsPos:Pos": [10.0],
+              "det_lin1": [1.0],
+              "det_lin2": [2.0]
+            },
+            start_time="2010-01-01T00:00:00",
+            end_time="2010-01-01T01:00:00",
+            proton_charge=1000.0
+        )
+        mockRun = mock.Mock(
+            wraps=_mockRun,
+            return_value=_run
+        )
+        map_ = mappingFromRun(mockRun())
+        assert "run_number" in map_
+        assert map_["run_number"] == 0
+        
+    def test_run_number(self):
+        # test that 'run_number' is recognized correctly
+        runNumber = "12345"
+        _mockRun = TestMappingFromRun._mockRun
+        _run = _mockRun(
+            {
+              "BL3:Chop:Skf1:WavelengthUserReq": [24.0],
+              "det_arc1": [1.25],
+              "det_arc2": [2.26],
+              "BL3:Det:TH:BL:Frequency": [35.0],
+              "BL3:Mot:OpticsPos:Pos": [10.0],
+              "det_lin1": [1.0],
+              "det_lin2": [2.0],
+              "run_number": runNumber
+            },
+            start_time="2010-01-01T00:00:00",
+            end_time="2010-01-01T01:00:00",
+            proton_charge=1000.0
+        )
+        mockRun = mock.Mock(
+            wraps=_mockRun,
+            return_value=_run
+        )
+        map_ = mappingFromRun(mockRun())
+        assert "run_number" in map_
+        assert map_["run_number"] == runNumber
+        
     @mock.patch("mantid.api.Run.keys")
     def test_keys(self, mockKeys):
         mockKeys.return_value = ["we", "are", "the", "keys"]
         map_ = mappingFromRun(self.ws.getRun())
-        assert map_.keys() == mockKeys.return_value
+        expectedKeys = set(mockKeys.return_value)
+        expectedKeys.update(["start_time", "end_time", "proton_charge", "run_number"])
+        assert set(map_.keys()) == expectedKeys
         mockKeys.assert_called_once()
 
 

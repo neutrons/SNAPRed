@@ -19,7 +19,8 @@ from snapred.meta.Config import Config
 
 
 def allInstrumentPVLogKeys(keysWithAlternates: Iterable[str | Iterable[str]]):
-    # Flatten a list of keys, with possible alternate keys
+    # Flatten a list of keys, where each list item is either a single key,
+    #   or a list of alternative keys.
     keys = []
     
     for ks in keysWithAlternates:
@@ -80,6 +81,10 @@ def datetimeFromLogTime(logTime: np.datetime64) -> datetime.datetime:
 
 def mappingFromRun(run: Run) -> Mapping:
     # Normalize `mantid.api.run` to a standard Python Mapping.
+    
+    # TODO: a possible alternative implementation would be to just construct a `dict` from the `Run` instance.
+    #   It was an optimization choice not to use this approach, although once alternative PV-log keys are considered,
+    #   the code would be much simpler.
 
     class _Mapping(Mapping):
         def __init__(self, run: Run):
@@ -104,15 +109,19 @@ def mappingFromRun(run: Run) -> Mapping:
                     value = self._run.getProtonCharge()
 
                 case "run_number":
+                    # TODO: this does not normalize 'run_number' value to `string`, because Mantid itself does not do that:
+                    #   probably that should be fixed here, and in Mantid.
                     value = self._run.getProperty("run_number").value if self._run.hasProperty("run_number") else 0
 
                 case _:
                     try:
                         value = self._run.getProperty(key).value
                     except RuntimeError as e:
+                        # A primary PV-log key may be used to reference an alternative key's value.
                         if "Unknown property search object" in str(e):
                             try:
-                                # Attempt to convert from any _alternate_ instrument PV-log key:
+                                # Attempt to convert from any _alternative_ instrument PV-log key, if such exists:
+                                #   functionally, this allows referencing the alternative-key values, by the primary key.
                                 for ks in Config["instrument.PVLogs.instrumentKeys"]:
                                     if not isinstance(ks, str) and isinstance(ks, Iterable) and key == ks[0]:
                                         for k in ks[1:]:
@@ -129,18 +138,21 @@ def mappingFromRun(run: Run) -> Mapping:
             return value
 
         def __iter__(self):
-            return self._run.keys().__iter__()
+            return self.keys().__iter__()
 
         def __len__(
             self,
         ):
-            return len(self._run.keys())
+            return len(self.keys())
 
         def __contains__(self, key: str):
             if self._run.hasProperty(key):
                 return True
-            # Check for _alternate_ instrument PV-log keys:
-            # TODO: speed this up!
+            # Check for special cases:
+            if key in ("end_time", "start_time", "proton_charge", "run_number"):
+                return True
+            # Check for _alternate_ instrument PV-log keys, if such exist:
+            #   functionally, this allows referencing the alternative-key by the primary key.
             for ks in Config["instrument.PVLogs.instrumentKeys"]:
                 if not isinstance(ks, str) and isinstance(ks, Iterable) and key == ks[0]:
                     for k in ks[1:]:
@@ -149,7 +161,17 @@ def mappingFromRun(run: Run) -> Mapping:
             return False
 
         def keys(self):
-            return self._run.keys()
+            keys_ = set(["end_time", "start_time", "proton_charge", "run_number"])
+            keys_.update(self._run.keys())
+            
+            # Add any primary PV-log keys, but only if an alternative key actually exists.
+            for ks in Config["instrument.PVLogs.instrumentKeys"]:
+                if not isinstance(ks, str) and isinstance(ks, Iterable):
+                    if ks[0] in keys_:
+                        continue
+                    if self.__contains__(ks[0]):
+                        keys_.add(ks[0])
+            return list(keys_)
 
     return _Mapping(run)
 
