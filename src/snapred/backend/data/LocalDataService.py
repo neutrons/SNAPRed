@@ -1149,7 +1149,6 @@ class LocalDataService:
 
         # Next: add compatible user-created masks that are already resident in the ADS
         mantidMaskName = re.compile(r"MaskWorkspace(_([0-9]+))?")
-        # add function to snapper
         wsNames = self.mantidSnapper.mtd.getObjectNames()
         for ws in wsNames:
             match_ = mantidMaskName.match(ws)
