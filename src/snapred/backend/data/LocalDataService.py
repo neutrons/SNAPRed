@@ -1353,7 +1353,7 @@ class LocalDataService:
                 protonCharge=proton_charge,
             )
         except (KeyError, RuntimeError, ValidationError) as e:
-            raise RuntimeError("unable to extract LiveMetadata from Run") from e
+            raise RuntimeError(f"Unable to extract LiveMetadata from Run:\n  {e}") from e
         return metadata
 
     def _readLiveData(self, ws: WorkspaceName, duration: int):

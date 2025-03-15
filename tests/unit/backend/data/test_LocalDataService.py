@@ -2462,7 +2462,7 @@ def test_liveMetadataFromRun_incomplete_logs(mockMapping):
     mockMapping.return_value = logs
     mockRun = mock.Mock(spec=Run)
     instance = LocalDataService()
-    with pytest.raises(RuntimeError, match=r"unable to extract LiveMetadata from Run.*"):
+    with pytest.raises(RuntimeError, match=r"Unable to extract LiveMetadata from Run.*"):
         instance._liveMetadataFromRun(mockRun)
 
 
