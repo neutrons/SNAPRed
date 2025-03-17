@@ -1,14 +1,8 @@
-# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
-from mantid.simpleapi import (  # noqa : TID251
-    DeleteWorkspace,
-)
-
 from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients as Ingredients
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import (
-    ConvertTableToMatrixWorkspaceRecipe,
     GenerateTableWorkspaceFromListOfDictRecipe,
 )
 from snapred.meta.decorators.Singleton import Singleton
@@ -38,7 +32,7 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
     """
 
     def __init__(self):
-        self.mantidSnapper = MantidSnapper(self, self.__class__.__name__)
+        self.mantidSnapper = MantidSnapper(None, self.__class__.__name__)
 
     def executeRecipe(self, ingredients: Ingredients):
         runId = ingredients.calibrationRecord.runNumber
@@ -67,15 +61,22 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
                     )
                 else:
                     ws_metric = wng.diffCalMetric().metricName(metric).runNumber(runId).version(version).build()
-                ConvertTableToMatrixWorkspaceRecipe().executeRecipe(
+                self.mantidSnapper.ConvertTableToMatrixWorkspace(
+                    "Converting table to matrix workspace",
                     InputWorkspace=ws_table,
                     ColumnX="twoThetaAverage",
                     ColumnY=metric + "Average",
                     ColumnE=metric + "StandardDeviation",
                     OutputWorkspace=ws_metric,
                 )
+                self.mantidSnapper.executeQueue()
                 outputs.append(ws_metric)
-            DeleteWorkspace(Workspace=ws_table)
+
+            self.mantidSnapper.DeleteWorkspace(
+                message="Deleting workspace",
+                Workspace=ws_table,
+            )
+            self.mantidSnapper.executeQueue()
             logger.info("Finished generating calibration metrics workspace.")
             return outputs
         except (RuntimeError, AlgorithmException) as e:

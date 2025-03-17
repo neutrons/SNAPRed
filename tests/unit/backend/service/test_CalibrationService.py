@@ -327,11 +327,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     @mock.patch(thisService + "FarmFreshIngredients")
     @mock.patch(thisService + "FitMultiplePeaksRecipe")
-    def test_assessQuality(
-        self,
-        FitMultiplePeaksRecipe,
-        FarmFreshIngredients,
-    ):
+    def test_assessQuality(self, FitMultiplePeaksRecipe, FarmFreshIngredients):
         # Mock input data
         timestamp = time.time()
         mockFarmFreshIngredients = mock.Mock(

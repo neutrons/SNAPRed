@@ -1,8 +1,7 @@
 import json
 from typing import Generic, TypeVar, get_args
 
-# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
-from mantid.simpleapi import ConvertTableToMatrixWorkspace, Minus  # noqa : TID251
+from mantid.simpleapi import Minus
 from pydantic import BaseModel
 
 from snapred.backend.log.logger import snapredLogger
@@ -97,10 +96,6 @@ class GenerateTableWorkspaceFromListOfDictRecipe(GenericRecipe[GenerateTableWork
 
 
 class FocusSpectraRecipe(GenericRecipe[FocusSpectraAlgorithm]):
-    pass
-
-
-class ConvertTableToMatrixWorkspaceRecipe(GenericRecipe[ConvertTableToMatrixWorkspace]):
     pass
 
 

@@ -1,14 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from mantid.api import mtd
 
-# TODO Replace the use of the import(s) below with MantidSnapper in EWM 9909
-from mantid.simpleapi import Minus  # noqa : TID251
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
 def FitPeaksPlot(wsName):
-    ws = mtd[wsName]
-    wsGroup = mtd["fitPeaksWSGroup"]
+    mantidSnapper = MantidSnapper(None, "Utensils")
+    ws = mantidSnapper.mtd[wsName]
+    wsGroup = mantidSnapper.mtd["fitPeaksWSGroup"]
     numSpec = ws.getNumberHistograms()
     sqrtSize = int(np.sqrt(numSpec))
     # Get best size for layout
@@ -25,9 +24,12 @@ def FitPeaksPlot(wsName):
     fig = plt.figure()
     plts = []
     for index in range(numSpec):
-        fitWS = mtd[f"{wsName}_fitted_{index}"]
-        Minus(ws, fitWS, AllowDifferentNumberSpectra=True, OutputWorkspace=f"res_{index}")
-        res = mtd[f"res_{index}"]
+        fitWS = mantidSnapper.mtd[f"{wsName}_fitted_{index}"]
+        mantidSnapper.Minus(
+            "Subtracting fitted workspace", ws, fitWS, AllowDifferentNumberSpectra=True, OutputWorkspace=f"res_{index}"
+        )
+        mantidSnapper.executeQueue()
+        res = mantidSnapper.mtd[f"res_{index}"]
         wsGroup.add(f"res_{index}")
         ax = fig.add_subplot(rowSize, colSize, index + 1, projection="mantid")
         ax.plot(res, specNum=res.getSpectrum(index).getSpectrumNo(), label="Residual")
