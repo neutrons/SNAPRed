@@ -259,7 +259,7 @@ class NormalizationService(Service):
     def _sameStates(self, runnumber1, runnumber2):
         stateId1 = self.dataFactoryService.constructStateId(runnumber1)
         stateId2 = self.dataFactoryService.constructStateId(runnumber2)
-        return stateId1 == stateId2
+        return stateId1[0] == stateId2[0]
 
     def checkWritePermissions(self, runNumber: str) -> bool:
         path = self.dataExportService.getCalibrationStateRoot(runNumber)

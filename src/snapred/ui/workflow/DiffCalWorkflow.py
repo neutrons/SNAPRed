@@ -16,6 +16,7 @@ from snapred.backend.dao.request import (
     FocusSpectraRequest,
     HasStateRequest,
     OverrideRequest,
+    RunFeedbackRequest,
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
@@ -161,10 +162,27 @@ class DiffCalWorkflow(WorkflowImplementer):
         useLiteMode = self._requestView.liteModeToggle.getState()
 
         self.__setInteraction(False, "populateGroupDropdown")
+
+        def _onDropdownSuccess():
+            self.__setInteraction(True, "populateGroupDropdown")
+            self._populateRunFeedback(runNumber)
+
         self.workflow.presenter.handleAction(
             self.handleDropdown,
             args=(runNumber, useLiteMode),
-            onSuccess=lambda: self.__setInteraction(True, "populateGroupDropdown"),
+            onSuccess=_onDropdownSuccess,
+        )
+
+    @ExceptionToErrLog
+    @Slot()
+    def _populateRunFeedback(self, runNumber: str):
+        if not runNumber:
+            self._requestView.updateRunFeedback("", "")
+            return
+        self.workflow.presenter.handleAction(
+            self.handleRunFeedback,
+            args=(runNumber),
+            onSuccess=lambda: self.__setInteraction(False, "populateRunFeedback"),
         )
 
     @ExceptionToErrLog
@@ -195,6 +213,16 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # populate and re-enable the drop down
         self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        return SNAPResponse(code=ResponseCode.OK)
+
+    def handleRunFeedback(self, runNumber):
+        payload = RunFeedbackRequest(
+            runId=runNumber,
+        )
+        response = self.request(path="calibration/runFeedback", payload=payload.json()).data
+        stateId, detectorState = response
+        runTitle = detectorState.title
+        self._requestView.updateRunFeedback(stateId, runTitle)
         return SNAPResponse(code=ResponseCode.OK)
 
     def handleOverride(self, sampleFile):
