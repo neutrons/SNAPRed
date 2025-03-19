@@ -316,16 +316,16 @@ class ReductionRecipe(Recipe[Ingredients]):
             ##     both of these are then used as _input_ for later sub-recipes.
             ##   In the case that the input workspace is `sampleClone` it should possibly be cloned -again- instead.
             ##
+            if normalizationClone:
+                self._applyRecipe(
+                    # groceries: 'inputWorkspace' [, 'outputWorkspace']
+                    GenerateFocussedVanadiumRecipe,
+                    self.ingredients.generateFocussedVanadium(groupingIndex),
+                    inputWorkspace=vanadiumBasisWorkspace,
+                    outputWorkspace=normalizationClone,
+                )
 
-            self._applyRecipe(
-                # groceries: 'inputWorkspace' [, 'outputWorkspace']
-                GenerateFocussedVanadiumRecipe,
-                self.ingredients.generateFocussedVanadium(groupingIndex),
-                inputWorkspace=vanadiumBasisWorkspace,
-                outputWorkspace=normalizationClone,
-            )
-
-            self._cloneIntermediateWorkspace(normalizationClone, f"normalization_FoocussedVanadium_{groupingIndex}")
+                self._cloneIntermediateWorkspace(normalizationClone, f"normalization_FoocussedVanadium_{groupingIndex}")
 
             # 4. ApplyNormalizationRecipe
             self._applyRecipe(
