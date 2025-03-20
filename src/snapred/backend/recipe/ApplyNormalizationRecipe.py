@@ -93,9 +93,8 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         Final step in a recipe, executes the queued algorithms.
         Requires: queued algorithms.
         """
-        self._rebinSample(preserveEvents=False)  # This is now false
+        self._rebinSample(preserveEvents=False)
         self.mantidSnapper.executeQueue()
-        # self._rebinSample(preserveEvents=False) remove this
         return True
 
     def cater(self, shipment: List[Pallet]) -> List[WorkspaceName]:
