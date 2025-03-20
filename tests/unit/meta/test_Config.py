@@ -1,12 +1,20 @@
 import logging
 import os
-from pathlib import Path
 import shutil
 import sys
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from snapred.backend.log.logger import snapredLogger
+##
+## In order to preserve the normal import order as much as possible,
+##   place test-specific imports last.
+##
+from unittest import mock
+
+import pytest
+
 import snapred.meta.Config as Config_module
+from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import (
     Config,
     Resource,
@@ -16,13 +24,6 @@ from snapred.meta.Config import (
     fromMantidLoggingLevel,
     fromPythonLoggingLevel,
 )
-
-##
-## In order to preserve the normal import order as much as possible,
-##   place test-specific imports last.
-##
-from unittest import mock
-import pytest
 
 
 def test_environment():
@@ -233,6 +234,7 @@ def test_Config_validate(caplog):
     # `caplog` doesn't work with the `snapredLogger`.
     with mock.patch.object(snapredLogger, "getLogger", lambda name: logging.getLogger(name)):
         logging_SNAP_stream_format = Config["logging.SNAP.stream.format"]
+
         def mock__getitem__(key: str, liveDataFlag: bool, normalizeByBeamMonitorFlag: bool):
             match key:
                 case "liveData.enabled":
@@ -245,8 +247,10 @@ def test_Config_validate(caplog):
                     raise RuntimeError(f"unexpected key: {key}")
 
         # -------- WARNING if both are set: 'liveData.enabled' and 'mantid.workbench.normalizeByBeamMonitor' --------
-        # Test positive case:        
-        with mock.patch.object(Config_module._Config, "__getitem__", lambda _self, key: mock__getitem__(key, True, True)):
+        # Test positive case:
+        with mock.patch.object(
+            Config_module._Config, "__getitem__", lambda _self, key: mock__getitem__(key, True, True)
+        ):
             assert Config["liveData.enabled"]
             assert Config["mantid.workspace.normalizeByBeamMonitor"]
             with caplog.at_level(logging.WARNING, logger="snapred.meta.Config.Config"):
@@ -254,8 +258,10 @@ def test_Config_validate(caplog):
             assert "'mantid.workspace.normalizeByBeamMonitor' and 'liveData.enabled'" in caplog.text
             caplog.clear()
 
-        # Test negative cases:        
-        with mock.patch.object(Config_module._Config, "__getitem__", lambda _self, key: mock__getitem__(key, False, True)):
+        # Test negative cases:
+        with mock.patch.object(
+            Config_module._Config, "__getitem__", lambda _self, key: mock__getitem__(key, False, True)
+        ):
             assert not Config["liveData.enabled"]
             assert Config["mantid.workspace.normalizeByBeamMonitor"]
             with caplog.at_level(logging.WARNING, logger="snapred.meta.Config.Config"):
@@ -263,7 +269,9 @@ def test_Config_validate(caplog):
             assert caplog.text == ""
             caplog.clear()
 
-        with mock.patch.object(Config_module._Config, "__getitem__", lambda _self, key: mock__getitem__(key, True, False)):
+        with mock.patch.object(
+            Config_module._Config, "__getitem__", lambda _self, key: mock__getitem__(key, True, False)
+        ):
             assert Config["liveData.enabled"]
             assert not Config["mantid.workspace.normalizeByBeamMonitor"]
             with caplog.at_level(logging.WARNING, logger="snapred.meta.Config.Config"):
@@ -271,9 +279,7 @@ def test_Config_validate(caplog):
             assert caplog.text == ""
             caplog.clear()
 
-    
-    
-        
+
 def test_fromMantidLoggingLevel():
     for mantidLevel, pythonLevel in _pythonLoggingLevelFromMantid.items():
         assert pythonLevel == fromMantidLoggingLevel(mantidLevel)

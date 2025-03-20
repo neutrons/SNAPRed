@@ -34,7 +34,7 @@ class _Resource:
     _resourcesPath: str
     _logger = logging.getLogger(__name__ + ".Resource")
 
-    def __init__(self):            
+    def __init__(self):
         # where the location of resources are depends on whether or not this is in package mode
         self._packageMode = not self._existsInPackage("application.yml")
         if self._packageMode:
@@ -129,7 +129,6 @@ class _Config:
             self._config["samples"]["home"] = expandhome(self._config["samples"]["home"])
 
     def refresh(self, env_name: str, clearPrevious: bool = False) -> None:
- 
         if clearPrevious:
             self._config.clear()
 
@@ -223,17 +222,18 @@ class _Config:
 
     def validate(self):
         # Warn the user about any issues with `Config` settings.
-        
+
         # Implementation notes:
-        # 
+        #
         #   * Do not prevent the user from doing something that won't outright "break" SNAPRed.
         #   Where at all possible, this method should WARN, otherwise it should throw `RuntimeError`.
         #
-    
+
         # Use SNAPRed's logger for any warnings:
-        from snapred.backend.log.logger import snapredLogger # prevent circular import
+        from snapred.backend.log.logger import snapredLogger  # prevent circular import
+
         logger = snapredLogger.getLogger(__name__ + ".Config")
-        
+
         if self["liveData.enabled"] and self["mantid.workspace.normalizeByBeamMonitor"]:
             logger.warning(
                 "Both 'mantid.workspace.normalizeByBeamMonitor' and 'liveData.enabled'\n"
@@ -241,7 +241,8 @@ class _Config:
                 + "This type of normalization is not yet implemented for live-data mode.  "
                 + "Live-data mode will not function correctly!"
             )
-        
+
+
 Config = _Config()
 
 

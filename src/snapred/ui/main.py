@@ -116,7 +116,7 @@ class SNAPRedGUI(QMainWindow):
             splitter.addWidget(self.userDocButton)
         else:
             print("UserDocsButton is not available. Skipping its initialization.")
-            
+
         # Check for incompatible `Config` settings.
         Config.validate()
 
