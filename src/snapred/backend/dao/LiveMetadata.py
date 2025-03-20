@@ -17,6 +17,13 @@ class LiveMetadata(BaseModel):
     #     For this reason, in most cases this DAO should never be cached.
     #
 
+    ## Special Live-listener <start time> strings in ISO8601 format:
+    #  Return data from _now_ (<epoch zero>):
+    FROM_NOW_ISO8601: ClassVar[str] = "1990-01-01T00:00:00"
+
+    #  Return data from start of run (<epoch +1 second>):
+    FROM_START_ISO8601: ClassVar[str] = "1990-01-01T00:00:01"
+
     INACTIVE_RUN: ClassVar[int] = 0
 
     runNumber: str
@@ -24,7 +31,7 @@ class LiveMetadata(BaseModel):
     startTime: datetime
     endTime: datetime
 
-    detectorState: DetectorState
+    detectorState: DetectorState | None
 
     protonCharge: float
 

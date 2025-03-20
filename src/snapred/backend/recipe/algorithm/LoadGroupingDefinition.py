@@ -12,7 +12,11 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
-from snapred.backend.data.util.PV_logs_util import populateInstrumentParameters, transferInstrumentPVLogs
+from snapred.backend.data.util.PV_logs_util import (
+    allInstrumentPVLogKeys,
+    populateInstrumentParameters,
+    transferInstrumentPVLogs,
+)
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
@@ -152,7 +156,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
                 transferInstrumentPVLogs(
                     self.mantidSnapper.mtd[self.outputWorkspaceName].mutableRun(),
                     self.mantidSnapper.mtd[self.getPropertyValue("InstrumentDonor")].run(),
-                    Config["instrument.PVLogs.instrumentKeys"],
+                    allInstrumentPVLogKeys(Config["instrument.PVLogs.instrumentKeys"]),
                 )
                 populateInstrumentParameters(self.outputWorkspaceName)
         elif self.groupingFileExt in self.supported_xml_file_extensions:

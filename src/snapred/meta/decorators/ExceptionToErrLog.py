@@ -1,4 +1,5 @@
 import functools
+import logging
 from typing import Any, Callable
 
 from snapred.backend.log.logger import snapredLogger
@@ -12,9 +13,11 @@ def ExceptionToErrLog(func: Callable[..., Any]):
         try:
             return func(*args, **kwargs)
         except Exception as e:  # noqa BLE001
-            import traceback
-
             logger.error(e)
-            traceback.print_exc()
+            if logger.isEnabledFor(logging.DEBUG):
+                # print stacktrace
+                import traceback
+
+                traceback.print_exc()
 
     return inner

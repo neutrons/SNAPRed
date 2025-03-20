@@ -60,7 +60,7 @@ def callback(clazz):
         def __subclasscheck__(cls, subclass):
             return clazz.__subclasscheck__(subclass)
 
-    # Forwared all methods to the _value, throw if not populated
+    # Forward all methods to the _value, throw if not populated
     for name in dir(clazz):
         if name not in ignore:
             delegate(Callback, "_value", name)

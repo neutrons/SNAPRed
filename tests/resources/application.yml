@@ -58,13 +58,19 @@ instrument:
     # rootGroup: "mantid_workspace_1/logs"
 
     # PV-log keys relating to instrument settings:
+    #   - for alternative log keys, the preferred value is the first,
+    #     and that key is also what will be used in SNAPRed.
     instrumentKeys:
-    - "BL3:Chop:Gbl:WavelengthReq"
-    - "BL3:Chop:Skf1:WavelengthUserReq"
+    -
+      - "BL3:Chop:Skf1:WavelengthUserReq"
+      - "BL3:Chop:Gbl:WavelengthReq"
+      - "BL3:Det:TH:BL:Lambda"
     - "det_arc1"
     - "det_arc2"
     - "BL3:Det:TH:BL:Frequency"
-    - "BL3:Mot:OpticsPos:Pos"
+    -
+      - "BL3:Mot:OpticsPos:Pos"
+      - "optics"
     - "det_lin1"
     - "det_lin2"
 
@@ -73,7 +79,7 @@ instrument:
   maxNumberOfRuns: 10
 
 liveData:
-  enabled: true
+  enabled: false
   # Override 'liveData.facility' and 'liveData.instrument'
   #   in order to use the mock listener for testing
   #   without overriding the real instrument.
@@ -83,7 +89,11 @@ liveData:
   instrument:
     name: ${instrument.name}
     # name: ADARA_FileReader
+
+  # The ONLY supported mode right now is 'REPLACE':
+  #   any other mode requires stay-resident `LoadLiveData` treatment.
   accumulationMethod: Replace
+
   testInput:
     inputFilename: SNAP_46680.nxs.h5
     # WARNING: "chunks" seems a bit glitchy:
@@ -158,6 +168,8 @@ reduction:
 
 mantid:
     workspace:
+      # WARNING: 'normalizeByBeamMonitor' and 'liveData.enabled' should not be set at the same time.
+      #   This type of normalization is not yet implemented for live-data mode.  Live-data mode will not function correctly!
       normalizeByBeamMonitor: false
       normMonitorID: 0
       nameTemplate:
@@ -227,11 +239,11 @@ localdataservice:
 
 logging:
   # logging.NOTSET: 0, logging.DEBUG: 10, logging.INFO: 20, logging:WARNING: 30, logging.ERROR: 40, logging.CRITICAL: 50
-  SNAP:
-    stream:
-      level: 40
-      format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
   mantid:
+    # IMPORTANT: "root" level determines override for message-pane level:
+    #    do not set to *debug* for live-data usage!
+    root:
+      level: 30
     stream:
       level: 40
       format: 'MANTID %(levelname)s - %(message)s'
@@ -239,6 +251,10 @@ logging:
       level: 40
       format: 'MANTID FILE %(levelname)s - %(message)s'
       output: '/dev/null'
+  SNAP:
+    stream:
+      level: 40
+      format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
 
 samples:
   home: ${instrument.calibration.sample.home}

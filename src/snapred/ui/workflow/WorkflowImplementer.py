@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import Callable, Set
 
 from qtpy.QtCore import QObject, QThread
 
@@ -14,6 +14,7 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.UserCancellation import UserCancellation
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.widget.Workflow import Workflow
 
@@ -37,19 +38,19 @@ class WorkflowImplementer(QObject):
         self.responses = []
 
         # Output workspaces from each workflow node.
-        self.outputs = []
+        self.outputs: Set[WorkspaceName] = set()
 
         # Collected output workspaces from all iterations
         #   of the current workflow node.
-        self.collectedOutputs = []
+        self.collectedOutputs: Set[WorkspaceName] = set()
 
         # List of ADS-resident workspaces external to SNAPRed:
-        #   * This list is updated before the start of each workflow node.
+        #   * This set is updated before the start of each workflow node.
         #     This allows an end user to work in Mantid, while the SNAPRed panel is open,
         #     And have any workspaces they create not be deleted by SNAPRed.
         #   * As an interim solution, to-be persisted workspaces created by SNAPRed
-        #     can also be added to this list as required(, for example, reduction-output workspaces).
-        self.externalWorkspaces: List[str] = []
+        #     can also be added to this set as required(, for example, reduction-output workspaces).
+        self.externalWorkspaces: Set[str] = set()
 
         self.renameTemplate = "{workspaceName}_{iteration:02d}"
         self.parent = parent
@@ -65,18 +66,19 @@ class WorkflowImplementer(QObject):
     def iterate(self, workflowPresenter):
         # rename output workspaces
         payload = RenameWorkspacesFromTemplateRequest(
-            workspaces=self.outputs.copy(),
+            workspaces=list(self.outputs),
             renameTemplate=self.renameTemplate.format(
                 workspaceName="{workspaceName}", iteration=workflowPresenter.iteration
             ),
         )
         response = self.request(path="workspace/renameFromTemplate", payload=payload.model_dump_json())
-        self.outputs = response.data
+        self.outputs = set(response.data)
 
         # Add output workspaces to the list of outputs including all iterations
-        self.collectedOutputs.extend(self.outputs)
+        self.collectedOutputs.update(self.outputs)
+
         # reset outputs for next set of outputs
-        self.outputs = []
+        self.outputs.clear()
 
         # Remove all other SNAPRed workspaces
         response = self._clearWorkspaces(exclude=self.collectedOutputs, clearCachedWorkspaces=False)
@@ -84,33 +86,34 @@ class WorkflowImplementer(QObject):
 
     def start(self):
         # Retain the list of ADS-resident workspaces at a timepoint before the start of each workflow node.
-        self.externalWorkspaces = self.request(
-            path="workspace/getResidentWorkspaces",
-            payload=ListWorkspacesRequest(excludeCache=True),
-        ).data
+        self.externalWorkspaces = set(
+            self.request(
+                path="workspace/getResidentWorkspaces",
+                payload=ListWorkspacesRequest(excludeCache=True),
+            ).data
+        )
 
         # If this "start" follows an iteration, remove the "collectedOutputs" from the
         #   "externalWorkspaces" list:
         if len(self.collectedOutputs):
-            externalWorkspaces = set(self.externalWorkspaces).difference(self.collectedOutputs)
-            self.externalWorkspaces = list(externalWorkspaces)
+            self.externalWorkspaces = self.externalWorkspaces.difference(self.collectedOutputs)
 
     def reset(self, retainOutputs=False):
-        exclude = self.outputs if retainOutputs else []
+        exclude = self.outputs if retainOutputs else set()
         self._clearWorkspaces(exclude=exclude, clearCachedWorkspaces=True)
         self.requests = []
         self.responses = []
-        self.outputs = []
-        self.collectedOutputs = []
+        self.outputs.clear()
+        self.collectedOutputs.clear()
         self.continueAnywayFlags = ContinueWarning.Type.UNSET
 
         for hook in self.resetHooks:
             logger.debug(f"Calling reset hook: {hook}")
             hook()
 
-    def _clearWorkspaces(self, *, exclude: List[str], clearCachedWorkspaces: bool):
+    def _clearWorkspaces(self, *, exclude: Set[str], clearCachedWorkspaces: bool):
         # Always exclude any external workspaces.
-        exclude_ = set(self.externalWorkspaces)
+        exclude_ = self.externalWorkspaces.copy()
         exclude_.update(exclude)
         payload = ClearWorkspacesRequest(exclude=list(exclude_), clearCache=clearCachedWorkspaces)
         response = self.request(path="workspace/clear", payload=payload.json())
