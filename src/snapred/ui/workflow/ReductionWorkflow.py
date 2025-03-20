@@ -476,7 +476,9 @@ class ReductionWorkflow(WorkflowImplementer):
                 "and try again."
             )
 
-        if ContinueWarning.Type.MISSING_NORMALIZATION in self.continueAnywayFlags:
+        if ContinueWarning.Type.MISSING_NORMALIZATION in self.continueAnywayFlags and (
+            ContinueWarning.Type.CONTINUE_WITHOUT_NORMALIZATION not in self.continueAnywayFlags
+        ):
             if len(self.runNumbers) > 1:
                 raise RuntimeError(
                     "Currently, Artificial Normalization can only be performed on a "

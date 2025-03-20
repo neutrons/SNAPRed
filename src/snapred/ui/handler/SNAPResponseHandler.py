@@ -89,7 +89,8 @@ class SNAPResponseHandler(QWidget):
             self.userCancellation.emit(userCancellationInfo)
         elif code == ResponseCode.CONTINUE_WARNING:
             continueInfo = ContinueWarning.Model.model_validate_json(message)
-            if self._handleContinueWarning(continueInfo):
+            result = self._handleContinueWarning(continueInfo)
+            if result != "&No":
                 self.continueAnyway.emit(continueInfo)
         elif message:
             self._handleWarning(message)
@@ -110,14 +111,21 @@ class SNAPResponseHandler(QWidget):
             logger.debug(f"`_handleContinueWarning`: `continueInfo`: {continueInfo}")
             traceback.print_stack()
 
-        continueAnyway = QMessageBox.warning(
-            self,
+        continueAnyway = QMessageBox(
+            QMessageBox.Warning,
             "Warning",
-            continueInfo.message,
+            f"{continueInfo.message}",
             buttons=QMessageBox.Yes | QMessageBox.No,
-            defaultButton=QMessageBox.No,
+            parent=self,
         )
-        return continueAnyway == QMessageBox.Yes
+        continueAnyway.setDefaultButton(QMessageBox.No)
+        if continueInfo.flags == ContinueWarning.Type.MISSING_NORMALIZATION:
+            continueAnyway.addButton("Continue without Normalization", QMessageBox.YesRole)
+        continueAnyway.exec()
+        clickedButton = continueAnyway.clickedButton().text()
+        if clickedButton == "Continue without Normalization":
+            continueInfo.flags |= ContinueWarning.Type.CONTINUE_WITHOUT_NORMALIZATION
+        return continueAnyway.clickedButton().text()
 
     def handleStateMessage(self, recoverableException):
         """

@@ -143,6 +143,7 @@ class TestGUIPanels:
             .step("Set the reduction request")
             .step("Test retaining unfocused data")
             .step("Test using artificial normalization")
+            .step("Test reducing without normalization")
             .step("Test having no write permissions")
             .step("Test using a pixelmask")
             .step("Test case of using multiple run numbers")
@@ -365,11 +366,14 @@ class TestGUIPanels:
                     + " Would you like to continue?"
                 )
                 mp = MockQMessageBox().continueWarning(msg)
-                with mp[0]:
+                mb = MockQMessageBox().continueButton("Yes")
+                with mp[0], mb[0]:
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                     qtbot.wait(1000)
                     assert len(exceptions) == 0
-                    assert mp[1].call_count == 1
+                    # Normally this assert is one, but it is over one since the continueWarning mock now accounts for
+                    # the warning box that complains there is no grouping for lite mode
+                    assert mp[1].call_count == 4
 
                 qtbot.wait(1000)
                 artNormView = workflowNodeTabs.currentWidget().view
@@ -412,6 +416,42 @@ class TestGUIPanels:
             testArtificialNormalization()
             self.testSummary.SUCCESS()
 
+            def testContinueWithoutNormalization():
+                # Use run number that forces artificial normalization
+                requestView._requestView.clearRunNumbers()
+                requestView._requestView.runNumberInput.setText("58810")
+                qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
+                qtbot.wait(1000)
+
+                handleStateInit(waitForStateInit, reductionStateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
+
+                msg = (
+                    "Warning: Reduction is missing normalization data."
+                    + " Artificial normalization will be created in place of actual normalization."
+                    + " Would you like to continue?"
+                )
+                mp = MockQMessageBox().continueWarning(msg)
+                mb = MockQMessageBox().continueButton("Continue without Normalization")
+                with mp[0], mb[0]:
+                    qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+                    qtbot.wait(1000)
+                    assert len(exceptions) == 0
+                    # Normally this assert is one, but it is over one since the continueWarning mock now accounts for
+                    # the warning box that complains there is no grouping for lite mode
+                    assert mp[1].call_count == 4
+
+                qtbot.wait(1000)
+
+                with qtbot.waitSignal(actionCompleted, timeout=120000):
+                    qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+                qtbot.wait(1000)
+
+                gui.workspaceWidget._ads.clear()
+                requestView._requestView.clearRunNumbers()
+
+            testContinueWithoutNormalization()
+            self.testSummary.SUCCESS()
+
             def testNoWritePermissions():
                 requestView._requestView.runNumberInput.setText(reductionRunNumber)
                 qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
@@ -437,11 +477,14 @@ class TestGUIPanels:
                 with patch.object(ReductionService, "checkReductionWritePermissions", denyPerm):
                     msg2 = "<p>It looks like you don't have permissions to write to <br><b>"
                     mp2 = MockQMessageBox().continueWarning(msg2)
-                    with mp2[0]:
+                    mb = MockQMessageBox().continueButton("Yes")
+                    with mp2[0], mb[0]:
                         qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                         qtbot.wait(1000)
                         assert len(exceptions) == 0
-                        assert mp2[1].call_count == 1
+                        # Normally this assert is one, but it is over one since the continueWarning mock now accounts
+                        # for the warning box that complains there is no grouping for lite mode
+                        assert mp2[1].call_count == 4
 
                 self._actionPromptNoPermission.stop()
 
@@ -524,11 +567,14 @@ class TestGUIPanels:
                 )
                 mp = MockQMessageBox().continueWarning(msg)
                 mc = MockQMessageBox().critical(critMsg)
-                with mp[0], mc[0]:
+                mb = MockQMessageBox().continueButton("Yes")
+                with mp[0], mc[0], mb[0]:
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                     qtbot.wait(10000)
                     assert len(exceptions) == 0
-                    assert mp[1].call_count == 1
+                    # Normally this assert is one, but it is over one since the continueWarning mock now accounts for
+                    # the warning box that complains there is no grouping for lite mode
+                    assert mp[1].call_count == 3
                     assert mc[1].call_count == 1
 
                 gui.workspaceWidget._ads.clear()
