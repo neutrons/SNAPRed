@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
-from qtpy.QtCore import Qt, QTimer, Signal, Slot
+from qtpy.QtCore import QMetaObject, Qt, QTimer, Signal, Slot
 
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.LiveMetadata import LiveMetadata
@@ -51,7 +51,7 @@ class ReductionStatus(StrEnum):
     CONNECTING = "Connecting to listener"
     WAITING_TO_LOAD = "Waiting to load next chunk"
     NO_ACTIVE_RUN = "No run is active"
-    NO_BEAM = "Beam is down"
+    ZERO_PROTON_CHARGE = "Proton charge is zero"
 
 
 class ReductionWorkflow(WorkflowImplementer):
@@ -69,10 +69,6 @@ class ReductionWorkflow(WorkflowImplementer):
         )
 
         self._reductionRequestView._requestView.setRetrieveRunFeedbackCallback(self.handleRunFeedback)
-
-        if not self._hasLiveDataConnection():
-            # Only enable live-data mode if there is a connection to the listener.
-            self._reductionRequestView.setLiveDataToggleEnabled(False)
 
         self._compatibleMasks: Dict[str, WorkspaceName] = {}
 
@@ -107,7 +103,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         self.setStatus(ReductionStatus.READY)
 
-        # Quite a few of these attributes are also at `self._triggerReduction`
+        # Quite a few of these attributes are also set at `self._triggerReduction`
         #   using the current settings from `ReductionRequestView`.
 
         self._keeps: Set[WorkspaceName] = set()
@@ -125,10 +121,19 @@ class ReductionWorkflow(WorkflowImplementer):
         self._liveDataUpdateTimer.setInterval(Config["liveData.updateIntervalDefault"] * 1000)
         self._liveDataUpdateTimer.timeout.connect(self.updateLiveMetadata)
 
-        self.addResetHook(
-            # Note: when _not_ in live-data mode, this controls the live-data toggle enable.
-            #   In live-data mode, the toggle is enabled when the workflow is not cycling.
-            lambda: self._reductionRequestView.setLiveDataToggleEnabled(True) if not self.liveDataMode else None
+        # Only enable live-data mode if there is a connection to the listener.
+        self._reductionRequestView.setLiveDataToggleEnabled(self._hasLiveDataConnection())
+        self.workflow.presenter.resetCompleted.connect(
+            # Notes:
+            # -- When _not_ in live-data mode, this controls the live-data toggle enable;
+            # -- When in live-data mode, the toggle is enabled when the workflow is not cycling;
+            # -- This hook overrides the normal reset behavior of re-enabling all of the toggles,
+            #    for this reason it must be executed _after_ all of the other reset hooks!
+            lambda: (
+                self._reductionRequestView.setLiveDataToggleEnabled(self._hasLiveDataConnection())
+                if not self.liveDataMode
+                else None
+            )
         )
 
         # Initialize a separate timer for the control of the live-data reduction-workflow loop.
@@ -157,7 +162,7 @@ class ReductionWorkflow(WorkflowImplementer):
         # Presenter signals the live-data view that a reduction is in progress:
         self.workflow.presenter.workflowInProgressChange.connect(self._reductionRequestView.setReductionInProgress)
 
-        # Status summary shows "CANCELLING WORKFLOW" on any cancellatioin request:
+        # Status summary shows "CANCELLING WORKFLOW" on any cancellation request:
         self.workflow.presenter.cancellationRequest.connect(lambda: self.setStatus(ReductionStatus.USER_CANCELLATION))
 
         # Status summary is updated to "READY" at the completion of reset:
@@ -239,8 +244,8 @@ class ReductionWorkflow(WorkflowImplementer):
     @Slot(bool)
     def _cycleLiveData(self, success: bool):
         # Prepare the next live-data reduction request, and start its submission timer.
-        status = success
-        if status:
+        cycleStatus = success
+        if cycleStatus:
             try:
                 # Retain the last completed `ReductionRequest`,
                 #   and its `ReductionResponse` before any `reset` is called.
@@ -264,6 +269,11 @@ class ReductionWorkflow(WorkflowImplementer):
                 # Calling `presenter.resetSoft()` gets us back to the live-data summary panel.
                 self.workflow.presenter.resetSoft()
 
+                # Since they are replaced only at the end of the reduction process,
+                #   and the first reduction cycle has been completed and has produced valid outputs:
+                #   do _not_ delete output workspaces in case of error.
+                self.outputs.update(self._lastReductionResponse.record.workspaceNames)
+
                 updateInterval = self._liveDataUpdateInterval()
 
                 # If the user has set the updateInterval to too small a value, we just do the best we can.
@@ -282,8 +292,8 @@ class ReductionWorkflow(WorkflowImplementer):
                 self._workflowTimer.start()
             except (AttributeError, IndexError) as e:
                 logger.error(f"_cycleLiveData: unexpected: {e}")
-                status = False
-        if not status:
+                cycleStatus = False
+        if not cycleStatus:
             if self.status != ReductionStatus.READY:
                 # "READY" indicates that this `reset` would be redundant.
                 # (e.g. User cancellation has its own `reset` pathway.)
@@ -451,6 +461,8 @@ class ReductionWorkflow(WorkflowImplementer):
         # All runs are from the same state, use the first run to load groupings.
         request_ = self._createReductionRequest(self.runNumbers[0])
         response = self.request(path="reduction/groupings", payload=request_)
+
+        # Set of workspaces to retain is INITIALIZED here: after this point, we add to the set.
         self._keeps = set(response.data["groupingWorkspaces"])
 
         # Reload the lite-grouping-map only when necessary.
@@ -464,6 +476,8 @@ class ReductionWorkflow(WorkflowImplementer):
         matchRequest = MatchRunsRequest(runNumbers=self.runNumbers, useLiteMode=self.useLiteMode)
         loadedCalibrations, calVersions = self.request(path="calibration/fetchMatches", payload=matchRequest).data
         loadedNormalizations, normVersions = self.request(path="normalization/fetchMatches", payload=matchRequest).data
+
+        # Add loaded calibrations, calibration-masks, and normalizations to the list of workspaces to retain.
         self._keeps.update(loadedCalibrations)
         self._keeps.update(loadedNormalizations)
 
@@ -507,7 +521,8 @@ class ReductionWorkflow(WorkflowImplementer):
                 self._keeps.update(self.outputs)
                 self._clearWorkspaces(exclude=self._keeps, clearCachedWorkspaces=True)
 
-            workflowPresenter.advanceWorkflow()
+            # Here we are probably not on the GUI thread, so we cannot call `advanceWorkflow` directly.
+            QMetaObject.invokeMethod(workflowPresenter, "advanceWorkflow", Qt.QueuedConnection)
 
         return self.responses[-1]
 
@@ -616,13 +631,13 @@ class ReductionWorkflow(WorkflowImplementer):
                 self.request(path="reduction/save", payload=ReductionExportRequest(record=record))
 
         # Retain the output workspaces after the workflow is complete.
-        self.outputs.extend(record.workspaceNames)
+        self.outputs.update(record.workspaceNames)
 
         # Also retain the unfocused data after the workflow is complete (if the box was checked),
         #   but do not actually save it as part of the reduction-data file.
         # The unfocused data does not get added to the response.workspaces list.
         if unfocusedData:
-            self.outputs.append(unfocusedData)
+            self.outputs.add(unfocusedData)
             # Note that the run number is deliberately not deleted from the run numbers list.
             # Almost certainly it should be moved to a "completed run numbers" list.
 

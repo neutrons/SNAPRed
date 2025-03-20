@@ -47,6 +47,7 @@ from util.WhateversInTheFridge import WhateversInTheFridge
 
 import snapred.backend.recipe.algorithm  # noqa: F401
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem, LiveDataArgs
+from snapred.backend.dao.LiveMetadata import LiveMetadata
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, DiffcalStateMetadata, WorkspaceMetadata
 from snapred.backend.data.GroceryService import GroceryService
@@ -1598,7 +1599,7 @@ class TestGroceryService(unittest.TestCase):
                 "Instrument": Config["liveData.instrument.name"],
                 "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
-                "StartTime": "",
+                "StartTime": LiveMetadata.FROM_START_ISO8601,
             }
 
             testCalibrationData = DAOFactory.calibrationParameters()
@@ -1715,7 +1716,7 @@ class TestGroceryService(unittest.TestCase):
                 "Instrument": Config["liveData.instrument.name"],
                 "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
-                "StartTime": "",
+                "StartTime": LiveMetadata.FROM_START_ISO8601,
             }
 
             testCalibrationData = DAOFactory.calibrationParameters()
@@ -2263,7 +2264,7 @@ class TestGroceryService(unittest.TestCase):
                 "Instrument": Config["liveData.instrument.name"],
                 "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
-                "StartTime": "",
+                "StartTime": LiveMetadata.FROM_START_ISO8601,
             }
 
             # In order to avoid contaminating other tests, all mocks must be applied
@@ -2387,7 +2388,7 @@ class TestGroceryService(unittest.TestCase):
                 "Instrument": Config["liveData.instrument.name"],
                 "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
-                "StartTime": "",
+                "StartTime": LiveMetadata.FROM_START_ISO8601,
             }
 
             # In order to avoid contaminating other tests, all mocks must be applied
@@ -2667,22 +2668,59 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_grocery_list_diffcal_table_cached(self):
         # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:
         #   workspace already in ADS
+        self.instance.grocer = mock.Mock()
         groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()
-        diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
-        diffCalTableName = f"{diffCalTableName}_{wnvf.formatVersion(self.version)}"
+
+        diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
+        diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
         self.instance.lookupDiffcalTableWorkspaceName = mock.Mock(return_value=diffCalTableName)
 
+        # Both table and mask workspace must be resident in the ADS, otherwise a reload will be triggered.
         CloneWorkspace(
             InputWorkspace=self.sampleTableWS,
             OutputWorkspace=diffCalTableName,
         )
         assert mtd.doesExist(diffCalTableName)
-        testTitle = "I'm a little teapot"
-        mtd[diffCalTableName].setTitle(testTitle)
+        CloneWorkspace(
+            InputWorkspace=self.sampleMaskWS,
+            OutputWorkspace=diffCalMaskName,
+        )
+        assert mtd.doesExist(diffCalMaskName)
+
         items = self.instance.fetchGroceryList(groceryList)
         assert items[0] == diffCalTableName
-        assert mtd.doesExist(diffCalTableName)
-        assert mtd[diffCalTableName].getTitle() == testTitle
+        self.instance.grocer.executeRecipe.assert_not_called()
+
+    def test_fetch_grocery_list_diffcal_table_cached_no_mask(self):
+        # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:
+        #   workspace already in ADS but corresponding mask workspace is absent.
+        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+        with state_root_redirect(self.instance.dataService) as tmpRoot:
+            self.instance.dataService.calibrationIndexer = self.mockIndexer(tmpRoot.path(), "diffraction")
+            groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()
+            # independently construct the pathname, move file to there, assert exists
+            diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
+            diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
+            self.instance.lookupDiffcalTableWorkspaceName = mock.Mock(return_value=diffCalTableName)
+            diffCalTableFilename = self.instance._createDiffcalTableFilepath(
+                runNumber=groceryList[0].runNumber,
+                useLiteMode=groceryList[0].useLiteMode,
+                version=self.version,
+            )
+            tmpRoot.addFileAs(self.sampleDiffCalFilePath, diffCalTableFilename)
+            assert Path(diffCalTableFilename).exists()
+
+            # Both table and mask workspace must be resident in the ADS, otherwise a reload will be triggered.
+            CloneWorkspace(
+                InputWorkspace=self.sampleTableWS,
+                OutputWorkspace=diffCalTableName,
+            )
+            assert mtd.doesExist(diffCalTableName)
+            assert not mtd.doesExist(diffCalMaskName)
+
+            wss = self.instance.fetchGroceryList(groceryList)  # noqa: F841
+            assert mtd.doesExist(diffCalTableName)
+            assert mtd.doesExist(diffCalMaskName)
 
     def test_fetch_grocery_list_diffcal_table_loads_mask(self):
         # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:

@@ -1057,7 +1057,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             mock.sentinel.run2: mock.sentinel.version2,
             mock.sentinel.run3: mock.sentinel.version2,
         }
-        mockGroceries = [mock.sentinel.grocery1, mock.sentinel.grocery2, mock.sentinel.grocery2]
+        mockGroceries = [
+            mock.sentinel.grocery1_table,
+            mock.sentinel.grocery1_mask,
+            mock.sentinel.grocery2_table,
+            mock.sentinel.grocery2_mask,
+            mock.sentinel.grocery2_table,
+            mock.sentinel.grocery2_mask,
+        ]
         self.instance.matchRunsToCalibrationVersions = mock.Mock(return_value=mockCalibrations)
         self.instance.groceryService.fetchGroceryList = mock.Mock(return_value=mockGroceries)
         self.instance.groceryClerk = mock.Mock()
@@ -1065,14 +1072,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         with mock.patch.object(NameBuilder, "build", autospec=True) as mockNameBuilder_build:
             mockNameBuilder_build.side_effect = lambda self_: tuple(self_.props.values())
 
-            request = mock.Mock(runNumbers=[mock.sentinel.run1, mock.sentinel.run2], useLiteMode=True)
-            groceries, cal = self.instance.fetchMatchingCalibrations(request)
-            assert groceries == {
-                mock.sentinel.grocery1,  # diffcal-table #1
-                mock.sentinel.grocery2,  # diffcal-table #2
-                # Be careful here: there's some implicit ordering going on in the 'values' tuples.
-                (mock.sentinel.version1, WorkspaceType.DIFFCAL_MASK, False, mock.sentinel.run1),  # diffcal-mask #1
-                (mock.sentinel.version2, WorkspaceType.DIFFCAL_MASK, False, mock.sentinel.run2),  # diffcal-mask #2
+            request = mock.Mock(
+                runNumbers=[mock.sentinel.run1, mock.sentinel.run2, mock.sentinel.run3], useLiteMode=True
+            )
+            workspaces, cal = self.instance.fetchMatchingCalibrations(request)
+            assert workspaces == {
+                mock.sentinel.grocery1_table,  # diffcal-table #1
+                mock.sentinel.grocery2_table,  # diffcal-table #2
+                mock.sentinel.grocery1_mask,  # diffcal-mask #1
+                mock.sentinel.grocery2_mask,  # diffcal-mask #2
             }
             assert cal == mockCalibrations
 

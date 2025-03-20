@@ -130,12 +130,12 @@ def mockPVFile(detectorState: DetectorState) -> mock.Mock:
 
     mock_ = mock.MagicMock(spec=h5py.Group)
 
-    def side_effect_getitem(key: str):
+    def _getitem(key: str):
         if key == "entry/DASlogs":
             return mock_
         return dict_[key]
 
-    mock_.__getitem__.side_effect = side_effect_getitem
+    mock_.__getitem__.side_effect = _getitem
     return mock_
 
 
@@ -491,25 +491,25 @@ def test_getUniqueTimestamp():
 
 @mock.patch("socket.gethostbyaddr")
 def test_hasLiveDataConnection(mockGetHostByAddr):
-    liveDataHostname = "bl3-daq1.sns.gov"
-    liveDataIPV4 = "10.111.6.150"
-    mockGetHostByAddr.return_value = (liveDataHostname, [], [liveDataIPV4])
-    instance = LocalDataService()
-    assert instance.hasLiveDataConnection()
-    mockGetHostByAddr.assert_called_once_with(liveDataHostname)
+    with Config_override("liveData.enabled", True):
+        liveDataHostname = "bl3-daq1.sns.gov"
+        liveDataIPV4 = "10.111.6.150"
+        mockGetHostByAddr.return_value = (liveDataHostname, [], [liveDataIPV4])
+        instance = LocalDataService()
+        assert instance.hasLiveDataConnection()
+        mockGetHostByAddr.assert_called_once_with(liveDataHostname)
 
 
 @mock.patch("socket.gethostbyaddr")
 def test_hasLiveDataConnection_no_connection(mockGetHostByAddr):
-    mockGetHostByAddr.side_effect = RuntimeError("no live connection")
-    instance = LocalDataService()
-    assert not instance.hasLiveDataConnection()
+    with Config_override("liveData.enabled", True):
+        mockGetHostByAddr.side_effect = RuntimeError("no live connection")
+        instance = LocalDataService()
+        assert not instance.hasLiveDataConnection()
 
 
 @mock.patch("socket.gethostbyaddr")
 def test_hasLiveDataConnection_config_disabled(mockGetHostByAddr):
-    # Live data should be enabled by default.
-    assert Config["liveData.enabled"]
     with Config_override("liveData.enabled", False):
         assert not Config["liveData.enabled"]
         instance = LocalDataService()
@@ -648,77 +648,134 @@ def test_writeGroupingMap_relative_paths():
 def test_calibrationFileExists(pathExists):
     pathExists.return_value = True
     localDataService = LocalDataService()
-    stateId = ENDURING_STATE_ID
-    with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
-        tmpRoot.path().mkdir()
-        runNumber = "654321"
-        assert localDataService.checkCalibrationFileExists(runNumber)
+    with mock.patch.object(localDataService, "getIPTS"):
+        stateId = ENDURING_STATE_ID
+        with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
+            tmpRoot.path().mkdir()
+            runNumber = "654321"
+            assert localDataService.checkCalibrationFileExists(runNumber)
 
 
-@mock.patch(ThisService + "MantidSnapper")
-def test_calibrationFileExists_stupid_number(mockSnapper):
+def test_calibrationFileExists_stupid_number():
     localDataService = LocalDataService()
 
-    # try with a non-number
-    runNumber = "fruitcake"
-    assert not localDataService.checkCalibrationFileExists(runNumber)
-    mockSnapper.GetIPTS.assert_not_called()
-    mockSnapper.GetIPTS.reset_mock()
+    with mock.patch.object(localDataService, "getIPTS") as mockGetIPTS:
+        # try with a non-number
+        runNumber = "fruitcake"
+        assert not localDataService.checkCalibrationFileExists(runNumber)
+        mockGetIPTS.assert_not_called()
+        mockGetIPTS.reset_mock()
 
-    # try with a too-small number
-    runNumber = "7"
-    assert not localDataService.checkCalibrationFileExists(runNumber)
-    mockSnapper.GetIPTS.assert_not_called()
+        # try with a too-small number
+        runNumber = "7"
+        assert not localDataService.checkCalibrationFileExists(runNumber)
+        mockGetIPTS.assert_not_called()
 
 
 def test_calibrationFileExists_not():
     localDataService = LocalDataService()
-    stateId = ENDURING_STATE_ID
-    with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
-        nonExistentPath = tmpRoot.path() / "1755"
-        assert not nonExistentPath.exists()
-        runNumber = "654321"
-        assert not localDataService.checkCalibrationFileExists(runNumber)
+    with mock.patch.object(localDataService, "getIPTS"):
+        stateId = ENDURING_STATE_ID
+        with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
+            nonExistentPath = tmpRoot.path() / "1755"
+            assert not nonExistentPath.exists()
+            runNumber = "654321"
+            assert not localDataService.checkCalibrationFileExists(runNumber)
 
 
 def test_calibrationFileExists_no_PV_file():
     instance = LocalDataService()
-    stateId = ENDURING_STATE_ID  # noqa: F841
-    runNumber = "654321"
-    with mock.patch.object(instance, "generateStateId") as mockGenerateStateId:
-        # WARNING: the actual exception would normally be re-routed to `StateValidationException`.
-        mockGenerateStateId.side_effect = FileNotFoundError("No PV-file")
-        assert not instance.checkCalibrationFileExists(runNumber)
+    with mock.patch.object(instance, "getIPTS"):
+        stateId = ENDURING_STATE_ID  # noqa: F841
+        runNumber = "654321"
+        with mock.patch.object(instance, "generateStateId") as mockGenerateStateId:
+            # WARNING: the actual exception would normally be re-routed to `StateValidationException`.
+            mockGenerateStateId.side_effect = FileNotFoundError("No PV-file")
+            assert not instance.checkCalibrationFileExists(runNumber)
 
 
 def test_calibrationFileExists_no_PV_file_exception_routing():
     instance = LocalDataService()
-    runNumber = "654321"
-    with pytest.raises(StateValidationException):
-        instance.checkCalibrationFileExists(runNumber)
+    with mock.patch.object(instance, "getIPTS"):
+        runNumber = "654321"
+        with pytest.raises(StateValidationException):
+            instance.checkCalibrationFileExists(runNumber)
 
 
 @mock.patch("pathlib.Path.exists")
-@mock.patch(ThisService + "MantidSnapper")
-def test_getIPTS(mockSnapper, mockPathExists):
+def test_getIPTS(mockPathExists):
     mockPathExists.return_value = True
-    mockSnapper.return_value.GetIPTS.return_value = "nowhere/"
     localDataService = LocalDataService()
-    runNumber = "123456"
-    res = localDataService.getIPTS(runNumber)
-    assert res == mockSnapper.return_value.GetIPTS.return_value
-    mockSnapper.return_value.GetIPTS.assert_called_with(
-        "GetIPTS",
-        RunNumber=runNumber,
-        Instrument=Config["instrument.name"],
-    )
-    res = localDataService.getIPTS(runNumber, "CRACKLE")
-    assert res == mockSnapper.return_value.GetIPTS.return_value
-    mockSnapper.return_value.GetIPTS.assert_called_with(
-        "GetIPTS",
-        RunNumber=runNumber,
-        Instrument="CRACKLE",
-    )
+    with mock.patch.object(localDataService, "mantidSnapper") as mockSnapper:
+        mockSnapper.GetIPTS = mock.Mock(return_value="nowhere/")
+        runNumber = "123456"
+        res = localDataService.getIPTS(runNumber)
+        assert res == mockSnapper.GetIPTS.return_value
+        mockSnapper.GetIPTS.assert_called_with(
+            "get IPTS directory",
+            RunNumber=runNumber,
+            Instrument=Config["instrument.name"],
+        )
+        mockSnapper.GetIPTS.reset_mock()
+
+        res = localDataService.getIPTS(runNumber, "CRACKLE")
+        assert res == mockSnapper.GetIPTS.return_value
+        mockSnapper.GetIPTS.assert_called_with(
+            "get IPTS directory",
+            RunNumber=runNumber,
+            Instrument="CRACKLE",
+        )
+
+
+def test__getIPTS_no_IPTS():
+    # Verify that the "no IPTS directory" case is cached internally as `None`:
+    #   this tests the private method `LocalDataService._getIPTS`.
+    localDataService = LocalDataService()
+    with mock.patch.object(localDataService, "mantidSnapper") as mockSnapper:
+        mockSnapper.GetIPTS = mock.Mock(side_effect=RuntimeError("Cannot find IPTS directory for run"))
+        runNumber = "123456"
+        result = localDataService._getIPTS(runNumber)
+        assert result is None
+
+
+def test_getIPTS_no_IPTS():
+    # Verify that the "no IPTS directory" case appears externally as the expected `RuntimeError`:
+    #   this tests the public method `LocalDataService.getIPTS`.
+    localDataService = LocalDataService()
+    with mock.patch.object(localDataService, "mantidSnapper") as mockSnapper:
+        mockSnapper.GetIPTS = mock.Mock(side_effect=RuntimeError("Cannot find IPTS directory for run"))
+        runNumber = "123456"
+        with pytest.raises(RuntimeError, match="Cannot find IPTS directory for run.*"):
+            result = localDataService.getIPTS(runNumber)  # noqa: F841
+
+
+def test_getIPTS_error():
+    # Verify that any other exception type, besides `RuntimeError`, is passed through.
+
+    class _OtherError(Exception):
+        def __init__(self, msg):
+            super().__init__()
+            self._msg = msg
+
+        def __str__(self):
+            return self._msg
+
+    localDataService = LocalDataService()
+    with mock.patch.object(localDataService, "mantidSnapper") as mockSnapper:
+        mockSnapper.GetIPTS = mock.Mock(side_effect=_OtherError("No one has ever seen this error"))
+        runNumber = "123456"
+        with pytest.raises(_OtherError, match="No one has ever seen this error"):
+            result = localDataService.getIPTS(runNumber)  # noqa: F841
+
+
+def test_getIPTS_other_runtime_error():
+    # Verify that any other `RuntimeError`, besides not finding the directory, is passed through.
+    localDataService = LocalDataService()
+    with mock.patch.object(localDataService, "mantidSnapper") as mockSnapper:
+        mockSnapper.GetIPTS = mock.Mock(side_effect=RuntimeError("Another runtime error"))
+        runNumber = "123456"
+        with pytest.raises(RuntimeError, match="Another runtime error"):
+            result = localDataService.getIPTS(runNumber)  # noqa: F841
 
 
 # NOTE this test calls `GetIPTS` (via `getIPTS`) with no mocks
@@ -727,8 +784,8 @@ def test_getIPTS(mockSnapper, mockPathExists):
 def test_getIPTS_cache(mockPathExists):
     mockPathExists.return_value = True
     localDataService = LocalDataService()
-    localDataService.getIPTS.cache_clear()
-    assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
+    localDataService._getIPTS.cache_clear()
+    assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
 
     # test data
     instrument = "SNAP"
@@ -742,7 +799,7 @@ def test_getIPTS_cache(mockPathExists):
     with amend_config(data_dir=str(correctIPTS / "nexus")):
         res = localDataService.getIPTS(*key)
         assert res == str(correctIPTS) + os.sep
-        assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
+        assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
 
         # call again and make sure the cached value is being returned
         res = localDataService.getIPTS(*key)
@@ -758,42 +815,40 @@ def test_getIPTS_cache(mockPathExists):
         #   but that doesn't mean that changes to the module won't affect
         #   other tests.
 
-        assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=1, misses=1, maxsize=128, currsize=1)
+        assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=1, misses=1, maxsize=128, currsize=1)
 
     # now try it again, but with another IPTS directory
     with amend_config(data_dir=str(incorrectIPTS / "nexus")):
         # previous correct value should still be the cached value
         res = localDataService.getIPTS(*key)
         assert res == str(correctIPTS) + os.sep
-        assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=2, misses=1, maxsize=128, currsize=1)
+        assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=2, misses=1, maxsize=128, currsize=1)
 
         # clear the cache,  make sure the new value is being returned
-        localDataService.getIPTS.cache_clear()
+        localDataService._getIPTS.cache_clear()
         res = localDataService.getIPTS(*key)
         assert res == str(incorrectIPTS) + os.sep
-        assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
+        assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
 
 
-@mock.patch(ThisService + "MantidSnapper")
-def test_createNeutronFilePath(mockSnapper):
+def test_createNeutronFilePath():
     instance = LocalDataService()
-    mockSnapper.return_value.GetIPTS.return_value = "IPTS-TEST/"
-    runNumbers = {"lite": "12345", "native": "67890"}
+    with mock.patch.object(instance, "getIPTS") as mockGetIPTS:
+        mockGetIPTS.return_value = "IPTS-TEST/"
+        runNumbers = {"lite": "12345", "native": "67890"}
 
-    for mode in ["lite", "native"]:
-        runNumber = runNumbers[mode]  # REMINDER: `LocalDataService.getIPTS` uses `@lru_cache`.
-        expected = Path(
-            mockSnapper.return_value.GetIPTS.return_value
-            + Config[f"nexus.{mode}.prefix"]
-            + runNumber
-            + Config[f"nexus.{mode}.extension"]
-        )
-        actual = instance.createNeutronFilePath(runNumber, mode == "lite")
-        mockSnapper.return_value.GetIPTS.assert_called_once_with(
-            "GetIPTS", RunNumber=runNumber, Instrument=Config["instrument.name"]
-        )
-        assert actual == expected
-        mockSnapper.return_value.GetIPTS.reset_mock()
+        for mode in ["lite", "native"]:
+            runNumber = runNumbers[mode]  # REMINDER: `LocalDataService.getIPTS` uses `@lru_cache`.
+            expected = Path(
+                mockGetIPTS.return_value
+                + Config[f"nexus.{mode}.prefix"]
+                + runNumber
+                + Config[f"nexus.{mode}.extension"]
+            )
+            actual = instance.createNeutronFilePath(runNumber, mode == "lite")
+            mockGetIPTS.assert_called_once_with(runNumber)
+            assert actual == expected
+            mockGetIPTS.reset_mock()
 
 
 def test_workspaceIsInstance(cleanup_workspace_at_exit):
@@ -914,7 +969,6 @@ def test_readPVFile(h5pyMock):  # noqa: ARG001
 def test_readPVFile_does_not_exist(h5pyMock):  # noqa: ARG001
     runNumber = "12345"
     localDataService = LocalDataService()
-    localDataService._instrumentConfig = getMockInstrumentConfig()
 
     PVFilePath = "/the/PVFile.nxs.h5"
     mockPath = mock.MagicMock(spec=Path)
@@ -929,7 +983,6 @@ def test_readPVFile_no_IPTS():
     # test that `_readPVFile` wraps the `RuntimeError` returned by `GetIPTS`.
     runNumber = "12345"
     localDataService = LocalDataService()
-    localDataService._instrumentConfig = getMockInstrumentConfig()
     localDataService._constructPVFilePath = mock.Mock(side_effect=RuntimeError("Cannot find IPTS directory"))
     with pytest.raises(FileNotFoundError, match=f"No PVFile exists for run: '{runNumber}'"):
         localDataService._readPVFile(runNumber)
@@ -939,7 +992,6 @@ def test_readPVFile_exception_passthrough():
     # test that `_readPVFile` does not wrap unrelated exceptions.
     runNumber = "12345"
     localDataService = LocalDataService()
-    localDataService._instrumentConfig = getMockInstrumentConfig()
     localDataService._constructPVFilePath = mock.Mock(side_effect=RuntimeError("lah dee dah"))
     with pytest.raises(RuntimeError, match="lah dee dah"):
         localDataService._readPVFile(runNumber)
@@ -2312,7 +2364,13 @@ def test_readDetectorState_no_PVFile():
     instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists for run"))
     instance.readLiveMetadata = mock.Mock(return_value=mock.MagicMock(runNumber=-1))
     instance.hasLiveDataConnection = mock.Mock(return_value=True)
-    with pytest.raises(RuntimeError, match=f"No PVFile exists for run {runNumber}, and it isn't the live run."):
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            f"No PVFile exists for run: {runNumber}, and it isn't the live run: "
+            + f"{instance.readLiveMetadata.return_value.runNumber}."
+        ),
+    ):
         instance.readDetectorState(runNumber)
 
 
@@ -2356,7 +2414,9 @@ def test_readDetectorState_live_run_mismatch():
     instance.hasLiveDataConnection = mock.Mock(return_value=True)
     instance.readLiveMetadata = mock.Mock(return_value=mockLiveMetadata)
 
-    with pytest.raises(RuntimeError, match=f"No PVFile exists for run {runNumber0}, and it isn't the live run."):
+    with pytest.raises(
+        RuntimeError, match=f"No PVFile exists for run: {runNumber0}, and it isn't the live run: {runNumber1}"
+    ):
         instance.readDetectorState(runNumber0)
 
 
@@ -2460,7 +2520,7 @@ def test_liveMetadataFromRun_incomplete_logs(mockMapping):
     mockMapping.return_value = logs
     mockRun = mock.Mock(spec=Run)
     instance = LocalDataService()
-    with pytest.raises(RuntimeError, match=r"unable to extract LiveMetadata from Run.*"):
+    with pytest.raises(RuntimeError, match=r"Unable to extract LiveMetadata from Run.*"):
         instance._liveMetadataFromRun(mockRun)
 
 
@@ -2484,31 +2544,29 @@ def test__readLiveData(mockSnapper):
             Instrument=Config["liveData.instrument.name"],
             AccumulationMethod=Config["liveData.accumulationMethod"],
             StartTime=expectedStartTime,
+            PreserveEvents=False,
         )
         mockSnapper.return_value.executeQueue.assert_called_once()
         assert result == testWs
 
 
 @mock.patch(ThisService + "MantidSnapper")
-def test__readLiveData_all_data(mockSnapper):
-    now_ = datetime.datetime.utcnow()
+def test__readLiveData_from_now(mockSnapper):
     duration = 0
-    # _zero_ is special case => "": <StartTime: default value> => read all-available data
-    expectedStartTime = ""
+    # _zero_ is a special case => read from _now_: <StartTime: EPOCH_ZERO>
+    expectedStartTime = LiveMetadata.FROM_NOW_ISO8601
     testWs = "testWs"
 
-    with mock.patch(ThisService + "datetime.datetime", wraps=datetime.datetime) as mockDatetime:
-        mockDatetime.utcnow.return_value = now_
-
-        instance = LocalDataService()
-        result = instance._readLiveData(testWs, duration)  # noqa: F841
-        mockSnapper.return_value.LoadLiveData.assert_called_with(
-            "load live-data chunk",
-            OutputWorkspace=testWs,
-            Instrument=Config["liveData.instrument.name"],
-            AccumulationMethod=Config["liveData.accumulationMethod"],
-            StartTime=expectedStartTime,
-        )
+    instance = LocalDataService()
+    result = instance._readLiveData(testWs, duration)  # noqa: F841
+    mockSnapper.return_value.LoadLiveData.assert_called_with(
+        "load live-data chunk",
+        OutputWorkspace=testWs,
+        Instrument=Config["liveData.instrument.name"],
+        AccumulationMethod=Config["liveData.accumulationMethod"],
+        StartTime=expectedStartTime,
+        PreserveEvents=False,
+    )
 
 
 @mock.patch(ThisService + "MantidSnapper")
@@ -2528,7 +2586,7 @@ def test_readLiveMetadata(mockSnapper):
         mock__readLiveData.return_value = testWs
         mock__liveMetadataFromRun.return_value = mock.sentinel.metadata
         actual = instance.readLiveMetadata()
-        mock__readLiveData.assert_called_once_with(testWs, duration=1)
+        mock__readLiveData.assert_called_once_with(testWs, duration=0)
         mock__liveMetadataFromRun.assert_called_once_with(mock.sentinel.run)
         mockSnapper.return_value.DeleteWorkspace.assert_called_once_with("delete temporary workspace", Workspace=testWs)
         mockSnapper.return_value.executeQueue.call_count == 2
@@ -3101,6 +3159,8 @@ class TestReductionPixelMasks:
         cls.runNumber2 = "123457"
         cls.runNumber3 = "123458"
         cls.runNumber4 = "123459"
+        cls.runNumber5 = "123460"
+        cls.runNumber6 = "123470"
         cls.useLiteMode = True
 
         cls.timestamp1 = cls.service.getUniqueTimestamp()
@@ -3111,10 +3171,12 @@ class TestReductionPixelMasks:
         # Arbitrary, but distinct, `DetectorState`s used for realistic instrument initialization
         cls.detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
         cls.detectorState2 = DetectorState(arc=(7.0, 8.0), wav=9.0, freq=10.0, guideStat=2, lin=(11.0, 12.0))
+        cls.detectorState3 = DetectorState(arc=(7.0, 9.0), wav=9.0, freq=11.0, guideStat=2, lin=(11.0, 13.0))
 
         # The corresponding stateId:
         cls.stateId1 = cls.service._stateIdFromDetectorState(cls.detectorState1).hex
         cls.stateId2 = cls.service._stateIdFromDetectorState(cls.detectorState2).hex
+        cls.stateId3 = cls.service._stateIdFromDetectorState(cls.detectorState3).hex
 
         cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.instrumentLiteFilePath = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
@@ -3180,22 +3242,31 @@ class TestReductionPixelMasks:
             self.service,
             "generateStateId",
             lambda runNumber: {
-                self.runNumber1: (self.stateId1, None),
-                self.runNumber2: (self.stateId1, None),
-                self.runNumber3: (self.stateId2, None),
-                self.runNumber4: (self.stateId2, None),
+                self.runNumber1: (self.stateId1, self.detectorState1),
+                self.runNumber2: (self.stateId1, self.detectorState1),
+                self.runNumber3: (self.stateId2, self.detectorState2),
+                self.runNumber4: (self.stateId2, self.detectorState2),
+                self.runNumber5: (self.stateId3, None),  # Deliberate: no non live-data detector state for this run.
+                self.runNumber6: (self.stateId3, None),  # Deliberate: no non live-data detector state for this run.
             }[runNumber],
         )
-        monkeypatch.setattr(
-            self.service,
-            "getIPTS",
-            lambda runNumber: {
-                self.runNumber1: "/SNS/SNAP/IPTS-1",
-                self.runNumber2: "/SNS/SNAP/IPTS-1",
-                self.runNumber3: "/SNS/SNAP/IPTS-2",
-                self.runNumber4: "/SNS/SNAP/IPTS-2",
-            }[runNumber],
-        )
+
+        def mockGetIPTS(runNumber, _instrumentName="SNAP"):
+            # *** DEBUG ***
+            print("YOU ARE HERE!!!")
+            if runNumber == self.runNumber6:
+                # This tests that any error, besides not finding the IPTS-directory, is not swallowed or relabled.
+                raise RuntimeError("Some other runtime error")
+            else:
+                return {
+                    self.runNumber1: "/SNS/SNAP/IPTS-1",
+                    self.runNumber2: "/SNS/SNAP/IPTS-1",
+                    self.runNumber3: "/SNS/SNAP/IPTS-2",
+                    self.runNumber4: "/SNS/SNAP/IPTS-2",
+                    self.runNumber5: None,  # Deliberate: no IPTS-directory exists for this run.
+                }[runNumber]
+
+        monkeypatch.setattr(self.service, "_getIPTS", mockGetIPTS)
 
         stack = ExitStack()
         tmpPath = stack.enter_context(tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")))
@@ -3378,3 +3449,19 @@ class TestReductionPixelMasks:
             if name in duplicates:
                 pytest.fail("masks list contains duplicate entries")
             duplicates.add(name)
+
+    def test__reducedRuns_no_IPTS(self):
+        # Verify the negative case that no IPTS directory generates an empty run numbers list.
+
+        # NOTE: other aspects of `_reducedRuns` are checked implicitly in the previous tests.
+        #   For this test we need to _bypass_ most of the default setup.
+
+        # `self.runNumber5` is special for this test.
+
+        runs = self.service._reducedRuns(self.runNumber5, True)
+        assert runs == []
+
+    def test__reducedRuns_other_runtime_error(self):
+        with Config_override("instrument.reduction.home", "a.string.with.{IPTS}.in.it"):
+            with pytest.raises(RuntimeError, match="Some other runtime error"):
+                runs = self.service._reducedRuns(self.runNumber6, True)  # noqa: F841
