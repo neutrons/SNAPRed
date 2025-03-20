@@ -3535,7 +3535,7 @@ class TestReductionPixelMasks:
         with Config_override("instrument.reduction.home", "a.string.with.{IPTS}.in.it"):
             with pytest.raises(RuntimeError, match="Some other runtime error"):
                 self.service._reducedRuns(self.runNumber6, True)  # noqa: F841
-                
+
     @mock.patch(ThisService + "Path")
     def test_findCompatibleStates(self, mockPath):
         compatibleDetectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
