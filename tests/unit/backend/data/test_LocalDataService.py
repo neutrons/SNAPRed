@@ -2178,7 +2178,6 @@ def test_readWriteReductionData_pixel_mask(
 
         filePath = reductionRecordFilePath.parent / fileName
         assert filePath.exists()
-
         # 1) Verify that a pixel mask was separately written in `SaveDiffCal` format
         maskName = wng.reductionPixelMask().runNumber(runNumber).timestamp(timestamp).build()
         assert (reductionRecordFilePath.parent / (maskName + ".h5")).exists()
@@ -2203,7 +2202,13 @@ def test_readWriteReductionData_pixel_mask(
             if pixelMaskKeyword in ws:
                 if isinstance(mtd[ws], MaskWorkspace):
                     maskIsAppendedToData = True
-        assert maskIsAppendedToData
+
+        workspaceTypes = []
+        for ws in actualRecord.workspaceNames:
+            workspaceTypes.append((ws, mtd[ws].__class__))
+
+        assert isinstance(mtd["_pixelmask_057514_2024-06-20T145831"], MaskWorkspace), workspaceTypes
+        assert maskIsAppendedToData, mtd.getObjectNames()
 
 
 def test__constructReductionDataFilePath():

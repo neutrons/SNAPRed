@@ -754,7 +754,7 @@ class LocalDataService:
         else:
             workspaces = record.workspaceNames
             pixelMasks = [ws for ws in workspaces if ws.tokens("workspaceType") == wngt.REDUCTION_PIXEL_MASK]
-            workspaces = [ws for ws in workspaces if ws not in pixelMasks]
+            # workspaces = [ws for ws in workspaces if ws not in pixelMasks]
             self.mantidSnapper.GroupWorkspaces(
                 "Group workspaces for reduction output",
                 InputWorkspaces=workspaces,
@@ -797,8 +797,15 @@ class LocalDataService:
         # Read the workspaces, one by one;
         #   * as an alternative, these could be loaded into a group workspace with a single call to `readWorkspace`.
         pixelMaskKeyword = Config["mantid.workspace.nameTemplate.template.reduction.pixelMask"].split(",")[0]
+        # Find reduction_output_* file in filePath
+        reductionOutputFile = None
+        for file in os.listdir(filePath.parent):
+            # TODO: Better way of finding the reduced file
+            if file.startswith("_reduced_"):
+                reductionOutputFile = str(file)
+                break
+        self.readWorkspace(filePath.parent, Path(reductionOutputFile), "reduction_output")
         for n, ws in enumerate(record.workspaceNames):
-            self.readWorkspace(filePath.parent, Path(filePath.name), ws, entryNumber=n + 1)
             # ensure that any mask workspace is actually a `MaskWorkspace` instance
             if pixelMaskKeyword in ws:
                 self.mantidSnapper.ExtractMask(
