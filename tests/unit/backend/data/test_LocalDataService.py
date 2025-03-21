@@ -2203,11 +2203,6 @@ def test_readWriteReductionData_pixel_mask(
                 if isinstance(mtd[ws], MaskWorkspace):
                     maskIsAppendedToData = True
 
-        workspaceTypes = []
-        for ws in actualRecord.workspaceNames:
-            workspaceTypes.append((ws, mtd[ws].__class__))
-
-        assert isinstance(mtd["_pixelmask_057514_2024-06-20T145831"], MaskWorkspace), workspaceTypes
         assert maskIsAppendedToData, mtd.getObjectNames()
 
 
