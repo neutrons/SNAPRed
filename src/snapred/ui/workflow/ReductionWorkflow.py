@@ -629,7 +629,7 @@ class ReductionWorkflow(WorkflowImplementer):
             self.savePath = self.request(path="reduction/getSavePath", payload=record.runNumber).data
             if ContinueWarning.Type.NO_WRITE_PERMISSIONS not in self.continueAnywayFlags:
                 self.request(path="reduction/save", payload=ReductionExportRequest(record=record))
-            outputGroup = wng.reductionOutput().runNumber(record.runNumber).timestamp(self.timestamp).build()
+            outputGroup = wng.reductionOutputGroup().runNumber(record.runNumber).timestamp(self.timestamp).build()
             self.outputs.add(outputGroup)
 
         # Retain the output workspaces after the workflow is complete.
