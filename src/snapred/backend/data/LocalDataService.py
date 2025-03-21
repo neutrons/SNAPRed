@@ -755,7 +755,7 @@ class LocalDataService:
             workspaces = record.workspaceNames
             pixelMasks = [ws for ws in workspaces if ws.tokens("workspaceType") == wngt.REDUCTION_PIXEL_MASK]
             reductionGroupWorkspace = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
-            # workspaces = [ws for ws in workspaces if ws not in pixelMasks]
+
             self.mantidSnapper.GroupWorkspaces(
                 "Group workspaces for reduction output",
                 InputWorkspaces=workspaces,
