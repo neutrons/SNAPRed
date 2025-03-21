@@ -193,7 +193,7 @@ mantid:
           residual: "{unit},{runNumber},residual"
         reduction:
           output: "reduced,{unit},{group},{runNumber},{timestamp}"
-          outputGroup: "reduced,{runNumber},{timestamp}"
+          outputGroup: "reduced_output,{runNumber},{timestamp}"
           pixelMask: "pixelmask,{runNumber},{timestamp}"
           # the user pixel mask name token is case sensitive
           userPixelMask: "MaskWorkspace,{numberTag}"

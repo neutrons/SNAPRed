@@ -754,15 +754,16 @@ class LocalDataService:
         else:
             workspaces = record.workspaceNames
             pixelMasks = [ws for ws in workspaces if ws.tokens("workspaceType") == wngt.REDUCTION_PIXEL_MASK]
+            reductionGroupWorkspace = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
             # workspaces = [ws for ws in workspaces if ws not in pixelMasks]
             self.mantidSnapper.GroupWorkspaces(
                 "Group workspaces for reduction output",
                 InputWorkspaces=workspaces,
-                OutputWorkspace=f"reduction_output_{timestamp}",
+                OutputWorkspace=reductionGroupWorkspace,
             )
             self.mantidSnapper.SaveNexus(
                 "Save workspaces to reduction output",
-                InputWorkspace=f"reduction_output_{timestamp}",
+                InputWorkspace=reductionGroupWorkspace,
                 Filename=str(filePath),
                 Append=False,
             )
@@ -797,14 +798,14 @@ class LocalDataService:
         # Read the workspaces, one by one;
         #   * as an alternative, these could be loaded into a group workspace with a single call to `readWorkspace`.
         pixelMaskKeyword = Config["mantid.workspace.nameTemplate.template.reduction.pixelMask"].split(",")[0]
+        reductionOutputKeyword = Config["mantid.workspace.nameTemplate.template.reduction.outputGroup"].split(",")[0]
         # Find reduction_output_* file in filePath
         reductionOutputFile = None
         for file in os.listdir(filePath.parent):
-            # TODO: Better way of finding the reduced file
-            if file.startswith("_reduced_"):
+            if file.startswith(reductionOutputKeyword):
                 reductionOutputFile = str(file)
                 break
-        self.readWorkspace(filePath.parent, Path(reductionOutputFile), "reduction_output")
+        self.readWorkspace(filePath.parent, Path(reductionOutputFile), reductionOutputKeyword)
         for n, ws in enumerate(record.workspaceNames):
             # ensure that any mask workspace is actually a `MaskWorkspace` instance
             if pixelMaskKeyword in ws:
