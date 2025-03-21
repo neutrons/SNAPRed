@@ -301,7 +301,7 @@ class TestGUIPanels:
                 contents = os.listdir(folderDir + "/" + timeStamp)
                 fullPath = folderDir + "/" + timeStamp
 
-                reduced = "_reduced_0" + reductionRunNumber + "_" + timeStamp + ".nxs"
+                reduced = "_reduced_output_0" + reductionRunNumber + "_" + timeStamp + ".nxs"
                 assert "ReductionRecord.json" in contents
                 assert reduced in contents
 
