@@ -243,17 +243,17 @@ logging:
     # IMPORTANT: "root" level determines override for message-pane level:
     #    do not set to *debug* for live-data usage!
     root:
-      level: 30
+      level: "DEBUG"
     stream:
-      level: 40
+      level: "DEBUG"
       format: 'MANTID %(levelname)s - %(message)s'
     file:
-      level: 40
+      level: "DEBUG"
       format: 'MANTID FILE %(levelname)s - %(message)s'
-      output: '/dev/null'
+      output: '/tmp/mantidlog.txt'
   SNAP:
     stream:
-      level: 40
+      level: "DEBUG"
       format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
 
 samples:
