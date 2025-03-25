@@ -12,6 +12,7 @@ Steps
 -----
 
 The high-level steps are:
+
 1. Trigger Calibration Creation
 2. Assess Calibration Quality
 3. Accept or Reject Calibration
