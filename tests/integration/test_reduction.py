@@ -28,8 +28,13 @@ class InterruptWithBlock(BaseException):
     pass
 
 
+# TODO: Remove mantid import and skipif mark when mantid version is higher than skipif
+import mantid  # noqa: E402
+
+
 @pytest.mark.datarepo
 @pytest.mark.integration
+@pytest.mark.skipif(mantid.__version__ <= "6.12.0.2", reason="Needs mantid version that has fix for segfault")
 class TestGUIPanels:
     @pytest.fixture(scope="function", autouse=True)  # noqa: PT003
     def _setup_gui(self, qapp):
