@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import validate_call
 
@@ -13,6 +13,7 @@ from snapred.backend.dao.normalization.NormalizationRecord import NormalizationR
 from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
+from snapred.backend.dao.request.CreateIndexEntryRequest import CreateIndexEntryRequest
 from snapred.backend.dao.request.NormalizationExportRequest import NormalizationExportRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.DetectorState import DetectorState
@@ -78,27 +79,34 @@ class DataFactoryService:
     def getDefaultInstrumentState(self, runId: str):
         return self.lookupService.generateInstrumentState(runId)
 
+    def getCompatibleStates(self, runId: str, useLiteMode: bool):
+        return self.lookupService.findCompatibleStates(runId, useLiteMode)
+
     ##### CALIBRATION METHODS #####
 
-    def calibrationExists(self, runId: str, useLiteMode: bool):
-        return self.lookupService.calibrationExists(runId, useLiteMode)
+    def calibrationExists(self, runId: str, useLiteMode: bool, alternativeState: Optional[str] = None):
+        return self.lookupService.calibrationExists(runId, useLiteMode, alternativeState)
 
     @validate_call
-    def getCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Version):
-        return self.lookupService.calibrationIndexer(runId, useLiteMode).versionPath(version)
+    def getCalibrationDataPath(
+        self, runId: str, useLiteMode: bool, version: Version, alternativeState: Optional[str] = None
+    ):
+        return self.lookupService.calibrationIndexer(runId, useLiteMode, alternativeState=alternativeState).versionPath(
+            version
+        )
 
     def checkCalibrationStateExists(self, runId: str):
         return self.lookupService.checkCalibrationFileExists(runId)
 
-    def createCalibrationIndexEntry(self, request: CalibrationExportRequest) -> IndexEntry:
+    def createCalibrationIndexEntry(self, request: CreateIndexEntryRequest) -> IndexEntry:
         return self.lookupService.createCalibrationIndexEntry(request)
 
     def createCalibrationRecord(self, request: CalibrationExportRequest) -> CalibrationRecord:
         return self.lookupService.createCalibrationRecord(request)
 
     @validate_call
-    def getCalibrationState(self, runId: str, useLiteMode: bool):
-        return self.lookupService.readCalibrationState(runId, useLiteMode)
+    def getCalibrationState(self, runId: str, useLiteMode: bool, alternativeState: Optional[str] = None):
+        return self.lookupService.readCalibrationState(runId, useLiteMode, alternativeState=alternativeState)
 
     @validate_call
     def getCalibrationIndex(self, runId: str, useLiteMode: bool) -> List[IndexEntry]:
@@ -106,12 +114,16 @@ class DataFactoryService:
 
     @validate_call
     def getCalibrationRecord(
-        self, runId: str, useLiteMode: bool, version: Version = VersionState.LATEST
+        self,
+        runId: str,
+        useLiteMode: bool,
+        version: Version = VersionState.LATEST,
+        alternativeState: Optional[str] = None,
     ) -> CalibrationRecord:
         """
         If no version is passed, will use the latest version applicable to runId
         """
-        return self.lookupService.readCalibrationRecord(runId, useLiteMode, version)
+        return self.lookupService.readCalibrationRecord(runId, useLiteMode, version, alternativeState=alternativeState)
 
     @validate_call
     def getCalibrationDataWorkspace(self, runId: str, useLiteMode: bool, version: Version, name: str):
@@ -119,8 +131,12 @@ class DataFactoryService:
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
     @validate_call
-    def getLatestApplicableCalibrationVersion(self, runId: str, useLiteMode: bool):
-        return self.lookupService.calibrationIndexer(runId, useLiteMode).latestApplicableVersion(runId)
+    def getLatestApplicableCalibrationVersion(
+        self, runId: str, useLiteMode: bool, alternativeState: Optional[str] = None
+    ):
+        return self.lookupService.calibrationIndexer(runId, useLiteMode, alternativeState).latestApplicableVersion(
+            runId
+        )
 
     ##### NORMALIZATION METHODS #####
 

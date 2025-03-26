@@ -95,6 +95,8 @@ class GroceryListItem(BaseModel):
     # name the property the workspace will be used for
     propertyName: Optional[str] = None
 
+    alternativeState: Optional[str] = None
+
     def builder():
         # NOTE this import is here to avoid circular dependencies -- don't bother trying to move it
         from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
