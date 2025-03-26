@@ -56,7 +56,7 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
             OutputWorkspace=self.outputWS,
             GroupingWorkspace=self.groupingWS,
             Ingredients=self.pixelGroup.json(),
-            RebinOutput=False,
+            RebinOutput=True,
         )
 
         normalizeArgs = {
