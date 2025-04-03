@@ -74,6 +74,17 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
     def PyExec(self):
         self.log().notice("Calculate pixel grouping state-derived parameters")
 
+        lowdSpacingCrop = Config["constants.CropFactors.lowdSpacingCrop"]
+        highdSpacingCrop = Config["constants.CropFactors.highdSpacingCrop"]
+
+        if lowdSpacingCrop < 0:
+            raise ValueError("Low d-spacing crop factor must be positive")
+        if highdSpacingCrop < 0:
+            raise ValueError("High d-spacing crop factor must be positive")
+
+        if (lowdSpacingCrop > 100) or (highdSpacingCrop > 100):
+            raise ValueError("d-spacing crop factors are too large")
+
         # define/calculate some auxiliary state-derived parameters
         ingredients = PixelGroupingIngredients.model_validate_json(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
@@ -187,12 +198,14 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                     groupMeanPhi = 0.0
 
                 dMin = (
-                    self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMax2Theta / 2.0))) * self.tofMin / self.L
+                    (self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMax2Theta / 2.0))) * self.tofMin / self.L)
+                    + Config["constants.CropFactors.lowdSpacingCrop"]
                     if groupMax2Theta > np.finfo(float).eps
                     else 0.0
                 )
                 dMax = (
-                    self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMin2Theta / 2.0))) * self.tofMax / self.L
+                    (self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMin2Theta / 2.0))) * self.tofMax / self.L)
+                    - Config["constants.CropFactors.highdSpacingCrop"]
                     if groupMin2Theta > np.finfo(float).eps
                     else 0.0
                 )

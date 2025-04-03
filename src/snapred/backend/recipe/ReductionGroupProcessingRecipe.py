@@ -37,6 +37,9 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
 
     def chopIngredients(self, ingredients):
         self.pixelGroup = ingredients.pixelGroup
+        logger.debug(f"dMin: {self.pixelGroup.dMin()}")
+        logger.debug(f"dMax: {self.pixelGroup.dMax()}")
+        logger.debug(f"dBin: {self.pixelGroup.dBin()}")
 
     def queueAlgos(self):
         """

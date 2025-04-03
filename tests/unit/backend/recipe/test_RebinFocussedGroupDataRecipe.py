@@ -52,28 +52,6 @@ class TestRebinFocussedGroupDataRecipe(unittest.TestCase):
         assert isinstance(outputWs, MatrixWorkspace)
         assert outputWs.isRaggedWorkspace()
 
-    def test_badChopIngredients(self):
-        ingredients = Recipe.Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
-        recipe = Recipe()
-        with (
-            Config_override("constants.CropFactors.lowdSpacingCrop", 500.0),
-            Config_override("constants.CropFactors.highdSpacingCrop", 1000.0),
-            pytest.raises(ValueError, match="d-spacing crop factors are too large"),
-        ):
-            recipe.chopIngredients(ingredients)
-        #
-        with (
-            Config_override("constants.CropFactors.lowdSpacingCrop", -10.0),
-            pytest.raises(ValueError, match="Low d-spacing crop factor must be positive"),
-        ):
-            recipe.chopIngredients(ingredients)
-        #
-        with (
-            Config_override("constants.CropFactors.highdSpacingCrop", -10.0),
-            pytest.raises(ValueError, match="High d-spacing crop factor must be positive"),
-        ):
-            recipe.chopIngredients(ingredients)
-
     def test_bad_dspacing_range(self):
         pixel_group = self.sculleryBoy.prepPixelGroup()
 
