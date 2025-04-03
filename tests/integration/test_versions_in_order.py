@@ -202,8 +202,8 @@ class ImitationGroceryService(GroceryService):
 
     def fetchCalibrationWorkspaces(self, item: Any) -> Dict[str, Any]:
         runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
-        tableWorkspaceName = self.createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
-        maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, useLiteMode, version)
+        tableWorkspaceName = self.createDiffCalTableWorkspaceName(runNumber, useLiteMode, version)
+        maskWorkspaceName = self._createDiffCalMaskWorkspaceName(runNumber, useLiteMode, version)
 
         CloneWorkspace(InputWorkspace=self.diffcalTableWS, OutputWorkspace=tableWorkspaceName)
         CloneWorkspace(InputWorkspace=self.maskWS, OutputWorkspace=maskWorkspaceName)
@@ -214,7 +214,7 @@ class ImitationGroceryService(GroceryService):
         }
 
     def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: int | Any) -> str:
-        tableWorkspaceName = self.createDiffcalTableWorkspaceName("default", useLiteMode, version)
+        tableWorkspaceName = self.createDiffCalTableWorkspaceName("default", useLiteMode, version)
         CloneWorkspace(InputWorkspace=self.diffcalTableWS, OutputWorkspace=tableWorkspaceName)
         return tableWorkspaceName
 

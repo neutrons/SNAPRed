@@ -7,14 +7,12 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.backend.recipe.WriteWorkspaceMetadata import WriteWorkspaceMetadata
 from snapred.meta.Config import Config
-from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
 
 Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
-@Singleton
 class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
     def allGroceryKeys(self):
         return {

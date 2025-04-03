@@ -7,13 +7,11 @@ from snapred.backend.dao.Limit import BinnedValue
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.Utensils import Utensils
-from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
 
-@Singleton
 class PixelGroupingParametersCalculationRecipe:
     def __init__(self):
         # NOTE: workaround, we just add an empty host algorithm.

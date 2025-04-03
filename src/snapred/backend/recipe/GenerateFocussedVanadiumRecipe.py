@@ -4,7 +4,6 @@ from snapred.backend.dao.ingredients import GenerateFocussedVanadiumIngredients 
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.RebinFocussedGroupDataRecipe import RebinFocussedGroupDataRecipe
 from snapred.backend.recipe.Recipe import Recipe
-from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -12,7 +11,6 @@ logger = snapredLogger.getLogger(__name__)
 Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
-@Singleton
 class GenerateFocussedVanadiumRecipe(Recipe[Ingredients]):
     """
 

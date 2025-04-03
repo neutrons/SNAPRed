@@ -5,7 +5,6 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import (
     GenerateTableWorkspaceFromListOfDictRecipe,
 )
-from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     ValueFormatter as wnvf,
 )
@@ -17,7 +16,6 @@ from snapred.meta.redantic import list_to_raw
 logger = snapredLogger.getLogger(__name__)
 
 
-@Singleton
 class GenerateCalibrationMetricsWorkspaceRecipe:
     """
 

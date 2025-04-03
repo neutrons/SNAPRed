@@ -213,22 +213,22 @@ class GroceryService:
         return str(path)
 
     @validate_call
-    def _createDiffcalOutputWorkspaceFilename(self, item: GroceryListItem) -> str:
+    def _createDiffCalOutputWorkspaceFilename(self, item: GroceryListItem) -> str:
         ext = Config["calibration.diffraction.output.extension"]
         return str(
             self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version)
-            / (self._createDiffcalOutputWorkspaceName(item) + ext)
+            / (self._createDiffCalOutputWorkspaceName(item) + ext)
         )
 
     @validate_call
-    def _createDiffcalDiagnosticWorkspaceFilename(self, item: GroceryListItem) -> str:
+    def _createDiffCalDiagnosticWorkspaceFilename(self, item: GroceryListItem) -> str:
         ext = Config["calibration.diffraction.diagnostic.extension"]
         return str(
             self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version)
-            / (self._createDiffcalOutputWorkspaceName(item) + ext)
+            / (self._createDiffCalOutputWorkspaceName(item) + ext)
         )
 
-    def _createDiffcalTableFilepathFromWsName(
+    def _createDiffCalTableFilepathFromWsName(
         self,
         runNumber: str,
         useLiteMode: bool,
@@ -239,7 +239,7 @@ class GroceryService:
         calibrationDataPath = self._getCalibrationDataPath(
             runNumber, useLiteMode, version, alternativeState=alternativeState
         )
-        expectedWsName = self.createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
+        expectedWsName = self.createDiffCalTableWorkspaceName(runNumber, useLiteMode, version)
         if wsName != expectedWsName:
             record = self.dataService.calibrationIndexer(runNumber, useLiteMode).readRecord(version)
             raise ValueError(
@@ -250,10 +250,10 @@ class GroceryService:
         return str(calibrationDataPath / (wsName + self.diffcalTableFileExtension))
 
     @validate_call
-    def _createDiffcalTableFilepath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
+    def _createDiffCalTableFilepath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         return str(
             Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
-            / (self.createDiffcalTableWorkspaceName(runNumber, useLiteMode, version) + self.diffcalTableFileExtension)
+            / (self.createDiffCalTableWorkspaceName(runNumber, useLiteMode, version) + self.diffcalTableFileExtension)
         )
 
     @validate_call
@@ -300,10 +300,10 @@ class GroceryService:
         instr = "lite" if useLiteMode else "native"
         return f"{Config['grouping.workspacename.' + instr]}_{groupingScheme}_{runNumber}"
 
-    def _createDiffcalInputWorkspaceName(self, runNumber: str) -> WorkspaceName:
+    def _createDiffCalInputWorkspaceName(self, runNumber: str) -> WorkspaceName:
         return wng.diffCalInput().runNumber(runNumber).build()
 
-    def _createDiffcalOutputWorkspaceName(self, item: GroceryListItem) -> WorkspaceName:
+    def _createDiffCalOutputWorkspaceName(self, item: GroceryListItem) -> WorkspaceName:
         return (
             wng.diffCalOutput()
             .unit(item.unit)
@@ -313,9 +313,23 @@ class GroceryService:
             .build()
         )
 
-    def lookupDiffcalTableWorkspaceName(
-        self, runNumber: str, useLiteMode: bool, version: Optional[int], alternativeState: str = None
-    ) -> WorkspaceName:
+    @staticmethod
+    def _findFirstWorkspaceOfType(items_, wsType: WorkspaceType) -> WorkspaceName | None:
+        # Return the first workspace in the record's list for the correct workspace type.
+
+        # `CalibrationRecord.workspaces: Dict[WorkspaceType, List[WorkspaceName]]`
+
+        nameTuple = next(filter(lambda kv: kv[0] == wsType, items_), None)
+        if nameTuple is not None:
+            # return the first name in the list
+            return nameTuple[1][0] if len(nameTuple[1]) > 0 else None
+        return None
+
+    def _lookupDiffCalWorkspaceNames(
+        self, runNumber: str, useLiteMode: bool, version: Optional[int], alternativeState: Optional[str] = None
+    ) -> Tuple[WorkspaceName, WorkspaceName | None]:
+        # tableName, maskName = self._lookupDiffCalWorkspaceNames(<run number>, <use lite mode> [, ...])
+
         indexer = self.dataService.calibrationIndexer(runNumber, useLiteMode, alternativeState=alternativeState)
         if not isinstance(version, int):
             version = indexer.latestApplicableVersion(runNumber)
@@ -324,18 +338,17 @@ class GroceryService:
         if record is None:
             raise RuntimeError(f"Could not find calibration record for run {runNumber} and version {version}")
 
-        # find first difcal table in record
-        wsTableNameTuple = next(filter(lambda t: t[0] == WorkspaceType.DIFFCAL_TABLE, record.workspaces.items()), None)
-        if wsTableNameTuple is None:
-            raise RuntimeError(
-                f"Could not find diffcal table in record for run {runNumber} in workspaces: {record.workspaces}"
-            )
-        # grab first value in list value of tuple
-        tableWorkspaceName = wsTableNameTuple[1][0]
-        return tableWorkspaceName
+        tableWorkspaceName = self._findFirstWorkspaceOfType(record.workspaces.items(), WorkspaceType.DIFFCAL_TABLE)
+        if tableWorkspaceName is None:
+            raise RuntimeError(f"Could not find any table workspaces in calibration record for run: '{runNumber}'")
+
+        maskWorkspaceName = self._findFirstWorkspaceOfType(record.workspaces.items(), WorkspaceType.DIFFCAL_MASK)
+        # A mask workspace is optional: maskWorkspaceName may be None.
+
+        return tableWorkspaceName, maskWorkspaceName
 
     @validate_call
-    def createDiffcalTableWorkspaceName(
+    def createDiffCalTableWorkspaceName(
         self,
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
@@ -350,7 +363,7 @@ class GroceryService:
         return wsName
 
     @validate_call
-    def _createDiffcalMaskWorkspaceName(
+    def _createDiffCalMaskWorkspaceName(
         self,
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
@@ -1046,13 +1059,12 @@ class GroceryService:
             item.useLiteMode,
             item.alternativeState,
         )
-        tableWorkspaceName = self.lookupDiffcalTableWorkspaceName(
-            runNumber, useLiteMode, version, alternativeState=alternativeState
-        )
-        maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, useLiteMode, version)
+        tableWorkspaceName, maskWorkspaceName = self._lookupDiffCalWorkspaceNames(runNumber, useLiteMode, version)
 
         # Table + mask are in the same hdf5 file: all of these clauses must deal with _both_!
-        if self.workspaceDoesExist(tableWorkspaceName) and self.workspaceDoesExist(maskWorkspaceName):
+        if self.workspaceDoesExist(tableWorkspaceName) and (
+            maskWorkspaceName is None or self.workspaceDoesExist(maskWorkspaceName)
+        ):
             data = {
                 "result": True,
                 "loader": "cached",
@@ -1060,7 +1072,7 @@ class GroceryService:
             }
         else:
             # table + mask are in the same hdf5 file:
-            filename = self._createDiffcalTableFilepathFromWsName(
+            filename = self._createDiffCalTableFilepathFromWsName(
                 runNumber, useLiteMode, version, tableWorkspaceName, alternativeState=alternativeState
             )
 
@@ -1075,11 +1087,16 @@ class GroceryService:
                 # IMPORTANT: Both table and mask workspaces will be loaded,
                 #   however, the 'workspace' property needs to return
                 #   a `MatrixWorkspace`-derived property, otherwise Mantid gets confused.
-                workspace=maskWorkspaceName,
+                workspace=maskWorkspaceName if bool(maskWorkspaceName) else "",
                 loader="LoadCalibrationWorkspaces",
                 instrumentPropertySource=instrumentPropertySource,
                 instrumentSource=instrumentSource,
-                loaderArgs=json.dumps({"CalibrationTable": tableWorkspaceName, "MaskWorkspace": maskWorkspaceName}),
+                loaderArgs=json.dumps(
+                    {
+                        "CalibrationTable": tableWorkspaceName,
+                        "MaskWorkspace": maskWorkspaceName if bool(maskWorkspaceName) else "",
+                    }
+                ),
             )
             data["workspace"] = tableWorkspaceName
 
@@ -1088,7 +1105,7 @@ class GroceryService:
     # this isnt really a fetch method, this generates data
     @validate_call
     def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: int) -> WorkspaceName:
-        tableWorkspaceName = self.createDiffcalTableWorkspaceName("default", useLiteMode, version)
+        tableWorkspaceName = self.createDiffCalTableWorkspaceName("default", useLiteMode, version)
         self.mantidSnapper.CalculateDiffCalTable(
             "Generate the default diffcal table",
             InputWorkspace=self._fetchInstrumentDonor(runNumber, useLiteMode),
@@ -1245,39 +1262,40 @@ class GroceryService:
     def fetchGroceryList(self, groceryList: Iterable[GroceryListItem]) -> List[WorkspaceName]:
         """
         :param groceryList: a list of GroceryListItems indicating the workspaces to create
-        :type groceryList: List[GrocerListItem]
+        :type groceryList: List[GroceryListItem]
         :return: the names of the workspaces, in the same order as items in the grocery list
         :rtype: List[WorkspaceName]
         """
         groceries = []
+        result = {}
         for item in groceryList:
             match item.workspaceType:
                 # for neutron data stored in a nexus file
                 case "neutron":
                     if item.keepItClean:
-                        res = self.fetchNeutronDataCached(item)
+                        result = self.fetchNeutronDataCached(item)
                     else:
-                        res = self.fetchNeutronDataSingleUse(item)
+                        result = self.fetchNeutronDataSingleUse(item)
                 # for grouping definitions
                 case "grouping":
-                    res = self.fetchGroupingDefinition(item)
+                    result = self.fetchGroupingDefinition(item)
                 case "diffcal":
-                    res = {"result": False, "workspace": self._createDiffcalInputWorkspaceName(item.runNumber)}
+                    result = {"result": False, "workspace": self._createDiffCalInputWorkspaceName(item.runNumber)}
                     raise RuntimeError(
                         "not implemented: no path available to fetch diffcal "
-                        + f"input table workspace: '{res['workspace']}'"
+                        + f"input table workspace: '{result['workspace']}'"
                     )
                 # for diffraction-calibration workspaces
                 case "diffcal_output":
-                    res = self.fetchWorkspace(
-                        self._createDiffcalOutputWorkspaceFilename(item),
-                        self._createDiffcalOutputWorkspaceName(item),
+                    result = self.fetchWorkspace(
+                        self._createDiffCalOutputWorkspaceFilename(item),
+                        self._createDiffCalOutputWorkspaceName(item),
                         loader="LoadNexus",
                     )
                 case "diffcal_diagnostic":
-                    self.fetchWorkspace(
-                        self._createDiffcalDiagnosticWorkspaceFilename(item),
-                        self._createDiffcalOutputWorkspaceName(item),
+                    result = self.fetchWorkspace(
+                        self._createDiffCalDiagnosticWorkspaceFilename(item),
+                        self._createDiffCalOutputWorkspaceName(item),
                         loader="LoadNexusProcessed",
                     )
                 case "diffcal_table":
@@ -1294,12 +1312,11 @@ class GroceryService:
                     # NOTE: fetchCalibrationWorkspaces will set the workspace name
                     # to that of the table workspace.  Because of possible confusion with
                     # the behavior of the mask workspace, the workspace name is overridden here.
-
-                    tableWorkspaceName = self.lookupDiffcalTableWorkspaceName(
+                    tableWorkspaceName, _ = self._lookupDiffCalWorkspaceNames(
                         item.runNumber, item.useLiteMode, item.version, alternativeState=alternativeState
                     )
-                    res = self.fetchCalibrationWorkspaces(item)
-                    res["workspace"] = tableWorkspaceName
+                    result = self.fetchCalibrationWorkspaces(item)
+                    result["workspace"] = tableWorkspaceName
                 case "diffcal_mask":
                     alternativeState = item.alternativeState
                     indexer = self.dataService.calibrationIndexer(
@@ -1312,40 +1329,51 @@ class GroceryService:
                         item.runNumber = record.runNumber
 
                     # NOTE: fetchCalibrationWorkspaces will set the workspace name
-                    # to that of the table workspace, not the mask.  This name is
+                    # to that of the table workspace, not the mask.  This output name is
                     # overridden here.
-                    maskWorkspaceName = self._createDiffcalMaskWorkspaceName(
-                        item.runNumber, item.useLiteMode, item.version
+                    _, maskWorkspaceName = self._lookupDiffCalWorkspaceNames(
+                        item.runNumber, item.useLiteMode, item.version, alternativeState=alternativeState
                     )
-                    res = self.fetchCalibrationWorkspaces(item)
-                    res["workspace"] = maskWorkspaceName
+                    if maskWorkspaceName is not None:
+                        result = self.fetchCalibrationWorkspaces(item)
+                        result["workspace"] = maskWorkspaceName
+                    else:
+                        # It is not an error if no mask exists for a given calibration version.
+                        result["result"] = True
+                        result["workspace"] = ""
                 case "normalization":
                     indexer = self.dataService.normalizationIndexer(item.runNumber, item.useLiteMode)
+
+                    # TODO: it looks like the following clause should be "unreachable code".
+                    #   `version` is validated to `int` at `GroceryListItem`.
                     if not isinstance(item.version, int):
-                        logger.info(f"Version not detected for run {item.runNumber}, fetching from index.")
+                        logger.info(
+                            f"Normalization version not detected for run {item.runNumber}: fetching from index."
+                        )
                         item.version = indexer.latestApplicableVersion(item.runNumber)
                         if not isinstance(item.version, int):
                             raise RuntimeError(
                                 f"Could not find any Normalizations associated with run {item.runNumber}"
                             )
-                        logger.info(f"Found version {item.version} for run {item.runNumber}")
+                        logger.info(f"Found normalization version {item.version} for run {item.runNumber}")
                     record = indexer.readRecord(item.version)
                     if record is not None:
                         item.runNumber = record.runNumber
                     logger.info(f"Fetching normalization workspace for run {item.runNumber}, version {item.version}")
-                    res = self.fetchNormalizationWorkspace(item)
+                    result = self.fetchNormalizationWorkspace(item)
                 case "reduction_pixel_mask":
                     maskWorkspaceName = self._createReductionPixelMaskWorkspaceName(  # noqa: F841
                         item.runNumber, item.useLiteMode, item.timestamp
                     )
-                    res = self.fetchReductionPixelMask(item)
+                    result = self.fetchReductionPixelMask(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
             # check that the fetch operation succeeded and if so append the workspace
-            if res["result"] is True:
-                groceries.append(res["workspace"])
+            if result["result"] is True:
+                groceries.append(result["workspace"])
             else:
                 raise RuntimeError(f"Error fetching item {item.model_dump_json(indent=2)}")
+
         return groceries
 
     def fetchGroceryDict(self, groceryDict: Dict[str, GroceryListItem], **kwargs) -> Dict[str, WorkspaceName]:

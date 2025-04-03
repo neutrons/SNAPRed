@@ -6,7 +6,6 @@ from snapred.backend.dao.ingredients import EffectiveInstrumentIngredients as In
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.Recipe import Recipe
-from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
@@ -14,7 +13,6 @@ logger = snapredLogger.getLogger(__name__)
 Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
-@Singleton
 class EffectiveInstrumentRecipe(Recipe[Ingredients]):
     def allGroceryKeys(self) -> Set[str]:
         return {"inputWorkspace", "outputWorkspace"}

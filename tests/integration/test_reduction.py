@@ -29,12 +29,10 @@ class InterruptWithBlock(BaseException):
 
 
 # TODO: Remove mantid import and skipif mark when mantid version is higher than skipif
-import mantid  # noqa: E402
 
 
 @pytest.mark.datarepo
 @pytest.mark.integration
-@pytest.mark.skipif(mantid.__version__ <= "6.12.0.2", reason="Needs mantid version that has fix for segfault")
 class TestGUIPanels:
     @pytest.fixture(scope="function", autouse=True)  # noqa: PT003
     def _setup_gui(self, qapp):
@@ -380,9 +378,11 @@ class TestGUIPanels:
                     # the warning box that complains there is no grouping for lite mode
                     assert mp[1].call_count == 4
 
-                qtbot.wait(1000)
+                qtbot.waitUntil(
+                    lambda: isinstance(workflowNodeTabs.currentWidget().view, ArtificialNormalizationView),
+                    timeout=10000,
+                )
                 artNormView = workflowNodeTabs.currentWidget().view
-                assert isinstance(artNormView, ArtificialNormalizationView)
 
                 msg = "Smoothing or peak window clipping size is invalid: could not convert string to float: 'a'"
                 mp = MockQMessageBox().warning(msg)
