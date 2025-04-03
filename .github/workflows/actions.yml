@@ -116,6 +116,8 @@ jobs:
             - conda-forge
             - default
             - mantid/label/nightly
+            - mantid-ornl
+            - mantid-ornl/label/rc
         cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
         cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
     - name: Build conda libraray
