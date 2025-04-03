@@ -7,7 +7,7 @@ from snapred.backend.dao.indexing.Record import Record
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CalibrationDefaultRecord(Record, extra="ignore"):
+class CalibrationDefaultRecord(Record, extra="ignore", strict=False):
     """
 
     The refer to the CalibrationRecord class for a more in-depth explanation of Calibration Records.
