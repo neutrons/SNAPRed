@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Annotated, Any, Dict, List
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -10,7 +10,7 @@ from snapred.meta.mantid.AllowedPeakTypes import PeakFunctionEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CalibrationAssessmentRequest(BaseModel, extra="forbid"):
+class CalibrationAssessmentRequest(BaseModel):
     """
 
     The CalibrationAssessmentRequest class is crafted to streamline the process of initiating
@@ -51,5 +51,5 @@ class CalibrationAssessmentRequest(BaseModel, extra="forbid"):
     model_config = ConfigDict(
         extra="forbid",
         # required in order to use 'WorkspaceName'
-        arbitrary_types_allowed=True,
+        arbitrary_types_allowed=True
     )

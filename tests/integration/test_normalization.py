@@ -244,11 +244,11 @@ class TestNormalizationPanels:
             handleStateInit(waitForStateInit, stateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
 
             msg = "No valid FocusGroups were specified for mode: 'lite'"
-            mp = MockQMessageBox().exec(msg)
+            mp = MockQMessageBox().exec(msg, moduleRoot="snapred.ui.handler.SNAPResponseHandler")
             mp[0].start()
-
             with qtbot.waitSignal(actionCompleted, timeout=60000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+
             qtbot.waitUntil(
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationTweakPeakView), timeout=60000
             )
