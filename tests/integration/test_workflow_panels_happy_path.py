@@ -917,6 +917,7 @@ class TestGUIPanels:
         # Force a clean exit
         qtbot.wait(5000)
 
+    @pytest.skip(reason="'SaveNexusProcessed' SEGFAULT")
     def test_reduction_panel_happy_path(self, qtbot, qapp, reduction_home_from_mirror):  # noqa: F811
         ##
         ## NOTE: WARNING: this test requires EXISTING diffraction-calibration and normalization-calibration data!
