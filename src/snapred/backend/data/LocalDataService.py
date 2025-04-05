@@ -81,8 +81,10 @@ logger = snapredLogger.getLogger(__name__)
     but intersects that of the potential oncat data service interface
 """
 
+
 def _triggerPRChanges(msg: str):
     print(msg)
+
 
 def _createFileNotFoundError(msg, filename):
     return FileNotFoundError(NOT_FOUND, os.strerror(NOT_FOUND) + " " + msg, filename)

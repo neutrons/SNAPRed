@@ -63,5 +63,5 @@ class ReductionRecord(BaseModel):
     model_config = ConfigDict(
         # required in order to use 'WorkspaceName'
         arbitrary_types_allowed=True,
-        strict=False
+        strict=False,
     )
