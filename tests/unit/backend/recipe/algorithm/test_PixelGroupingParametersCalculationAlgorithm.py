@@ -17,6 +17,7 @@ from mantid.simpleapi import (
     RenameWorkspace,
     mtd,
 )
+from util.Config_helpers import Config_override
 from util.dao import DAOFactory
 from util.helpers import (
     createCompatibleMask,
@@ -336,6 +337,39 @@ class PixelGroupCalculation(unittest.TestCase):
     def run_test(self, instrumentState, groupingWorkspace, maskWorkspace, referenceParametersFile):
         pixelGroupingParams_calc = self.createPixelGroupingParameters(instrumentState, groupingWorkspace, maskWorkspace)
         self.compareToReference(pixelGroupingParams_calc, referenceParametersFile)
+
+    def test_invalidCroppingFactors(self):
+        groupingScheme = self.column
+        with (
+            Config_override("constants.CropFactors.lowdSpacingCrop", 500.0),
+            Config_override("constants.CropFactors.highdSpacingCrop", 1000.0),
+            pytest.raises(RuntimeError, match="d-spacing crop factors are too large"),
+        ):
+            self.createPixelGroupingParameters(
+                instrumentState=self.localInstrumentState,
+                groupingWorkspace=self.localGroupingWorkspace[groupingScheme],
+                maskWorkspace=self.localMaskWorkspace[self.unmasked],
+            )
+        #
+        with (
+            Config_override("constants.CropFactors.lowdSpacingCrop", -10.0),
+            pytest.raises(RuntimeError, match="Low d-spacing crop factor must be positive"),
+        ):
+            self.createPixelGroupingParameters(
+                instrumentState=self.localInstrumentState,
+                groupingWorkspace=self.localGroupingWorkspace[groupingScheme],
+                maskWorkspace=self.localMaskWorkspace[self.unmasked],
+            )
+        #
+        with (
+            Config_override("constants.CropFactors.highdSpacingCrop", -10.0),
+            pytest.raises(RuntimeError, match="High d-spacing crop factor must be positive"),
+        ):
+            self.createPixelGroupingParameters(
+                instrumentState=self.localInstrumentState,
+                groupingWorkspace=self.localGroupingWorkspace[groupingScheme],
+                maskWorkspace=self.localMaskWorkspace[self.unmasked],
+            )
 
     def createPixelGroupingParameters(self, instrumentState, groupingWorkspace, maskWorkspace):
         """Test execution of PixelGroupingParametersCalculationAlgorithm"""

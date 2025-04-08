@@ -10,7 +10,7 @@ from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CreateCalibrationRecordRequest(BaseModel, extra="forbid"):
+class CreateCalibrationRecordRequest(BaseModel, extra="forbid", strict=False):
     """
 
     The information needed to create a calibration record.
