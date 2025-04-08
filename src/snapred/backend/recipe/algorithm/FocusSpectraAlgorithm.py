@@ -30,7 +30,10 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         # declare properties
         self.declareProperty(
             MatrixWorkspaceProperty(
-                "InputWorkspace", "", Direction.Input, PropertyMode.Mandatory, validator=WorkspaceUnitValidator("TOF")
+                "InputWorkspace",
+                "",
+                Direction.Input,
+                PropertyMode.Mandatory,
             ),
             doc="Workspace containing values at each pixel",
         )
@@ -93,6 +96,12 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
                 """
             errors["InputWorkspace"] = msg
             errors["GroupingWorkspace"] = msg
+
+        if inWS.getAxis(0).getUnit().unitID() != "dSpacing" and inWS.getAxis(0).getUnit().unitID() != "TOF":
+            errors["InputWorkspace"] = (
+                f"Input workspace must be in dSpacing or TOF units, found {inWS.getAxis(0).getUnit().unitID()}"
+            )
+
         return errors
 
     def PyExec(self):

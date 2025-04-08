@@ -358,6 +358,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.residualWorkspace = f"diffcal_residual_{self.runNumber}"
         # focus the workspace to view the peaks
         self._renewPixelCal()
+        self.groceries["inputWorkspace"] = self.pixelCalibratedWorkspace
         self._renewFocus(self.prevGroupingIndex)
         self._renewFitPeaks(self.peakFunction)
         response = self._calculateResidual()
@@ -473,6 +474,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             )
             response = self.request(path="calibration/pixel", payload=payload).data
             self.prevDiffCal = response.calibrationTable
+            self.pixelCalibratedWorkspace = response.outputWorkspace
         else:
             self.prevDiffCal = self.groceries["previousCalibration"]
 
@@ -562,11 +564,17 @@ class DiffCalWorkflow(WorkflowImplementer):
     @Slot(WorkflowPresenter, result=SNAPResponse)
     def _triggerDiffractionCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
-
         self.runNumber = view.runNumberField.text()
         self._saveView.updateRunNumber(self.runNumber)
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.groceries["previousCalibration"] = self.prevDiffCal
+
+        # Cleanup Excess Workspaces
+        localKeeps = []
+        for grocery in self.groceries.values():
+            localKeeps.append(grocery)
+
+        self._clearWorkspaces(exclude=set(localKeeps), clearCachedWorkspaces=False)
 
         # perform the group calibration
         payload = SimpleDiffCalRequest(

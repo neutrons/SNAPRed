@@ -18,6 +18,7 @@ class PixelDiffCalServing(BaseModel):
     medianOffsets: List[float]
     maskWorkspace: str
     calibrationTable: str
+    outputWorkspace: str
 
 
 class PixelDiffCalRecipe(Recipe[Ingredients]):
@@ -330,7 +331,12 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         logger.info(f"Pixel calibration converged.  Offsets: {self.medianOffsets}")
 
         # create for inspection
-        self.convertUnitsAndRebin(self.wsTOF, f"{self.wsDSP}_afterCrossCor")
+        outputWorkspace = f"{self.wsDSP}_afterCrossCor"
+        self.convertUnitsAndRebin(self.wsTOF, outputWorkspace)
+        self.mantidSnapper.DeleteWorkspace(
+            "Deleting tof workspace",
+            Workspace=self.wsTOF,
+        )
         self.mantidSnapper.executeQueue()
 
         return PixelDiffCalServing(
@@ -338,4 +344,5 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             medianOffsets=self.medianOffsets,
             calibrationTable=self.DIFCpixel,
             maskWorkspace=self.maskWS,
+            outputWorkspace=outputWorkspace,
         )

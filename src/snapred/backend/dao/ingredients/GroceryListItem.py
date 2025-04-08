@@ -90,7 +90,7 @@ class GroceryListItem(BaseModel):
 
     # if set to False, neutron data will not be loaded in a clean, cached way
     # this is faster and uses less memory, if you know you only need one copy
-    keepItClean: bool = True
+    keepItClean: bool = False
 
     # name the property the workspace will be used for
     propertyName: Optional[str] = None
