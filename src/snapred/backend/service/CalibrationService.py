@@ -188,6 +188,7 @@ class CalibrationService(Service):
             raise RuntimeError("Pixel Calibration failed")
 
         payload.groceries["previousCalibration"] = pixelRes.calibrationTable
+        payload.groceries["inputWorkspace"] = pixelRes.outputWorkspace
         groupRes = self.groupCalibration(payload)
         if not groupRes.result:
             raise RuntimeError("Group Calibration failed")
