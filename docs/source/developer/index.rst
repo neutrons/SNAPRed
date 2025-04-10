@@ -10,3 +10,4 @@ Developer Docs
    deploy
    dao
    feature/workflow/index
+   workflowDiagrams

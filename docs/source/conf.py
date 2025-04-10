@@ -2,6 +2,8 @@
 
 # -- Project information
 
+html_static_path = ["_static"]
+
 import os
 
 import erdantic as erd
