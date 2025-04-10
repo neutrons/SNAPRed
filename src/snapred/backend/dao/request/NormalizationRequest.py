@@ -32,3 +32,4 @@ class NormalizationRequest(BaseModel, extra="forbid"):
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
 
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
+    renew: bool = False

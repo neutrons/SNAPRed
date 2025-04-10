@@ -319,7 +319,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         return response
 
     @EntryExitLogger(logger=logger)
-    def callNormalization(self, index, smoothingParameter, xtalDMin, xtalDMax):
+    def callNormalization(self, index, smoothingParameter, xtalDMin, xtalDMax, renew=False):
         payload = NormalizationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
@@ -329,6 +329,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             smoothingParameter=smoothingParameter,
             crystalDBounds={"minimum": xtalDMin, "maximum": xtalDMax},
             continueFlags=self.continueAnywayFlags,
+            renew=renew,
         )
         self.normalizationResponse = self.request(path="normalization", payload=payload.json())
 
@@ -388,7 +389,7 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         # check the case, apply correct update
         if groupingFileChanged:
-            self.callNormalization(index, smoothingValue, xtalDMin, xtalDMax)
+            self.callNormalization(index, smoothingValue, xtalDMin, xtalDMax, renew=True)
         elif peakListWillChange:
             self.applySmoothingUpdate(index, smoothingValue, xtalDMin, xtalDMax)
         elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
