@@ -68,6 +68,7 @@ line-length = 120
 select = ["A", "ARG", "BLE", "E", "F", "I", "PT", "TID251"]
 ignore = ["F403", "F405", # wild imports and  unknown names
 ]
+exclude = ["docs"]
 extend-exclude = ["conftest.py"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
