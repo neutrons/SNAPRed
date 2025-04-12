@@ -278,7 +278,7 @@ class CalibrationService(Service):
             useLiteMode=request.useLiteMode,
             focusGroups=[request.focusGroup],
         )
-        ingredients = self.sousChef.prepPixelGroup(farmFresh)
+        pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
         # fetch the grouping workspace
         self.groceryClerk.grouping(request.focusGroup.name).fromRun(request.runNumber).useLiteMode(request.useLiteMode)
         groupingWorkspace = self.groceryService.fetchGroupingDefinition(self.groceryClerk.build())["workspace"]
@@ -295,7 +295,7 @@ class CalibrationService(Service):
             FocusSpectraRecipe().executeRecipe(
                 InputWorkspace=request.inputWorkspace,
                 GroupingWorkspace=groupingWorkspace,
-                Ingredients=ingredients,
+                PixelGroup=pixelGroup,
                 OutputWorkspace=focusedWorkspace,
             )
         return focusedWorkspace, groupingWorkspace

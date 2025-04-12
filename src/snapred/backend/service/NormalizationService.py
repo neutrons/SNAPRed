@@ -177,7 +177,11 @@ class NormalizationService(Service):
         groceries["outputWorkspace"] = focusedVanadium
         PreprocessReductionRecipe().cook(
             PreprocessReductionRecipe.Ingredients(),
-            groceries,
+            groceries={
+                "inputWorkspace": groceries["inputWorkspace"],
+                "outputWorkspace": groceries["outputWorkspace"],
+                "diffcalWorkspace": groceries["diffcalWorkspace"],
+            },
         )
 
         # focus and normalize by current
@@ -185,7 +189,12 @@ class NormalizationService(Service):
         groceries["outputWorkspace"] = focusedVanadium
         ReductionGroupProcessingRecipe().cook(
             ReductionGroupProcessingRecipe.Ingredients(pixelGroup=ingredients.pixelGroup),
-            groceries,
+            groceries={
+                "inputWorkspace": groceries["inputWorkspace"],
+                "outputWorkspace": groceries["outputWorkspace"],
+                "groupingWorkspace": groceries["groupingWorkspace"],
+                "maskWorkspace": groceries["maskWorkspace"],
+            },
         )
 
         # 2. focus

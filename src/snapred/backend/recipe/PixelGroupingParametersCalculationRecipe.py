@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 
+import numpy as np
 import pydantic
 
 from snapred.backend.dao.ingredients import PixelGroupingIngredients
@@ -30,7 +31,7 @@ class PixelGroupingParametersCalculationRecipe:
         logger.info("Executing recipe for: %s" % ingredients.groupingScheme)
         data: Dict[str, Any] = {}
 
-        res = self.mantidSnapper.PixelGroupingParametersCalculationAlgorithm(
+        res = self.mantidSnapper.PixelGroupingParametersCalculation(
             "Calling algorithm",
             Ingredients=ingredients.json(),
             GroupingWorkspace=groceries["groupingWorkspace"],
@@ -42,14 +43,15 @@ class PixelGroupingParametersCalculationRecipe:
             res = res.get()
 
         data["result"] = True
-        pixelGroupingParams = self.parsePGPList(res)
-        data["parameters"] = pixelGroupingParams
+        pgps = self.parsePGPList(res)
+        data["parameters"] = pgps
         data["tof"] = BinnedValue(
             minimum=ingredients.instrumentState.particleBounds.tof.minimum,
             maximum=ingredients.instrumentState.particleBounds.tof.maximum,
-            binWidth=min(
-                [abs(pgp.dRelativeResolution) / ingredients.nBinsAcrossPeakWidth for pgp in pixelGroupingParams]
-            ),
+            # WARNING: if all subgroups are fully masked, the PGP-list will be empty!
+            binWidth=min([abs(pgp.dRelativeResolution) / ingredients.nBinsAcrossPeakWidth for pgp in pgps])
+            if len(pgps) > 0
+            else np.nan,
             binningMode=BinnedValue.BinningMode.LOG,
         )
 

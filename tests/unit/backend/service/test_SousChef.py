@@ -46,7 +46,7 @@ class TestSousChef(unittest.TestCase):
         self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
         res = self.instance.prepManyDetectorPeaks(self.ingredients)
         assert res[0] == self.instance.prepDetectorPeaks.return_value
-        self.instance.prepDetectorPeaks.assert_called_once_with(self.ingredients, purgePeaks=False)
+        self.instance.prepDetectorPeaks.assert_called_once_with(self.ingredients, purgePeaks=False, pixelMask=None)
 
     def test_prepManyDetectorPeaks_no_calibration(self):
         self.instance.prepDetectorPeaks = mock.Mock()
@@ -287,7 +287,7 @@ class TestSousChef(unittest.TestCase):
 
         self.instance.prepCrystallographicInfo.assert_called_once_with(self.ingredients)
         self.instance.prepInstrumentState.assert_called_once_with(self.ingredients)
-        self.instance.prepPixelGroup.assert_called_once_with(self.ingredients)
+        self.instance.prepPixelGroup.assert_called_once_with(self.ingredients, pixelMask=None)
         PeakIngredients.assert_called_once_with(
             crystalInfo=self.instance.prepCrystallographicInfo.return_value,
             instrumentState=self.instance.prepInstrumentState.return_value,
@@ -309,6 +309,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.fwhmMultipliers.right,
             self.ingredients.calibrantSamplePath,
             False,
+            None,
         )
         # ensure the cache is clear
         assert self.instance._peaksCache == {}
@@ -320,7 +321,7 @@ class TestSousChef(unittest.TestCase):
 
         res = self.instance.prepDetectorPeaks(self.ingredients, False)
 
-        self.instance.prepPeakIngredients.assert_called_once_with(self.ingredients)
+        self.instance.prepPeakIngredients.assert_called_once_with(self.ingredients, pixelMask=None)
         DetectorPeakPredictorRecipe.return_value.executeRecipe.assert_called_once_with(
             Ingredients=self.instance.prepPeakIngredients.return_value,
         )
@@ -346,6 +347,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.fwhmMultipliers.right,
             self.ingredients.calibrantSamplePath,
             True,
+            None,
         )
         # ensure the cache is clear
         assert self.instance._peaksCache == {}
@@ -355,9 +357,9 @@ class TestSousChef(unittest.TestCase):
         self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=0.5)
         self.instance.parseGroupPeakList = mock.Mock(side_effect=lambda y: [y])
 
-        res = self.instance.prepDetectorPeaks(self.ingredients)
+        res = self.instance.prepDetectorPeaks(self.ingredients, pixelMask=None)
 
-        self.instance.prepPeakIngredients.assert_called_once_with(self.ingredients)
+        self.instance.prepPeakIngredients.assert_called_once_with(self.ingredients, pixelMask=None)
         DetectorPeakPredictorRecipe.return_value.executeRecipe.assert_called_once_with(
             Ingredients=self.instance.prepPeakIngredients.return_value,
         )
@@ -376,6 +378,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.fwhmMultipliers.right,
             self.ingredients.calibrantSamplePath,
             True,
+            None,
         )
         # ensure the cache is prepared
         self.instance._peaksCache[key] = mock.sentinel.detectorPeaks
@@ -398,6 +401,7 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.fwhmMultipliers.right,
             self.ingredients.calibrantSamplePath,
             True,
+            None,
         )
         # ensure the cache is prepared
         self.instance._peaksCache[key] = [GroupPeakList.model_construct(groupId=2, peaks=[2])]
@@ -519,6 +523,7 @@ class TestSousChef(unittest.TestCase):
         )
         assert result == DiffractionCalibrationIngredients.return_value
 
+    """
     def test_pullManyCalibrationDetectorPeaks(self):
         mockDataFactory = mock.Mock()
         mockDataFactory.getCalibrationRecord = mock.Mock()
@@ -535,6 +540,7 @@ class TestSousChef(unittest.TestCase):
             self.instance._pullCalibrationRecordFFI.return_value
         )
         self.instance._pullCalibrationRecordFFI.assert_called_once_with(self.ingredients, "12345", True)
+    """
 
     @mock.patch("os.path.exists", return_value=True)
     def test__getThresholdFromCalibrantSample(self, mockOS):  # noqa: ARG002

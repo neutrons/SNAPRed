@@ -1,8 +1,10 @@
 import time
+from typing import Tuple
 
 ## Put test-related imports at the end, so that the normal non-test import sequence is unmodified.
 from unittest import TestCase, mock
 
+import numpy as np
 import pytest
 from mantid.simpleapi import CreateEmptyTableWorkspace, CreateSingleValuedWorkspace, mtd
 from util.Config_helpers import Config_override
@@ -18,6 +20,7 @@ from snapred.backend.recipe.ReductionRecipe import (
     ReductionGroupProcessingRecipe,
     ReductionRecipe,
 )
+from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
@@ -38,7 +41,7 @@ class ReductionRecipeTest(TestCase):
             "diffcalWorkspace": difcWS,
         }
 
-    def mockPixelGroup(self, name: str, isFullyMasked: bool, N_gid: int):
+    def mockPixelGroup(self, name: str, N_gid: int, *, maskedSubgroups: Tuple[int] = ()):
         # Create a mock `PixelGroup` named `name` with `N_gid` mock subgroup PGPs:
         #   `isFullyMasked` => all subgroups will have their `isMasked` flags set,
         #   otherwise, only some will have the `isMasked` flag set.
@@ -47,11 +50,11 @@ class ReductionRecipeTest(TestCase):
             pixelGroupingParameters={
                 gid: mock.Mock(
                     spec=PixelGroupingParameters,
-                    # Unless it's fully masked,
-                    #   generate sometimes masked subgroups when N_gid > 1.
-                    isMasked=True if isFullyMasked else (gid % 2 == 0),
                 )
-                for gid in range(N_gid)
+                # Unless it's fully masked,
+                #   generate sometimes masked subgroups when N_gid > 1:
+                for gid in range(1, N_gid + 1)
+                if gid not in maskedSubgroups
             },
             focusGroup=FocusGroup(name=name, definition=f"path_for_focus_group_{name}"),
         )
@@ -269,8 +272,12 @@ class ReductionRecipeTest(TestCase):
             useLiteMode=True,
             timestamp=time.time(),
             pixelGroups=[
-                self.mockPixelGroup(name="Column", isFullyMasked=False, N_gid=6),
-                self.mockPixelGroup(name="Bank", isFullyMasked=False, N_gid=2),
+                self.mockPixelGroup(name="Column", N_gid=6),
+                self.mockPixelGroup(name="Bank", N_gid=2),
+            ],
+            unmaskedPixelGroups=[
+                self.mockPixelGroup(name="Column", N_gid=6),
+                self.mockPixelGroup(name="Bank", N_gid=2),
             ],
             detectorPeaksMany=[["peaks"], ["peaks2"]],
         )
@@ -396,6 +403,15 @@ class ReductionRecipeTest(TestCase):
                     focusGroup=FocusGroup(name="second_grouping_name", definition="second_grouping_path"),
                 ),
             ],
+            unmaskedPixelGroups=[
+                mock.Mock(
+                    spec=PixelGroup, focusGroup=FocusGroup(name="first_grouping_name", definition="first_grouping_path")
+                ),
+                mock.Mock(
+                    spec=PixelGroup,
+                    focusGroup=FocusGroup(name="second_grouping_name", definition="second_grouping_path"),
+                ),
+            ],
             detectorPeaksMany=[["peaks"], ["peaks2"]],
         )
 
@@ -496,8 +512,12 @@ class ReductionRecipeTest(TestCase):
             useLiteMode=True,
             timestamp=time.time(),
             pixelGroups=[
-                self.mockPixelGroup(name="Column", isFullyMasked=False, N_gid=6),
-                self.mockPixelGroup(name="Bank", isFullyMasked=False, N_gid=2),
+                self.mockPixelGroup(name="Column", N_gid=6),
+                self.mockPixelGroup(name="Bank", N_gid=2),
+            ],
+            unmaskedPixelGroups=[
+                self.mockPixelGroup(name="Column", N_gid=6),
+                self.mockPixelGroup(name="Bank", N_gid=2),
             ],
             detectorPeaksMany=[["peaks"], ["peaks2"]],
         )
@@ -552,14 +572,12 @@ class ReductionRecipeTest(TestCase):
             recipe.ingredients.preprocess(),
             inputWorkspace=recipe.sampleWs,
             diffcalWorkspace=recipe.diffcalWs,
-            maskWorkspace=recipe.maskWs,
         )
         recipe._applyRecipe.assert_any_call(
             PreprocessReductionRecipe,
             recipe.ingredients.preprocess(),
             inputWorkspace=recipe.normalizationWs,
             diffcalWorkspace=recipe.diffcalWs,
-            maskWorkspace=recipe.maskWs,
         )
 
         for groupIndex in (0, 1):
@@ -568,12 +586,14 @@ class ReductionRecipeTest(TestCase):
                 recipe.ingredients.groupProcessing(groupIndex),
                 inputWorkspace=recipe._prepGroupingWorkspaces.return_value[0],
                 groupingWorkspace=recipe.groupingWorkspaces[groupIndex],
+                maskWorkspace=recipe.maskWs,
             )
             recipe._applyRecipe.assert_any_call(
                 ReductionGroupProcessingRecipe,
                 recipe.ingredients.groupProcessing(groupIndex),
                 inputWorkspace=recipe._prepGroupingWorkspaces.return_value[1],
                 groupingWorkspace=recipe.groupingWorkspaces[groupIndex],
+                maskWorkspace=recipe.maskWs,
             )
 
             recipe._applyRecipe.assert_any_call(
@@ -594,7 +614,9 @@ class ReductionRecipeTest(TestCase):
         recipe._getNormalizationWorkspaceName.assert_any_call(0)
         recipe._getNormalizationWorkspaceName.assert_any_call(1)
 
-        recipe.ingredients.effectiveInstrument.assert_not_called()
+        assert recipe.ingredients.effectiveInstrument.call_count == (
+            2 if Config["reduction.output.useEffectiveInstrument"] else 0
+        )
 
         recipe._deleteWorkspace.assert_called_with("norm_grouped")
         assert recipe._deleteWorkspace.call_count == len(recipe._prepGroupingWorkspaces.return_value)
@@ -631,8 +653,12 @@ class ReductionRecipeTest(TestCase):
                 useLiteMode=True,
                 timestamp=time.time(),
                 pixelGroups=[
-                    self.mockPixelGroup(name="Column", isFullyMasked=False, N_gid=6),
-                    self.mockPixelGroup(name="Bank", isFullyMasked=False, N_gid=2),
+                    self.mockPixelGroup(name="Column", N_gid=6),
+                    self.mockPixelGroup(name="Bank", N_gid=2),
+                ],
+                unmaskedPixelGroups=[
+                    self.mockPixelGroup(name="Column", N_gid=6),
+                    self.mockPixelGroup(name="Bank", N_gid=2),
                 ],
                 detectorPeaksMany=[["peaks"], ["peaks2"]],
             )
@@ -703,10 +729,10 @@ class ReductionRecipeTest(TestCase):
             useLiteMode=True,
             timestamp=time.time(),
             pixelGroups=[
-                self.mockPixelGroup(name="Column", isFullyMasked=False, N_gid=6),
-                self.mockPixelGroup(name="Bank", isFullyMasked=False, N_gid=2),
-                self.mockPixelGroup(name="Column2", isFullyMasked=True, N_gid=6),
-                self.mockPixelGroup(name="Bank2", isFullyMasked=True, N_gid=2),
+                self.mockPixelGroup(name="Column", N_gid=6),
+                self.mockPixelGroup(name="Bank", N_gid=2),
+                self.mockPixelGroup(name="Column2", maskedSubgroups=(1, 2, 3, 4, 5, 6), N_gid=6),
+                self.mockPixelGroup(name="Bank2", maskedSubgroups=(1, 2), N_gid=2),
             ],
         )
 
@@ -714,27 +740,61 @@ class ReductionRecipeTest(TestCase):
             result = recipe._isGroupFullyMasked(n)
             assert result == flag
 
+    def test__maskedSubgroups(self):
+        recipe = ReductionRecipe()
+
+        recipe.ingredients = mock.Mock(
+            spec=ReductionIngredients,
+            runNumber="12345",
+            useLiteMode=True,
+            timestamp=time.time(),
+            pixelGroups=[
+                mock.Mock(
+                    spec=PixelGroup,
+                    # Fully-masked subgroups are excluded:
+                    pixelGroupingParameters={
+                        n: mock.Mock(spec=PixelGroupingParameters)
+                        for n in range(1, 51)
+                        if bool(np.random.randint(0, 2))
+                    },
+                )
+            ],
+            unmaskedPixelGroups=[
+                mock.Mock(
+                    spec=PixelGroup,
+                    # All subgroups are included:
+                    pixelGroupingParameters={n: mock.Mock(spec=PixelGroupingParameters) for n in range(1, 51)},
+                )
+            ],
+        )
+
+        maskedSubgroups = recipe._maskedSubgroups(0)
+        assert set(maskedSubgroups) == set(
+            recipe.ingredients.unmaskedPixelGroups[0].pixelGroupingParameters.keys()
+        ) - set(recipe.ingredients.pixelGroups[0].pixelGroupingParameters.keys())
+
     @mock.patch("mantid.simpleapi.mtd", create=True)
     def test_execute_with_fully_masked_group(self, mockMtd):
-        mock_mantid_snapper = mock.Mock()
+        mockMantidSnapper = mock.Mock()
 
-        # Mock the mask and group workspaces:
-        #   for this test, these don't actually determine which groups are fully masked;
-        #   that's determined by the `recipe.ingredients.pixelGroups[n].pixelGroupingParameters.isMasked` flags.
-        mockMaskWorkspace = mock.sentinel.mask
-        mockGroupWorkspace = mock.sentinel.grouping
+        mockMaskworkspace = mock.Mock()
+        mockGroupWorkspace = mock.Mock()
 
-        # Mock mtd to return the group and mask workspaces
-        mockMtd.__getitem__.side_effect = lambda ws_name: mockMaskWorkspace if ws_name == "mask" else mockGroupWorkspace
+        mockGroupWorkspace.getNumberHistograms.return_value = 10
+        mockGroupWorkspace.readY.return_value = [0] * 10
+        mockMaskworkspace.readY.return_value = [0] * 10
 
-        # Attach mocked mantidSnapper to recipe and assign mocked mtd
+        mockMtd.__getitem__.side_effect = lambda ws_name: mockMaskworkspace if ws_name == "mask" else mockGroupWorkspace
+
         recipe = ReductionRecipe()
-        recipe.mantidSnapper = mock_mantid_snapper
+        recipe.mantidSnapper = mockMantidSnapper
         recipe.mantidSnapper.mtd = mockMtd
-        recipe.maskWs = "mask"
 
         # Set up logger to capture warnings
         recipe.logger = mock.Mock()
+
+        recipe._getNormalizationWorkspaceName = mock.Mock()
+        recipe._getNormalizationWorkspaceName.return_value = "norm_grouped"
 
         # Set up ingredients and other variables for the recipe
         recipe.ingredients = mock.Mock(
@@ -743,10 +803,17 @@ class ReductionRecipeTest(TestCase):
             useLiteMode=True,
             timestamp=time.time(),
             pixelGroups=[
-                self.mockPixelGroup(name="The_column_grouping", isFullyMasked=True, N_gid=6),
-                self.mockPixelGroup(name="The_bank_grouping", isFullyMasked=True, N_gid=2),
+                self.mockPixelGroup(name="Column", maskedSubgroups=(1, 2, 3, 4, 5, 6), N_gid=6),
+                self.mockPixelGroup(name="Bank", N_gid=2),
             ],
+            unmaskedPixelGroups=[
+                self.mockPixelGroup(name="Column", N_gid=6),
+                self.mockPixelGroup(name="Bank", N_gid=2),
+            ],
+            detectorPeaksMany=[["peaks"], ["peaks2"]],
         )
+
+        recipe.ingredients.artificialNormalizationIngredients = "test"
         recipe.ingredients.groupProcessing = mock.Mock(
             return_value=lambda groupingIndex: f"groupProcessing_{groupingIndex}"
         )
@@ -756,14 +823,27 @@ class ReductionRecipeTest(TestCase):
         recipe.ingredients.applyNormalization = mock.Mock(
             return_value=lambda groupingIndex: f"applyNormalization_{groupingIndex}"
         )
+        recipe.ingredients.effectiveInstrument = mock.Mock(
+            return_value=lambda groupingIndex: f"unmaskedPixelGroup_{groupingIndex}"
+        )
 
         # Mock internal methods of recipe
         recipe._applyRecipe = mock.Mock()
         recipe._cloneIntermediateWorkspace = mock.Mock()
         recipe._deleteWorkspace = mock.Mock()
         recipe._prepareUnfocusedData = mock.Mock()
+
         recipe._prepGroupingWorkspaces = mock.Mock()
-        recipe._prepGroupingWorkspaces.return_value = ("sample_grouped", "norm_grouped")
+        # Output workspace name must actually be a `WorkspaceName` instance.
+        preReducedOutputWs = (
+            wng.reductionOutput()
+            .runNumber(recipe.ingredients.runNumber)
+            .group("grouped")
+            .timestamp(recipe.ingredients.timestamp)
+            .hidden(True)
+            .build()
+        )
+        recipe._prepGroupingWorkspaces.return_value = (preReducedOutputWs, "norm_grouped")
 
         # Set up other recipe variables
         recipe.sampleWs = "sample"
@@ -777,37 +857,208 @@ class ReductionRecipeTest(TestCase):
         # Execute the recipe
         result = recipe.execute()
 
-        # Assertions for both groups being fully masked
-        groupNames = (
-            recipe.ingredients.pixelGroups[0].focusGroup.name,
-            recipe.ingredients.pixelGroups[1].focusGroup.name,
-        )
-        expected_warning_message_group1 = (
-            f"\nAll pixels within the '{groupNames[0]}' grouping are masked.\n"
-            "Skipping all algorithm execution for this grouping."
+        # Assertions for the group being fully masked
+        groupNames = (recipe.ingredients.pixelGroups[0].focusGroup.name,)
+        expected_warning_message = (
+            f"\nAll pixels within the '{groupNames[0]}' grouping are masked.\n" "This grouping will be skipped!"
         )
 
-        expected_warning_message_group2 = (
-            f"\nAll pixels within the '{groupNames[1]}' grouping are masked.\n"
-            "Skipping all algorithm execution for this grouping."
+        # Check that the expected warnings were logged.
+        recipe.logger().warning.assert_any_call(expected_warning_message)
+
+        # Ensure the warning was called.
+        assert recipe.logger().warning.call_count == 1, "Expected warning to be called for the fully masked group."
+
+        # Ensure no algorithms were applied for the fully masked group.
+        assert recipe._applyRecipe.call_count == 6, "Expected _applyRecipe to not be called for the fully masked group."
+
+        assert "mask" in result["outputs"], "Expected the mask workspace to be included in the outputs."
+
+    @mock.patch("mantid.simpleapi.mtd", create=True)
+    def test_execute_with_masked_subgroups(self, mockMtd):
+        mockMantidSnapper = mock.Mock()
+
+        mockMaskworkspace = mock.Mock()
+        mockGroupWorkspace = mock.Mock()
+
+        mockGroupWorkspace.getNumberHistograms.return_value = 10
+        mockGroupWorkspace.readY.return_value = [0] * 10
+        mockMaskworkspace.readY.return_value = [0] * 10
+
+        mockMtd.__getitem__.side_effect = lambda ws_name: mockMaskworkspace if ws_name == "mask" else mockGroupWorkspace
+
+        recipe = ReductionRecipe()
+        recipe.mantidSnapper = mockMantidSnapper
+        recipe.mantidSnapper.mtd = mockMtd
+
+        # Set up logger to capture warnings
+        recipe.logger = mock.Mock()
+
+        recipe._getNormalizationWorkspaceName = mock.Mock()
+        recipe._getNormalizationWorkspaceName.return_value = "norm_grouped"
+
+        # Set up ingredients and other variables for the recipe
+        maskedSubgroups = (1, 3, 4, 6)
+        recipe.ingredients = mock.Mock(
+            spec=ReductionIngredients,
+            runNumber="12345",
+            useLiteMode=True,
+            timestamp=time.time(),
+            pixelGroups=[
+                self.mockPixelGroup(name="Column", maskedSubgroups=maskedSubgroups, N_gid=6),
+                self.mockPixelGroup(name="Bank", N_gid=2),
+            ],
+            unmaskedPixelGroups=[
+                self.mockPixelGroup(name="Column", N_gid=6),
+                self.mockPixelGroup(name="Bank", N_gid=2),
+            ],
+            detectorPeaksMany=[["peaks"], ["peaks2"]],
         )
 
-        # Check that the warnings were logged for both groups
-        recipe.logger().warning.assert_any_call(expected_warning_message_group1)
-        recipe.logger().warning.assert_any_call(expected_warning_message_group2)
+        recipe.ingredients.artificialNormalizationIngredients = "test"
+        recipe.ingredients.groupProcessing = mock.Mock(
+            return_value=lambda groupingIndex: f"groupProcessing_{groupingIndex}"
+        )
+        recipe.ingredients.generateFocussedVanadium = mock.Mock(
+            return_value=lambda groupingIndex: f"generateFocussedVanadium_{groupingIndex}"
+        )
+        recipe.ingredients.applyNormalization = mock.Mock(
+            return_value=lambda groupingIndex: f"applyNormalization_{groupingIndex}"
+        )
+        recipe.ingredients.effectiveInstrument = mock.Mock(
+            return_value=lambda groupingIndex: f"unmaskedPixelGroup_{groupingIndex}"
+        )
 
-        # Ensure the warning was called twice (once per group)
-        assert (
-            recipe.logger().warning.call_count == 2
-        ), "Expected warning to be logged twice for the fully masked groups."
+        # Mock internal methods of recipe
+        recipe._applyRecipe = mock.Mock()
+        recipe._cloneIntermediateWorkspace = mock.Mock()
+        recipe._deleteWorkspace = mock.Mock()
+        recipe._prepareUnfocusedData = mock.Mock()
 
-        # Ensure no algorithms were applied for the fully masked groups
+        recipe._prepGroupingWorkspaces = mock.Mock()
+        # Output workspace name must actually be a `WorkspaceName` instance.
+        preReducedOutputWs = (
+            wng.reductionOutput()
+            .runNumber(recipe.ingredients.runNumber)
+            .group("grouped")
+            .timestamp(recipe.ingredients.timestamp)
+            .hidden(True)
+            .build()
+        )
+        recipe._prepGroupingWorkspaces.return_value = (preReducedOutputWs, "norm_grouped")
+
+        # Set up other recipe variables
+        recipe.sampleWs = "sample"
+        recipe.diffcalWs = "diffcal_table"
+        recipe.maskWs = "mask"
+        recipe.normalizationWs = "norm"
+        recipe.groupingWorkspaces = ["group1", "group2"]
+        recipe.keepUnfocused = True
+        recipe.convertUnitsTo = "TOF"
+
+        # Execute the recipe
+        result = recipe.execute()  # noqa: F841
+
+        groupNames = (recipe.ingredients.pixelGroups[0].focusGroup.name,)
+        expected_warning_message = (
+            f"\nWithin the '{groupNames[0]}' " + f"grouping:\n    subgroups {list(maskedSubgroups)} are fully masked."
+        )
+
+        # Check that the expected warnings were logged.
+        recipe.logger().warning.assert_any_call(expected_warning_message)
+
+    @mock.patch("mantid.simpleapi.mtd", create=True)
+    def test_execute_with_all_groups_masked(self, mockMtd):
+        mockMantidSnapper = mock.Mock()
+
+        mockMaskworkspace = mock.Mock()
+        mockGroupWorkspace = mock.Mock()
+
+        mockGroupWorkspace.getNumberHistograms.return_value = 10
+        mockGroupWorkspace.readY.return_value = [0] * 10
+        mockMaskworkspace.readY.return_value = [0] * 10
+
+        mockMtd.__getitem__.side_effect = lambda ws_name: mockMaskworkspace if ws_name == "mask" else mockGroupWorkspace
+
+        recipe = ReductionRecipe()
+        recipe.mantidSnapper = mockMantidSnapper
+        recipe.mantidSnapper.mtd = mockMtd
+
+        # Set up logger to capture warnings
+        recipe.logger = mock.Mock()
+
+        recipe._getNormalizationWorkspaceName = mock.Mock()
+        recipe._getNormalizationWorkspaceName.return_value = "norm_grouped"
+
+        # Set up ingredients and other variables for the recipe
+        recipe.ingredients = mock.Mock(
+            spec=ReductionIngredients,
+            runNumber="12345",
+            useLiteMode=True,
+            timestamp=time.time(),
+            pixelGroups=[
+                self.mockPixelGroup(name="Column", maskedSubgroups=(1, 2, 3, 4, 5, 6), N_gid=6),
+                self.mockPixelGroup(name="Bank", maskedSubgroups=(1, 2), N_gid=2),
+            ],
+            unmaskedPixelGroups=[
+                self.mockPixelGroup(name="Column", N_gid=6),
+                self.mockPixelGroup(name="Bank", N_gid=2),
+            ],
+            detectorPeaksMany=[["peaks"], ["peaks2"]],
+        )
+
+        recipe.ingredients.artificialNormalizationIngredients = "test"
+        recipe.ingredients.groupProcessing = mock.Mock(
+            return_value=lambda groupingIndex: f"groupProcessing_{groupingIndex}"
+        )
+        recipe.ingredients.generateFocussedVanadium = mock.Mock(
+            return_value=lambda groupingIndex: f"generateFocussedVanadium_{groupingIndex}"
+        )
+        recipe.ingredients.applyNormalization = mock.Mock(
+            return_value=lambda groupingIndex: f"applyNormalization_{groupingIndex}"
+        )
+        recipe.ingredients.effectiveInstrument = mock.Mock(
+            return_value=lambda groupingIndex: f"unmaskedPixelGroup_{groupingIndex}"
+        )
+
+        # Mock internal methods of recipe
+        recipe._applyRecipe = mock.Mock()
+        recipe._cloneIntermediateWorkspace = mock.Mock()
+        recipe._deleteWorkspace = mock.Mock()
+        recipe._prepareUnfocusedData = mock.Mock()
+
+        recipe._prepGroupingWorkspaces = mock.Mock()
+        # Output workspace name must actually be a `WorkspaceName` instance.
+        preReducedOutputWs = (
+            wng.reductionOutput()
+            .runNumber(recipe.ingredients.runNumber)
+            .group("grouped")
+            .timestamp(recipe.ingredients.timestamp)
+            .hidden(True)
+            .build()
+        )
+        recipe._prepGroupingWorkspaces.return_value = (preReducedOutputWs, "norm_grouped")
+
+        # Set up other recipe variables
+        recipe.sampleWs = "sample"
+        recipe.diffcalWs = "diffcal_table"
+        recipe.maskWs = "mask"
+        recipe.normalizationWs = "norm"
+        recipe.groupingWorkspaces = ["group1", "group2"]
+        recipe.keepUnfocused = True
+        recipe.convertUnitsTo = "TOF"
+
+        # Execute the recipe
+        with pytest.raises(
+            RuntimeError,
+            match="There are no unmasked pixels in any of the groupings.  Please check your mask workspace!",
+        ):
+            result = recipe.execute()  # noqa: F841
+
+        # Ensure no algorithms were applied for the fully masked groups.
         assert (
             recipe._applyRecipe.call_count == 2
         ), "Expected _applyRecipe to not be called for the fully masked groups."
-
-        # Check the output result contains the mask workspace
-        assert result["outputs"][0] == "mask", "Expected the mask workspace to be included in the outputs."
 
     def test_cook(self):
         recipe = ReductionRecipe()

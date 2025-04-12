@@ -37,13 +37,22 @@ class EffectiveInstrumentRecipe(Recipe[Ingredients]):
             self.mantidSnapper.CloneWorkspace(
                 "Clone workspace for reduced instrument", OutputWorkspace=self.outputWS, InputWorkspace=self.inputWS
             )
+
+        # If there are fully-masked subgroups, the corresponding spectrum will not exist.
+        # (TODO: GSAS might prefer a zero spectrum in this case, but we can deal with that later.)
+        ws = self.mantidSnapper.mtd[self.inputWS]
+
+        # Calculate the indices of the existing subgroups:
+        indexMap = {gid: n for n, gid in enumerate(self.unmaskedPixelGroup.groupIDs)}
+        subgroupIndices = [indexMap[ws.getSpectrum(n).getSpectrumNo()] for n in range(ws.getNumberHistograms())]
+
         self.mantidSnapper.EditInstrumentGeometry(
             f"Editing instrument geometry for grouping '{self.unmaskedPixelGroup.focusGroup.name}'",
             Workspace=self.outputWS,
             # TODO: Mantid defect: allow SI units here!
-            L2=self.unmaskedPixelGroup.L2,
-            Polar=np.rad2deg(self.unmaskedPixelGroup.twoTheta),
-            Azimuthal=np.rad2deg(self.unmaskedPixelGroup.azimuth),
+            L2=[self.unmaskedPixelGroup.L2[i] for i in subgroupIndices],
+            Polar=[np.rad2deg(self.unmaskedPixelGroup.twoTheta[i]) for i in subgroupIndices],
+            Azimuthal=[np.rad2deg(self.unmaskedPixelGroup.azimuth[i]) for i in subgroupIndices],
             #
             InstrumentName=f"SNAP_{self.unmaskedPixelGroup.focusGroup.name}",
         )

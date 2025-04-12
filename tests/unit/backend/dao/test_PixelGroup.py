@@ -17,7 +17,6 @@ class TestPixelGroup(unittest.TestCase):
     def setUpClass(cls):
         cls.nBinsAcrossPeakWidth = 7
         cls.groupIDs = [2, 3, 7, 11]
-        cls.isMasked = [False, False, False, False]
         cls.L2 = [10.0, 10.0, 10.0, 10.0]
         cls.twoTheta = [0.1, 0.2, 0.3, 0.4]
         cls.azimuth = [0.0, 0.0, 0.0, 0.0]
@@ -31,7 +30,6 @@ class TestPixelGroup(unittest.TestCase):
         cls.pixelGroupingParametersList = [
             PixelGroupingParameters(
                 groupID=cls.groupIDs[i],
-                isMasked=False,
                 L2=10.0,
                 twoTheta=cls.twoTheta[i],
                 azimuth=0.0,
@@ -77,24 +75,6 @@ class TestPixelGroup(unittest.TestCase):
             )
         except:
             pytest.fail("Failed to make a pixel group from a list of PGPs")
-        assert pg == self.reference
-
-    def test_init_from_lists_of_things(self):
-        try:
-            pg = PixelGroup(
-                groupIDs=self.groupIDs,
-                isMasked=self.isMasked,
-                L2=self.L2,
-                twoTheta=self.twoTheta,
-                azimuth=self.azimuth,
-                dResolution=self.dResolution,
-                dRelativeResolution=self.dRelativeResolution,
-                nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
-                timeOfFlight=self.tofParams,
-                focusGroup=self.focusGroup,
-            )
-        except:
-            pytest.fail("Failed to make a pixel group from base ingredients")
         assert pg == self.reference
 
     # test getter'ed properties

@@ -1,4 +1,4 @@
-Algorithm: `PixelGroupingParametersCalculationAlgorithm`
+Algorithm: `PixelGroupingParametersCalculation`
 ========================================================
 
 Description:

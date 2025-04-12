@@ -17,14 +17,7 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
         pass
 
     def allGroceryKeys(self) -> Set[str]:
-        return {
-            "inputWorkspace",
-            "backgroundWorkspace",
-            "groupingWorkspace",
-            "diffcalWorkspace",
-            "maskWorkspace",
-            "outputWorkspace",
-        }
+        return {"inputWorkspace", "diffcalWorkspace", "outputWorkspace"}
 
     def mandatoryInputWorkspaces(self) -> Set[str]:
         return {"inputWorkspace"}
@@ -37,7 +30,6 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
         """
         self.sampleWs = groceries["inputWorkspace"]
         self.diffcalWs = groceries.get("diffcalWorkspace", "")
-        self.maskWs = groceries.get("maskWorkspace", "")
         self.outputWs = groceries.get("outputWorkspace", groceries["inputWorkspace"])
 
     def queueAlgos(self):
@@ -53,27 +45,12 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
                 OutputWorkspace=self.outputWs,
             )
 
-        if self.maskWs != "":
-            self.mantidSnapper.MaskDetectorFlags(
-                "Applying pixel mask...",
-                MaskWorkspace=self.maskWs,
-                OutputWorkspace=self.outputWs,
-            )
-
         if self.diffcalWs != "":
             self.mantidSnapper.ApplyDiffCal(
                 "Applying diffcal..",
                 InstrumentWorkspace=self.outputWs,
                 CalibrationWorkspace=self.diffcalWs,
             )
-
-        # convert to tof if needed
-        self.mantidSnapper.ConvertUnits(
-            "Converting to TOF...",
-            InputWorkspace=self.outputWs,
-            Target="TOF",
-            OutputWorkspace=self.outputWs,
-        )
 
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         """

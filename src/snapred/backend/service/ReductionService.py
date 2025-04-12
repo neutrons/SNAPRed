@@ -341,13 +341,15 @@ class ReductionService(Service):
 
         self.groceryService.fetchCompatiblePixelMask(combinedMask, runNumber, useLiteMode)
         for mask in allMasks.values():
-            self.mantidSnapper.BinaryOperateMasks(
-                f"combine from pixel mask: '{mask}'...",
-                InputWorkspace1=combinedMask,
-                InputWorkspace2=mask,
-                OperationType="OR",
-                OutputWorkspace=combinedMask,
-            )
+            # If there is no mask corresponding to the diffraction calibration, it will be set to the empty string.
+            if bool(mask):
+                self.mantidSnapper.BinaryOperateMasks(
+                    f"combine from pixel mask: '{mask}'...",
+                    InputWorkspace1=combinedMask,
+                    InputWorkspace2=mask,
+                    OperationType="OR",
+                    OutputWorkspace=combinedMask,
+                )
 
         self.mantidSnapper.executeQueue()
         return combinedMask

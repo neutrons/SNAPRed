@@ -167,11 +167,13 @@ class SousChef(Service):
         )
         return CrystallographicInfoService().ingest(*key)["crystalInfo"]
 
-    def prepPeakIngredients(self, ingredients: FarmFreshIngredients) -> PeakIngredients:
+    def prepPeakIngredients(
+        self, ingredients: FarmFreshIngredients, pixelMask: Optional[WorkspaceName] = None
+    ) -> PeakIngredients:
         return PeakIngredients(
             crystalInfo=self.prepCrystallographicInfo(ingredients),
             instrumentState=self.prepInstrumentState(ingredients),
-            pixelGroup=self.prepPixelGroup(ingredients),
+            pixelGroup=self.prepPixelGroup(ingredients, pixelMask=pixelMask),
             peakIntensityThreshold=ingredients.peakIntensityThreshold,
         )
 
@@ -180,7 +182,9 @@ class SousChef(Service):
         # Implemented as a separate method to facilitate testing
         return pydantic.TypeAdapter(List[GroupPeakList]).validate_json(src)
 
-    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=True) -> List[GroupPeakList]:
+    def prepDetectorPeaks(
+        self, ingredients: FarmFreshIngredients, purgePeaks=True, pixelMask: Optional[WorkspaceName] = None
+    ) -> List[GroupPeakList]:
         # NOTE purging overlapping peaks is necessary for proper functioning inside the DiffCal process
         # this should not be user-settable, and therefore should not be included inside the FarmFreshIngredients list
         key = (
@@ -193,15 +197,17 @@ class SousChef(Service):
             ingredients.fwhmMultipliers.right,
             ingredients.calibrantSamplePath,
             purgePeaks,
+            pixelMask,
         )
         crystalDMin = ingredients.crystalDBounds.minimum
         crystalDMax = ingredients.crystalDBounds.maximum
         ingredients.peakIntensityThreshold = self._getThresholdFromCalibrantSample(ingredients.calibrantSamplePath)
         if key not in self._peaksCache:
-            ingredients = self.prepPeakIngredients(ingredients)
+            ingredients = self.prepPeakIngredients(ingredients, pixelMask=pixelMask)
             res = DetectorPeakPredictorRecipe().executeRecipe(
                 Ingredients=ingredients,
             )
+
             if purgePeaks:
                 res = PurgeOverlappingPeaksRecipe().executeRecipe(
                     Ingredients=ingredients,
@@ -209,11 +215,14 @@ class SousChef(Service):
                     crystalDMin=crystalDMin,
                     crystalDMax=crystalDMax,
                 )
+
             self._peaksCache[key] = self.parseGroupPeakList(res)
 
         return deepcopy(self._peaksCache[key])
 
-    def prepManyDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[List[GroupPeakList]]:
+    def prepManyDetectorPeaks(
+        self, ingredients: FarmFreshIngredients, pixelMask: Optional[WorkspaceName] = None
+    ) -> List[List[GroupPeakList]]:
         # this also needs to check if it is in fact the default calibration
         if ingredients.calibrantSamplePath is None:
             mode = "lite" if ingredients.useLiteMode else "native"
@@ -224,7 +233,7 @@ class SousChef(Service):
         ingredients_ = ingredients.model_copy()
         for focusGroup in ingredients.focusGroups:
             ingredients_.focusGroup = focusGroup
-            detectorPeaks.append(self.prepDetectorPeaks(ingredients_, purgePeaks=False))
+            detectorPeaks.append(self.prepDetectorPeaks(ingredients_, purgePeaks=False, pixelMask=pixelMask))
         return detectorPeaks
 
     # FFI = Farm Fresh Ingredients
@@ -246,6 +255,7 @@ class SousChef(Service):
                 ingredients.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients.calibrantSamplePath).stem)
         return ingredients
 
+    """
     def _pullManyCalibrationDetectorPeaks(
         self, ingredients: FarmFreshIngredients, runNumber: str, useLiteMode: bool
     ) -> FarmFreshIngredients:
@@ -259,6 +269,7 @@ class SousChef(Service):
             detectorPeaks = self.prepManyDetectorPeaks(ingredients)
 
         return detectorPeaks
+    """
 
     # FFI = Farm Fresh Ingredients
     def _pullNormalizationRecordFFI(
@@ -294,7 +305,7 @@ class SousChef(Service):
             smoothingParameter=smoothingParameter,
             calibrantSamplePath=ingredients_.calibrantSamplePath,
             peakIntensityThreshold=self._getThresholdFromCalibrantSample(ingredients_.calibrantSamplePath),
-            detectorPeaksMany=self.prepManyDetectorPeaks(ingredients_),
+            detectorPeaksMany=self.prepManyDetectorPeaks(ingredients_, combinedPixelMask),
             keepUnfocused=ingredients_.keepUnfocused,
             convertUnitsTo=ingredients_.convertUnitsTo,
         )

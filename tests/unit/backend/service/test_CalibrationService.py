@@ -996,7 +996,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         FocusSpectraRecipe().executeRecipe.assert_called_once_with(
             InputWorkspace=request.inputWorkspace,
             GroupingWorkspace=groupingWorkspace,
-            Ingredients=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
+            PixelGroup=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
             OutputWorkspace=focusedWorkspace,
         )
         assert res == (focusedWorkspace, groupingWorkspace)

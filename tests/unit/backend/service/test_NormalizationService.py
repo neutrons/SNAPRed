@@ -268,6 +268,8 @@ class TestNormalizationService(unittest.TestCase):
             "inputWorkspace": "input_ws",
             "groupingWorkspace": "grouping_ws",
             "outputWorkspace": "output_ws",
+            "diffcalWorkspace": "diffcal_ws",
+            "maskWorkspace": "mask_ws",
         }
         mockGroceryService.workspaceDoesExist.return_value = False
         mockVanadiumCorrection.executeRecipe.return_value = "corrected_vanadium_ws"
