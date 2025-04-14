@@ -108,7 +108,7 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         """
         Process input neutron data
         """
-
+        logger.debug(f"Groceries: {groceries}")
         self.diagnosticSuffix = FIT_PEAK_DIAG_SUFFIX.copy()
 
         self.originalWStof = groceries["inputWorkspace"]

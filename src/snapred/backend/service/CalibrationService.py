@@ -147,13 +147,15 @@ class CalibrationService(Service):
         if request.startingTableVersion == VersionState.DEFAULT:
             request.startingTableVersion = VERSION_START
 
-        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).dirty().add()
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(
             request.focusGroup.name
-        ).useLiteMode(request.useLiteMode).add()
+        ).useLiteMode(request.useLiteMode).dirty().add()
         self.groceryClerk.name("previousCalibration").diffcal_table(
             request.runNumber, request.startingTableVersion
-        ).useLiteMode(request.useLiteMode).add()
+        ).useLiteMode(request.useLiteMode).dirty().add()
         # names
         diffcalOutputName = (
             wng.diffCalOutput().unit(wng.Units.DSP).runNumber(request.runNumber).group(request.focusGroup.name).build()
@@ -186,6 +188,7 @@ class CalibrationService(Service):
             raise RuntimeError("Pixel Calibration failed")
 
         payload.groceries["previousCalibration"] = pixelRes.calibrationTable
+        payload.groceries["inputWorkspace"] = pixelRes.outputWorkspace
         groupRes = self.groupCalibration(payload)
         if not groupRes.result:
             raise RuntimeError("Group Calibration failed")
