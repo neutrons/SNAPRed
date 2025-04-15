@@ -121,6 +121,11 @@ class NormalizationService(Service):
             self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
                 request.useLiteMode
             ).dirty().add()
+        else:
+            # check that the corrected vanadium workspaces exist already
+            if not self.groceryService.workspaceDoesExist(correctedVanadium):
+                raise RuntimeError(f"Workspace {correctedVanadium} does not exist. Renew flag incorrectly applied.")
+
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(groupingScheme).useLiteMode(
             request.useLiteMode
         ).add()
