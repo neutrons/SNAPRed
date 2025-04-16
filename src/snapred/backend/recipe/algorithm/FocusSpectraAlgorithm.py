@@ -34,6 +34,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
                 "",
                 Direction.Input,
                 PropertyMode.Mandatory,
+                validator=WorkspaceUnitValidator("dSpacing"),
             ),
             doc="Workspace containing values at each pixel",
         )
@@ -81,6 +82,10 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         errors = {}
         # make sure the input workspace can be reduced by this grouping workspace
         inWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
+
+        if not FocusSpectraAlgorithm.unitsMatch(inWS, "dSpacing"):
+            errors["InputWorkspace"] = "Input workspace must be in dSpacing"
+
         groupWS = self.mantidSnapper.mtd[self.getPropertyValue("GroupingWorkspace")]
         if not isinstance(groupWS, GroupingWorkspace):
             errors["GroupingWorkspace"] = "Grouping workspace must be an actual GroupingWorkspace"
@@ -97,12 +102,10 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             errors["InputWorkspace"] = msg
             errors["GroupingWorkspace"] = msg
 
-        if inWS.getAxis(0).getUnit().unitID() != "dSpacing" and inWS.getAxis(0).getUnit().unitID() != "TOF":
-            errors["InputWorkspace"] = (
-                f"Input workspace must be in dSpacing or TOF units, found {inWS.getAxis(0).getUnit().unitID()}"
-            )
-
         return errors
+
+    def unitsMatch(ws, unit) -> bool:
+        return ws.getAxis(0).getUnit().unitID() == unit
 
     def PyExec(self):
         pixelGroup: PixelGroup = PixelGroup.model_validate_json(self.getPropertyValue("PixelGroup"))
@@ -111,18 +114,9 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
 
         self.log().debug("Execute of FocusSpectra START!")
 
-        # convert to d-spacing and diffraction focus and rebin ragged
-        self.mantidSnapper.ConvertUnits(
-            "Converting to Units of dSpacing...",
-            InputWorkspace=self.inputWSName,
-            Emode="Elastic",
-            Target="dSpacing",
-            OutputWorkspace=self.outputWSName,
-            ConvertFromPointData=True,
-        )
         self.mantidSnapper.DiffractionFocussing(
             "Performing Diffraction Focusing ...",
-            InputWorkspace=self.outputWSName,
+            InputWorkspace=self.inputWSName,
             GroupingWorkspace=self.groupingWSName,
             OutputWorkspace=self.outputWSName,
             PreserveEvents=True,

@@ -26,7 +26,7 @@ from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe
+from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe, ConvertUnitsRecipe
 from snapred.backend.recipe.RebinFocussedGroupDataRecipe import RebinFocussedGroupDataRecipe
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
@@ -428,21 +428,19 @@ class ReductionService(Service):
             combinedPixelMask = None
 
         # gather the input workspace and the diffcal table
-        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode)
+        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).diffCalVersion(calVersion).dirty()
+
         if not request.liveDataMode:
             self.groceryClerk.add()
         else:
             self.groceryClerk.liveData(duration=request.liveDataDuration).add()
 
-        if calVersion is not None:
-            self.groceryClerk.name("diffcalWorkspace").diffcal_table(
-                request.runNumber, calVersion, alternativeState=request.alternativeState
-            ).useLiteMode(request.useLiteMode).add()
-
         if normVersion is not None:  # WARNING: version may be _zero_!
             self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, normVersion).useLiteMode(
                 request.useLiteMode
-            ).add()
+            ).diffCalVersion(calVersion).dirty().add()
 
         groceries = self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
@@ -606,8 +604,16 @@ class ReductionService(Service):
             .type(wng.ArtificialNormWorkspaceType.SOURCE)
             .build()
         )
+
+        ConvertUnitsRecipe().executeRecipe(
+            InputWorkspace=runWorkspace,
+            OutputWorkspace=artNormBasisWorkspace,
+            Target="dSpacing",
+            Emode="Elastic",
+        )
+
         groceries = {
-            "inputWorkspace": runWorkspace,
+            "inputWorkspace": artNormBasisWorkspace,
             "groupingWorkspace": columnGroupWorkspace,
             "outputWorkspace": artNormBasisWorkspace,
         }

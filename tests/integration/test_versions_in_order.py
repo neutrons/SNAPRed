@@ -201,7 +201,7 @@ class ImitationGroceryService(GroceryService):
         }
 
     def fetchCalibrationWorkspaces(self, item: Any) -> Dict[str, Any]:
-        runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
+        runNumber, version, useLiteMode = item.runNumber, item.diffCalVersion, item.useLiteMode
         tableWorkspaceName = self.createDiffCalTableWorkspaceName(runNumber, useLiteMode, version)
         maskWorkspaceName = self._createDiffCalMaskWorkspaceName(runNumber, useLiteMode, version)
 

@@ -250,14 +250,14 @@ class TestNormalizationService(unittest.TestCase):
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "RawVanadiumCorrectionRecipe")
-    @patch(thisService + "PreprocessReductionRecipe")
     @patch(thisService + "ReductionGroupProcessingRecipe")
     @patch(thisService + "SmoothDataExcludingPeaksRecipe")
+    @patch(thisService + "ConvertUnitsRecipe")
     def test_normalization(
         self,
+        mockConvertUnitsRecipe,
         mockSmoothDataExcludingPeaks,
         mockReductionGroupProcessing,  # noqa: ARG002
-        mockPreprocessReduction,
         mockVanadiumCorrection,
         FarmFreshIngredients,
     ):
@@ -273,7 +273,6 @@ class TestNormalizationService(unittest.TestCase):
         }
         mockGroceryService.workspaceDoesExist.return_value = False
         mockVanadiumCorrection.executeRecipe.return_value = "corrected_vanadium_ws"
-        mockPreprocessReduction.executeRecipe.return_value = "focussed_vanadium_ws"
         mockSmoothDataExcludingPeaks.executeRecipe.return_value = "smoothed_output_ws"
 
         self.instance = NormalizationService()
@@ -295,7 +294,7 @@ class TestNormalizationService(unittest.TestCase):
         self.assertIn("smoothedVanadium", result)  # noqa: PT009
         mockGroceryService.fetchGroceryDict.assert_called_once()
         mockVanadiumCorrection.assert_called_once()
-        mockPreprocessReduction.assert_called_once()
+        mockConvertUnitsRecipe().executeRecipe.assert_called_once()
         mockSmoothDataExcludingPeaks.assert_called_once()
 
         mockVanadiumCorrection.reset_mock()

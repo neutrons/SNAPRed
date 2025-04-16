@@ -324,7 +324,7 @@ class TestGroceryService(unittest.TestCase):
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
             workspaceType="diffcal_output",
-            version=self.version,
+            diffCalVersion=self.version,
             unit=wng.Units.TOF,
             groupingScheme="some",
         )
@@ -368,7 +368,7 @@ class TestGroceryService(unittest.TestCase):
     def test_normalization_workspace_filename(self):
         # Test name generation for diffraction-calibration table filename
         self.instance.dataService.normalizationIndexer = self.mockIndexer("root", "normalization")
-        res = self.instance._createNormalizationWorkspaceFilename(self.runNumber, self.useLiteMode, self.version)
+        res = self.instance._lookupNormalizationWorkspaceFilename(self.runNumber, self.useLiteMode, self.version)
         assert self.runNumber in res
         assert wnvf.formatVersion(self.version) in res
         assert ".nxs" in res
@@ -425,7 +425,7 @@ class TestGroceryService(unittest.TestCase):
         item = GroceryListItem(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
-            version=self.version,
+            diffCalVersion=self.version,
             unit=wng.Units.TOF,
             groupingScheme=wng.Groups.UNFOC,
             workspaceType="diffcal_output",
@@ -440,7 +440,7 @@ class TestGroceryService(unittest.TestCase):
         item = GroceryListItem(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
-            version=self.version,
+            diffCalVersion=self.version,
             unit=wng.Units.DSP,
             groupingScheme=wng.Groups.UNFOC,
             workspaceType="diffcal_output",
@@ -467,7 +467,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_normalization_workspacename(self):
         # Test name generation for normalization workspaces
-        res = self.instance._createNormalizationWorkspaceName(self.runNumber, self.useLiteMode, self.version)
+        res = self.instance._createNormalizationWorkspaceName(self.runNumber, self.useLiteMode, self.version, False)
         assert self.runNumber in res
         assert wnvf.formatVersion(self.version) in res
 
@@ -886,7 +886,12 @@ class TestGroceryService(unittest.TestCase):
 
         def generateTestItem(deep=False):  # noqa: ARG001
             return mock.Mock(
-                spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=False, loader="", liveDataArgs=None
+                spec=GroceryListItem,
+                runNumber=self.runNumber,
+                useLiteMode=False,
+                loader="",
+                liveDataArgs=None,
+                diffCalVersion=None,
             )
 
         testItem = generateTestItem()
@@ -947,7 +952,12 @@ class TestGroceryService(unittest.TestCase):
         # test calling with Lite data, that it will call to lite service
         def generateTestItem(deep=False):  # noqa: ARG001
             m = mock.Mock(
-                spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=True, loader="", liveDataArgs=None
+                spec=GroceryListItem,
+                runNumber=self.runNumber,
+                useLiteMode=True,
+                loader="",
+                liveDataArgs=None,
+                diffCalVersion=None,
             )
             m.model_copy.side_effect = generateTestItem
             return m
@@ -984,7 +994,12 @@ class TestGroceryService(unittest.TestCase):
 
         def generateTestItem(deep=False):  # noqa: ARG001
             return mock.Mock(
-                spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=False, loader="", liveDataArgs=None
+                spec=GroceryListItem,
+                runNumber=self.runNumber,
+                useLiteMode=False,
+                loader="",
+                liveDataArgs=None,
+                diffCalVersion=None,
             )
 
         testItem = generateTestItem()
@@ -1077,7 +1092,12 @@ class TestGroceryService(unittest.TestCase):
 
         def generateTestItem(deep=False):  # noqa: ARG001
             m = mock.Mock(
-                spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=True, loader="", liveDataArgs=None
+                spec=GroceryListItem,
+                runNumber=self.runNumber,
+                useLiteMode=True,
+                loader="",
+                liveDataArgs=None,
+                diffCalVersion=None,
             )
             m.model_copy.side_effect = generateTestItem
             return m
@@ -1088,7 +1108,12 @@ class TestGroceryService(unittest.TestCase):
 
         def generateTestItem(deep=False):  # noqa: ARG001
             return mock.Mock(
-                spec=GroceryListItem, runNumber=self.runNumber, useLiteMode=False, loader="", liveDataArgs=None
+                spec=GroceryListItem,
+                runNumber=self.runNumber,
+                useLiteMode=False,
+                loader="",
+                liveDataArgs=None,
+                diffCalVersion=None,
             )
 
         nativeItem = generateTestItem()
@@ -2762,7 +2787,7 @@ class TestGroceryService(unittest.TestCase):
             diffCalTableFilename = self.instance._createDiffCalTableFilepath(
                 runNumber=groceryList[0].runNumber,
                 useLiteMode=groceryList[0].useLiteMode,
-                version=groceryList[0].version,
+                version=groceryList[0].diffCalVersion,
             )
             tmpRoot.addFileAs(self.sampleDiffCalFilePath, diffCalTableFilename)
             assert Path(diffCalTableFilename).exists()
@@ -2783,6 +2808,7 @@ class TestGroceryService(unittest.TestCase):
             diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
             diffCalMaskName = None
             self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
+            self.instance.fetchCalibrationWorkspaces = mock.Mock()
             items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == ""
 
@@ -2832,7 +2858,7 @@ class TestGroceryService(unittest.TestCase):
             diffCalTableFilename = self.instance._createDiffCalTableFilepath(
                 runNumber=groceryList[0].runNumber,
                 useLiteMode=groceryList[0].useLiteMode,
-                version=groceryList[0].version,
+                version=groceryList[0].diffCalVersion,
             )
             tmpRoot.addFileAs(self.sampleDiffCalFilePath, diffCalTableFilename)
             assert Path(diffCalTableFilename).exists()
@@ -2853,8 +2879,10 @@ class TestGroceryService(unittest.TestCase):
             groceryList = GroceryListItem.builder().native().normalization(self.runNumber1, self.version).buildList()
 
             # normalization filename is constructed
-            normalizationWorkspaceName = wng.rawVanadium().runNumber(self.runNumber1).version(self.version).build()
-            normalizationFilename = self.instance._createNormalizationWorkspaceFilename(
+            normalizationWorkspaceName = (
+                wng.rawVanadium().runNumber(self.runNumber1).version(self.version).hidden(True).build()
+            )
+            normalizationFilename = self.instance._lookupNormalizationWorkspaceFilename(
                 runNumber=groceryList[0].runNumber,
                 useLiteMode=groceryList[0].useLiteMode,
                 version=self.version,
@@ -2871,13 +2899,64 @@ class TestGroceryService(unittest.TestCase):
                 f"Fetching normalization workspace for run {self.runNumber1}, version {self.version}"
             )
 
+    @mock.patch(ThisService + "logger")
+    def test_fetch_grocery_list_normalization_bust_cache(self, mockLogger):
+        # Test of workspace type "normalization" as `Input` argument in the `GroceryList`
+        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+        with state_root_redirect(self.instance.dataService) as tmpRoot:
+            self.instance.dataService.normalizationIndexer = self.mockIndexer(tmpRoot.path(), "normalization")
+
+            version2 = self.version + 1
+            groceryList = GroceryListItem.builder().native().normalization(self.runNumber1, self.version).buildList()
+            groceryList2 = GroceryListItem.builder().native().normalization(self.runNumber1, version2).buildList()
+
+            # normalization filename is constructed
+            normalizationWorkspaceName = (
+                wng.rawVanadium().runNumber(self.runNumber1).version(self.version).hidden(True).build()
+            )
+            normalizationFilename = self.instance._lookupNormalizationWorkspaceFilename(
+                runNumber=groceryList[0].runNumber,
+                useLiteMode=groceryList[0].useLiteMode,
+                version=self.version,
+            )
+            tmpRoot.addFileAs(self.sampleWSFilePath, normalizationFilename)
+            assert Path(normalizationFilename).exists()
+
+            normalizationWorkspaceName2 = (
+                wng.rawVanadium().runNumber(self.runNumber1).version(version2).hidden(True).build()
+            )
+            normalizationFilename2 = self.instance._lookupNormalizationWorkspaceFilename(
+                runNumber=groceryList2[0].runNumber,
+                useLiteMode=groceryList2[0].useLiteMode,
+                version=version2,
+            )
+            tmpRoot.addFileAs(self.sampleWSFilePath, normalizationFilename2)
+            assert Path(normalizationFilename2).exists()
+
+            assert not mtd.doesExist(normalizationWorkspaceName)
+            items = self.instance.fetchGroceryList(groceryList)
+            assert items[0] == normalizationWorkspaceName
+            assert mtd.doesExist(normalizationWorkspaceName)
+
+            assert not mtd.doesExist(normalizationWorkspaceName2)
+            items = self.instance.fetchGroceryList(groceryList2)
+            assert mtd.doesExist(normalizationWorkspaceName2)
+            assert not mtd.doesExist(normalizationWorkspaceName)
+            assert items[0] == normalizationWorkspaceName2
+
+            mockLogger.info.assert_any_call(
+                f"Fetching normalization workspace for run {self.runNumber1}, version {self.version}"
+            )
+
     def test_fetch_grocery_list_normalization_cached(self):
         # Test of workspace type "normalization" as `Input` argument in the `GroceryList`:
         #   workspace already in ADS
         self.instance.grocer = mock.Mock()
         self.instance.dataService.normalizationIndexer = self.mockIndexer()
         groceryList = GroceryListItem.builder().native().normalization(self.runNumber1, self.version).buildList()
-        normalizationWorkspaceName = wng.rawVanadium().runNumber(self.runNumber1).version(self.version).build()
+        normalizationWorkspaceName = (
+            wng.rawVanadium().runNumber(self.runNumber1).version(self.version).hidden(True).build()
+        )
         CloneWorkspace(
             InputWorkspace=self.sampleWS,
             OutputWorkspace=normalizationWorkspaceName,
@@ -2900,7 +2979,7 @@ class TestGroceryService(unittest.TestCase):
 
             # Bypass "version" validation, to trigger "unreachable code" section:
             groceryList = GroceryListItem.builder().native().normalization(self.runNumber1, self.version).buildList()
-            groceryList[0].version = None
+            groceryList[0].normCalVersion = None
 
             with pytest.raises(RuntimeError, match="Could not find any Normalizations associated with run.*"):
                 self.instance.fetchGroceryList(groceryList)
@@ -3504,8 +3583,11 @@ class TestGroceryService(unittest.TestCase):
             instance.mantidSnapper = mock.Mock()
             instance.dataService = mock.Mock()
             instance.dataService.generateInstrumentState = mock.Mock(return_value=testCalibrationData.instrumentState)
+            instance.fetchDiffCalForSample = mock.Mock(return_value=("diffcal_table", "diffcal_mask"))
 
-            item = GroceryListItem(workspaceType="neutron", runNumber="123", useLiteMode=True, loader="")
+            item = GroceryListItem(
+                workspaceType="neutron", runNumber="123", useLiteMode=True, loader="", diffCalVersion="3"
+            )
             instance._processNeutronDataCopy(item, "wsName")
 
             assert instance.mantidSnapper.CropWorkspace.call_count == 1
@@ -3529,6 +3611,10 @@ class TestGroceryService(unittest.TestCase):
                 instance.mantidSnapper.RemovePromptPulse.call_args[1]["Frequency"]
                 == testCalibrationData.instrumentState.instrumentConfig.frequency
             )
+
+            assert instance.mantidSnapper.ApplyDiffCal.call_count == 1
+            assert instance.mantidSnapper.ApplyDiffCal.call_args[1]["InstrumentWorkspace"] == "wsName"
+            assert instance.mantidSnapper.ApplyDiffCal.call_args[1]["CalibrationWorkspace"] == "diffcal_table"
 
             # reset mocks
             instance.mantidSnapper.reset_mock()

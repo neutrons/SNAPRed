@@ -16,7 +16,6 @@ from snapred.backend.recipe.ReductionRecipe import (
     ApplyNormalizationRecipe,
     EffectiveInstrumentRecipe,
     GenerateFocussedVanadiumRecipe,
-    PreprocessReductionRecipe,
     ReductionGroupProcessingRecipe,
     ReductionRecipe,
 )
@@ -298,7 +297,7 @@ class ReductionRecipeTest(TestCase):
         recipe._deleteWorkspace = mock.Mock()
         recipe._prepareUnfocusedData = mock.Mock()
 
-        recipe._prepGroupingWorkspaces = mock.Mock()
+        recipe._generateWorkspaceNamesForGroup = mock.Mock()
         # Output workspace name must actually be a `WorkspaceName` instance.
         preReducedOutputWs = (
             wng.reductionOutput()
@@ -308,7 +307,7 @@ class ReductionRecipeTest(TestCase):
             .hidden(True)
             .build()
         )
-        recipe._prepGroupingWorkspaces.return_value = (preReducedOutputWs, "norm_grouped")
+        recipe._generateWorkspaceNamesForGroup.return_value = (preReducedOutputWs, "norm_grouped")
         # Set up other recipe variables
         recipe.sampleWs = "sample"
         recipe.diffcalWs = "diffcal_table"
@@ -323,7 +322,7 @@ class ReductionRecipeTest(TestCase):
 
         # Assertions
         recipe._prepareUnfocusedData.assert_called_once_with("sample", "mask", "dSpacing")
-        assert recipe._deleteWorkspace.call_count == len(recipe._prepGroupingWorkspaces.return_value)
+        assert recipe._deleteWorkspace.call_count == len(recipe._generateWorkspaceNamesForGroup.return_value)
         recipe._deleteWorkspace.assert_called_with("norm_grouped")
 
         finalReducedOutputWs = preReducedOutputWs.builder.hidden(False).build()
@@ -380,7 +379,7 @@ class ReductionRecipeTest(TestCase):
         recipe.sampleWs = "sample"
         recipe._cloneWorkspace = mock.Mock(side_effect=lambda inputWs, outputWs: outputWs)  # noqa: ARG005
 
-        sampleClone, normClone = recipe._prepGroupingWorkspaces(0)
+        sampleClone, normClone = recipe._generateWorkspaceNamesForGroup(0)
         assert sampleClone == preReducedOutputWsName
         assert normClone == normWsName
 
@@ -428,7 +427,7 @@ class ReductionRecipeTest(TestCase):
         recipe.sampleWs = "sample"
         recipe._cloneWorkspace = mock.Mock(side_effect=lambda inputWs, outputWs: outputWs)  # noqa: ARG005
 
-        sampleClone, normClone = recipe._prepGroupingWorkspaces(0)
+        sampleClone, normClone = recipe._generateWorkspaceNamesForGroup(0)
         assert sampleClone == preReducedOutputWsName
         assert normClone is None
 
@@ -542,7 +541,7 @@ class ReductionRecipeTest(TestCase):
         recipe._deleteWorkspace = mock.Mock()
         recipe._prepareUnfocusedData = mock.Mock()
 
-        recipe._prepGroupingWorkspaces = mock.Mock()
+        recipe._generateWorkspaceNamesForGroup = mock.Mock()
         # Output workspace name must actually be a `WorkspaceName` instance.
         preReducedOutputWs = (
             wng.reductionOutput()
@@ -552,7 +551,11 @@ class ReductionRecipeTest(TestCase):
             .hidden(True)
             .build()
         )
-        recipe._prepGroupingWorkspaces.return_value = (preReducedOutputWs, "norm_grouped")
+        prepGroupingWorkspacesReturns = [
+            (preReducedOutputWs, f"reduced_normalization_{0}_{wnvf.formatTimestamp(recipe.ingredients.timestamp)}"),
+            (preReducedOutputWs, f"reduced_normalization_{1}_{wnvf.formatTimestamp(recipe.ingredients.timestamp)}"),
+        ]
+        recipe._generateWorkspaceNamesForGroup.side_effect = prepGroupingWorkspacesReturns
 
         # Set up other recipe variables
         recipe.sampleWs = "sample"
@@ -567,46 +570,36 @@ class ReductionRecipeTest(TestCase):
         result = recipe.execute()
 
         # Perform assertions
-        recipe._applyRecipe.assert_any_call(
-            PreprocessReductionRecipe,
-            recipe.ingredients.preprocess(),
-            inputWorkspace=recipe.sampleWs,
-            diffcalWorkspace=recipe.diffcalWs,
-        )
-        recipe._applyRecipe.assert_any_call(
-            PreprocessReductionRecipe,
-            recipe.ingredients.preprocess(),
-            inputWorkspace=recipe.normalizationWs,
-            diffcalWorkspace=recipe.diffcalWs,
-        )
 
         for groupIndex in (0, 1):
             recipe._applyRecipe.assert_any_call(
                 ReductionGroupProcessingRecipe,
                 recipe.ingredients.groupProcessing(groupIndex),
-                inputWorkspace=recipe._prepGroupingWorkspaces.return_value[0],
+                inputWorkspace=recipe.sampleWs,
                 groupingWorkspace=recipe.groupingWorkspaces[groupIndex],
                 maskWorkspace=recipe.maskWs,
+                outputWorkspace=prepGroupingWorkspacesReturns[groupIndex][0],
             )
             recipe._applyRecipe.assert_any_call(
                 ReductionGroupProcessingRecipe,
                 recipe.ingredients.groupProcessing(groupIndex),
-                inputWorkspace=recipe._prepGroupingWorkspaces.return_value[1],
+                inputWorkspace=recipe.normalizationWs,
                 groupingWorkspace=recipe.groupingWorkspaces[groupIndex],
                 maskWorkspace=recipe.maskWs,
+                outputWorkspace=prepGroupingWorkspacesReturns[groupIndex][1],
             )
 
             recipe._applyRecipe.assert_any_call(
                 GenerateFocussedVanadiumRecipe,
                 recipe.ingredients.generateFocussedVanadium(groupIndex),
-                inputWorkspace=recipe._prepGroupingWorkspaces.return_value[0],
+                inputWorkspace=prepGroupingWorkspacesReturns[groupIndex][0],
                 outputWorkspace=recipe._getNormalizationWorkspaceName.return_value,
             )
 
             recipe._applyRecipe.assert_any_call(
                 ApplyNormalizationRecipe,
                 recipe.ingredients.applyNormalization(groupIndex),
-                inputWorkspace=recipe._prepGroupingWorkspaces.return_value[0],
+                inputWorkspace=prepGroupingWorkspacesReturns[groupIndex][0],
                 normalizationWorkspace="norm_grouped",
             )
 
@@ -619,7 +612,7 @@ class ReductionRecipeTest(TestCase):
         )
 
         recipe._deleteWorkspace.assert_called_with("norm_grouped")
-        assert recipe._deleteWorkspace.call_count == len(recipe._prepGroupingWorkspaces.return_value)
+        assert recipe._deleteWorkspace.call_count == len(prepGroupingWorkspacesReturns[0])
 
         finalReducedOutputWs = preReducedOutputWs.builder.hidden(False).build()
         assert result["outputs"][0] == finalReducedOutputWs
@@ -683,7 +676,7 @@ class ReductionRecipeTest(TestCase):
             recipe._deleteWorkspace = mock.Mock()
             recipe._prepareUnfocusedData = mock.Mock()
 
-            recipe._prepGroupingWorkspaces = mock.Mock()
+            recipe._generateWorkspaceNamesForGroup = mock.Mock()
             # Output workspace name must actually be a `WorkspaceName` instance.
             preReducedOutputWs = (
                 wng.reductionOutput()
@@ -693,7 +686,7 @@ class ReductionRecipeTest(TestCase):
                 .hidden(True)
                 .build()
             )
-            recipe._prepGroupingWorkspaces.return_value = (preReducedOutputWs, "norm_grouped")
+            recipe._generateWorkspaceNamesForGroup.return_value = (preReducedOutputWs, "norm_grouped")
 
             # Set up other recipe variables
             recipe.sampleWs = "sample"
@@ -714,7 +707,7 @@ class ReductionRecipeTest(TestCase):
                 recipe._applyRecipe.assert_any_call(
                     EffectiveInstrumentRecipe,
                     recipe.ingredients.effectiveInstrument(groupIndex),
-                    inputWorkspace=recipe._prepGroupingWorkspaces.return_value[0],
+                    inputWorkspace=recipe._generateWorkspaceNamesForGroup.return_value[0],
                 )
 
             finalReducedOutputWs = preReducedOutputWs.builder.hidden(False).build()
@@ -833,7 +826,7 @@ class ReductionRecipeTest(TestCase):
         recipe._deleteWorkspace = mock.Mock()
         recipe._prepareUnfocusedData = mock.Mock()
 
-        recipe._prepGroupingWorkspaces = mock.Mock()
+        recipe._generateWorkspaceNamesForGroup = mock.Mock()
         # Output workspace name must actually be a `WorkspaceName` instance.
         preReducedOutputWs = (
             wng.reductionOutput()
@@ -843,7 +836,7 @@ class ReductionRecipeTest(TestCase):
             .hidden(True)
             .build()
         )
-        recipe._prepGroupingWorkspaces.return_value = (preReducedOutputWs, "norm_grouped")
+        recipe._generateWorkspaceNamesForGroup.return_value = (preReducedOutputWs, "norm_grouped")
 
         # Set up other recipe variables
         recipe.sampleWs = "sample"
@@ -870,7 +863,7 @@ class ReductionRecipeTest(TestCase):
         assert recipe.logger().warning.call_count == 1, "Expected warning to be called for the fully masked group."
 
         # Ensure no algorithms were applied for the fully masked group.
-        assert recipe._applyRecipe.call_count == 6, "Expected _applyRecipe to not be called for the fully masked group."
+        assert recipe._applyRecipe.call_count == 4, "Expected _applyRecipe to not be called for the fully masked group."
 
         assert "mask" in result["outputs"], "Expected the mask workspace to be included in the outputs."
 
@@ -935,7 +928,7 @@ class ReductionRecipeTest(TestCase):
         recipe._deleteWorkspace = mock.Mock()
         recipe._prepareUnfocusedData = mock.Mock()
 
-        recipe._prepGroupingWorkspaces = mock.Mock()
+        recipe._generateWorkspaceNamesForGroup = mock.Mock()
         # Output workspace name must actually be a `WorkspaceName` instance.
         preReducedOutputWs = (
             wng.reductionOutput()
@@ -945,7 +938,7 @@ class ReductionRecipeTest(TestCase):
             .hidden(True)
             .build()
         )
-        recipe._prepGroupingWorkspaces.return_value = (preReducedOutputWs, "norm_grouped")
+        recipe._generateWorkspaceNamesForGroup.return_value = (preReducedOutputWs, "norm_grouped")
 
         # Set up other recipe variables
         recipe.sampleWs = "sample"
@@ -1027,7 +1020,7 @@ class ReductionRecipeTest(TestCase):
         recipe._deleteWorkspace = mock.Mock()
         recipe._prepareUnfocusedData = mock.Mock()
 
-        recipe._prepGroupingWorkspaces = mock.Mock()
+        recipe._generateWorkspaceNamesForGroup = mock.Mock()
         # Output workspace name must actually be a `WorkspaceName` instance.
         preReducedOutputWs = (
             wng.reductionOutput()
@@ -1037,7 +1030,7 @@ class ReductionRecipeTest(TestCase):
             .hidden(True)
             .build()
         )
-        recipe._prepGroupingWorkspaces.return_value = (preReducedOutputWs, "norm_grouped")
+        recipe._generateWorkspaceNamesForGroup.return_value = (preReducedOutputWs, "norm_grouped")
 
         # Set up other recipe variables
         recipe.sampleWs = "sample"
@@ -1057,7 +1050,7 @@ class ReductionRecipeTest(TestCase):
 
         # Ensure no algorithms were applied for the fully masked groups.
         assert (
-            recipe._applyRecipe.call_count == 2
+            recipe._applyRecipe.call_count == 0
         ), "Expected _applyRecipe to not be called for the fully masked groups."
 
     def test_cook(self):

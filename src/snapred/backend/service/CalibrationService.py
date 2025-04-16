@@ -45,6 +45,7 @@ from snapred.backend.recipe.CalculateDiffCalResidualRecipe import CalculateDiffC
 from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
+    ConvertUnitsRecipe,
     FitMultiplePeaksRecipe,
     FocusSpectraRecipe,
 )
@@ -292,8 +293,14 @@ class CalibrationService(Service):
             .build()
         )
         if not self.groceryService.workspaceDoesExist(focusedWorkspace):
-            FocusSpectraRecipe().executeRecipe(
+            ConvertUnitsRecipe().executeRecipe(
                 InputWorkspace=request.inputWorkspace,
+                OutputWorkspace=focusedWorkspace,
+                Target="dSpacing",
+                Emode="Elastic",
+            )
+            FocusSpectraRecipe().executeRecipe(
+                InputWorkspace=focusedWorkspace,
                 GroupingWorkspace=groupingWorkspace,
                 PixelGroup=pixelGroup,
                 OutputWorkspace=focusedWorkspace,

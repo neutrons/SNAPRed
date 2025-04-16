@@ -1,6 +1,4 @@
 ## Python standard imports.
-import hashlib
-import json
 
 ##
 ## In order to preserve the normal import order as much as possible,
@@ -143,7 +141,6 @@ class TestReductionService(unittest.TestCase):
         self.request.continueFlags = ContinueWarning.Type.UNSET
         res = self.instance.fetchReductionGroceries(self.request)
         assert "inputWorkspace" in res
-        assert "diffcalWorkspace" in res
         assert "normalizationWorkspace" in res
 
     def test_fetchReductionGroceries_live_data(self):
@@ -162,11 +159,11 @@ class TestReductionService(unittest.TestCase):
 
         self.instance.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
             request.useLiteMode
-        ).liveData(duration=request.liveDataDuration).add()
+        ).liveData(duration=request.liveDataDuration).diffCalVersion(1).dirty().add()
         liveDataInputGroceryItem = self.instance.groceryClerk.buildList()[0]
 
         res = self.instance.fetchReductionGroceries(request)  # noqa: F841
-        self.instance.groceryService.fetchNeutronDataCached.assert_called_with(liveDataInputGroceryItem)
+        self.instance.groceryService.fetchNeutronDataSingleUse.assert_called_with(liveDataInputGroceryItem)
 
     def test_fetchReductionGroceries_use_mask(self):
         """
@@ -572,6 +569,7 @@ class TestReductionService(unittest.TestCase):
         )
         assert result == mockResult
 
+    @mock.patch(thisService + "ConvertUnitsRecipe")
     @mock.patch(thisService + "RebinFocussedGroupDataRecipe")
     @mock.patch(thisService + "ReductionGroupProcessingRecipe")
     @mock.patch(thisService + "GroceryService")
@@ -582,6 +580,7 @@ class TestReductionService(unittest.TestCase):
         mockGroceryService,
         mockReductionGroupProcessingRecipe,
         mockRebinFocussedGroupDataRecipe,
+        mockConvertUnitsRecipe,  # noqa: ARG002
     ):
         self.instance.groceryService = mockGroceryService
         self.instance.dataFactoryService = mockDataFactoryService
@@ -612,7 +611,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.grabWorkspaceforArtificialNorm(request)
 
         groceries = {
-            "inputWorkspace": runWorkspaceName,
+            "inputWorkspace": "artificial_norm_dsp_column_000123_source",
             "groupingWorkspace": columnGroupingWS,
             "outputWorkspace": "artificial_norm_dsp_column_000123_source",
         }
@@ -622,6 +621,7 @@ class TestReductionService(unittest.TestCase):
         rebinIngredients = mockRebinFocussedGroupDataRecipe.Ingredients()
         mockRebinFocussedGroupDataRecipe().cook.assert_called_once_with(rebinIngredients, groceries)
 
+    @mock.patch(thisService + "ConvertUnitsRecipe")
     @mock.patch(thisService + "RebinFocussedGroupDataRecipe")
     @mock.patch(thisService + "ReductionGroupProcessingRecipe")
     @mock.patch(thisService + "GroceryService")
@@ -632,6 +632,7 @@ class TestReductionService(unittest.TestCase):
         mockGroceryService,
         mockReductionGroupProcessingRecipe,  # noqa: ARG002
         mockRebinFocussedGroupDataRecipe,  # noqa: ARG002
+        mockConvertUnitsRecipe,  # noqa: ARG002
     ):
         # This test verifies that live-data args are passed correctly to the fetch methods.
 
@@ -893,11 +894,8 @@ class TestReductionServiceMasks:
             - if only the diffcal mask is loaded, it will compare equal to itself at the end
             - if some other mask is loaded, either an error will occur, or it will be unequal
         """
-
-        # NOTE: TWO more zeros showed up from somewhere and diagnosing this test is a whole web for what its testing
-        # The issue lies in how the groceryService is setup but where this data is coming from is not obvious
-        # It was previously 6 zeros, now it is 8 zeros
-        maskArray = [0, 0, 0, 0, 0, 0, 0, 0]
+        xLen = 8
+        maskArray = [0] * xLen
 
         def mock_compatible_mask(wsname, runNumber, useLiteMode):  # noqa ARG001
             return maskFromArray(maskArray, wsname)
@@ -905,12 +903,11 @@ class TestReductionServiceMasks:
         def mock_fetch_grocery_list(groceryList):
             groceries = []
             for item in groceryList:
-                runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
+                runNumber, useLiteMode = item.runNumber, item.useLiteMode
+                version = item.diffCalVersion if item.diffCalVersion else item.normCalVersion
                 workspaceName = f"{runNumber}_{useLiteMode}_v{version}"
-                hasher = hashlib.shake_256()
-                hasher.update(json.dumps(item.__dict__).encode("utf-8"))
-                x = int.from_bytes(hasher.digest(1), "big")
-                mask = [int(x) for x in list("{0:0b}".format(x))]
+
+                mask = np.random.randint(0, 2, (xLen,))
                 workspaceName = maskFromArray(mask, workspaceName)
                 groceries.append(workspaceName)
             return groceries
@@ -984,13 +981,12 @@ class TestReductionServiceMasks:
 
         # construct the expected grocery dictionaries
         groceryClerk = self.service.groceryClerk
-        groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
-        groceryClerk.name("diffcalWorkspace").diffcal_table(
-            request.runNumber, request.versions.calibration
-        ).useLiteMode(request.useLiteMode).add()
+        groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).diffCalVersion(
+            request.versions.calibration
+        ).dirty().add()
         groceryClerk.name("normalizationWorkspace").normalization(
             request.runNumber, request.versions.normalization
-        ).useLiteMode(request.useLiteMode).add()
+        ).useLiteMode(request.useLiteMode).diffCalVersion(1).dirty().add()
         loadableOtherGroceryItems = groceryClerk.buildDict()
         residentOtherGroceryKwargs = {"combinedPixelMask": combinedMaskName}
 

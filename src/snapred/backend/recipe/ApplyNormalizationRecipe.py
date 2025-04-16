@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Set, Tuple
 
 from snapred.backend.dao.ingredients import ApplyNormalizationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.RebinFocussedGroupDataRecipe import RebinFocussedGroupDataRecipe
 from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -50,16 +49,6 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         if self.backgroundWs != "":
             raise NotImplementedError("Background Subtraction is not implemented for this release.")
 
-    def _rebinSample(self, preserveEvents: bool):
-        """
-        Rebins the sample workspace to the pixel group.
-        """
-        rebinRecipe = RebinFocussedGroupDataRecipe(self.utensils)
-        rebinIngredients = RebinFocussedGroupDataRecipe.Ingredients(
-            pixelGroup=self.pixelGroup, preserveEvents=preserveEvents
-        )
-        rebinRecipe.cook(rebinIngredients, {"inputWorkspace": self.sampleWs})
-
     def queueAlgos(self):
         """
         Queues up the procesing algorithms for the recipe.
@@ -91,7 +80,6 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         Final step in a recipe, executes the queued algorithms.
         Requires: queued algorithms.
         """
-        self._rebinSample(preserveEvents=False)
         self.mantidSnapper.executeQueue()
         return True
 

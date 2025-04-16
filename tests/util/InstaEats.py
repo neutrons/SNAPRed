@@ -124,6 +124,31 @@ class InstaEats(GroceryService):
                 raise RuntimeError(f"unable to load workspace {name} from {filePath}")
         return data
 
+    def fetchNeutronDataSingleUse(self, item: GroceryListItem) -> Dict[str, Any]:
+        """
+        Fetch a nexus data file using a single-use workspace
+
+        :param item: the grocery-list item
+        :type item: GroceryListItem
+        :return: a dictionary with the following keys
+
+            - "result": true if everything ran correctly
+            - "loader": the loader that was used by the algorithm; use it next time
+            - "workspace": the name of the workspace created in the ADS
+
+        :rtype: Dict[str, Any]
+        """
+
+        runNumber, useLiteMode, loader = item.runNumber, item.useLiteMode, item.loader
+
+        rawWorkspaceName: WorkspaceName = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
+
+        data = self.fetchWorkspace(self._createNeutronFilename(runNumber, useLiteMode), rawWorkspaceName, loader)
+        if not data["result"]:
+            raise RuntimeError(f"unable to load workspace {rawWorkspaceName} from {runNumber}")
+
+        return data
+
     def fetchNeutronDataCached(self, item: GroceryListItem) -> Dict[str, Any]:
         """
         Fetch a nexus data file using a cache system to prevent double-loading from disk
@@ -324,7 +349,7 @@ class InstaEats(GroceryService):
         )
 
     def fetchCalibrationWorkspaces(self, item):
-        runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
+        runNumber, version, useLiteMode = item.runNumber, item.diffCalVersion, item.useLiteMode
         tableWorkspaceName, maskWorkspaceName = self._lookupDiffCalWorkspaceNames(runNumber, useLiteMode, version)
         self.fetchCompatiblePixelMask(maskWorkspaceName, runNumber, useLiteMode)
         CreateEmptyTableWorkspace(OutputWorkspace=tableWorkspaceName)
@@ -376,7 +401,7 @@ class InstaEats(GroceryService):
                     res = self.fetchCalibrationWorkspaces(item)
                 case "diffcal_mask":
                     maskWorkspaceName = self._createDiffCalMaskWorkspaceName(
-                        item.runNumber, item.useLiteMode, item.version
+                        item.runNumber, item.useLiteMode, item.diffCalVersion
                     )
                     res = self.fetchCalibrationWorkspaces(item)
                     res["workspace"] = maskWorkspaceName

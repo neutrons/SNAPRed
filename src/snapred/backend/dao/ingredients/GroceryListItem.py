@@ -69,7 +69,8 @@ class GroceryListItem(BaseModel):
     # the correct combination of the below must be set -- neutron and grouping require a runNumber,
     #   grouping additionally requires a groupingScheme
     runNumber: Optional[str] = None
-    version: Optional[int] = None
+    normCalVersion: Optional[int] = None
+    diffCalVersion: Optional[int] = None
     timestamp: Optional[float] = None
     groupingScheme: Optional[str] = None
 
@@ -91,6 +92,9 @@ class GroceryListItem(BaseModel):
     # if set to False, neutron data will not be loaded in a clean, cached way
     # this is faster and uses less memory, if you know you only need one copy
     keepItClean: bool = True
+
+    # If true, the workspace will be hidden from the GUI
+    hidden: bool = False
 
     # name the property the workspace will be used for
     propertyName: Optional[str] = None
@@ -169,20 +173,20 @@ class GroceryListItem(BaseModel):
                         raise ValueError("Loading diffcal-output data should not specify an instrument")
                     if v.get("useLiteMode") is None:
                         raise ValueError("Loading diffcal output requires specifying resolution (lite/native)")
-                    if v.get("version") is None:
-                        raise ValueError("diffcal output can only be loaded with a version number")
+                    if v.get("diffCalVersion") is None:
+                        raise ValueError("diffcal output can only be loaded with a diffCalVersion number")
                 case "diffcal_table" | "diffcal_mask":
                     if v.get("runNumber") is None:
                         raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
                     if v.get("useLiteMode") is None:
                         raise ValueError("Loading diffcal table requires specifying resolution (lite/native)")
-                    if v.get("version") is None:
-                        raise ValueError("diffcal tables can only be loaded with a version number")
+                    if v.get("diffCalVersion") is None:
+                        raise ValueError("diffcal tables can only be loaded with a diffCalVersion number")
                 case "normalization":
                     if v.get("runNumber") is None:
                         raise ValueError(f"normalization {v['workspaceType']} requires run number")
-                    if v.get("version") is None:
-                        raise ValueError("normalization output can only be loaded with a version number")
+                    if v.get("normCalVersion") is None:
+                        raise ValueError("normalization output can only be loaded with a normCalVersion number")
                 case "reduction_pixel_mask":
                     if v.get("runNumber") is None:
                         raise ValueError(f"reduction {v['workspaceType']} requires a run number")
