@@ -114,7 +114,7 @@ class NormalizationService(Service):
             ).dict()
 
         # gather needed groceries and ingredients
-        if not request.renew:
+        if request.correctedVanadiumWs is None:
             self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
                 request.useLiteMode
             ).dirty().add()
@@ -123,6 +123,13 @@ class NormalizationService(Service):
             ).dirty().add()
         else:
             # check that the corrected vanadium workspaces exist already
+            if request.correctedVanadiumWs != correctedVanadium:
+                raise RuntimeError(
+                    (
+                        "Corrected vanadium of unexpected name provided. Is this workspace still compatible?"
+                        f"{request.correctedVanadiumWs} vs {correctedVanadium}"
+                    )
+                )
             if not self.groceryService.workspaceDoesExist(correctedVanadium):
                 raise RuntimeError(f"Workspace {correctedVanadium} does not exist. Renew flag incorrectly applied.")
 
@@ -148,7 +155,7 @@ class NormalizationService(Service):
             self.groceryClerk.buildDict(),
         )
 
-        if not request.renew:
+        if request.correctedVanadiumWs is None:
             self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
             # NOTE: This used to point at other methods in this service to accomplish the same thing
             #       It looks like it got reverted accidentally?
