@@ -131,7 +131,7 @@ class NormalizationService(Service):
                     )
                 )
             if not self.groceryService.workspaceDoesExist(correctedVanadium):
-                raise RuntimeError(f"Workspace {correctedVanadium} does not exist. Renew flag incorrectly applied.")
+                raise RuntimeError(f"Supplied corrected vanadium {correctedVanadium} does not exist.")
 
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(groupingScheme).useLiteMode(
             request.useLiteMode
