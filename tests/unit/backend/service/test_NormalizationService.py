@@ -296,6 +296,27 @@ class TestNormalizationService(unittest.TestCase):
         mockPreprocessReduction.assert_called_once()
         mockSmoothDataExcludingPeaks.assert_called_once()
 
+        mockVanadiumCorrection.reset_mock()
+        self.request.correctedVanadiumWs = result["correctedVanadium"]
+
+        with pytest.raises(RuntimeError, match="does not exist."):
+            self.instance.normalization(self.request)
+
+        def correctedVanadiumExists(wsname):
+            return wsname == self.request.correctedVanadiumWs
+
+        self.instance.groceryService.workspaceDoesExist = correctedVanadiumExists
+
+        self.instance.normalization(self.request)
+
+        assert (
+            mockVanadiumCorrection.call_count == 0
+        ), "Vanadium correction should not be called when correctedVanadiumWs is set"
+
+        self.request.correctedVanadiumWs = "bad name"
+        with pytest.raises(RuntimeError, match="Corrected vanadium of unexpected name provided."):
+            self.instance.normalization(self.request)
+
     def test_validateRequest(self):
         # test `validateRequest` internal calls
         self.instance._sameStates = mock.Mock(return_value=True)

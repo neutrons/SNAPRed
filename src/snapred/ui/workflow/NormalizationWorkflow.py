@@ -241,6 +241,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.normalizationResponse = self.request(path="normalization", payload=payload.json())
         focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
         smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
+        self.correctedVanadiumWorkspace = self.normalizationResponse.data["correctedVanadium"]
         peaks = self.normalizationResponse.data["detectorPeaks"]
         self.calibrationRunNumber = self.normalizationResponse.data["calibrationRunNumber"]
         # calculate residual
@@ -319,7 +320,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         return response
 
     @EntryExitLogger(logger=logger)
-    def callNormalization(self, index, smoothingParameter, xtalDMin, xtalDMax):
+    def callNormalization(self, index, smoothingParameter, xtalDMin, xtalDMax, correctedVanadiumWs=None):
         payload = NormalizationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
@@ -329,11 +330,13 @@ class NormalizationWorkflow(WorkflowImplementer):
             smoothingParameter=smoothingParameter,
             crystalDBounds={"minimum": xtalDMin, "maximum": xtalDMax},
             continueFlags=self.continueAnywayFlags,
+            correctedVanadiumWs=correctedVanadiumWs,
         )
         self.normalizationResponse = self.request(path="normalization", payload=payload.json())
 
         focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
         smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
+        self.correctedVanadiumWorkspace = self.normalizationResponse.data["correctedVanadium"]
         peaks = self.normalizationResponse.data["detectorPeaks"]
 
         residualWorkspace = self._calcResidual(focusWorkspace, smoothWorkspace)
@@ -388,7 +391,9 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         # check the case, apply correct update
         if groupingFileChanged:
-            self.callNormalization(index, smoothingValue, xtalDMin, xtalDMax)
+            self.callNormalization(
+                index, smoothingValue, xtalDMin, xtalDMax, correctedVanadiumWs=self.correctedVanadiumWorkspace
+            )
         elif peakListWillChange:
             self.applySmoothingUpdate(index, smoothingValue, xtalDMin, xtalDMax)
         elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:

@@ -6,9 +6,10 @@ from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.meta.Config import Config
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
-class NormalizationRequest(BaseModel, extra="forbid"):
+class NormalizationRequest(BaseModel, extra="forbid", arbitrary_types_allowed=True):
     """
 
     This class encapsulates all the necessary parameters to request a normalization process,
@@ -32,3 +33,4 @@ class NormalizationRequest(BaseModel, extra="forbid"):
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
 
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
+    correctedVanadiumWs: Optional[WorkspaceName] = None

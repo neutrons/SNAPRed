@@ -114,10 +114,25 @@ class NormalizationService(Service):
             ).dict()
 
         # gather needed groceries and ingredients
-        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
-            request.useLiteMode
-        ).add()
+        if request.correctedVanadiumWs is None:
+            self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
+                request.useLiteMode
+            ).dirty().add()
+            self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
+                request.useLiteMode
+            ).dirty().add()
+        else:
+            # check that the corrected vanadium workspaces exist already
+            if request.correctedVanadiumWs != correctedVanadium:
+                raise RuntimeError(
+                    (
+                        "Corrected vanadium of unexpected name provided. Is this workspace still compatible?"
+                        f"{request.correctedVanadiumWs} vs {correctedVanadium}"
+                    )
+                )
+            if not self.groceryService.workspaceDoesExist(correctedVanadium):
+                raise RuntimeError(f"Supplied corrected vanadium {correctedVanadium} does not exist.")
+
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(groupingScheme).useLiteMode(
             request.useLiteMode
         ).add()
@@ -139,17 +154,23 @@ class NormalizationService(Service):
         groceries = self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
         )
-        self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
-        # NOTE: This used to point at other methods in this service to accomplish the same thing
-        #       It looks like it got reverted accidentally?
-        #       I'm leaving them as is but this should be fixed.
-        # 1. correctiom
-        RawVanadiumCorrectionRecipe().executeRecipe(
-            InputWorkspace=groceries["inputWorkspace"],
-            BackgroundWorkspace=groceries["backgroundWorkspace"],
-            Ingredients=ingredients,
-            OutputWorkspace=correctedVanadium,
-        )
+
+        if request.correctedVanadiumWs is None:
+            self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
+            # NOTE: This used to point at other methods in this service to accomplish the same thing
+            #       It looks like it got reverted accidentally?
+            #       I'm leaving them as is but this should be fixed.
+            # 1. correctiom
+            RawVanadiumCorrectionRecipe().executeRecipe(
+                InputWorkspace=groceries["inputWorkspace"],
+                BackgroundWorkspace=groceries["backgroundWorkspace"],
+                Ingredients=ingredients,
+                OutputWorkspace=correctedVanadium,
+            )
+
+            # TODO: delete inputWorkspace and backgroundWorkspace as they are no longer needed
+            self.groceryService.deleteWorkspace(groceries["inputWorkspace"])
+            self.groceryService.deleteWorkspace(groceries["backgroundWorkspace"])
         # 1.5 Apply latest calibration before focussing, if unable to mark it as uncalibrated?
         # Apply diffcal and mask
         groceries["inputWorkspace"] = correctedVanadium
