@@ -9,7 +9,7 @@ dependencies:
 - python=3.10
 - pip
 - pydantic>=2.7.3,<3
-- mantidworkbench=6.12.0.2rc2 
+- mantidworkbench=6.12.0.2rc2
 - qtpy
 - pre-commit
 - pytest
