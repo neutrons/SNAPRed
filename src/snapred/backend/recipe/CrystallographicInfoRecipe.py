@@ -5,12 +5,10 @@ from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallog
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.Config import Config
-from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
 
 
-@Singleton
 class CrystallographicInfoRecipe:
     D_MIN = Config["constants.CrystallographicInfo.crystalDMin"]
     D_MAX = Config["constants.CrystallographicInfo.crystalDMax"]

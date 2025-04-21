@@ -204,7 +204,9 @@ class LocalDataService:
         #   but the input-data file will not yet exist on the filesystem.
 
         try:
-            IPTS = self.mantidSnapper.GetIPTS("get IPTS directory", RunNumber=runNumber, Instrument=instrumentName)
+            IPTS = self.mantidSnapper.GetIPTS(
+                "get IPTS directory", RunNumber=runNumber, Instrument=instrumentName, ClearCache=True
+            )
             self.mantidSnapper.executeQueue()
             return str(IPTS)  # "collapse" the `Callback`
         except RuntimeError as e:
@@ -1053,7 +1055,7 @@ class LocalDataService:
         indexer = self.calibrationIndexer(runNumber, useLiteMode)
         version = indexer.defaultVersion()
         grocer = GroceryService()
-        filename = Path(grocer.createDiffcalTableWorkspaceName("default", useLiteMode, version) + ".h5")
+        filename = Path(grocer.createDiffCalTableWorkspaceName("default", useLiteMode, version) + ".h5")
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
 
         calibrationDataPath = indexer.versionPath(version)
@@ -1135,7 +1137,7 @@ class LocalDataService:
             )
 
             # NOTE: this creates a bare record without any other CalibrationRecord data
-            defaultDiffCalTableName = grocer.createDiffcalTableWorkspaceName("default", liteMode, version)
+            defaultDiffCalTableName = grocer.createDiffCalTableWorkspaceName("default", liteMode, version)
             workspaces: Dict[WorkspaceType, List[WorkspaceName]] = {
                 wngt.DIFFCAL_TABLE: [defaultDiffCalTableName],
             }

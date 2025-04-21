@@ -1,14 +1,13 @@
+import logging
 from typing import Any, Dict
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm
 from snapred.backend.recipe.algorithm.Utensils import Utensils
-from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
 
 
-@Singleton
 class FetchGroceriesRecipe:
     def __init__(self):
         # NOTE: workaround, we just add an empty host algorithm.
@@ -63,6 +62,8 @@ class FetchGroceriesRecipe:
             data["loader"] = algo.getPropertyValue("LoaderType")
             data["workspace"] = workspace
         except RuntimeError as e:
+            if logger.isEnabledFor(logging.DEBUG):
+                raise
             raise RuntimeError(str(e).split("\n")[0]) from e
 
         if liveDataMode:

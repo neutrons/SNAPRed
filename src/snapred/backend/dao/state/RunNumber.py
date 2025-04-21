@@ -1,5 +1,5 @@
 from mantid.kernel import IntArrayMandatoryValidator, IntArrayProperty
-from pydantic import BaseModel, Field, ValidationError, validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.validator.RunNumberValidator import RunNumberValidator
@@ -10,7 +10,8 @@ logger = snapredLogger.getLogger(__name__)
 class RunNumber(BaseModel):
     runNumber: int = Field(..., description="The run number provided by the user for reduction.")
 
-    @validator("runNumber", pre=True, always=True)
+    @field_validator("runNumber", mode="after")
+    @classmethod
     def validateRunNumber(cls, value):
         # Check if run number is an integer
         if not isinstance(value, int):

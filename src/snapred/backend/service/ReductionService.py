@@ -448,7 +448,6 @@ class ReductionService(Service):
         )
 
         self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
-
         return groceries
 
     def _markWorkspaceMetadata(self, request: ReductionRequest, workspace: WorkspaceName):

@@ -16,7 +16,7 @@ def test_executeRequest_noop():
         "ingestion",
         "metadata",
         "normalization",
-        "reduceLiteData",
+        "createLiteData",
         "reduction",
         "stateId",
         "workspace",
@@ -35,4 +35,5 @@ def test_executeRequest_noop():
     apiDict = response.data
     keys = list(apiDict.keys())
     keys.sort()
+
     assert keys == expected_keys

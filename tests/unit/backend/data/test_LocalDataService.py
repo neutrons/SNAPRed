@@ -713,18 +713,14 @@ def test_getIPTS(mockPathExists):
         res = localDataService.getIPTS(runNumber)
         assert res == mockSnapper.GetIPTS.return_value
         mockSnapper.GetIPTS.assert_called_with(
-            "get IPTS directory",
-            RunNumber=runNumber,
-            Instrument=Config["instrument.name"],
+            "get IPTS directory", RunNumber=runNumber, Instrument=Config["instrument.name"], ClearCache=True
         )
         mockSnapper.GetIPTS.reset_mock()
 
         res = localDataService.getIPTS(runNumber, "CRACKLE")
         assert res == mockSnapper.GetIPTS.return_value
         mockSnapper.GetIPTS.assert_called_with(
-            "get IPTS directory",
-            RunNumber=runNumber,
-            Instrument="CRACKLE",
+            "get IPTS directory", RunNumber=runNumber, Instrument="CRACKLE", ClearCache=True
         )
 
 
@@ -2371,7 +2367,7 @@ def test_readCalibrationState_hasWritePermissions():
         localDataService.readCalibrationState("123", True)
 
 
-@mock.patch("snapred.backend.data.GroceryService.GroceryService.createDiffcalTableWorkspaceName")
+@mock.patch("snapred.backend.data.GroceryService.GroceryService.createDiffCalTableWorkspaceName")
 @mock.patch("snapred.backend.data.GroceryService.GroceryService._fetchInstrumentDonor")
 def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorkspaceName):
     # verify that the default diffcal table is being written to the default state directory
@@ -3322,8 +3318,6 @@ class TestReductionPixelMasks:
         )
 
         def mockGetIPTS(runNumber, _instrumentName="SNAP"):
-            # *** DEBUG ***
-            print("YOU ARE HERE!!!")
             if runNumber == self.runNumber6:
                 # This tests that any error, besides not finding the IPTS-directory, is not swallowed or relabled.
                 raise RuntimeError("Some other runtime error")

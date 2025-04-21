@@ -3,7 +3,7 @@
 import datetime
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 ##
 ## Test-related imports come last.
@@ -75,8 +75,12 @@ class InstaEats(GroceryService):
             path = self.groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
-    def lookupDiffcalTableWorkspaceName(self, runNumber: str, useLiteMode: bool, version: int = 0) -> WorkspaceName:
-        return self.createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
+    def _lookupDiffCalWorkspaceNames(
+        self, runNumber: str, useLiteMode: bool, version: int = 0
+    ) -> Tuple[WorkspaceName, WorkspaceName]:
+        return self.createDiffCalTableWorkspaceName(
+            runNumber, useLiteMode, version
+        ), self._createDiffCalMaskWorkspaceName(runNumber, useLiteMode, version)
 
     ## FETCH METHODS
 
@@ -321,8 +325,7 @@ class InstaEats(GroceryService):
 
     def fetchCalibrationWorkspaces(self, item):
         runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
-        tableWorkspaceName = self.lookupDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
-        maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, useLiteMode, version)
+        tableWorkspaceName, maskWorkspaceName = self._lookupDiffCalWorkspaceNames(runNumber, useLiteMode, version)
         self.fetchCompatiblePixelMask(maskWorkspaceName, runNumber, useLiteMode)
         CreateEmptyTableWorkspace(OutputWorkspace=tableWorkspaceName)
         return {
@@ -351,7 +354,7 @@ class InstaEats(GroceryService):
                 case "grouping":
                     res = self.fetchGroupingDefinition(item)
                 case "diffcal":
-                    res = {"result": False, "workspace": self._createDiffcalInputWorkspaceName(item.runNumber)}
+                    res = {"result": False, "workspace": self._createDiffCalInputWorkspaceName(item.runNumber)}
                     raise RuntimeError(
                         "not implemented: no path available to fetch diffcal "
                         + f"input table workspace: '{res['workspace']}'"
@@ -359,20 +362,20 @@ class InstaEats(GroceryService):
                 # for diffraction-calibration workspaces
                 case "diffcal_output":
                     res = self.fetchWorkspace(
-                        self._createDiffcalOutputWorkspaceFilename(item),
-                        self._createDiffcalOutputWorkspaceName(item),
+                        self._createDiffCalOutputWorkspaceFilename(item),
+                        self._createDiffCalOutputWorkspaceName(item),
                         loader="LoadNexus",
                     )
                 case "diffcal_diagnostic":
                     res = self.fetchWorkspace(
-                        self._createDiffcalDiagnosticWorkspaceFilename(item),
-                        self._createDiffcalOutputWorkspaceName(item),
+                        self._createDiffCalDiagnosticWorkspaceFilename(item),
+                        self._createDiffCalOutputWorkspaceName(item),
                         loader="LoadNexusProcessed",
                     )
                 case "diffcal_table":
                     res = self.fetchCalibrationWorkspaces(item)
                 case "diffcal_mask":
-                    maskWorkspaceName = self._createDiffcalMaskWorkspaceName(
+                    maskWorkspaceName = self._createDiffCalMaskWorkspaceName(
                         item.runNumber, item.useLiteMode, item.version
                     )
                     res = self.fetchCalibrationWorkspaces(item)
