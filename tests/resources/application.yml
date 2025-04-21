@@ -177,6 +177,10 @@ mantid:
         template:
           run: "_{unit},{group},{lite},{auxiliary},{runNumber}"
           liteDataMap: "lite_grouping_map"
+
+          # TODO: modify `WorkspaceNameGenerator.__init__` so that '${instrument.name}' can be used here:
+          grouping: "_SNAP{lite},grouping,{group},{runNumber}"
+
           diffCal:
             input: "_{unit},{runNumber},raw"
             table: "_diffract_consts,{runNumber},{version}"
@@ -330,3 +334,6 @@ ui:
       smoothing: 5
     workflow:
       completionMessage: "‧₊‧₊The workflow has been completed successfully!‧₊‧₊"
+
+system:
+  max_hdf5_descriptors: 5

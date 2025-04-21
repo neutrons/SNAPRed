@@ -1,6 +1,6 @@
-import logging
 from typing import Any, Dict
 
+from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm
 from snapred.backend.recipe.algorithm.Utensils import Utensils
@@ -61,13 +61,22 @@ class FetchGroceriesRecipe:
             data["result"] = algo.execute()
             data["loader"] = algo.getPropertyValue("LoaderType")
             data["workspace"] = workspace
-        except RuntimeError as e:
-            if logger.isEnabledFor(logging.DEBUG):
-                raise
-            raise RuntimeError(str(e).split("\n")[0]) from e
+        except (RuntimeError, TypeError) as e:
+            # TODO: use `MantidSnapper`!
+            name = "FetchGroceriesAlgorithm"
+            kwargs = dict(
+                FileName=filename,
+                OutputWorkspace=workspace,
+                LoaderType=loader,
+                LoaderArgs=loaderArgs,
+                **({str(instrumentPropertySource): instrumentSource} if instrumentPropertySource is not None else {}),
+            )
+            logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
+            raise AlgorithmException(name, str(e)) from e
 
         if liveDataMode:
             logger.debug(f"Finished fetching {workspace} from live-data listener")
         else:
             logger.debug(f"Finished fetching {workspace} from {filename}")
+
         return data

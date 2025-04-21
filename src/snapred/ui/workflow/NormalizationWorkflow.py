@@ -10,7 +10,7 @@ from snapred.backend.dao.request import (
     HasStateRequest,
     NormalizationExportRequest,
     NormalizationRequest,
-    RunFeedbackRequest,
+    RunMetadataRequest,
 )
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
@@ -104,7 +104,7 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         def _onDropdownSuccess():
             self._setInteractive(True)
-            self._populateRunFeedback(runNumber)
+            self._populateRunMetadata(runNumber)
 
         self.workflow.presenter.handleAction(
             self.handleDropdown,
@@ -114,13 +114,13 @@ class NormalizationWorkflow(WorkflowImplementer):
 
     @ExceptionToErrLog
     @Slot()
-    def _populateRunFeedback(self, runNumber: str):
-        if not runNumber:
-            self._requestView.updateRunFeedback("", "")
+    def _populateRunMetadata(self, runNumber: str):
+        if not bool(runNumber):
+            self._requestView.updateRunMetadata()
             return
         self.workflow.presenter.handleAction(
-            self.handleRunFeedback,
-            args=(runNumber),
+            self.handleRunMetadata,
+            args=(runNumber,),
             onSuccess=lambda: self._setInteractive(True),
         )
 
@@ -141,16 +141,12 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
         return SNAPResponse(code=ResponseCode.OK)
 
-    def handleRunFeedback(self, runNumber):
+    def handleRunMetadata(self, runNumber):
         if not RunNumberValidator.validateRunNumber(runNumber):
             return SNAPResponse(code=ResponseCode.OK)
-        payload = RunFeedbackRequest(
-            runId=runNumber,
-        )
-        response = self.request(path="calibration/runFeedback", payload=payload.json()).data
-        stateId, detectorState = response
-        runTitle = detectorState.title
-        self._requestView.updateRunFeedback(stateId, runTitle)
+        payload = RunMetadataRequest(runId=runNumber)
+        metadata = self.request(path="calibration/runMetadata", payload=payload.json()).data
+        self._requestView.updateRunMetadata(metadata)
         return SNAPResponse(code=ResponseCode.OK)
 
     @EntryExitLogger(logger=logger)

@@ -38,7 +38,7 @@ instrument:
   PVLogs:
     # Swap these when running with ultralite data
     # rootGroup: "entry/DASlogs"
-    rootGroup: "/mantid_workspace_1/logs"
+    rootGroup: "mantid_workspace_1/logs"
 
     # PV-log keys relating to instrument settings:
     instrumentPVKeys:

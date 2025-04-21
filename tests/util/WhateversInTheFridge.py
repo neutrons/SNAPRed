@@ -27,13 +27,12 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
-from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
 
-@Singleton
+# IMPORTANT: do NOT make a Mock class a Singleton!
 @mock_instance_methods
 class WhateversInTheFridge(LocalDataService):
     """
@@ -61,11 +60,11 @@ class WhateversInTheFridge(LocalDataService):
         else:
             return os.path.exists(filepath)
 
-    def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
+    def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> Path | None:
         key = (runNumber, instrumentName)
         if key not in self.iptsCache:
             self.iptsCache[key] = mtd.unique_name(prefix=f"{runNumber}_")
-        return str(self.iptsCache[key])
+        return Path(str(self.iptsCache[key]))
 
     @ExceptionHandler(StateValidationException)
     def generateStateId(self, runId: str) -> Tuple[str, DetectorState]:

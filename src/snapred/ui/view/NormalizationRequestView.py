@@ -1,5 +1,6 @@
 from qtpy.QtCore import Signal, Slot
 
+from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 
@@ -17,12 +18,12 @@ class NormalizationRequestView(BackendRequestView):
 
     """
 
-    signalUpdateRunFeedback = Signal(str, str)
+    signalUpdateRunMetadata = Signal(RunMetadata)
 
     def __init__(self, samplePaths=[], groups=[], parent=None):
         super(NormalizationRequestView, self).__init__(parent=parent)
 
-        self.signalUpdateRunFeedback.connect(self._setRunFeedback)
+        self.signalUpdateRunMetadata.connect(self._setRunMetadata)
 
         # input fields
         self.runNumberField = self._labeledLineEdit("Run Number:")
@@ -39,23 +40,23 @@ class NormalizationRequestView(BackendRequestView):
         # set field properties
         self.liteModeToggle.setEnabled(False)
 
-        # run number feedback fields
-        self.runFeedbackStateId = self._labeledField("State ID")
-        self.runFeedbackStateId.setToolTip("State ID of the run number.")
-        self.runFeedbackRunTitle = self._labeledField("Run Title")
-        self.runFeedbackRunTitle.setToolTip("Title of the run from PV file.")
+        # run number metadata fields
+        self.runMetadataStateId = self._labeledField("State ID")
+        self.runMetadataStateId.setToolTip("State ID of the run number.")
+        self.runMetadataRunTitle = self._labeledField("Run Title")
+        self.runMetadataRunTitle.setToolTip("Title of the run from PV file.")
 
-        # run feedback fields are read only
-        self.runFeedbackStateId.field.setReadOnly(True)
-        self.runFeedbackRunTitle.field.setReadOnly(True)
+        # run metadata fields are read only
+        self.runMetadataStateId.field.setReadOnly(True)
+        self.runMetadataRunTitle.field.setReadOnly(True)
 
         # add all widgets to layout
         _layout = self.layout()
         _layout.addWidget(self.runNumberField, 0, 0)
         _layout.addWidget(self.backgroundRunNumberField, 0, 1)
         _layout.addWidget(self.liteModeToggle, 0, 2)
-        _layout.addWidget(self.runFeedbackStateId, 1, 0)
-        _layout.addWidget(self.runFeedbackRunTitle, 1, 1)
+        _layout.addWidget(self.runMetadataStateId, 1, 0)
+        _layout.addWidget(self.runMetadataRunTitle, 1, 1)
         _layout.addWidget(self.sampleDropdown, 2, 0)
         _layout.addWidget(self.groupingFileDropdown, 2, 1)
 
@@ -64,7 +65,7 @@ class NormalizationRequestView(BackendRequestView):
 
     def verify(self):
         if not self.runNumberField.text().isdigit():
-            self._setRunFeedback("", "")
+            self._setRunMetadata()
             raise ValueError("Please enter a valid run number")
         if not self.backgroundRunNumberField.text().isdigit():
             raise ValueError("Please enter a valid background run number")
@@ -85,10 +86,15 @@ class NormalizationRequestView(BackendRequestView):
         self.sampleDropdown.setEnabled(flag)
         self.groupingFileDropdown.setEnabled(flag)
 
-    def updateRunFeedback(self, stateId: str, runTitle: str):
-        self.signalUpdateRunFeedback.emit(stateId, runTitle)
+    def updateRunMetadata(self, metadata: RunMetadata):
+        self.signalUpdateRunMetadata.emit(metadata)
 
-    @Slot(str, str)
-    def _setRunFeedback(self, stateId: str, runTitle: str):
-        self.runFeedbackStateId.setText(stateId if stateId else "")
-        self.runFeedbackRunTitle.setText(runTitle if runTitle else "")
+    @Slot(RunMetadata)
+    def _setRunMetadata(self, metadata: RunMetadata | None = None):
+        stateId = ""
+        runTitle = ""
+        if metadata is not None:
+            stateId = metadata.stateId.hex
+            runTitle = metadata.runTitle
+        self.runMetadataStateId.setText(stateId)
+        self.runMetadataRunTitle.setText(runTitle)

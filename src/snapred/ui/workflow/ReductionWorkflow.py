@@ -4,15 +4,15 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 from qtpy.QtCore import QMetaObject, Qt, QTimer, Signal, Slot
 
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
-from snapred.backend.dao.LiveMetadata import LiveMetadata
 from snapred.backend.dao.request import (
     CreateArtificialNormalizationRequest,
     MatchRunsRequest,
     ReductionExportRequest,
     ReductionRequest,
-    RunFeedbackRequest,
+    RunMetadataRequest,
 )
 from snapred.backend.dao.response.ReductionResponse import ReductionResponse
+from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
@@ -55,7 +55,7 @@ class ReductionStatus(StrEnum):
 
 
 class ReductionWorkflow(WorkflowImplementer):
-    _liveMetadataUpdate = Signal(LiveMetadata)
+    _liveMetadataUpdate = Signal(RunMetadata)
     _statusUpdate = Signal(ReductionStatus)
 
     def __init__(self, parent=None):
@@ -68,7 +68,7 @@ class ReductionWorkflow(WorkflowImplementer):
             getLiveMetadata=self._getLiveMetadata,
         )
 
-        self._reductionRequestView._requestView.setRetrieveRunFeedbackCallback(self.handleRunFeedback)
+        self._reductionRequestView._requestView.setRunMetadataCallback(self.handleRunMetadata)
 
         self._compatibleMasks: Dict[str, WorkspaceName] = {}
 
@@ -183,19 +183,10 @@ class ReductionWorkflow(WorkflowImplementer):
         self._status = status
         self._statusUpdate.emit(status)
 
-    def handleRunFeedback(self, runNumber: str) -> tuple:
-        payload = RunFeedbackRequest(runId=runNumber)
-        response = self.request(path="calibration/runFeedback", payload=payload.json())
-        stateId = ""
-        runTitle = ""
-        if response.code == ResponseCode.OK:
-            data = response.data
-            if isinstance(data, tuple) and len(data) == 2:
-                stateId = data[0]
-                detectorState = data[1]
-                if hasattr(detectorState, "title"):
-                    runTitle = detectorState.title
-        return (stateId, runTitle)
+    def handleRunMetadata(self, runNumber: str) -> RunMetadata:
+        payload = RunMetadataRequest(runId=runNumber)
+        metadata = self.request(path="calibration/runMetadata", payload=payload.json()).data
+        return metadata
 
     def _nothing(self, workflowPresenter: WorkflowPresenter):  # noqa: ARG002
         return SNAPResponse(code=200)
@@ -223,12 +214,19 @@ class ReductionWorkflow(WorkflowImplementer):
                 self.continueAnywayFlags is not None
                 and ContinueWarning.Type.NO_WRITE_PERMISSIONS in self.continueAnywayFlags
             ):
-                panelText = (
-                    "<p>You didn't have permissions to write to "
-                    + f"<br><b>{self.savePath}</b>,<br>"
-                    + "but you can still save using the workbench tools.</p>"
-                    + "<p>Please remember to save your output workspaces!</p>"
-                )
+                if self.savePath is not None:
+                    panelText = (
+                        "<p>You didn't have permissions to write to "
+                        + f"<br><b>{self.savePath}</b>,<br>"
+                        + "but you can still save using the workbench tools.</p>"
+                        + "<p>Please remember to save your output workspaces!</p>"
+                    )
+                else:
+                    panelText = (
+                        "<p>No IPTS directory existed yet for the reduced run,<br>"
+                        + "but you can still save using the workbench tools.</p>"
+                        + "<p>Please remember to save your output workspaces!</p>"
+                    )
             else:
                 panelText = (
                     "<p>Reduction has completed successfully!"
@@ -397,8 +395,8 @@ class ReductionWorkflow(WorkflowImplementer):
             # Continue the automatic metadata update sequence.
             self._liveDataUpdateTimer.start()
 
-    @Slot(object)  # Signal(Optional[LiveMetaData]) as Signal(object)
-    def _updateLiveMetadata(self, data: Optional[LiveMetadata]):
+    @Slot(object)  # Signal(Optional[RunMetadata]) as Signal(object)
+    def _updateLiveMetadata(self, data: Optional[RunMetadata]):
         self._reductionRequestView.updateLiveMetadata(data)
 
     def _hasLiveDataConnection(self) -> bool:

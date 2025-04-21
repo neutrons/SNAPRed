@@ -16,7 +16,7 @@ from snapred.backend.dao.request import (
     FocusSpectraRequest,
     HasStateRequest,
     OverrideRequest,
-    RunFeedbackRequest,
+    RunMetadataRequest,
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
@@ -180,7 +180,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         def _onDropdownSuccess():
             self.__setInteraction(True, "populateGroupDropdown")
-            self._populateRunFeedback(runNumber)
+            self._populateRunMetadata(runNumber)
 
         self.workflow.presenter.handleAction(
             self.handleDropdown,
@@ -190,14 +190,14 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     @ExceptionToErrLog
     @Slot()
-    def _populateRunFeedback(self, runNumber: str):
-        if not runNumber:
-            self._requestView.updateRunFeedback("", "")
+    def _populateRunMetadata(self, runNumber: str):
+        if not bool(runNumber):
+            self._requestView.updateRunMetadata()
             return
         self.workflow.presenter.handleAction(
-            self.handleRunFeedback,
-            args=(runNumber),
-            onSuccess=lambda: self.__setInteraction(False, "populateRunFeedback"),
+            self.handleRunMetadata,
+            args=(runNumber,),
+            onSuccess=lambda: self.__setInteraction(False, "populateRunMetadata"),
         )
 
     @ExceptionToErrLog
@@ -230,14 +230,10 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
         return SNAPResponse(code=ResponseCode.OK)
 
-    def handleRunFeedback(self, runNumber):
-        payload = RunFeedbackRequest(
-            runId=runNumber,
-        )
-        response = self.request(path="calibration/runFeedback", payload=payload.json()).data
-        stateId, detectorState = response
-        runTitle = detectorState.title
-        self._requestView.updateRunFeedback(stateId, runTitle)
+    def handleRunMetadata(self, runNumber):
+        payload = RunMetadataRequest(runId=runNumber)
+        metadata = self.request(path="calibration/runMetadata", payload=payload.json()).data
+        self._requestView.updateRunMetadata(metadata)
         return SNAPResponse(code=ResponseCode.OK)
 
     def handleOverride(self, sampleFile):

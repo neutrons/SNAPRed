@@ -1,6 +1,7 @@
 import os
 import re
 from contextlib import ExitStack, suppress
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -287,9 +288,9 @@ class TestGUIPanels:
             qtbot.wait(1000)
 
             home = str(Config["instrument.reduction.home"].format(IPTS="IPTS-24641"))
-            folderDir = str(home) + "/" + reductionStateId + "/native/" + reductionRunNumber
+            folderDir = Path(str(home) + "/" + reductionStateId + "/native/" + reductionRunNumber)
 
-            def list_folders(path):
+            def list_folders(path: Path):
                 qtbot.wait(1000)
                 """Lists all folders in the specified directory."""
                 folders = []
@@ -298,11 +299,13 @@ class TestGUIPanels:
                         folders.append(entry.name)
                 return folders
 
-            def verifyContents():
+            def verifyContents(folderDir: Path):
+                assert folderDir.exists()
+
                 folders = list_folders(folderDir)
                 timeStamp = folders[0]
-                contents = os.listdir(folderDir + "/" + timeStamp)
-                fullPath = folderDir + "/" + timeStamp
+                fullPath = folderDir / timeStamp
+                contents = os.listdir(fullPath)
 
                 reduced = "_reduced_0" + reductionRunNumber + "_" + timeStamp + ".nxs"
                 assert "ReductionRecord.json" in contents
@@ -326,7 +329,7 @@ class TestGUIPanels:
                 shutil.rmtree(fullPath)
                 qtbot.wait(1000)
 
-            verifyContents()
+            verifyContents(folderDir)
             gui.workspaceWidget._ads.clear()
 
             # Test retain unfocused data
@@ -338,7 +341,7 @@ class TestGUIPanels:
                 qtbot.wait(1000)
 
                 assert gui.workspaceWidget._ads.doesExist(f"{unit}_unfoc_058882")
-                verifyContents()
+                verifyContents(folderDir)
                 # qtbot.waitUntil(
                 #     lambda: self.completionMessageHasAppeared,
                 #     timeout=60000,
@@ -540,7 +543,7 @@ class TestGUIPanels:
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(1000)
 
-                verifyContents()
+                verifyContents(folderDir)
                 gui.workspaceWidget._ads.clear()
 
             # TODO: SKIP this test. The test itself does not work correctly, and it needs to be fixed!

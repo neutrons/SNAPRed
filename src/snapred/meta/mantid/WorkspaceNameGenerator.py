@@ -9,6 +9,7 @@ from pydantic import WithJsonSchema
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated, Self
 
+# *** DEBUG *** : CIRCULAR IMPORT?!
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
@@ -37,6 +38,7 @@ class WorkspaceType(str, Enum):
     ARTIFICIAL_NORMALIZATION_PREVIEW = "artificialNormalizationPreview"
 
     LITE_DATA_MAP = "liteDataMap"
+    GROUPING = "grouping"
 
     # <reduction tag>_<runNumber>_<timestamp>
     REDUCTION_OUTPUT = "reductionOutput"
@@ -221,6 +223,9 @@ class ValueFormatter:
         # handle two special cases of unassigned or default version
         # in those cases, format will be a user-specified string
 
+        # *** DEBUG *** : CIRCULAR IMPORT?!
+        from snapred.backend.dao.indexing.Versioning import VersionState
+
         formattedVersion = ""
         if version == VersionState.DEFAULT:
             formattedVersion = f"v{VERSION_START()}"
@@ -393,6 +398,15 @@ class _WorkspaceNameGenerator:
     def liteDataMap(self):
         return NameBuilder(
             WorkspaceType.LITE_DATA_MAP, self._liteDataMapTemplate, self._liteDataMapTemplateKeys, self._delimiter
+        )
+
+    def grouping(self):
+        return NameBuilder(
+            WorkspaceType.GROUPING,
+            self._groupingTemplate,
+            self._groupingTemplateKeys,
+            self._delimiter,
+            lite=self.Lite.FALSE,
         )
 
     def diffCalInput(self):

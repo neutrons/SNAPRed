@@ -376,6 +376,28 @@ class TestReductionService(unittest.TestCase):
             mockcheckWritePermissions.assert_called_once_with(mockGetReductionStateRoot.return_value)
             mockGetReductionStateRoot.assert_called_once_with(runNumber)
 
+    def test_checkReductionWritePermissions_no_IPTS(self):
+        with (
+            mock.patch.object(self.instance.dataExportService, "checkWritePermissions") as mockcheckWritePermissions,
+            mock.patch.object(self.instance.dataExportService, "getReductionStateRoot") as mockGetReductionStateRoot,
+        ):
+            runNumber = "12345"
+            mockcheckWritePermissions.return_value = True
+            mockGetReductionStateRoot.side_effect = RuntimeError("Cannot find IPTS directory")
+            expected = self.instance.checkReductionWritePermissions(runNumber)
+            assert not expected
+
+    def test_checkReductionWritePermissions_other_exception(self):
+        with (
+            mock.patch.object(self.instance.dataExportService, "checkWritePermissions") as mockcheckWritePermissions,
+            mock.patch.object(self.instance.dataExportService, "getReductionStateRoot") as mockGetReductionStateRoot,
+        ):
+            runNumber = "12345"
+            mockcheckWritePermissions.return_value = True
+            mockGetReductionStateRoot.side_effect = RuntimeError("some other error")
+            with pytest.raises(RuntimeError, match="some other error"):
+                expected = self.instance.checkReductionWritePermissions(runNumber)  # noqa: F841
+
     def test_getSavePath(self):
         with mock.patch.object(self.instance.dataExportService, "getReductionStateRoot") as mockGetReductionStateRoot:
             runNumber = "12345"
@@ -384,6 +406,20 @@ class TestReductionService(unittest.TestCase):
             actual = self.instance.getSavePath(runNumber)
             assert actual == expected
             mockGetReductionStateRoot.assert_called_once_with(runNumber)
+
+    def test_getSavePath_no_IPTS(self):
+        with mock.patch.object(self.instance.dataExportService, "getReductionStateRoot") as mockGetReductionStateRoot:
+            runNumber = "12345"
+            mockGetReductionStateRoot.side_effect = RuntimeError("Cannot find IPTS directory")
+            actual = self.instance.getSavePath(runNumber)
+            assert actual is None
+
+    def test_getSavePath_other_exception(self):
+        with mock.patch.object(self.instance.dataExportService, "getReductionStateRoot") as mockGetReductionStateRoot:
+            runNumber = "12345"
+            mockGetReductionStateRoot.side_effect = RuntimeError("some other error")
+            with pytest.raises(RuntimeError, match="some other error"):
+                actual = self.instance.getSavePath(runNumber)  # noqa: F841
 
     def test_getStateIds(self):
         expectedStateIds = ["0" * 16, "1" * 16, "2" * 16, "3" * 16]
@@ -474,6 +510,32 @@ class TestReductionService(unittest.TestCase):
         with pytest.raises(ContinueWarning) as excInfo:
             self.instance.validateReduction(self.request)
         assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+    def test_validateReduction_no_permissions_with_path(self):
+        # assert ContinueWarning is raised, and a path actually exists
+        fakeDataService = mock.Mock()
+        fakeDataService.calibrationExists.return_value = True
+        fakeDataService.normalizationExists.return_value = True
+        self.instance.dataFactoryService = fakeDataService
+        fakeExportService = mock.Mock()
+        fakeExportService.checkWritePermissions.return_value = False
+        self.instance.dataExportService = fakeExportService
+        self.instance.getSavePath = mock.Mock(return_value="any/existing/path")
+        with pytest.raises(ContinueWarning, match=".*It looks like you don't have permissions to write.*"):
+            self.instance.validateReduction(self.request)
+
+    def test_validateReduction_no_permissions_no_IPTS(self):
+        # assert ContinueWarning is raised, and there's no IPTS
+        fakeDataService = mock.Mock()
+        fakeDataService.calibrationExists.return_value = True
+        fakeDataService.normalizationExists.return_value = True
+        self.instance.dataFactoryService = fakeDataService
+        fakeExportService = mock.Mock()
+        fakeExportService.checkWritePermissions.return_value = False
+        self.instance.dataExportService = fakeExportService
+        self.instance.getSavePath = mock.Mock(return_value=None)
+        with pytest.raises(ContinueWarning, match=".*No IPTS-directory exists yet for run*"):
+            self.instance.validateReduction(self.request)
 
     def test_validateReduction_no_permissions_reentry(self):
         # assert ContinueWarning is NOT raised multiple times
@@ -724,9 +786,9 @@ class TestReductionServiceMasks:
 
         # create instrument workspaces for each state
         cls.sampleWS1 = mtd.unique_hidden_name()
-        create_sample_workspace(cls.sampleWS1, cls.detectorState1, instrumentFilePath)
+        create_sample_workspace(cls.sampleWS1, cls.detectorState1, instrumentFilePath, runNumber=cls.runNumber1)
         cls.sampleWS2 = mtd.unique_hidden_name()
-        create_sample_workspace(cls.sampleWS2, cls.detectorState2, instrumentFilePath)
+        create_sample_workspace(cls.sampleWS2, cls.detectorState2, instrumentFilePath, runNumber=cls.runNumber2)
 
         # random fraction used for mask initialization
         cls.randomFraction = 0.2

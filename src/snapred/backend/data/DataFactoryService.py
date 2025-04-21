@@ -8,7 +8,6 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
-from snapred.backend.dao.LiveMetadata import LiveMetadata
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.ReductionState import ReductionState
@@ -16,6 +15,7 @@ from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExpo
 from snapred.backend.dao.request.CreateIndexEntryRequest import CreateIndexEntryRequest
 from snapred.backend.dao.request.NormalizationExportRequest import NormalizationExportRequest
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.GroceryService import GroceryService
@@ -238,11 +238,16 @@ class DataFactoryService:
     def deleteWorkspaceUnconditional(self, name):
         return self.groceryService.deleteWorkspaceUnconditional(name)
 
+    ##### RUN-METADATA SUPPORT METHODS #####
+
+    def getRunMetadata(self, runId: str) -> RunMetadata:
+        return self.lookupService.readRunMetadata(runId)
+
     ##### LIVE-DATA SUPPORT METHODS #####
 
     def hasLiveDataConnection(self) -> bool:
         """For 'live data' methods: test if there is a listener connection to the instrument."""
         return self.lookupService.hasLiveDataConnection()
 
-    def getLiveMetadata(self) -> LiveMetadata:
+    def getLiveMetadata(self) -> RunMetadata:
         return self.lookupService.readLiveMetadata()
