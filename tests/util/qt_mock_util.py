@@ -61,17 +61,19 @@ class MockQMessageBox(QWidget):
 
         def _mockExec(self_):
             # This is a total hack, but the 'ultralite' data has no 'lite' mode!
-            if not ("No valid FocusGroups were specified for mode: 'lite'" in self_.detailedText()):
+            if "No valid FocusGroups were specified for mode: 'lite'" not in self_.detailedText():
                 # Do not count this as a "call".
                 myCounterMock(self_)
-            
+
             return (
                 QMessageBox.Yes
                 if (
                     msg in self_.text()
                     or "No valid FocusGroups were specified for mode: 'lite'" in self_.detailedText()
                 )
-                else (MockQMessageBox().fail(f"Expected warning not found:  {msg}, nor match to {self_.detailedText()}")),
+                else (
+                    MockQMessageBox().fail(f"Expected warning not found:  {msg}, nor match to {self_.detailedText()}")
+                ),
             )
 
         return mock.patch("qtpy.QtWidgets.QMessageBox.exec", _mockExec), myCounterMock

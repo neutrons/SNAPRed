@@ -525,9 +525,9 @@ class TestGUIPanels:
 
                 # Make sure a pixelmask exists and set and check the pixelmask
                 numOfPixelMasks = len(requestView._requestView.pixelMaskDropdown._items)
-                
+
                 assert numOfPixelMasks > 0
-                
+
                 requestView._requestView.pixelMaskDropdown.dropDown.setCurrentIndex(1)
                 requestView._requestView.pixelMaskDropdown.dropDown.model().item(1).setCheckState(Qt.Checked)
                 qtbot.mouseClick(requestView._requestView.pixelMaskDropdown.dropDown, Qt.MouseButton.LeftButton)
@@ -535,7 +535,7 @@ class TestGUIPanels:
 
                 qtbot.mouseClick(requestView._requestView.pixelMaskDropdown.dropDown, Qt.MouseButton.LeftButton)
                 qtbot.wait(1000)
-                
+
                 with qtbot.waitSignal(actionCompleted, timeout=120000):
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(1000)

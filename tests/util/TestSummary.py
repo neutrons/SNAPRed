@@ -18,7 +18,7 @@ class TestSummary:
         step = self._steps[self._index]
         step.status = self.TestStep.StepStatus.FAILURE
         self._index += 1
-    
+
     def SKIPPED(self):
         step = self._steps[self._index]
         step.status = self.TestStep.StepStatus.SKIPPED
