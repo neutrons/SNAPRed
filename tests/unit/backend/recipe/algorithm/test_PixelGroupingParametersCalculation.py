@@ -27,14 +27,14 @@ from util.helpers import (
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.data.GroceryService import GroceryService
-from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
-    PixelGroupingParametersCalculationAlgorithm as ThisAlgo,
+from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculation import (
+    PixelGroupingParametersCalculation as ThisAlgo,
 )
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import write_model_list_pretty
 
 GENERATE_GOLDEN_DATA = False
-GOLDEN_DATA_DATE = "2024-05-20"  # date.today().isoformat()
+GOLDEN_DATA_DATE = "2025-04-12"  # date.today().isoformat()
 
 # Override to run "as if" on analysis machine (but don't require access to SNS filesystem):
 REMOTE_OVERRIDE = False
@@ -372,7 +372,7 @@ class PixelGroupCalculation(unittest.TestCase):
             )
 
     def createPixelGroupingParameters(self, instrumentState, groupingWorkspace, maskWorkspace):
-        """Test execution of PixelGroupingParametersCalculationAlgorithm"""
+        """Test execution of PixelGroupingParametersCalculation"""
 
         ingredients = PixelGroupingIngredients(
             instrumentState=instrumentState,
@@ -387,19 +387,22 @@ class PixelGroupCalculation(unittest.TestCase):
         assert pixelGroupingAlgo.execute()
 
         # parse the algorithm output and create a list of PixelGroupingParameters
-        pixelGroupingParams_calc = pydantic.TypeAdapter(List[PixelGroupingParameters]).validate_json(
+        pgps = pydantic.TypeAdapter(List[PixelGroupingParameters]).validate_json(
             pixelGroupingAlgo.getProperty("OutputParameters").value,
         )
 
         groupWS = mtd[groupingWorkspace]
         groupIDs = groupWS.getGroupIDs()
-        for p in pixelGroupingParams_calc:
+        for p in pgps:
             assert isinstance(p, PixelGroupingParameters)
-        assert len(pixelGroupingParams_calc) == len(groupIDs)
-        for i in range(len(groupIDs)):
-            assert groupIDs[i] == pixelGroupingParams_calc[i].groupID
+            assert p.groupID in groupIDs
 
-        return pixelGroupingParams_calc
+        # verify that the unmasked group IDs are in the same order:
+        pgpsGroupIDs = [p.groupID for p in pgps]
+        unmaskedGroupIDs = [gid for gid in groupIDs if gid in pgpsGroupIDs]
+        assert unmaskedGroupIDs == pgpsGroupIDs
+
+        return pgps
 
     def compareToReference(self, actual: List[PixelGroupingParameters], referenceParametersFile: str):
         if Path(referenceParametersFile).exists():
@@ -413,7 +416,8 @@ class PixelGroupCalculation(unittest.TestCase):
             assert len(expected) == len(actual)
 
             for index, param in enumerate(expected):
-                assert param.isMasked is actual[index].isMasked
+                # `isMasked` is deprecated: it may be `None`:
+                assert bool(param.isMasked) is bool(actual[index].isMasked)
                 assert pytest.approx(param.L2, 1.0e-6) == actual[index].L2
                 assert pytest.approx(param.twoTheta, 1.0e-6) == actual[index].twoTheta
                 assert pytest.approx(param.azimuth, 1.0e-6) == actual[index].azimuth

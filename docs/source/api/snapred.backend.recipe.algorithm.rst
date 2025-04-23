@@ -132,10 +132,10 @@ snapred.backend.recipe.algorithm.MantidSnapper module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm module
------------------------------------------------------------------------------------
+snapred.backend.recipe.algorithm.PixelGroupingParametersCalculation module
+--------------------------------------------------------------------------
 
-.. automodule:: snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm
+.. automodule:: snapred.backend.recipe.algorithm.PixelGroupingParametersCalculation
    :members:
    :undoc-members:
    :show-inheritance:

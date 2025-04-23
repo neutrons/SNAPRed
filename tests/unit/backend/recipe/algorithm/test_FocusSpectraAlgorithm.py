@@ -123,7 +123,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.pixelGroup.json())
+        algo.setProperty("PixelGroup", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         assert algo.execute()
         # assert outputworkspace is focussed correctly
@@ -157,7 +157,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.pixelGroup.json())
+        algo.setProperty("PixelGroup", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         algo.unbagGroceries()
         assert algo.inputWSName == self.fakeRawData
@@ -169,7 +169,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.pixelGroup.json())
+        algo.setProperty("PixelGroup", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         errors = algo.validateInputs()
         assert errors == {}
@@ -179,7 +179,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeRawData)
-        algo.setProperty("Ingredients", self.pixelGroup.json())
+        algo.setProperty("PixelGroup", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         errors = algo.validateInputs()
         assert errors.get("GroupingWorkspace") is not None
@@ -215,7 +215,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.pixelGroup.json())
+        algo.setProperty("PixelGroup", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         errors = algo.validateInputs()
         assert errors.get("InputWorkspace") is not None

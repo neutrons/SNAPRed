@@ -1,7 +1,8 @@
 from enum import IntEnum
 from typing import Generic, Tuple, TypeVar
 
-from pydantic import BaseModel, model_validator
+import numpy as np
+from pydantic import BaseModel, field_validator, model_validator
 
 T = TypeVar("T")
 
@@ -89,6 +90,16 @@ class BinnedValue(BaseModel, Generic[T]):
     @property
     def params(self) -> Tuple[float, float, float]:
         return (self.minimum, self.binningMode * abs(self.binWidth), self.maximum)
+
+    @field_validator("binWidth", mode="before")
+    @classmethod
+    def validate_binWidth(cls, v):
+        # WARNING: `json` translates NaN as `null`
+        if v is None:
+            v = np.nan
+        elif not isinstance(v, float):
+            v = float(v)
+        return v
 
     @model_validator(mode="after")
     def validate_scalar_fields(self):

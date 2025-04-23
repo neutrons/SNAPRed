@@ -1,5 +1,5 @@
 from enum import IntEnum
-from typing import Dict, List, Union
+from typing import Dict, List
 
 from pydantic import BaseModel, field_validator
 
@@ -10,8 +10,9 @@ from snapred.meta.Config import Config
 
 
 class PixelGroup(BaseModel):
-    # allow initialization from either dictionary or list
-    pixelGroupingParameters: Union[List[PixelGroupingParameters], Dict[int, PixelGroupingParameters]] = {}
+    # allow initialization from either a dictionary or list
+    pixelGroupingParameters: List[PixelGroupingParameters] | Dict[int, PixelGroupingParameters] = {}
+
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     focusGroup: FocusGroup
     timeOfFlight: BinnedValue[float]
@@ -25,10 +26,6 @@ class PixelGroup(BaseModel):
     @property
     def groupIDs(self) -> List[int]:
         return sorted([p for p in self.pixelGroupingParameters.keys()])
-
-    @property
-    def isMasked(self) -> List[bool]:
-        return [self.pixelGroupingParameters[gid].isMasked for gid in self.groupIDs]
 
     @property
     def L2(self) -> List[float]:
@@ -53,51 +50,13 @@ class PixelGroup(BaseModel):
     def __getitem__(self, key):
         return self.pixelGroupingParameters[key]
 
-    def __init__(self, **kwargs):
-        if kwargs.get("pixelGroupingParameters") is None:
-            groupIDs = kwargs["groupIDs"]
-            kwargs["pixelGroupingParameters"] = {
-                groupIDs[i]: PixelGroupingParameters(
-                    groupID=groupIDs[i],
-                    isMasked=kwargs["isMasked"][i],
-                    L2=kwargs["L2"][i],
-                    twoTheta=kwargs["twoTheta"][i],
-                    azimuth=kwargs["azimuth"][i],
-                    dResolution=kwargs["dResolution"][i],
-                    dRelativeResolution=kwargs["dRelativeResolution"][i],
-                )
-                for i in range(len(groupIDs))
-            }
-        elif isinstance(kwargs["pixelGroupingParameters"], list):
-            pixelGroupingParametersList = kwargs["pixelGroupingParameters"]
-            kwargs["pixelGroupingParameters"] = {
-                PixelGroupingParameters.model_validate(p).groupID: p for p in pixelGroupingParametersList
-            }
-        return super().__init__(**kwargs)
-
     # these are not properties, but they reflect the actual data consumption
 
-    def dMax(self, default=0.0) -> List[float]:
-        # Warning: if the pixel-group is fully masked, it requires special treatment:
-        #   different Mantid algorithms use either "0.0" or "NaN" to indicate an unspecified value,
-        #   so these values may need to be filtered.
-        return [
-            self.pixelGroupingParameters[gid].dResolution.maximum
-            if not self.pixelGroupingParameters[gid].isMasked
-            else default
-            for gid in self.groupIDs
-        ]
+    def dMax(self) -> List[float]:
+        return [self.pixelGroupingParameters[gid].dResolution.maximum for gid in self.groupIDs]
 
-    def dMin(self, default=0.0) -> List[float]:
-        # Warning: if the pixel-group is fully masked, it requires special treatment:
-        #   different Mantid algorithms use either "0.0" or "NaN" to indicate an unspecified value,
-        #   so these values may need to be filtered.
-        return [
-            self.pixelGroupingParameters[gid].dResolution.minimum
-            if not self.pixelGroupingParameters[gid].isMasked
-            else default
-            for gid in self.groupIDs
-        ]
+    def dMin(self) -> List[float]:
+        return [self.pixelGroupingParameters[gid].dResolution.minimum for gid in self.groupIDs]
 
     def dBin(self) -> List[float]:
         Nbin = self.nBinsAcrossPeakWidth
@@ -115,3 +74,14 @@ class PixelGroup(BaseModel):
             # Coerce the Generic[T]-derived type
             v = BinnedValue[float](**v.dict())
         return v
+
+    @field_validator("pixelGroupingParameters", mode="after")
+    @classmethod
+    def validate_pixelGroupingParameters(cls, pgps: List[PixelGroupingParameters] | Dict[int, PixelGroupingParameters]):
+        if not isinstance(pgps, list):
+            pgps = pgps.values()
+
+        # Reconstruct `pixelGroupingParameters` as a `dict`, but
+        #   exclude any PGP from fully-masked subgroups.
+        pgps = {p.groupID: p for p in pgps if not p.isMasked}
+        return pgps

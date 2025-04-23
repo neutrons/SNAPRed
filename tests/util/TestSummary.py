@@ -19,6 +19,11 @@ class TestSummary:
         step.status = self.TestStep.StepStatus.FAILURE
         self._index += 1
 
+    def SKIPPED(self):
+        step = self._steps[self._index]
+        step.status = self.TestStep.StepStatus.SKIPPED
+        self._index += 1
+
     def isComplete(self):
         return self._index == len(self._steps)
 
@@ -44,6 +49,7 @@ class TestSummary:
             SUCCESS = "SUCCESS"
             FAILURE = "FAILURE"
             INCOMPLETE = "INCOMPLETE"
+            SKIPPED = "SKIPPED"
 
         def __init__(self, name: str):
             self.name = name

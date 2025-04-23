@@ -13,7 +13,6 @@ def test_execute_successful(mockBinnedValue):
     # mock algorithm execution result and output
     params = PixelGroupingParameters(
         groupID=1,
-        isMasked=False,
         L2=10.0,
         twoTheta=3.14,
         azimuth=0.0,
@@ -25,7 +24,7 @@ def test_execute_successful(mockBinnedValue):
 
     # execute recipe with mocked input
     recipe = PixelGroupingParametersCalculationRecipe()
-    recipe.mantidSnapper.PixelGroupingParametersCalculationAlgorithm = mockAlgo
+    recipe.mantidSnapper.PixelGroupingParametersCalculation = mockAlgo
     ingredients = mock.Mock(json=mock.Mock(return_value="good ingredients"))
     ingredients.nBinsAcrossPeakWidth = 7
     groceries = {
@@ -46,7 +45,7 @@ def test_execute_unsuccessful():
     mockAlgo = mock.Mock(side_effect=RuntimeError("passed"))
 
     recipe = PixelGroupingParametersCalculationRecipe()
-    recipe.mantidSnapper.PixelGroupingParametersCalculationAlgorithm = mockAlgo
+    recipe.mantidSnapper.PixelGroupingParametersCalculation = mockAlgo
     ingredients = mock.Mock()
     groceries = {
         "groupingWorkspace": "grouping workspace",
@@ -68,7 +67,7 @@ def test_resolve_callback(BinnedValue):
     recipe.parsePGPList = parsePGPList
 
     mockAlgo = mock.Mock(return_value=mock.Mock(get=mock.Mock(return_value="done")))
-    recipe.mantidSnapper.PixelGroupingParametersCalculationAlgorithm = mockAlgo
+    recipe.mantidSnapper.PixelGroupingParametersCalculation = mockAlgo
 
     ingredients = mock.Mock(nBinsAcrossPeakWidth=10)
     groceries = {

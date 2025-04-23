@@ -22,7 +22,7 @@ from snapred.meta.redantic import list_to_raw
 logger = snapredLogger.getLogger(__name__)
 
 
-class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
+class PixelGroupingParametersCalculation(PythonAlgorithm):
     # conversion factor from microsecond/Angstrom to meters
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
@@ -215,49 +215,10 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                 allGroupingParams.append(
                     PixelGroupingParameters(
                         groupID=groupID,
-                        isMasked=False,
                         L2=groupMeanL2,
                         twoTheta=groupMean2Theta,
                         azimuth=groupMeanPhi,
                         dResolution=Limit(minimum=dMin, maximum=dMax),
-                        dRelativeResolution=delta_d_over_d,
-                    )
-                )
-            else:
-                # Construct a `PixelGroupingParameters` instance corresponding to a fully-masked group:
-                #
-                #   * The cleanest approach here would have been to use `None` as the `PixelGroupingParameters` for a
-                #     fully-masked group; however, this breaks too many things later in the code.
-                #
-                #   * To avoid out-of-range positions, values from the first detector in the group are used:
-                #     consuming methods need to check either the `PixelGroupingParameters.isMasked` flag,
-                #     or equivalently, test for an _empty_ `dResolution` `Limit` domain.
-                #
-                detIndex = None
-                # Find first non-monitor detector:
-                #   * `DetectorInfo.azimuthal()` will raise an exception when called on a monitor.
-                for detID in detIDs:
-                    detIndex = detectorInfo.indexOf(int(detID))
-                    if not detectorInfo.isMonitor(int(detIndex)):
-                        break
-
-                L2 = detectorInfo.l2(int(detIndex))
-                twoTheta = detectorInfo.twoTheta(int(detIndex))
-                phi = detectorInfo.azimuthal(int(detIndex))
-                dMin = self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(twoTheta / 2.0))) * self.tofMin / self.L
-                delta_d_over_d = resolutionWS.readY(groupIndex)[0]
-                allGroupingParams.append(
-                    PixelGroupingParameters(
-                        groupID=groupID,
-                        # Fully-masked group
-                        isMasked=True,
-                        L2=L2,
-                        twoTheta=twoTheta,
-                        azimuth=phi,
-                        # Empty limit domain
-                        dResolution=Limit(minimum=dMin, maximum=dMin),
-                        # Resolution value for fully-masked group (as set by `EstimateResolutionDiffraction`):
-                        #   -- depending on end use, it may be necessary to modify this value.
                         dRelativeResolution=delta_d_over_d,
                     )
                 )
@@ -271,4 +232,4 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(PixelGroupingParametersCalculationAlgorithm)
+AlgorithmFactory.subscribe(PixelGroupingParametersCalculation)

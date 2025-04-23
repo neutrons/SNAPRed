@@ -106,7 +106,7 @@ For a simplified breakdown of where you may want to implement parts of your code
    algorithms/make_dirty_dish
    algorithms/mask_detector_flags
    algorithms/normalize_by_current_but_the_correct_way
-   algorithms/pixel_grouping_parameters_calculation_algorithm
+   algorithms/pixel_grouping_parameters_calculation
    algorithms/purge_overlapping_peaks_algorithm
    algorithms/raw_vanadium_correction_algorithm
    algorithms/save_grouping_definition

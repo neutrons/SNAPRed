@@ -7,8 +7,8 @@ from snapred.backend.dao.Limit import Limit
 class PixelGroupingParameters(BaseModel):
     groupID: int
 
-    # True => this group is fully masked
-    isMasked: bool
+    #  IMPORTANT: `PixelGroupingParameters` for fully-masked subgroups should no longer be included in the `PixelGroup`.
+    isMasked: bool = Field(default=False, deprecated=True, exclude=True)
 
     # the mean sample to pixel distance (metres) for this pixel grouping
     L2: float

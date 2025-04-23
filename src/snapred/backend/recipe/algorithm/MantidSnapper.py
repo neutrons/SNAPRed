@@ -175,6 +175,9 @@ class MantidSnapper:
         alg = AlgorithmManager.create(name)
 
         alg.setChild(True)
+        if name in cls._quietAlgorithms:
+            # This allows a distinction between `setChild`, and logging completely turned off.
+            alg.setLogging(False)
         alg.setAlwaysStoreInADS(True)
         alg.setRethrows(True)
         return alg

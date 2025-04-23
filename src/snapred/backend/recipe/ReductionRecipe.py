@@ -13,7 +13,7 @@ from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
-logger = snapredLogger.getLogger(__name__)
+_logger = snapredLogger.getLogger(__name__)
 
 Pallet = Tuple[Ingredients, Dict[str, str]]
 
@@ -41,7 +41,7 @@ class ReductionRecipe(Recipe[Ingredients]):
     """
 
     def logger(self):
-        return logger
+        return _logger
 
     def allGroceryKeys(self) -> Set[str]:
         return {
@@ -233,7 +233,15 @@ class ReductionRecipe(Recipe[Ingredients]):
 
     def _isGroupFullyMasked(self, groupingIndex: int) -> bool:
         pgps = self.ingredients.pixelGroups[groupingIndex].pixelGroupingParameters
-        return all(pgp.isMasked for pgp in pgps.values())
+        return len(pgps) == 0
+
+    def _maskedSubgroups(self, groupingIndex: int) -> List[int]:
+        pgps = self.ingredients.pixelGroups[groupingIndex].pixelGroupingParameters
+        unmaskedPgps = self.ingredients.unmaskedPixelGroups[groupingIndex].pixelGroupingParameters
+        subgroups = []
+        if len(pgps) != len(unmaskedPgps):
+            subgroups = [subgroupId for subgroupId in unmaskedPgps if subgroupId not in pgps]
+        return subgroups
 
     def queueAlgos(self):
         pass
@@ -248,56 +256,71 @@ class ReductionRecipe(Recipe[Ingredients]):
         # 1. PreprocessReductionRecipe
         outputs = []
         self._applyRecipe(
-            # groceries: 'inputWorkspace', 'diffcalWorkspace', 'maskWorkspace' [, 'outputWorkspace']
+            # groceries: 'inputWorkspace', 'diffcalWorkspace' [, 'outputWorkspace']
             PreprocessReductionRecipe,
             self.ingredients.preprocess(),
             inputWorkspace=self.sampleWs,
             diffcalWorkspace=self.diffcalWs,
-            **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
         )
         self._cloneIntermediateWorkspace(self.sampleWs, "sample_preprocessed")
 
         if self.normalizationWs:
             # If artificial normalization is being used, there won't be any incoming normalization workspace.
             self._applyRecipe(
-                # groceries: 'inputWorkspace', 'diffcalWorkspace', 'maskWorkspace' [, 'outputWorkspace']
+                # groceries: 'inputWorkspace', 'diffcalWorkspace' [, 'outputWorkspace']
                 PreprocessReductionRecipe,
                 self.ingredients.preprocess(),
                 inputWorkspace=self.normalizationWs,
                 diffcalWorkspace=self.diffcalWs,
-                **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
             )
             self._cloneIntermediateWorkspace(self.normalizationWs, "normalization_preprocessed")
 
+        if bool(self.maskWs) and all(
+            (self._isGroupFullyMasked(groupingIndex) for groupingIndex in range(len(self.groupingWorkspaces)))
+        ):
+            raise RuntimeError(
+                "There are no unmasked pixels in any of the groupings.  Please check your mask workspace!"
+            )
+
         for groupingIndex, groupingWs in enumerate(self.groupingWorkspaces):
-            if bool(self.maskWs) and self._isGroupFullyMasked(groupingIndex):
-                # Notify the user of a fully masked group, but continue with the workflow
-                self.logger().warning(
-                    f"\nAll pixels within the '{self.ingredients.pixelGroups[groupingIndex].focusGroup.name}' "
-                    + "grouping are masked.\n"
-                    + "Skipping all algorithm execution for this grouping."
-                )
-                continue
+            if bool(self.maskWs):
+                if self._isGroupFullyMasked(groupingIndex):
+                    # Notify the user of a fully-masked group, and then skip this grouping.
+                    self.logger().warning(
+                        f"\nAll pixels within the '{self.ingredients.pixelGroups[groupingIndex].focusGroup.name}' "
+                        + "grouping are masked.\n"
+                        + "This grouping will be skipped!"
+                    )
+                    continue
+                maskedSubgroups = self._maskedSubgroups(groupingIndex)
+                if len(maskedSubgroups) > 0:
+                    # Notify the user of any fully-masked subgroups in this grouping.
+                    self.logger().warning(
+                        f"\nWithin the '{self.ingredients.pixelGroups[groupingIndex].focusGroup.name}' "
+                        + f"grouping:\n    subgroups {maskedSubgroups} are fully masked."
+                    )
 
             sampleClone, normalizationClone = self._prepGroupingWorkspaces(groupingIndex)
 
             # 2. ReductionGroupProcessingRecipe
             self._applyRecipe(
-                # groceries: 'inputWorkspace', 'groupingWorkspace' [, 'outputWorkspace']
+                # groceries: 'inputWorkspace', 'groupingWorkspace', 'maskWorkspace' [, 'outputWorkspace']
                 ReductionGroupProcessingRecipe,
                 self.ingredients.groupProcessing(groupingIndex),
                 inputWorkspace=sampleClone,
                 groupingWorkspace=groupingWs,
+                **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
             )
             self._cloneIntermediateWorkspace(sampleClone, f"sample_GroupProcessing_{groupingIndex}")
 
             if normalizationClone:
                 self._applyRecipe(
-                    # groceries: 'inputWorkspace', 'groupingWorkspace' [, 'outputWorkspace']
+                    # groceries: 'inputWorkspace', 'groupingWorkspace', 'maskWorkspace' [, 'outputWorkspace']
                     ReductionGroupProcessingRecipe,
                     self.ingredients.groupProcessing(groupingIndex),
                     inputWorkspace=normalizationClone,
                     groupingWorkspace=groupingWs,
+                    **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
                 )
                 self._cloneIntermediateWorkspace(normalizationClone, f"normalization_GroupProcessing_{groupingIndex}")
 
