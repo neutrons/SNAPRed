@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Set, Tuple
+
 from mantid.simpleapi import mtd
 
 from snapred.backend.dao.ingredients import PreprocessReductionIngredients as Ingredients
@@ -47,7 +48,7 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
             self.hasBinMasks = True
         else:
             self.hasBinMasks = False
-    
+
     def queueAlgos(self):
         """
         Queues up the processing algorithms for the recipe.
@@ -68,26 +69,26 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
                 CalibrationWorkspace=self.diffcalWs,
             )
 
-        #check if any bin masks exist
+        # check if any bin masks exist
         self.findMaskBinsTableWorkspaces()
-        #apply bin Masks if they were found
+        # apply bin Masks if they were found
         if self.hasBinMasks:
             for mask in self.binMasks:
-                #extract units from ws name (table workspaces don't have logs)
-                maskUnits = mask.split('_')[-1]
-                #ensure units of workspace match
+                # extract units from ws name (table workspaces don't have logs)
+                maskUnits = mask.split("_")[-1]
+                # ensure units of workspace match
                 self.mantidSnapper.ConvertUnits(
                     f"Converting units to match Bin Mask with units of {maskUnits}",
                     InputWorkspace=self.outputWs,
-                    Target = maskUnits,
-                    OutputWorkspace=self.outputWs
+                    Target=maskUnits,
+                    OutputWorkspace=self.outputWs,
                 )
-                #mask bins
+                # mask bins
                 self.mantidSnapper.MaskBinsFromTable(
                     "Masking bins...",
                     InputWorkspace=self.outputWs,
                     MaskingInformation=mask,
-                    OutputWorkspace=self.outputWs
+                    OutputWorkspace=self.outputWs,
                 )
 
         # convert to tof if needed
