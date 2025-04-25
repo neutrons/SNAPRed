@@ -1,14 +1,16 @@
+from enum import Enum
 import numpy
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from snapred.meta.Config import Config
 from snapred.meta.Enum import StrEnum
 
+# TODO: Wrap in class so that default values may be overridden  
 VERSION_START = Config["version.start"]
-VERSION_NONE_NAME = Config["version.friendlyName.error"]
 
 
 class VersionState(StrEnum):
+    START = Config["version.start"]
     DEFAULT = Config["version.friendlyName.default"]
     LATEST = "latest"
     NEXT = "next"

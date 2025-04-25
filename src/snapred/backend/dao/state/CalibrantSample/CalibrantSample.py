@@ -1,7 +1,7 @@
 import datetime
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
@@ -18,7 +18,7 @@ class CalibrantSample(BaseModel):
     geometry: Geometry
     material: Material
     crystallography: Optional[Crystallography] = None
-    peakIntensityFractionThreshold: Optional[float] = Config["constants.PeakIntensityFractionThreshold"]
+    peakIntensityFractionThreshold: Optional[float] = Field(default_factory = lambda: Config["constants.PeakIntensityFractionThreshold"])
     overrides: Optional[Dict[str, Any]] = None
 
     # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.

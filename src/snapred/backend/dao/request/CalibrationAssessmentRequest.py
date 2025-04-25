@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, Field
 
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.RunConfig import RunConfig
@@ -33,8 +33,8 @@ class CalibrationAssessmentRequest(BaseModel, extra="forbid"):
     crystalDMin: float
     crystalDMax: float
     nBinsAcrossPeakWidth: int
-    fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
-    maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
+    fwhmMultipliers: Pair[float] = Field(default_factory = lambda: Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"]))
+    maxChiSq: float = Field(default_factory = lambda: Config["constants.GroupDiffractionCalibration.MaxChiSq"])
 
     @field_validator("fwhmMultipliers", mode="before")
     @classmethod

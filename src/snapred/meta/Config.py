@@ -94,6 +94,24 @@ class _Config:
     _logger = logging.getLogger(__name__ + ".Config")
 
     def __init__(self):
+        self.reload()
+
+    def _fix_directory_properties(self):
+        """Some developers set instrument.home to use ~/ and this fixes that"""
+
+        def expandhome(direc: str) -> str:
+            if "~" in direc:
+                return str(Path(direc).expanduser())
+            else:
+                return direc
+
+        if "instrument" in self._config and "home" in self._config["instrument"]:
+            self._config["instrument"]["home"] = expandhome(self._config["instrument"]["home"])
+        if "samples" in self._config and "home" in self._config["samples"]:
+            self._config["samples"]["home"] = expandhome(self._config["samples"]["home"])
+
+
+    def reload(self) -> None:
         # use refresh to do initial load, clearing shouldn't matter
         self.refresh("application.yml", True)
 
@@ -110,23 +128,9 @@ class _Config:
         # see if user used environment injection to modify what is needed
         # this will get from the os environment or from the currently loaded one
         # first case wins
-        env = os.environ.get("env", self._config.get("environment", None))
-        if env is not None:
-            self.refresh(env)
-
-    def _fix_directory_properties(self):
-        """Some developers set instrument.home to use ~/ and this fixes that"""
-
-        def expandhome(direc: str) -> str:
-            if "~" in direc:
-                return str(Path(direc).expanduser())
-            else:
-                return direc
-
-        if "instrument" in self._config and "home" in self._config["instrument"]:
-            self._config["instrument"]["home"] = expandhome(self._config["instrument"]["home"])
-        if "samples" in self._config and "home" in self._config["samples"]:
-            self._config["samples"]["home"] = expandhome(self._config["samples"]["home"])
+        self.env = os.environ.get("env", self._config.get("environment", None))
+        if self.env is not None:
+            self.refresh(self.env)
 
     def refresh(self, env_name: str, clearPrevious: bool = False) -> None:
         if clearPrevious:

@@ -1,7 +1,7 @@
 from enum import IntEnum
 from typing import Dict, List
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 
 from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -13,7 +13,7 @@ class PixelGroup(BaseModel):
     # allow initialization from either a dictionary or list
     pixelGroupingParameters: List[PixelGroupingParameters] | Dict[int, PixelGroupingParameters] = {}
 
-    nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
+    nBinsAcrossPeakWidth: int = Field(default_factory = lambda: Config["calibration.diffraction.nBinsAcrossPeakWidth"])
     focusGroup: FocusGroup
     timeOfFlight: BinnedValue[float]
 

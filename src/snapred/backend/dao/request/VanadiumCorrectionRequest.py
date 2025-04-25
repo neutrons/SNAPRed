@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
@@ -15,5 +15,5 @@ class VanadiumCorrectionRequest(BaseModel):
     backgroundWorkspace: str
     outputWorkspace: str
 
-    crystalDMin: float = Config["constants.CrystallographicInfo.crystalDMin"]
-    crystalDMax: float = Config["constants.CrystallographicInfo.crystalDMax"]
+    crystalDMin: float = Field(default_factory = lambda: Config["constants.CrystallographicInfo.crystalDMin"])
+    crystalDMax: float = Field(default_factory = lambda: Config["constants.CrystallographicInfo.crystalDMax"])
