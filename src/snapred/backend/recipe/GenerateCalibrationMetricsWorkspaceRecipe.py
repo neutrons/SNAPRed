@@ -12,6 +12,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceNameGenerator as wng,
 )
 from snapred.meta.redantic import list_to_raw
+from mantid.simpleapi import mtd
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -76,6 +77,9 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
             )
             self.mantidSnapper.executeQueue()
             logger.info("Finished generating calibration metrics workspace.")
+            for output in outputs:
+                ws = mtd[output]
+                ws.setPlotType("errorbar_y")
             return outputs
         except (RuntimeError, AlgorithmException) as e:
             errorString = str(e)
