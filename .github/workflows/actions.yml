@@ -110,7 +110,7 @@ jobs:
       with:
         fetch-depth: 100
         fetch-tags: true
-        ref: ${{ github.ref }}      
+        ref: ${{ github.ref }}
     - name: Set up MicroMamaba
       uses: mamba-org/setup-micromamba@v2
       with:
