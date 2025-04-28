@@ -1279,8 +1279,6 @@ class GroceryService:
         indexer = self.dataService.calibrationIndexer(
             diffcalItem.runNumber, diffcalItem.useLiteMode, alternativeState=alternativeState
         )
-        if not isinstance(diffcalItem.diffCalVersion, int):
-            diffcalItem.diffCalVersion = indexer.latestApplicableVersion(diffcalItem.runNumber)
 
         record = indexer.readRecord(diffcalItem.diffCalVersion)
         if record is not None:
