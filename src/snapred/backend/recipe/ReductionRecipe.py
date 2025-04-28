@@ -6,6 +6,7 @@ from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRe
 from snapred.backend.recipe.EffectiveInstrumentRecipe import EffectiveInstrumentRecipe
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe
 from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe
+from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.meta.Config import Config
@@ -276,6 +277,39 @@ class ReductionRecipe(Recipe[Ingredients]):
             )
         self.mantidSnapper.executeQueue()
 
+        # 1. PreprocessReductionRecipe
+        self._applyRecipe(
+            # groceries: 'inputWorkspace', 'diffcalWorkspace' [, 'outputWorkspace']
+            PreprocessReductionRecipe,
+            self.ingredients.preprocess(),
+            inputWorkspace=self.sampleWs,
+            **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
+        )
+        self._cloneIntermediateWorkspace(self.sampleWs, "sample_preprocessed")
+
+        if self.normalizationWs:
+            # If artificial normalization is being used, there won't be any incoming normalization workspace.
+            # NOTE: This MASKS the ws, this is not reversible.
+            #       This means a clone is needed for norm to be reusable later.
+            self.normalizationWsMasked = self.normalizationWs.builder.masked(True).build()
+            self._applyRecipe(
+                # groceries: 'inputWorkspace', 'diffcalWorkspace' [, 'outputWorkspace']
+                PreprocessReductionRecipe,
+                self.ingredients.preprocess(),
+                inputWorkspace=self.normalizationWs,
+                outputWorkspace=self.normalizationWsMasked,
+                **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
+            )
+            self.normalizationWs = self.normalizationWsMasked
+            self._cloneIntermediateWorkspace(self.normalizationWs, "normalization_preprocessed")
+
+        if bool(self.maskWs) and all(
+            (self._isGroupFullyMasked(groupingIndex) for groupingIndex in range(len(self.groupingWorkspaces)))
+        ):
+            raise RuntimeError(
+                "There are no unmasked pixels in any of the groupings.  Please check your mask workspace!"
+            )
+
         for groupingIndex, groupingWs in enumerate(self.groupingWorkspaces):
             if bool(self.maskWs):
                 if self._isGroupFullyMasked(groupingIndex):
@@ -376,6 +410,10 @@ class ReductionRecipe(Recipe[Ingredients]):
 
             if self.normalizationWs:
                 self._deleteWorkspace(normalizationClone)
+
+        if self.normalizationWs:
+            # removed masked clone
+            self._deleteWorkspace(self.normalizationWsMasked)
 
         if self.maskWs:
             outputs.append(self.maskWs)

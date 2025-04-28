@@ -12,6 +12,7 @@ from util.SculleryBoy import SculleryBoy
 
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.state import FocusGroup, PixelGroup, PixelGroupingParameters
+from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.backend.recipe.ReductionRecipe import (
     ApplyNormalizationRecipe,
     EffectiveInstrumentRecipe,
@@ -570,6 +571,16 @@ class ReductionRecipeTest(TestCase):
         result = recipe.execute()
 
         # Perform assertions
+        recipe._applyRecipe.assert_any_call(
+            PreprocessReductionRecipe,
+            recipe.ingredients.preprocess(),
+            inputWorkspace=recipe.sampleWs,
+        )
+        recipe._applyRecipe.assert_any_call(
+            PreprocessReductionRecipe,
+            recipe.ingredients.preprocess(),
+            inputWorkspace=recipe.normalizationWs,
+        )
 
         for groupIndex in (0, 1):
             recipe._applyRecipe.assert_any_call(
@@ -863,7 +874,7 @@ class ReductionRecipeTest(TestCase):
         assert recipe.logger().warning.call_count == 1, "Expected warning to be called for the fully masked group."
 
         # Ensure no algorithms were applied for the fully masked group.
-        assert recipe._applyRecipe.call_count == 4, "Expected _applyRecipe to not be called for the fully masked group."
+        assert recipe._applyRecipe.call_count == 6, "Expected _applyRecipe to not be called for the fully masked group."
 
         assert "mask" in result["outputs"], "Expected the mask workspace to be included in the outputs."
 

@@ -254,6 +254,8 @@ class ValueFormatter:
                 value = ValueFormatter.formatTimestamp(value)
             case "stateId":
                 value = ValueFormatter.formatStateId(value)
+            case "masked":
+                value = "masked" if value else ""
             case _:
                 # IMPORTANT: moving the _lowercase_ conversion to this location enables case sensitivity
                 #   in both formatter output and in literal tokens from the template itself.
@@ -428,6 +430,7 @@ class _WorkspaceNameGenerator:
             unit=self.Units.TOF,
             group=self.Groups.UNFOC,
             version=None,
+            masked=False,
         )
 
     def focusedRawVanadium(self):

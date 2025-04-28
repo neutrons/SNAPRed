@@ -15,7 +15,7 @@ Pallet = Tuple[Ingredients, Dict[str, str]]
 
 class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
     def allGroceryKeys(self):
-        return {"inputWorkspace", "groupingWorkspace", "outputWorkspace", "maskWorkspace"}
+        return {"inputWorkspace", "groupingWorkspace", "outputWorkspace"}
 
     def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
         return {"inputWorkspace", "groupingWorkspace"}
@@ -24,7 +24,6 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
         self.rawInput = groceries["inputWorkspace"]
         self.outputWS = groceries.get("outputWorkspace", groceries["inputWorkspace"])
         self.groupingWS = groceries["groupingWorkspace"]
-        self.maskWS = groceries.get("maskWorkspace", "")
 
     def chopIngredients(self, ingredients):
         self.pixelGroup = ingredients.pixelGroup
@@ -54,15 +53,6 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
         Queues up the processing algorithms for the recipe.
         Requires: unbagged groceries.
         """
-
-        if self.maskWS != "":
-            # NOTE: Applying a mask to the input workspace is a temp measure
-            #       This will be fixed in an upcoming PR.
-            self.mantidSnapper.MaskDetectorFlags(
-                "Applying pixel mask...",
-                MaskWorkspace=self.maskWS,
-                OutputWorkspace=self.rawInput,
-            )
 
         self.mantidSnapper.FocusSpectraAlgorithm(
             "Focusing Spectra...",

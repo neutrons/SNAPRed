@@ -10,6 +10,7 @@ from snapred.backend.dao.ingredients.ApplyNormalizationIngredients import ApplyN
 from snapred.backend.dao.ingredients.ArtificialNormalizationIngredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.ingredients.EffectiveInstrumentIngredients import EffectiveInstrumentIngredients
 from snapred.backend.dao.ingredients.GenerateFocussedVanadiumIngredients import GenerateFocussedVanadiumIngredients
+from snapred.backend.dao.ingredients.PreprocessReductionIngredients import PreprocessReductionIngredients
 from snapred.backend.dao.ingredients.ReductionGroupProcessingIngredients import ReductionGroupProcessingIngredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 
@@ -40,6 +41,9 @@ class ReductionIngredients(BaseModel):
     #
     # FACTORY methods to create sub-recipe ingredients:
     #
+    def preprocess(self) -> PreprocessReductionIngredients:
+        # At present, `PreprocessReductionIngredients` has no required parameters.
+        return PreprocessReductionIngredients()
 
     def getDetectorPeaks(self, groupingIndex: int) -> List[GroupPeakList]:
         if self.detectorPeaksMany is None:

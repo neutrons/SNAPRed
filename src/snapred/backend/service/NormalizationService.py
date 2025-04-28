@@ -36,6 +36,7 @@ from snapred.backend.recipe.GenericRecipe import (
     RawVanadiumCorrectionRecipe,
     SmoothDataExcludingPeaksRecipe,
 )
+from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.service.Service import Register, Service
@@ -172,6 +173,17 @@ class NormalizationService(Service):
         groceries["inputWorkspace"] = correctedVanadium
         groceries["outputWorkspace"] = focusedVanadium
 
+        PreprocessReductionRecipe().cook(
+            PreprocessReductionRecipe.Ingredients(),
+            groceries={
+                "inputWorkspace": groceries["inputWorkspace"],
+                "outputWorkspace": groceries["outputWorkspace"],
+                "maskWorkspace": groceries["maskWorkspace"],
+            },
+        )
+
+        groceries["inputWorkspace"] = focusedVanadium
+
         # focus and normalize by current
         ConvertUnitsRecipe().executeRecipe(
             InputWorkspace=groceries["inputWorkspace"],
@@ -189,7 +201,6 @@ class NormalizationService(Service):
                 "inputWorkspace": groceries["inputWorkspace"],
                 "outputWorkspace": groceries["outputWorkspace"],
                 "groupingWorkspace": groceries["groupingWorkspace"],
-                "maskWorkspace": groceries["maskWorkspace"],
             },
         )
 
