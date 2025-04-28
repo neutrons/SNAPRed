@@ -1,3 +1,5 @@
+from mantid.simpleapi import mtd
+
 from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients as Ingredients
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
@@ -12,7 +14,6 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceNameGenerator as wng,
 )
 from snapred.meta.redantic import list_to_raw
-from mantid.simpleapi import mtd
 
 logger = snapredLogger.getLogger(__name__)
 
