@@ -83,9 +83,6 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         # make sure the input workspace can be reduced by this grouping workspace
         inWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
 
-        if not FocusSpectraAlgorithm.unitsMatch(inWS, "dSpacing"):
-            errors["InputWorkspace"] = "Input workspace must be in dSpacing"
-
         groupWS = self.mantidSnapper.mtd[self.getPropertyValue("GroupingWorkspace")]
         if not isinstance(groupWS, GroupingWorkspace):
             errors["GroupingWorkspace"] = "Grouping workspace must be an actual GroupingWorkspace"
@@ -103,9 +100,6 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             errors["GroupingWorkspace"] = msg
 
         return errors
-
-    def unitsMatch(ws, unit) -> bool:
-        return ws.getAxis(0).getUnit().unitID() == unit
 
     def PyExec(self):
         pixelGroup: PixelGroup = PixelGroup.model_validate_json(self.getPropertyValue("PixelGroup"))

@@ -34,7 +34,7 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
 
     def _validateWSUnits(self, key, ws):
         if key == "inputWorkspace":
-            # assert that the input workspace is in TOF
+            # assert that the input workspace is in dSpacing
             wsInstance = self.mantidSnapper.mtd[ws]
             wsUnit = wsInstance.getAxis(0).getUnit().unitID()
             if wsUnit != "dSpacing":
