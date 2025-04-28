@@ -313,7 +313,7 @@ class ReductionRecipeTest(TestCase):
         recipe.sampleWs = "sample"
         recipe.diffcalWs = "diffcal_table"
         recipe.maskWs = "mask"
-        recipe.normalizationWs = "norm"
+        recipe.normalizationWs = wng.rawVanadium().runNumber(recipe.ingredients.runNumber).build()
         recipe.groupingWorkspaces = ["group1", "group2"]
         recipe.keepUnfocused = True
         recipe.convertUnitsTo = "dSpacing"
@@ -323,8 +323,9 @@ class ReductionRecipeTest(TestCase):
 
         # Assertions
         recipe._prepareUnfocusedData.assert_called_once_with("sample", "mask", "dSpacing")
-        assert recipe._deleteWorkspace.call_count == len(recipe._generateWorkspaceNamesForGroup.return_value)
-        recipe._deleteWorkspace.assert_called_with("norm_grouped")
+        # Delete the group clones (sample + norm), and the masked normalization clone.
+        assert recipe._deleteWorkspace.call_count == 3
+        recipe._deleteWorkspace.assert_called_with(recipe.normalizationWsMasked)
 
         finalReducedOutputWs = preReducedOutputWs.builder.hidden(False).build()
         assert result["outputs"][0] == finalReducedOutputWs
@@ -562,7 +563,7 @@ class ReductionRecipeTest(TestCase):
         recipe.sampleWs = "sample"
         recipe.diffcalWs = "diffcal_table"
         recipe.maskWs = "mask"
-        recipe.normalizationWs = "norm"
+        recipe.normalizationWs = wng.rawVanadium().runNumber(recipe.ingredients.runNumber).build()
         recipe.groupingWorkspaces = ["group1", "group2"]
         recipe.keepUnfocused = True
         recipe.convertUnitsTo = "TOF"
@@ -575,11 +576,14 @@ class ReductionRecipeTest(TestCase):
             PreprocessReductionRecipe,
             recipe.ingredients.preprocess(),
             inputWorkspace=recipe.sampleWs,
+            maskWorkspace=recipe.maskWs,
         )
         recipe._applyRecipe.assert_any_call(
             PreprocessReductionRecipe,
             recipe.ingredients.preprocess(),
-            inputWorkspace=recipe.normalizationWs,
+            inputWorkspace=recipe.normalizationWs.builder.masked(False).build(),
+            maskWorkspace=recipe.maskWs,
+            outputWorkspace=recipe.normalizationWs.builder.masked(True).build(),
         )
 
         for groupIndex in (0, 1):
@@ -622,8 +626,9 @@ class ReductionRecipeTest(TestCase):
             2 if Config["reduction.output.useEffectiveInstrument"] else 0
         )
 
-        recipe._deleteWorkspace.assert_called_with("norm_grouped")
-        assert recipe._deleteWorkspace.call_count == len(prepGroupingWorkspacesReturns[0])
+        recipe._deleteWorkspace.assert_called_with(recipe.normalizationWs.builder.masked(True).build())
+        # Delete the group clones (sample + norm), and the masked normalization clone.
+        assert recipe._deleteWorkspace.call_count == 3
 
         finalReducedOutputWs = preReducedOutputWs.builder.hidden(False).build()
         assert result["outputs"][0] == finalReducedOutputWs
@@ -703,7 +708,7 @@ class ReductionRecipeTest(TestCase):
             recipe.sampleWs = "sample"
             recipe.diffcalWs = "diffcal_table"
             recipe.maskWs = "mask"
-            recipe.normalizationWs = "norm"
+            recipe.normalizationWs = wng.rawVanadium().runNumber(recipe.ingredients.runNumber).build()
             recipe.groupingWorkspaces = ["group1", "group2"]
             recipe.keepUnfocused = True
             recipe.convertUnitsTo = "TOF"
@@ -853,7 +858,7 @@ class ReductionRecipeTest(TestCase):
         recipe.sampleWs = "sample"
         recipe.diffcalWs = "diffcal_table"
         recipe.maskWs = "mask"
-        recipe.normalizationWs = "norm"
+        recipe.normalizationWs = wng.rawVanadium().runNumber(recipe.ingredients.runNumber).build()
         recipe.groupingWorkspaces = ["group1", "group2"]
         recipe.keepUnfocused = True
         recipe.convertUnitsTo = "TOF"
@@ -955,7 +960,7 @@ class ReductionRecipeTest(TestCase):
         recipe.sampleWs = "sample"
         recipe.diffcalWs = "diffcal_table"
         recipe.maskWs = "mask"
-        recipe.normalizationWs = "norm"
+        recipe.normalizationWs = wng.rawVanadium().runNumber(recipe.ingredients.runNumber).build()
         recipe.groupingWorkspaces = ["group1", "group2"]
         recipe.keepUnfocused = True
         recipe.convertUnitsTo = "TOF"
