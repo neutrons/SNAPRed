@@ -253,8 +253,10 @@ class TestNormalizationService(unittest.TestCase):
     @patch(thisService + "PreprocessReductionRecipe")
     @patch(thisService + "ReductionGroupProcessingRecipe")
     @patch(thisService + "SmoothDataExcludingPeaksRecipe")
+    @patch(thisService + "ConvertUnitsRecipe")
     def test_normalization(
         self,
+        mockConvertUnitsRecipe,
         mockSmoothDataExcludingPeaks,
         mockReductionGroupProcessing,  # noqa: ARG002
         mockPreprocessReduction,
@@ -295,6 +297,7 @@ class TestNormalizationService(unittest.TestCase):
         self.assertIn("smoothedVanadium", result)  # noqa: PT009
         mockGroceryService.fetchGroceryDict.assert_called_once()
         mockVanadiumCorrection.assert_called_once()
+        mockConvertUnitsRecipe().executeRecipe.assert_called_once()
         mockPreprocessReduction.assert_called_once()
         mockSmoothDataExcludingPeaks.assert_called_once()
 

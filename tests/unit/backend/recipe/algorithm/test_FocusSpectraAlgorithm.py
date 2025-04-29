@@ -101,6 +101,11 @@ class TestFocusSpectra(unittest.TestCase):
             Params=(TOFMin, dBin, TOFMax),
             BinningMode="Logarithmic",
         )
+        ConvertUnits(
+            InputWorkspace=rawWsName,
+            OutputWorkspace=rawWsName,
+            Target="dSpacing",
+        )
 
     def getRebinRaggedParams(self, focusWSname: str):
         focWS = mtd[focusWSname]
@@ -206,7 +211,7 @@ class TestFocusSpectra(unittest.TestCase):
             Xmin=overallDMin,
             Xmax=overallDMax,
             BinWidth=abs(dBin),
-            XUnit="TOF",
+            XUnit="dSpacing",
             NumBanks=5,  # must wrong for test
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
         )

@@ -187,7 +187,7 @@ mantid:
             timedMetric: "_calib_metrics,{metricName},{runNumber},{timestamp}"
           monitor: "monitor,{runNumber}"
           normCal:
-            rawVanadium: "_{unit},{group},raw_van_corr,{runNumber},{version}"
+            rawVanadium: "_{unit},{group},{masked},raw_van_corr,{runNumber},{version}"
             focusedRawVanadium: "_{unit},{group},raw_van_corr,{runNumber},{version}"
             smoothedFocusedRawVanadium: "_{unit},{group},fitted_van_corr,{runNumber},{version}"
             artificialNormalizationPreview: "artificial_norm,{unit},{group},{runNumber},{type}"

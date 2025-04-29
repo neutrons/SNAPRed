@@ -965,9 +965,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     @mock.patch(thisService + "FocusSpectraRecipe")
-    def test_focusSpectra_not_exist(self, FocusSpectraRecipe, FarmFreshIngredients):
+    @mock.patch(thisService + "ConvertUnitsRecipe")
+    def test_focusSpectra_not_exist(self, ConvertUnitsRecipe, FocusSpectraRecipe, FarmFreshIngredients):
         self.instance.sousChef = SculleryBoy()
 
+        ConvertUnitsRecipe().executeRecipe.return_value = mock.Mock()
         FocusSpectraRecipe().executeRecipe.return_value = mock.Mock()
 
         request = mock.Mock(runNumber="12345", focusGroup=mock.Mock(name="group1"))
@@ -994,7 +996,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert FarmFreshIngredients.call_count == 1
         self.instance.groceryService.fetchGroupingDefinition.assert_called_once_with(groupingItem)
         FocusSpectraRecipe().executeRecipe.assert_called_once_with(
-            InputWorkspace=request.inputWorkspace,
+            InputWorkspace=focusedWorkspace,
             GroupingWorkspace=groupingWorkspace,
             PixelGroup=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
             OutputWorkspace=focusedWorkspace,

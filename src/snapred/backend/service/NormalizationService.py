@@ -30,6 +30,7 @@ from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.GenericRecipe import (
+    ConvertUnitsRecipe,
     FocusSpectraRecipe,
     MinusRecipe,
     RawVanadiumCorrectionRecipe,
@@ -112,15 +113,17 @@ class NormalizationService(Service):
                 smoothedVanadium=smoothedVanadium,
                 detectorPeaks=ingredients.detectorPeaks,
             ).dict()
-
+        calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
+            request.runNumber, request.useLiteMode
+        )
         # gather needed groceries and ingredients
         if request.correctedVanadiumWs is None:
             self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
                 request.useLiteMode
-            ).dirty().add()
+            ).diffCalVersion(calVersion).dirty().add()
             self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
                 request.useLiteMode
-            ).dirty().add()
+            ).diffCalVersion(calVersion).dirty().add()
         else:
             # check that the corrected vanadium workspaces exist already
             if request.correctedVanadiumWs != correctedVanadium:
@@ -137,16 +140,10 @@ class NormalizationService(Service):
             request.useLiteMode
         ).add()
 
-        calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
-            request.runNumber, request.useLiteMode
-        )
         calRunNumber = self.dataFactoryService.getCalibrationRecord(
             request.runNumber, request.useLiteMode, calVersion
         ).runNumber
 
-        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
-            request.useLiteMode
-        ).add()
         self.groceryClerk.name("maskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
             request.useLiteMode
         ).add()
@@ -175,25 +172,35 @@ class NormalizationService(Service):
         # Apply diffcal and mask
         groceries["inputWorkspace"] = correctedVanadium
         groceries["outputWorkspace"] = focusedVanadium
+
         PreprocessReductionRecipe().cook(
             PreprocessReductionRecipe.Ingredients(),
             groceries={
                 "inputWorkspace": groceries["inputWorkspace"],
                 "outputWorkspace": groceries["outputWorkspace"],
-                "diffcalWorkspace": groceries["diffcalWorkspace"],
+                "maskWorkspace": groceries["maskWorkspace"],
             },
         )
 
+        groceries["inputWorkspace"] = focusedVanadium
+
         # focus and normalize by current
+        ConvertUnitsRecipe().executeRecipe(
+            InputWorkspace=groceries["inputWorkspace"],
+            OutputWorkspace=groceries["outputWorkspace"],
+            Target="dSpacing",
+            EMode="Elastic",
+        )
+
         groceries["inputWorkspace"] = focusedVanadium
         groceries["outputWorkspace"] = focusedVanadium
+
         ReductionGroupProcessingRecipe().cook(
             ReductionGroupProcessingRecipe.Ingredients(pixelGroup=ingredients.pixelGroup),
             groceries={
                 "inputWorkspace": groceries["inputWorkspace"],
                 "outputWorkspace": groceries["outputWorkspace"],
                 "groupingWorkspace": groceries["groupingWorkspace"],
-                "maskWorkspace": groceries["maskWorkspace"],
             },
         )
 

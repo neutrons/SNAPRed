@@ -1,6 +1,7 @@
 import datetime
 from typing import Dict, List
 
+from snapred.backend.dao.indexing.Versioning import Version
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem, LiveDataArgs
 
 
@@ -27,6 +28,10 @@ class GroceryListBuilder:
         self._tokens["groupingScheme"] = groupingScheme
         return self
 
+    def diffCalVersion(self, version: Version):
+        self._tokens["diffCalVersion"] = version
+        return self
+
     def fromRun(self, runId: str):
         self._tokens["runNumber"] = runId
         return self
@@ -39,33 +44,34 @@ class GroceryListBuilder:
     def diffcal_output(self, runId: str, version: int):
         self._tokens["workspaceType"] = "diffcal_output"
         self._tokens["runNumber"] = runId
-        self._tokens["version"] = version
+        self._tokens["diffCalVersion"] = version
         return self
 
     def diffcal_diagnostic(self, runId: str, version: int):
         self._tokens["workspaceType"] = "diffcal_diagnostic"
         self._tokens["runNumber"] = runId
-        self._tokens["version"] = version
+        self._tokens["diffCalVersion"] = version
         return self
 
     def diffcal_table(self, runId: str, version: int, alternativeState: str = None):
         self._tokens["workspaceType"] = "diffcal_table"
         self._tokens["runNumber"] = runId
-        self._tokens["version"] = version
+        self._tokens["diffCalVersion"] = version
         self._tokens["alternativeState"] = alternativeState
         return self
 
     def diffcal_mask(self, runId: str, version: int, alternativeState: str = None):
         self._tokens["workspaceType"] = "diffcal_mask"
         self._tokens["runNumber"] = runId
-        self._tokens["version"] = version
+        self._tokens["diffCalVersion"] = version
         self._tokens["alternativeState"] = alternativeState
         return self
 
     def normalization(self, runId: str, version: int):
         self._tokens["workspaceType"] = "normalization"
         self._tokens["runNumber"] = runId
-        self._tokens["version"] = version
+        self._tokens["normCalVersion"] = version
+        self._tokens["hidden"] = True
         return self
 
     def reduction_pixel_mask(self, runId: str, timestamp: float):
@@ -117,6 +123,9 @@ class GroceryListBuilder:
     def dirty(self):
         self._tokens["keepItClean"] = False
         return self
+
+    def hidden(self):
+        raise NotImplementedError("hidden() is not implemented yet")
 
     def build(self, reset=True) -> GroceryListItem:
         # create the grocery list item, and return it

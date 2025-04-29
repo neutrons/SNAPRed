@@ -15,7 +15,7 @@ Pallet = Tuple[Ingredients, Dict[str, str]]
 
 class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
     def allGroceryKeys(self):
-        return {"inputWorkspace", "groupingWorkspace", "outputWorkspace", "maskWorkspace"}
+        return {"inputWorkspace", "groupingWorkspace", "outputWorkspace"}
 
     def mandatoryInputWorkspaces(self) -> Set[WorkspaceName]:
         return {"inputWorkspace", "groupingWorkspace"}
@@ -24,7 +24,6 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
         self.rawInput = groceries["inputWorkspace"]
         self.outputWS = groceries.get("outputWorkspace", groceries["inputWorkspace"])
         self.groupingWS = groceries["groupingWorkspace"]
-        self.maskWS = groceries.get("maskWorkspace", "")
 
     def chopIngredients(self, ingredients):
         self.pixelGroup = ingredients.pixelGroup
@@ -32,28 +31,32 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
         logger.debug(f"dMax: {self.pixelGroup.dMax()}")
         logger.debug(f"dBin: {self.pixelGroup.dBin()}")
 
+    def _validateWSUnits(self, key, ws):
+        if key == "inputWorkspace":
+            # assert that the input workspace is in dSpacing
+            wsInstance = self.mantidSnapper.mtd[ws]
+            wsUnit = wsInstance.getAxis(0).getUnit().unitID()
+            if wsUnit != "dSpacing":
+                raise RuntimeError(
+                    (
+                        f"Input workspace {ws} is of units {wsUnit}."
+                        " Please convert it to dSpacing before using this recipe."
+                    )
+                )
+
+    def _validateGrocery(self, key, ws):
+        super()._validateGrocery(key, ws)
+        self._validateWSUnits(key, ws)
+
     def queueAlgos(self):
         """
         Queues up the processing algorithms for the recipe.
         Requires: unbagged groceries.
         """
-        self.mantidSnapper.ConvertUnits(
-            "Converting to TOF...",
-            InputWorkspace=self.rawInput,
-            Target="TOF",
-            OutputWorkspace=self.outputWS,
-        )
-
-        if self.maskWS != "":
-            self.mantidSnapper.MaskDetectorFlags(
-                "Applying pixel mask...",
-                MaskWorkspace=self.maskWS,
-                OutputWorkspace=self.outputWS,
-            )
 
         self.mantidSnapper.FocusSpectraAlgorithm(
             "Focusing Spectra...",
-            InputWorkspace=self.outputWS,
+            InputWorkspace=self.rawInput,
             OutputWorkspace=self.outputWS,
             GroupingWorkspace=self.groupingWS,
             PixelGroup=self.pixelGroup.json(),

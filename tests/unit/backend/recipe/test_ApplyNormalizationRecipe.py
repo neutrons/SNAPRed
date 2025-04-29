@@ -30,8 +30,7 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         recipe = ApplyNormalizationRecipe(utensils=utensils)
         assert recipe.mantidSnapper == utensils.mantidSnapper
 
-    @unittest.mock.patch("snapred.backend.recipe.ApplyNormalizationRecipe.RebinFocussedGroupDataRecipe")
-    def test_chopIngredients(self, mockRebinRecipe):  # noqa: ARG002
+    def test_chopIngredients(self):  # noqa: ARG002
         recipe = ApplyNormalizationRecipe()
 
         ingredients = Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
@@ -90,8 +89,7 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
 
         assert divideTuple[0] == "Divide"
 
-    @unittest.mock.patch("snapred.backend.recipe.ApplyNormalizationRecipe.RebinFocussedGroupDataRecipe")
-    def test_cook(self, mockRebinRecipe):
+    def test_cook(self):
         untensils = Utensils()
         mockSnapper = unittest.mock.Mock()
         mockSnapper.mtd = unittest.mock.MagicMock()
@@ -109,10 +107,8 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
 
         assert mockSnapper.executeQueue.called
         assert mockSnapper.Divide.called
-        assert mockRebinRecipe().cook.called
 
-    @unittest.mock.patch("snapred.backend.recipe.ApplyNormalizationRecipe.RebinFocussedGroupDataRecipe")
-    def test_cater(self, mockRebinRecipe):
+    def test_cater(self):
         untensils = Utensils()
         mockSnapper = unittest.mock.Mock()
         untensils.mantidSnapper = mockSnapper
@@ -129,4 +125,3 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
 
         assert mockSnapper.executeQueue.called
         assert mockSnapper.Divide.called
-        assert mockRebinRecipe().cook.called

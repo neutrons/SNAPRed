@@ -205,7 +205,7 @@ class ReductionRecipe(Recipe[Ingredients]):
     def _getNormalizationWorkspaceName(self, groupingIndex: int):
         return f"reduced_normalization_{groupingIndex}_{wnvf.formatTimestamp(self.ingredients.timestamp)}"
 
-    def _prepGroupingWorkspaces(self, groupingIndex: int):
+    def _generateWorkspaceNamesForGroup(self, groupingIndex: int):
         # TODO:  We need the wng to be able to deconstruct the workspace name
         # so that we can appropriately name the cloned workspaces
         # For now we are just appending it to the end, probably preferable
@@ -222,13 +222,10 @@ class ReductionRecipe(Recipe[Ingredients]):
             wng.reductionOutput().runNumber(runNumber).group(groupingName).timestamp(timestamp).hidden(True).build()
         )
 
-        sampleClone = self._cloneWorkspace(self.sampleWs, reducedOutputWs)
+        sampleClone = reducedOutputWs
         normalizationClone = None
         if self.normalizationWs:
-            normalizationClone = self._cloneWorkspace(
-                self.normalizationWs,
-                self._getNormalizationWorkspaceName(groupingIndex),
-            )
+            normalizationClone = self._getNormalizationWorkspaceName(groupingIndex)
         return sampleClone, normalizationClone
 
     def _isGroupFullyMasked(self, groupingIndex: int) -> bool:
@@ -253,26 +250,57 @@ class ReductionRecipe(Recipe[Ingredients]):
         if self.keepUnfocused:
             data["unfocusedWS"] = self._prepareUnfocusedData(self.sampleWs, self.maskWs, self.convertUnitsTo)
 
-        # 1. PreprocessReductionRecipe
         outputs = []
+
+        if bool(self.maskWs) and all(
+            (self._isGroupFullyMasked(groupingIndex) for groupingIndex in range(len(self.groupingWorkspaces)))
+        ):
+            raise RuntimeError(
+                "There are no unmasked pixels in any of the groupings.  Please check your mask workspace!"
+            )
+        self.mantidSnapper.ConvertUnits(
+            "Converting sample data to d-spacing",
+            InputWorkspace=self.sampleWs,
+            OutputWorkspace=self.sampleWs,
+            Target="dSpacing",
+            EMode="Elastic",
+        )
+
+        if self.normalizationWs:
+            # Temporarily convert the normalization workspace to d-spacing
+            self.mantidSnapper.ConvertUnits(
+                "Converting normalization data to d-spacing",
+                InputWorkspace=self.normalizationWs,
+                OutputWorkspace=self.normalizationWs,
+                Target="dSpacing",
+                EMode="Elastic",
+            )
+        self.mantidSnapper.executeQueue()
+
+        # 1. PreprocessReductionRecipe
         self._applyRecipe(
             # groceries: 'inputWorkspace', 'diffcalWorkspace' [, 'outputWorkspace']
             PreprocessReductionRecipe,
             self.ingredients.preprocess(),
             inputWorkspace=self.sampleWs,
-            diffcalWorkspace=self.diffcalWs,
+            **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
         )
         self._cloneIntermediateWorkspace(self.sampleWs, "sample_preprocessed")
 
         if self.normalizationWs:
             # If artificial normalization is being used, there won't be any incoming normalization workspace.
+            # NOTE: This MASKS the ws, this is not reversible.
+            #       This means a clone is needed for norm to be reusable later.
+            self.normalizationWsMasked = self.normalizationWs.builder.masked(True).build()
             self._applyRecipe(
                 # groceries: 'inputWorkspace', 'diffcalWorkspace' [, 'outputWorkspace']
                 PreprocessReductionRecipe,
                 self.ingredients.preprocess(),
                 inputWorkspace=self.normalizationWs,
-                diffcalWorkspace=self.diffcalWs,
+                outputWorkspace=self.normalizationWsMasked,
+                **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
             )
+            self.normalizationWs = self.normalizationWsMasked
             self._cloneIntermediateWorkspace(self.normalizationWs, "normalization_preprocessed")
 
         if bool(self.maskWs) and all(
@@ -300,27 +328,28 @@ class ReductionRecipe(Recipe[Ingredients]):
                         + f"grouping:\n    subgroups {maskedSubgroups} are fully masked."
                     )
 
-            sampleClone, normalizationClone = self._prepGroupingWorkspaces(groupingIndex)
+            # NOTE: DONT clone either here, let ReductionGroupProcessingRecipe do it
+            sampleClone, normalizationClone = self._generateWorkspaceNamesForGroup(groupingIndex)
 
             # 2. ReductionGroupProcessingRecipe
             self._applyRecipe(
-                # groceries: 'inputWorkspace', 'groupingWorkspace', 'maskWorkspace' [, 'outputWorkspace']
+                # groceries: 'inputWorkspace', 'groupingWorkspace', [, 'outputWorkspace']
                 ReductionGroupProcessingRecipe,
                 self.ingredients.groupProcessing(groupingIndex),
-                inputWorkspace=sampleClone,
+                inputWorkspace=self.sampleWs,
+                outputWorkspace=sampleClone,
                 groupingWorkspace=groupingWs,
-                **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
             )
             self._cloneIntermediateWorkspace(sampleClone, f"sample_GroupProcessing_{groupingIndex}")
 
             if normalizationClone:
                 self._applyRecipe(
-                    # groceries: 'inputWorkspace', 'groupingWorkspace', 'maskWorkspace' [, 'outputWorkspace']
+                    # groceries: 'inputWorkspace', 'groupingWorkspace', [, 'outputWorkspace']
                     ReductionGroupProcessingRecipe,
                     self.ingredients.groupProcessing(groupingIndex),
-                    inputWorkspace=normalizationClone,
+                    inputWorkspace=self.normalizationWs,
+                    outputWorkspace=normalizationClone,
                     groupingWorkspace=groupingWs,
-                    **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
                 )
                 self._cloneIntermediateWorkspace(normalizationClone, f"normalization_GroupProcessing_{groupingIndex}")
 
@@ -379,6 +408,10 @@ class ReductionRecipe(Recipe[Ingredients]):
 
             if self.normalizationWs:
                 self._deleteWorkspace(normalizationClone)
+
+        if self.normalizationWs:
+            # removed masked clone
+            self._deleteWorkspace(self.normalizationWsMasked)
 
         if self.maskWs:
             outputs.append(self.maskWs)

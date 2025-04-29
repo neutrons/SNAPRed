@@ -1,7 +1,7 @@
 import json
 from typing import Generic, TypeVar, get_args
 
-from mantid.simpleapi import Minus
+from mantid.simpleapi import ConvertUnits, Minus
 from pydantic import BaseModel
 
 from snapred.backend.log.logger import snapredLogger
@@ -96,6 +96,10 @@ class GenerateTableWorkspaceFromListOfDictRecipe(GenericRecipe[GenerateTableWork
 
 
 class FocusSpectraRecipe(GenericRecipe[FocusSpectraAlgorithm]):
+    pass
+
+
+class ConvertUnitsRecipe(GenericRecipe[ConvertUnits]):
     pass
 
 

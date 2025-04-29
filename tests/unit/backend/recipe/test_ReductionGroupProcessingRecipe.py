@@ -1,6 +1,8 @@
 import unittest
 from unittest import mock
 
+import pytest
+
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 
@@ -49,19 +51,13 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
 
         queuedAlgos = recipe.mantidSnapper._algorithmQueue
         i = 0
-        convertUnits = queuedAlgos[i]
-        diffFoc = queuedAlgos[i := i + 1]
+        diffFoc = queuedAlgos[i]
         normCurr = queuedAlgos[i := i + 1]
 
-        assert convertUnits[0] == "ConvertUnits"
         assert diffFoc[0] == "FocusSpectraAlgorithm"
         assert normCurr[0] == "NormalizeByCurrentButTheCorrectWay"
-        assert convertUnits[1] == "Converting to TOF..."
         assert diffFoc[1] == "Focusing Spectra..."
         assert normCurr[1] == "Normalizing Current ... but the correct way!"
-        assert convertUnits[2]["InputWorkspace"] == groceries["inputWorkspace"]
-        assert convertUnits[2]["OutputWorkspace"] == groceries["inputWorkspace"]
-        assert convertUnits[2]["Target"] == "TOF"
         assert diffFoc[2]["InputWorkspace"] == groceries["inputWorkspace"]
         assert diffFoc[2]["GroupingWorkspace"] == groceries["groupingWorkspace"]
         assert diffFoc[2]["OutputWorkspace"] == groceries["inputWorkspace"]
@@ -71,9 +67,11 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
     def test_cook(self):
         untensils = Utensils()
         mockSnapper = unittest.mock.Mock()
+
         untensils.mantidSnapper = mockSnapper
         recipe = ReductionGroupProcessingRecipe(utensils=untensils)
         recipe._validateIngredients = unittest.mock.Mock(return_value=True)
+        recipe._validateWSUnits = unittest.mock.Mock()
         groceries = {
             "inputWorkspace": "input",
             "outputWorkspace": "output",
@@ -95,8 +93,10 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
     def test_cater(self):
         untensils = Utensils()
         mockSnapper = unittest.mock.Mock()
+
         untensils.mantidSnapper = mockSnapper
         recipe = ReductionGroupProcessingRecipe(utensils=untensils)
+        recipe._validateWSUnits = unittest.mock.Mock()
         recipe._validateIngredients = unittest.mock.Mock(return_value=True)
         groceries = {
             "inputWorkspace": "input",
@@ -115,3 +115,29 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
         assert mockSnapper.executeQueue.called
         assert mockSnapper.FocusSpectraAlgorithm.called
         assert mockSnapper.NormalizeByCurrentButTheCorrectWay.called
+
+    def test_validateWSUnits(self):
+        recipe = ReductionGroupProcessingRecipe()
+        mockSnapper = unittest.mock.Mock()
+        recipe.mantidSnapper = mockSnapper
+        mockSnapper.mtd = unittest.mock.MagicMock()
+        mockSnapper.mtd.__getitem__ = unittest.mock.Mock()
+        mockWorkspace = mockSnapper.mtd["input"]
+        mockWorkspace.getAxis().getUnit().unitID = unittest.mock.Mock(return_value="dSpacing")
+        recipe._validateWSUnits("inputWorkspace", "input")
+        assert mockWorkspace.getAxis().getUnit().unitID.called
+
+    def test_validateWSUnits_invalid(self):
+        recipe = ReductionGroupProcessingRecipe()
+        mockSnapper = unittest.mock.Mock()
+        recipe.mantidSnapper = mockSnapper
+        mockSnapper.mtd = unittest.mock.MagicMock()
+        mockSnapper.mtd.__getitem__ = unittest.mock.Mock()
+        mockWorkspace = mockSnapper.mtd["input"]
+        mockWorkspace.getAxis().getUnit().unitID = unittest.mock.Mock(return_value="TOF")
+
+        with pytest.raises(
+            RuntimeError,
+            match="Input workspace input is of units TOF. Please convert it to dSpacing before using this recipe.",
+        ):
+            recipe._validateWSUnits("inputWorkspace", "input")

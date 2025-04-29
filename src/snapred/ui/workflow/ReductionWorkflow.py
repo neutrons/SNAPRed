@@ -480,6 +480,9 @@ class ReductionWorkflow(WorkflowImplementer):
         # Add loaded calibrations, calibration-masks, and normalizations to the list of workspaces to retain.
         self._keeps.update(loadedCalibrations)
         self._keeps.update(loadedNormalizations)
+        # NOTE: Normalization Workspaces are expensive to load and thus cached between reductions.
+        #       This reduces the number of loads escpially for the case of multiple similar runs.
+        self.outputs.update(loadedNormalizations)
 
         distinctNormVersions = set(normVersions.values())
         if len(distinctNormVersions) > 1 and None in distinctNormVersions:
@@ -517,7 +520,7 @@ class ReductionWorkflow(WorkflowImplementer):
                 if response.code == ResponseCode.OK:
                     self._finalizeReduction(response.data.record, response.data.unfocusedData)
 
-                # after each run, clean workspaces except groupings, calibrations, normalizations, and outputs
+                # after each run, clean workspaces except groupings, calibrations, and outputs
                 self._keeps.update(self.outputs)
                 self._clearWorkspaces(exclude=self._keeps, clearCachedWorkspaces=True)
 

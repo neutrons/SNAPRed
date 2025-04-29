@@ -66,7 +66,7 @@ mantid:
           metric: "calib_metrics,{metricName},{runNumber},{version}"
           timedMetric: "calib_metrics,{metricName},{runNumber},{timestamp}"
         normCal:
-          rawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
+          rawVanadium: "{unit},{group},{masked},{runNumber},raw_van_corr,{version}"
           focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
           smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_corr,{version}"
 

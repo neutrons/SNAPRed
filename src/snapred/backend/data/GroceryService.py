@@ -3,7 +3,7 @@ import json
 from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 from mantid.dataobjects import MaskWorkspace
@@ -70,6 +70,8 @@ class GroceryService:
         # Cache maps to workspace names, for various purposes
         self._loadedGroupings: Dict[Tuple[str, str, bool], str] = {}
         self._loadedInstruments: Dict[Tuple[str, bool], str] = {}
+
+        self.normalizationCache: Set[WorkspaceName] = set()
 
         self.grocer = FetchGroceriesRecipe()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
@@ -216,7 +218,7 @@ class GroceryService:
     def _createDiffCalOutputWorkspaceFilename(self, item: GroceryListItem) -> str:
         ext = Config["calibration.diffraction.output.extension"]
         return str(
-            self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version)
+            self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.diffCalVersion)
             / (self._createDiffCalOutputWorkspaceName(item) + ext)
         )
 
@@ -224,7 +226,7 @@ class GroceryService:
     def _createDiffCalDiagnosticWorkspaceFilename(self, item: GroceryListItem) -> str:
         ext = Config["calibration.diffraction.diagnostic.extension"]
         return str(
-            self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version)
+            self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.diffCalVersion)
             / (self._createDiffCalOutputWorkspaceName(item) + ext)
         )
 
@@ -257,11 +259,13 @@ class GroceryService:
         )
 
     @validate_call
-    def _createNormalizationWorkspaceFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
+    def _lookupNormalizationWorkspaceFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
+        # NOTE: The normCal Record currently does NOT store workspace type -> workspace name mappings.
+        #       It is just a list of workspace names. So we need to infer.
         return str(
             Path(self._getNormalizationDataPath(runNumber, useLiteMode, version))
             / (
-                self._createNormalizationWorkspaceName(runNumber, useLiteMode, version)
+                self._createNormalizationWorkspaceName(runNumber, useLiteMode, version, False)
                 + Config["calibration.normalization.output.ws.extension"]
             )
         )
@@ -308,7 +312,7 @@ class GroceryService:
             wng.diffCalOutput()
             .unit(item.unit)
             .runNumber(item.runNumber)
-            .version(item.version)
+            .version(item.diffCalVersion)
             .group(item.groupingScheme)
             .build()
         )
@@ -376,8 +380,9 @@ class GroceryService:
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
         version: Optional[int],
+        hidden: bool,
     ) -> WorkspaceName:
-        return wng.rawVanadium().runNumber(runNumber).version(version).build()
+        return wng.rawVanadium().runNumber(runNumber).version(version).hidden(hidden).build()
 
     def _createReductionPixelMaskWorkspaceName(
         self,
@@ -1055,7 +1060,7 @@ class GroceryService:
         """
         runNumber, version, useLiteMode, alternativeState = (
             item.runNumber,
-            item.version,
+            item.diffCalVersion,
             item.useLiteMode,
             item.alternativeState,
         )
@@ -1133,8 +1138,8 @@ class GroceryService:
         :rtype: Dict[str, Any]
         """
 
-        runNumber, useLiteMode, version = item.runNumber, item.useLiteMode, item.version
-        workspaceName = self._createNormalizationWorkspaceName(runNumber, useLiteMode, version)
+        runNumber, useLiteMode, version, hidden = item.runNumber, item.useLiteMode, item.normCalVersion, item.hidden
+        workspaceName = self._createNormalizationWorkspaceName(runNumber, useLiteMode, version, hidden)
 
         if self.workspaceDoesExist(workspaceName):
             data = {
@@ -1143,7 +1148,15 @@ class GroceryService:
                 "workspace": workspaceName,
             }
         else:
-            filename = self._createNormalizationWorkspaceFilename(runNumber, useLiteMode, version)
+            # clear normalization cache
+            # NOTE: I dont believe mtd.getObjectNames() returns hidden workspaces.
+            for ws in self.normalizationCache:
+                if self.workspaceDoesExist(ws):
+                    self.deleteWorkspaceUnconditional(ws)
+            self.normalizationCache = set()
+
+            # then load the new one
+            filename = self._lookupNormalizationWorkspaceFilename(runNumber, useLiteMode, version)
 
             # Note: 'LoadNexusProcessed' neither requires nor makes use of an instrument donor.
             data = self.grocer.executeRecipe(
@@ -1151,8 +1164,9 @@ class GroceryService:
                 workspace=workspaceName,
                 loader="LoadNexusProcessed",
             )
-            data["workspace"] = workspaceName
             self._processNeutronDataCopy(item, workspaceName)
+            self.normalizationCache.add(workspaceName)
+        data["workspace"] = workspaceName
         return data
 
     def fetchReductionPixelMask(self, item: GroceryListItem) -> Dict[str, Any]:
@@ -1259,6 +1273,57 @@ class GroceryService:
 
         return workspaceName
 
+    def fetchDiffCalForSample(self, item: GroceryListItem) -> Tuple[WorkspaceName, WorkspaceName | None]:
+        diffcalItem = item.model_copy(deep=True)
+        alternativeState = diffcalItem.alternativeState
+        indexer = self.dataService.calibrationIndexer(
+            diffcalItem.runNumber, diffcalItem.useLiteMode, alternativeState=alternativeState
+        )
+
+        record = indexer.readRecord(diffcalItem.diffCalVersion)
+        if record is not None:
+            diffcalItem.runNumber = record.runNumber
+
+        # NOTE: fetchCalibrationWorkspaces will set the workspace name
+        # to that of the table workspace.  Because of possible confusion with
+        # the behavior of the mask workspace, the workspace name is overridden here.
+
+        tableWorkspaceName, maskWorkspaceName = self._lookupDiffCalWorkspaceNames(
+            diffcalItem.runNumber,
+            diffcalItem.useLiteMode,
+            diffcalItem.diffCalVersion,
+            alternativeState=alternativeState,
+        )
+
+        self.fetchCalibrationWorkspaces(diffcalItem)
+        return tableWorkspaceName, maskWorkspaceName
+
+    def fetchNormCalForSample(self, item: GroceryListItem) -> WorkspaceName:
+        indexer = self.dataService.normalizationIndexer(item.runNumber, item.useLiteMode)
+
+        # TODO: it looks like the following clause should be "unreachable code".
+        #   `version` is validated to `int` at `GroceryListItem`.
+        if not isinstance(item.normCalVersion, int):
+            logger.info(f"Normalization version not detected for run {item.runNumber}: fetching from index.")
+            item.normCalVersion = indexer.latestApplicableVersion(item.runNumber)
+            if not isinstance(item.normCalVersion, int):
+                raise RuntimeError(f"Could not find any Normalizations associated with run {item.runNumber}")
+            logger.info(f"Found normalization version {item.normCalVersion} for run {item.runNumber}")
+
+        record = indexer.readRecord(item.normCalVersion)
+
+        if record is None:
+            raise RuntimeError(
+                f"Could not find normalization record for run {item.runNumber} and version {item.normCalVersion}"
+            )
+
+        normCalItem = item.model_copy(deep=True)
+
+        normCalItem.runNumber = record.runNumber
+        logger.info(f"Fetching normalization workspace for run {normCalItem.runNumber}, version {item.normCalVersion}")
+
+        return self.fetchNormalizationWorkspace(normCalItem)
+
     def fetchGroceryList(self, groceryList: Iterable[GroceryListItem]) -> List[WorkspaceName]:
         """
         :param groceryList: a list of GroceryListItems indicating the workspaces to create
@@ -1299,68 +1364,26 @@ class GroceryService:
                         loader="LoadNexusProcessed",
                     )
                 case "diffcal_table":
-                    alternativeState = item.alternativeState
-                    indexer = self.dataService.calibrationIndexer(
-                        item.runNumber, item.useLiteMode, alternativeState=alternativeState
-                    )
-                    if not isinstance(item.version, int):
-                        item.version = indexer.latestApplicableVersion(item.runNumber)
-                    record = indexer.readRecord(item.version)
-                    if record is not None:
-                        item.runNumber = record.runNumber
+                    diffCalWorkspace, _ = self.fetchDiffCalForSample(item)
 
-                    # NOTE: fetchCalibrationWorkspaces will set the workspace name
-                    # to that of the table workspace.  Because of possible confusion with
-                    # the behavior of the mask workspace, the workspace name is overridden here.
-                    tableWorkspaceName, _ = self._lookupDiffCalWorkspaceNames(
-                        item.runNumber, item.useLiteMode, item.version, alternativeState=alternativeState
-                    )
-                    result = self.fetchCalibrationWorkspaces(item)
-                    result["workspace"] = tableWorkspaceName
+                    # TODO: Remove this `result` return pattern.
+                    #       It doesnt seem to be used downstream in any meaningful capacity.
+                    result = {
+                        "result": True,
+                        "workspace": diffCalWorkspace if diffCalWorkspace is not None else "",
+                    }
+
                 case "diffcal_mask":
-                    alternativeState = item.alternativeState
-                    indexer = self.dataService.calibrationIndexer(
-                        item.runNumber, item.useLiteMode, alternativeState=alternativeState
-                    )
-                    if not isinstance(item.version, int):
-                        item.version = indexer.latestApplicableVersion(item.runNumber)
-                    record = indexer.readRecord(item.version)
-                    if record is not None:
-                        item.runNumber = record.runNumber
+                    _, maskWorkspace = self.fetchDiffCalForSample(item)
 
-                    # NOTE: fetchCalibrationWorkspaces will set the workspace name
-                    # to that of the table workspace, not the mask.  This output name is
-                    # overridden here.
-                    _, maskWorkspaceName = self._lookupDiffCalWorkspaceNames(
-                        item.runNumber, item.useLiteMode, item.version, alternativeState=alternativeState
-                    )
-                    if maskWorkspaceName is not None:
-                        result = self.fetchCalibrationWorkspaces(item)
-                        result["workspace"] = maskWorkspaceName
-                    else:
-                        # It is not an error if no mask exists for a given calibration version.
-                        result["result"] = True
-                        result["workspace"] = ""
+                    # TODO: Remove this `result` return pattern.
+                    result = {
+                        "result": True,
+                        "workspace": maskWorkspace if maskWorkspace is not None else "",
+                    }
+
                 case "normalization":
-                    indexer = self.dataService.normalizationIndexer(item.runNumber, item.useLiteMode)
-
-                    # TODO: it looks like the following clause should be "unreachable code".
-                    #   `version` is validated to `int` at `GroceryListItem`.
-                    if not isinstance(item.version, int):
-                        logger.info(
-                            f"Normalization version not detected for run {item.runNumber}: fetching from index."
-                        )
-                        item.version = indexer.latestApplicableVersion(item.runNumber)
-                        if not isinstance(item.version, int):
-                            raise RuntimeError(
-                                f"Could not find any Normalizations associated with run {item.runNumber}"
-                            )
-                        logger.info(f"Found normalization version {item.version} for run {item.runNumber}")
-                    record = indexer.readRecord(item.version)
-                    if record is not None:
-                        item.runNumber = record.runNumber
-                    logger.info(f"Fetching normalization workspace for run {item.runNumber}, version {item.version}")
-                    result = self.fetchNormalizationWorkspace(item)
+                    result = self.fetchNormCalForSample(item)
                 case "reduction_pixel_mask":
                     maskWorkspaceName = self._createReductionPixelMaskWorkspaceName(  # noqa: F841
                         item.runNumber, item.useLiteMode, item.timestamp
@@ -1372,6 +1395,8 @@ class GroceryService:
             if result["result"] is True:
                 groceries.append(result["workspace"])
             else:
+                # NOTE: When would it ever be false?  We should throw exceptions as early as possible.
+                #       and rely on native error handling.
                 raise RuntimeError(f"Error fetching item {item.model_dump_json(indent=2)}")
 
         return groceries
@@ -1533,3 +1558,16 @@ class GroceryService:
             self.writeWorkspaceMetadataAsTags(workspaceName, metadata)
 
             self.deleteWorkspaceUnconditional(monitorWs)
+
+        if item.diffCalVersion is not None:
+            # then load a diffcal table and apply it.
+            # NOTE: This can result in a different diffcal being applied to normalization vs sample
+            #       This is the expected and desired behavior.
+
+            diffcalWorkspace, _ = self.fetchDiffCalForSample(item)
+            self.mantidSnapper.ApplyDiffCal(
+                "Applying diffcal..",
+                InstrumentWorkspace=workspaceName,
+                CalibrationWorkspace=diffcalWorkspace,
+            )
+            self.mantidSnapper.executeQueue()

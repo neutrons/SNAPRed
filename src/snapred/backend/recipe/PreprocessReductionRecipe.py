@@ -3,12 +3,14 @@ from typing import Any, Dict, List, Set, Tuple
 from snapred.backend.dao.ingredients import PreprocessReductionIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.Recipe import Recipe
+from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
 
 Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
+@Singleton
 class PreprocessReductionRecipe(Recipe[Ingredients]):
     def chopIngredients(self, ingredients: Ingredients):
         """
@@ -17,7 +19,12 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
         pass
 
     def allGroceryKeys(self) -> Set[str]:
-        return {"inputWorkspace", "diffcalWorkspace", "outputWorkspace"}
+        return {
+            "inputWorkspace",
+            "groupingWorkspace",
+            "maskWorkspace",
+            "outputWorkspace",
+        }
 
     def mandatoryInputWorkspaces(self) -> Set[str]:
         return {"inputWorkspace"}
@@ -29,7 +36,7 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
 
         """
         self.sampleWs = groceries["inputWorkspace"]
-        self.diffcalWs = groceries.get("diffcalWorkspace", "")
+        self.maskWs = groceries.get("maskWorkspace", "")
         self.outputWs = groceries.get("outputWorkspace", groceries["inputWorkspace"])
 
     def queueAlgos(self):
@@ -45,11 +52,11 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
                 OutputWorkspace=self.outputWs,
             )
 
-        if self.diffcalWs != "":
-            self.mantidSnapper.ApplyDiffCal(
-                "Applying diffcal..",
-                InstrumentWorkspace=self.outputWs,
-                CalibrationWorkspace=self.diffcalWs,
+        if self.maskWs != "":
+            self.mantidSnapper.MaskDetectorFlags(
+                "Applying pixel mask...",
+                MaskWorkspace=self.maskWs,
+                OutputWorkspace=self.outputWs,
             )
 
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:

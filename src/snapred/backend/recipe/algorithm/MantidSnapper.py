@@ -22,7 +22,9 @@ class _CustomMtd:
     def __getitem__(self, key):
         if str(key.__class__) == str(callback(int).__class__):
             key = key.get()
-        return mtd[key]
+        if self.doesExist(key):
+            return mtd[key]
+        raise KeyError(f"Workspace {key} not found in mtd: {self.getObjectNames()}")
 
     def doesExist(self, key):
         if str(key.__class__) == str(callback(int).__class__):
