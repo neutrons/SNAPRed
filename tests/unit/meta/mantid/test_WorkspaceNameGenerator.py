@@ -7,12 +7,11 @@ from pydantic import BaseModel, ConfigDict
 
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import (
-    ValueFormatter as wnvf,
-)
-from snapred.meta.mantid.WorkspaceNameGenerator import (
+    ValueFormat,
     VersionState,
     WorkspaceName,
 )
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceNameGenerator as wng,
 )
@@ -222,7 +221,7 @@ def testWorkspaceNameTokens_incomplete():
 
 
 def testNumberTagFormat():
-    fmt = wnvf.numberTagFormat
+    fmt = ValueFormat.numberTagFormat
     number = 24
     assert wnvf.formatNumberTag(number) == fmt.WORKSPACE.format(number=number)
     assert wnvf.pathNumberTag(number) == fmt.PATH.format(number=number)
@@ -234,20 +233,20 @@ def testNumberTagFormat():
 
 
 def testNumberTagFormatConfig():
-    fmt = wnvf.numberTagFormat
+    fmt = ValueFormat.numberTagFormat
     assert fmt.WORKSPACE == Config["mantid.workspace.nameTemplate.formatter.numberTag.workspace"]
     assert fmt.PATH == Config["mantid.workspace.nameTemplate.formatter.numberTag.path"]
 
 
 def testRunNumberFormat():
-    fmt = wnvf.runNumberFormat
+    fmt = ValueFormat.runNumberFormat
     runNumber = "012345"
     assert wnvf.formatRunNumber(runNumber) == fmt.WORKSPACE.format(runNumber=runNumber)
     assert wnvf.pathRunNumber(runNumber) == fmt.PATH.format(runNumber=runNumber)
 
 
 def testRunNumberFormatConfig():
-    fmt = wnvf.runNumberFormat
+    fmt = ValueFormat.runNumberFormat
     assert fmt.WORKSPACE == Config["mantid.workspace.nameTemplate.formatter.runNumber.workspace"]
     assert fmt.PATH == Config["mantid.workspace.nameTemplate.formatter.runNumber.path"]
 
@@ -259,7 +258,7 @@ def testStateIdFormat():
 
 
 def testTimestampFormat():
-    fmt = wnvf.timestampFormat
+    fmt = ValueFormat.timestampFormat
     timestamp = time.time()
     assert wnvf.formatTimestamp(timestamp) == datetime.fromtimestamp(timestamp).strftime(fmt.WORKSPACE)
     assert wnvf.pathTimestamp(timestamp) == datetime.fromtimestamp(timestamp).strftime(fmt.PATH)
@@ -274,7 +273,7 @@ def testTimestampFormatLegacy():
 
 
 def testTimestampFormatConfig():
-    fmt = wnvf.timestampFormat
+    fmt = ValueFormat.timestampFormat
     assert fmt.WORKSPACE == Config["mantid.workspace.nameTemplate.formatter.timestamp.workspace"]
     assert fmt.PATH == Config["mantid.workspace.nameTemplate.formatter.timestamp.path"]
 
