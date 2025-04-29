@@ -333,25 +333,23 @@ class ReductionRecipe(Recipe[Ingredients]):
 
             # 2. ReductionGroupProcessingRecipe
             self._applyRecipe(
-                # groceries: 'inputWorkspace', 'groupingWorkspace', 'maskWorkspace' [, 'outputWorkspace']
+                # groceries: 'inputWorkspace', 'groupingWorkspace', [, 'outputWorkspace']
                 ReductionGroupProcessingRecipe,
                 self.ingredients.groupProcessing(groupingIndex),
                 inputWorkspace=self.sampleWs,
                 outputWorkspace=sampleClone,
                 groupingWorkspace=groupingWs,
-                **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
             )
             self._cloneIntermediateWorkspace(sampleClone, f"sample_GroupProcessing_{groupingIndex}")
 
             if normalizationClone:
                 self._applyRecipe(
-                    # groceries: 'inputWorkspace', 'groupingWorkspace', 'maskWorkspace' [, 'outputWorkspace']
+                    # groceries: 'inputWorkspace', 'groupingWorkspace', [, 'outputWorkspace']
                     ReductionGroupProcessingRecipe,
                     self.ingredients.groupProcessing(groupingIndex),
                     inputWorkspace=self.normalizationWs,
                     outputWorkspace=normalizationClone,
                     groupingWorkspace=groupingWs,
-                    **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
                 )
                 self._cloneIntermediateWorkspace(normalizationClone, f"normalization_GroupProcessing_{groupingIndex}")
 
