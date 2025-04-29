@@ -592,7 +592,6 @@ class ReductionRecipeTest(TestCase):
                 recipe.ingredients.groupProcessing(groupIndex),
                 inputWorkspace=recipe.sampleWs,
                 groupingWorkspace=recipe.groupingWorkspaces[groupIndex],
-                maskWorkspace=recipe.maskWs,
                 outputWorkspace=prepGroupingWorkspacesReturns[groupIndex][0],
             )
             recipe._applyRecipe.assert_any_call(
@@ -600,7 +599,6 @@ class ReductionRecipeTest(TestCase):
                 recipe.ingredients.groupProcessing(groupIndex),
                 inputWorkspace=recipe.normalizationWs,
                 groupingWorkspace=recipe.groupingWorkspaces[groupIndex],
-                maskWorkspace=recipe.maskWs,
                 outputWorkspace=prepGroupingWorkspacesReturns[groupIndex][1],
             )
 
