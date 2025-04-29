@@ -117,15 +117,15 @@ class SNAPRedGUI(QMainWindow):
         Config.validate()
 
     @property
-    def _streamLevel(self):
+    def _streamlevel(self):
         return Config["logging.mantid.stream.level"]
 
     @property
-    def _fileLevel(self):
+    def _filelevel(self):
         return Config["logging.mantid.file.level"]
 
     @property
-    def _outputFile(self):
+    def _outputfile(self):
         return Config["logging.mantid.file.output"]
 
     @Slot()
