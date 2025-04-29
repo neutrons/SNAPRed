@@ -86,6 +86,21 @@ class SNAPRedGUI(QMainWindow):
 
         splitter.addWidget(AlgorithmProgressWidget())
 
+        if Config["cis_mode.reloadConfigButton"]:
+            self.reloadConfigButton = QPushButton("Reload Config")
+
+            def reloadAndInform():
+                Config.reload()
+                # Inform the user that the configuration has been reloaded
+                QMessageBox.information(
+                    self,
+                    "Configuration Reloaded",
+                    f"Env {Config.getCurrentEnv()} configuration has been successfully reloaded.",
+                )
+
+            self.reloadConfigButton.clicked.connect(reloadAndInform)
+            splitter.addWidget(self.reloadConfigButton)
+
         centralWidget = QWidget()
         centralWidget.setObjectName("centralwidget")
         centralLayout = QVBoxLayout()

@@ -267,6 +267,7 @@ version:
 cis_mode:
   enabled: false
   preserveDiagnosticWorkspaces: false
+  reloadConfigButton: false
 
 constants:
   millisecondsPerSecond: 1000
