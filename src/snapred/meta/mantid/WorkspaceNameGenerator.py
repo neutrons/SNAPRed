@@ -11,6 +11,7 @@ from typing_extensions import Annotated, Self
 
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 
 
 class WorkspaceType(str, Enum):
@@ -151,48 +152,50 @@ if "sphinx" not in sys.modules:
     ]
 
 
-class ValueFormatter:
+class ValueFormat:
     class FormatTuple(NamedTuple):
         WORKSPACE: str
         PATH: str
 
-    @property
-    def versionFormat(self):
-        return ValueFormatter.FormatTuple(
+    @classproperty
+    def versionFormat(cls):
+        return ValueFormat.FormatTuple(
             WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.version.workspace"],
             PATH=Config["mantid.workspace.nameTemplate.formatter.version.path"],
         )
 
-    @property
-    def timestampFormat(self):
-        return ValueFormatter.FormatTuple(
+    @classproperty
+    def timestampFormat(cls):
+        return ValueFormat.FormatTuple(
             WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.timestamp.workspace"],
             PATH=Config["mantid.workspace.nameTemplate.formatter.timestamp.path"],
         )
 
-    @property
-    def numberTagFormat(self):
-        return ValueFormatter.FormatTuple(
+    @classproperty
+    def numberTagFormat(cls):
+        return ValueFormat.FormatTuple(
             WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.numberTag.workspace"],
             PATH=Config["mantid.workspace.nameTemplate.formatter.numberTag.path"],
         )
 
-    @property
-    def runNumberFormat(self):
-        return ValueFormatter.FormatTuple(
+    @classproperty
+    def runNumberFormat(cls):
+        return ValueFormat.FormatTuple(
             WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.runNumber.workspace"],
             PATH=Config["mantid.workspace.nameTemplate.formatter.runNumber.path"],
         )
 
-    @property
-    def stateIdFormat(self):
-        return ValueFormatter.FormatTuple(
+    @classproperty
+    def stateIdFormat(cls):
+        return ValueFormat.FormatTuple(
             WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.stateId.workspace"],
             PATH=Config["mantid.workspace.nameTemplate.formatter.stateId.path"],
         )
 
+
+class ValueFormatter:
     @classmethod
-    def formatNumberTag(cls, number: int, fmt=numberTagFormat.WORKSPACE):
+    def formatNumberTag(cls, number: int, fmt=ValueFormat.numberTagFormat.WORKSPACE):
         # Mantid-workspace number tag: only resolves if number > 1
         if number == 1:
             return ""
@@ -203,18 +206,18 @@ class ValueFormatter:
         # Mantid-workspace number tag: only resolves if number > 1
         if number == 1:
             return ""
-        return cls.formatNumberTag(number, fmt=cls.numberTagFormat.PATH)
+        return cls.formatNumberTag(number, fmt=ValueFormat.numberTagFormat.PATH)
 
     @classmethod
-    def formatRunNumber(cls, runNumber: str, fmt=runNumberFormat.WORKSPACE):
+    def formatRunNumber(cls, runNumber: str, fmt=ValueFormat.runNumberFormat.WORKSPACE):
         return fmt.format(runNumber=runNumber)
 
     @classmethod
     def pathRunNumber(cls, runNumber: str):
-        return cls.formatRunNumber(runNumber=runNumber, fmt=cls.runNumberFormat.PATH)
+        return cls.formatRunNumber(runNumber=runNumber, fmt=ValueFormat.runNumberFormat.PATH)
 
     @classmethod
-    def formatVersion(cls, version: Optional[int], fmt=versionFormat.WORKSPACE):
+    def formatVersion(cls, version: Optional[int], fmt=ValueFormat.versionFormat.WORKSPACE):
         # handle two special cases of unassigned or default version
         # in those cases, format will be a user-specified string
 
@@ -233,10 +236,10 @@ class ValueFormatter:
 
         if version == VersionState.DEFAULT:
             return f"v_{VersionState.DEFAULT}"
-        return cls.formatVersion(version, fmt=cls.versionFormat.PATH)
+        return cls.formatVersion(version, fmt=ValueFormat.versionFormat.PATH)
 
     @classmethod
-    def formatTimestamp(cls, timestamp: Optional[float], fmt=timestampFormat.WORKSPACE):
+    def formatTimestamp(cls, timestamp: Optional[float], fmt=ValueFormat.timestampFormat.WORKSPACE):
         if timestamp is None:
             return ""
         if "timestamp" in fmt:
@@ -245,15 +248,15 @@ class ValueFormatter:
 
     @classmethod
     def pathTimestamp(cls, timestamp: float):
-        return cls.formatTimestamp(timestamp, fmt=cls.timestampFormat.PATH)
+        return cls.formatTimestamp(timestamp, fmt=ValueFormat.timestampFormat.PATH)
 
     @classmethod
-    def formatStateId(cls, stateId: str, fmt=stateIdFormat.WORKSPACE):
+    def formatStateId(cls, stateId: str, fmt=ValueFormat.stateIdFormat.WORKSPACE):
         return fmt.format(stateId=stateId)
 
     @classmethod
     def pathStateId(cls, stateId: str):
-        return cls.formatStateId(stateId, fmt=cls.stateIdFormat.PATH)
+        return cls.formatStateId(stateId, fmt=ValueFormat.stateIdFormat.PATH)
 
     @staticmethod
     def formatValueByKey(key: str, value: any):
@@ -324,44 +327,44 @@ class _WorkspaceNameGenerator:
     class Units:
         _templateRoot = "mantid.workspace.nameTemplate.units"
 
-        @property
-        def DSP(self):
-            return Config[f"{self._templateRoot}.dSpacing"]
+        @classproperty
+        def DSP(cls):
+            return Config[f"{cls._templateRoot}.dSpacing"]
 
-        @property
-        def TOF(self):
-            return Config[f"{self._templateRoot}.timeOfFlight"]
+        @classproperty
+        def TOF(cls):
+            return Config[f"{cls._templateRoot}.timeOfFlight"]
 
-        @property
-        def QSP(self):
-            return Config[f"{self._templateRoot}.momentumTransfer"]
+        @classproperty
+        def QSP(cls):
+            return Config[f"{cls._templateRoot}.momentumTransfer"]
 
-        @property
-        def LAM(self):
-            return Config[f"{self._templateRoot}.wavelength"]
+        @classproperty
+        def LAM(cls):
+            return Config[f"{cls._templateRoot}.wavelength"]
 
-        @property
-        def DIAG(self):
-            return Config[f"{self._templateRoot}.diagnostic"]
+        @classproperty
+        def DIAG(cls):
+            return Config[f"{cls._templateRoot}.diagnostic"]
 
     class Groups:
         _templateRoot = "mantid.workspace.nameTemplate.groups"
 
-        @property
-        def ALL(self):
-            return Config[f"{self._templateRoot}.all"]
+        @classproperty
+        def ALL(cls):
+            return Config[f"{cls._templateRoot}.all"]
 
-        @property
-        def COLUMN(self):
-            return Config[f"{self._templateRoot}.column"]
+        @classproperty
+        def COLUMN(cls):
+            return Config[f"{cls._templateRoot}.column"]
 
-        @property
-        def BANK(self):
-            return Config[f"{self._templateRoot}.bank"]
+        @classproperty
+        def BANK(cls):
+            return Config[f"{cls._templateRoot}.bank"]
 
-        @property
-        def UNFOC(self):
-            return Config[f"{self._templateRoot}.unfocussed"]
+        @classproperty
+        def UNFOC(cls):
+            return Config[f"{cls._templateRoot}.unfocussed"]
 
     class Lite:
         TRUE = "lite"

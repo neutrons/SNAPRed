@@ -104,7 +104,7 @@ class RemoveSmoothedBackground(PythonAlgorithm):
         """
         self.log().notice("Extracting background")
 
-        if self.getProperty("SmpoothingParameter").isDefault:
+        if self.getProperty("SmoothingParameter").isDefault:
             self.setProperty("SmoothingParameter", Config["calibration.diffraction.smoothingParameter"])
 
         # get the peak predictions from user input

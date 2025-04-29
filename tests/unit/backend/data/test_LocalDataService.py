@@ -2844,23 +2844,25 @@ def test_badPaths():
     """This verifies that a broken configuration (from production) can't find all of the files"""
     # get a handle on the service
     service = LocalDataService()
-    service.verifyPaths = True  # override test setting
-    with Config_override("instrument.home", "this/path/does/not/exist"):
+    with (
+        Config_override("instrument.home", "this/path/does/not/exist"),
+        Config_override("localdataservice.config.verifypaths", True),
+    ):
         with pytest.raises(FileNotFoundError):
             service.readInstrumentConfig(12345)
-    service.verifyPaths = False  # put the setting back
 
 
 def test_noInstrumentConfig():
     """This verifies that a broken configuration (from production) can't find all of the files"""
     # get a handle on the service
     service = LocalDataService()
-    service.verifyPaths = True  # override test setting
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
-        with Config_override("instrument.parameters.home", str(tempdir)):
+        with (
+            Config_override("instrument.parameters.home", str(tempdir)),
+            Config_override("localdataservice.config.verifypaths", True),
+        ):
             with pytest.raises(FileNotFoundError):
                 service.readInstrumentConfig(12345)
-    service.verifyPaths = False  # put the setting back
 
 
 # interlude -- a missplaced calibrant sample method test #

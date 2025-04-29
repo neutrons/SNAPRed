@@ -21,8 +21,8 @@
 #         importlib.reload(sys.modules[module_name])
 
 from snapred.backend.dao import InstrumentConfig
-from snapred.backend.dao import reload
-reload()
+from snapred.meta.Config import Config
+Config.reload()
 
 
 def eg(): 
@@ -51,26 +51,7 @@ def eg():
     version=1)
 
 
-import sys
-modulenames = set(sys.modules) & set(locals())
-allmodules = [sys.modules[name] for name in modulenames]
-print(sys.modules)
-print(locals())
-import inspect
-clazzes = [clazz for k, clazz in locals().items() if inspect.isclass(clazz)]
 
-import importlib
-for clazz in clazzes:
-    modulePath = getattr(inspect.getmodule(clazz), "__name__", None)
-    # print(clazz.__name__)
-    if modulePath:
-        module = importlib.import_module(modulePath)
-        importlib.reload(module)
-        module = importlib.import_module(modulePath)
-        localz = { clazz.__name__: getattr(module, clazz.__name__)}
-        locals().update(localz)
-        print(f"updated: {localz}")
-        
     
     # importlib.reload(inspect.getmodule(clazz).__name__)
 print(eg().lowWavelengthCrop)

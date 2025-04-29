@@ -92,6 +92,7 @@ class LocalDataService:
     # conversion factor from microsecond/Angstrom to meters
     # (TODO: FIX THIS COMMENT! Obviously `m2cm` doesn't convert from 1.0 / Angstrom to 1.0 / meters.)
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
+    _verifyPaths = None
 
     def __init__(self) -> None:
         self.mantidSnapper = MantidSnapper(None, "Utensils")
