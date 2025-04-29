@@ -12,8 +12,11 @@ Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
 class RebinFocussedGroupDataRecipe(Recipe[Ingredients]):
-    NUM_BINS = Config["constants.ResampleX.NumberBins"]
     LOG_BINNING = True
+
+    @property
+    def NUM_BINS(self) -> int:
+        return Config["constants.ResampleX.NumberBins"]
 
     def allGroceryKeys(self) -> Set[str]:
         return {"inputWorkspace"}

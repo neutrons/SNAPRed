@@ -35,13 +35,6 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     """
 
-    XTAL_DMIN = Config["constants.CrystallographicInfo.crystalDMin"]
-    XTAL_DMAX = Config["constants.CrystallographicInfo.crystalDMax"]
-    MIN_PEAKS = Config["calibration.diffraction.minimumPeaksPerGroup"]
-    PREF_PEAKS = Config["calibration.diffraction.preferredPeaksPerGroup"]
-    MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
-    FWHM = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
-
     FIGURE_MARGIN = 0.5  # top + bottom: inches
 
     signalRunNumberUpdate = Signal(str)
@@ -127,6 +120,30 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.initialLayoutHeight = self.size().height()
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
+
+    @property
+    def XTAL_DMIN(self):
+        return Config["constants.CrystallographicInfo.crystalDMin"]
+
+    @property
+    def XTAL_DMAX(self):
+        return Config["constants.CrystallographicInfo.crystalDMax"]
+
+    @property
+    def MIN_PEAKS(self):
+        return Config["calibration.diffraction.minimumPeaksPerGroup"]
+
+    @property
+    def PREF_PEAKS(self):
+        return Config["calibration.diffraction.preferredPeaksPerGroup"]
+
+    @property
+    def MAX_CHI_SQ(self):
+        return Config["constants.GroupDiffractionCalibration.MaxChiSq"]
+
+    @property
+    def FWHM(self):
+        return Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
 
     def updateContinueAnyway(self, continueAnyway: bool):
         self.signalContinueAnyway.emit(continueAnyway)

@@ -9,13 +9,18 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class CrystallographicInfoService(Service):
-    D_MIN = Config["constants.CrystallographicInfo.crystalDMin"]
-    D_MAX = Config["constants.CrystallographicInfo.crystalDMax"]
-
     def __init__(self):
         super().__init__()
         self.registerPath("", self.ingest)
         return
+
+    @property
+    def D_MIN(self):
+        return Config["constants.CrystallographicInfo.crystalDMin"]
+
+    @property
+    def D_MAX(self):
+        return Config["constants.CrystallographicInfo.crystalDMax"]
 
     @staticmethod
     def name():

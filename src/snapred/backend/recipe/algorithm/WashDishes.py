@@ -20,8 +20,19 @@ class WashDishes(PythonAlgorithm):
         self.declareProperty(StringArrayProperty(name="WorkspaceList", values=[], direction=Direction.Input))
         self.setRethrows(True)
 
-        self.cis_enabled: bool = Config["cis_mode.enabled"]
-        self.cis_preserve: bool = Config["cis_mode.preserveDiagnosticWorkspaces"]
+    @property
+    def cis_enabled(self) -> bool:
+        """
+        Check if CIS mode is enabled
+        """
+        return Config["cis_mode.enabled"]
+
+    @property
+    def cis_preserve(self) -> bool:
+        """
+        Check if CIS mode is enabled
+        """
+        return Config["cis_mode.preserveDiagnosticWorkspaces"]
 
     def PyExec(self) -> None:
         self.log().notice("Washing the dishes...")

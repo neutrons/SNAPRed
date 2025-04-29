@@ -24,7 +24,10 @@ logger = snapredLogger.getLogger(__name__)
 
 class PixelGroupingParametersCalculation(PythonAlgorithm):
     # conversion factor from microsecond/Angstrom to meters
-    CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
+
+    @property
+    def CONVERSION_FACTOR(self):
+        return Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
     def category(self):
         return "SNAPRed Internal"

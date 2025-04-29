@@ -79,8 +79,6 @@ class CalibrationService(Service):
 
     """
 
-    MINIMUM_PEAKS_PER_GROUP = Config["calibration.diffraction.minimumPeaksPerGroup"]
-
     # register the service in ServiceFactory please!
     def __init__(self):
         super().__init__()
@@ -109,6 +107,10 @@ class CalibrationService(Service):
         self.registerPath("override", self.handleOverrides)
         self.registerPath("runFeedback", self.runFeedback)
         return
+
+    @property
+    def MINIMUM_PEAKS_PER_GROUP(self):
+        return Config["calibration.diffraction.minimumPeaksPerGroup"]
 
     @staticmethod
     def name():

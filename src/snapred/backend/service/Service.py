@@ -31,11 +31,13 @@ Register = _makeRegister()
 
 
 class Service(ABC):
-    _pathDelimiter = Config["orchestration.path.delimiter"]
-
     def __init__(self):
         self._paths: Dict[str, Any] = self._getInstancePaths()
         self._lambdas: Dict[str, List[GroupingLambda]] = {}
+
+    @property
+    def _pathDelimiter(self):
+        return Config["orchestration.path.delimiter"]
 
     def _getInstancePaths(self):
         instPaths = {}

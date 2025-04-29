@@ -27,15 +27,20 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
     One part of diffraction calibration.
     """
 
-    NOYZE_2_MIN = Config["calibration.fitting.minSignal2Noise"]
-    MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
-
     def __init__(self, utensils: Utensils = None):
         if utensils is None:
             utensils = Utensils()
             utensils.PyInit()
         self.mantidSnapper = utensils.mantidSnapper
         self._counts = 0
+
+    @property
+    def NOYZE_2_MIN(self):
+        return Config["calibration.fitting.minSignal2Noise"]
+
+    @property
+    def MAX_CHI_SQ(self):
+        return Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def logger(self):
         return logger

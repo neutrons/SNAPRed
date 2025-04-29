@@ -53,10 +53,6 @@ def prependDataSearchDirectories() -> List[str]:
 
 
 class SNAPRedGUI(QMainWindow):
-    _streamlevel = Config["logging.mantid.stream.level"]
-    _filelevel = Config["logging.mantid.file.level"]
-    _outputfile = Config["logging.mantid.file.output"]
-
     def __init__(self, parent=None, window_flags=None, translucentBackground=False):
         super(SNAPRedGUI, self).__init__(parent)
         if window_flags:
@@ -119,6 +115,18 @@ class SNAPRedGUI(QMainWindow):
 
         # Check for incompatible `Config` settings.
         Config.validate()
+
+    @property
+    def _streamLevel(self):
+        return Config["logging.mantid.stream.level"]
+
+    @property
+    def _fileLevel(self):
+        return Config["logging.mantid.file.level"]
+
+    @property
+    def _outputFile(self):
+        return Config["logging.mantid.file.output"]
 
     @Slot()
     def openCalibrationPanel(self):

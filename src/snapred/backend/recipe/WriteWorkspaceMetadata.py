@@ -13,7 +13,9 @@ Pallet = Tuple[WorkspaceMetadata, Dict[str, str]]
 
 
 class WriteWorkspaceMetadata(Recipe[WorkspaceMetadata]):
-    TAG_PREFIX = Config["metadata.tagPrefix"]
+    @property
+    def TAG_PREFIX(self):
+        return Config["metadata.tagPrefix"]
 
     def allGroceryKeys(self):
         return {"workspace"}

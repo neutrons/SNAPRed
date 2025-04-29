@@ -23,7 +23,9 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class FitMultiplePeaksAlgorithm(PythonAlgorithm):
-    NOYZE_2_MIN = Config["calibration.fitting.minSignal2Noise"]
+    @property
+    def NOYZE_2_MIN(self):
+        return Config["calibration.fitting.minSignal2Noise"]
 
     def category(self):
         return "SNAPRed Data Processing"

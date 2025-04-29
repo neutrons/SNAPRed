@@ -13,8 +13,11 @@ Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
 class ApplyNormalizationRecipe(Recipe[Ingredients]):
-    NUM_BINS = Config["constants.ResampleX.NumberBins"]
     LOG_BINNING = True
+
+    @property
+    def NUM_BINS(self) -> int:
+        return Config["constants.ResampleX.NumberBins"]
 
     def allGroceryKeys(self) -> Set[str]:
         return {"inputWorkspace", "normalizationWorkspace", "backgroundWorkspace"}

@@ -156,26 +156,40 @@ class ValueFormatter:
         WORKSPACE: str
         PATH: str
 
-    versionFormat = FormatTuple(
-        WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.version.workspace"],
-        PATH=Config["mantid.workspace.nameTemplate.formatter.version.path"],
-    )
-    timestampFormat = FormatTuple(
-        WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.timestamp.workspace"],
-        PATH=Config["mantid.workspace.nameTemplate.formatter.timestamp.path"],
-    )
-    numberTagFormat = FormatTuple(
-        WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.numberTag.workspace"],
-        PATH=Config["mantid.workspace.nameTemplate.formatter.numberTag.path"],
-    )
-    runNumberFormat = FormatTuple(
-        WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.runNumber.workspace"],
-        PATH=Config["mantid.workspace.nameTemplate.formatter.runNumber.path"],
-    )
-    stateIdFormat = FormatTuple(
-        WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.stateId.workspace"],
-        PATH=Config["mantid.workspace.nameTemplate.formatter.stateId.path"],
-    )
+    @property
+    def versionFormat(self):
+        return ValueFormatter.FormatTuple(
+            WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.version.workspace"],
+            PATH=Config["mantid.workspace.nameTemplate.formatter.version.path"],
+        )
+
+    @property
+    def timestampFormat(self):
+        return ValueFormatter.FormatTuple(
+            WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.timestamp.workspace"],
+            PATH=Config["mantid.workspace.nameTemplate.formatter.timestamp.path"],
+        )
+
+    @property
+    def numberTagFormat(self):
+        return ValueFormatter.FormatTuple(
+            WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.numberTag.workspace"],
+            PATH=Config["mantid.workspace.nameTemplate.formatter.numberTag.path"],
+        )
+
+    @property
+    def runNumberFormat(self):
+        return ValueFormatter.FormatTuple(
+            WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.runNumber.workspace"],
+            PATH=Config["mantid.workspace.nameTemplate.formatter.runNumber.path"],
+        )
+
+    @property
+    def stateIdFormat(self):
+        return ValueFormatter.FormatTuple(
+            WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.stateId.workspace"],
+            PATH=Config["mantid.workspace.nameTemplate.formatter.stateId.path"],
+        )
 
     @classmethod
     def formatNumberTag(cls, number: int, fmt=numberTagFormat.WORKSPACE):
@@ -266,10 +280,14 @@ class _WorkspaceNameGenerator:
     # TODO: define <workspace type> Enum
 
     _templateRoot = "mantid.workspace.nameTemplate"
-    _delimiter = Config[f"{_templateRoot}.delimiter"]
 
     def __init__(self):
+        # TODO: regenerate this on application.yml reload
         self._setupTemplateVars(Config[f"{self._templateRoot}.template"])
+
+    @property
+    def _delimiter(self):
+        return Config[f"{self._templateRoot}.delimiter"]
 
     def _setupTemplateVars(self, templateDict, namePrefix=""):
         """
@@ -305,18 +323,45 @@ class _WorkspaceNameGenerator:
 
     class Units:
         _templateRoot = "mantid.workspace.nameTemplate.units"
-        DSP = Config[f"{_templateRoot}.dSpacing"]
-        TOF = Config[f"{_templateRoot}.timeOfFlight"]
-        QSP = Config[f"{_templateRoot}.momentumTransfer"]
-        LAM = Config[f"{_templateRoot}.wavelength"]
-        DIAG = Config[f"{_templateRoot}.diagnostic"]
+
+        @property
+        def DSP(self):
+            return Config[f"{self._templateRoot}.dSpacing"]
+
+        @property
+        def TOF(self):
+            return Config[f"{self._templateRoot}.timeOfFlight"]
+
+        @property
+        def QSP(self):
+            return Config[f"{self._templateRoot}.momentumTransfer"]
+
+        @property
+        def LAM(self):
+            return Config[f"{self._templateRoot}.wavelength"]
+
+        @property
+        def DIAG(self):
+            return Config[f"{self._templateRoot}.diagnostic"]
 
     class Groups:
         _templateRoot = "mantid.workspace.nameTemplate.groups"
-        ALL = Config[f"{_templateRoot}.all"]
-        COLUMN = Config[f"{_templateRoot}.column"]
-        BANK = Config[f"{_templateRoot}.bank"]
-        UNFOC = Config[f"{_templateRoot}.unfocussed"]
+
+        @property
+        def ALL(self):
+            return Config[f"{self._templateRoot}.all"]
+
+        @property
+        def COLUMN(self):
+            return Config[f"{self._templateRoot}.column"]
+
+        @property
+        def BANK(self):
+            return Config[f"{self._templateRoot}.bank"]
+
+        @property
+        def UNFOC(self):
+            return Config[f"{self._templateRoot}.unfocussed"]
 
     class Lite:
         TRUE = "lite"

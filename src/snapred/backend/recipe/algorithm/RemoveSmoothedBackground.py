@@ -68,7 +68,7 @@ class RemoveSmoothedBackground(PythonAlgorithm):
         )
         self.declareProperty(
             "SmoothingParameter",
-            defaultValue=Config["calibration.diffraction.smoothingParameter"],
+            defaultValue=0.0,
             validator=FloatBoundedValidator(lower=0.0),
         )
         self.setRethrows(True)
@@ -103,6 +103,9 @@ class RemoveSmoothedBackground(PythonAlgorithm):
         This background can later be subtracted from the main data.
         """
         self.log().notice("Extracting background")
+
+        if self.getProperty("SmpoothingParameter").isDefault:
+            self.setProperty("SmoothingParameter", Config["calibration.diffraction.smoothingParameter"])
 
         # get the peak predictions from user input
         peak_ptr: PointerProperty = self.getProperty("DetectorPeaks").value

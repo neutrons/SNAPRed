@@ -9,6 +9,9 @@ class ConfigValue:
     def __init__(self, value: Any):
         self.value = value
 
+    def get(self):
+        return Config[self.value]
+
 
 def ConfigDefault(func: Callable[..., Any]):
     @functools.wraps(func)
@@ -22,7 +25,7 @@ def ConfigDefault(func: Callable[..., Any]):
         newArgs = []
         for arg in args:
             if isinstance(arg, ConfigValue):
-                newArgs.append(Config[arg.value])
+                newArgs.append(arg.get())
             else:
                 newArgs.append(arg)
 
@@ -40,7 +43,7 @@ def ConfigDefault(func: Callable[..., Any]):
         # replace kwargs that are of type ConfigValue with their Config[] value
         for k, v in kwargs.items():
             if isinstance(v, ConfigValue):
-                newKwargs[k] = Config[v.value]
+                newKwargs[k] = v.get()
             else:
                 newKwargs[k] = v
 

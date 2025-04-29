@@ -37,9 +37,6 @@ class NormalizationTweakPeakView(BackendRequestView):
 
     """
 
-    XTAL_DMIN = Config["constants.CrystallographicInfo.crystalDMin"]
-    XTAL_DMAX = Config["constants.CrystallographicInfo.crystalDMax"]
-
     signalRunNumberUpdate = Signal(str)
     signalBackgroundRunNumberUpdate = Signal(str)
     signalValueChanged = Signal(int, float, float, float)
@@ -104,6 +101,14 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
         self.signalUpdateFields.connect(self._updateFields)
         self.signalPopulateGroupingDropdown.connect(self._populateGroupingDropdown)
+
+    @property
+    def XTAL_DMIN(self):
+        return Config["constants.CrystallographicInfo.crystalDMin"]
+
+    @property
+    def XTAL_DMAX(self):
+        return Config["constants.CrystallographicInfo.crystalDMax"]
 
     @Slot(str)
     def _updateRunNumber(self, runNumber):

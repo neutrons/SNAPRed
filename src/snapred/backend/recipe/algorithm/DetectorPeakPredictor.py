@@ -15,8 +15,14 @@ class DetectorPeakPredictor(PythonAlgorithm):
     # BETA_D_COEFFICIENT = PhysicalConstants.h / (2 * PhysicalConstants.NeutronMass * 1e10)
     # also the equation below that uses the coefficient should be changed to
     # beta_d = BETA_D_COEFFICIENT*beta_T/(L*np.sin(tTheta/2))
-    BETA_D_COEFFICIENT = 1 / (PhysicalConstants.h / (2 * PhysicalConstants.NeutronMass) * Config["constants.m2cm"])
-    FWHM = Config["constants.DetectorPeakPredictor.fwhm"]
+
+    @property
+    def BETA_D_COEFFICIENT(self):
+        return 1 / (PhysicalConstants.h / (2 * PhysicalConstants.NeutronMass) * Config["constants.m2cm"])
+
+    @property
+    def FWHM(self):
+        return Config["constants.DetectorPeakPredictor.fwhm"]
 
     def category(self):
         return "SNAPRed Data Processing"

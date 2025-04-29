@@ -14,7 +14,9 @@ Pallet = Tuple[WorkspaceMetadata, Dict[str, WorkspaceName]]
 
 @Singleton
 class ReadWorkspaceMetadata(Recipe[WorkspaceMetadata]):
-    TAG_PREFIX = Config["metadata.tagPrefix"]
+    @property
+    def TAG_PREFIX(self):
+        return Config["metadata.tagPrefix"]
 
     def allGroceryKeys(self) -> Set[str]:
         return {"workspace"}

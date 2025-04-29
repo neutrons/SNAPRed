@@ -52,12 +52,6 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     """
 
-    DEFAULT_DMIN = Config["constants.CrystallographicInfo.crystalDMin"]
-    DEFAULT_DMAX = Config["constants.CrystallographicInfo.crystalDMax"]
-    DEFAULT_NBINS = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
-    DEFAULT_CONV = Config["calibration.diffraction.convergenceThreshold"]
-    DEFAULT_MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
-
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -141,6 +135,26 @@ class DiffCalWorkflow(WorkflowImplementer):
             .addNode(self._saveCalibration, self._saveView, name="Saving")
             .build()
         )
+
+    @property
+    def DEFAULT_DMIN(self):
+        return Config["constants.CrystallographicInfo.crystalDMin"]
+
+    @property
+    def DEFAULT_DMAX(self):
+        return Config["constants.CrystallographicInfo.crystalDMax"]
+
+    @property
+    def DEFAULT_NBINS(self):
+        return Config["calibration.diffraction.nBinsAcrossPeakWidth"]
+
+    @property
+    def DEFAULT_CONV(self):
+        return Config["calibration.diffraction.convergenceThreshold"]
+
+    @property
+    def DEFAULT_MAX_CHI_SQ(self):
+        return Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def _continueAnywayHandlerTweak(self, continueInfo: ContinueWarning.Model):  # noqa: ARG002
         self._continueAnywayHandler(continueInfo)

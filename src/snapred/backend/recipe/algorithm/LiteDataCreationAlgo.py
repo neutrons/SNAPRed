@@ -49,7 +49,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         # TODO this is needed by LoadInstrument, which needs to be removed
         self.declareProperty(
             "LiteInstrumentDefinitionFile",
-            str(Config["instrument.lite.definition.file"]),
+            "instrument.lite.definition.file",
             Direction.Input,
         )
         self.declareProperty("AutoDeleteNonLiteWS", defaultValue=False, direction=Direction.Input)
@@ -85,6 +85,11 @@ class LiteDataCreationAlgo(PythonAlgorithm):
 
     def PyExec(self):
         self.log().notice("Lite Data Creation START!")
+
+        if self.getProperty("LiteInstrumentDefinitionFile").isDefault:
+            liteInstrumentDefinitionFileKey = self.getPropertyValue("LiteInstrumentDefinitionFile")
+            self.setPropertyValue("LiteInstrumentDefinitionFile", Config[liteInstrumentDefinitionFileKey])
+
         ingredients = InstrumentState.model_validate_json(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
         # load input workspace

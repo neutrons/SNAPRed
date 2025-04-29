@@ -22,7 +22,6 @@ from snapred.meta.decorators.Singleton import Singleton
 @Singleton
 class ServiceFactory:
     serviceDirectory: ServiceDirectory = ServiceDirectory()
-    _pathDelimiter = Config["orchestration.path.delimiter"]
 
     def __init__(self):
         # register the services
@@ -37,6 +36,10 @@ class ServiceFactory:
         self.serviceDirectory.registerService(NormalizationService)
         self.serviceDirectory.registerService(WorkspaceService)
         self.serviceDirectory.registerService(WorkspaceMetadataService)
+
+    @property
+    def _pathDelimiter(self):
+        return Config["orchestration.path.delimiter"]
 
     def getServiceNames(self):
         return self.serviceDirectory.keys()

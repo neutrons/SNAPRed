@@ -8,7 +8,10 @@ from snapred.meta.decorators.Singleton import Singleton
 @Singleton
 class ServiceDirectory:
     _services: Dict[str, Any] = {}
-    _pathDelimiter = Config["orchestration.path.delimiter"]
+
+    @property
+    def _pathDelimiter(self):
+        return Config["orchestration.path.delimiter"]
 
     def registerService(self, service):
         # register the service
