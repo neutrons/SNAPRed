@@ -125,8 +125,9 @@ class TestNormalizationService(unittest.TestCase):
     ):
         mockRequest = FocusSpectraRequest(
             runNumber="12345",
-            focusGroup=self.request.focusGroup,
             useLiteMode=True,
+            focusGroup=self.request.focusGroup,
+            preserveEvents=False,
             inputWorkspace="input_ws",
             groupingWorkspace="grouping_ws",
             outputWorkspace="output_ws",
@@ -135,18 +136,19 @@ class TestNormalizationService(unittest.TestCase):
         self.instance = NormalizationService()
         self.instance.dataFactoryService.constructStateId = MagicMock(return_value=("12345", None))
         self.instance.sousChef = SculleryBoy()
-        mockRecipeInst = mockRecipe.return_value
-        mockRecipeInst.executeRecipe.return_value = "expected"
+        mockRecipeInstance = mockRecipe.return_value
+        mockRecipeInstance.executeRecipe.return_value = "expected"
 
         res = self.instance.focusSpectra(mockRequest)
 
-        mockRecipeInst.executeRecipe.assert_called_once_with(
+        mockRecipeInstance.executeRecipe.assert_called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             GroupingWorkspace=mockRequest.groupingWorkspace,
-            Ingredients=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
             OutputWorkspace=mockRequest.outputWorkspace,
+            PixelGroup=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
+            PreserveEvents=False
         )
-        assert res == mockRecipeInst.executeRecipe.return_value
+        assert res == mockRecipeInstance.executeRecipe.return_value
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "RawVanadiumCorrectionRecipe")
@@ -171,14 +173,14 @@ class TestNormalizationService(unittest.TestCase):
 
         res = self.instance.vanadiumCorrection(mockRequest)
 
-        mockRecipeInst = RawVanadiumCorrectionRecipe.return_value
-        mockRecipeInst.executeRecipe.assert_called_once_with(
+        mockRecipeInstance = RawVanadiumCorrectionRecipe.return_value
+        mockRecipeInstance.executeRecipe.assert_called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             BackgroundWorkspace=mockRequest.backgroundWorkspace,
             Ingredients=self.instance.sousChef.prepNormalizationIngredients({}),
             OutputWorkspace=mockRequest.outputWorkspace,
         )
-        assert res == mockRecipeInst.executeRecipe.return_value
+        assert res == mockRecipeInstance.executeRecipe.return_value
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "SmoothDataExcludingPeaksRecipe")
@@ -204,11 +206,11 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="path/to/cif")
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
 
-        mockRecipeInst = mockRecipe.return_value
+        mockRecipeInstance = mockRecipe.return_value
 
         self.instance.smoothDataExcludingPeaks(mockRequest)
 
-        mockRecipeInst.executeRecipe.assert_called_once_with(
+        mockRecipeInstance.executeRecipe.assert_called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             OutputWorkspace=mockRequest.outputWorkspace,
             DetectorPeaks=ANY,  # NOTE it is impossible to see this pointer

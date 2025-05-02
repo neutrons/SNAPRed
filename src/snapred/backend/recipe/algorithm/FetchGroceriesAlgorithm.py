@@ -64,7 +64,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         )
         self.declareProperty(
             "LoaderArgs",
-            defaultValue="",
+            defaultValue="{}",
             direction=Direction.Input,
             doc="loader keyword args (JSON format)",
         )
@@ -103,8 +103,9 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         if loader in ["LoadCalibrationWorkspaces", "LoadLiveDataInterval"]:
             if self.getProperty("LoaderArgs").isDefault:
                 issues["LoaderArgs"] = f"loader '{loader}' requires additional keyword arguments"
-        elif not self.getProperty("LoaderArgs").isDefault:
-            issues["LoaderArgs"] = f"Loader '{loader}' does not have any keyword arguments"
+        elif loader not in ["LoadEventNexus",]:
+            if not self.getProperty("LoaderArgs").isDefault:
+                issues["LoaderArgs"] = f"Loader '{loader}' does not have any keyword arguments"
 
         # `InstrumentName`, `InstrumentFilename`, and `InstrumentDonor` properties:
         instrumentSources = ["InstrumentName", "InstrumentFilename", "InstrumentDonor"]
@@ -126,15 +127,16 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         # TODO: the `if .. doesExist` should be centralized to cache treatment
         #    here, it is redundant.
         if addOrReplace or not self.mantidSnapper.mtd.doesExist(outWS):
+            loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))
             match loaderType:
                 case "":
                     _, loaderType, _ = self.mantidSnapper.Load(
                         "Loading with unspecified loader",
                         Filename=filename,
                         OutputWorkspace=outWS,
+                        **loaderArgs
                     )
                 case "LoadCalibrationWorkspaces":
-                    loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))
                     self.mantidSnapper.LoadCalibrationWorkspaces(
                         "Loading diffraction-calibration workspaces",
                         Filename=filename,
@@ -153,7 +155,6 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                         **{instrumentPropertySource: instrumentSource},
                     )
                 case "LoadLiveDataInterval":
-                    loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))
                     self.mantidSnapper.LoadLiveDataInterval(
                         "loading live-data interval",
                         OutputWorkspace=outWS,

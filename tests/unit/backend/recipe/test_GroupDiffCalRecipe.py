@@ -24,7 +24,7 @@ class TestGroupDiffCalRecipe(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
-        syntheticInputs = SyntheticData()
+        syntheticInputs = SyntheticData(workspaceType="Event")
         cls.fakeIngredients = syntheticInputs.ingredients
         fakeDBin = max([abs(d) for d in cls.fakeIngredients.pixelGroup.dBin()])
 
@@ -60,7 +60,7 @@ class TestGroupDiffCalRecipe(unittest.TestCase):
         assert rx.runNumber == self.fakeIngredients.runConfig.runNumber
         assert rx.TOF.minimum == self.fakeIngredients.pixelGroup.timeOfFlight.minimum
         assert rx.TOF.maximum == self.fakeIngredients.pixelGroup.timeOfFlight.maximum
-        assert rx.dBin == self.fakeIngredients.pixelGroup.dBin()
+        assert rx.pixelGroup == self.fakeIngredients.pixelGroup
 
     def test_execute(self):
         """Test that the recipe xecutes"""

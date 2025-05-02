@@ -54,7 +54,7 @@ class SyntheticData(object):
     SNAPInstrumentFilePath = str(Path(mantid.__file__).parent / "instrument" / "SNAP_Definition.xml")
     SNAPLiteInstrumentFilePath = Resource.getPath("inputs/pixel_grouping/SNAPLite_Definition.xml")
 
-    def __init__(self, workspaceType: str = "Histogram", scale: float = 1000.0):
+    def __init__(self, workspaceType: str = "Histogram", scale: float = 1000.0, numEvents=int(1.0e5)):
         fakeRunNumber = "555"
         self.fakeRunConfig = RunConfig(
             runNumber=str(fakeRunNumber),
@@ -71,6 +71,11 @@ class SyntheticData(object):
 
         # Overall _magnitude_ scale factor:
         self.scale = scale
+        
+        self.numEvents = numEvents
+        
+        # ad hoc S/N factor: reduce S/N (from scale) using this factor.
+        self.signalToNoiseDivisor = 20.0
 
         self.workspaceType = workspaceType
 
@@ -79,7 +84,7 @@ class SyntheticData(object):
         TOFMin = self.fakePixelGroup.timeOfFlight.minimum
         TOFMax = self.fakePixelGroup.timeOfFlight.maximum
         self.peaks, self.background_function = SyntheticData._fakePowderDiffractionPeakList(
-            TOFMin, TOFMax, dMin, dMax, self.scale
+            TOFMin, TOFMax, dMin, dMax, self.scale, self.signalToNoiseDivisor
         )
 
         crystalPeaks = SyntheticData.crystalInfo().peaks
@@ -115,7 +120,7 @@ class SyntheticData(object):
         )
 
     @staticmethod
-    def fakeDetectorPeaks(scale: float = 1000.0) -> List[DetectorPeak]:
+    def fakeDetectorPeaks(scale: float = 1000.0, signalToNoiseDivisor: float = 20.0) -> List[DetectorPeak]:
         fakePixelGroup = DAOFactory.synthetic_pixel_group.copy()
 
         # Place all peaks within the _minimum_ d-space range of any pixel group.
@@ -126,7 +131,7 @@ class SyntheticData(object):
         #   predefined function: this allows peak widths to be properly scaled to generate data for a d-spacing domain.
         TOFMin = fakePixelGroup.timeOfFlight.minimum
         TOFMax = fakePixelGroup.timeOfFlight.maximum
-        peaks, _ = SyntheticData._fakePowderDiffractionPeakList(TOFMin, TOFMax, dMin, dMax, scale)
+        peaks, _ = SyntheticData._fakePowderDiffractionPeakList(TOFMin, TOFMax, dMin, dMax, scale, signalToNoiseDivisor)
 
         crystalPeaks = SyntheticData.crystalInfo().peaks
 
@@ -156,7 +161,12 @@ class SyntheticData(object):
 
     @staticmethod
     def _fakePowderDiffractionPeakList(
-        tofMin: float, tofMax: float, dMin: float, dMax: float, scale: float
+        tofMin: float,
+        tofMax: float,
+        dMin: float,
+        dMax: float, 
+        scale: float,
+        signalToNoiseDivisor: float
     ) -> Tuple[List[Tuple[float, float, float]], str]:
         """Duplicate the `CreateSampleWorkspace` 'Powder Diffraction' predefined function,
              but in d-spacing instead of TOF units.
@@ -183,6 +193,7 @@ class SyntheticData(object):
         centres = np.arange(dMin, dMax, 0.1 * (dMax - dMin))
         dspDomain = dMax - dMin
         tofDomain = tofMax - tofMin
+        f_SN = signalToNoiseDivisor
         peaks = [
             Peak(centres[1], 14.3772 * dspDomain / tofDomain, scale * 0.584528),
             Peak(centres[2], 15.2516 * dspDomain / tofDomain, scale * 1.33361),
@@ -194,7 +205,7 @@ class SyntheticData(object):
             Peak(centres[8], 21.9932 * dspDomain / tofDomain, scale * 2.05237),
             Peak(centres[9], 25.2751 * dspDomain / tofDomain, scale * 8.40976),
         ]
-        background = f"name= LinearBackground,A0={scale * 0.0850208},A1={scale * -4.89583e-06 * dspDomain / tofDomain};"
+        background = f"name= LinearBackground,A0={scale * 0.0850208 / f_SN},A1={scale * -4.89583e-06 * dspDomain / tofDomain / f_SN};"
         return peaks, background
 
     def generateWorkspaces(self, rawWS: str, groupingWS: str, maskWS: str) -> None:
@@ -253,6 +264,7 @@ class SyntheticData(object):
         CreateSampleWorkspace(
             OutputWorkspace=rawWS,
             WorkspaceType=self.workspaceType,
+            NumEvents=self.numEvents,
             Function="User Defined",
             UserDefinedFunction=functionString,
             Xmin=overallDMin,

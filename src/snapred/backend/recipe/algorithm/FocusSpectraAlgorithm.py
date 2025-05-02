@@ -16,10 +16,9 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 class FocusSpectraAlgorithm(PythonAlgorithm):
     """
-    This algorithm performs diffraction focusing on TOF data. It converts the
-    input workspace from time-of-flight (TOF) to d-spacing and applies
-    diffraction focusing using a grouping workspace. Optionally, it rebins
-    the output to ensure uniform binning.
+    This algorithm performs diffraction focussing on dSpacing data. It applies
+    diffraction focussing using a grouping workspace, which then additionally applies
+    the optimal binning constraints using the provided PixelGroup.
 
     """
 
@@ -50,7 +49,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
                 PropertyMode.Mandatory,
                 validator=WorkspaceUnitValidator("dSpacing"),
             ),
-            doc="The diffraction-focused data",
+            doc="The diffraction-focused, and rebinned data",
         )
         self.declareProperty(
             "PixelGroup",
@@ -59,24 +58,21 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             direction=Direction.Input,
         )
         self.declareProperty(
-            "RebinOutput",
+            "PreserveEvents",
             defaultValue=True,
-            direction=Direction.Input,
+            direction=Direction.Input
         )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
-    def chopIngredients(self, pixelGroup: PixelGroup):
-        self.dMin = pixelGroup.dMin()
-        self.dMax = pixelGroup.dMax()
-        self.dBin = pixelGroup.dBin()
-        pass
+    def chopIngredients(self):
+        self.pixelGroup: PixelGroup = PixelGroup.model_validate_json(self.getPropertyValue("PixelGroup"))
+        self.preserveEvents = self.getProperty("PreserveEvents").value
 
     def unbagGroceries(self):
         self.inputWSName = self.getPropertyValue("InputWorkspace")
         self.groupingWSName = self.getPropertyValue("GroupingWorkspace")
         self.outputWSName = self.getPropertyValue("OutputWorkspace")
-        self.rebinOutput = self.getProperty("RebinOutput").value
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
@@ -102,40 +98,30 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         return errors
 
     def PyExec(self):
-        pixelGroup: PixelGroup = PixelGroup.model_validate_json(self.getPropertyValue("PixelGroup"))
-        self.chopIngredients(pixelGroup)
+        self.chopIngredients()
         self.unbagGroceries()
-
-        self.log().debug("Execute of FocusSpectra START!")
 
         self.mantidSnapper.DiffractionFocussing(
             "Performing Diffraction Focusing ...",
             InputWorkspace=self.inputWSName,
             GroupingWorkspace=self.groupingWSName,
             OutputWorkspace=self.outputWSName,
-            PreserveEvents=True,
+            PreserveEvents=self.preserveEvents,
+            DMin=self.pixelGroup.dMin(),
+            DMax=self.pixelGroup.dMax(),
+            Delta=self.pixelGroup.dBin(),
+            FullBinsOnly=True
         )
-
-        # TODO: Compress events here if preserving events
-        if self.rebinOutput is True:
-            self.mantidSnapper.RebinRagged(
-                "Rebinning ragged bins...",
-                InputWorkspace=self.outputWSName,
-                XMin=self.dMin,
-                XMax=self.dMax,
-                Delta=self.dBin,
-                OutputWorkspace=self.outputWSName,
-                PreserveEvents=False,
-                FullBinsOnly=True,
-            )
+        # With these arguments, output from `DiffractionFocussing` will now have ragged binning,
+        #   so the former call to `RebinRagged` has been removed.
 
         self.mantidSnapper.executeQueue()
 
         # Throughout SNAPRed, the assumption is made that the workspace indices of workspace spectra
-        #   are in order of their subgroup-IDs.  This correspondance is validated here.
+        #   are in order of their subgroup-IDs.  This correspondance, for the `PixelGroup`, is validated here.
         # TODO: FIX THIS ISSUE!
         outputWS = self.mantidSnapper.mtd[self.outputWSName]
-        for n, subgroupId in enumerate(pixelGroup.groupIDs):
+        for n, subgroupId in enumerate(self.pixelGroup.groupIDs):
             # After `DiffractionFocussing`, the spectrum number for each spectrum is set to its subgroup-ID.
             if outputWS.getSpectrum(n).getSpectrumNo() != subgroupId:
                 raise RuntimeError("Usage error: subgroup IDs for 'PixelGroup' are not in workspace-index order.")
