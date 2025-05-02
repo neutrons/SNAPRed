@@ -49,9 +49,11 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import ReductionIngredients
+from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.ObjectSHA import ObjectSHA
+from snapred.backend.dao.ParticleBounds import ParticleBounds
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
     CreateCalibrationRecordRequest,
@@ -59,7 +61,7 @@ from snapred.backend.dao.request import (
     CreateNormalizationRecordRequest,
 )
 from snapred.backend.dao.RunMetadata import RunMetadata
-from snapred.backend.dao.state import DetectorState
+from snapred.backend.dao.state import DetectorState, InstrumentState
 from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
 from snapred.backend.dao.state.GroupingMap import GroupingMap
 from snapred.backend.dao.StateId import StateId
@@ -1786,7 +1788,19 @@ def test_writeNormalizationWorkspaces(cleanup_workspace_at_exit):
     stateId = ENDURING_STATE_ID
     localDataService = LocalDataService()
     testNormalizationRecord = DAOFactory.normalizationRecord(version=version)
-    with state_root_redirect(localDataService, stateId=stateId):
+    with (
+        mock.patch.object(localDataService, "generateInstrumentState") as mockGenerateInstrumentState,
+        state_root_redirect(localDataService, stateId=stateId)
+    ):
+        mockGenerateInstrumentState.return_value = mock.Mock(
+            spec=InstrumentState,
+            id=mock.Mock(spec=ObjectSHA, hex=ENDURING_STATE_ID),
+            particleBounds=mock.Mock(
+                spec=ParticleBounds,
+                tof=Limit(minimum=0.001, maximum=200000.0)
+            )
+        )
+        
         # Workspace names need to match the names that are used in the test record.
         runNumber = testNormalizationRecord.runNumber  # noqa: F841
         useLiteMode = testNormalizationRecord.useLiteMode

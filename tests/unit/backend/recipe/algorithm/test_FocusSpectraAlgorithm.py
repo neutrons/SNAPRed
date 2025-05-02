@@ -21,6 +21,7 @@ class TestFocusSpectra(unittest.TestCase):
         self.fakeRunNumber = "555"
 
         self.pixelGroup = DAOFactory.synthetic_pixel_group.copy()
+        self.preserveEvents = False
 
         self.fakeRawData = f"_test_focusSpectra_{self.fakeRunNumber}"
         self.fakeGroupingWorkspace = f"_test_focusSpectra_difc_{self.fakeRunNumber}"
@@ -128,18 +129,21 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("PixelGroup", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
+        algo.setProperty("PixelGroup", self.pixelGroup.model_dump_json())
+        algo.setProperty("PreserveEvents", self.preserveEvents)
         assert algo.execute()
-        # assert outputworkspace is focussed correctly
+
         outputWs = algo.getProperty("OutputWorkspace").valueAsStr
         # write outputWs to file
         from mantid.simpleapi import Load, RebinRagged
-        # assert that outputWs is focussed correctly
 
         RebinRagged(InputWorkspace=outputWs, OutputWorkspace=outputWs, XMin=2000, XMax=14500, Delta=1)
         Load(Resource.getPath(f"/outputs/focus_spectra/{outputWs}.nxs"), OutputWorkspace=outputWs + "_loaded")
+
+        # assert that outputWs is focussed correctly
         assert mtd[outputWs].getNumberHistograms() == mtd[outputWs + "_loaded"].getNumberHistograms()
+
         # check block size
         assert mtd[outputWs].blocksize() == mtd[outputWs + "_loaded"].blocksize()
         assert_almost_equal(
@@ -152,17 +156,17 @@ class TestFocusSpectra(unittest.TestCase):
     def test_chopIngredients(self):
         algo = ThisAlgo()
         algo.initialize()
-        algo.chopIngredients(self.pixelGroup)
-        assert algo.dMin == self.pixelGroup.dMin()
-        assert algo.dMax == self.pixelGroup.dMax()
-        assert algo.dBin == self.pixelGroup.dBin()
+        algo.setProperty("PixelGroup", self.pixelGroup.model_dump_json())
+        algo.setProperty("PreserveEvents", self.preserveEvents)
+        algo.chopIngredients()
+        assert algo.pixelGroup == self.pixelGroup
+        assert algo.preserveEvents == self.preserveEvents
 
     def test_unbagGroceries(self):
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("PixelGroup", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         algo.unbagGroceries()
         assert algo.inputWSName == self.fakeRawData
@@ -174,8 +178,9 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("PixelGroup", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
+        algo.setProperty("PixelGroup", self.pixelGroup.model_dump_json())
+        algo.setProperty("PreserveEvents", self.preserveEvents)
         errors = algo.validateInputs()
         assert errors == {}
 
@@ -184,7 +189,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeRawData)
-        algo.setProperty("PixelGroup", self.pixelGroup.json())
+        algo.setProperty("PixelGroup", self.pixelGroup.model_dump_json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         errors = algo.validateInputs()
         assert errors.get("GroupingWorkspace") is not None
@@ -220,7 +225,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("PixelGroup", self.pixelGroup.json())
+        algo.setProperty("PixelGroup", self.pixelGroup.model_dump_json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         errors = algo.validateInputs()
         assert errors.get("InputWorkspace") is not None

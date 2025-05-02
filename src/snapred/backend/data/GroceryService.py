@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import numpy as np
+from mantid.api import FileLoaderRegistry
 from mantid.dataobjects import MaskWorkspace
 from pydantic import validate_call
 
@@ -286,7 +287,7 @@ class GroceryService:
         normcalRunNumber: str,
         useLiteMode: bool,
         version: Optional[int],
-        state: str,
+        state: str
     ) -> str:
         # NOTE: The normCal Record currently does NOT store workspace type -> workspace name mappings.
         #       It is just a list of workspace names. So we need to infer.
@@ -852,7 +853,14 @@ class GroceryService:
             self.getCloneOfWorkspace(rawWorkspaceName, workspaceName)
         elif bool(filePath) and filePath.exists() and item.liveDataArgs is None:
             workspaceName = self._createNeutronWorkspaceName(runNumber, useLiteMode)
-            data = self.grocer.executeRecipe(str(filePath), workspaceName, loader)
+            loaderArgs = "{}"
+            if not bool(loader) and Config["nexus.dataFormat.event"]:
+                # If the loader hasn't been specified, check if this is original input data in event format.
+                # In this case, specifying only a single bin allows a much faster load.
+                loader = FileLoaderRegistry.Instance().chooseLoader(str(filePath)).name()
+                if loader == "LoadEventNexus":
+                    loaderArgs = '{"NumberOfBins": 1}'
+            data = self.grocer.executeRecipe(str(filePath), workspaceName, loader, loaderArgs=loaderArgs)
         else:
             data = missingDataHandler()
             workspaceName = data["workspace"]
@@ -1242,11 +1250,12 @@ class GroceryService:
         :rtype: Dict[str, Any]
         """
 
-        runNumber, useLiteMode, version, state, hidden = (
+        runNumber, useLiteMode, version, state, loader, hidden = (
             item.runNumber,
             item.useLiteMode,
             item.normCalVersion,
             item.state,
+            item.loader,
             item.hidden,
         )
         normcalRunNumber = self._lookupNormcalRunNumber(runNumber, useLiteMode, version, state)
@@ -1262,14 +1271,14 @@ class GroceryService:
             self._clearNormalizationCache()
 
             # then load the new one
-            filename = self._lookupNormalizationWorkspaceFilename(normcalRunNumber, useLiteMode, version, state)
+            filePath = self._lookupNormalizationWorkspaceFilename(normcalRunNumber, useLiteMode, version, state)
+
+            # Unfortunately, `LoadNexusProcessed` does not support the `NumberOfBins=1` optimization for loading
+            # event data.  As a work-around: event-format normalization data will be saved with only one bin
+            # to speed up reload.  (See also:  "nexus.dataFormat.event" flag in "application.yml".)
 
             # Note: 'LoadNexusProcessed' neither requires nor makes use of an instrument donor.
-            data = self.grocer.executeRecipe(
-                filename=filename,
-                workspace=workspaceName,
-                loader="LoadNexusProcessed",
-            )
+            data = self.grocer.executeRecipe(filename=filePath, workspace=workspaceName, loader=loader)
             self._processNeutronDataCopy(item, workspaceName)
             self.normalizationCache.add(workspaceName)
         return data
@@ -1620,7 +1629,7 @@ class GroceryService:
         return list(workspaces)
 
     def _filterEvents(self, runNumber, workspaceName):
-        # NOTE: We always want to generate the instruemnt state, to get the latest SNAPInstPRm parameters.
+        # NOTE: We always want to generate the instrument state, to get the latest SNAPInstPRm parameters.
         instrumentState = self.dataService.generateInstrumentState(runNumber)
 
         self.mantidSnapper.CropWorkspace(

@@ -81,9 +81,7 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         self.runNumber: str = ingredients.runConfig.runNumber
 
         # from grouping parameters, read the overall min/max d-spacings
-        self.dMin = ingredients.pixelGroup.dMin()
-        self.dMax = ingredients.pixelGroup.dMax()
-        self.dBin = ingredients.pixelGroup.dBin()
+        self.pixelGroup = ingredients.pixelGroup
 
         self.grouping = ingredients.pixelGroup.focusGroup.name
 
@@ -325,24 +323,14 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
             Target="dSpacing",
         )
 
-        # Diffraction-focus the d-spacing data
-        self.mantidSnapper.DiffractionFocussing(
+        # Diffraction focus, and rebin the d-spacing data.
+        self.mantidSnapper.FocusSpectraAlgorithm(
             "Diffraction-focus the d-spacing data",
             InputWorkspace=tmpWSdsp,
             GroupingWorkspace=self.focusWS,
             OutputWorkspace=tmpWSdsp,
-        )
-
-        # Ragged rebin the diffraction-focussed data
-        self.mantidSnapper.RebinRagged(
-            "Ragged rebin the diffraction-focussed data",
-            InputWorkspace=tmpWSdsp,
-            OutputWorkspace=tmpWSdsp,
-            XMin=self.dMin,
-            XMax=self.dMax,
-            Delta=self.dBin,
-            preserveEvents=keepEvents,
-            FullBinsOnly=True,
+            PixelGroup=self.pixelGroup.model_dump_json(),
+            PreserveEvents=keepEvents,
         )
 
         if units == "TOF":
