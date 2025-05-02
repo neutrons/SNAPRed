@@ -326,7 +326,7 @@ class TestNormalizationPanels:
                 qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(100)
                 assert len(exceptions) == 0
-                assert mpWarn[1].call_count == 1
+                assert mpWarn[1].call_count == 1, mpWarn[1].call_args
 
             msg = "The minimum crystal d-spacing exceeds the maximum (-1.0). Please enter a smaller value"
             mpWarn = MockQMessageBox().warning(msg)

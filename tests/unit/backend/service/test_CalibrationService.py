@@ -22,9 +22,9 @@ from mantid.simpleapi import (
 )
 from util.Config_helpers import Config_override
 from util.dao import DAOFactory
+from util.Pydantic_util import assertEqualModel, assertEqualModelList
 from util.state_helpers import state_root_redirect
 
-from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
 from snapred.backend.dao.request import (
     CalculateResidualRequest,
     CalibrationAssessmentRequest,
@@ -32,7 +32,6 @@ from snapred.backend.dao.request import (
     CalibrationLoadAssessmentRequest,
     CalibrationWritePermissionsRequest,
     CreateCalibrationRecordRequest,
-    CreateIndexEntryRequest,
     DiffractionCalibrationRequest,
     FocusSpectraRequest,
     InitializeStateRequest,
@@ -357,16 +356,17 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.createCalibrationRecord = mock.Mock(return_value=expectedRecord)
         self.instance.dataExportService.getUniqueTimestamp = mock.Mock(return_value=timestamp)
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
+        self.instance.dataFactoryService.getNextCalibrationVersion = mock.Mock(return_value=expectedRecord.version)
         self.instance._collectMetrics = mock.Mock(return_value=fakeMetrics)
-
+        workspaces = {
+            wngt.DIFFCAL_OUTPUT: [self.sampleWS],
+            wngt.DIFFCAL_TABLE: [self.sampleTableWS],
+            wngt.DIFFCAL_MASK: [self.sampleMaskWS],
+        }
         # Call the method to test
         request = CalibrationAssessmentRequest(
-            workspaces={
-                wngt.DIFFCAL_OUTPUT: [self.sampleWS],
-                wngt.DIFFCAL_TABLE: [self.sampleTableWS],
-                wngt.DIFFCAL_MASK: [self.sampleMaskWS],
-            },
-            run=RunConfig(runNumber=self.runNumber),
+            workspaces=workspaces,
+            run=RunConfig(runNumber=expectedRecord.runNumber),
             useLiteMode=True,
             focusGroup={"name": fakeMetrics.focusGroupName, "definition": ""},
             calibrantSamplePath="egg/muffin/biscuit.pastry",
@@ -376,7 +376,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             nBinsAcrossPeakWidth=0,
             maxChiSq=100.0,
         )
-        response = self.instance.assessQuality(request)
+
+        with (
+            mock.patch.object(
+                self.instance.sousChef, "prepCalibration", return_value=expectedRecord.calculationParameters
+            ),
+            mock.patch.object(self.instance.sousChef, "prepPixelGroup", return_value=expectedRecord.pixelGroups[0]),
+        ):
+            response = self.instance.assessQuality(request)
 
         # Assert correct method calls
         FitMultiplePeaksRecipe.return_value.executeRecipe.assert_called_once_with(
@@ -388,14 +395,19 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.getCifFilePath.assert_called_once_with("biscuit")
 
         # Assert the result is as expected
-        assert response.model_dump() == {
-            "record": expectedRecord.model_dump(),
-            "metricWorkspaces": expectedWorkspaces,
-        }
+        assert response.version == expectedRecord.version
+        assertEqualModel(response.calculationParameters, expectedRecord.calculationParameters)
+        assertEqualModel(response.crystalInfo, expectedRecord.crystalInfo)
+        assertEqualModelList(response.pixelGroups, expectedRecord.pixelGroups)
+        assert response.focusGroupCalibrationMetrics == fakeMetrics
+        assert response.workspaces == workspaces
+        assert response.metricWorkspaces == expectedWorkspaces
 
         # Assert expected calibration metric workspaces have been generated
         for wsName in expectedWorkspaces:
-            assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
+            assert self.instance.dataFactoryService.workspaceDoesExist(wsName), (
+                f"{wsName} missing, existing workspaces: {mtd.getObjectNames()}"
+            )
 
     def test_save_respects_version(self):
         version = 1
@@ -428,15 +440,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         }
         """
         request = CalibrationExportRequest(
-            createIndexEntryRequest=CreateIndexEntryRequest(
-                runNumber=record.runNumber,
-                useLiteMode=record.useLiteMode,
-                version=record.version,
-                appliesTo=f">={record.runNumber}",
-                author="",
-                comments="",
-                timestamp=time.time(),
-            ),
             createRecordRequest=CreateCalibrationRecordRequest(**record.model_dump()),
         )
 
@@ -462,21 +465,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 self.instance.loadQualityAssessment(mockRequest)
             assert str(mockRequest.version) in str(excinfo.value)
 
-    @mock.patch(thisService + "CalibrationMetricsWorkspaceIngredients")
     def test_load_quality_assessment_no_calibration_metrics_exception(
         self,
-        mockCalibrationMetricsWorkspaceIngredients,
     ):
         mockRequest = mock.Mock(runId=self.runNumber, version=self.version, checkExistent=False)
         calibrationRecord = DAOFactory.calibrationRecord(runNumber="57514", version=1)
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         # Clear the input metrics list
         calibrationRecord.focusGroupCalibrationMetrics.calibrationMetric = []
-        mockCalibrationMetricsWorkspaceIngredients.return_value = mock.Mock(
-            spec=CalibrationMetricsWorkspaceIngredients,
-            calibrationRecord=calibrationRecord,
-            timestamp=self.timestamp,
-        )
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibrationRecord)
         with pytest.raises(Exception, match=r".*input table is empty.*"):
             self.instance.loadQualityAssessment(mockRequest)
@@ -486,6 +482,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpDir:
             calibRecord = DAOFactory.calibrationRecord()
             self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
+            self.instance.dataExportService.getUniqueTimestamp = mock.Mock(return_value=None)
             self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
@@ -498,8 +495,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
             self.instance.groceryService._getCalibrationDataPath = mock.Mock(return_value=tmpDir)
             self.instance.groceryService._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-            mockRequest = mock.Mock(
-                spec=CalibrationLoadAssessmentRequest,
+            mockRequest = CalibrationLoadAssessmentRequest(
                 runId=calibRecord.runNumber,
                 useLiteMode=calibRecord.useLiteMode,
                 version=calibRecord.version,
@@ -561,6 +557,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         record = DAOFactory.calibrationRecord(version=version)
         parameters = DAOFactory.calibrationParameters(version=version)
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=record)
+        self.instance.dataExportService.getUniqueTimestamp = mock.Mock(return_value=None)
         with state_root_redirect(self.localDataService) as tmpRoot:
             indexer = self.localDataService.calibrationIndexer(record.useLiteMode, "stateId")
             recordFilepath = indexer.recordPath(version)
@@ -593,12 +591,16 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                     .metricName(metric)
                     .build()
                 )
-                assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
+                assert self.instance.dataFactoryService.workspaceDoesExist(ws_name), (
+                    f"{ws_name} missing, existing workspaces: {mtd.getObjectNames()}"
+                )
 
             # Assert all "persistent" workspaces have been loaded
             for wsNames in record.workspaces.values():
                 for wsName in wsNames:
-                    assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
+                    assert self.instance.dataFactoryService.workspaceDoesExist(wsName), (
+                        f"{wsName} missing, existing workspaces: {mtd.getObjectNames()}"
+                    )
 
     def test_load_quality_assessment_no_units(self):
         calibRecord = DAOFactory.calibrationRecord(runNumber="57514", version=1)

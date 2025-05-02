@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Tuple
 
 from pydantic import validate_call
 
@@ -80,11 +80,11 @@ class DataExportService:
         """
         self.dataService.writeCalibrationIndexEntry(entry)
 
-    def exportCalibrationRecord(self, record: CalibrationRecord, entry: Optional[IndexEntry] = None):
+    def exportCalibrationRecord(self, record: CalibrationRecord):
         """
         Record must have correct version set.
         """
-        self.dataService.writeCalibrationRecord(record, entry)
+        self.dataService.writeCalibrationRecord(record)
 
     def exportCalibrationWorkspaces(self, record: CalibrationRecord):
         """
@@ -110,11 +110,11 @@ class DataExportService:
         """
         self.dataService.writeNormalizationIndexEntry(entry)
 
-    def exportNormalizationRecord(self, record: NormalizationRecord, entry: Optional[IndexEntry] = None):
+    def exportNormalizationRecord(self, record: NormalizationRecord):
         """
         Record must have correct version set.
         """
-        self.dataService.writeNormalizationRecord(record, entry)
+        self.dataService.writeNormalizationRecord(record)
 
     def exportNormalizationWorkspaces(self, record: NormalizationRecord):
         """

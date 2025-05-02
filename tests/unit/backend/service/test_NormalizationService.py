@@ -11,11 +11,15 @@ from mantid.simpleapi import (
     CreateWorkspace,
     mtd,
 )
+from util.Pydantic_util import assertEqualModel
 
 from snapred.backend.dao.indexing.Versioning import VersionState
+from snapred.backend.dao.normalization.Normalization import Normalization
+from snapred.backend.dao.normalization.NormalizationAssessmentResponse import NormalizationAssessmentResponse
 from snapred.backend.dao.request import CalibrationWritePermissionsRequest
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.meta.redantic import parse_obj_as
 
 thisService = "snapred.backend.service.NormalizationService"
 localMock = mock.Mock()
@@ -251,10 +255,24 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.createNormalizationRecord = MagicMock()
         self.instance.dataFactoryService.constructStateId = MagicMock(return_value=("12345", None))
-
+        expectedNormalization = parse_obj_as(
+            Normalization,
+            self.instance.sousChef.prepCalibration(
+                mock.MagicMock(
+                    runNumber=self.request.runNumber,
+                    useLiteMode=self.request.useLiteMode,
+                ),
+            ),
+        )
         result = self.instance.normalizationAssessment(self.request)
-
-        assert result == self.instance.dataFactoryService.createNormalizationRecord.return_value
+        expectedRespone = NormalizationAssessmentResponse(
+            backgroundRunNumber=self.request.backgroundRunNumber,
+            smoothingParameter=self.request.smoothingParameter,
+            normalizationCalibrantSamplePath=self.request.calibrantSamplePath,
+            calculationParameters=expectedNormalization,
+            crystalDBounds=self.request.crystalDBounds,
+        )
+        assertEqualModel(result, expectedRespone)
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "RawVanadiumCorrectionRecipe")

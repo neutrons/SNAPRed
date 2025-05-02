@@ -265,12 +265,12 @@ class TestSousChef(unittest.TestCase):
 
         # mock out the data factory
         self.instance.dataFactoryService = mock.Mock()
-        self.instance.dataFactoryService.getCifFilePath.return_value = mock.sentinel.cifPath
+        self.instance.dataFactoryService.getCifFilePath.return_value = "cif/Path"
 
         self.instance.prepCrystallographicInfo(incompleteIngredients)
 
         assert XtalService.called
-        assert XtalService().ingest.call_args[0][0] == mock.sentinel.cifPath
+        assert XtalService().ingest.call_args[1]["cifPath"] == "cif/Path"
         assert self.instance.dataFactoryService.getCifFilePath.called
 
     @mock.patch(thisService + "PeakIngredients")
