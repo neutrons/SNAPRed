@@ -114,10 +114,12 @@ nexus:
   native:
     prefix: nexus/SNAP_
     extension: .nxs.h5
-  home: nexus/
   file:
+    prefix: SNAP_    
     extension: .nxs.h5
-    prefix: SNAP_
+  dataFormat: 
+    # Assume that input data will be in event format:
+    event: true
 
 grouping:
   workspacename:

@@ -809,7 +809,13 @@ class GroceryService:
             self.getCloneOfWorkspace(rawWorkspaceName, workspaceName)
         elif filepath.exists() and item.liveDataArgs is None:
             workspaceName = self._createNeutronWorkspaceName(runNumber, useLiteMode)
-            data = self.grocer.executeRecipe(str(filepath), workspaceName, loader)
+            loaderArgs = "{}"
+            if not bool(loader) and Config["nexus.dataFormat.event"]:
+                # If the loader hasn't been specified: assume that the input data will be in event format.
+                # In this case, using only a single bin boundary allows a much faster load.
+                loader = "LoadEventNexus"
+                loaderArgs = '{"NumberOfBins": 1}' 
+            data = self.grocer.executeRecipe(str(filepath), workspaceName, loader, loaderArgs=loaderArgs)       
         else:
             data = missingDataHandler()
             workspaceName = data["workspace"]
@@ -1340,7 +1346,7 @@ class GroceryService:
                     if item.keepItClean:
                         result = self.fetchNeutronDataCached(item)
                     else:
-                        result = self.fetchNeutronDataSingleUse(item)
+                        result = self.fetchNeutronDataSingleUse(item)                    
                 # for grouping definitions
                 case "grouping":
                     result = self.fetchGroupingDefinition(item)
