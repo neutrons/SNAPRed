@@ -186,6 +186,12 @@ class GroceryService:
             if not self.workspaceDoesExist(workspace):
                 del self._loadedInstruments[key]
 
+    def _clearNormalizationCache(self):
+        for ws in self.normalizationCache:
+            if self.workspaceDoesExist(ws):
+                self.deleteWorkspaceUnconditional(ws)
+        self.normalizationCache = set()
+        
     ## FILENAME METHODS
 
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
@@ -1144,7 +1150,8 @@ class GroceryService:
         :rtype: Dict[str, Any]
         """
 
-        runNumber, useLiteMode, version, hidden = item.runNumber, item.useLiteMode, item.normCalVersion, item.hidden
+        runNumber, useLiteMode, version, loader, hidden = \
+            item.runNumber, item.useLiteMode, item.normCalVersion, item.loader, item.hidden
         workspaceName = self._createNormalizationWorkspaceName(runNumber, useLiteMode, version, hidden)
 
         if self.workspaceDoesExist(workspaceName):
@@ -1155,24 +1162,26 @@ class GroceryService:
             }
         else:
             # clear normalization cache
-            # NOTE: I dont believe mtd.getObjectNames() returns hidden workspaces.
-            for ws in self.normalizationCache:
-                if self.workspaceDoesExist(ws):
-                    self.deleteWorkspaceUnconditional(ws)
-            self.normalizationCache = set()
+            self_clearNormalizationCache()
 
             # then load the new one
-            filename = self._lookupNormalizationWorkspaceFilename(runNumber, useLiteMode, version)
+            filePath = self._lookupNormalizationWorkspaceFilename(runNumber, useLiteMode, version)
+            loaderArgs = "{}"
+            if not bool(loader) and Config["nexus.dataFormat.event"]:
+                # If the loader hasn't been specified: assume that the normalization data will be in event format.
+                # In this case, using only a single bin boundary allows a much faster load.
+                loader = "LoadEventNexus"
+                loaderArgs = '{"NumberOfBins": 1}' 
 
             # Note: 'LoadNexusProcessed' neither requires nor makes use of an instrument donor.
             data = self.grocer.executeRecipe(
-                filename=filename,
+                filename=str(filePath),
                 workspace=workspaceName,
-                loader="LoadNexusProcessed",
+                loader=loader,
+                loaderArgs=loaderArgs
             )
             self._processNeutronDataCopy(item, workspaceName)
             self.normalizationCache.add(workspaceName)
-        data["workspace"] = workspaceName
         return data
 
     def fetchReductionPixelMask(self, item: GroceryListItem) -> Dict[str, Any]:
