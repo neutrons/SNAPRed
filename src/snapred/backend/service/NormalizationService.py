@@ -285,7 +285,8 @@ class NormalizationService(Service):
             and ContinueWarning.Type.CALIBRATION_HOME_WRITE_PERMISSION not in request.continueFlags
         ):
             raise ContinueWarning.calibrationHomeWritePermission()
-        else:
+
+        if ContinueWarning.Type.CALIBRATION_HOME_WRITE_PERMISSION in request.continueFlags:
             self.dataExportService.generateUserRootFolder()
 
     def _sameStates(self, runnumber1, runnumber2):
