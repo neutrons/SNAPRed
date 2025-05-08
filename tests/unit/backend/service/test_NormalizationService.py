@@ -385,7 +385,7 @@ class TestNormalizationService(unittest.TestCase):
         permissionsRequest = CalibrationWritePermissionsRequest(
             runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
         )
-        with pytest.raises(RuntimeError, match=r".*you don't have permissions to write.*"):
+        with pytest.raises(ContinueWarning, match=r".*you don't have permissions to write.*"):
             self.instance.validateWritePermissions(permissionsRequest)
 
     @patch(thisService + "FarmFreshIngredients")
