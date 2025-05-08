@@ -485,6 +485,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
             focusGroup=self.focusGroups[self.focusGroupPath],
+            preserveEvents=False,
             inputWorkspace=self.groceries["inputWorkspace"],
             groupingWorkspace=self.groceries["groupingWorkspace"],
         )

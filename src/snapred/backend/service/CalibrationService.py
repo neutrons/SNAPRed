@@ -302,8 +302,9 @@ class CalibrationService(Service):
             FocusSpectraRecipe().executeRecipe(
                 InputWorkspace=focusedWorkspace,
                 GroupingWorkspace=groupingWorkspace,
-                PixelGroup=pixelGroup,
                 OutputWorkspace=focusedWorkspace,
+                PixelGroup=pixelGroup,
+                PreserveEvents=request.preserveEvents
             )
         return focusedWorkspace, groupingWorkspace
 

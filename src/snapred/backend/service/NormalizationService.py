@@ -196,7 +196,10 @@ class NormalizationService(Service):
         groceries["outputWorkspace"] = focusedVanadium
 
         ReductionGroupProcessingRecipe().cook(
-            ReductionGroupProcessingRecipe.Ingredients(pixelGroup=ingredients.pixelGroup),
+            ReductionGroupProcessingRecipe.Ingredients(
+                pixelGroup=ingredients.pixelGroup,
+                preserveEvents=False
+            ),
             groceries={
                 "inputWorkspace": groceries["inputWorkspace"],
                 "outputWorkspace": groceries["outputWorkspace"],
@@ -387,12 +390,13 @@ class NormalizationService(Service):
             useLiteMode=request.useLiteMode,
             focusGroups=[request.focusGroup],
         )
-        ingredients = self.sousChef.prepPixelGroup(farmFresh)
+        pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
         return FocusSpectraRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
             GroupingWorkspace=request.groupingWorkspace,
-            Ingredients=ingredients,
             OutputWorkspace=request.outputWorkspace,
+            PixelGroup=pixelGroup,
+            PreserveEvents=request.preserveEvents
         )
 
     @FromString

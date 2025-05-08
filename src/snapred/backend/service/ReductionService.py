@@ -27,7 +27,6 @@ from snapred.backend.error.StateValidationException import StateValidationExcept
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe, ConvertUnitsRecipe
-from snapred.backend.recipe.RebinFocussedGroupDataRecipe import RebinFocussedGroupDataRecipe
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
@@ -618,22 +617,11 @@ class ReductionService(Service):
             "outputWorkspace": artNormBasisWorkspace,
         }
 
-        # 3. Diffraction Focus Spectra
+        # 3. Diffraction Focus Spectra, including rebinning
         ReductionGroupProcessingRecipe().cook(ingredients.groupProcessing(0), groceries)
 
-        # 4. Rebin
-        rebinIngredients = RebinFocussedGroupDataRecipe.Ingredients(
-            pixelGroup=ingredients.pixelGroups[0], preserveEvents=True
-        )
-
-        # NOTE: This is PURPOSELY re-instanced to support testing.
-        #       `assert_called_with` DOES NOT deep copy the dictionary.
-        #       Thus re-using the above dict would fail the test.
-        groceries = {"inputWorkspace": artNormBasisWorkspace}
-
-        rebinResult = RebinFocussedGroupDataRecipe().cook(rebinIngredients, groceries)
-        # 5. Return the rebin result
-        return rebinResult
+        # 4. Return the result
+        return artNormBasisWorkspace
 
     def hasLiveDataConnection(self) -> bool:
         """For 'live data' methods: test if there is a listener connection to the instrument."""

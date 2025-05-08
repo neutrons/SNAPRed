@@ -9,6 +9,7 @@ class FocusSpectraRequest(BaseModel):
     runNumber: str
     useLiteMode: bool
     focusGroup: FocusGroup
+    preserveEvents: bool
 
     inputWorkspace: str
     groupingWorkspace: str

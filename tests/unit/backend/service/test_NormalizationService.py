@@ -125,8 +125,9 @@ class TestNormalizationService(unittest.TestCase):
     ):
         mockRequest = FocusSpectraRequest(
             runNumber="12345",
-            focusGroup=self.request.focusGroup,
             useLiteMode=True,
+            focusGroup=self.request.focusGroup,
+            preserveEvents=False,
             inputWorkspace="input_ws",
             groupingWorkspace="grouping_ws",
             outputWorkspace="output_ws",
