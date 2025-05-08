@@ -395,8 +395,12 @@ class TestNormalizationService(unittest.TestCase):
         permissionsRequest = CalibrationWritePermissionsRequest(
             runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
         )
-        with pytest.raises(RuntimeError, match=r".*you don't have permissions to write.*"):
+        with pytest.raises(ContinueWarning, match=r".*you don't have permissions to write.*"):
             self.instance.validateWritePermissions(permissionsRequest)
+
+        self.instance.dataExportService.generateUserRootFolder = mock.Mock(return_value=Path("user/root/folder"))
+        permissionsRequest.continueFlags = ContinueWarning.Type.CALIBRATION_HOME_WRITE_PERMISSION
+        self.instance.validateWritePermissions(permissionsRequest)
 
     @patch(thisService + "FarmFreshIngredients")
     def test_cachedNormalization(self, mockFarmFreshIngredients):

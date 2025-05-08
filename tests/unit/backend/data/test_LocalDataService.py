@@ -3613,3 +3613,54 @@ class TestReductionPixelMasks:
         assert "123456(comp)" in result
         assert "123457(comp)" not in result
         assert "123458(incomp)" not in result
+
+    def generateFakeCalibrationRoot(self, root):
+        # Create a fake calibration root directory structure
+        (root / "CalibrationRoot").mkdir(parents=True, exist_ok=True)
+        (root / "CalibrationRoot" / "CalibrantSamples").mkdir(parents=True, exist_ok=True)
+        (root / "CalibrationRoot" / "CalibrantSamples" / ".git").mkdir(parents=True, exist_ok=True)
+        (root / "CalibrationRoot" / "Powder").mkdir(parents=True, exist_ok=True)
+        (root / "CalibrationRoot" / "SNAPInstPrm").mkdir(parents=True, exist_ok=True)
+        (root / "CalibrationRoot" / "Powder" / "PixelGroupingDefinitions").mkdir(parents=True, exist_ok=True)
+        (root / "CalibrationRoot" / "Powder" / "SNAPLite.xml").touch()
+        (root / "CalibrationRoot" / "Powder" / ".mysecretcode").touch()
+
+    def test_copyCalibrationRootSkeleton(self):
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+            tmpDir = Path(tmpDir)
+            # copy it to the temporary directory
+            self.generateFakeCalibrationRoot(tmpDir)
+            self.service.copyCalibrationRootSkeleton(tmpDir / "CalibrationRoot", tmpDir / "Calibration")
+            assert (tmpDir / "Calibration").exists()
+            assert (tmpDir / "Calibration" / "CalibrantSamples").exists()
+            assert (tmpDir / "Calibration" / "Powder").exists()
+            assert (tmpDir / "Calibration" / "Powder" / "PixelGroupingDefinitions").exists()
+            assert (tmpDir / "Calibration" / "Powder" / "SNAPLite.xml").exists()
+            # ignore hidden files
+            assert not (tmpDir / "Calibration" / "Powder" / ".mysecretcode").exists()
+            # ignore hidden dirs
+            assert not (tmpDir / "Calibration" / "CalibrantSamples" / ".git").exists()
+
+            with mock.patch(ThisService + "logger") as mockLogger:
+                self.service.copyCalibrationRootSkeleton(tmpDir / "CalibrationRoot", tmpDir / "Calibration")
+                assert mockLogger.info.call_count == 1
+                assert "already exists" in mockLogger.info.call_args[0][0]
+                assert "Calibration" in mockLogger.info.call_args[0][0]
+
+    def test_copyCalibrationRootSkeleton_missing_calibration_root_data(self):
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+            tmpDir = Path(tmpDir)
+            with pytest.raises(FileNotFoundError, match="Failure to find"):
+                self.service.copyCalibrationRootSkeleton(tmpDir, tmpDir / "Calibration")
+
+    def test_generateUserRootFolder(self):
+        # mock out config
+        with (
+            mock.patch(ThisService + "Config", mock.MagicMock()) as mockConfig,
+            mock.patch(ThisService + "LocalDataService.copyCalibrationRootSkeleton", mock.Mock()),
+        ):
+            # mock out the path
+            self.service.generateUserRootFolder()
+            assert self.service.copyCalibrationRootSkeleton.called
+            assert self.service.copyCalibrationRootSkeleton.call_count == 1
+            assert mockConfig.__getitem__.called

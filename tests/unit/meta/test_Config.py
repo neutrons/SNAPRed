@@ -12,6 +12,7 @@ from tempfile import TemporaryDirectory
 from unittest import mock
 
 import pytest
+import yaml
 
 import snapred.meta.Config as Config_module
 from snapred.backend.log.logger import snapredLogger
@@ -332,3 +333,74 @@ def test_fromPythonLoggingLevel__unknown_int():
 def test_fromPythonLoggingLevel__unknown_str():
     with pytest.raises(RuntimeError, match=r".*can't convert.* to a Mantid logging level.*"):
         pythonLevel = fromPythonLoggingLevel("not a log level")  # noqa: F841
+
+
+def test_snapredVersion():
+    from snapred import __version__ as snapredVersion
+
+    assert Config.snapredVersion() == snapredVersion
+
+
+def test_getCurrentEnv():
+    # Test that the current environment is returned correctly
+    assert Config.getCurrentEnv() == "test"
+
+
+def test_swapToUserYml():
+    # setup temp dir
+    with TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpPath:
+        # mock out path's home method
+        with mock.patch("snapred.meta.Config.Path.home") as mockHome:
+            Config.snapredVersion = lambda: "1.0.0"
+            mockHome.return_value = Path(tmpPath)
+            Config.swapToUserYml()
+            # check that the file exists
+            assert Path(tmpPath).exists()
+            assert (Path(tmpPath) / ".snapred").exists()
+            assert (Path(tmpPath) / ".snapred" / "snapred-user.yml").exists()
+
+            assert "snapred-user" in Config["environment"]
+
+            with open(Path(tmpPath) / ".snapred" / "snapred-user.yml", "r") as file:
+                yml = yaml.safe_load(file)
+                assert yml["application"]["version"] == "1.0.0"
+                assert yml["instrument"]["calibration"]["home"] is not None
+
+
+def test_swapToUserYml_error():
+    # setup temp dir
+    with mock.patch.object(Config, "_userHome") as mockHome:
+        mockHome().exists.side_effect = RuntimeError("the file system messed up!!!")
+        with pytest.raises(RuntimeError, match="Unable to swap to user configuration"):
+            Config.swapToUserYml()
+
+
+def test_swapToUserYml_archive():
+    # setup temp dir
+    with TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpPath:
+        # mock out path's home method
+        with (
+            mock.patch("snapred.meta.Config.Path.home") as mockHome,
+            mock.patch.object(Config, "_timestamp") as mockTimeStamp,
+        ):
+            dateTime = "2023-10-01 12:00:00"
+            mockTimeStamp.return_value = dateTime
+            Config.snapredVersion = lambda: "1.0.0"
+            mockHome.return_value = Path(tmpPath)
+            Config.swapToUserYml()
+            # check that the file exists
+            assert Path(tmpPath).exists()
+            assert (Path(tmpPath) / ".snapred").exists()
+            assert (Path(tmpPath) / ".snapred" / "snapred-user.yml").exists()
+
+            assert "snapred-user" in Config["environment"]
+            Config.snapredVersion = lambda: "1.0.8"
+            Config.swapToUserYml()
+            with open(Path(tmpPath) / ".snapred" / "snapred-user.yml", "r") as file:
+                yml = yaml.safe_load(file)
+                assert yml["application"]["version"] == "1.0.8"
+                assert yml["instrument"]["calibration"]["home"] is not None
+            assert (Path(tmpPath) / ".snapred" / "snapred-user.yml").exists()
+            assert (Path(tmpPath) / ".snapred" / f"snapred-user-1.0.0-{dateTime}.yml.bak").exists(), os.listdir(
+                Path(tmpPath) / ".snapred"
+            )

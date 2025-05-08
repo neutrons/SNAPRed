@@ -116,3 +116,7 @@ class TestDataExportService(unittest.TestCase):
     def test_exportWorkspace(self):
         self.instance.exportWorkspace(Path(), Path(), "")
         assert self.instance.dataService.writeWorkspace.called
+
+    def test_generateUserRootFolder(self):
+        self.instance.generateUserRootFolder()
+        assert self.instance.dataService.generateUserRootFolder.called
