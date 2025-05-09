@@ -3,7 +3,6 @@ from typing import Any, Dict
 from snapred.backend.recipe.CrystallographicInfoRecipe import CrystallographicInfoRecipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
-from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 
 
@@ -19,7 +18,6 @@ class CrystallographicInfoService(Service):
         return "ingestion"
 
     @ConfigDefault
-    @FromString
     def ingest(
         self,
         cifPath: str,
