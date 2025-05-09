@@ -223,7 +223,7 @@ class ValueFormatter:
 
         formattedVersion = ""
         if version == VersionState.DEFAULT:
-            formattedVersion = f"v{VERSION_START}"
+            formattedVersion = f"v{VERSION_START()}"
         elif isinstance(version, int):
             formattedVersion = fmt.format(version=version)
         elif str(version).isdigit():

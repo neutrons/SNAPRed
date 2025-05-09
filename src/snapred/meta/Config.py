@@ -93,8 +93,16 @@ def deep_update(mapping: Dict[KeyType, Any], *updating_mappings: Dict[KeyType, A
 class _Config:
     _config: Dict[str, Any] = {}
     _logger = logging.getLogger(__name__ + ".Config")
+    _propertyChangeWarnings: Dict[str, str] = {}
+    _defaultEnv: str = "application.yml"
 
     def __init__(self):
+        self._propertyChangeWarnings = {
+            "version.start": (
+                "It is NOT ADVISED to change the `version.start` property"
+                " WITHOUT CAREFUL CONSIDERATION of the file indexes on disk."
+            ),
+        }
         self.reload()
 
     def _fix_directory_properties(self):
@@ -113,7 +121,7 @@ class _Config:
 
     def reload(self) -> None:
         # use refresh to do initial load, clearing shouldn't matter
-        self.refresh("application.yml", True)
+        self.refresh(self._defaultEnv, True)
 
         # ---------- SNAPRed-internal values: --------------------------
         # allow "resources" relative paths to be entered into the "yml"
@@ -125,12 +133,19 @@ class _Config:
         self._config["version"]["default"] = -1
         # ---------- end: internal values: -----------------------------
 
+        watchedProperties = {}
+        for key in self._propertyChangeWarnings:
+            if self.exists(key):
+                watchedProperties[key] = self[key]
+
         # see if user used environment injection to modify what is needed
         # this will get from the os environment or from the currently loaded one
         # first case wins
+
         self.env = os.environ.get("env", self._config.get("environment", None))
         if self.env is not None:
             self.refresh(self.env)
+        self.warnSensitiveProperties(watchedProperties)
 
     def getCurrentEnv(self) -> str:
         if self.env is not None:
@@ -179,6 +194,16 @@ class _Config:
             self._logger.warning(f"Failed to load {env_name}.yml, restoring previous config")
             self._config = prevConfig
             raise
+
+    def warnSensitiveProperties(self, watchedProperties) -> None:
+        for key in watchedProperties:
+            msg = self._propertyChangeWarnings[key]
+            if watchedProperties[key] != self[key]:
+                warningBar = ("/" * 20) + " WARNING " + ("/" * 20)
+                self._logger.warning(warningBar)
+                self._logger.warning(f"Property '{key}' was changed in {self.env}.yml")
+                self._logger.warning(msg)
+                self._logger.warning(warningBar)
 
     # method to regex for string pattern of ${key} and replace with value
     def _replace(self, value: str, remainingKeys) -> str:

@@ -72,11 +72,11 @@ def test_write_version_none():
 
 
 def test_write_version_default():
-    vo = VersionedObject(version=VERSION_START)
-    assert vo.version == VERSION_START
-    assert vo.model_dump_json() == f'{{"version":{VERSION_START}}}'
-    assert vo.model_dump_json() != f'{{"version":"{VERSION_START}"}}'
-    assert vo.dict()["version"] == VERSION_START
+    vo = VersionedObject(version=VERSION_START())
+    assert vo.version == VERSION_START()
+    assert vo.model_dump_json() == f'{{"version":{VERSION_START()}}}'
+    assert vo.model_dump_json() != f'{{"version":"{VERSION_START()}"}}'
+    assert vo.dict()["version"] == VERSION_START()
 
 
 def test_can_set_valid():
@@ -113,7 +113,7 @@ def test_shaped_liked_itself():
     vo_old = VersionedObject(version=VersionState.DEFAULT)
     with pytest.raises(ValueError, match="must be flattened to an int before writing to"):
         vo_old.model_dump_json()
-    vo_old.version = VERSION_START
+    vo_old.version = VERSION_START()
     vo_new = VersionedObject.model_validate(vo_old.model_dump())
     assert vo_old == vo_new
     vo_new = VersionedObject.model_validate(vo_old.dict())
@@ -171,8 +171,8 @@ def test_set_index_entry():
     vo.version = new_version
     assert vo.version == new_version
 
-    vo.version = VERSION_START
-    assert vo.version == VERSION_START
+    vo.version = VERSION_START()
+    assert vo.version == VERSION_START()
 
     vo = indexEntryWithVersion(randint(0, 120))
     with pytest.raises(ValueError):
@@ -197,10 +197,10 @@ def test_write_version_index_entry():
     with pytest.raises(ValueError, match="must be flattened to an int before writing to"):
         vo.model_dump_json()
 
-    vo.version = VERSION_START
-    assert f'"version":{VERSION_START}' in vo.model_dump_json()
-    assert f'"version":"{VERSION_START}"' not in vo.model_dump_json()
-    assert vo.dict()["version"] == VERSION_START
+    vo.version = VERSION_START()
+    assert f'"version":{VERSION_START()}' in vo.model_dump_json()
+    assert f'"version":"{VERSION_START()}"' not in vo.model_dump_json()
+    assert vo.dict()["version"] == VERSION_START()
 
 
 ### TESTS OF RECORDS AS VERSIONED OBJECTS ###
@@ -274,8 +274,8 @@ def test_write_version_record():
 
     with pytest.raises(ValueError, match="must be flattened to an int before writing to"):
         vo.model_dump_json()
-    vo.version = VERSION_START
+    vo.version = VERSION_START()
 
-    assert f'"version":{VERSION_START}' in vo.model_dump_json()
-    assert f'"version":"{VERSION_START}"' not in vo.model_dump_json()
-    assert vo.dict()["version"] == VERSION_START
+    assert f'"version":{VERSION_START()}' in vo.model_dump_json()
+    assert f'"version":"{VERSION_START()}"' not in vo.model_dump_json()
+    assert vo.dict()["version"] == VERSION_START()

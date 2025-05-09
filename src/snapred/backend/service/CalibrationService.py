@@ -148,7 +148,7 @@ class CalibrationService(Service):
         # TODO:  It would be nice for groceryclerk to be smart enough to flatten versions
         # However I will save that scope for another time
         if request.startingTableVersion == VersionState.DEFAULT:
-            request.startingTableVersion = VERSION_START
+            request.startingTableVersion = VERSION_START()
 
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
             request.useLiteMode
@@ -321,7 +321,7 @@ class CalibrationService(Service):
         record = self.dataFactoryService.createCalibrationRecord(request.createRecordRequest)
         version = entry.version
         if self.dataFactoryService.calibrationExists(entry.runNumber, entry.useLiteMode):
-            if version == VERSION_START:
+            if version == VERSION_START():
                 raise RuntimeError("Overwriting the default calibration is not allowed.")
 
         # Rebuild the workspace names to strip any "iteration" number:

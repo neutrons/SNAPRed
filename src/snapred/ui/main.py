@@ -103,6 +103,7 @@ class SNAPRedGUI(QMainWindow):
                     # Additionally, show error message as popup
                     msg = "Error encountered while reloading the configuration.\n"
                     msg = msg + "Please ensure the `.yml` file is properly formatted and available\n"
+                    msg = msg + "Previous Config has been maintained.\n"
                     QMessageBox.critical(self, "Error", msg)
 
             self.reloadConfigButton.clicked.connect(reloadAndInform)

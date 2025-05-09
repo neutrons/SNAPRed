@@ -162,7 +162,7 @@ class Indexer:
         """
         The version number to use for default states.
         """
-        return VERSION_START
+        return VERSION_START()
 
     def currentVersion(self) -> int:
         """

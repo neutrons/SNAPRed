@@ -124,7 +124,7 @@ class ImitationDataService(LocalDataService):
         """
         Note this replicates the original in every respect, except using the ImitationGroceryService
         """
-        version = VERSION_START
+        version = VERSION_START()
         grocer = ImitationGroceryService()
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
         filename = Path(outWS + ".h5")
@@ -310,7 +310,7 @@ class TestVersioning(TestCase):
         # ensure the new state has grouping map, calibration state, and default diffcal table
         diffCalTableName = wng.diffCalTable().runNumber("default").version(VersionState.DEFAULT).build()
         assert self.localDataService._groupingMapPath(self.stateId).exists()
-        versionDir = wnvf.pathVersion(VERSION_START)
+        versionDir = wnvf.pathVersion(VERSION_START())
         assert Path(self.stateRoot, "lite", "diffraction", versionDir, "CalibrationParameters.json").exists()
         assert Path(self.stateRoot, "native", "diffraction", versionDir, "CalibrationParameters.json").exists()
         assert Path(self.stateRoot, "lite", "diffraction", versionDir, diffCalTableName + ".h5").exists()
@@ -320,22 +320,22 @@ class TestVersioning(TestCase):
         assert [] == self.get_index()
 
         # assert the current diffcal version is the default, and the next is the start
-        assert self.indexer.currentVersion() == VERSION_START
-        assert self.indexer.latestApplicableVersion(self.runNumber) == VERSION_START
-        assert self.indexer.nextVersion() == VERSION_START + 1
+        assert self.indexer.currentVersion() == VERSION_START()
+        assert self.indexer.latestApplicableVersion(self.runNumber) == VERSION_START()
+        assert self.indexer.nextVersion() == VERSION_START() + 1
 
         # run diffraction calibration for the first time, and save
         res = self.run_diffcal()
         self.save_diffcal(res, version=VersionState.NEXT)
 
         # ensure things saved correctly
-        self.assert_diffcal_saved(VERSION_START + 1)
+        self.assert_diffcal_saved(VERSION_START() + 1)
         assert len(self.get_index()) == 1
 
         # run diffraction calibration for a second time, and save
         res = self.run_diffcal()
         self.save_diffcal(res, version=VersionState.NEXT)
-        self.assert_diffcal_saved(VERSION_START + 2)
+        self.assert_diffcal_saved(VERSION_START() + 2)
         assert len(self.get_index()) == 2
 
         # now save at version 7
@@ -435,7 +435,7 @@ class TestVersioning(TestCase):
         assert self.indexer.recordPath(version).exists()
         assert self.indexer.parametersPath(version).exists()
         savedRecord = None
-        if version == VERSION_START:
+        if version == VERSION_START():
             savedRecord = parse_file_as(CalibrationDefaultRecord, self.indexer.recordPath(version))
         else:
             savedRecord = parse_file_as(CalibrationRecord, self.indexer.recordPath(version))
@@ -444,7 +444,7 @@ class TestVersioning(TestCase):
         assert savedRecord.calculationParameters.version == version
         # make sure all workspaces exist
         workspaces = savedRecord.workspaces
-        if not version == VERSION_START:
+        if not version == VERSION_START():
             assert (self.indexer.versionPath(version) / (workspaces[wngt.DIFFCAL_OUTPUT][0] + ".nxs.h5")).exists()
             assert (self.indexer.versionPath(version) / (workspaces[wngt.DIFFCAL_DIAG][0] + ".nxs.h5")).exists()
         assert (self.indexer.versionPath(version) / (workspaces[wngt.DIFFCAL_TABLE][0] + ".h5")).exists()

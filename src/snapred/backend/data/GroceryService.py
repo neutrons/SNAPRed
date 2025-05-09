@@ -359,7 +359,7 @@ class GroceryService:
         NOTE: This method will IGNORE runNumber if the provided version is VersionState.DEFAULT
         """
         wsName = wng.diffCalTable().runNumber(runNumber).version(version).build()
-        if version in [VersionState.DEFAULT, VERSION_START]:
+        if version in [VersionState.DEFAULT, VERSION_START()]:
             wsName = wng.diffCalTable().runNumber("default").version(VersionState.DEFAULT).build()
         return wsName
 

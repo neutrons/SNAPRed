@@ -1412,7 +1412,7 @@ def test_createCalibrationIndexEntry():
         localDataService.calibrationIndexer(request.runNumber, request.useLiteMode)
         ans = localDataService.createCalibrationIndexEntry(request)
         # Set to next version, which on the first call should be the start version
-        assert ans.version == VERSION_START
+        assert ans.version == VERSION_START()
 
 
 def test_createCalibrationRecord():
@@ -1430,7 +1430,7 @@ def test_createCalibrationRecord():
         localDataService.calibrationIndexer(request.runNumber, request.useLiteMode)
         ans = localDataService.createCalibrationRecord(request)
         # Set to next version, which on the first call should be the start version
-        assert ans.version == VERSION_START
+        assert ans.version == VERSION_START()
 
 
 def test_readCalibrationRecord_with_version():
@@ -1621,7 +1621,7 @@ def test_createNormalizationIndexEntry():
         localDataService.normalizationIndexer(request.runNumber, request.useLiteMode)
         ans = localDataService.createNormalizationIndexEntry(request)
         # Set to next version, which on the first call should be the start version
-        assert ans.version == VERSION_START
+        assert ans.version == VERSION_START()
 
 
 def test_createNormalizationRecord():
@@ -1637,7 +1637,7 @@ def test_createNormalizationRecord():
 
         request.version = VersionState.NEXT
         ans = localDataService.createNormalizationRecord(request)
-        assert ans.version == VERSION_START
+        assert ans.version == VERSION_START()
 
 
 def test_readNormalizationRecord_with_version():
@@ -1662,7 +1662,7 @@ def test_readWriteNormalizationRecord():
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
         record.useLiteMode = useLiteMode
-        currentVersion = randint(VERSION_START, 120)
+        currentVersion = randint(VERSION_START(), 120)
         runNumber = record.runNumber
         record.version = currentVersion
         # NOTE redirect nested so assertion occurs outside of redirect
@@ -2372,7 +2372,7 @@ def test_readCalibrationState_hasWritePermissions():
 def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorkspaceName):
     # verify that the default diffcal table is being written to the default state directory
     runNumber = "default"
-    version = VERSION_START
+    version = VERSION_START()
     useLiteMode = True
     # mock the grocery service to return the fake instrument to use for geometry
     idfWS = mtd.unique_name(prefix="_idf_")
@@ -2784,7 +2784,7 @@ def test_initializeState():
     testCalibrationData = DAOFactory.calibrationParameters(
         runNumber=runNumber,
         useLiteMode=useLiteMode,
-        version=VERSION_START,
+        version=VERSION_START(),
         instrumentState=DAOFactory.pv_instrument_state.model_copy(),
     )
 

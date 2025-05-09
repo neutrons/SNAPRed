@@ -4,9 +4,11 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from snapred.meta.Config import Config
 from snapred.meta.Enum import StrEnum
 
+
 # NOTE: This should probably not be reconfigurable at runtime.
 #       This would be liable to only cause indexing issues.
-VERSION_START = Config["version.start"]
+def VERSION_START():
+    return Config["version.start"]
 
 
 class VersionState(StrEnum):
