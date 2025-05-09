@@ -177,7 +177,7 @@ class _Config:
             with open(str(userHome / "snapred-user.yml"), "r") as f:
                 applicationYml = yaml.safe_load(f)
             version = applicationYml.get("version", None)
-            if version != snapredVersion:
+            if version != self.snapredVersion():
                 # archive the old snapred-user.yml
                 archivePath = userHome / f"snapred-user-{version}.yml.bak"
                 shutil.move(str(userHome / "snapred-user.yml"), str(archivePath))
@@ -185,6 +185,9 @@ class _Config:
     @staticmethod
     def _userHome():
         return Path.home() / ".snapred"
+
+    def snapredVersion(self):
+        return snapredVersion
 
     def swapToUserYml(self):
         # generate root directory for user configurations
@@ -225,7 +228,7 @@ class _Config:
                         "home": userCalibrationHome,
                     }
                 },
-                "version": snapredVersion,
+                "version": self.snapredVersion(),
             },
             default_flow_style=False,
         )

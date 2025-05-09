@@ -195,7 +195,7 @@ class LocalDataService:
             for item in itemsToCopy:
                 src = originalCalibrationHome / item
                 if not (src.exists()):
-                    raise RuntimeError(f"Failure to find {item} when creating user calibration home")
+                    raise FileNotFoundError(f"Failure to find {item} when creating user calibration home")
             # then copy them
             for item in itemsToCopy:
                 src = originalCalibrationHome / item

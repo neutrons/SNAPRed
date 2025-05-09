@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import socket
 import tempfile
 import time
@@ -3603,3 +3604,34 @@ class TestReductionPixelMasks:
         assert "123456(comp)" in result
         assert "123457(comp)" not in result
         assert "123458(incomp)" not in result
+
+    def test_copyCalibrationRootSkeleton(self):
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+            tmpDir = Path(tmpDir)
+            dataSrc = Path(Resource.getPath("inputs/FakeCalibrationRoot"))
+            # copy it to the temporary directory
+            shutil.copytree(dataSrc, tmpDir / "CalibrationRoot")
+            self.service.copyCalibrationRootSkeleton(tmpDir / "CalibrationRoot", tmpDir / "Calibration")
+            assert (tmpDir / "Calibration").exists()
+            assert (tmpDir / "Calibration" / "CalibrantSamples").exists()
+            assert (tmpDir / "Calibration" / "Powder").exists()
+            assert (tmpDir / "Calibration" / "Powder" / "PixelGroupingDefinitions").exists()
+            assert (tmpDir / "Calibration" / "Powder" / "SNAPLite.xml").exists()
+
+    def test_copyCalibrationRootSkeleton_missing_calibration_root_data(self):
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+            tmpDir = Path(tmpDir)
+            with pytest.raises(FileNotFoundError, match="Failure to find"):
+                self.service.copyCalibrationRootSkeleton(tmpDir, tmpDir / "Calibration")
+
+    def test_generateUserRootFolder(self):
+        # mock out config
+        with (
+            mock.patch(ThisService + "Config", mock.MagicMock()) as mockConfig,
+            mock.patch(ThisService + "LocalDataService.copyCalibrationRootSkeleton", mock.Mock()),
+        ):
+            # mock out the path
+            self.service.generateUserRootFolder()
+            assert self.service.copyCalibrationRootSkeleton.called
+            assert self.service.copyCalibrationRootSkeleton.call_count == 1
+            assert mockConfig.__getitem__.called
