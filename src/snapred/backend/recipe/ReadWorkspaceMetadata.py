@@ -4,6 +4,7 @@ from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -14,8 +15,8 @@ Pallet = Tuple[WorkspaceMetadata, Dict[str, WorkspaceName]]
 
 @Singleton
 class ReadWorkspaceMetadata(Recipe[WorkspaceMetadata]):
-    @property
-    def TAG_PREFIX(self):
+    @classproperty
+    def TAG_PREFIX(cls):
         return Config["metadata.tagPrefix"]
 
     def allGroceryKeys(self) -> Set[str]:

@@ -4,6 +4,7 @@ from snapred.backend.dao.ingredients import RebinFocussedGroupDataIngredients as
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
@@ -14,8 +15,8 @@ Pallet = Tuple[Ingredients, Dict[str, str]]
 class RebinFocussedGroupDataRecipe(Recipe[Ingredients]):
     LOG_BINNING = True
 
-    @property
-    def NUM_BINS(self) -> int:
+    @classproperty
+    def NUM_BINS(cls) -> int:
         return Config["constants.ResampleX.NumberBins"]
 
     def allGroceryKeys(self) -> Set[str]:

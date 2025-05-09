@@ -53,6 +53,7 @@ from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe, PixelD
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -108,8 +109,8 @@ class CalibrationService(Service):
         self.registerPath("runFeedback", self.runFeedback)
         return
 
-    @property
-    def MINIMUM_PEAKS_PER_GROUP(self):
+    @classproperty
+    def MINIMUM_PEAKS_PER_GROUP(cls):
         return Config["calibration.diffraction.minimumPeaksPerGroup"]
 
     @staticmethod

@@ -22,6 +22,7 @@ from workbench.plugins.workspacewidget import WorkspaceWidget
 
 from snapred.backend.log.logger import CustomFormatter, snapredLogger
 from snapred.meta.Config import Config, Resource, datasearch_directories, fromMantidLoggingLevel, fromPythonLoggingLevel
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.ui.widget.LogTable import LogTable
 from snapred.ui.widget.TestPanel import TestPanel
 from snapred.ui.widget.ToolBar import ToolBar
@@ -90,13 +91,19 @@ class SNAPRedGUI(QMainWindow):
             self.reloadConfigButton = QPushButton("Reload Config")
 
             def reloadAndInform():
-                Config.reload()
-                # Inform the user that the configuration has been reloaded
-                QMessageBox.information(
-                    self,
-                    "Configuration Reloaded",
-                    f"Env {Config.getCurrentEnv()} configuration has been successfully reloaded.",
-                )
+                try:
+                    Config.reload()
+                    # Inform the user that the configuration has been reloaded
+                    QMessageBox.information(
+                        self,
+                        "Configuration Reloaded",
+                        f"Env {Config.getCurrentEnv()} configuration has been successfully reloaded.",
+                    )
+                except Exception:  # noqa: BLE001
+                    # Additionally, show error message as popup
+                    msg = "Error encountered while reloading the configuration.\n"
+                    msg = msg + "Please ensure the `.yml` file is properly formatted and available\n"
+                    QMessageBox.critical(self, "Error", msg)
 
             self.reloadConfigButton.clicked.connect(reloadAndInform)
             splitter.addWidget(self.reloadConfigButton)
@@ -131,16 +138,16 @@ class SNAPRedGUI(QMainWindow):
         # Check for incompatible `Config` settings.
         Config.validate()
 
-    @property
-    def _streamlevel(self):
+    @classproperty
+    def _streamlevel(cls):
         return Config["logging.mantid.stream.level"]
 
-    @property
-    def _filelevel(self):
+    @classproperty
+    def _filelevel(cls):
         return Config["logging.mantid.file.level"]
 
-    @property
-    def _outputfile(self):
+    @classproperty
+    def _outputfile(cls):
         return Config["logging.mantid.file.output"]
 
     @Slot()

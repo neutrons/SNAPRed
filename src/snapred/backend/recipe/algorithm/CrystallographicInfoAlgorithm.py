@@ -10,15 +10,16 @@ from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 
 
 class CrystallographicInfoAlgorithm(PythonAlgorithm):
-    @property
-    def D_MIN(self):
+    @classproperty
+    def D_MIN(cls):
         return Config["constants.CrystallographicInfo.crystalDMin"]
 
-    @property
-    def D_MAX(self):
+    @classproperty
+    def D_MAX(cls):
         return Config["constants.CrystallographicInfo.crystalDMax"]
 
     def category(self):

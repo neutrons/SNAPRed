@@ -1,3 +1,4 @@
+import copy
 import importlib.resources as resources
 import logging
 import os
@@ -139,36 +140,45 @@ class _Config:
             return "default"
 
     def refresh(self, env_name: str, clearPrevious: bool = False) -> None:
-        if clearPrevious:
-            self._config.clear()
+        # save a copy of pervious config if it fails to load
+        prevConfig = copy.deepcopy(self._config)
 
-        if env_name.endswith(".yml"):
-            # name to be put into config
-            new_env_name = env_name
+        try:
+            if clearPrevious:
+                self._config.clear()
 
-            # this is a filename that should be loaded
-            filepath = Path(env_name)
-            if filepath.exists():
-                self._logger.debug(f"Loading config from {filepath.absolute()}")
-                with open(filepath, "r") as file:
-                    envConfig = yaml.safe_load(file)
+            if env_name.endswith(".yml"):
+                # name to be put into config
+                new_env_name = env_name
+
+                # this is a filename that should be loaded
+                filepath = Path(env_name)
+                if filepath.exists():
+                    self._logger.debug(f"Loading config from {filepath.absolute()}")
+                    with open(filepath, "r") as file:
+                        envConfig = yaml.safe_load(file)
+                else:
+                    # load from the resource
+                    with Resource.open(env_name, "r") as file:
+                        envConfig = yaml.safe_load(file)
+                    new_env_name = env_name.replace(".yml", "")
+                # update the configuration with the  new environment
+                self._config = deep_update(self._config, envConfig)
+
+                # add the name to the config object if it wasn't specified
+                if "environment" not in envConfig:
+                    self._config["environment"] = new_env_name
+
+                # do fixups on items that are directories
+                self._fix_directory_properties()
             else:
-                # load from the resource
-                with Resource.open(env_name, "r") as file:
-                    envConfig = yaml.safe_load(file)
-                new_env_name = env_name.replace(".yml", "")
-            # update the configuration with the  new environment
-            self._config = deep_update(self._config, envConfig)
-
-            # add the name to the config object if it wasn't specified
-            if "environment" not in envConfig:
-                self._config["environment"] = new_env_name
-
-            # do fixups on items that are directories
-            self._fix_directory_properties()
-        else:
-            # recurse this function with a fuller name
-            self.refresh(f"{env_name}.yml", clearPrevious)
+                # recurse this function with a fuller name
+                self.refresh(f"{env_name}.yml", clearPrevious)
+        except Exception:
+            # if it fails, restore the previous config
+            self._logger.warning(f"Failed to load {env_name}.yml, restoring previous config")
+            self._config = prevConfig
+            raise
 
     # method to regex for string pattern of ${key} and replace with value
     def _replace(self, value: str, remainingKeys) -> str:

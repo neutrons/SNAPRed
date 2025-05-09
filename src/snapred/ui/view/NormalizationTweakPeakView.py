@@ -15,6 +15,7 @@ from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 from snapred.backend.dao import GroupPeakList
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.plotting.Factory import mantidAxisFactory
 from snapred.ui.view.BackendRequestView import BackendRequestView
@@ -102,12 +103,12 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.signalUpdateFields.connect(self._updateFields)
         self.signalPopulateGroupingDropdown.connect(self._populateGroupingDropdown)
 
-    @property
-    def XTAL_DMIN(self):
+    @classproperty
+    def XTAL_DMIN(cls):
         return Config["constants.CrystallographicInfo.crystalDMin"]
 
-    @property
-    def XTAL_DMAX(self):
+    @classproperty
+    def XTAL_DMAX(cls):
         return Config["constants.CrystallographicInfo.crystalDMax"]
 
     @Slot(str)

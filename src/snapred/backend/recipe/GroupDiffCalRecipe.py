@@ -7,6 +7,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
@@ -34,12 +35,12 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         self.mantidSnapper = utensils.mantidSnapper
         self._counts = 0
 
-    @property
-    def NOYZE_2_MIN(self):
+    @classproperty
+    def NOYZE_2_MIN(cls):
         return Config["calibration.fitting.minSignal2Noise"]
 
-    @property
-    def MAX_CHI_SQ(self):
+    @classproperty
+    def MAX_CHI_SQ(cls):
         return Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def logger(self):

@@ -2,6 +2,7 @@ import inspect
 from typing import Any, Dict
 
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.Singleton import Singleton
 
 
@@ -9,8 +10,8 @@ from snapred.meta.decorators.Singleton import Singleton
 class ServiceDirectory:
     _services: Dict[str, Any] = {}
 
-    @property
-    def _pathDelimiter(self):
+    @classproperty
+    def _pathDelimiter(cls):
         return Config["orchestration.path.delimiter"]
 
     def registerService(self, service):

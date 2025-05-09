@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, List
 
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 
 # Type definition which is a callable function with a List of SNAPRequests as input,
 # and a Dict of str keys and List of SNAPRequests values as expected output.
@@ -35,8 +36,8 @@ class Service(ABC):
         self._paths: Dict[str, Any] = self._getInstancePaths()
         self._lambdas: Dict[str, List[GroupingLambda]] = {}
 
-    @property
-    def _pathDelimiter(self):
+    @classproperty
+    def _pathDelimiter(cls):
         return Config["orchestration.path.delimiter"]
 
     def _getInstancePaths(self):

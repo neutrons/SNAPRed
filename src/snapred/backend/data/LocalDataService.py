@@ -55,6 +55,7 @@ from snapred.backend.error.StateValidationException import StateValidationExcept
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
@@ -99,8 +100,8 @@ class LocalDataService:
 
     ##### MISCELLANEOUS METHODS #####
 
-    @property
-    def verifyPaths(self) -> bool:
+    @classproperty
+    def verifyPaths(cls) -> bool:
         return Config["localdataservice.config.verifypaths"]
 
     def fileExists(self, path):

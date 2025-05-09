@@ -5,6 +5,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.ReadWorkspaceMetadata import ReadWorkspaceMetadata
 from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
@@ -13,8 +14,8 @@ Pallet = Tuple[WorkspaceMetadata, Dict[str, str]]
 
 
 class WriteWorkspaceMetadata(Recipe[WorkspaceMetadata]):
-    @property
-    def TAG_PREFIX(self):
+    @classproperty
+    def TAG_PREFIX(cls):
         return Config["metadata.tagPrefix"]
 
     def allGroceryKeys(self):

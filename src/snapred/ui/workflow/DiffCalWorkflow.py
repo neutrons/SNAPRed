@@ -25,6 +25,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import (
@@ -136,24 +137,24 @@ class DiffCalWorkflow(WorkflowImplementer):
             .build()
         )
 
-    @property
-    def DEFAULT_DMIN(self):
+    @classproperty
+    def DEFAULT_DMIN(cls):
         return Config["constants.CrystallographicInfo.crystalDMin"]
 
-    @property
-    def DEFAULT_DMAX(self):
+    @classproperty
+    def DEFAULT_DMAX(cls):
         return Config["constants.CrystallographicInfo.crystalDMax"]
 
-    @property
-    def DEFAULT_NBINS(self):
+    @classproperty
+    def DEFAULT_NBINS(cls):
         return Config["calibration.diffraction.nBinsAcrossPeakWidth"]
 
-    @property
-    def DEFAULT_CONV(self):
+    @classproperty
+    def DEFAULT_CONV(cls):
         return Config["calibration.diffraction.convergenceThreshold"]
 
-    @property
-    def DEFAULT_MAX_CHI_SQ(self):
+    @classproperty
+    def DEFAULT_MAX_CHI_SQ(cls):
         return Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def _continueAnywayHandlerTweak(self, continueInfo: ContinueWarning.Model):  # noqa: ARG002

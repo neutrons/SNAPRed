@@ -7,6 +7,7 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import PeakIngredients
 from snapred.backend.dao.Limit import LimitedValue
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.redantic import list_to_raw
 
 
@@ -16,12 +17,12 @@ class DetectorPeakPredictor(PythonAlgorithm):
     # also the equation below that uses the coefficient should be changed to
     # beta_d = BETA_D_COEFFICIENT*beta_T/(L*np.sin(tTheta/2))
 
-    @property
-    def BETA_D_COEFFICIENT(self):
+    @classproperty
+    def BETA_D_COEFFICIENT(cls):
         return 1 / (PhysicalConstants.h / (2 * PhysicalConstants.NeutronMass) * Config["constants.m2cm"])
 
-    @property
-    def FWHM(self):
+    @classproperty
+    def FWHM(cls):
         return Config["constants.DetectorPeakPredictor.fwhm"]
 
     def category(self):
