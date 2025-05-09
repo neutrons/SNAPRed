@@ -60,7 +60,7 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
             InputWorkspace=self.rawInput,
             OutputWorkspace=self.outputWS,
             GroupingWorkspace=self.groupingWS,
-            PixelGroup=self.pixelGroup.json(),
+            PixelGroup=self.pixelGroup.model_dump_json(),
             PreserveEvents=self.preserveEvents
         )
 

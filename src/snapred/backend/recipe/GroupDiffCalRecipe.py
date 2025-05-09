@@ -306,7 +306,7 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
             InputWorkspace=tmpWSdsp,
             GroupingWorkspace=self.focusWS,
             OutputWorkspace=tmpWSdsp,
-            PixelGroup=self.pixelGroup,
+            PixelGroup=self.pixelGroup.model_dump_json(),
             PreserveEvents=keepEvents
         )
 

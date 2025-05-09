@@ -66,10 +66,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self):
-        pixelGroup: PixelGroup = PixelGroup.model_validate_json(self.getPropertyValue("PixelGroup"))
-        self.dMin = pixelGroup.dMin()
-        self.dMax = pixelGroup.dMax()
-        self.dBin = pixelGroup.dBin()
+        self.pixelGroup: PixelGroup = PixelGroup.model_validate_json(self.getPropertyValue("PixelGroup"))
         self.preserveEvents = self.getProperty("PreserveEvents").value
 
     def unbagGroceries(self):
@@ -110,9 +107,9 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             GroupingWorkspace=self.groupingWSName,
             OutputWorkspace=self.outputWSName,
             PreserveEvents=self.preserveEvents,
-            DMin=self.dMin,
-            DMax=self.dMax,
-            Delta=self.dBin,
+            DMin=self.pixelGroup.dMin(),
+            DMax=self.pixelGroup.dMax(),
+            Delta=self.pixelGroup.dBin(),
             FullBinsOnly=True
         )
         # With these arguments, output from `DiffractionFocussing` will now have ragged binning,
@@ -124,7 +121,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         #   are in order of their subgroup-IDs.  This correspondance, for the `PixelGroup`, is validated here.
         # TODO: FIX THIS ISSUE!
         outputWS = self.mantidSnapper.mtd[self.outputWSName]
-        for n, subgroupId in enumerate(pixelGroup.groupIDs):
+        for n, subgroupId in enumerate(self.pixelGroup.groupIDs):
             # After `DiffractionFocussing`, the spectrum number for each spectrum is set to its subgroup-ID.
             if outputWS.getSpectrum(n).getSpectrumNo() != subgroupId:
                 raise RuntimeError("Usage error: subgroup IDs for 'PixelGroup' are not in workspace-index order.")

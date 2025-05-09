@@ -1161,8 +1161,7 @@ class GroceryService:
                 "workspace": workspaceName,
             }
         else:
-            # clear normalization cache
-            self_clearNormalizationCache()
+            self._clearNormalizationCache()
 
             # then load the new one
             filePath = self._lookupNormalizationWorkspaceFilename(runNumber, useLiteMode, version)
