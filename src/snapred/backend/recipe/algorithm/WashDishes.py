@@ -31,7 +31,7 @@ class WashDishes(PythonAlgorithm):
     @classproperty
     def cis_preserve(cls) -> bool:
         """
-        Check if CIS mode is enabled
+        Check if diagonostic workspaces should be preserved
         """
         return Config["cis_mode.preserveDiagnosticWorkspaces"]
 

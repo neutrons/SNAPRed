@@ -18,8 +18,8 @@ class CrystallographicInfoService(Service):
     def name():
         return "ingestion"
 
-    @FromString
     @ConfigDefault
+    @FromString
     def ingest(
         self,
         cifPath: str,

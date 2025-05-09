@@ -101,9 +101,9 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._requestView.skipPixelCalToggle.stateChanged.connect(self._tweakPeakView.skipPixelCalToggle.setState)
         self._tweakPeakView.skipPixelCalToggle.stateChanged.connect(self._requestView.skipPixelCalToggle.setState)
 
-        self.prevFWHM = DiffCalTweakPeakView.FWHM
-        self.prevXtalDMin = DiffCalTweakPeakView.XTAL_DMIN
-        self.prevXtalDMax = DiffCalTweakPeakView.XTAL_DMAX
+        self.prevFWHM = DiffCalTweakPeakView.default_FWHM
+        self.prevXtalDMin = DiffCalTweakPeakView.default_XTAL_DMIN
+        self.prevXtalDMax = DiffCalTweakPeakView.default_XTAL_DMAX
 
         self.peaksWerePurged = False
 
