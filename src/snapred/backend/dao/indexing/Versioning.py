@@ -46,8 +46,8 @@ class VersionedObject(BaseModel):
             # Conversion from HDF5 metadata.
             value = int(value)
 
-        if value < VERSION_START:
-            raise ValueError(f"Version must be greater than {VERSION_START}")
+        if value < VERSION_START():
+            raise ValueError(f"Version must be greater than {VERSION_START()}")
 
         return value
 
