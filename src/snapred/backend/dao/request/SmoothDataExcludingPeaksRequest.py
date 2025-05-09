@@ -20,6 +20,6 @@ class SmoothDataExcludingPeaksRequest(BaseModel):
     calibrantSamplePath: str
     inputWorkspace: str
     outputWorkspace: str
-    smoothingParameter: float = Field(default_factory = lambda: Config["calibration.parameters.default.smoothing"])
-    crystalDMin: float = Field(default_factory = lambda: Config["constants.CrystallographicInfo.crystalDMin"])
-    crystalDMax: float = Field(default_factory = lambda: Config["constants.CrystallographicInfo.crystalDMax"])
+    smoothingParameter: float = Field(default_factory=lambda: Config["calibration.parameters.default.smoothing"])
+    crystalDMin: float = Field(default_factory=lambda: Config["constants.CrystallographicInfo.crystalDMin"])
+    crystalDMax: float = Field(default_factory=lambda: Config["constants.CrystallographicInfo.crystalDMax"])

@@ -29,4 +29,4 @@ class InstrumentConfig(VersionedObject):
     delThWithGuide: float
     width: float
     frequency: float
-    lowWavelengthCrop: float = Field(default_factory = lambda: Config["constants.CropFactors.lowWavelengthCrop"])
+    lowWavelengthCrop: float = Field(default_factory=lambda: Config["constants.CropFactors.lowWavelengthCrop"])

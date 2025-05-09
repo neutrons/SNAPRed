@@ -15,5 +15,5 @@ class VanadiumCorrectionRequest(BaseModel):
     backgroundWorkspace: str
     outputWorkspace: str
 
-    crystalDMin: float = Field(default_factory = lambda: Config["constants.CrystallographicInfo.crystalDMin"])
-    crystalDMax: float = Field(default_factory = lambda: Config["constants.CrystallographicInfo.crystalDMax"])
+    crystalDMin: float = Field(default_factory=lambda: Config["constants.CrystallographicInfo.crystalDMin"])
+    crystalDMax: float = Field(default_factory=lambda: Config["constants.CrystallographicInfo.crystalDMax"])

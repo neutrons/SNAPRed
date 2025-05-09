@@ -11,7 +11,7 @@ from snapred.meta.Config import Config
 class GenerateFocussedVanadiumIngredients(BaseModel):
     """Class to hold the ingredients for smoothing preprocessed vanadium data"""
 
-    smoothingParameter: float = Field(default_factory = lambda: Config["calibration.parameters.default.smoothing"])
+    smoothingParameter: float = Field(default_factory=lambda: Config["calibration.parameters.default.smoothing"])
     pixelGroup: PixelGroup
     # This can be None if we lack a calibration
     detectorPeaks: Optional[list[GroupPeakList]] = None

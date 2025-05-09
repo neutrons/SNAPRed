@@ -8,7 +8,9 @@ class ArtificialNormalizationIngredients(BaseModel):
     Class to hold ingredients for the creation of artificial normalization data.
     """
 
-    peakWindowClippingSize: int = Field(default_factory = lambda: Config["constants.ArtificialNormalization.peakWindowClippingSize"])
+    peakWindowClippingSize: int = Field(
+        default_factory=lambda: Config["constants.ArtificialNormalization.peakWindowClippingSize"]
+    )
     smoothingParameter: float
     decreaseParameter: bool = True
     lss: bool = True

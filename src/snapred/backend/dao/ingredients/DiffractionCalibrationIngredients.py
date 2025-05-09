@@ -24,8 +24,12 @@ class DiffractionCalibrationIngredients(BaseModel, extra="forbid"):
     runConfig: RunConfig
     pixelGroup: PixelGroup
     groupedPeakLists: List[GroupPeakList]
-    convergenceThreshold: float = Field(default_factory = lambda: float(Config["calibration.diffraction.convergenceThreshold"]))
-    peakFunction: SymmetricPeakEnum = Field(default_factory = lambda: SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]])
-    maxOffset: float = Field(default_factory = lambda: Config["calibration.diffraction.maximumOffset"])
-    maxChiSq: float = Field(default_factory = lambda: Config["constants.GroupDiffractionCalibration.MaxChiSq"])
+    convergenceThreshold: float = Field(
+        default_factory=lambda: float(Config["calibration.diffraction.convergenceThreshold"])
+    )
+    peakFunction: SymmetricPeakEnum = Field(
+        default_factory=lambda: SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
+    )
+    maxOffset: float = Field(default_factory=lambda: Config["calibration.diffraction.maximumOffset"])
+    maxChiSq: float = Field(default_factory=lambda: Config["constants.GroupDiffractionCalibration.MaxChiSq"])
     removeBackground: bool = False
