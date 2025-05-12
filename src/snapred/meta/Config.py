@@ -144,7 +144,10 @@ class _Config:
 
         self.env = os.environ.get("env", self._config.get("environment", None))
         if self.env is not None:
+            self._logger.info(f"Loading environment config: {self.env}")
             self.refresh(self.env)
+        else:
+            self._logger.info("No environment config specified, using default")
         self.warnSensitiveProperties(watchedProperties)
         self.persistBackup()
 
@@ -158,6 +161,7 @@ class _Config:
         backupFile = self.userApplicationDataHome / "application.yml.bak"
         with open(backupFile, "w") as file:
             yaml.dump(self._config, file, default_flow_style=False)
+        self._logger.info(f"Backup of application.yml created at {backupFile.absolute()}")
 
     def getCurrentEnv(self) -> str:
         if self.env is not None:
