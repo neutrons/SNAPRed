@@ -63,7 +63,7 @@ def test_write_version_int():
         version = randint(0, 1000)
         vo = VersionedObject(version=version)
         assert vo.model_dump_json() == f'{{"version":{version}}}'
-        assert vo.dict()["version"] == version
+        assert vo.model_dump()["version"] == version
 
 
 def test_write_version_none():
@@ -76,7 +76,7 @@ def test_write_version_default():
     assert vo.version == VERSION_START()
     assert vo.model_dump_json() == f'{{"version":{VERSION_START()}}}'
     assert vo.model_dump_json() != f'{{"version":"{VERSION_START()}"}}'
-    assert vo.dict()["version"] == VERSION_START()
+    assert vo.model_dump()["version"] == VERSION_START()
 
 
 def test_can_set_valid():
@@ -116,7 +116,7 @@ def test_shaped_liked_itself():
     vo_old.version = VERSION_START()
     vo_new = VersionedObject.model_validate(vo_old.model_dump())
     assert vo_old == vo_new
-    vo_new = VersionedObject.model_validate(vo_old.dict())
+    vo_new = VersionedObject.model_validate(vo_old.model_dump())
     assert vo_old == vo_new
     vo_new = VersionedObject.model_validate_json(vo_old.model_dump_json())
     assert vo_old == vo_new
@@ -125,7 +125,7 @@ def test_shaped_liked_itself():
     vo_old = VersionedObject(version=randint(0, 120))
     vo_new = VersionedObject.model_validate(vo_old.model_dump())
     assert vo_old == vo_new
-    vo_new = VersionedObject.model_validate(vo_old.dict())
+    vo_new = VersionedObject.model_validate(vo_old.model_dump())
     assert vo_old == vo_new
     vo_new = VersionedObject.model_validate_json(vo_old.model_dump_json())
     assert vo_old == vo_new
@@ -200,7 +200,7 @@ def test_write_version_index_entry():
     vo.version = VERSION_START()
     assert f'"version":{VERSION_START()}' in vo.model_dump_json()
     assert f'"version":"{VERSION_START()}"' not in vo.model_dump_json()
-    assert vo.dict()["version"] == VERSION_START()
+    assert vo.model_dump()["version"] == VERSION_START()
 
 
 ### TESTS OF RECORDS AS VERSIONED OBJECTS ###
@@ -266,7 +266,7 @@ def test_write_version_record():
         version = randint(0, 1000)
         vo = recordWithVersion(version)
         assert f'"version":{version}' in vo.model_dump_json()
-        assert vo.dict()["version"] == version
+        assert vo.model_dump()["version"] == version
 
     # test write default
     vo = recordWithVersion(VersionState.DEFAULT)
@@ -278,4 +278,4 @@ def test_write_version_record():
 
     assert f'"version":{VERSION_START()}' in vo.model_dump_json()
     assert f'"version":"{VERSION_START()}"' not in vo.model_dump_json()
-    assert vo.dict()["version"] == VERSION_START()
+    assert vo.model_dump()["version"] == VERSION_START()

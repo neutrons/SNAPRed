@@ -102,8 +102,9 @@ class SNAPRedGUI(QMainWindow):
                 except Exception:  # noqa: BLE001
                     # Additionally, show error message as popup
                     msg = "Error encountered while reloading the configuration.\n"
-                    msg = msg + "Please ensure the `.yml` file is properly formatted and available\n"
+                    msg = msg + "Please ensure the `.yml` file is properly formatted and available.  "
                     msg = msg + "Previous Config has been maintained.\n"
+                    msg = msg + "Refer to ~/.snapred/application.yml.bak for the last working configuration.\n"
                     QMessageBox.critical(self, "Error", msg)
 
             self.reloadConfigButton.clicked.connect(reloadAndInform)

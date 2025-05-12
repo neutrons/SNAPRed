@@ -146,6 +146,18 @@ class _Config:
         if self.env is not None:
             self.refresh(self.env)
         self.warnSensitiveProperties(watchedProperties)
+        self.persistBackup()
+
+    @property
+    def userApplicationDataHome(self) -> Path:
+        userApplicationDataHome = Path.home() / ".snapred"
+        return userApplicationDataHome
+
+    def persistBackup(self) -> None:
+        self.userApplicationDataHome.mkdir(parents=True, exist_ok=True)
+        backupFile = self.userApplicationDataHome / "application.yml.bak"
+        with open(backupFile, "w") as file:
+            yaml.dump(self._config, file, default_flow_style=False)
 
     def getCurrentEnv(self) -> str:
         if self.env is not None:
