@@ -1,7 +1,7 @@
 # TODO this can probably be relaced in the code with FarmFreshIngredients
 from typing import Any, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
 from snapred.backend.dao.Limit import Pair
@@ -28,14 +28,18 @@ class DiffractionCalibrationRequest(BaseModel, extra="forbid"):
     calibrantSamplePath: str
     focusGroup: FocusGroup
     useLiteMode: bool
-    crystalDMin: float = Config["constants.CrystallographicInfo.crystalDMin"]
-    crystalDMax: float = Config["constants.CrystallographicInfo.crystalDMax"]
-    peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
-    convergenceThreshold: float = Config["calibration.diffraction.convergenceThreshold"]
-    nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
-    maximumOffset: float = Config["calibration.diffraction.maximumOffset"]
-    fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
-    maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
+    crystalDMin: float = Field(default_factory=lambda: Config["constants.CrystallographicInfo.crystalDMin"])
+    crystalDMax: float = Field(default_factory=lambda: Config["constants.CrystallographicInfo.crystalDMax"])
+    peakFunction: SymmetricPeakEnum = Field(
+        default_factory=lambda: SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
+    )
+    convergenceThreshold: float = Field(default_factory=lambda: Config["calibration.diffraction.convergenceThreshold"])
+    nBinsAcrossPeakWidth: int = Field(default_factory=lambda: Config["calibration.diffraction.nBinsAcrossPeakWidth"])
+    maximumOffset: float = Field(default_factory=lambda: Config["calibration.diffraction.maximumOffset"])
+    fwhmMultipliers: Pair[float] = Field(
+        default_factory=lambda: Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
+    )
+    maxChiSq: float = Field(default_factory=lambda: Config["constants.GroupDiffractionCalibration.MaxChiSq"])
     removeBackground: bool = False
 
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET

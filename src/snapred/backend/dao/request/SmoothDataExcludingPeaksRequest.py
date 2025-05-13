@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
@@ -20,6 +20,6 @@ class SmoothDataExcludingPeaksRequest(BaseModel):
     calibrantSamplePath: str
     inputWorkspace: str
     outputWorkspace: str
-    smoothingParameter: float = Config["calibration.parameters.default.smoothing"]
-    crystalDMin: float = Config["constants.CrystallographicInfo.crystalDMin"]
-    crystalDMax: float = Config["constants.CrystallographicInfo.crystalDMax"]
+    smoothingParameter: float = Field(default_factory=lambda: Config["calibration.parameters.default.smoothing"])
+    crystalDMin: float = Field(default_factory=lambda: Config["constants.CrystallographicInfo.crystalDMin"])
+    crystalDMax: float = Field(default_factory=lambda: Config["constants.CrystallographicInfo.crystalDMax"])

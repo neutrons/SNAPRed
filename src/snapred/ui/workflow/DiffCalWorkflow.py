@@ -25,6 +25,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import (
@@ -51,12 +52,6 @@ class DiffCalWorkflow(WorkflowImplementer):
     parameter input, peak adjustment, calibration assessment, and optional data saving.
 
     """
-
-    DEFAULT_DMIN = Config["constants.CrystallographicInfo.crystalDMin"]
-    DEFAULT_DMAX = Config["constants.CrystallographicInfo.crystalDMax"]
-    DEFAULT_NBINS = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
-    DEFAULT_CONV = Config["calibration.diffraction.convergenceThreshold"]
-    DEFAULT_MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -106,9 +101,9 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._requestView.skipPixelCalToggle.stateChanged.connect(self._tweakPeakView.skipPixelCalToggle.setState)
         self._tweakPeakView.skipPixelCalToggle.stateChanged.connect(self._requestView.skipPixelCalToggle.setState)
 
-        self.prevFWHM = DiffCalTweakPeakView.FWHM
-        self.prevXtalDMin = DiffCalTweakPeakView.XTAL_DMIN
-        self.prevXtalDMax = DiffCalTweakPeakView.XTAL_DMAX
+        self.prevFWHM = DiffCalTweakPeakView.default_FWHM
+        self.prevXtalDMin = DiffCalTweakPeakView.default_XTAL_DMIN
+        self.prevXtalDMax = DiffCalTweakPeakView.default_XTAL_DMAX
 
         self.peaksWerePurged = False
 
@@ -141,6 +136,26 @@ class DiffCalWorkflow(WorkflowImplementer):
             .addNode(self._saveCalibration, self._saveView, name="Saving")
             .build()
         )
+
+    @classproperty
+    def DEFAULT_DMIN(cls):
+        return Config["constants.CrystallographicInfo.crystalDMin"]
+
+    @classproperty
+    def DEFAULT_DMAX(cls):
+        return Config["constants.CrystallographicInfo.crystalDMax"]
+
+    @classproperty
+    def DEFAULT_NBINS(cls):
+        return Config["calibration.diffraction.nBinsAcrossPeakWidth"]
+
+    @classproperty
+    def DEFAULT_CONV(cls):
+        return Config["calibration.diffraction.convergenceThreshold"]
+
+    @classproperty
+    def DEFAULT_MAX_CHI_SQ(cls):
+        return Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def _continueAnywayHandlerTweak(self, continueInfo: ContinueWarning.Model):  # noqa: ARG002
         self._continueAnywayHandler(continueInfo)

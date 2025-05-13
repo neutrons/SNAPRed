@@ -16,6 +16,7 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.mantid.AllowedPeakTypes import allowed_peak_type_list
 from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEnum
 
@@ -23,7 +24,9 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class FitMultiplePeaksAlgorithm(PythonAlgorithm):
-    NOYZE_2_MIN = Config["calibration.fitting.minSignal2Noise"]
+    @classproperty
+    def NOYZE_2_MIN(cls):
+        return Config["calibration.fitting.minSignal2Noise"]
 
     def category(self):
         return "SNAPRed Data Processing"

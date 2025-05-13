@@ -55,6 +55,8 @@ from snapred.backend.error.StateValidationException import StateValidationExcept
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
+from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.InternalConstants import ReservedRunNumber, ReservedStateId
@@ -91,12 +93,16 @@ class LocalDataService:
     # conversion factor from microsecond/Angstrom to meters
     # (TODO: FIX THIS COMMENT! Obviously `m2cm` doesn't convert from 1.0 / Angstrom to 1.0 / meters.)
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
+    _verifyPaths = None
 
     def __init__(self) -> None:
-        self.verifyPaths = Config["localdataservice.config.verifypaths"]
         self.mantidSnapper = MantidSnapper(None, "Utensils")
 
     ##### MISCELLANEOUS METHODS #####
+
+    @classproperty
+    def verifyPaths(cls) -> bool:
+        return Config["localdataservice.config.verifypaths"]
 
     def fileExists(self, path):
         return os.path.isfile(path)
@@ -189,7 +195,8 @@ class LocalDataService:
         return nextTimestamp
 
     @lru_cache
-    def _getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str | None:
+    @ConfigDefault
+    def _getIPTS(self, runNumber: str, instrumentName: str = ConfigValue("instrument.name")) -> str | None:
         # Fully cached version of `GetIPTS`:
         #   returns the IPTS-directory for the run or None if no IPTS directory exists.
 
@@ -215,7 +222,8 @@ class LocalDataService:
 
         return None
 
-    def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
+    @ConfigDefault
+    def getIPTS(self, runNumber: str, instrumentName: str = ConfigValue("instrument.name")) -> str:
         IPTS = self._getIPTS(runNumber, instrumentName)
         if IPTS is None:
             raise RuntimeError(f"Cannot find IPTS directory for run '{runNumber}'")

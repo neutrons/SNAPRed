@@ -1,3 +1,4 @@
+import copy
 import importlib.resources as resources
 import logging
 import os
@@ -92,27 +93,17 @@ def deep_update(mapping: Dict[KeyType, Any], *updating_mappings: Dict[KeyType, A
 class _Config:
     _config: Dict[str, Any] = {}
     _logger = logging.getLogger(__name__ + ".Config")
+    _propertyChangeWarnings: Dict[str, str] = {}
+    _defaultEnv: str = "application.yml"
 
     def __init__(self):
-        # use refresh to do initial load, clearing shouldn't matter
-        self.refresh("application.yml", True)
-
-        # ---------- SNAPRed-internal values: --------------------------
-        # allow "resources" relative paths to be entered into the "yml"
-        #   using "${module.root}"
-        self._config["module"] = {}
-        self._config["module"]["root"] = _find_root_dir()
-
-        self._config["version"] = self._config.get("version", {})
-        self._config["version"]["default"] = -1
-        # ---------- end: internal values: -----------------------------
-
-        # see if user used environment injection to modify what is needed
-        # this will get from the os environment or from the currently loaded one
-        # first case wins
-        env = os.environ.get("env", self._config.get("environment", None))
-        if env is not None:
-            self.refresh(env)
+        self._propertyChangeWarnings = {
+            "version.start": (
+                "It is NOT ADVISED to change the `version.start` property"
+                " WITHOUT CAREFUL CONSIDERATION of the file indexes on disk."
+            ),
+        }
+        self.reload()
 
     def _fix_directory_properties(self):
         """Some developers set instrument.home to use ~/ and this fixes that"""
@@ -128,37 +119,107 @@ class _Config:
         if "samples" in self._config and "home" in self._config["samples"]:
             self._config["samples"]["home"] = expandhome(self._config["samples"]["home"])
 
-    def refresh(self, env_name: str, clearPrevious: bool = False) -> None:
-        if clearPrevious:
-            self._config.clear()
+    def reload(self) -> None:
+        # use refresh to do initial load, clearing shouldn't matter
+        self.refresh(self._defaultEnv, True)
 
-        if env_name.endswith(".yml"):
-            # name to be put into config
-            new_env_name = env_name
+        # ---------- SNAPRed-internal values: --------------------------
+        # allow "resources" relative paths to be entered into the "yml"
+        #   using "${module.root}"
+        self._config["module"] = {}
+        self._config["module"]["root"] = _find_root_dir()
 
-            # this is a filename that should be loaded
-            filepath = Path(env_name)
-            if filepath.exists():
-                self._logger.debug(f"Loading config from {filepath.absolute()}")
-                with open(filepath, "r") as file:
-                    envConfig = yaml.safe_load(file)
-            else:
-                # load from the resource
-                with Resource.open(env_name, "r") as file:
-                    envConfig = yaml.safe_load(file)
-                new_env_name = env_name.replace(".yml", "")
-            # update the configuration with the  new environment
-            self._config = deep_update(self._config, envConfig)
+        self._config["version"] = self._config.get("version", {})
+        self._config["version"]["default"] = -1
+        # ---------- end: internal values: -----------------------------
 
-            # add the name to the config object if it wasn't specified
-            if "environment" not in envConfig:
-                self._config["environment"] = new_env_name
+        watchedProperties = {}
+        for key in self._propertyChangeWarnings:
+            if self.exists(key):
+                watchedProperties[key] = self[key]
 
-            # do fixups on items that are directories
-            self._fix_directory_properties()
+        # see if user used environment injection to modify what is needed
+        # this will get from the os environment or from the currently loaded one
+        # first case wins
+
+        self.env = os.environ.get("env", self._config.get("environment", None))
+        if self.env is not None:
+            self._logger.info(f"Loading environment config: {self.env}")
+            self.refresh(self.env)
         else:
-            # recurse this function with a fuller name
-            self.refresh(f"{env_name}.yml", clearPrevious)
+            self._logger.info("No environment config specified, using default")
+        self.warnSensitiveProperties(watchedProperties)
+        self.persistBackup()
+
+    @property
+    def userApplicationDataHome(self) -> Path:
+        userApplicationDataHome = Path.home() / ".snapred"
+        return userApplicationDataHome
+
+    def persistBackup(self) -> None:
+        self.userApplicationDataHome.mkdir(parents=True, exist_ok=True)
+        backupFile = self.userApplicationDataHome / "application.yml.bak"
+        with open(backupFile, "w") as file:
+            yaml.dump(self._config, file, default_flow_style=False)
+        self._logger.info(f"Backup of application.yml created at {backupFile.absolute()}")
+
+    def getCurrentEnv(self) -> str:
+        if self.env is not None:
+            return self.env
+        else:
+            # this is the default environment
+            return "default"
+
+    def refresh(self, env_name: str, clearPrevious: bool = False) -> None:
+        # save a copy of pervious config if it fails to load
+        prevConfig = copy.deepcopy(self._config)
+
+        try:
+            if clearPrevious:
+                self._config.clear()
+
+            if env_name.endswith(".yml"):
+                # name to be put into config
+                new_env_name = env_name
+
+                # this is a filename that should be loaded
+                filepath = Path(env_name)
+                if filepath.exists():
+                    self._logger.debug(f"Loading config from {filepath.absolute()}")
+                    with open(filepath, "r") as file:
+                        envConfig = yaml.safe_load(file)
+                else:
+                    # load from the resource
+                    with Resource.open(env_name, "r") as file:
+                        envConfig = yaml.safe_load(file)
+                    new_env_name = env_name.replace(".yml", "")
+                # update the configuration with the  new environment
+                self._config = deep_update(self._config, envConfig)
+
+                # add the name to the config object if it wasn't specified
+                if "environment" not in envConfig:
+                    self._config["environment"] = new_env_name
+
+                # do fixups on items that are directories
+                self._fix_directory_properties()
+            else:
+                # recurse this function with a fuller name
+                self.refresh(f"{env_name}.yml", clearPrevious)
+        except Exception:
+            # if it fails, restore the previous config
+            self._logger.warning(f"Failed to load {env_name}.yml, restoring previous config")
+            self._config = prevConfig
+            raise
+
+    def warnSensitiveProperties(self, watchedProperties) -> None:
+        for key in watchedProperties:
+            msg = self._propertyChangeWarnings[key]
+            if watchedProperties[key] != self[key]:
+                warningBar = ("/" * 20) + " WARNING " + ("/" * 20)
+                self._logger.warning(warningBar)
+                self._logger.warning(f"Property '{key}' was changed in {self.env}.yml")
+                self._logger.warning(msg)
+                self._logger.warning(warningBar)
 
     # method to regex for string pattern of ${key} and replace with value
     def _replace(self, value: str, remainingKeys) -> str:

@@ -8,6 +8,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
@@ -32,14 +33,16 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
     # therefore there is no reason not to deform the input workspace to this algorithm
     # instead, the original clean file is preserved in a separate location
 
-    MAX_DSPACE_SHIFT_FACTOR = Config["calibration.diffraction.maxDSpaceShiftFactor"]
-
     def __init__(self, utensils: Utensils = None):
         if utensils is None:
             utensils = Utensils()
             utensils.PyInit()
         self.mantidSnapper = utensils.mantidSnapper
         self._counts = 0
+
+    @classproperty
+    def MAX_DSPACE_SHIFT_FACTOR(cls) -> float:
+        return Config["calibration.diffraction.maxDSpaceShiftFactor"]
 
     def logger(self):
         return logger

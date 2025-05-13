@@ -273,6 +273,7 @@ test:
 cis_mode:
   enabled: false
   preserveDiagnosticWorkspaces: false
+  reloadConfigButton: false
 
 version:
   friendlyName:

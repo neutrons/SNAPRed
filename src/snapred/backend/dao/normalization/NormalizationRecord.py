@@ -1,6 +1,6 @@
 from typing import Any, List
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 
 from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionedObject
@@ -31,7 +31,7 @@ class NormalizationRecord(Record, extra="ignore"):
     smoothingParameter: float
     # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
     workspaceNames: List[WorkspaceName] = []
-    calibrationVersionUsed: Version = VERSION_START
+    calibrationVersionUsed: Version = Field(default_factory=VERSION_START)
     crystalDBounds: Limit[float]
     normalizationCalibrantSamplePath: str
 

@@ -1,6 +1,6 @@
 from typing import Any, List, NamedTuple, Optional
 
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
 from snapred.backend.dao.Limit import Limit, Pair
@@ -52,17 +52,23 @@ class FarmFreshIngredients(BaseModel):
     convertUnitsTo: Optional[str] = None
 
     ## the below are not-so-fresh, being fiddly optional parameters with defaults
-    convergenceThreshold: float = Config["calibration.diffraction.convergenceThreshold"]
-    nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
+    convergenceThreshold: float = Field(default_factory=lambda: Config["calibration.diffraction.convergenceThreshold"])
+    nBinsAcrossPeakWidth: int = Field(default_factory=lambda: Config["calibration.diffraction.nBinsAcrossPeakWidth"])
     peakIntensityThreshold: Optional[float] = None
-    peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
-    maxOffset: float = Config["calibration.diffraction.maximumOffset"]
-    crystalDBounds: Limit[float] = Limit(
-        minimum=Config["constants.CrystallographicInfo.crystalDMin"],
-        maximum=Config["constants.CrystallographicInfo.crystalDMax"],
+    peakFunction: SymmetricPeakEnum = Field(
+        default_factory=lambda: SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
     )
-    fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
-    maxChiSq: Optional[float] = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
+    maxOffset: float = Field(default_factory=lambda: Config["calibration.diffraction.maximumOffset"])
+    crystalDBounds: Limit[float] = Field(
+        default_factory=lambda: Limit(
+            minimum=Config["constants.CrystallographicInfo.crystalDMin"],
+            maximum=Config["constants.CrystallographicInfo.crystalDMax"],
+        )
+    )
+    fwhmMultipliers: Pair[float] = Field(
+        default_factory=lambda: Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
+    )
+    maxChiSq: Optional[float] = Field(default_factory=lambda: Config["constants.GroupDiffractionCalibration.MaxChiSq"])
 
     focusGroups: Optional[List[FocusGroup]] = None
 

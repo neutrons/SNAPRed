@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -24,13 +24,17 @@ class NormalizationRequest(BaseModel, extra="forbid", arbitrary_types_allowed=Tr
     useLiteMode: bool
     focusGroup: FocusGroup
     calibrantSamplePath: str
-    smoothingParameter: float = Config["calibration.parameters.default.smoothing"]
-    crystalDBounds: Limit[float] = Limit(
-        minimum=Config["constants.CrystallographicInfo.crystalDMin"],
-        maximum=Config["constants.CrystallographicInfo.crystalDMax"],
+    smoothingParameter: float = Field(default_factory=lambda: Config["calibration.parameters.default.smoothing"])
+    crystalDBounds: Limit[float] = Field(
+        default_factory=lambda: Limit(
+            minimum=Config["constants.CrystallographicInfo.crystalDMin"],
+            maximum=Config["constants.CrystallographicInfo.crystalDMax"],
+        )
     )
-    nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
-    fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
+    nBinsAcrossPeakWidth: int = Field(default_factory=lambda: Config["calibration.diffraction.nBinsAcrossPeakWidth"])
+    fwhmMultipliers: Pair[float] = Field(
+        default_factory=lambda: Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
+    )
 
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
     correctedVanadiumWs: Optional[WorkspaceName] = None

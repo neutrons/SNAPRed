@@ -19,8 +19,7 @@ class CustomFormatter(logging.Formatter):
     _host = socket.gethostname().split(".")[0]
 
     def __init__(self, name="SNAP.stream"):
-        self._format = self._host + " - " + Config[f"logging.{name}.format"]
-
+        self._name = name
         self.FORMATS = {
             logging.DEBUG: self._grey + self._format + self._reset,
             logging.INFO: self._grey + self._format + self._reset,
@@ -28,6 +27,10 @@ class CustomFormatter(logging.Formatter):
             logging.ERROR: self._red + self._format + self._reset,
             logging.CRITICAL: self._bold_red + self._format + self._reset,
         }
+
+    @property
+    def _format(self):
+        return self._host + " - " + Config[f"logging.{self._name}.format"]
 
     def _colorCodeFormat(self, rawFormat):
         fields = rawFormat.split("-")
@@ -45,11 +48,14 @@ class CustomFormatter(logging.Formatter):
 
 @Singleton
 class _SnapRedLogger:
-    _level = Config["logging.SNAP.stream.level"]
     _warnings = []
 
     def __init__(self):
         self.resetProgress(0, 1.0, 100)
+
+    @property
+    def _level(self):
+        return Config["logging.SNAP.stream.level"]
 
     def _setFormatter(self, logger):
         ch = logging.StreamHandler(sys.stdout)
