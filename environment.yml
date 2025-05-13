@@ -10,16 +10,46 @@ dependencies:
 - pip
 - pydantic>=2.7.3,<3
 - mantidworkbench=6.12.0.2rc2
+- mantid=6.12.0.2rc2
+- mantidqt=6.12.0.2rc2
 - qtpy
 - pre-commit
 - pytest
 - pytest-qt
 - pytest-cov
+
+# - libsolv=0.7.32=h7955e40_1
+# - libsqlite=3.49.1=hee588c1_2
+# - libssh2=1.11.1=hf672d98_0
+# - libstdcxx=14.2.0
+# - libstdcxx-ng=14.2.0
+# - libtiff=4.7.0=hd9ff511_3
+
+# - libxkbcommon=1.8.1=hc4a0caf_0
+# - libxml2=2.13.7=h4bc477f_1
+# - lz4=4.3.3=py310h80b8a69_2
+
+- more-itertools=10.6.0
+- muparser=2.3.4=h27087fc_0
+
+# - nss=3.110
+# - openexr=3.3.3=hff63da0_0
+# - openssl=3.5.0=h7b32b05_0
+# - packaging=25.0=pyhd8ed1ab_0
+# - patchelf=0.17.2=h58526e2_0
+# - pcre2=10.44=hba22ea6_2
+# - pip=25.0.1=pyh8b19718_0
+# - pixman=0.44.2
+# - platformdirs=4.3.7=pyh29332c3_0
+# - ripgrep=14.1.1=h8fae777_0
+# - soupsieve=2.5=pyhd8ed1ab_1
+
+
 - flake8
 - erdantic>=1.0.3
 - versioningit
 - anaconda-client
-- conda-build < 24
+- conda-build<24
 - conda-verify
 - check-wheel-contents>=0.6.0
 - setuptools

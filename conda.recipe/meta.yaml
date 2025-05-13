@@ -34,6 +34,7 @@ requirements:
     - python
     - versioningit
     - pydantic>=2.7.3,<3
+    - mantidworkbench>=6.12.0.2rc2
 
   build:
     - setuptools
@@ -42,7 +43,7 @@ requirements:
 
   run:
     - {{ pin_compatible("pydantic", min_pin="2.7.3", max_pin="3") }}
-    - mantidworkbench
+    - {{ pin_compatible("mantidworkbench", min_pin="6.12.0.2rc2") }}
 
 about:
   home: {{ url }}

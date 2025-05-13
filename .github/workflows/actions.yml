@@ -18,7 +18,7 @@ jobs:
     - name: Set up MicroMamaba
       uses: mamba-org/setup-micromamba@v2
       with:
-        micromamba-version: '1.5.10-0'
+        micromamba-version: '2.0.5-0'
         environment-file: environment.yml
         condarc: |
           channels:
@@ -29,6 +29,8 @@ jobs:
         cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
     - name: Apt install deps
       run: |
+        conda-tree whoneeds libfreetype
+        conda-tree whoneeds freetype
         sudo apt update
         sudo apt-get install xvfb
     - name: Start xvfb daemon
@@ -69,7 +71,7 @@ jobs:
     - name: Set up MicroMamaba
       uses: mamba-org/setup-micromamba@v2
       with:
-        micromamba-version: '1.5.10-0'
+        micromamba-version: '2.0.5-0'
         environment-file: environment.yml
         condarc: |
           channels:
@@ -114,7 +116,7 @@ jobs:
     - name: Set up MicroMamaba
       uses: mamba-org/setup-micromamba@v2
       with:
-        micromamba-version: '1.5.10-0'
+        micromamba-version: '2.0.5-0'
         environment-file: environment.yml
         condarc: |
           channels:
