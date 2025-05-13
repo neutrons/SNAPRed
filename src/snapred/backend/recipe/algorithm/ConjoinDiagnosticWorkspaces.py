@@ -16,7 +16,7 @@ from mantid.simpleapi import (
     mtd,
 )
 
-from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX
+from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEnum
 
 
 class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
@@ -33,13 +33,16 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
 
     def newNamesFromOld(self, oldNames: List[str], newName: str) -> List[str]:
         selectedNames = set(self.diagnosticSuffix.values())
-        suffixes = []
+        result = []
         for oldName in oldNames:
             elements = oldName.split("_")
             suffix = next((f"_{x}" for x in elements if f"_{x}" in selectedNames), None)
             if suffix is not None:
-                suffixes.append(suffix)
-        return [f"{newName}{suffix}" for suffix in suffixes]
+                if self.diagnosticSuffix[FitOutputEnum.PeakPosition] in suffix:
+                    result.append(f"__{newName}{suffix}")  # Prepend "__" to the entire string
+                else:
+                    result.append(f"{newName}{suffix}")
+        return result
 
     def PyInit(self):
         # declare properties

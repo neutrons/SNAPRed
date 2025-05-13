@@ -43,7 +43,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         self.declareProperty(
             "PeakFunction", "Gaussian", StringListValidator(allowed_peak_type_list), direction=Direction.Input
         )
-        self.declareProperty("OutputWorkspaceGroup", defaultValue="fitPeaksWSGroup", direction=Direction.Output)
+        self.declareProperty("OutputWorkspaceGroup", defaultValue="__fitPeaksWSGroup", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 

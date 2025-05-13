@@ -79,6 +79,8 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         self.dMax = ingredients.pixelGroup.dMax()
         self.dBin = ingredients.pixelGroup.dBin()
 
+        self.grouping = ingredients.pixelGroup.focusGroup.name
+
         # used to be a constant pulled from application.yml
         self.maxChiSq = ingredients.maxChiSq
 
@@ -114,6 +116,7 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         self.originalWStof = groceries["inputWorkspace"]
         self.focusWS = groceries["groupingWorkspace"]
         self.outputWStof = wng.diffCalOutput().runNumber(self.runNumber).build()
+        self.outputWStofFocused = wng.diffCalOutput().runNumber(self.runNumber).group(self.grouping).build()
         self.outputWSdSpacing = groceries.get(
             "outputWorkspace", wng.diffCalOutput().runNumber(self.runNumber).unit("DSP").build()
         )
@@ -268,14 +271,28 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         self.mantidSnapper.ConvertUnits(
             "Convert the clone of the final output back to TOF",
             InputWorkspace=self.outputWStof,
-            OutputWorkspace=self.outputWStof,
+            OutputWorkspace=self.outputWStofFocused,
             Target="TOF",
+        )
+        self.mantidSnapper.DeleteWorkspace(
+            "Deleting unused workspace",
+            Workspace=self.outputWStof,
         )
 
     def execute(self):
         self.mantidSnapper.executeQueue()
         diagnostic = self.mantidSnapper.mtd[self.diagnosticWS]
-        diagnostic.add(self.outputWStof)
+        diagnostic.add(self.outputWStofFocused)
+        for ws in diagnostic.getNames():
+            if self.diagnosticSuffix[FitOutputEnum.PeakPosition] in ws:
+                self.mantidSnapper.DeleteWorkspace(
+                    "Deleting unused workspace",
+                    Workspace=ws,
+                )
+                self.mantidSnapper.executeQueue()
+                break
+
+        self.mantidSnapper.executeQueue()
 
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> GroupDiffCalServing:
         self.prep(ingredients, groceries)
