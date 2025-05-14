@@ -10,16 +10,19 @@ dependencies:
 - pip
 - pydantic>=2.7.3,<3
 - mantidworkbench=6.12.0.2rc2
+- mantid=6.12.0.2rc2
+- mantidqt=6.12.0.2rc2
 - qtpy
 - pre-commit
 - pytest
 - pytest-qt
 - pytest-cov
+- muparser=2.3.4=h27087fc_0
 - flake8
 - erdantic>=1.0.3
 - versioningit
 - anaconda-client
-- conda-build < 24
+- conda-build<24
 - conda-verify
 - check-wheel-contents>=0.6.0
 - setuptools
