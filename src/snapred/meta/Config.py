@@ -176,7 +176,7 @@ class _Config:
         if (userHome / "snapred-user.yml").exists():
             with open(str(userHome / "snapred-user.yml"), "r") as f:
                 applicationYml = yaml.safe_load(f)
-            version = applicationYml.get("version", None)
+            version = applicationYml.get("application", {"version": None})["version"]
             if version != self.snapredVersion():
                 # archive the old snapred-user.yml
                 archivePath = userHome / f"snapred-user-{version}.yml.bak"
@@ -228,7 +228,9 @@ class _Config:
                         "home": userCalibrationHome,
                     }
                 },
-                "version": self.snapredVersion(),
+                "application": {
+                    "version": self.snapredVersion(),
+                },
             },
             default_flow_style=False,
         )

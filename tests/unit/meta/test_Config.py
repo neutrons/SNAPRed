@@ -352,7 +352,7 @@ def test_swapToUserYml():
 
             with open(Path(tmpPath) / ".snapred" / "snapred-user.yml", "r") as file:
                 yml = yaml.safe_load(file)
-                assert yml["version"] == "1.0.0"
+                assert yml["application"]["version"] == "1.0.0"
                 assert yml["instrument"]["calibration"]["home"] is not None
 
 
@@ -374,7 +374,7 @@ def test_swapToUserYml_archive():
             Config.swapToUserYml()
             with open(Path(tmpPath) / ".snapred" / "snapred-user.yml", "r") as file:
                 yml = yaml.safe_load(file)
-                assert yml["version"] == "1.0.8"
+                assert yml["application"]["version"] == "1.0.8"
                 assert yml["instrument"]["calibration"]["home"] is not None
             assert (Path(tmpPath) / ".snapred" / "snapred-user.yml").exists()
             assert (Path(tmpPath) / ".snapred" / "snapred-user-1.0.0.yml.bak").exists(), os.listdir(
