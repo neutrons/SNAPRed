@@ -100,6 +100,10 @@ class LocalDataService:
 
     ##### MISCELLANEOUS METHODS #####
 
+    def _CI_segfault_test(self):
+        # Add a new method to check if the CI tests are passing on next.
+        pass
+        
     @classproperty
     def verifyPaths(cls) -> bool:
         return Config["localdataservice.config.verifypaths"]
