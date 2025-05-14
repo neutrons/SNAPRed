@@ -29,8 +29,6 @@ jobs:
         cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
     - name: Apt install deps
       run: |
-        conda-tree whoneeds libfreetype
-        conda-tree whoneeds freetype
         sudo apt update
         sudo apt-get install xvfb
     - name: Start xvfb daemon
