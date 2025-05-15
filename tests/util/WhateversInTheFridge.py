@@ -14,13 +14,11 @@ from util.dao import DAOFactory
 from util.mock_util import mock_instance_methods
 
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
-from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.state import GroupingMap
 from snapred.backend.dao.state.DetectorState import DetectorState
-from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
@@ -75,38 +73,34 @@ class WhateversInTheFridge(LocalDataService):
     ### CALIBRATION METHODS ###
 
     def calculationParameters_with_stateId(self, stateId: str):
-        return CalculationParameters.model_construct(
-            instrumentState=InstrumentState.model_construct(
-                id=ObjectSHA.model_construct(
-                    hex=stateId,
-                    decodedKey="gibberish",
-                )
-            )
+        parameters = DAOFactory.calibrationParameters()
+        parameters.instrumentState.id = ObjectSHA.model_construct(
+            hex=stateId,
+            decodedKey="gibberish",
         )
+        return parameters
 
     @validate_call
-    def readCalibrationRecord(
-        self, runId: str, useLiteMode: bool, version: Optional[int] = None, alternativeState: Optional[str] = None
-    ):
+    def readCalibrationRecord(self, runId: str, useLiteMode: bool, state: str, version: Optional[int] = None):
         version = version if version is not None else self.latestVersion
         record = CalibrationRecord.model_construct(
             runNumber=runId,
             useLiteMode=useLiteMode,
             version=version,
-            calculationParameters=self.calculationParameters_with_stateId("0xdeadbeef"),
+            calculationParameters=self.calculationParameters_with_stateId("0xdeadbeef000004"),
         )
         return record
 
     ### NORMALIZATION METHODS ###
 
     @validate_call
-    def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+    def readNormalizationRecord(self, runId: str, useLiteMode: bool, stateId: str, version: Optional[int] = None):
         version = version if version is not None else self.latestVersion
         record = NormalizationRecord.model_construct(
             runNumber=runId,
             useLiteMode=useLiteMode,
             version=version,
-            calculationParameters=self.calculationParameters_with_stateId("0xdeadbeef"),
+            calculationParameters=self.calculationParameters_with_stateId("0xdeadbeef000004"),
             normalizationCalibrationSamplePath="path/to/calibrant",
         )
         return record
@@ -123,8 +117,8 @@ class WhateversInTheFridge(LocalDataService):
             useLiteMode=useLiteMode,
             timestamp=timestamp,
             workspaceNames=[wsName],
-            calibration=self.readCalibrationRecord(runNumber, useLiteMode, 1),
-            normalization=self.readNormalizationRecord(runNumber, useLiteMode, 1),
+            calibration=self.readCalibrationRecord(runNumber, useLiteMode, "stateId", 1),
+            normalization=self.readNormalizationRecord(runNumber, useLiteMode, "stateId", 1),
         )
 
     ### READ / WRITE STATE METHODS ###

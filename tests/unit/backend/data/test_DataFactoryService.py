@@ -140,9 +140,8 @@ class TestDataFactoryService(unittest.TestCase):
     ## TEST CALIBRATION METHODS
 
     def test_getCalibrationDataPath(self):
-        run = "123"
         for useLiteMode in [True, False]:
-            actual = self.instance.getCalibrationDataPath(run, useLiteMode, self.version)
+            actual = self.instance.getCalibrationDataPath(useLiteMode, self.version)
             assert actual == self.expected("Calibration", self.version)  # NOTE mock indexer called only with version
 
     def test_checkCalibrationStateExists(self):
@@ -161,37 +160,36 @@ class TestDataFactoryService(unittest.TestCase):
 
     def test_getCalibrationState(self):
         for useLiteMode in [True, False]:
-            actual = self.instance.getCalibrationState("123", useLiteMode)
-            assert actual == self.expected("123", useLiteMode, alternativeState=None)
+            actual = self.instance.getCalibrationState("123", useLiteMode, "stateId")
+            assert actual == self.expected("123", useLiteMode, state="stateId")
 
     def test_getCalibrationIndex(self):
-        run = "123"
         for useLiteMode in [True, False]:
-            actual = self.instance.getCalibrationIndex(run, useLiteMode)
+            actual = self.instance.getCalibrationIndex(useLiteMode, "stateId")
             assert actual == [self.expected("Calibration")]
 
     def test_getCalibrationRecord(self):
         runId = "345"
         for useLiteMode in [True, False]:
-            actual = self.instance.getCalibrationRecord(runId, useLiteMode, self.version)
-            assert actual == self.expected(runId, useLiteMode, self.version, alternativeState=None)
+            actual = self.instance.getCalibrationRecord(runId, useLiteMode, self.version, "stateId")
+            assert actual == self.expected(runId, useLiteMode, "stateId", self.version)
 
     def test_getCalibrationDataWorkspace(self):
         self.instance.groceryService.fetchWorkspace = mock.Mock()
         for useLiteMode in [True, False]:
-            actual = self.instance.getCalibrationDataWorkspace("456", useLiteMode, self.version, "bunko")
+            actual = self.instance.getCalibrationDataWorkspace(useLiteMode, self.version, "bunko", "stateId")
             assert actual == self.instance.groceryService.fetchWorkspace.return_value
 
     def test_getLatestCalibrationVersion(self):
         for useLiteMode in [True, False]:
-            actual = self.instance.getLatestApplicableCalibrationVersion("123", useLiteMode)
+            actual = self.instance.getLatestApplicableCalibrationVersion("123", useLiteMode, "stateID")
             assert actual == self.expected("Calibration", "123")
 
     ## TEST NORMALIZATION METHODS
 
     def test_getNormalizationDataPath(self):
         for useLiteMode in [True, False]:
-            actual = self.instance.getNormalizationDataPath("123", useLiteMode, self.version)
+            actual = self.instance.getNormalizationDataPath(useLiteMode, self.version, "stateId")
             assert actual == self.expected("Normalization", self.version)  # NOTE mock indexer called only with version
 
     def test_createNormalizationIndexEntry(self):
@@ -211,23 +209,23 @@ class TestDataFactoryService(unittest.TestCase):
 
     def test_getNormalizationIndex(self):
         for useLiteMode in [True, False]:
-            actual = self.instance.getNormalizationIndex("123", useLiteMode)
+            actual = self.instance.getNormalizationIndex(useLiteMode, "stateId")
             assert actual == [self.expected("Normalization")]
 
     def test_getNormalizationRecord(self):
         for useLiteMode in [True, False]:
-            actual = self.instance.getNormalizationRecord("123", useLiteMode, self.version)
-            assert actual == self.expected("123", useLiteMode, self.version)
+            actual = self.instance.getNormalizationRecord("123", useLiteMode, "stateId", self.version)
+            assert actual == self.expected("123", useLiteMode, "stateId", self.version)
 
     def test_getNormalizationDataWorkspace(self):
         self.instance.groceryService.fetchWorkspace = mock.Mock()
         for useLiteMode in [True, False]:
-            actual = self.instance.getNormalizationDataWorkspace("456", useLiteMode, self.version, "bunko")
+            actual = self.instance.getNormalizationDataWorkspace(useLiteMode, self.version, "stateId", "bunko")
             assert actual == self.instance.groceryService.fetchWorkspace.return_value
 
     def test_getLatestNormalizationVersion(self):
         for useLiteMode in [True, False]:
-            actual = self.instance.getLatestApplicableNormalizationVersion("123", useLiteMode)
+            actual = self.instance.getLatestApplicableNormalizationVersion("123", useLiteMode, "stateId")
             assert actual == self.expected("Normalization", "123")
 
     ## TEST REDUCTION METHODS

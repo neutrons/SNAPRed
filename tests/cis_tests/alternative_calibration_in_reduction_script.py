@@ -33,7 +33,7 @@ requestPayload = ReductionRequest(
     useLiteMode=useLiteMode,
     timestamp=time.time(),
     focusGroups=[columnGroup],
-    alternativeState=altStateId
+    state=altStateId
 )
 
 request = SNAPRequest(path="reduction", payload=requestPayload.model_dump_json())
