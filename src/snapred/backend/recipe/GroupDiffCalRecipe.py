@@ -203,7 +203,7 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
 
         for index in range(len(self.groupIDs)):
             groupID: int = self.groupIDs[index]
-            DIFCpd: str = f"_tmp_DIFCgroup_{groupID}"
+            DIFCpd: str = f"__tmp_DIFCgroup_{groupID}"
             diagnosticWSgroup: str = f"__pdcal_diag_{groupID}"
             self.mantidSnapper.PDCalibration(
                 f"Perform PDCalibration on group {groupID}",
