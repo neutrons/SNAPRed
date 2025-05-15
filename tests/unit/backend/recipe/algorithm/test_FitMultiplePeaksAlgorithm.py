@@ -57,9 +57,12 @@ with mock.patch.dict(
         fmpAlgo.setProperty("DetectorPeaks", list_to_raw(peaks))
         fmpAlgo.execute()
         wsGroupName = fmpAlgo.getProperty("OutputWorkspaceGroup").value
-        assert wsGroupName == "fitPeaksWSGroup"
+        assert wsGroupName == "__fitPeaksWSGroup"
         wsGroup = list(mtd[wsGroupName].getNames())
-        expected = [f"{wsGroupName}{suffix}" for suffix in FIT_PEAK_DIAG_SUFFIX.values()]
+        expected = [
+            f"{'__' if suffix == '_dspacing' else ''}{wsGroupName}{suffix}" for suffix in FIT_PEAK_DIAG_SUFFIX.values()
+        ]
+        print(expected)
         assert wsGroup == expected
         assert not mtd.doesExist("fitPeaksWSGroup_fitted_1")
         assert not mtd.doesExist("fitPeaksWSGroup_fitparam_1")

@@ -303,7 +303,7 @@ class GroceryService:
         if groupingScheme == "Lite":
             return wng.liteDataMap().build()
         instr = "lite" if useLiteMode else "native"
-        return f"{Config['grouping.workspacename.' + instr]}_{groupingScheme}_{runNumber}"
+        return f"__{Config['grouping.workspacename.' + instr]}_{groupingScheme}_{runNumber}"
 
     def _createDiffCalInputWorkspaceName(self, runNumber: str) -> WorkspaceName:
         return wng.diffCalInput().runNumber(runNumber).build()

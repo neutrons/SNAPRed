@@ -12,11 +12,10 @@ from mantid.simpleapi import (
     ExtractSingleSpectrum,
     GroupWorkspaces,
     RenameWorkspace,
-    UnGroupWorkspace,
     mtd,
 )
 
-from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX
+from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEnum
 
 
 class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
@@ -33,13 +32,16 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
 
     def newNamesFromOld(self, oldNames: List[str], newName: str) -> List[str]:
         selectedNames = set(self.diagnosticSuffix.values())
-        suffixes = []
+        result = []
         for oldName in oldNames:
             elements = oldName.split("_")
             suffix = next((f"_{x}" for x in elements if f"_{x}" in selectedNames), None)
             if suffix is not None:
-                suffixes.append(suffix)
-        return [f"{newName}{suffix}" for suffix in suffixes]
+                if self.diagnosticSuffix[FitOutputEnum.PeakPosition] in suffix:
+                    result.append(f"__{newName}{suffix}")  # Prepend "__" to the entire string
+                else:
+                    result.append(f"{newName}{suffix}")
+        return result
 
     def PyInit(self):
         # declare properties
@@ -70,7 +72,8 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
 
         # if the input is expected to autodelete, it must be ungrouped first
         if self.autoDelete:
-            UnGroupWorkspace(diag1)
+            for name in oldNames:
+                mtd[diag1].remove(name)
 
         if index == 0:
             for old, new in zip(oldNames, newNames):

@@ -35,7 +35,7 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
 
     def test_naming(self):
         oldNames = ["xyz_d4_dspacing_2", "not_in_list", "feg_abc_fitted_fx"]
-        expNames = ["fun_dspacing", "fun_fitted"]
+        expNames = ["__fun_dspacing", "fun_fitted"]
         algo = Algo()
         algo.initialize()
         assert expNames == algo.newNamesFromOld(oldNames, "fun")
@@ -66,7 +66,6 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
         # add in the first group
         algo = Algo()
         algo.initialize()
-        algo.diagnosticSuffix = {0: "_fitted"}
         algo.setProperty("DiagnosticWorkspace", name1)
         algo.setProperty("TotalDiagnosticWorkspace", finalname)
         algo.setProperty("AddAtIndex", 0)
@@ -79,7 +78,6 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
         # add in the second group
         algo = Algo()
         algo.initialize()
-        algo.diagnosticSuffix = {0: "_fitted"}
         algo.setProperty("DiagnosticWorkspace", name2)
         algo.setProperty("TotalDiagnosticWorkspace", finalname)
         algo.setProperty("AddAtIndex", 1)
@@ -124,7 +122,6 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
 
         algo = Algo()
         algo.initialize()
-        algo.diagnosticSuffix = {0: "_dspacing"}
         algo.setProperty("DiagnosticWorkspace", name1)
         algo.setProperty("TotalDiagnosticWorkspace", finalname)
         algo.setProperty("AddAtIndex", 0)
@@ -138,7 +135,6 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
 
         algo = Algo()
         algo.initialize()
-        algo.diagnosticSuffix = {0: "_dspacing"}
         algo.setProperty("DiagnosticWorkspace", name2)
         algo.setProperty("TotalDiagnosticWorkspace", finalname)
         algo.setProperty("AddAtIndex", 1)
@@ -183,7 +179,6 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
 
         algo = Algo()
         algo.initialize()
-        algo.diagnosticSuffix = {0: "_dspacing"}
         algo.setProperty("DiagnosticWorkspace", name1)
         algo.setProperty("TotalDiagnosticWorkspace", finalname)
         algo.setProperty("AddAtIndex", 0)
@@ -197,7 +192,6 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
 
         algo = Algo()
         algo.initialize()
-        algo.diagnosticSuffix = {0: "_dspacing"}
         algo.setProperty("DiagnosticWorkspace", name2)
         algo.setProperty("TotalDiagnosticWorkspace", finalname)
         algo.setProperty("AddAtIndex", 1)
@@ -242,7 +236,6 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
 
         algo = Algo()
         algo.initialize()
-        algo.diagnosticSuffix = {0: "_dspacing"}
         algo.setProperty("DiagnosticWorkspace", name1)
         algo.setProperty("TotalDiagnosticWorkspace", finalname)
         algo.setProperty("AddAtIndex", 0)
@@ -256,7 +249,6 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
 
         algo = Algo()
         algo.initialize()
-        algo.diagnosticSuffix = {0: "_dspacing"}
         algo.setProperty("DiagnosticWorkspace", name2)
         algo.setProperty("TotalDiagnosticWorkspace", finalname)
         algo.setProperty("AddAtIndex", 1)

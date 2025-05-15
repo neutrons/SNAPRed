@@ -46,7 +46,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         self.declareProperty(
             "PeakFunction", "Gaussian", StringListValidator(allowed_peak_type_list), direction=Direction.Input
         )
-        self.declareProperty("OutputWorkspaceGroup", defaultValue="fitPeaksWSGroup", direction=Direction.Output)
+        self.declareProperty("OutputWorkspaceGroup", defaultValue="__fitPeaksWSGroup", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
@@ -80,8 +80,8 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         self.unbagGroceries()
 
         for index, groupID in enumerate(self.groupIDs):
-            tmpSpecName = mtd.unique_name(prefix=f"tmp_fitspec_{index}_")
-            outputNameTmp = mtd.unique_name(prefix=f"tmp_fitdiag_{index}_")
+            tmpSpecName = mtd.unique_name(prefix=f"__tmp_fitspec_{index}_")
+            outputNameTmp = mtd.unique_name(prefix=f"__tmp_fitdiag_{index}_")
             outputNamesTmp = {x: f"{outputNameTmp}{self.outputSuffix[x]}_{index}" for x in FitOutputEnum}
 
             peakCenters = []
