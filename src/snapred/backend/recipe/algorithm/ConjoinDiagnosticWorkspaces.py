@@ -12,7 +12,6 @@ from mantid.simpleapi import (
     ExtractSingleSpectrum,
     GroupWorkspaces,
     RenameWorkspace,
-    UnGroupWorkspace,
     mtd,
 )
 
@@ -73,7 +72,8 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
 
         # if the input is expected to autodelete, it must be ungrouped first
         if self.autoDelete:
-            UnGroupWorkspace(diag1)
+            for name in oldNames:
+                mtd[diag1].remove(name)
 
         if index == 0:
             for old, new in zip(oldNames, newNames):
