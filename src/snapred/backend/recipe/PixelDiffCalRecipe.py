@@ -202,8 +202,8 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         self.convertUnitsAndRebin(self.wsTOF, self.wsDSP)
 
         self.totalOffsetWS: str = f"offsets_{self.runNumber}_{self._counts}"
-        wsoff: str = f"_{self.runNumber}_tmp_group_offset_{self._counts}"
-        wscc: str = f"_{self.runNumber}_tmp_group_CC_{self._counts}"
+        wsoff: str = f"__{self.runNumber}_tmp_group_offset_{self._counts}"
+        wscc: str = f"__{self.runNumber}_tmp_group_CC_{self._counts}"
 
         for i, (groupID, workspaceIndices) in enumerate(self.groupWorkspaceIndices.items()):
             workspaceIndices = list(workspaceIndices)
@@ -331,7 +331,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         logger.info(f"Pixel calibration converged.  Offsets: {self.medianOffsets}")
 
         # create for inspection
-        outputWorkspace = f"{self.wsDSP}_afterCrossCor"
+        outputWorkspace = f"__{self.wsDSP}_afterCrossCor"
         self.convertUnitsAndRebin(self.wsTOF, outputWorkspace)
         self.mantidSnapper.DeleteWorkspace(
             "Deleting tof workspace",
