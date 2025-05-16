@@ -130,7 +130,7 @@ jobs:
         cd conda.recipe
         echo "versioningit $(versioningit ../)"
         # build the package
-        VERSION=$(versioningit ../) conda mambabuild --channel conda-forge --channel mantid/label/nightly --output-folder . .
+        VERSION=$(versioningit ../) conda mambabuild --channel conda-forge --channel neutrons/label/rc --channel mantid-ornl/label/rc --channel mantid/label/main --output-folder . .
         conda verify noarch/snapred*.tar.bz2
     - name: Deploy to Anaconda
       shell: bash -l {0}
