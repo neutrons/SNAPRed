@@ -119,9 +119,7 @@ jobs:
         condarc: |
           channels:
             - conda-forge
-            - default
-            - mantid/label/nightly
-            - mantid-ornl
+            - neutrons/label/rc
             - mantid-ornl/label/rc
         cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
         cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
