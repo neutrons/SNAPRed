@@ -8,7 +8,7 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.LiveDataState import LiveDataState
 from snapred.backend.error.UserCancellation import UserCancellation
 from snapred.backend.log.logger import snapredLogger
-from snapred.meta.Config import Config
+from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.threading.worker_pool import WorkerPool
@@ -368,7 +368,8 @@ class WorkflowPresenter(QObject):
         # We've already asked for permission.
         self.reset()
 
-    def completeWorkflow(self, message: str = Config["ui.default.workflow.completionMessage"]):
+    @ConfigDefault
+    def completeWorkflow(self, message: str = ConfigValue("ui.default.workflow.completionMessage")):
         # Directly show the completion message and reset the workflow
         QMessageBox.information(
             self.view,

@@ -165,7 +165,7 @@ class SousChef(Service):
             ingredients.crystalDBounds.maximum,
             ingredients.calibrantSamplePath,
         )
-        return CrystallographicInfoService().ingest(*key)["crystalInfo"]
+        return CrystallographicInfoService().ingest(*(key[:-1]))["crystalInfo"]
 
     def prepPeakIngredients(
         self, ingredients: FarmFreshIngredients, pixelMask: Optional[WorkspaceName] = None

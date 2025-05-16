@@ -17,6 +17,7 @@ from snapred.backend.dao.Limit import Pair
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.meta.mantid.FitPeaksOutput import FitOutputEnum
@@ -35,13 +36,6 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     """
 
-    XTAL_DMIN = Config["constants.CrystallographicInfo.crystalDMin"]
-    XTAL_DMAX = Config["constants.CrystallographicInfo.crystalDMax"]
-    MIN_PEAKS = Config["calibration.diffraction.minimumPeaksPerGroup"]
-    PREF_PEAKS = Config["calibration.diffraction.preferredPeaksPerGroup"]
-    MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
-    FWHM = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
-
     FIGURE_MARGIN = 0.5  # top + bottom: inches
 
     signalRunNumberUpdate = Signal(str)
@@ -55,6 +49,13 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     def __init__(self, samples=[], groups=[], parent=None):
         super().__init__(parent=parent)
+
+        self.XTAL_DMIN = self.default_XTAL_DMIN
+        self.XTAL_DMAX = self.default_XTAL_DMAX
+        self.MIN_PEAKS = self.default_MIN_PEAKS
+        self.PREF_PEAKS = self.default_PREF_PEAKS
+        self.MAX_CHI_SQ = self.default_MAX_CHI_SQ
+        self.FWHM = self.default_FWHM
 
         self.mantidSnapper = MantidSnapper(None, "Utensils")
 
@@ -127,6 +128,30 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.initialLayoutHeight = self.size().height()
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
+
+    @classproperty
+    def default_XTAL_DMIN(cls):
+        return Config["constants.CrystallographicInfo.crystalDMin"]
+
+    @classproperty
+    def default_XTAL_DMAX(cls):
+        return Config["constants.CrystallographicInfo.crystalDMax"]
+
+    @classproperty
+    def default_MIN_PEAKS(cls):
+        return Config["calibration.diffraction.minimumPeaksPerGroup"]
+
+    @classproperty
+    def default_PREF_PEAKS(cls):
+        return Config["calibration.diffraction.preferredPeaksPerGroup"]
+
+    @classproperty
+    def default_MAX_CHI_SQ(cls):
+        return Config["constants.GroupDiffractionCalibration.MaxChiSq"]
+
+    @classproperty
+    def default_FWHM(cls):
+        return Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
 
     def updateContinueAnyway(self, continueAnyway: bool):
         self.signalContinueAnyway.emit(continueAnyway)

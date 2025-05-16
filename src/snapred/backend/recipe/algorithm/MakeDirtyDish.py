@@ -3,6 +3,7 @@ from mantid.kernel import Direction
 from mantid.simpleapi import CloneWorkspace
 
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 
 
 class MakeDirtyDish(PythonAlgorithm):
@@ -19,8 +20,19 @@ class MakeDirtyDish(PythonAlgorithm):
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)  # noqa: F821
         self.setRethrows(True)
 
-        self.cis_enabled: bool = Config["cis_mode.enabled"]
-        self.cis_preserve: bool = Config["cis_mode.preserveDiagnosticWorkspaces"]
+    @classproperty
+    def cis_enabled(cls) -> bool:
+        """
+        Check if CIS mode is enabled
+        """
+        return Config["cis_mode.enabled"]
+
+    @classproperty
+    def cis_preserve(cls) -> bool:
+        """
+        Check if CIS mode is enabled
+        """
+        return Config["cis_mode.preserveDiagnosticWorkspaces"]
 
     def PyExec(self) -> None:
         if self.cis_enabled and self.cis_preserve:

@@ -17,6 +17,7 @@ from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParam
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
@@ -24,7 +25,10 @@ logger = snapredLogger.getLogger(__name__)
 
 class PixelGroupingParametersCalculation(PythonAlgorithm):
     # conversion factor from microsecond/Angstrom to meters
-    CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
+
+    @classproperty
+    def CONVERSION_FACTOR(cls):
+        return Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
     def category(self):
         return "SNAPRed Internal"

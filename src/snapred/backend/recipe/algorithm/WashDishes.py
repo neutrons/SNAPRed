@@ -3,6 +3,7 @@ from mantid.kernel import Direction, StringArrayProperty
 from mantid.simpleapi import DeleteWorkspace, DeleteWorkspaces, mtd
 
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 
 
 class WashDishes(PythonAlgorithm):
@@ -20,8 +21,19 @@ class WashDishes(PythonAlgorithm):
         self.declareProperty(StringArrayProperty(name="WorkspaceList", values=[], direction=Direction.Input))
         self.setRethrows(True)
 
-        self.cis_enabled: bool = Config["cis_mode.enabled"]
-        self.cis_preserve: bool = Config["cis_mode.preserveDiagnosticWorkspaces"]
+    @classproperty
+    def cis_enabled(cls) -> bool:
+        """
+        Check if CIS mode is enabled
+        """
+        return Config["cis_mode.enabled"]
+
+    @classproperty
+    def cis_preserve(cls) -> bool:
+        """
+        Check if diagonostic workspaces should be preserved
+        """
+        return Config["cis_mode.preserveDiagnosticWorkspaces"]
 
     def PyExec(self) -> None:
         self.log().notice("Washing the dishes...")

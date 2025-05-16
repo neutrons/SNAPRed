@@ -10,8 +10,13 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class CrystallographicInfoRecipe:
-    D_MIN = Config["constants.CrystallographicInfo.crystalDMin"]
-    D_MAX = Config["constants.CrystallographicInfo.crystalDMax"]
+    @property
+    def D_MIN(self):
+        return Config["constants.CrystallographicInfo.crystalDMin"]
+
+    @property
+    def D_MAX(self):
+        return Config["constants.CrystallographicInfo.crystalDMax"]
 
     def __init__(self):
         # NOTE: workaround, we just add an empty host algorithm.

@@ -4,5 +4,3 @@ from snapred import pullModuleMembers
 __all__, localz = pullModuleMembers(__file__, __name__)
 # update locals such that module members can be accessed directly
 locals().update(localz)
-# cleanup
-del pullModuleMembers

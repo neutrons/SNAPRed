@@ -4,8 +4,11 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from snapred.meta.Config import Config
 from snapred.meta.Enum import StrEnum
 
-VERSION_START = Config["version.start"]
-VERSION_NONE_NAME = Config["version.friendlyName.error"]
+
+# NOTE: This should probably not be reconfigurable at runtime.
+#       This would be liable to only cause indexing issues.
+def VERSION_START():
+    return Config["version.start"]
 
 
 class VersionState(StrEnum):
@@ -43,8 +46,8 @@ class VersionedObject(BaseModel):
             # Conversion from HDF5 metadata.
             value = int(value)
 
-        if value < VERSION_START:
-            raise ValueError(f"Version must be greater than {VERSION_START}")
+        if value < VERSION_START():
+            raise ValueError(f"Version must be greater than {VERSION_START()}")
 
         return value
 

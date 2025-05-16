@@ -1,3 +1,5 @@
+from pydantic import Field
+
 from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.meta.Config import Config
 
@@ -27,4 +29,4 @@ class InstrumentConfig(VersionedObject):
     delThWithGuide: float
     width: float
     frequency: float
-    lowWavelengthCrop: float = Config["constants.CropFactors.lowWavelengthCrop"]
+    lowWavelengthCrop: float = Field(default_factory=lambda: Config["constants.CropFactors.lowWavelengthCrop"])

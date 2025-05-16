@@ -46,7 +46,7 @@ class CalculateDiffCalTable(PythonAlgorithm):
         self.log().notice("Creating DIFC table")
 
         # prepare initial diffraction calibration workspace
-        tmpDifc = mtd.unique_name(prefix="_tmp_")
+        tmpDifc = mtd.unique_name(prefix="__tmp_")
         CalculateDIFC(
             InputWorkspace=self.getPropertyValue("InputWorkspace"),
             OutputWorkspace=tmpDifc,

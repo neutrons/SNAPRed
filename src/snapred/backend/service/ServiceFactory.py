@@ -15,6 +15,7 @@ from snapred.backend.service.StateIdLookupService import StateIdLookupService
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.backend.service.WorkspaceService import WorkspaceService
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.Singleton import Singleton
 
 
@@ -22,7 +23,6 @@ from snapred.meta.decorators.Singleton import Singleton
 @Singleton
 class ServiceFactory:
     serviceDirectory: ServiceDirectory = ServiceDirectory()
-    _pathDelimiter = Config["orchestration.path.delimiter"]
 
     def __init__(self):
         # register the services
@@ -37,6 +37,10 @@ class ServiceFactory:
         self.serviceDirectory.registerService(NormalizationService)
         self.serviceDirectory.registerService(WorkspaceService)
         self.serviceDirectory.registerService(WorkspaceMetadataService)
+
+    @classproperty
+    def _pathDelimiter(cls):
+        return Config["orchestration.path.delimiter"]
 
     def getServiceNames(self):
         return self.serviceDirectory.keys()

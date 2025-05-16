@@ -22,6 +22,7 @@ from workbench.plugins.workspacewidget import WorkspaceWidget
 
 from snapred.backend.log.logger import CustomFormatter, snapredLogger
 from snapred.meta.Config import Config, Resource, datasearch_directories, fromMantidLoggingLevel, fromPythonLoggingLevel
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.ui.widget.LogTable import LogTable
 from snapred.ui.widget.TestPanel import TestPanel
 from snapred.ui.widget.ToolBar import ToolBar
@@ -53,10 +54,6 @@ def prependDataSearchDirectories() -> List[str]:
 
 
 class SNAPRedGUI(QMainWindow):
-    _streamlevel = Config["logging.mantid.stream.level"]
-    _filelevel = Config["logging.mantid.file.level"]
-    _outputfile = Config["logging.mantid.file.output"]
-
     def __init__(self, parent=None, window_flags=None, translucentBackground=False):
         super(SNAPRedGUI, self).__init__(parent)
         if window_flags:
@@ -90,6 +87,29 @@ class SNAPRedGUI(QMainWindow):
 
         splitter.addWidget(AlgorithmProgressWidget())
 
+        if Config["cis_mode.reloadConfigButton"]:
+            self.reloadConfigButton = QPushButton("Reload Config")
+
+            def reloadAndInform():
+                try:
+                    Config.reload()
+                    # Inform the user that the configuration has been reloaded
+                    QMessageBox.information(
+                        self,
+                        "Configuration Reloaded",
+                        f"Env {Config.getCurrentEnv()} configuration has been successfully reloaded.",
+                    )
+                except Exception:  # noqa: BLE001
+                    # Additionally, show error message as popup
+                    msg = "Error encountered while reloading the configuration.\n"
+                    msg = msg + "Please ensure the `.yml` file is properly formatted and available.  "
+                    msg = msg + "Previous Config has been maintained.\n"
+                    msg = msg + "Refer to ~/.snapred/application.yml.bak for the last working configuration.\n"
+                    QMessageBox.critical(self, "Error", msg)
+
+            self.reloadConfigButton.clicked.connect(reloadAndInform)
+            splitter.addWidget(self.reloadConfigButton)
+
         centralWidget = QWidget()
         centralWidget.setObjectName("centralwidget")
         centralLayout = QVBoxLayout()
@@ -119,6 +139,18 @@ class SNAPRedGUI(QMainWindow):
 
         # Check for incompatible `Config` settings.
         Config.validate()
+
+    @classproperty
+    def _streamlevel(cls):
+        return Config["logging.mantid.stream.level"]
+
+    @classproperty
+    def _filelevel(cls):
+        return Config["logging.mantid.file.level"]
+
+    @classproperty
+    def _outputfile(cls):
+        return Config["logging.mantid.file.output"]
 
     @Slot()
     def openCalibrationPanel(self):

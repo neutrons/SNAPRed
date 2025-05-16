@@ -22,6 +22,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.meta.Config import Config
+from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import (
@@ -187,8 +188,8 @@ class GroceryService:
                 del self._loadedInstruments[key]
 
     ## FILENAME METHODS
-
-    def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
+    @ConfigDefault
+    def getIPTS(self, runNumber: str, instrumentName: str = ConfigValue("instrument.name")) -> str:
         """
         Find the approprate IPTS folder for a run number.
 
@@ -302,7 +303,7 @@ class GroceryService:
         if groupingScheme == "Lite":
             return wng.liteDataMap().build()
         instr = "lite" if useLiteMode else "native"
-        return f"{Config['grouping.workspacename.' + instr]}_{groupingScheme}_{runNumber}"
+        return f"__{Config['grouping.workspacename.' + instr]}_{groupingScheme}_{runNumber}"
 
     def _createDiffCalInputWorkspaceName(self, runNumber: str) -> WorkspaceName:
         return wng.diffCalInput().runNumber(runNumber).build()
@@ -362,7 +363,7 @@ class GroceryService:
         NOTE: This method will IGNORE runNumber if the provided version is VersionState.DEFAULT
         """
         wsName = wng.diffCalTable().runNumber(runNumber).version(version).build()
-        if version in [VersionState.DEFAULT, VERSION_START]:
+        if version in [VersionState.DEFAULT, VERSION_START()]:
             wsName = wng.diffCalTable().runNumber("default").version(VersionState.DEFAULT).build()
         return wsName
 

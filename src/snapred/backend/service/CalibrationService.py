@@ -54,6 +54,7 @@ from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe, PixelD
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -79,8 +80,6 @@ class CalibrationService(Service):
     saving calibration data, and loading assessments.
 
     """
-
-    MINIMUM_PEAKS_PER_GROUP = Config["calibration.diffraction.minimumPeaksPerGroup"]
 
     # register the service in ServiceFactory please!
     def __init__(self):
@@ -110,6 +109,10 @@ class CalibrationService(Service):
         self.registerPath("override", self.handleOverrides)
         self.registerPath("runFeedback", self.runFeedback)
         return
+
+    @classproperty
+    def MINIMUM_PEAKS_PER_GROUP(cls):
+        return Config["calibration.diffraction.minimumPeaksPerGroup"]
 
     @staticmethod
     def name():
@@ -146,7 +149,7 @@ class CalibrationService(Service):
         # TODO:  It would be nice for groceryclerk to be smart enough to flatten versions
         # However I will save that scope for another time
         if request.startingTableVersion == VersionState.DEFAULT:
-            request.startingTableVersion = VERSION_START
+            request.startingTableVersion = VERSION_START()
 
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
             request.useLiteMode
@@ -325,7 +328,7 @@ class CalibrationService(Service):
         record = self.dataFactoryService.createCalibrationRecord(request.createRecordRequest)
         version = entry.version
         if self.dataFactoryService.calibrationExists(entry.runNumber, entry.useLiteMode):
-            if version == VERSION_START:
+            if version == VERSION_START():
                 raise RuntimeError("Overwriting the default calibration is not allowed.")
 
         # Rebuild the workspace names to strip any "iteration" number:

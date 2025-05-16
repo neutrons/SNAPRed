@@ -2,6 +2,7 @@ import unittest
 
 # mantid imports
 from mantid.simpleapi import CreateWorkspace, mtd
+from util.Config_helpers import Config_override
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.WashDishes import WashDishes
@@ -17,15 +18,15 @@ class TestWashDishes(unittest.TestCase):
         algo.initialize()
         algo.setProperty("Workspace", wsname)
         # verify workspace not deleted when in CIS mode
-        algo.cis_enabled = True
-        algo.cis_preserve = True
-
-        algo.execute()
+        with Config_override("cis_mode.enabled", True), Config_override("cis_mode.preserveDiagnosticWorkspaces", True):
+            algo.execute()
         assert wsname in mtd
         # verify workspace deleted when not in CIS mode
-        algo.cis_enabled = False
-        algo.cis_preserve = False
-        algo.execute()
+        with (
+            Config_override("cis_mode.enabled", False),
+            Config_override("cis_mode.preserveDiagnosticWorkspaces", False),
+        ):
+            algo.execute()
         assert wsname not in mtd
 
     def test_wash_some_dishes(self):
@@ -40,15 +41,16 @@ class TestWashDishes(unittest.TestCase):
         algo.initialize()
         algo.setProperty("WorkspaceList", wsnames)
         # verify no workapces deleted when in CIS mode
-        algo.cis_enabled = True
-        algo.cis_preserve = True
-        algo.execute()
+        with Config_override("cis_mode.enabled", True), Config_override("cis_mode.preserveDiagnosticWorkspaces", True):
+            algo.execute()
         for wsname in wsnames:
             assert wsname in mtd
         # verify all workspaces deleted when not in CIS mode
-        algo.cis_enabled = False
-        algo.cis_preserve = False
-        algo.execute()
+        with (
+            Config_override("cis_mode.enabled", False),
+            Config_override("cis_mode.preserveDiagnosticWorkspaces", False),
+        ):
+            algo.execute()
         for wsname in wsnames:
             assert wsname not in mtd
 

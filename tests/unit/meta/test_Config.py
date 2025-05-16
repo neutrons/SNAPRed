@@ -204,6 +204,23 @@ def test_resource_packageMode_open():
             mockResourcesPath.assert_called_once_with("snapred.resources", test_path)
 
 
+def test_Config_persistBackup():
+    # mock Path.home() to temporary directory
+    with TemporaryDirectory() as tmpdir:
+        with mock.patch.object(Config_module._Config, "userApplicationDataHome", Path(tmpdir) / ".snapred"):
+            inst = Config_module._Config()
+            # remove the application.yml.bak file if it exists
+            if (Path(tmpdir) / ".snapred" / "application.yml.bak").exists():
+                os.remove(Path(tmpdir) / ".snapred" / "application.yml.bak")
+                os.rmdir(Path(tmpdir) / ".snapred")
+
+            assert not (Path(tmpdir) / ".snapred").exists()
+            # call the persistBackup method
+            inst.persistBackup()
+            assert (Path(tmpdir) / ".snapred").exists()
+            assert (Path(tmpdir) / ".snapred" / "application.yml.bak").exists()
+
+
 def test_Config_accessor():
     # these values are copied from tests/resources/application.yml
     assert Config["environment"] == "test"
