@@ -1,9 +1,7 @@
 name: SNAPRed
 channels:
 - conda-forge
-- default
-- mantid/label/nightly
-- mantid-ornl
+- neutrons/label/rc
 - mantid-ornl/label/rc
 dependencies:
 - python=3.10
