@@ -624,8 +624,8 @@ def test__liveMetadataFromRun_exception_routing(mockRunMetadata):
     for fromRunException in (
         KeyError("some key"),
         RuntimeError("some mantid error"),
-        ValueError("some other validation error")    
-        ):
+        ValueError("some other validation error"),
+    ):
         mockRunMetadata.fromRun.side_effect = fromRunException
         instance = LocalDataService()
         with pytest.raises(RuntimeError, match="Unable to extract RunMetadata from Run"):
@@ -637,10 +637,10 @@ def test__liveMetadataFromRun_exception_routing(mockRunMetadata):
         def __init__(self, msg: str):
             super().__init__()
             self._msg = msg
-            
+
         def __str__(self):
             return self._msg
-    
+
     mockRunMetadata.fromRun.side_effect = SomeOtherException("any other exception")
     with pytest.raises(SomeOtherException, match="any other exception"):
         actual = instance._liveMetadataFromRun(mock.sentinel.run)  # noqa: F841
