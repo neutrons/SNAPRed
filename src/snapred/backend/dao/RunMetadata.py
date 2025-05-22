@@ -215,7 +215,7 @@ class RunMetadata(BaseModel, Mapping):
         # Usually these next are `DASlogsPath == "entry/DASlogs"` and `rootPath == "entry"` respectively.
         # However, for ultralite data these are "mantid_workspace1/logs" and "mantid_workspace1" instead.
         DASlogsPath = Config["instrument.PVLogs.rootGroup"]
-        rootPath = DASlogsPath.split("/")[0]
+        rootPath = DASlogsPath.split("/")[1 if DASlogsPath.startswith("/") else 0]
         DASlogsGroup = h5[DASlogsPath]
         rootGroup = h5[rootPath]
 
