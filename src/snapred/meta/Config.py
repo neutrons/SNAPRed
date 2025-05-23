@@ -173,22 +173,20 @@ class _Config:
 
     @staticmethod
     def _timestamp():
-        return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
 
     def archiveUserYml(self):
         # check if snapred-user.yml exists
-        userHome = Path.home() / ".snapred"
+        userHome = self._userHome()
         if (userHome / "snapred-user.yml").exists():
-            with open(str(userHome / "snapred-user.yml"), "r") as f:
-                applicationYml = yaml.safe_load(f)
-            version = applicationYml.get("application", {"version": None})["version"]
+            version = self.getUserYmlVersionDisk()
 
             # generate human readable timestamp
             timestamp = self._timestamp()
 
             # archive the old snapred-user.yml
             archivePath = userHome / f"snapred-user-{version}-{timestamp}.yml.bak"
-            shutil.move(str(userHome / "snapred-user.yml"), str(archivePath))
+            shutil.copy(str(userHome / "snapred-user.yml"), str(archivePath))
 
     @staticmethod
     def _userHome():
@@ -196,6 +194,17 @@ class _Config:
 
     def snapredVersion(self):
         return snapredVersion
+
+    def getUserYmlVersionDisk(self):
+        # check if snapred-user.yml exists
+        userHome = self._userHome()
+        if (userHome / "snapred-user.yml").exists():
+            with open(str(userHome / "snapred-user.yml"), "r") as f:
+                applicationYml = yaml.safe_load(f)
+            version = applicationYml.get("application", {"version": None})["version"]
+            return version
+        else:
+            return None
 
     def swapToUserYml(self):
         # generate root directory for user configurations
@@ -205,12 +214,13 @@ class _Config:
             if not userHome.exists():
                 userHome.mkdir(parents=True, exist_ok=True)
 
-            # archive old one if it exists and is not the same version
-            self.archiveUserYml()
-
             # check if snapred-user.yml exists
-            if not (userHome / "snapred-user.yml").exists():
+            if self.getUserYmlVersionDisk() != self.snapredVersion():
+                # archive the old snapred-user.yml
+                self.archiveUserYml()
+                # generate a new valid snapred-user.yml
                 self._generateUserYml()
+
         except Exception as e:  # noqa: BLE001
             raise RuntimeError(
                 (
@@ -222,6 +232,8 @@ class _Config:
         else:
             # load the user yml file if the filesystem is ready
             self.loadEnv(str(userHome / "snapred-user.yml"))
+            # archive a backup of the current user yml
+            self.archiveUserYml()
 
     def _generateUserYml(self):
         userHome = self._userHome()
