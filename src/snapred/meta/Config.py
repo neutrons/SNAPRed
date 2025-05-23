@@ -171,6 +171,10 @@ class _Config:
         # load the new environment
         self.reload(env_name)
 
+    @staticmethod
+    def _timestamp():
+        return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
     def archiveUserYml(self):
         # check if snapred-user.yml exists
         userHome = Path.home() / ".snapred"
@@ -180,7 +184,7 @@ class _Config:
             version = applicationYml.get("application", {"version": None})["version"]
 
             # generate human readable timestamp
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            timestamp = self._timestamp()
 
             # archive the old snapred-user.yml
             archivePath = userHome / f"snapred-user-{version}-{timestamp}.yml.bak"

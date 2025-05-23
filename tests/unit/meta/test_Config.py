@@ -362,10 +362,10 @@ def test_swapToUserYml_archive():
         # mock out path's home method
         with (
             mock.patch("snapred.meta.Config.Path.home") as mockHome,
-            mock.patch("snapred.meta.Config.datetime") as mockDateTime,
+            mock.patch.object(Config, "_timestamp") as mockTimeStamp,
         ):
             dateTime = "2023-10-01 12:00:00"
-            mockDateTime.datetime.now().strftime.return_value = dateTime
+            mockTimeStamp.return_value = dateTime
             Config.snapredVersion = lambda: "1.0.0"
             mockHome.return_value = Path(tmpPath)
             Config.swapToUserYml()
