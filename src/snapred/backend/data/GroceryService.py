@@ -22,6 +22,7 @@ from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
 from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     NameBuilder,
@@ -205,7 +206,8 @@ class GroceryService:
 
     ## FILENAME METHODS
 
-    def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> Path | None:
+    @ConfigDefault
+    def getIPTS(self, runNumber: str, instrumentName: str = ConfigValue("instrument.name")) -> Path | None:
         """
         Find the approprate IPTS folder for a run number.
 
@@ -595,13 +597,14 @@ class GroceryService:
         """
 
         stateId, detectorState = self.dataService.generateStateId(runNumber)
-        key = self._key(stateId, useLiteMode)
-        self._updateInstrumentCacheFromADS(runNumber, useLiteMode, key)
+        instrumentKey = self._key(stateId, useLiteMode)
+        runKey = self._key(runNumber, useLiteMode)
+        self._updateInstrumentCacheFromADS(runNumber, useLiteMode, instrumentKey)
 
-        wsName = self._loadedInstruments.get(key)
+        wsName = self._loadedInstruments.get(instrumentKey)
         if wsName is None:
             self._updateNeutronCacheFromADS(runNumber, useLiteMode)
-            if self._loadedRuns.get((runNumber, useLiteMode)) is not None:
+            if self._loadedRuns.get(runKey) is not None:
                 # If possible, use a cached neutron-data workspace as an instrument donor
                 wsName = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
             else:
@@ -628,7 +631,7 @@ class GroceryService:
                 # (Reserved run-numbers will use the unmodified instrument.)
                 if runNumber not in ReservedRunNumber.values():
                     self.updateInstrumentParameters(wsName, detectorState)
-            self._loadedInstruments[key] = wsName
+            self._loadedInstruments[instrumentKey] = wsName
         return wsName
 
     def updateInstrumentParameters(self, wsName: WorkspaceName, detectorState: DetectorState):

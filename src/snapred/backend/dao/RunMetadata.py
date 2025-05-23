@@ -102,7 +102,7 @@ class RunMetadata(BaseModel, Mapping):
         # Log messages about any default values that were substituted.
         if logger.isEnabledFor(logging.DEBUG) and bool(defaultKeys):
             for k in defaultKeys:
-                logger.warning(
+                logger.debug(
                     f"information for '{k}' was not present in the logs: using a default value of '{locals().get(k)}'"
                 )
 
@@ -145,7 +145,10 @@ class RunMetadata(BaseModel, Mapping):
 
     @staticmethod
     def _convertChargeTo_uAh(charge: float, units: str) -> float:
-        # See `mantid/Framework/API/src/Run.cpp` L322-330.
+        # See `mantid/Framework/API/src/Run.cpp` L329-337.
+        # (commit: 62047a6:
+        #    https://github.com/mantidproject/mantid/blob/62047a6f31b0315a9fafc42cbb9ac1f96d9bbcec/Framework/API/src/Run.cpp#L329)
+
         factor = 1.0
         if "picoCoulomb" in units:
             # Conversion factor between picoColumbs and microAmp*hours

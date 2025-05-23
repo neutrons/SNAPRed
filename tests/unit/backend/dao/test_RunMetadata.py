@@ -495,7 +495,7 @@ class TestRunMetadata(unittest.TestCase):
             self._test_default_run_number(RunMetadata.fromNeXusLogs, mockH5File)
 
     def _test_defaults_log_warning(self, mapFunc, mockLogs, neXusFormat: bool):
-        # Test that any default-value substitution logs warnings.
+        # Test that any default-value substitution logs messages at debug logging level.
         # -- `mapFunc`: either `RunMetadata.fromRun` or `RunMetadata.fromNeXusLogs`;
         # -- `mockLogs`: either `self._mockRun` or `mockH5File`.
 
@@ -507,10 +507,10 @@ class TestRunMetadata(unittest.TestCase):
             map_ = mapFunc(logs)  # noqa: F841
             assert mockLogger.isEnabledFor.call_count == 2
             mockLogger.isEnabledFor.assert_any_call(logging.DEBUG)
-            assert mockLogger.warning.call_count == len(defaultKeys)
+            assert mockLogger.debug.call_count == len(defaultKeys)
             for k in defaultKeys:
                 callFound = True
-                for call in mockLogger.warning.mock_calls:
+                for call in mockLogger.debug.mock_calls:
                     if k in call.args[0]:
                         callFound = True
                         break
