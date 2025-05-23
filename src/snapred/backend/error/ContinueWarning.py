@@ -54,7 +54,7 @@ class ContinueWarning(Exception):
             + f"<br><b>{calibrationHome}</b>,<br>"
             + "which is a requirement in order to run the diffraction-calibration and normalization workflows.</p>"
             + "<p>Would you like to swap to your user generated calibration home instead?</p>"
-            + "<br><b>(NOTE: This may create/archive SNAPRed managed files in `~/.snapred`)</b></p>"
+            + "<br><b>(NOTE: This will create/archive SNAPRed managed files in `~/.snapred`)</b></p>"
             + "</font>",
             flags=ContinueWarning.Type.CALIBRATION_HOME_WRITE_PERMISSION,
         )

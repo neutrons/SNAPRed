@@ -205,6 +205,8 @@ class LocalDataService:
                     shutil.copytree(src, dst, dirs_exist_ok=True)
                 else:
                     dst.write_bytes(src.read_bytes())
+        else:
+            logger.info(f"User calibration home already exists: {newCalibrationHome}.")
 
     @staticmethod
     def getUniqueTimestamp() -> float:

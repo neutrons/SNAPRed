@@ -1,4 +1,5 @@
 import copy
+import datetime
 import importlib.resources as resources
 import logging
 import os
@@ -176,11 +177,14 @@ class _Config:
         if (userHome / "snapred-user.yml").exists():
             with open(str(userHome / "snapred-user.yml"), "r") as f:
                 applicationYml = yaml.safe_load(f)
-            version = applicationYml.get("application", {"version": None})["version"]
-            if version != self.snapredVersion():
-                # archive the old snapred-user.yml
-                archivePath = userHome / f"snapred-user-{version}.yml.bak"
-                shutil.move(str(userHome / "snapred-user.yml"), str(archivePath))
+            version = applicationYml.get("version", None)
+
+            # generate human readable timestamp
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+            # archive the old snapred-user.yml
+            archivePath = userHome / f"snapred-user-{version}-{timestamp}.yml.bak"
+            shutil.move(str(userHome / "snapred-user.yml"), str(archivePath))
 
     @staticmethod
     def _userHome():
@@ -192,17 +196,28 @@ class _Config:
     def swapToUserYml(self):
         # generate root directory for user configurations
         userHome = self._userHome()
-        if not userHome.exists():
-            userHome.mkdir(parents=True, exist_ok=True)
 
-        # archive old one if it exists and is not the same version
-        self.archiveUserYml()
+        try:
+            if not userHome.exists():
+                userHome.mkdir(parents=True, exist_ok=True)
 
-        # check if snapred-user.yml exists
-        if not (userHome / "snapred-user.yml").exists():
-            self._generateUserYml()
+            # archive old one if it exists and is not the same version
+            self.archiveUserYml()
 
-        self.loadEnv(str(userHome / "snapred-user.yml"))
+            # check if snapred-user.yml exists
+            if not (userHome / "snapred-user.yml").exists():
+                self._generateUserYml()
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(
+                (
+                    "Unable to swap to user configuration: "
+                    f"{userHome / 'snapred-user.yml'}"
+                    "\nOriginal configuration maintained."
+                )
+            ) from e
+        else:
+            # load the user yml file if the filesystem is ready
+            self.loadEnv(str(userHome / "snapred-user.yml"))
 
     def _generateUserYml(self):
         userHome = self._userHome()

@@ -5,7 +5,6 @@ import json
 import logging
 import os
 import re
-import shutil
 import socket
 import tempfile
 import time
@@ -3605,12 +3604,20 @@ class TestReductionPixelMasks:
         assert "123457(comp)" not in result
         assert "123458(incomp)" not in result
 
+    def generateFakeCalibrationRoot(self, root):
+        # Create a fake calibration root directory structure
+        (root / "CalibrationRoot").mkdir(parents=True, exist_ok=True)
+        (root / "CalibrationRoot" / "CalibrantSamples").mkdir(parents=True, exist_ok=True)
+        (root / "CalibrationRoot" / "Powder").mkdir(parents=True, exist_ok=True)
+        (root / "CalibrationRoot" / "SNAPInstPrm").mkdir(parents=True, exist_ok=True)
+        (root / "CalibrationRoot" / "Powder" / "PixelGroupingDefinitions").mkdir(parents=True, exist_ok=True)
+        (root / "CalibrationRoot" / "Powder" / "SNAPLite.xml").touch()
+
     def test_copyCalibrationRootSkeleton(self):
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
             tmpDir = Path(tmpDir)
-            dataSrc = Path(Resource.getPath("inputs/FakeCalibrationRoot"))
             # copy it to the temporary directory
-            shutil.copytree(dataSrc, tmpDir / "CalibrationRoot")
+            self.generateFakeCalibrationRoot(tmpDir)
             self.service.copyCalibrationRootSkeleton(tmpDir / "CalibrationRoot", tmpDir / "Calibration")
             assert (tmpDir / "Calibration").exists()
             assert (tmpDir / "Calibration" / "CalibrantSamples").exists()
