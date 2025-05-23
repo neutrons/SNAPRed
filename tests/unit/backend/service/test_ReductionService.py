@@ -570,7 +570,6 @@ class TestReductionService(unittest.TestCase):
         assert result == mockResult
 
     @mock.patch(thisService + "ConvertUnitsRecipe")
-    @mock.patch(thisService + "RebinFocussedGroupDataRecipe")
     @mock.patch(thisService + "ReductionGroupProcessingRecipe")
     @mock.patch(thisService + "GroceryService")
     @mock.patch(thisService + "DataFactoryService")
@@ -579,7 +578,6 @@ class TestReductionService(unittest.TestCase):
         mockDataFactoryService,
         mockGroceryService,
         mockReductionGroupProcessingRecipe,
-        mockRebinFocussedGroupDataRecipe,
         mockConvertUnitsRecipe,  # noqa: ARG002
     ):
         self.instance.groceryService = mockGroceryService
@@ -617,12 +615,8 @@ class TestReductionService(unittest.TestCase):
         }
 
         mockReductionGroupProcessingRecipe().cook.assert_called_once_with(mockIngredients.groupProcessing(0), groceries)
-        groceries = {"inputWorkspace": groceries["outputWorkspace"]}
-        rebinIngredients = mockRebinFocussedGroupDataRecipe.Ingredients()
-        mockRebinFocussedGroupDataRecipe().cook.assert_called_once_with(rebinIngredients, groceries)
 
     @mock.patch(thisService + "ConvertUnitsRecipe")
-    @mock.patch(thisService + "RebinFocussedGroupDataRecipe")
     @mock.patch(thisService + "ReductionGroupProcessingRecipe")
     @mock.patch(thisService + "GroceryService")
     @mock.patch(thisService + "DataFactoryService")
@@ -631,7 +625,6 @@ class TestReductionService(unittest.TestCase):
         mockDataFactoryService,
         mockGroceryService,
         mockReductionGroupProcessingRecipe,  # noqa: ARG002
-        mockRebinFocussedGroupDataRecipe,  # noqa: ARG002
         mockConvertUnitsRecipe,  # noqa: ARG002
     ):
         # This test verifies that live-data args are passed correctly to the fetch methods.

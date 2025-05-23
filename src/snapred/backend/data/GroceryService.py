@@ -2,12 +2,13 @@
 import json
 from collections.abc import Iterable
 from datetime import datetime
+import numpy as np
 from pathlib import Path
+from pydantic import validate_call
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
-import numpy as np
+from mantid.api import FileLoaderRegistry
 from mantid.dataobjects import MaskWorkspace
-from pydantic import validate_call
 
 from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionState
 from snapred.backend.dao.ingredients import GroceryListItem
@@ -817,10 +818,11 @@ class GroceryService:
             workspaceName = self._createNeutronWorkspaceName(runNumber, useLiteMode)
             loaderArgs = "{}"
             if not bool(loader) and Config["nexus.dataFormat.event"]:
-                # If the loader hasn't been specified: assume that the input data will be in event format.
-                # In this case, using only a single bin boundary allows a much faster load.
-                loader = "LoadEventNexus"
-                loaderArgs = '{"NumberOfBins": 1}' 
+                # If the loader hasn't been specified, check if this is original input data in event format.
+                # In this case, specifying only a single bin allows a much faster load.
+                loader = FileLoaderRegistry.Instance().chooseLoader(str(filepath)).name()
+                if loader == "LoadEventNexus":
+                    loaderArgs = '{"NumberOfBins": 1}' 
             data = self.grocer.executeRecipe(str(filepath), workspaceName, loader, loaderArgs=loaderArgs)       
         else:
             data = missingDataHandler()
@@ -1165,19 +1167,16 @@ class GroceryService:
 
             # then load the new one
             filePath = self._lookupNormalizationWorkspaceFilename(runNumber, useLiteMode, version)
-            loaderArgs = "{}"
-            if not bool(loader) and Config["nexus.dataFormat.event"]:
-                # If the loader hasn't been specified: assume that the normalization data will be in event format.
-                # In this case, using only a single bin boundary allows a much faster load.
-                loader = "LoadEventNexus"
-                loaderArgs = '{"NumberOfBins": 1}' 
+            
+            # TODO: Unfortunately, `LoadNexusProcessed` does not support the `NumberOfBins=1` optimization for loading
+            # event data.  Probably: event-format normalization data should be saved with only one bin to speed up reload.
+            # (See also:  "nexus.dataFormat.event" flag in "application.yml".)
 
             # Note: 'LoadNexusProcessed' neither requires nor makes use of an instrument donor.
             data = self.grocer.executeRecipe(
                 filename=str(filePath),
                 workspace=workspaceName,
                 loader=loader,
-                loaderArgs=loaderArgs
             )
             self._processNeutronDataCopy(item, workspaceName)
             self.normalizationCache.add(workspaceName)
