@@ -894,7 +894,7 @@ class GroceryService:
 
         return self._fetchNeutronDataSingleUse(_item, tryLiveData)
 
-    def _fetchNeutronDataLite(self, item: GroceryListItem, export=False) -> Dict[str, Any]:
+    def _fetchNeutronDataLite(self, item: GroceryListItem, export=True) -> Dict[str, Any]:
         _item = item.model_copy(deep=True)
         _item.useLiteMode = True
 
@@ -957,7 +957,7 @@ class GroceryService:
         result = None
 
         if useLiteMode:
-            result = self._fetchNeutronDataLite(item, export=False)
+            result = self._fetchNeutronDataLite(item, export=True)
         else:
             result = self._fetchNeutronDataNative(item)
         self._processNeutronDataCopy(item, result["workspace"])
