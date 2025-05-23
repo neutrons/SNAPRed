@@ -21,8 +21,8 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.meta.Config import Config
-from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
+from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     NameBuilder,
