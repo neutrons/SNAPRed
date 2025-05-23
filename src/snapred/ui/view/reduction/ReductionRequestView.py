@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from datetime import datetime, timedelta
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional
 
 from qtpy.QtCore import Qt, QTimer, Signal, Slot
 from qtpy.QtGui import QColor
@@ -18,7 +18,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from snapred.backend.dao.LiveMetadata import LiveMetadata
+from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state.RunNumber import RunNumber
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
@@ -39,14 +39,14 @@ class _RequestViewBase(BackendRequestView):
         parent=None,
         getCompatibleMasks: Optional[Callable[[List[str], bool], None]] = None,
         validateRunNumbers: Optional[Callable[[List[str]], None]] = None,
-        getLiveMetadata: Optional[Callable[[], LiveMetadata]] = None,
+        getLiveMetadata: Optional[Callable[[], RunMetadata]] = None,
     ):
         super(_RequestViewBase, self).__init__(parent=parent)
         self.getCompatibleMasks = getCompatibleMasks
         self.validateRunNumbers = validateRunNumbers
         self.getLiveMetadata = getLiveMetadata
 
-        self.retrieveRunFeedbackCallback: Optional[Callable[[str], Tuple[str, str]]] = None
+        self.runMetadataCallback: Optional[Callable[[str], RunMetadata]] = None
 
         self.runNumbers = []
         self.pixelMaskDropdown = self._multiSelectDropDown("Select Pixel Mask(s)", [])
@@ -80,8 +80,8 @@ class _RequestViewBase(BackendRequestView):
         self.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
         self.liveDataToggle.stateChanged.connect(self.liveDataModeChange)
 
-    def setRetrieveRunFeedbackCallback(self, cb: Callable[[str], Tuple[str, str]]):
-        self.retrieveRunFeedbackCallback = cb
+    def setRunMetadataCallback(self, callback: Callable[[str], RunMetadata]):
+        self.runMetadataCallback = callback
 
     @ExceptionToErrLog
     @Slot(bool)
@@ -150,14 +150,12 @@ class _RequestViewBase(BackendRequestView):
 
 
 class _RequestView(_RequestViewBase):
-    signalUpdateRunFeedback = Signal(str, str)
-
     def __init__(
         self,
         parent=None,
         getCompatibleMasks: Optional[Callable[[List[str], bool], None]] = None,
         validateRunNumbers: Optional[Callable[[List[str]], None]] = None,
-        getLiveMetadata: Optional[Callable[[], LiveMetadata]] = None,
+        getLiveMetadata: Optional[Callable[[], RunMetadata]] = None,
     ):
         super(_RequestView, self).__init__(
             parent=parent,
@@ -196,7 +194,11 @@ class _RequestView(_RequestViewBase):
         self.enterRunNumberButton.clicked.connect(self.addRunNumber)
         self.clearButton.clicked.connect(self.clearRunNumbers)
 
-        self.signalUpdateRunFeedback.connect(self._setRunFeedback)
+    def _runPreviewText(self, metadata: RunMetadata) -> str:
+        return (
+            f"{'LIVE: ' if metadata.liveData else ''}"
+            + f"{metadata.runNumber},    StateId = {metadata.stateId.hex},    Title = {metadata.runTitle}"
+        )
 
     @Slot()
     def addRunNumber(self):
@@ -210,10 +212,10 @@ class _RequestView(_RequestViewBase):
                 if self.validateRunNumbers is not None:
                     self.validateRunNumbers(noDuplicates)
                 self.runNumbers = noDuplicates
-                if self.retrieveRunFeedbackCallback:
-                    for rn in runNumberList:
-                        stateId, runTitle = self.retrieveRunFeedbackCallback(rn)
-                        lineText = f"{rn},    StateId = {stateId},    Title = {runTitle}"
+                if self.runMetadataCallback:
+                    for runNumber in runNumberList:
+                        metadata = self.runMetadataCallback(runNumber)
+                        lineText = self._runPreviewText(metadata)
                         self.runNumberDisplay.addItem(lineText)
                 self.runNumberInput.clear()
                 self._populatePixelMaskDropdown(self.useLiteMode())
@@ -254,9 +256,6 @@ class _RequestView(_RequestViewBase):
         self.runNumberDisplay.clear()
         self.pixelMaskDropdown.setItems([])
 
-    def updateRunFeedback(self, stateId: str, runTitle: str):
-        self.signalUpdateRunFeedback.emit(stateId, runTitle)
-
     @Slot(str, str)
     def _setRunFeedback(self, stateId: str, runTitle: str):
         if not stateId and not runTitle:
@@ -296,7 +295,7 @@ class _LiveDataView(_RequestViewBase):
         parent=None,
         getCompatibleMasks: Optional[Callable[[List[str], bool], None]] = None,
         validateRunNumbers: Optional[Callable[[List[str]], None]] = None,
-        getLiveMetadata: Optional[Callable[[], LiveMetadata]] = None,
+        getLiveMetadata: Optional[Callable[[], RunMetadata]] = None,
     ):
         super(_LiveDataView, self).__init__(
             parent=parent,
@@ -374,8 +373,8 @@ class _LiveDataView(_RequestViewBase):
         self._reductionStatus = status
         self._updateLiveMetadata()
 
-    @Slot(LiveMetadata, StrEnum)
-    def updateLiveMetadata(self, data: LiveMetadata):
+    @Slot(RunMetadata, StrEnum)
+    def updateLiveMetadata(self, data: RunMetadata):
         self._liveMetadata = data
         self._updateLiveMetadata()
 
@@ -607,7 +606,7 @@ class ReductionRequestView(QWidget):
         parent=None,
         getCompatibleMasks: Optional[Callable[[List[str], bool], None]] = None,
         validateRunNumbers: Optional[Callable[[List[str]], None]] = None,
-        getLiveMetadata: Optional[Callable[[], LiveMetadata]] = None,
+        getLiveMetadata: Optional[Callable[[], RunMetadata]] = None,
     ):
         super(ReductionRequestView, self).__init__(parent=parent)
 
@@ -652,8 +651,8 @@ class ReductionRequestView(QWidget):
         if not self.liveDataMode():
             self._requestView.updateRunFeedback(stateId, runTitle)
 
-    @Slot(LiveMetadata)
-    def updateLiveMetadata(self, data: LiveMetadata):
+    @Slot(RunMetadata)
+    def updateLiveMetadata(self, data: RunMetadata):
         if self.liveDataMode():
             self._liveDataView.updateLiveMetadata(data)
 

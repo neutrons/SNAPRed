@@ -11,11 +11,10 @@ from pydantic import validate_call
 
 from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionState
 from snapred.backend.dao.ingredients import GroceryListItem
-from snapred.backend.dao.LiveMetadata import LiveMetadata
+from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.backend.data.util.PV_logs_util import mappingFromRun
 from snapred.backend.error.LiveDataState import LiveDataState
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -69,7 +68,11 @@ class GroceryService:
         self._liveDataKeys: List[Tuple[str, bool]] = []
 
         # Cache maps to workspace names, for various purposes
+
+        #   -- (<grouping scheme>, stateId, useLiteMode) -> <workspace name>
         self._loadedGroupings: Dict[Tuple[str, str, bool], str] = {}
+
+        #   -- (stateId, useLiteMode) -> <workspace name>
         self._loadedInstruments: Dict[Tuple[str, bool], str] = {}
 
         self.normalizationCache: Set[WorkspaceName] = set()
@@ -109,15 +112,22 @@ class GroceryService:
         """
         Rebuild the grouping cache
         """
-        for loadedGrouping in self._loadedGroupings.copy():
-            self._updateGroupingCacheFromADS(loadedGrouping, self._loadedGroupings[loadedGrouping])
+        for key, ws in self._loadedGroupings.copy().items():
+            self._updateGroupingCacheFromADS(key, ws)
 
     def rebuildInstrumentCache(self):
         """
         Rebuild the instrument cache
         """
-        for loadedInstrument in self._loadedInstruments.copy():
-            self._updateInstrumentCacheFromADS(*loadedInstrument)
+        # Implementation notes:
+        #   * We do not call `_updateInstrumentCacheFromADS` here, because that requires the 'runNumber',
+        #     and the instrument cache is keyed by 'stateId';
+        #   * However, at each call to `_fetchInstrumentDonor`, _updateInstrumentCacheFromADS` will be called,
+        #     and at that time the runNumber-based update will be performed.
+
+        for key, workspace in self._loadedInstruments.copy().items():
+            if not self.workspaceDoesExist(workspace):
+                del self._loadedInstruments[key]
 
     def getCachedWorkspaces(self):
         """
@@ -168,7 +178,7 @@ class GroceryService:
         elif self._loadedGroupings.get(key) is not None and not self.workspaceDoesExist(workspace):
             del self._loadedGroupings[key]
 
-    def _updateInstrumentCacheFromADS(self, runNumber: str, useLiteMode: bool):
+    def _updateInstrumentCacheFromADS(self, runNumber: str, useLiteMode: bool, cacheKey: Tuple[str, bool]):
         """
         Ensure cache consistency for a single instrument-donor workspace.
 
@@ -176,20 +186,28 @@ class GroceryService:
         :type runNumber: str
         :param useLiteMode: whether to use lite or native resolution
         :type useLiteMode: bool
+        :param cacheKey: the instrument-cache key, using the 'stateId' instead of the 'runNumber'
+        :type cacheKey: Tuple[str, bool]
         """
         # The workspace name in the cache may be either a neutron data workspace or an empty-instrument workspace.
         workspace = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
-        key = self._key(runNumber, useLiteMode)
-        if self.workspaceDoesExist(workspace) and self._loadedInstruments.get(key) is None:
-            self._loadedInstruments[key] = workspace
-        elif self._loadedInstruments.get(key) is not None:
-            workspace = self._loadedInstruments.get(key)
+        if self.workspaceDoesExist(workspace) and self._loadedInstruments.get(cacheKey) is None:
+            self._loadedInstruments[cacheKey] = workspace
+        elif self._loadedInstruments.get(cacheKey) is not None:
+            workspace = self._loadedInstruments.get(cacheKey)
             if not self.workspaceDoesExist(workspace):
-                del self._loadedInstruments[key]
+                del self._loadedInstruments[cacheKey]
+
+    def _clearNormalizationCache(self):
+        # clear normalization cache
+        for ws in self.normalizationCache:
+            self.deleteWorkspaceUnconditional(ws)
+        self.normalizationCache = set()
 
     ## FILENAME METHODS
+
     @ConfigDefault
-    def getIPTS(self, runNumber: str, instrumentName: str = ConfigValue("instrument.name")) -> str:
+    def getIPTS(self, runNumber: str, instrumentName: str = ConfigValue("instrument.name")) -> Path | None:
         """
         Find the approprate IPTS folder for a run number.
 
@@ -198,12 +216,11 @@ class GroceryService:
         :param instrumentName: the name of the instrument, defaults to instrument defined in application.yml
         :type instrumentName: str
         :return: The IPTS directory
-        :rtype: str
+        :rtype: Path | None
         """
-        ipts = self.dataService.getIPTS(runNumber, instrumentName)
-        return str(ipts)
+        return self.dataService.getIPTS(runNumber, instrumentName)
 
-    def _createNeutronFilePath(self, runNumber: str, useLiteMode: bool) -> Path:
+    def _createNeutronFilePath(self, runNumber: str, useLiteMode: bool) -> Path | None:
         return self.dataService.createNeutronFilePath(runNumber, useLiteMode)
 
     @validate_call
@@ -565,8 +582,8 @@ class GroceryService:
 
     def _fetchInstrumentDonor(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:
         """
-        The grouping workspaces require an instrument definition, and do not always have their own instrument definition
-        saved with them (such as XML groupings).  Therefore, when loading groupings, it is necessary to match them to
+        The grouping workspaces require an instrument definition, and do not have their own instrument definition
+        saved with them.  Therefore, when loading groupings, it is necessary to match them to
         the proper instrument definition *with the proper instrument state params*.
         This uses the run number (and lite mode) to locate the proper state, and from that the proper instrument
         definition with instrument params for that state.
@@ -578,13 +595,16 @@ class GroceryService:
         :return: the name of a workspace in the ADS with a correctly updated instrument
         :rtype: WorkspaceName
         """
-        self._updateInstrumentCacheFromADS(runNumber, useLiteMode)
 
-        key = self._key(runNumber, useLiteMode)
-        wsName = self._loadedInstruments.get(key)
+        stateId, detectorState = self.dataService.generateStateId(runNumber)
+        instrumentKey = self._key(stateId, useLiteMode)
+        runKey = self._key(runNumber, useLiteMode)
+        self._updateInstrumentCacheFromADS(runNumber, useLiteMode, instrumentKey)
+
+        wsName = self._loadedInstruments.get(instrumentKey)
         if wsName is None:
             self._updateNeutronCacheFromADS(runNumber, useLiteMode)
-            if self._loadedRuns.get(key) is not None:
+            if self._loadedRuns.get(runKey) is not None:
                 # If possible, use a cached neutron-data workspace as an instrument donor
                 wsName = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
             else:
@@ -610,9 +630,8 @@ class GroceryService:
                 # Initialize the instrument parameters
                 # (Reserved run-numbers will use the unmodified instrument.)
                 if runNumber not in ReservedRunNumber.values():
-                    detectorState: DetectorState = self._getDetectorState(runNumber)
                     self.updateInstrumentParameters(wsName, detectorState)
-            self._loadedInstruments[key] = wsName
+            self._loadedInstruments[instrumentKey] = wsName
         return wsName
 
     def updateInstrumentParameters(self, wsName: WorkspaceName, detectorState: DetectorState):
@@ -685,18 +704,6 @@ class GroceryService:
             UpdateInstrumentParameters=True,
         )
         self.mantidSnapper.executeQueue()
-
-    def _getDetectorState(self, runNumber: str) -> DetectorState:
-        """
-        Get the `DetectorState` associated with a given run number
-
-        :param runNumber: a run number, whose state is to be returned
-        :type runNumber: str
-        :return: detector state object corresponding to the run number
-        :rtype: DetectorState
-        """
-        # This method is provided to facilitate workspace loading with a _complete_ instrument state
-        return self.dataService.readDetectorState(runNumber)
 
     @validate_call
     def _getCalibrationDataPath(
@@ -795,7 +802,10 @@ class GroceryService:
         data = {}
         key = self._key(runNumber, useLiteMode)
         rawWorkspaceName: WorkspaceName = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
-        filepath: Path = self._createNeutronFilePath(runNumber, useLiteMode)
+
+        # Warning: `filePath` will be `None` if no IPTS directory exists!
+        #   This situation occurs during diagnostic runs in live-data mode.
+        filePath = self._createNeutronFilePath(runNumber, useLiteMode)
 
         # This checks to make sure existing cache is valid
         self._updateNeutronCacheFromADS(runNumber, useLiteMode)
@@ -808,9 +818,9 @@ class GroceryService:
             data = {"loader": "cached"}
             workspaceName = self._createNeutronWorkspaceName(runNumber, useLiteMode)
             self.getCloneOfWorkspace(rawWorkspaceName, workspaceName)
-        elif filepath.exists() and item.liveDataArgs is None:
+        elif bool(filePath) and filePath.exists() and item.liveDataArgs is None:
             workspaceName = self._createNeutronWorkspaceName(runNumber, useLiteMode)
-            data = self.grocer.executeRecipe(str(filepath), workspaceName, loader)
+            data = self.grocer.executeRecipe(str(filePath), workspaceName, loader)
         else:
             data = missingDataHandler()
             workspaceName = data["workspace"]
@@ -835,7 +845,7 @@ class GroceryService:
             startTime = (
                 (datetime.utcnow() - liveDataArgs.duration).isoformat()
                 if liveDataArgs is not None and liveDataArgs.duration != 0
-                else LiveMetadata.FROM_START_ISO8601
+                else RunMetadata.FROM_START_ISO8601
             )
 
             loaderArgs = {
@@ -845,11 +855,12 @@ class GroceryService:
                 "PreserveEvents": True,
                 "StartTime": startTime,
             }
+
             data = self.grocer.executeRecipe(workspace=workspaceName, loader=loader, loaderArgs=json.dumps(loaderArgs))
             data["fromLiveData"] = True
             if data["result"]:
-                logs = mappingFromRun(self.mantidSnapper.mtd[workspaceName].getRun())
-                liveRunNumber = str(logs["run_number"])
+                metadata = RunMetadata.fromRun(self.mantidSnapper.mtd[workspaceName].getRun())
+                liveRunNumber = str(metadata.runNumber)
 
                 if int(runNumber) != int(liveRunNumber):
                     # Live run number is unexpected => there has been a live-data run-state change.
@@ -1149,12 +1160,7 @@ class GroceryService:
                 "workspace": workspaceName,
             }
         else:
-            # clear normalization cache
-            # NOTE: I dont believe mtd.getObjectNames() returns hidden workspaces.
-            for ws in self.normalizationCache:
-                if self.workspaceDoesExist(ws):
-                    self.deleteWorkspaceUnconditional(ws)
-            self.normalizationCache = set()
+            self._clearNormalizationCache()
 
             # then load the new one
             filename = self._lookupNormalizationWorkspaceFilename(runNumber, useLiteMode, version)
@@ -1167,7 +1173,6 @@ class GroceryService:
             )
             self._processNeutronDataCopy(item, workspaceName)
             self.normalizationCache.add(workspaceName)
-        data["workspace"] = workspaceName
         return data
 
     def fetchReductionPixelMask(self, item: GroceryListItem) -> Dict[str, Any]:
@@ -1269,8 +1274,13 @@ class GroceryService:
 
         # monitors take ~1 second to load, probably unnecessary to cache
 
-        filepath: Path = self._createNeutronFilePath(runNumber, useLiteMode)
-        self.grocer.executeRecipe(str(filepath), workspaceName, "LoadNexusMonitors")
+        # Warning: `filePath` will be `None` if no IPTS directory exists!
+        #   This situation occurs during diagnostic runs in live-data mode.
+        filePath = self._createNeutronFilePath(runNumber, useLiteMode)
+        if not bool(filePath):
+            raise RuntimeError(f"Cannot find IPTS directory for run '{runNumber}'")
+
+        self.grocer.executeRecipe(str(filePath), workspaceName, "LoadNexusMonitors")
 
         return workspaceName
 

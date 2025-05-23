@@ -39,6 +39,9 @@ class DataExportService:
 
     def getFullLiteDataFilePath(self, runNumber: str) -> Path:
         path = self.dataService.getIPTS(runNumber)
+        if path is None:
+            raise RuntimeError(f"Cannot find IPTS directory for run '{runNumber}'")
+
         pre = "nexus.lite.prefix"
         ext = "nexus.lite.extension"
         fileName = Config[pre] + str(runNumber) + Config[ext]

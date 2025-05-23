@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     ValueFormat,
-    VersionState,
+    VersionState,  # WARNING: import from 'snapred.backend.dao.indexing.Versioning' here is Circular.
     WorkspaceName,
 )
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf

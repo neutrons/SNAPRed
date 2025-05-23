@@ -14,7 +14,6 @@ from mantid.kernel import (
     StringListValidator,
 )
 
-from snapred.backend.data.util.PV_logs_util import populateInstrumentParameters
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -183,9 +182,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             #   on files written prior to the merge of the
             #   `SaveNexus` 'instrument_parameter_map' write-precision fix.
             # It probably should not be removed, even after that fix is merged.
-            # It should be replaced with `mtd[workspace].updateInstrumentParameters()` after
-            #   Mantid PR#38684 has been merged.
-            populateInstrumentParameters(outWS)
+            self.mantidSnapper.mtd[outWS].populateInstrumentParameters()
 
         self.setPropertyValue("OutputWorkspace", outWS)
         self.setPropertyValue("LoaderType", str(loaderType))

@@ -19,8 +19,6 @@ from util.pytest_helpers import handleStateInit
 from util.qt_mock_util import MockQMessageBox
 from util.TestSummary import TestSummary
 
-# I would prefer not to access `LocalDataService` within an integration test,
-#   however, for the moment, the reduction-data output relocation fixture is defined in the current file.
 from snapred.meta.Config import Resource
 from snapred.ui.main import SNAPRedGUI, prependDataSearchDirectories
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView

@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from snapred.backend.dao import LiveMetadata
+from snapred.backend.dao import RunMetadata
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
     ReductionIngredients,
@@ -66,6 +66,7 @@ class ReductionService(Service):
         self.mantidSnapper = MantidSnapper(None, __name__)
         self.registerPath("", self.reduction)
         self.registerPath("ingredients", self.prepReductionIngredients)
+        self.registerPath("metadata", self.getRunMetadata)
         self.registerPath("groceries", self.fetchReductionGroceries)
         self.registerPath("groupings", self.fetchReductionGroupings)
         self.registerPath("loadGroupings", self.loadAllGroupings)
@@ -82,6 +83,7 @@ class ReductionService(Service):
         self.registerPath("grabWorkspaceforArtificialNorm", self.grabWorkspaceforArtificialNorm)
         self.registerPath("hasLiveDataConnection", self.hasLiveDataConnection)
         self.registerPath("getLiveMetadata", self.getLiveMetadata)
+        self.registerPath("getRunMetadata", self.getRunMetadata)
         return
 
     @staticmethod
@@ -165,13 +167,23 @@ class ReductionService(Service):
             continueFlags ^= request.continueFlags & continueFlags
 
         if continueFlags:
-            raise ContinueWarning(
-                f"<p>It looks like you don't have permissions to write to "
-                f"<br><b>{self.getSavePath(request.runNumber)}</b>,<br>"
-                "but you can still save using the workbench tools.</p>"
-                "<p>Would you like to continue anyway?</p>",
-                continueFlags,
-            )
+            msg = ""
+            path = self.getSavePath(request.runNumber)
+            if path is not None:
+                msg = (
+                    f"<p>It looks like you don't have permissions to write to "
+                    f"<br><b>{path}</b>,<br>"
+                    "but you can still save using the workbench tools.</p>"
+                    "<p>Would you like to continue anyway?</p>"
+                )
+            else:
+                msg = (
+                    f"<p>No IPTS-directory exists yet for run '{request.runNumber}',<br>"
+                    "but you can still save using the workbench tools.</p>"
+                    "<p>Would you like to continue anyway?</p>"
+                )
+
+            raise ContinueWarning(msg, continueFlags)
 
     @FromString
     def reduction(self, request: ReductionRequest):
@@ -499,15 +511,28 @@ class ReductionService(Service):
         return self.dataExportService.getUniqueTimestamp()
 
     def checkReductionWritePermissions(self, runNumber: str) -> bool:
-        path = self.dataExportService.getReductionStateRoot(runNumber)
-        return self.dataExportService.checkWritePermissions(path)
+        try:
+            path = self.dataExportService.getReductionStateRoot(runNumber)
+            return self.dataExportService.checkWritePermissions(path)
+        except RuntimeError as e:
+            # In live-data case, sometimes there is no IPTS directory at all.
+            if "Cannot find IPTS directory" not in str(e):
+                raise
+        return False
 
     def checkCalibrationWritePermissions(self, runNumber: str) -> bool:
         path = self.dataExportService.getCalibrationStateRoot(runNumber)
         return self.dataExportService.checkWritePermissions(path)
 
-    def getSavePath(self, runNumber: str) -> Path:
-        return self.dataExportService.getReductionStateRoot(runNumber)
+    def getSavePath(self, runNumber: str) -> Path | None:
+        path = None
+        try:
+            path = self.dataExportService.getReductionStateRoot(runNumber)
+        except RuntimeError as e:
+            # In the live-data case, the IPTS-directory may not exist at all.
+            if "Cannot find IPTS directory" not in str(e):
+                raise
+        return path
 
     def getStateIds(self, runNumbers: List[str]) -> List[str]:
         stateIds = []
@@ -636,8 +661,11 @@ class ReductionService(Service):
         return rebinResult
 
     def hasLiveDataConnection(self) -> bool:
-        """For 'live data' methods: test if there is a listener connection to the instrument."""
+        """For 'live data' methods: verify that there is a listener connection to the instrument."""
         return self.dataFactoryService.hasLiveDataConnection()
 
-    def getLiveMetadata(self) -> LiveMetadata:
+    def getLiveMetadata(self) -> RunMetadata:
         return self.dataFactoryService.getLiveMetadata()
+
+    def getRunMetadata(self, runNumber: str) -> RunMetadata:
+        return self.dataFactoryService.getRunMetadata(runNumber)

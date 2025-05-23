@@ -58,7 +58,8 @@ def cleanup_workspace_at_exit():
             # Provide an error diagnostic message, but do not bypass the error:
             #     the workspaces list must be correct.
             non_existent_workspaces = set([ws for ws in _workspaces if not mtd.doesExist(ws)])
-            print(f"Non-existent workspaces: {non_existent_workspaces}.")
+            if len(non_existent_workspaces):
+                print(f"Non-existent workspaces: {non_existent_workspaces}.")
 
             DeleteWorkspaces(_workspaces)
     except RuntimeError:
@@ -84,7 +85,9 @@ def cleanup_class_workspace_at_exit():
 
             # Provide an error diagnostic message, but do not bypass the error:
             #     the workspaces list must be correct.
-            print(f"Non-existent workspaces: {set([ws for ws in _workspaces if not mtd.doesExist(ws)])}.")
+            non_existent_workspaces = set([ws for ws in _workspaces if not mtd.doesExist(ws)])
+            if len(non_existent_workspaces):
+                print(f"Non-existent workspaces: {non_existent_workspaces}.")
 
             DeleteWorkspaces(_workspaces)
     except RuntimeError:
@@ -183,7 +186,7 @@ def reduction_home_from_mirror():
     # IMPLEMENTATION notes: (see previous).
     _stack = ExitStack()
 
-    def _reduction_home_from_mirror(runNumber: str, prefix: Optional[Path] = None):
+    def _reduction_home_from_mirror(runNumber: str, prefix: Optional[Path] = None) -> Path:
         if prefix is None:
             dataService = LocalDataService()
             originalReductionHome = dataService._constructReductionStateRoot(runNumber)

@@ -1,6 +1,6 @@
 from typing import Any, List, NamedTuple, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
 from snapred.backend.dao.Limit import Limit, Pair
@@ -84,7 +84,8 @@ class FarmFreshIngredients(BaseModel):
     @focusGroup.setter
     def focusGroup(self, fg: FocusGroup):
         if fg is None:
-            raise ValidationError("'focusGroup' is None")
+            # TODO: move this check into a pydantic validator.
+            raise ValueError("'focusGroup' is None")
         self.focusGroups = [fg]
 
     @field_validator("versions")
@@ -124,10 +125,10 @@ class FarmFreshIngredients(BaseModel):
         if isinstance(v, dict):
             if "focusGroup" in v:
                 if "focusGroups" in v:
-                    raise ValidationError("initialization with both 'focusGroup' and 'focusGroups' properties")
+                    raise ValueError("initialization with both 'focusGroup' and 'focusGroups' properties")
                 fg = v["focusGroup"]
                 if fg is None:
-                    raise ValidationError("'focusGroup' is None")
+                    raise ValueError("'focusGroup' is None")
                 v["focusGroups"] = [fg]
                 del v["focusGroup"]
         return v

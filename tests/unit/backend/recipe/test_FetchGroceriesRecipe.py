@@ -14,8 +14,7 @@ from mantid.simpleapi import (
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-
-# needed to make mocked ingredients
+from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.recipe.FetchGroceriesRecipe import (
     FetchGroceriesRecipe as Recipe,  # noqa: E402
 )
@@ -176,7 +175,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
     def test_fetch_failed(self):
         # this is some file that it can't load
         mockFilename = Resource.getPath("inputs/crystalInfo/blank_file.cif")
-        with pytest.raises(RuntimeError):
+        with pytest.raises(AlgorithmException, match=".*Failed to recognize this file as an ASCII file.*"):
             self.rx.executeRecipe(mockFilename, self.fetchedWSname, "")
 
     def test_fetch_grouping(self):
@@ -196,7 +195,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
 
     def test_failed_fetch_grouping(self):
         groupFilename = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
-        with pytest.raises(RuntimeError):
+        with pytest.raises(AlgorithmException, match=".*instrumentPropertySource.*"):
             self.rx.executeRecipe(
                 groupFilename,
                 self.fetchedWSname,

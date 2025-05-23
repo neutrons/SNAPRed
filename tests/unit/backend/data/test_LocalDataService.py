@@ -15,13 +15,13 @@ from collections.abc import Mapping
 from contextlib import ExitStack
 from pathlib import Path
 from random import randint, shuffle
-from typing import List, Literal, Set
+from typing import List, Literal, Set, Tuple
 
 import h5py
 import numpy as np
 import pydantic
 import pytest
-from mantid.api import ITableWorkspace, MatrixWorkspace, Run
+from mantid.api import ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import amend_config
 from mantid.simpleapi import (
@@ -33,7 +33,6 @@ from mantid.simpleapi import (
     EditInstrumentGeometry,
     GroupWorkspaces,
     LoadEmptyInstrument,
-    LoadInstrument,
     RenameWorkspaces,
     SaveDiffCal,
     mtd,
@@ -50,17 +49,20 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import ReductionIngredients
-from snapred.backend.dao.LiveMetadata import LiveMetadata
+from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
     CreateCalibrationRecordRequest,
     CreateIndexEntryRequest,
     CreateNormalizationRecordRequest,
 )
+from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
 from snapred.backend.dao.state.GroupingMap import GroupingMap
+from snapred.backend.dao.StateId import StateId
 from snapred.backend.data.Indexer import IndexerType
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
@@ -103,31 +105,41 @@ def mockDetectorState(runId: str) -> DetectorState:
     return None
 
 
+def mockGenerateStateId(runId: str) -> Tuple[ObjectSHA | None, DetectorState | None]:
+    # Warning: in contrast to `LocalDataService.generateStateId`,
+    #   this method returns the complete `ObjectSHA`, and not just the hex string
+
+    detectorState = mockDetectorState(runId)
+    if detectorState is None:
+        return None, None
+    return ObjectSHA.fromObject(StateId.fromDetectorState(detectorState)), detectorState
+
+
 def mockH5Dataset(value):
     dset = mock.MagicMock(spec=h5py.Dataset)
     dset.__getitem__.side_effect = lambda x: value  # noqa: ARG005
     return dset
 
 
-def mockPVFile(detectorState: DetectorState) -> mock.Mock:
+def mockPVFile(detectorState: DetectorState, **kwargs) -> mock.Mock:
     # See also: `tests/unit/backend/data/util/test_PV_logs_util.py`.
 
     # Note: `PV_logs_util.mappingFromNeXusLogs` will open the 'entry/DASlogs' group,
     #   so this `dict` mocks the HDF5 group, not the PV-file itself.
 
-    # For the HDF5-file, each key requires the "/value" suffix.
+    # For the HDF5-file, any "/value" suffix is _not_ part of the dataset's key!
     dict_ = {
-        "run_number/value": np.array([123456], dtype=int),
-        "start_time/value": np.array(["2023-06-14T14:06:40.429048667"]),
-        "end_time/value": np.array(["2023-06-14T14:07:56.123123123"]),
-        "BL3:Chop:Skf1:WavelengthUserReq/value": mockH5Dataset(np.array([detectorState.wav])),
-        "det_arc1/value": np.array([detectorState.arc[0]]),
-        "det_arc2/value": np.array([detectorState.arc[1]]),
-        "BL3:Det:TH:BL:Frequency/value": np.array([detectorState.freq]),
-        "BL3:Mot:OpticsPos:Pos/value": np.array([detectorState.guideStat]),
-        "det_lin1/value": np.array([detectorState.lin[0]]),
-        "det_lin2/value": np.array([detectorState.lin[1]]),
+        "start_time": np.array(["2023-06-14T14:06:40.429048667"]),
+        "end_time": np.array(["2023-06-14T14:07:56.123123123"]),
+        "BL3:Chop:Skf1:WavelengthUserReq": mockH5Dataset(np.array([detectorState.wav])),
+        "det_arc1": np.array([detectorState.arc[0]]),
+        "det_arc2": np.array([detectorState.arc[1]]),
+        "BL3:Det:TH:BL:Frequency": np.array([detectorState.freq]),
+        "BL3:Mot:OpticsPos:Pos": np.array([detectorState.guideStat]),
+        "det_lin1": np.array([detectorState.lin[0]]),
+        "det_lin2": np.array([detectorState.lin[1]]),
     }
+    dict_.update(kwargs)
 
     mock_ = mock.MagicMock(spec=h5py.Group)
 
@@ -490,6 +502,80 @@ def test_getUniqueTimestamp():
     assert len(ts_structs) == numberToGenerate
 
 
+@mock.patch(ThisService + "RunMetadata")
+def test_readRunMetadata(mockRunMetadata):
+    runNumber = "12345"
+    mockMetadata = mock.Mock(spec=RunMetadata, runNumber=runNumber)
+    mockRunMetadata.fromNeXusLogs.return_value = mockMetadata
+    instance = LocalDataService()
+    instance._readPVFile = mock.Mock(spec=h5py.File, return_value=mock.sentinel.h5)
+
+    actual = instance.readRunMetadata(runNumber)
+    assert actual == mockMetadata
+    mockRunMetadata.fromNeXusLogs.assert_called_once_with(mock.sentinel.h5)
+
+
+@mock.patch(ThisService + "RunMetadata")
+def test_readRunMetadata_runNumber_mismatch(mockRunMetadata):
+    runNumber1 = "12345"
+    runNumber2 = "67890"
+    mockMetadata = mock.Mock(spec=RunMetadata, runNumber=runNumber2)
+    mockRunMetadata.fromNeXusLogs.return_value = mockMetadata
+    instance = LocalDataService()
+    instance._readPVFile = mock.Mock(spec=h5py.File, return_value=mock.sentinel.h5)
+
+    with pytest.raises(RuntimeError, match=f"Expected run-number '{runNumber1}' from the filename does not match.*"):
+        actual = instance.readRunMetadata(runNumber1)  # noqa: F841
+
+
+@mock.patch(ThisService + "RunMetadata")
+def test_readRunMetadata_live_data_fallback(mockRunMetadata):
+    runNumber = "12345"
+    mockMetadata = mock.Mock(spec=RunMetadata, runNumber=runNumber)
+    mockRunMetadata.fromRun.return_value = mockMetadata
+    instance = LocalDataService()
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists"))
+    instance.hasLiveDataConnection = mock.Mock(return_value=True)
+    instance.readLiveMetadata = mock.Mock(return_value=mockMetadata)
+
+    actual = instance.readRunMetadata(runNumber)
+    assert actual == mockMetadata
+    instance.hasLiveDataConnection.assert_called_once()
+
+
+@mock.patch(ThisService + "RunMetadata")
+def test_readRunMetadata_live_data_fallback_fails(mockRunMetadata):
+    runNumber1 = "12345"
+    runNumber2 = "67890"
+    mockMetadata = mock.Mock(spec=RunMetadata, runNumber=runNumber2)
+    mockRunMetadata.fromRun.return_value = mockMetadata
+    instance = LocalDataService()
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists"))
+    instance.hasLiveDataConnection = mock.Mock(return_value=True)
+    instance.readLiveMetadata = mock.Mock(return_value=mockMetadata)
+
+    with pytest.raises(RuntimeError, match=".*it isn't the live run.*"):
+        actual = instance.readRunMetadata(runNumber1)  # noqa: F841
+
+
+@mock.patch(ThisService + "RunMetadata")
+def test_readRunMetadata_live_data_fallback_no_active_run(mockRunMetadata):
+    runNumber = "12345"
+    mockMetadata = mock.Mock(
+        spec=RunMetadata,
+        runNumber=0,
+    )
+    mockMetadata.hasActiveRun.return_value = False
+    mockRunMetadata.fromRun.return_value = mockMetadata
+    instance = LocalDataService()
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists"))
+    instance.hasLiveDataConnection = mock.Mock(return_value=True)
+    instance.readLiveMetadata = mock.Mock(return_value=mockMetadata)
+
+    with pytest.raises(RuntimeError, match=".*no live run is active.*"):
+        actual = instance.readRunMetadata(runNumber)  # noqa: F841
+
+
 @mock.patch("socket.gethostbyaddr")
 def test_hasLiveDataConnection(mockGetHostByAddr):
     with Config_override("liveData.enabled", True):
@@ -516,6 +602,48 @@ def test_hasLiveDataConnection_config_disabled(mockGetHostByAddr):
         instance = LocalDataService()
         assert not instance.hasLiveDataConnection()
         mockGetHostByAddr.assert_not_called()
+
+
+@mock.patch(ThisService + "RunMetadata")
+def test__liveMetadataFromRun(mockRunMetadata):
+    mockMetadata = mock.Mock(spec=RunMetadata)
+    mockRunMetadata.fromRun.return_value = mockMetadata
+    instance = LocalDataService()
+    actual = instance._liveMetadataFromRun(mock.sentinel.run)
+    assert actual == mockMetadata
+    mockRunMetadata.fromRun.assert_called_once_with(mock.sentinel.run, liveData=True)
+
+
+@mock.patch(ThisService + "RunMetadata")
+def test__liveMetadataFromRun_exception_routing(mockRunMetadata):
+    # Verify that:
+    #   -- the appropriate `RunMetadata` extraction exceptions are routed to `RuntimeError`;
+    #   -- any other exception type is passed through.
+
+    mockMetadata = mock.Mock(spec=RunMetadata)
+    for fromRunException in (
+        KeyError("some key"),
+        RuntimeError("some mantid error"),
+        ValueError("some other validation error"),
+    ):
+        mockRunMetadata.fromRun.side_effect = fromRunException
+        instance = LocalDataService()
+        with pytest.raises(RuntimeError, match="Unable to extract RunMetadata from Run"):
+            actual = instance._liveMetadataFromRun(mock.sentinel.run)  # noqa: F841
+        mockMetadata.reset_mock()
+        mockRunMetadata.reset_mock()
+
+    class SomeOtherException(Exception):
+        def __init__(self, msg: str):
+            super().__init__()
+            self._msg = msg
+
+        def __str__(self):
+            return self._msg
+
+    mockRunMetadata.fromRun.side_effect = SomeOtherException("any other exception")
+    with pytest.raises(SomeOtherException, match="any other exception"):
+        actual = instance._liveMetadataFromRun(mock.sentinel.run)  # noqa: F841
 
 
 def test_prepareStateRoot_creates_state_root_directory():
@@ -708,46 +836,34 @@ def test_getIPTS(mockPathExists):
     mockPathExists.return_value = True
     localDataService = LocalDataService()
     with mock.patch.object(localDataService, "mantidSnapper") as mockSnapper:
-        mockSnapper.GetIPTS = mock.Mock(return_value="nowhere/")
+        mockSnapper.CheckIPTS = mock.Mock(return_value="nowhere/")
         runNumber = "123456"
         res = localDataService.getIPTS(runNumber)
-        assert res == mockSnapper.GetIPTS.return_value
-        mockSnapper.GetIPTS.assert_called_with(
+        assert res == Path(mockSnapper.CheckIPTS.return_value)
+        mockSnapper.CheckIPTS.assert_called_with(
             "get IPTS directory", RunNumber=runNumber, Instrument=Config["instrument.name"], ClearCache=True
         )
-        mockSnapper.GetIPTS.reset_mock()
+        mockSnapper.CheckIPTS.reset_mock()
 
         res = localDataService.getIPTS(runNumber, "CRACKLE")
-        assert res == mockSnapper.GetIPTS.return_value
-        mockSnapper.GetIPTS.assert_called_with(
+        assert res == Path(mockSnapper.CheckIPTS.return_value)
+        mockSnapper.CheckIPTS.assert_called_with(
             "get IPTS directory", RunNumber=runNumber, Instrument="CRACKLE", ClearCache=True
         )
 
 
 def test__getIPTS_no_IPTS():
     # Verify that the "no IPTS directory" case is cached internally as `None`:
-    #   this tests the private method `LocalDataService._getIPTS`.
     localDataService = LocalDataService()
     with mock.patch.object(localDataService, "mantidSnapper") as mockSnapper:
-        mockSnapper.GetIPTS = mock.Mock(side_effect=RuntimeError("Cannot find IPTS directory for run"))
+        mockSnapper.CheckIPTS = mock.Mock(return_value="")
         runNumber = "123456"
-        result = localDataService._getIPTS(runNumber)
+        result = localDataService.getIPTS(runNumber)
         assert result is None
 
 
-def test_getIPTS_no_IPTS():
-    # Verify that the "no IPTS directory" case appears externally as the expected `RuntimeError`:
-    #   this tests the public method `LocalDataService.getIPTS`.
-    localDataService = LocalDataService()
-    with mock.patch.object(localDataService, "mantidSnapper") as mockSnapper:
-        mockSnapper.GetIPTS = mock.Mock(side_effect=RuntimeError("Cannot find IPTS directory for run"))
-        runNumber = "123456"
-        with pytest.raises(RuntimeError, match="Cannot find IPTS directory for run.*"):
-            result = localDataService.getIPTS(runNumber)  # noqa: F841
-
-
 def test_getIPTS_error():
-    # Verify that any other exception type, besides `RuntimeError`, is passed through.
+    # Verify that any exception from `CheckIPTS` is passed through.
 
     class _OtherError(Exception):
         def __init__(self, msg):
@@ -759,30 +875,20 @@ def test_getIPTS_error():
 
     localDataService = LocalDataService()
     with mock.patch.object(localDataService, "mantidSnapper") as mockSnapper:
-        mockSnapper.GetIPTS = mock.Mock(side_effect=_OtherError("No one has ever seen this error"))
+        mockSnapper.CheckIPTS = mock.Mock(side_effect=_OtherError("No one has ever seen this error"))
         runNumber = "123456"
         with pytest.raises(_OtherError, match="No one has ever seen this error"):
             result = localDataService.getIPTS(runNumber)  # noqa: F841
 
 
-def test_getIPTS_other_runtime_error():
-    # Verify that any other `RuntimeError`, besides not finding the directory, is passed through.
-    localDataService = LocalDataService()
-    with mock.patch.object(localDataService, "mantidSnapper") as mockSnapper:
-        mockSnapper.GetIPTS = mock.Mock(side_effect=RuntimeError("Another runtime error"))
-        runNumber = "123456"
-        with pytest.raises(RuntimeError, match="Another runtime error"):
-            result = localDataService.getIPTS(runNumber)  # noqa: F841
-
-
-# NOTE this test calls `GetIPTS` (via `getIPTS`) with no mocks
+# NOTE this test calls `CheckIPTS` (via `getIPTS`) with no mocks
 # this is intentional, to ensure it is being called correctly
 @mock.patch("pathlib.Path.exists")
 def test_getIPTS_cache(mockPathExists):
     mockPathExists.return_value = True
     localDataService = LocalDataService()
-    localDataService._getIPTS.cache_clear()
-    assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
+    localDataService.getIPTS.cache_clear()
+    assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
 
     # test data
     instrument = "SNAP"
@@ -791,77 +897,78 @@ def test_getIPTS_cache(mockPathExists):
     correctIPTS = Path(Resource.getPath("inputs/testInstrument/IPTS-456"))
     incorrectIPTS = Path(Resource.getPath("inputs/testInstrument/IPTS-789"))
 
-    # direct GetIPTS to look in the exact folder where it should look
-    # it is very stupid, so if you don't tell it exactly then it won't look there
+    # Direct `CheckIPTS` to look in the exact folder where it should look
+    #   -- it is very stupid, so if you don't tell it exactly then it won't look there.
     with amend_config(data_dir=str(correctIPTS / "nexus")):
         res = localDataService.getIPTS(*key)
-        assert res == str(correctIPTS) + os.sep
-        assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
+        assert res == correctIPTS
+        assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
 
         # call again and make sure the cached value is being returned
         res = localDataService.getIPTS(*key)
-        assert res == str(correctIPTS) + os.sep
-
-        # WARNING: For this test: mocking `GetIPTS` at the module level is also possible,
-        #   but this was not implemented correctly previously.
-        #   If that approach is taken, the important thing is to make sure
-        #   that the mock is _removed_ at the end of the test.
-        #   Note that `localDataService.GetIPTS` is not the same thing as
-        #   `LocalDataService <module>.GetIPTS`.
-        #   For these tests, the @Singleton aspect of the class is removed,
-        #   but that doesn't mean that changes to the module won't affect
-        #   other tests.
-
-        assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=1, misses=1, maxsize=128, currsize=1)
+        assert res == correctIPTS
+        assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=1, misses=1, maxsize=128, currsize=1)
 
     # now try it again, but with another IPTS directory
     with amend_config(data_dir=str(incorrectIPTS / "nexus")):
         # previous correct value should still be the cached value
         res = localDataService.getIPTS(*key)
-        assert res == str(correctIPTS) + os.sep
-        assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=2, misses=1, maxsize=128, currsize=1)
+        assert res == correctIPTS
+        assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=2, misses=1, maxsize=128, currsize=1)
 
         # clear the cache,  make sure the new value is being returned
-        localDataService._getIPTS.cache_clear()
+        localDataService.getIPTS.cache_clear()
         res = localDataService.getIPTS(*key)
-        assert res == str(incorrectIPTS) + os.sep
-        assert localDataService._getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
+        assert res == incorrectIPTS
+        assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
 
 
 def test_createNeutronFilePath():
     instance = LocalDataService()
     with mock.patch.object(instance, "getIPTS") as mockGetIPTS:
-        mockGetIPTS.return_value = "IPTS-TEST/"
+        mockGetIPTS.return_value = Path("IPTS-TEST")
         runNumbers = {"lite": "12345", "native": "67890"}
 
         for mode in ["lite", "native"]:
             runNumber = runNumbers[mode]  # REMINDER: `LocalDataService.getIPTS` uses `@lru_cache`.
-            expected = Path(
-                mockGetIPTS.return_value
-                + Config[f"nexus.{mode}.prefix"]
-                + runNumber
-                + Config[f"nexus.{mode}.extension"]
+            expected = mockGetIPTS.return_value / (
+                Config[f"nexus.{mode}.prefix"] + runNumber + Config[f"nexus.{mode}.extension"]
             )
+
             actual = instance.createNeutronFilePath(runNumber, mode == "lite")
             mockGetIPTS.assert_called_once_with(runNumber)
             assert actual == expected
             mockGetIPTS.reset_mock()
 
 
-def test_workspaceIsInstance(cleanup_workspace_at_exit):
+def test_stateExists():
+    instance = LocalDataService()
+    with (
+        mock.patch.object(instance, "generateStateId") as mockGenerateStateId,
+        mock.patch.object(instance, "constructCalibrationStateRoot") as mockConstructCalibrationStateRoot,
+    ):
+        mockGenerateStateId.return_value = (mock.sentinel.SHA, mock.sentinel.ignored)
+        mockConstructCalibrationStateRoot.return_value = mock.Mock(
+            spec=Path, exists=mock.Mock(return_value=mock.sentinel.exists)
+        )
+        runNumber = "12345"
+        actual = instance.stateExists(runNumber)
+        assert actual == mock.sentinel.exists
+        mockGenerateStateId.assert_called_once_with(runNumber)
+        mockConstructCalibrationStateRoot.assert_called_once_with(mock.sentinel.SHA)
+        mockConstructCalibrationStateRoot.return_value.exists.assert_called_once()
+
+
+def test_workspaceIsInstance(cleanup_workspace_at_exit, create_per_test_sample_workspace):
     localDataService = LocalDataService()
+
     # Create a sample workspace.
     testWS0 = "test_ws"
-    LoadEmptyInstrument(
-        Filename=fakeInstrumentFilePath,
-        OutputWorkspace=testWS0,
-    )
-    # Assign the required sample log values
+    runNumber = "12345"
+    runTitle = "ws for 12345"
     detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
-    addInstrumentLogs(testWS0, **getInstrumentLogDescriptors(detectorState1))
-
+    create_per_test_sample_workspace(testWS0, detectorState1, fakeInstrumentFilePath, runNumber, runTitle)
     assert mtd.doesExist(testWS0)
-    cleanup_workspace_at_exit(testWS0)
     assert localDataService.workspaceIsInstance(testWS0, MatrixWorkspace)
 
     # Create diffraction-calibration table and mask workspaces.
@@ -924,21 +1031,28 @@ def test_readDefaultGroupingMap():
 def test_readRunConfig():
     # test of public `readRunConfig` method
     localDataService = LocalDataService()
-    localDataService._readRunConfig = mock.Mock()
-    localDataService._readRunConfig.return_value = "57514"
+    localDataService._readRunConfig = mock.Mock(return_value=mock.sentinel.RunConfig)
     actual = localDataService.readRunConfig(mock.Mock())
-    assert actual is not None
-    assert actual == "57514"
+    assert actual == mock.sentinel.RunConfig
 
 
 def test__readRunConfig():
     # Test of private `_readRunConfig` method
     localDataService = LocalDataService()
-    localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
+    runNumber = "57514"
+    localDataService.getIPTS = mock.Mock(return_value=Path("IPTS-123"))
     localDataService.readInstrumentConfig = mock.Mock(return_value=getMockInstrumentConfig())
-    actual = localDataService._readRunConfig("57514")
-    assert actual is not None
-    assert actual.runNumber == "57514"
+    actual = localDataService._readRunConfig(runNumber)
+    assert actual.runNumber == runNumber
+
+
+def test__readRunConfig_no_IPTS():
+    # Test of private `_readRunConfig` method
+    localDataService = LocalDataService()
+    runNumber = "57514"
+    localDataService.getIPTS = mock.Mock(side_effect=RuntimeError("Cannot find IPTS directory"))
+    with pytest.raises(RuntimeError, match="Cannot find IPTS directory"):
+        actual = localDataService._readRunConfig(runNumber)  # noqa: F841
 
 
 def test_constructPVFilePath():
@@ -946,11 +1060,11 @@ def test_constructPVFilePath():
     runNumber = "12345"
     localDataService = LocalDataService()
     # mock the IPTS to point to somewhere then construct the path
-    mockIPTS: str = Resource.getPath("inputs/testInstrument/IPTS-456/")
+    mockIPTS: Path = Path(Resource.getPath("inputs/testInstrument/IPTS-456"))
     with mock.patch.object(localDataService, "getIPTS", mock.Mock(return_value=mockIPTS)):
         path = localDataService._constructPVFilePath(runNumber)
         # the path should be /path/to/testInstrument/IPTS-456/nexus/SNAP_<runNumber>.nxs.h5
-        assert Path(mockIPTS) == path.parents[1]
+        assert mockIPTS == path.parents[1]
         localDataService.getIPTS.assert_called_once_with(runNumber)
 
 
@@ -977,16 +1091,16 @@ def test_readPVFile_does_not_exist(h5pyMock):  # noqa: ARG001
 
 
 def test_readPVFile_no_IPTS():
-    # test that `_readPVFile` wraps the `RuntimeError` returned by `GetIPTS`.
+    # Test that `_readPVFile` raises `FileNotFound` when the PVFile path is None.
     runNumber = "12345"
     localDataService = LocalDataService()
-    localDataService._constructPVFilePath = mock.Mock(side_effect=RuntimeError("Cannot find IPTS directory"))
+    localDataService._constructPVFilePath = mock.Mock(return_value=None)
     with pytest.raises(FileNotFoundError, match=f"No PVFile exists for run: '{runNumber}'"):
         localDataService._readPVFile(runNumber)
 
 
 def test_readPVFile_exception_passthrough():
-    # test that `_readPVFile` does not wrap unrelated exceptions.
+    # Test that `_readPVFile` passes unrelated exceptions without any modification.
     runNumber = "12345"
     localDataService = LocalDataService()
     localDataService._constructPVFilePath = mock.Mock(side_effect=RuntimeError("lah dee dah"))
@@ -994,51 +1108,82 @@ def test_readPVFile_exception_passthrough():
         localDataService._readPVFile(runNumber)
 
 
-def test_generateStateId():
+@mock.patch(ThisService + "RunMetadata")
+def test_generateStateId(mockRunMetadata):
+    runNumber = "12345"
+    stateId, detectorState = mockGenerateStateId(runNumber)
+    mockRunMetadata.fromNeXusLogs.return_value = RunMetadata.model_construct(
+        runNumber=runNumber, detectorState=detectorState, stateId=stateId
+    )
+
     localDataService = LocalDataService()
-    localDataService._readPVFile = mock.Mock()
-    testDetectorState = mockDetectorState("12345")
-    localDataService._readPVFile.return_value = mockPVFile(testDetectorState)
-    actual, _ = localDataService.generateStateId("12345")
-    assert actual == UNCHANGING_STATE_ID
+    localDataService._readPVFile = mock.Mock(return_value=mockPVFile(detectorState))
+
+    actual = localDataService.generateStateId("12345")
+    assert actual == (stateId.hex, detectorState)
 
 
-def test_generateStateId_cache():
+@mock.patch(ThisService + "RunMetadata")
+def test_generateStateId_cache(mockRunMetadata):
     localDataService = LocalDataService()
     localDataService.generateStateId.cache_clear()
     assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
         hits=0, misses=0, maxsize=128, currsize=0
     )
 
-    localDataService._readPVFile = mock.Mock()
+    localDataService._readPVFile = mock.Mock(
+        side_effect=lambda runNumber: mockPVFile(
+            mockDetectorState(runNumber),
+            run_number=np.array(
+                [
+                    runNumber.encode("utf8"),
+                ]
+            ),
+        )
+    )
 
-    localDataService.readDetectorState = mock.Mock(side_effect=mockDetectorState)
+    runNumber1 = "12345"
+    stateSHA1, detectorState1 = mockGenerateStateId(runNumber1)
+    metadata1 = RunMetadata.model_construct(runNumber=runNumber1, detectorState=detectorState1, stateId=stateSHA1)
 
-    stateSHA1 = UNCHANGING_STATE_ID
-    stateSHA2 = "fa0bb25b44874edb"
+    runNumber2 = "67890"
+    stateSHA2, detectorState2 = mockGenerateStateId(runNumber2)
+    metadata2 = RunMetadata.model_construct(runNumber=runNumber2, detectorState=detectorState2, stateId=stateSHA2)
 
-    actual, _ = localDataService.generateStateId("12345")
-    assert actual == stateSHA1
+    def selectMetadata(logs) -> RunMetadata:
+        runNumber = str(logs["run_number"][0], encoding="utf8")
+        match runNumber:
+            case "12345":
+                return metadata1
+            case "67890":
+                return metadata2
+            case _:
+                raise RuntimeError(f"Test setup error: no `RunMetdata` has been initialized for run '{runNumber}'.")
+
+    mockRunMetadata.fromNeXusLogs.side_effect = selectMetadata
+
+    actual = localDataService.generateStateId(runNumber1)
+    assert actual == (stateSHA1.hex, detectorState1)
     assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
         hits=0, misses=1, maxsize=128, currsize=1
     )
 
     # check cached value
-    actual, _ = localDataService.generateStateId("12345")
-    assert actual == stateSHA1
+    actual = localDataService.generateStateId(runNumber1)
+    assert actual == (stateSHA1.hex, detectorState1)
     assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
         hits=1, misses=1, maxsize=128, currsize=1
     )
 
     # check a different value
-    actual, _ = localDataService.generateStateId("67890")
-    assert actual == stateSHA2
+    actual = localDataService.generateStateId(runNumber2)
+    assert actual == (stateSHA2.hex, detectorState2)
     assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
         hits=1, misses=2, maxsize=128, currsize=2
     )
     # ... and its cached value
-    actual, _ = localDataService.generateStateId("67890")
-    assert actual == stateSHA2
+    actual = localDataService.generateStateId(runNumber2)
+    assert actual == (stateSHA2.hex, detectorState2)
     assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
         hits=2, misses=2, maxsize=128, currsize=2
     )
@@ -1195,7 +1340,7 @@ def test_hasWritePermissionsCalibrationStateRoot():
 
 
 def test_constructReductionStateRoot():
-    fakeIPTS = "gumdrop"
+    fakeIPTS = Path("gumdrop")
     fakeState = "joobiewoobie"
     localDataService = LocalDataService()
     localDataService.getIPTS = mock.Mock(return_value=fakeIPTS)
@@ -1204,11 +1349,20 @@ def test_constructReductionStateRoot():
     ans = localDataService._constructReductionStateRoot(runNumber)
     assert isinstance(ans, Path)
     assert ans.parts[-1] == fakeState
-    assert fakeIPTS in ans.parts
+    assert str(fakeIPTS) in ans.parts
+
+
+def test_constructReductionStateRoot_no_IPTS():
+    localDataService = LocalDataService()
+    runNumber = "12345"
+    localDataService.getIPTS = mock.Mock(return_value=None)
+    localDataService.generateStateId = mock.Mock(return_value=(mock.sentinel.SHA, mock.sentinel.ignored))
+    with pytest.raises(RuntimeError, match=".*Cannot find IPTS directory.*"):
+        actual = localDataService._constructReductionStateRoot(runNumber)  # noqa: F841
 
 
 def test_constructReductionDataRoot():
-    fakeIPTS = "gumdrop"
+    fakeIPTS = Path("gumdrop")
     fakeState = "joobiewoobie"
     localDataService = LocalDataService()
     localDataService.getIPTS = mock.Mock(return_value=fakeIPTS)
@@ -1464,7 +1618,7 @@ def test_readWriteCalibrationRecord():
         assert actualRecord == record
 
 
-def test_writeCalibrationWorkspaces(cleanup_workspace_at_exit):
+def test_writeCalibrationWorkspaces(cleanup_workspace_at_exit, create_per_test_sample_workspace):
     version = randint(2, 120)
     localDataService = LocalDataService()
     stateId = ENDURING_STATE_ID
@@ -1484,29 +1638,11 @@ def test_writeCalibrationWorkspaces(cleanup_workspace_at_exit):
             raise RuntimeError(f"unexpected workspace-types in record.workspaces: {workspaces}")
 
         # Create sample workspaces.
-        CreateSampleWorkspace(
-            OutputWorkspace=outputDSPWSName,
-            Function="One Peak",
-            NumBanks=1,
-            NumMonitors=1,
-            BankPixelWidth=5,
-            NumEvents=500,
-            Random=True,
-            XUnit="DSP",
-            XMin=0.5,
-            XMax=8000,
-            BinWidth=100,
-        )
-        LoadInstrument(
-            Workspace=outputDSPWSName,
-            Filename=fakeInstrumentFilePath,
-            RewriteSpectraMap=True,
-        )
-        # Assign the required sample log values
         detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
-        addInstrumentLogs(outputDSPWSName, **getInstrumentLogDescriptors(detectorState1))
+        create_per_test_sample_workspace(
+            outputDSPWSName, detectorState1, fakeInstrumentFilePath, runNumber, units="DSP"
+        )
         assert mtd.doesExist(outputDSPWSName)
-        cleanup_workspace_at_exit(outputDSPWSName)
 
         # Create a grouping workspace to save as the diagnostic workspace.
         ws1 = CloneWorkspace(outputDSPWSName)
@@ -1879,31 +2015,16 @@ def readSyntheticReductionRecord():
 
 
 @pytest.fixture
-def createReductionWorkspaces(cleanup_workspace_at_exit):
+def createReductionWorkspaces(cleanup_workspace_at_exit, create_per_test_sample_workspace):
     # Create sample workspaces from a list of names:
     #   * these workspaces are automatically deleted at teardown.
 
     def _createWorkspaces(wss: List[WorkspaceName]):
         # Create several sample reduction event workspaces with DSP units
         src = mtd.unique_hidden_name()
-        CreateSampleWorkspace(
-            OutputWorkspace=src,
-            Function="One Peak",
-            NumBanks=1,
-            NumMonitors=0,
-            BankPixelWidth=4,
-            NumEvents=500,
-            Random=True,
-            XUnit="DSP",
-            XMin=0,
-            XMax=8000,
-            BinWidth=100,
-        )
-        LoadInstrument(
-            Workspace=src,
-            Filename=fakeInstrumentFilePath,
-            RewriteSpectraMap=True,
-        )
+        runNumber = "12345"
+        detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+        create_per_test_sample_workspace(src, detectorState1, fakeInstrumentFilePath, runNumber, units="DSP")
 
         # Mask workspace uses legacy instrument
         mask = mtd.unique_hidden_name()
@@ -1946,7 +2067,11 @@ def createReductionWorkspaces(cleanup_workspace_at_exit):
             assert mtd.doesExist(ws)
             cleanup_workspace_at_exit(ws)
 
-        DeleteWorkspaces([src, mask])
+        DeleteWorkspaces(
+            [
+                mask,
+            ]
+        )  # 'src' marked for deletion by `cleanup_workspace_at_exit`
         return wss
 
     yield _createWorkspaces
@@ -1971,7 +2096,7 @@ def test_writeReductionData(readSyntheticReductionRecord, createReductionWorkspa
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService._instrumentConfig = mock.Mock()
-        localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+        localDataService.getIPTS = mock.Mock(return_value=Path("IPTS-12345"))
 
         # Important to this test: use a path that doesn't already exist
         reductionFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
@@ -2003,7 +2128,7 @@ def test_writeReductionData_legacy_instrument(readSyntheticReductionRecord, crea
         localDataService = LocalDataService()
         with reduction_root_redirect(localDataService, stateId=stateId):
             localDataService.instrumentConfig = mock.Mock()
-            localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+            localDataService.getIPTS = mock.Mock(return_value=Path("IPTS-12345"))
 
             # Important to this test: use a path that doesn't already exist
             reductionFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
@@ -2035,7 +2160,7 @@ def test_writeReductionData_effective_instrument(readSyntheticReductionRecord, c
         localDataService = LocalDataService()
         with reduction_root_redirect(localDataService, stateId=stateId):
             localDataService.instrumentConfig = mock.Mock()
-            localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+            localDataService.getIPTS = mock.Mock(return_value=Path("IPTS-12345"))
 
             # Important to this test: use a path that doesn't already exist
             reductionFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
@@ -2062,7 +2187,7 @@ def test_writeReductionData_no_directories(readSyntheticReductionRecord, createR
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService._instrumentConfig = mock.Mock()
-        localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+        localDataService.getIPTS = mock.Mock(return_value=Path("IPTS-12345"))
 
         # Important to this test: use a path that doesn't already exist
         reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
@@ -2092,7 +2217,7 @@ def test_writeReductionData_metadata(readSyntheticReductionRecord, createReducti
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService._instrumentConfig = mock.Mock()
-        localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+        localDataService.getIPTS = mock.Mock(return_value=Path("IPTS-12345"))
 
         # Important to this test: use a path that doesn't already exist
         reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
@@ -2126,7 +2251,7 @@ def test_readWriteReductionData(readSyntheticReductionRecord, createReductionWor
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService._instrumentConfig = mock.Mock()
-        localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+        localDataService.getIPTS = mock.Mock(return_value=Path("IPTS-12345"))
 
         # Important to this test: use a path that doesn't already exist
         reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
@@ -2180,7 +2305,7 @@ def test_readWriteReductionData_legacy_instrument(
         localDataService = LocalDataService()
         with reduction_root_redirect(localDataService, stateId=stateId):
             localDataService.instrumentConfig = mock.Mock()
-            localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+            localDataService.getIPTS = mock.Mock(return_value=Path("IPTS-12345"))
 
             # Important to this test: use a path that doesn't already exist
             reductionRecordFilePath = localDataService._constructReductionRecordFilePath(
@@ -2232,7 +2357,7 @@ def test_readWriteReductionData_pixel_mask(
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService._instrumentConfig = mock.Mock()
-        localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+        localDataService.getIPTS = mock.Mock(return_value=Path("IPTS-12345"))
 
         # Important to this test: use a path that doesn't already exist
         reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
@@ -2279,7 +2404,7 @@ def test__constructReductionDataFilePath():
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = ENDURING_STATE_ID
-    testIPTS = "IPTS-12345"
+    testIPTS = Path("IPTS-12345")
     fileName = wng.reductionOutputGroup().runNumber(runNumber).timestamp(timestamp).build()
     fileName += Config["reduction.output.extension"]
 
@@ -2397,30 +2522,43 @@ def test_readWriteNormalizationState():
     # NOTE this test is already covered by tests of the Indexer
     # but it doesn't hurt to retain this test anyway
     runNumber = "123"
+    useLiteMode = True
     localDataService = LocalDataService()
+    latestVersion = 1
+    nextVersion = 2
+
     mockNormalizationIndexer = mock.Mock()
-
+    mockNormalizationIndexer.latestApplicableVersion = mock.Mock(return_value=latestVersion)
+    mockNormalizationIndexer.nextVersion = mock.Mock(return_value=nextVersion)
     localDataService.normalizationIndexer = mock.Mock(return_value=mockNormalizationIndexer)
-    localDataService.normalizationIndexer().latestApplicableVersion = mock.Mock(return_value=1)
-    mockNormalizationIndexer.nextVersion = mock.Mock(return_value=1)
 
-    ans = localDataService.readNormalizationState(runNumber, True, VersionState.LATEST)
-    assert ans == mockNormalizationIndexer.readParameters.return_value
-    mockNormalizationIndexer.readParameters.assert_called_once_with(1)
+    mockNormalization = mock.Mock(spec=Normalization, seedRun=runNumber, useLiteMode=useLiteMode)
+
+    localDataService.writeNormalizationState(mockNormalization)
+    localDataService.normalizationIndexer.assert_called_once_with(
+        mockNormalization.seedRun, mockNormalization.useLiteMode
+    )
+    mockNormalizationIndexer.writeParameters.assert_called_once_with(mockNormalization)
+    localDataService.normalizationIndexer.reset_mock()
+    mockNormalizationIndexer.reset_mock()
+
+    actual = localDataService.readNormalizationState(runNumber, True, VersionState.LATEST)
+    assert actual == mockNormalizationIndexer.readParameters.return_value
+    mockNormalizationIndexer.readParameters.assert_called_once_with(latestVersion)
 
 
-def test_readDetectorState(monkeypatch):
-    mockMappingFromNeXusLogs = mock.Mock(return_value=mock.Mock())
-    monkeypatch.setattr(LocalDataServiceModule, "mappingFromNeXusLogs", mockMappingFromNeXusLogs)
-    instance = LocalDataService()
+def test_readDetectorState():
+    runNumber = "123"
     expected = mockDetectorState("123")
-    instance._detectorStateFromMapping = mock.Mock(return_value=expected)
-    instance._readPVFile = mock.Mock(return_value=mock.Mock())
-    instance._constructPVFilePath = mock.Mock(return_value="/mock/path")
-    actual = instance.readDetectorState("123")
-    assert actual == expected
-    mockMappingFromNeXusLogs.assert_called_once_with(instance._readPVFile.return_value)
-    instance._detectorStateFromMapping.assert_called_once_with(mockMappingFromNeXusLogs.return_value)
+    mockMetadata = mock.Mock(spec=RunMetadata, runNumber=runNumber, detectorState=expected)
+    mockRunMetadata = mock.Mock(fromNeXusLogs=mock.Mock(return_value=mockMetadata))
+    with mock.patch(ThisService + "RunMetadata", mockRunMetadata) as mockMetaData:  # noqa: F841
+        instance = LocalDataService()
+        instance._readPVFile = mock.Mock(return_value=mock.sentinel.h5)
+        instance._constructPVFilePath = mock.Mock(return_value="/mock/path")
+        actual = instance.readDetectorState(runNumber)
+        assert actual == expected
+        mockRunMetadata.fromNeXusLogs.assert_called_once_with(mock.sentinel.h5)
 
 
 def test_readDetectorState_no_PVFile():
@@ -2452,12 +2590,12 @@ def test_readDetectorState_no_PVFile_no_connection():
 def test_readDetectorState_live_run():
     runNumber = "123"
     expected = mockDetectorState(runNumber)
-    mockLiveMetadata = mock.Mock(spec=LiveMetadata, runNumber=runNumber, detectorState=expected, protonCharge=1000.0)
+    mockRunMetadata = mock.Mock(spec=RunMetadata, runNumber=runNumber, detectorState=expected, protonCharge=1000.0)
 
     instance = LocalDataService()
     instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists for run"))
     instance.hasLiveDataConnection = mock.Mock(return_value=True)
-    instance.readLiveMetadata = mock.Mock(return_value=mockLiveMetadata)
+    instance.readLiveMetadata = mock.Mock(return_value=mockRunMetadata)
 
     actual = instance.readDetectorState(runNumber)
     assert actual == expected
@@ -2471,123 +2609,19 @@ def test_readDetectorState_live_run_mismatch():
     # Test that an unexpected live run number throws an exception.
     runNumber0 = "12345"
     runNumber1 = "67890"
-    mockLiveMetadata = mock.Mock(
-        spec=LiveMetadata, runNumber=runNumber1, detectorState=mockDetectorState(runNumber1), protonCharge=1000.0
+    mockRunMetadata = mock.Mock(
+        spec=RunMetadata, runNumber=runNumber1, detectorState=mockDetectorState(runNumber1), protonCharge=1000.0
     )
 
     instance = LocalDataService()
     instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists for run"))
     instance.hasLiveDataConnection = mock.Mock(return_value=True)
-    instance.readLiveMetadata = mock.Mock(return_value=mockLiveMetadata)
+    instance.readLiveMetadata = mock.Mock(return_value=mockRunMetadata)
 
     with pytest.raises(
         RuntimeError, match=f"No PVFile exists for run: {runNumber0}, and it isn't the live run: {runNumber1}"
     ):
         instance.readDetectorState(runNumber0)
-
-
-def test__detectorStateFromMapping():
-    localDataService = LocalDataService()
-    expected = mockDetectorState("123")
-    logs = mockNeXusLogsMapping(expected)
-    actual = localDataService._detectorStateFromMapping(logs)
-    assert actual == expected
-
-
-def test__detectorStateFromMappingWithDiffWavKey():
-    localDataService = LocalDataService()
-    logsDict = {
-        "BL3:Chop:Gbl:WavelengthReq": [1.1],
-        "det_arc1": [1],
-        "det_arc2": [2],
-        "BL3:Det:TH:BL:Frequency": [1.2],
-        "BL3:Mot:OpticsPos:Pos": [1],
-        "det_lin1": [1],
-        "det_lin2": [2],
-    }
-    mockLogs = mockNeXusLogsMappingFromDict(logsDict)
-
-    expected = DetectorState(
-        arc=[1, 2],
-        wav=1.1,
-        freq=1.2,
-        guideStat=1,
-        lin=[1, 2],
-    )
-    actual = localDataService._detectorStateFromMapping(mockLogs)
-
-    assert expected == actual
-
-
-def test__detectorStateFromMapping_bad_logs():
-    localDataService = LocalDataService()
-    testDetectorState = mockDetectorState("12345")
-
-    # Case where wavelength logs are missing
-    logs_missing_wav = mockNeXusLogsMapping(testDetectorState)
-    logs_missing_wav.del_item("BL3:Chop:Skf1:WavelengthUserReq")
-
-    with pytest.raises(RuntimeError, match=r"Some required logs are not present.*"):
-        localDataService._detectorStateFromMapping(logs_missing_wav)
-
-    # Case where other required logs are missing
-    missing_logs = {
-        "BL3:Chop:Skf1:WavelengthUserReq": [1.1]
-        # Other required logs are missing
-    }
-    mock_missing_logs = mockNeXusLogsMappingFromDict(missing_logs)
-
-    with pytest.raises(RuntimeError, match=r"Some required logs are not present.*"):
-        localDataService._detectorStateFromMapping(mock_missing_logs)
-
-    # Case where value in wavelength logs is not valid
-    invalid_wav_dict = {
-        "BL3:Chop:Gbl:WavelengthReq": "glitch",
-        "det_arc1": [1],
-        "det_arc2": [2],
-        "BL3:Det:TH:BL:Frequency": [1.2],
-        "BL3:Mot:OpticsPos:Pos": [1],
-        "det_lin1": [1],
-        "det_lin2": [2],
-    }
-    invalid_wav = mockNeXusLogsMappingFromDict(invalid_wav_dict)
-
-    with pytest.raises(RuntimeError, match=r"Logs have an unexpected format.*"):
-        localDataService._detectorStateFromMapping(invalid_wav)
-
-
-@mock.patch(ThisService + "mappingFromRun")
-def test_liveMetadataFromRun(mockMapping):
-    logs = mockNeXusLogsMapping(DAOFactory.real_detector_state)
-    mockMapping.return_value = logs
-    mockRun = mock.Mock(spec=Run)
-    instance = LocalDataService()
-    expected = LiveMetadata(
-        runNumber=logs["run_number"],
-        startTime=datetime.datetime.replace(
-            np.datetime64(logs["start_time"], "us").astype(datetime.datetime), tzinfo=datetime.timezone.utc
-        ),
-        endTime=datetime.datetime.replace(
-            np.datetime64(logs["end_time"], "us").astype(datetime.datetime), tzinfo=datetime.timezone.utc
-        ),
-        detectorState=DAOFactory.real_detector_state,
-        protonCharge=1000.0,
-    )
-    actual = instance._liveMetadataFromRun(mockRun)
-
-    assert actual == expected
-    mockMapping.assert_called_once_with(mockRun)
-
-
-@mock.patch(ThisService + "mappingFromRun")
-def test_liveMetadataFromRun_incomplete_logs(mockMapping):
-    logs = mockNeXusLogsMapping(DAOFactory.real_detector_state)
-    logs.del_item("run_number")
-    mockMapping.return_value = logs
-    mockRun = mock.Mock(spec=Run)
-    instance = LocalDataService()
-    with pytest.raises(RuntimeError, match=r"Unable to extract LiveMetadata from Run.*"):
-        instance._liveMetadataFromRun(mockRun)
 
 
 @mock.patch(ThisService + "MantidSnapper")
@@ -2620,7 +2654,7 @@ def test__readLiveData(mockSnapper):
 def test__readLiveData_from_now(mockSnapper):
     duration = 0
     # _zero_ is a special case => read from _now_: <StartTime: EPOCH_ZERO>
-    expectedStartTime = LiveMetadata.FROM_NOW_ISO8601
+    expectedStartTime = RunMetadata.FROM_NOW_ISO8601
     testWs = "testWs"
 
     instance = LocalDataService()
@@ -2635,8 +2669,9 @@ def test__readLiveData_from_now(mockSnapper):
     )
 
 
+@mock.patch(ThisService + "RunMetadata")
 @mock.patch(ThisService + "MantidSnapper")
-def test_readLiveMetadata(mockSnapper):
+def test_readLiveMetadata(mockSnapper, mockRunMetadata):
     testWs = "testWs"
     mockWs = mock.Mock()
     mockWs.getRun.return_value = mock.sentinel.run
@@ -2644,16 +2679,14 @@ def test_readLiveMetadata(mockSnapper):
     mockSnapper.return_value.mtd.unique_hidden_name.return_value = testWs
     mockSnapper.return_value.mtd.__getitem__.return_value = mockWs
 
+    mockRunMetadata.fromRun = mock.Mock(return_value=mock.sentinel.metadata)
+
     instance = LocalDataService()
-    with (
-        mock.patch.object(instance, "_readLiveData") as mock__readLiveData,
-        mock.patch.object(instance, "_liveMetadataFromRun") as mock__liveMetadataFromRun,
-    ):
+    with mock.patch.object(instance, "_readLiveData") as mock__readLiveData:
         mock__readLiveData.return_value = testWs
-        mock__liveMetadataFromRun.return_value = mock.sentinel.metadata
         actual = instance.readLiveMetadata()
         mock__readLiveData.assert_called_once_with(testWs, duration=0)
-        mock__liveMetadataFromRun.assert_called_once_with(mock.sentinel.run)
+        mockRunMetadata.fromRun.assert_called_once_with(mock.sentinel.run, liveData=True)
         mockSnapper.return_value.DeleteWorkspace.assert_called_once_with("delete temporary workspace", Workspace=testWs)
         mockSnapper.return_value.executeQueue.call_count == 2
         assert actual == mock.sentinel.metadata
@@ -2690,12 +2723,17 @@ def instrumentWorkspace(cleanup_workspace_at_exit):
 
 def test_detectorStateFromWorkspace(instrumentWorkspace):
     service = LocalDataService()
-    detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+    runNumber = "12345"
+    detectorState1 = mockDetectorState(runNumber)
     wsName = instrumentWorkspace
 
     # --- duplicates `groceryService.updateInstrumentParameters`: -----
     logsInfo = getInstrumentLogDescriptors(detectorState1)
     addInstrumentLogs(wsName, **logsInfo)
+    #  For good measure, we also add the 'run_number' and 'run_title' logs:
+    logs = mtd[wsName].mutableRun()
+    logs.addProperty("run_number", runNumber, True)
+    logs.addProperty("run_title", f"ws for {runNumber}", True)
     # ------------------------------------------------------
 
     actual = service.detectorStateFromWorkspace(wsName)
@@ -2704,7 +2742,8 @@ def test_detectorStateFromWorkspace(instrumentWorkspace):
 
 def test_detectorStateFromWorkspaceWithDiffWavKey(instrumentWorkspace):
     service = LocalDataService()
-    detectorState2 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+    runNumber = "67890"
+    detectorState2 = mockDetectorState(runNumber)
     wsName = instrumentWorkspace
 
     # --- duplicates `groceryService.updateInstrumentParameters`: -----
@@ -2712,6 +2751,10 @@ def test_detectorStateFromWorkspaceWithDiffWavKey(instrumentWorkspace):
     idx = logsInfo["logNames"].index("BL3:Chop:Skf1:WavelengthUserReq")
     logsInfo["logNames"][idx] = "BL3:Chop:Gbl:WavelengthReq"
     addInstrumentLogs(wsName, **logsInfo)
+    #  For good measure, we also add the 'run_number' and 'run_title' logs:
+    logs = mtd[wsName].mutableRun()
+    logs.addProperty("run_number", runNumber, True)
+    logs.addProperty("run_title", f"ws for {runNumber}", True)
     # ------------------------------------------------------
 
     actual = service.detectorStateFromWorkspace(wsName)
@@ -2720,7 +2763,8 @@ def test_detectorStateFromWorkspaceWithDiffWavKey(instrumentWorkspace):
 
 def test_detectorStateFromWorkspace_bad_logs(instrumentWorkspace):
     service = LocalDataService()
-    detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+    runNumber = "12345"
+    detectorState1 = mockDetectorState(runNumber)
     wsName = instrumentWorkspace
 
     # --- duplicates `groceryService.updateInstrumentParameters`: but skips a few log entries: -----
@@ -2748,20 +2792,29 @@ def test_detectorStateFromWorkspace_bad_logs(instrumentWorkspace):
         ],
     }
     addInstrumentLogs(wsName, **logsInfo)
+    #  For good measure, we also add the 'run_number' and 'run_title' logs:
+    logs = mtd[wsName].mutableRun()
+    logs.addProperty("run_number", runNumber, True)
+    logs.addProperty("run_title", f"ws for {runNumber}", True)
     # ------------------------------------------------------
 
-    with pytest.raises(RuntimeError, match=r"Some required logs are not present.*"):
+    with pytest.raises(RuntimeError, match=r"Some required logs \'.*\' are not present.*"):
         service.detectorStateFromWorkspace(wsName)
 
 
 def test_stateIdFromWorkspace(instrumentWorkspace):
     service = LocalDataService()
-    detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+    runNumber = "12345"
+    detectorState1 = mockDetectorState(runNumber)
     wsName = instrumentWorkspace
 
     # --- duplicates `groceryService.updateInstrumentParameters`: -----
     logsInfo = getInstrumentLogDescriptors(detectorState1)
     addInstrumentLogs(wsName, **logsInfo)
+    #  For good measure, we also add the 'run_number' and 'run_title' logs:
+    logs = mtd[wsName].mutableRun()
+    logs.addProperty("run_number", runNumber, True)
+    logs.addProperty("run_title", f"ws for {runNumber}", True)
     # ------------------------------------------------------
 
     SHA = service._stateIdFromDetectorState(detectorState1)
@@ -2770,15 +2823,18 @@ def test_stateIdFromWorkspace(instrumentWorkspace):
     assert actual == expected
 
 
-def test_initializeState():
+@mock.patch(ThisService + "RunMetadata")
+def test_initializeState(mockRunMetadata):
     # Test 'initializeState'; test basic functionality.
     runNumber = "123"
     useLiteMode = True
+    stateId, detectorState = mockGenerateStateId(runNumber)
+    mockRunMetadata.fromNeXusLogs.return_value = RunMetadata.model_construct(
+        runNumber=runNumber, detectorState=detectorState, stateId=stateId
+    )
 
     localDataService = LocalDataService()
-    localDataService._readPVFile = mock.Mock()
-    testDetectorState = mockDetectorState(runNumber)
-    localDataService._readPVFile.return_value = mockPVFile(testDetectorState)
+    localDataService._readPVFile = mock.Mock(return_value=mockPVFile(detectorState))
     localDataService._writeDefaultDiffCalTable = mock.Mock()
 
     testCalibrationData = DAOFactory.calibrationParameters(
@@ -2796,7 +2852,7 @@ def test_initializeState():
     )
 
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
-        stateId = testCalibrationData.instrumentState.id.hex  # "ab8704b0bc2a2342"
+        stateId = stateId.hex
         stateRootPath = Path(tmpDir) / stateId
         localDataService.constructCalibrationStateRoot = mock.Mock(return_value=stateRootPath)
 
@@ -2809,16 +2865,19 @@ def test_initializeState():
     localDataService._writeDefaultDiffCalTable.assert_any_call(runNumber, False)
 
 
-def test_initializeState_calls_prepareStateRoot():
+@mock.patch(ThisService + "RunMetadata")
+def test_initializeState_calls_prepareStateRoot(mockRunMetadata):
     # Test that 'initializeState' initializes the <state root> directory.
 
     runNumber = "123"
     useLiteMode = True
+    stateId, detectorState = mockGenerateStateId(runNumber)
+    mockRunMetadata.fromNeXusLogs.return_value = RunMetadata.model_construct(
+        runNumber=runNumber, detectorState=detectorState, stateId=stateId
+    )
 
     localDataService = LocalDataService()
-    localDataService._readPVFile = mock.Mock()
-    testDetectorState = mockDetectorState("12345")
-    localDataService._readPVFile.return_value = mockPVFile(testDetectorState)
+    localDataService._readPVFile = mock.Mock(return_value=mockPVFile(detectorState))
     localDataService._writeDefaultDiffCalTable = mock.Mock()
 
     testCalibrationData = DAOFactory.calibrationParameters()
@@ -2827,7 +2886,7 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService._readDefaultGroupingMap = mock.Mock(return_value=mock.Mock(isDirty=False))
     localDataService.generateInstrumentState = mock.MagicMock(return_value=testCalibrationData.instrumentState)
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
-        stateId = ENDURING_STATE_ID
+        stateId = stateId.hex
         stateRootPath = Path(tmpDir) / stateId
         localDataService.constructCalibrationStateRoot = mock.Mock(return_value=stateRootPath)
 
@@ -3082,7 +3141,7 @@ def test_writeGroupingWorkspace(cleanup_workspace_at_exit):
         assert (basePath / filename).exists()
 
 
-def test_writeDiffCalWorkspaces(cleanup_workspace_at_exit):
+def test_writeDiffCalWorkspaces(cleanup_workspace_at_exit, create_per_test_sample_workspace):
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
     with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as basePath:
@@ -3090,16 +3149,12 @@ def test_writeDiffCalWorkspaces(cleanup_workspace_at_exit):
         tableWSName = "test_table"
         maskWSName = "test_mask"
         filename = Path(tableWSName + ".h5")
+
         # Create an instrument workspace.
         instrumentDonor = "test_instrument_donor"
-        LoadEmptyInstrument(
-            Filename=fakeInstrumentFilePath,
-            OutputWorkspace=instrumentDonor,
-        )
-        # Assign the required sample log values
         detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
-        addInstrumentLogs(instrumentDonor, **getInstrumentLogDescriptors(detectorState1))
-        cleanup_workspace_at_exit(instrumentDonor)
+        runNumber = "12345"
+        create_per_test_sample_workspace(instrumentDonor, detectorState1, fakeInstrumentFilePath, runNumber)
         assert mtd.doesExist(instrumentDonor)
 
         # Create table and mask workspaces to write.
@@ -3115,23 +3170,19 @@ def test_writeDiffCalWorkspaces(cleanup_workspace_at_exit):
         assert (basePath / filename).exists()
 
 
-def test_writeDiffCalWorkspaces_mask_only(cleanup_workspace_at_exit):
+def test_writeDiffCalWorkspaces_mask_only(cleanup_workspace_at_exit, create_per_test_sample_workspace):
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
     with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as basePath:
         basePath = Path(basePath)
         maskWSName = "test_mask"
         filename = Path(maskWSName + ".h5")
+
         # Create an instrument workspace.
         instrumentDonor = "test_instrument_donor"
-        LoadEmptyInstrument(
-            Filename=fakeInstrumentFilePath,
-            OutputWorkspace=instrumentDonor,
-        )
-        # Assign the required sample log values
         detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
-        addInstrumentLogs(instrumentDonor, **getInstrumentLogDescriptors(detectorState1))
-        cleanup_workspace_at_exit(instrumentDonor)
+        runNumber = "12345"
+        create_per_test_sample_workspace(instrumentDonor, detectorState1, fakeInstrumentFilePath, runNumber)
         assert mtd.doesExist(instrumentDonor)
 
         # Create mask workspace to write.
@@ -3142,7 +3193,7 @@ def test_writeDiffCalWorkspaces_mask_only(cleanup_workspace_at_exit):
         assert (basePath / filename).exists()
 
 
-def test_writeDiffCalWorkspaces_bad_path(cleanup_workspace_at_exit):
+def test_writeDiffCalWorkspaces_bad_path(cleanup_workspace_at_exit, create_per_test_sample_workspace):
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
     with pytest.raises(  # noqa: PT012
@@ -3155,17 +3206,13 @@ def test_writeDiffCalWorkspaces_bad_path(cleanup_workspace_at_exit):
             maskWSName = "test_mask"
             # do not add required: ".h5" suffix
             filename = Path(tableWSName)
+
             # Create an instrument workspace.
             instrumentDonor = "test_instrument_donor"
-            LoadEmptyInstrument(
-                Filename=fakeInstrumentFilePath,
-                OutputWorkspace=instrumentDonor,
-            )
-            cleanup_workspace_at_exit(instrumentDonor)
-            assert mtd.doesExist(instrumentDonor)
-            # Assign the required sample log values
             detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
-            addInstrumentLogs(instrumentDonor, **getInstrumentLogDescriptors(detectorState1))
+            runNumber = "12345"
+            create_per_test_sample_workspace(instrumentDonor, detectorState1, fakeInstrumentFilePath, runNumber)
+            assert mtd.doesExist(instrumentDonor)
 
             # Create table and mask workspaces to write.
             createCompatibleMask(maskWSName, instrumentDonor)
@@ -3180,23 +3227,19 @@ def test_writeDiffCalWorkspaces_bad_path(cleanup_workspace_at_exit):
             assert (basePath / filename).exists()
 
 
-def test_writePixelMask(cleanup_workspace_at_exit):
+def test_writePixelMask(cleanup_workspace_at_exit, create_per_test_sample_workspace):
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
     with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as basePath:
         basePath = Path(basePath)
         maskWSName = "test_mask"
         filename = Path(maskWSName + ".h5")
+
         # Create an instrument workspace.
         instrumentDonor = "test_instrument_donor"
-        LoadEmptyInstrument(
-            Filename=fakeInstrumentFilePath,
-            OutputWorkspace=instrumentDonor,
-        )
-        # Assign the required sample log values
         detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
-        addInstrumentLogs(instrumentDonor, **getInstrumentLogDescriptors(detectorState1))
-        cleanup_workspace_at_exit(instrumentDonor)
+        runNumber = "12345"
+        create_per_test_sample_workspace(instrumentDonor, detectorState1, fakeInstrumentFilePath, runNumber)
         assert mtd.doesExist(instrumentDonor)
 
         # Create mask workspace to write.
@@ -3252,9 +3295,9 @@ class TestReductionPixelMasks:
 
         # create instrument workspaces for each state
         cls.sampleWS1 = mtd.unique_hidden_name()
-        create_sample_workspace(cls.sampleWS1, cls.detectorState1, instrumentFilePath)
+        create_sample_workspace(cls.sampleWS1, cls.detectorState1, instrumentFilePath, cls.runNumber1)
         cls.sampleWS2 = mtd.unique_hidden_name()
-        create_sample_workspace(cls.sampleWS2, cls.detectorState2, instrumentFilePath)
+        create_sample_workspace(cls.sampleWS2, cls.detectorState2, instrumentFilePath, cls.runNumber2)
         assert cls.service.stateIdFromWorkspace(cls.sampleWS1)[0] == cls.stateId1
         assert cls.service.stateIdFromWorkspace(cls.sampleWS2)[0] == cls.stateId2
 
@@ -3321,18 +3364,18 @@ class TestReductionPixelMasks:
 
         def mockGetIPTS(runNumber, _instrumentName="SNAP"):
             if runNumber == self.runNumber6:
-                # This tests that any error, besides not finding the IPTS-directory, is not swallowed or relabled.
+                # This tests that any error, besides not finding the IPTS-directory, is not swallowed or relabeled.
                 raise RuntimeError("Some other runtime error")
             else:
                 return {
-                    self.runNumber1: "/SNS/SNAP/IPTS-1",
-                    self.runNumber2: "/SNS/SNAP/IPTS-1",
-                    self.runNumber3: "/SNS/SNAP/IPTS-2",
-                    self.runNumber4: "/SNS/SNAP/IPTS-2",
+                    self.runNumber1: Path("/SNS/SNAP/IPTS-1"),
+                    self.runNumber2: Path("/SNS/SNAP/IPTS-1"),
+                    self.runNumber3: Path("/SNS/SNAP/IPTS-2"),
+                    self.runNumber4: Path("/SNS/SNAP/IPTS-2"),
                     self.runNumber5: None,  # Deliberate: no IPTS-directory exists for this run.
                 }[runNumber]
 
-        monkeypatch.setattr(self.service, "_getIPTS", mockGetIPTS)
+        monkeypatch.setattr(self.service, "getIPTS", mockGetIPTS)
 
         stack = ExitStack()
         tmpPath = stack.enter_context(tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")))

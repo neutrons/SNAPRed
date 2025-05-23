@@ -62,15 +62,6 @@ class MantidSnapper:
     _nonConcurrentAlgorithms = "SaveNexus", "SaveNexusESS", "SaveDiffCal", "RenameWorkspace"
     _nonConcurrentAlgorithmMutex = Lock()
 
-    ##
-    ## ALGORITHMS WITH LOGGING DISABLED
-    ##
-
-    # Important: completely disable logging from `GetIPTS` and `LoadLiveData`.
-    # TODO:  Poco::Logger may have a race condition (, with respect to the GIL),
-    #   when called from Python in async mode.
-    _quietAlgorithms = "GetIPTS", "LoadLiveData"
-
     # Timeout sequencing
     _timeout = 60.0  # seconds
     _checkInterval = 0.05  # 50 ms
@@ -177,11 +168,9 @@ class MantidSnapper:
         alg = AlgorithmManager.create(name)
 
         alg.setChild(True)
-        if name in cls._quietAlgorithms:
-            # This allows a distinction between `setChild`, and logging completely turned off.
-            alg.setLogging(False)
         alg.setAlwaysStoreInADS(True)
         alg.setRethrows(True)
+
         return alg
 
     @classmethod

@@ -58,14 +58,14 @@ class InstaEats(GroceryService):
 
     ## FILENAME METHODS
 
-    def getIPTS(self, runNumber: str, instrumentName: str = None) -> str:
-        return Resource.getPath("inputs/testInstrument/IPTS-456/")
+    def getIPTS(self, runNumber: str, instrumentName: str = None) -> Path | None:
+        return Path(Resource.getPath("inputs/testInstrument/IPTS-456/"))
 
     def _createNeutronFilename(self, runNumber: str, useLiteMode: bool) -> Path:
         instr = "nexus.lite" if useLiteMode else "nexus.native"
         pre = instr + ".prefix"
         ext = instr + ".extension"
-        return Path(self.getIPTS(runNumber) + Config[pre] + str(runNumber) + Config[ext])
+        return self.getIPTS(runNumber) / (Config[pre] + str(runNumber) + Config[ext])
 
     @validate_call
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:

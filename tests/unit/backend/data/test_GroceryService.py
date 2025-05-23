@@ -1,5 +1,6 @@
 # ruff: noqa: E722, PT011, PT012, F811
 import datetime
+import inspect
 import itertools
 import json
 import os
@@ -10,7 +11,6 @@ import time
 ## In order to preserve the import order as much as possible, add test-related imports at the end.
 ##
 import unittest
-from collections import namedtuple
 from pathlib import Path
 from random import randint
 from unittest import mock
@@ -47,11 +47,15 @@ from util.WhateversInTheFridge import WhateversInTheFridge
 
 import snapred.backend.recipe.algorithm  # noqa: F401
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem, LiveDataArgs
-from snapred.backend.dao.LiveMetadata import LiveMetadata
+from snapred.backend.dao.ObjectSHA import ObjectSHA
+from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state import DetectorState
+from snapred.backend.dao.StateId import StateId
 from snapred.backend.dao.WorkspaceMetadata import UNSET, DiffcalStateMetadata, WorkspaceMetadata
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.error.LiveDataState import LiveDataState
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config, Resource
 from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -126,7 +130,9 @@ class TestGroceryService(unittest.TestCase):
         assert os.path.exists(cls.sampleWSFilePath)
 
         cls.detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+        cls.stateId1 = ObjectSHA.fromObject(StateId.fromDetectorState(cls.detectorState1)).hex
         cls.detectorState2 = DetectorState(arc=(7.0, 8.0), wav=9.0, freq=10.0, guideStat=2, lin=(11.0, 12.0))
+        cls.stateId2 = ObjectSHA.fromObject(StateId.fromDetectorState(cls.detectorState2)).hex
 
         cls.difc_name = "diffract_consts"
         cls.sampleDiffCalFilePath = Resource.getPath(f"inputs/test_diffcal_{cls.runNumber}_groceryservice.h5")
@@ -150,10 +156,6 @@ class TestGroceryService(unittest.TestCase):
         )
         assert os.path.exists(cls.samplePixelMaskFilePath)
 
-        # rather than the LocalDataService, just grab whatevers in the fridge
-        cls.fridge = WhateversInTheFridge()
-        cls.fridge.readDetectorState = mock.Mock(return_value=cls.detectorState1)
-
         # cleanup at per-test teardown
         cls.excludeAtTeardown = [cls.sampleWS, cls.sampleTableWS, cls.sampleMaskWS]
 
@@ -161,6 +163,10 @@ class TestGroceryService(unittest.TestCase):
         cls.exclude = cls.excludeAtTeardown + [cls.fetchedWSname]
 
     def setUp(self):
+        # rather than the LocalDataService, just grab whatevers in the fridge
+        self.fridge = WhateversInTheFridge()
+        self.fridge.readDetectorState = mock.Mock(return_value=self.detectorState1)
+
         self.instance = GroceryService(dataService=self.fridge)
         self.stateId, _ = self.instance.dataService.generateStateId(self.runNumber)
         self.groupingItem = (
@@ -197,6 +203,13 @@ class TestGroceryService(unittest.TestCase):
             versionPath = Path(f"{root}/{liteModeStr}/{calType}/v_{self.version:04d}")
             mockIndexer.versionPath = mock.Mock(return_value=versionPath)
         return mock.Mock(return_value=mockIndexer)
+
+    def mockRunMetadata(self, runNumber: str, detectorState: DetectorState | None = None) -> RunMetadata:
+        return RunMetadata.model_construct(
+            runNumber=runNumber,
+            detectorState=detectorState,
+            # other fields...
+        )
 
     def clearoutWorkspaces(self) -> None:
         """Delete the workspaces created by loading"""
@@ -574,10 +587,10 @@ class TestGroceryService(unittest.TestCase):
     def test_updateGroupingCacheFromADS_noop(self):
         """ws is not in cache and not in ADS"""
         groupingScheme = "column"
-        runId = "555"
+        stateId = self.stateId
         useLiteMode = True
         wsname = "_test_ws_"
-        key = self.instance._key(groupingScheme, runId, useLiteMode)
+        key = self.instance._key(groupingScheme, stateId, useLiteMode)
         self.instance._createGroupingWorkspaceName = mock.Mock(return_value=wsname)
         assert self.instance._loadedGroupings == {}
         assert not mtd.doesExist(wsname)
@@ -589,10 +602,10 @@ class TestGroceryService(unittest.TestCase):
     def test_updateGroupingCacheFromADS_both(self):
         """ws is in cache and in ADS"""
         groupingScheme = "column"
-        runId = "555"
+        stateId = self.stateId
         useLiteMode = True
         wsname = "_test_ws_"
-        key = self.instance._key(groupingScheme, runId, useLiteMode)
+        key = self.instance._key(groupingScheme, stateId, useLiteMode)
         self.instance._createGroupingWorkspaceName = mock.Mock(return_value=wsname)
         self.instance._loadedGroupings[key] = wsname
         self.create_dumb_workspace(wsname)
@@ -604,10 +617,10 @@ class TestGroceryService(unittest.TestCase):
     def test_updateGroupingCacheFromADS_cache_no_ADS(self):
         """ws is in cache but not ADS"""
         groupingScheme = "column"
-        runId = "555"
+        stateId = self.stateId
         useLiteMode = True
         wsname = "_test_ws_"
-        key = self.instance._key(groupingScheme, runId, useLiteMode)
+        key = self.instance._key(groupingScheme, stateId, useLiteMode)
         self.instance._createGroupingWorkspaceName = mock.Mock(return_value=wsname)
         self.instance._loadedGroupings[key] = wsname
         assert not mtd.doesExist(wsname)
@@ -618,10 +631,10 @@ class TestGroceryService(unittest.TestCase):
     def test_updateGroupingCacheFromADS_ADS_no_cache(self):
         """ws is in ADS and not in cache"""
         groupingScheme = "column"
-        runId = "555"
+        stateId = self.stateId
         useLiteMode = True
         wsname = "_test_ws_"
-        key = self.instance._key(groupingScheme, runId, useLiteMode)
+        key = self.instance._key(groupingScheme, stateId, useLiteMode)
         self.instance._createGroupingWorkspaceName = mock.Mock(return_value=wsname)
         self.create_dumb_workspace(wsname)
         assert self.instance._loadedGroupings == {}
@@ -633,51 +646,56 @@ class TestGroceryService(unittest.TestCase):
     def test_updateInstrumentCacheFromADS_noop(self):
         """ws is not in cache and not in ADS"""
         runId = "555"
+        stateId = self.stateId
         useLiteMode = True
+        key = self.instance._key(stateId, useLiteMode)
         wsname = "_test_ws_"
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
         assert self.instance._loadedInstruments == {}
         assert not mtd.doesExist(wsname)
-        self.instance._updateInstrumentCacheFromADS(runId, useLiteMode)
+        self.instance._updateInstrumentCacheFromADS(runId, useLiteMode, key)
         assert self.instance._loadedInstruments == {}
         assert not mtd.doesExist(wsname)
 
     def test_updateInstrumentCacheFromADS_both(self):
         """ws is in cache and in ADS"""
         runId = "555"
+        stateId = self.stateId
         useLiteMode = True
+        key = self.instance._key(stateId, useLiteMode)
         wsname = "_test_ws_"
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
-        key = self.instance._key(runId, useLiteMode)
         self.instance._loadedInstruments[key] = wsname
         self.create_dumb_workspace(wsname)
         assert mtd.doesExist(wsname)
-        self.instance._updateInstrumentCacheFromADS(runId, useLiteMode)
+        self.instance._updateInstrumentCacheFromADS(runId, useLiteMode, key)
         assert self.instance._loadedInstruments == {key: wsname}
 
     def test_updateInstrumentCacheFromADS_cache_no_ADS(self):
         """ws is in cache but not ADS"""
         runId = "555"
+        stateId = self.stateId
         useLiteMode = True
+        key = self.instance._key(stateId, useLiteMode)
         wsname = "_test_ws_"
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
-        key = self.instance._key(runId, useLiteMode)
         self.instance._loadedInstruments[key] = wsname
         assert not mtd.doesExist(wsname)
-        self.instance._updateInstrumentCacheFromADS(runId, useLiteMode)
+        self.instance._updateInstrumentCacheFromADS(runId, useLiteMode, key)
         assert self.instance._loadedInstruments == {}
 
     def test_updateInstrumentCacheFromADS_ADS_no_cache(self):
         """ws is in ADS and not in cache"""
         runId = "555"
+        stateId = self.stateId
         useLiteMode = True
+        key = self.instance._key(stateId, useLiteMode)
         wsname = "_test_ws_"
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
-        key = self.instance._key(runId, useLiteMode)
         self.create_dumb_workspace(wsname)
-        assert self.instance._loadedGroupings == {}
+        assert self.instance._loadedInstruments == {}
         assert mtd.doesExist(wsname)
-        self.instance._updateInstrumentCacheFromADS(runId, useLiteMode)
+        self.instance._updateInstrumentCacheFromADS(runId, useLiteMode, key)
         assert self.instance._loadedInstruments == {key: wsname}
 
     def test_rebuildNeutronCache(self):
@@ -702,11 +720,11 @@ class TestGroceryService(unittest.TestCase):
 
     def test_rebuildInstrumentCache(self):
         """Test the correct behavior of the rebuildInstrumentCache method"""
-        runId = "555"
+        stateId = self.stateId
         useLiteMode = True
+        key = self.instance._key(stateId, useLiteMode)
         wsname = "_test_ws_"
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
-        key = self.instance._key(runId, useLiteMode)
         self.instance._loadedInstruments[key] = wsname
         self.instance.rebuildInstrumentCache()
         assert self.instance._loadedInstruments == {}
@@ -839,13 +857,15 @@ class TestGroceryService(unittest.TestCase):
             rtol=self.rtolValue,
         )
 
-    def test_fetch_failed(self):
+    @mock.patch.object(inspect.getmodule(MantidSnapper), "logger")
+    def test_fetch_failed(self, mockLogger):
         # this is some file that it can't load
         mockFilename = Resource.getPath("inputs/crystalInfo/blank_file.cif")
-        with pytest.raises(RuntimeError) as e:
+        with pytest.raises(AlgorithmException, match=".*Failed to recognize this file as an ASCII file.*"):
             self.instance.fetchWorkspace(mockFilename, self.fetchedWSname, loader="")
-        assert self.fetchedWSname in str(e.value)
-        assert mockFilename in str(e.value)
+        errorMessage = mockLogger.error.mock_calls[0].args[0]
+        assert self.fetchedWSname in errorMessage
+        assert mockFilename in errorMessage
 
     def test_fetch_false(self):
         # this is some file that it can't load
@@ -1392,6 +1412,7 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,  # noqa: F841
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
                 mock.patch(ThisService + "datetime", wraps=datetime.datetime) as mockDatetime,
+                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 mockDatetime.utcnow.return_value = now_
@@ -1423,18 +1444,18 @@ class TestGroceryService(unittest.TestCase):
                 # Initial output ws from livedata will always be native before it gets converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `instance.mantidSnapper.mtd` to return a workspace that has the correct run number.
+                # Mock `RunMetadata.fromRun` to return `RunMetadata` that has the correct run number.
+                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(runNumber))
+                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
+                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
+
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
                 mockWs = mock.Mock()
-                RunNumberProperty = namedtuple("RunNumberProperty", "value")
-                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
-                mockWs.getRun.return_value.getProperty.side_effect = (
-                    lambda key: RunNumberProperty(runNumber) if _valid_key(key, "run_number") else None
-                )
+                mockWs.getRun.return_value = mock.sentinel.run
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -1522,6 +1543,7 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
                 mock.patch(ThisService + "datetime", wraps=datetime.datetime) as mockDatetime,
+                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 mockDatetime.utcnow.return_value = now_
@@ -1553,17 +1575,17 @@ class TestGroceryService(unittest.TestCase):
                 # Initial output ws from livedata will always be native before it gets converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `instance.mantidSnapper.mtd` to return a workspace that DOES NOT HAVE the correct run number.
+                # Mock `RunMetadata.fromRun` to return `RunMetadata` that DOES NOT HAVE the correct run number.
+                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(str(int(runNumber) + 1)))
+                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
+                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
+
                 def _valid_key(key: str, validKey: str):
                     assert key == validKey, f"key '{key}', expecting '{validKey}'"
                     return True
 
                 mockWs = mock.Mock()
-                RunNumberProperty = namedtuple("RunNumberProperty", "value")
-                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
-                mockWs.getRun.return_value.getProperty.side_effect = (
-                    lambda key: RunNumberProperty(str(int(runNumber) + 1)) if _valid_key(key, "run_number") else None
-                )
+                mockWs.getRun.return_value = mock.sentinel.run
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -1624,7 +1646,7 @@ class TestGroceryService(unittest.TestCase):
                 "Instrument": Config["liveData.instrument.name"],
                 "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
-                "StartTime": LiveMetadata.FROM_START_ISO8601,
+                "StartTime": RunMetadata.FROM_START_ISO8601,
             }
 
             testCalibrationData = DAOFactory.calibrationParameters()
@@ -1645,6 +1667,7 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,  # noqa: F841
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 # Mocks for flow-control branching:
@@ -1674,18 +1697,18 @@ class TestGroceryService(unittest.TestCase):
                 # Live data is always initially native until it is converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `instance.mantidSnapper.mtd` to return a workspace that has the correct run number.
+                # Mock `RunMetadata.fromRun` to return `RunMetadata` that has the correct run number.
+                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(runNumber))
+                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
+                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
+
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
                 mockWs = mock.Mock()
-                RunNumberProperty = namedtuple("RunNumberProperty", "value")
-                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
-                mockWs.getRun.return_value.getProperty.side_effect = (
-                    lambda key: RunNumberProperty(runNumber) if _valid_key(key, "run_number") else None
-                )
+                mockWs.getRun.return_value = mock.sentinel.run
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -1741,7 +1764,7 @@ class TestGroceryService(unittest.TestCase):
                 "Instrument": Config["liveData.instrument.name"],
                 "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
-                "StartTime": LiveMetadata.FROM_START_ISO8601,
+                "StartTime": RunMetadata.FROM_START_ISO8601,
             }
 
             testCalibrationData = DAOFactory.calibrationParameters()
@@ -1762,6 +1785,7 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 # Mocks for flow-control branching:
@@ -1791,18 +1815,18 @@ class TestGroceryService(unittest.TestCase):
                 # Live data is always initially native until it is converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `instance.mantidSnapper.mtd` to return a workspace that DOES NOT HAVE the correct run number.
+                # Mock `RunMetadata.fromRun` to return `RunMetadata` that DOES NOT HAVE the correct run number.
+                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(str(int(runNumber) + 1)))
+                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
+                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
+
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
                 mockWs = mock.Mock()
-                RunNumberProperty = namedtuple("RunNumberProperty", "value")
-                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
-                mockWs.getRun.return_value.getProperty.side_effect = (
-                    lambda key: RunNumberProperty(str(int(runNumber) + 1)) if _valid_key(key, "run_number") else None
-                )
+                mockWs.getRun.return_value = mock.sentinel.run
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -2048,6 +2072,7 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,  # noqa: F841
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
                 mock.patch(ThisService + "datetime", wraps=datetime.datetime) as mockDatetime,
+                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 mockDatetime.utcnow.return_value = now_
@@ -2079,18 +2104,18 @@ class TestGroceryService(unittest.TestCase):
                 # Initial output ws from livedata will always be native before it gets converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `instance.mantidSnapper.mtd` to return a workspace that has the correct run number.
+                # Mock `RunMetadata.fromRun` to return `RunMetadata` that has the correct run number.
+                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(runNumber))
+                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
+                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
+
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
                 mockWs = mock.Mock()
-                RunNumberProperty = namedtuple("RunNumberProperty", "value")
-                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
-                mockWs.getRun.return_value.getProperty.side_effect = (
-                    lambda key: RunNumberProperty(runNumber) if _valid_key(key, "run_number") else None
-                )
+                mockWs.getRun.return_value = mock.sentinel.run
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -2133,6 +2158,8 @@ class TestGroceryService(unittest.TestCase):
                     loader="LoadLiveData",
                     loaderArgs=json.dumps(expectedLoaderArgs),
                 )
+                mockRunMetadata.fromRun.assert_called_once_with(mock.sentinel.run)
+
                 if useLiteMode:
                     assert instance._loadedRuns[(runNumber, False)] == 0
                     assert (runNumber, False) in instance._liveDataKeys
@@ -2182,6 +2209,7 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
                 mock.patch(ThisService + "datetime", wraps=datetime.datetime) as mockDatetime,
+                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 mockDatetime.utcnow.return_value = now_
@@ -2213,18 +2241,18 @@ class TestGroceryService(unittest.TestCase):
                 # Live data is always initially native until it is converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `instance.mantidSnapper.mtd` to return a workspace that DOES NOT HAVE the correct run number.
+                # Mock `RunMetadata.fromRun` to return `RunMetadata` that DOES NOT HAVE the correct run number.
+                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(str(int(runNumber) + 1)))
+                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
+                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
+
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
                 mockWs = mock.Mock()
-                RunNumberProperty = namedtuple("RunNumberProperty", "value")
-                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
-                mockWs.getRun.return_value.getProperty.side_effect = (
-                    lambda key: RunNumberProperty(str(int(runNumber) + 1)) if _valid_key(key, "run_number") else None
-                )
+                mockWs.getRun.return_value = mock.sentinel.run
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -2289,7 +2317,7 @@ class TestGroceryService(unittest.TestCase):
                 "Instrument": Config["liveData.instrument.name"],
                 "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
-                "StartTime": LiveMetadata.FROM_START_ISO8601,
+                "StartTime": RunMetadata.FROM_START_ISO8601,
             }
 
             # In order to avoid contaminating other tests, all mocks must be applied
@@ -2305,6 +2333,8 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,  # noqa: F841
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch.object(instance, "_processNeutronDataCopy") as mockProcessNeutronDataCopy,  # noqa: F841
+                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 # Mocks for flow-control branching:
@@ -2334,18 +2364,18 @@ class TestGroceryService(unittest.TestCase):
                 # Live data is always initially native until it is converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `instance.mantidSnapper.mtd` to return a workspace that has the correct run number.
+                # Mock `RunMetadata.fromRun` to return `RunMetadata` that has the correct run number.
+                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(runNumber))
+                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
+                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
+
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
                 mockWs = mock.Mock()
-                RunNumberProperty = namedtuple("RunNumberProperty", "value")
-                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
-                mockWs.getRun.return_value.getProperty.side_effect = (
-                    lambda key: RunNumberProperty(runNumber) if _valid_key(key, "run_number") else None
-                )
+                mockWs.getRun.return_value = mock.sentinel.run
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -2392,6 +2422,7 @@ class TestGroceryService(unittest.TestCase):
                     mockConvertToLiteMode.assert_called_once_with(workspaceLiteName, export=False)
                 else:
                     mockConvertToLiteMode.assert_not_called()
+                mockProcessNeutronDataCopy.assert_called_once_with(item, result["workspace"])
 
     def test_fetchNeutronDataCached_live_data_fallback_fails(self):
         # Test live data, non-fallback cases.
@@ -2413,7 +2444,7 @@ class TestGroceryService(unittest.TestCase):
                 "Instrument": Config["liveData.instrument.name"],
                 "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
-                "StartTime": LiveMetadata.FROM_START_ISO8601,
+                "StartTime": RunMetadata.FROM_START_ISO8601,
             }
 
             # In order to avoid contaminating other tests, all mocks must be applied
@@ -2429,6 +2460,7 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
+                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 # Mocks for flow-control branching:
@@ -2458,18 +2490,18 @@ class TestGroceryService(unittest.TestCase):
                 # Live data is always initially native until it is converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `instance.mantidSnapper.mtd` to return a workspace that DOES NOT HAVE the correct run number.
+                # Mock `RunMetadata.fromRun` to return `RunMetadata` that DOES NOT HAVE the correct run number.
+                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(str(int(runNumber) + 1)))
+                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
+                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
+
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
                 mockWs = mock.Mock()
-                RunNumberProperty = namedtuple("RunNumberProperty", "value")
-                mockWs.getRun.return_value.hasProperty.side_effect = lambda key: key == "run_number"
-                mockWs.getRun.return_value.getProperty.side_effect = (
-                    lambda key: RunNumberProperty(str(int(runNumber) + 1)) if _valid_key(key, "run_number") else None
-                )
+                mockWs.getRun.return_value = mock.sentinel.run
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -2535,7 +2567,7 @@ class TestGroceryService(unittest.TestCase):
         # this is some file that it can't load
         fakeFilepath = Resource.getPath("inputs/crystalInfo/blank_file.cif")
         self.instance._createGroupingFilename = mock.Mock(return_value=fakeFilepath)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(AlgorithmException, match=".*Grouping file extension CIF is not supported.*"):
             self.instance.fetchGroupingDefinition(self.groupingItem)
 
     @mock.patch(ThisService + "GroceryListItem")
@@ -2699,6 +2731,7 @@ class TestGroceryService(unittest.TestCase):
 
         diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
         diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
+        self.instance.dataService.calibrationIndexer = self.mockIndexer(calType="calibration")
         self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
 
         # Both table and mask workspace must be resident in the ADS, otherwise a reload will be triggered.
@@ -2877,6 +2910,7 @@ class TestGroceryService(unittest.TestCase):
         with state_root_redirect(self.instance.dataService) as tmpRoot:
             self.instance.dataService.normalizationIndexer = self.mockIndexer(tmpRoot.path(), "normalization")
             groceryList = GroceryListItem.builder().native().normalization(self.runNumber1, self.version).buildList()
+            self.instance._processNeutronDataCopy = mock.Mock()
 
             # normalization filename is constructed
             normalizationWorkspaceName = (
@@ -2894,6 +2928,7 @@ class TestGroceryService(unittest.TestCase):
             items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == normalizationWorkspaceName
             assert mtd.doesExist(normalizationWorkspaceName)
+            self.instance._processNeutronDataCopy.assert_called_once_with(groceryList[0], normalizationWorkspaceName)
 
             mockLogger.info.assert_any_call(
                 f"Fetching normalization workspace for run {self.runNumber1}, version {self.version}"
@@ -2903,6 +2938,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_grocery_list_normalization_bust_cache(self, mockLogger):
         # Test of workspace type "normalization" as `Input` argument in the `GroceryList`
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+        self.instance._processNeutronDataCopy = mock.Mock()
         with state_root_redirect(self.instance.dataService) as tmpRoot:
             self.instance.dataService.normalizationIndexer = self.mockIndexer(tmpRoot.path(), "normalization")
 
@@ -2937,12 +2973,15 @@ class TestGroceryService(unittest.TestCase):
             items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == normalizationWorkspaceName
             assert mtd.doesExist(normalizationWorkspaceName)
+            self.instance._processNeutronDataCopy.assert_called_once()
+            self.instance._processNeutronDataCopy.reset_mock()
 
             assert not mtd.doesExist(normalizationWorkspaceName2)
             items = self.instance.fetchGroceryList(groceryList2)
             assert mtd.doesExist(normalizationWorkspaceName2)
             assert not mtd.doesExist(normalizationWorkspaceName)
             assert items[0] == normalizationWorkspaceName2
+            self.instance._processNeutronDataCopy.assert_called_once()
 
             mockLogger.info.assert_any_call(
                 f"Fetching normalization workspace for run {self.runNumber1}, version {self.version}"
@@ -2953,6 +2992,8 @@ class TestGroceryService(unittest.TestCase):
         #   workspace already in ADS
         self.instance.grocer = mock.Mock()
         self.instance.dataService.normalizationIndexer = self.mockIndexer()
+        self.instance._processNeutronDataCopy = mock.Mock()
+
         groceryList = GroceryListItem.builder().native().normalization(self.runNumber1, self.version).buildList()
         normalizationWorkspaceName = (
             wng.rawVanadium().runNumber(self.runNumber1).version(self.version).hidden(True).build()
@@ -2970,6 +3011,7 @@ class TestGroceryService(unittest.TestCase):
         assert mtd.doesExist(normalizationWorkspaceName)
         assert mtd[normalizationWorkspaceName].getTitle() == testTitle
         assert self.instance.grocer.executeRecipe.call_count == 0
+        self.instance._processNeutronDataCopy.assert_not_called()
 
     def test_fetch_grocery_list_normalization_not_found_unreachable_code(self):
         # Test of workspace type "normalization": no normalization exists
@@ -3125,18 +3167,18 @@ class TestGroceryService(unittest.TestCase):
         self.instance._loadedRuns = {(self.runNumber, self.useLiteMode): 0}
         self.instance._loadedInstruments = {}
         testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)  # noqa: F841
-        assert self.instance._loadedInstruments == {(self.runNumber, self.useLiteMode): self.sampleWS}
+        assert self.instance._loadedInstruments == {(self.stateId, self.useLiteMode): self.sampleWS}
 
     def test_fetch_instrument_donor_cached(self):
         self.instance._updateNeutronCacheFromADS = mock.Mock()
         self.instance._updateInstrumentCacheFromADS = mock.Mock()
         self.instance._loadedRuns = {}
-        self.instance._loadedInstruments = {(self.runNumber, self.useLiteMode): self.sampleWS}
+        self.instance._loadedInstruments = {(self.stateId, self.useLiteMode): self.sampleWS}
         testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
         assert testWS == self.sampleWS
 
     def test_fetch_instrument_donor_empty_instrument(self):
-        self.instance._getDetectorState = mock.Mock(return_value=self.detectorState2)
+        self.instance.dataService.generateStateId = mock.Mock(return_value=(self.stateId2, self.detectorState2))
         self.instance._updateNeutronCacheFromADS = mock.Mock()
         self.instance._updateInstrumentCacheFromADS = mock.Mock()
         self.instance._loadedRuns = {}
@@ -3167,30 +3209,28 @@ class TestGroceryService(unittest.TestCase):
         assert sampleLogs["det_lin2"] == self.detectorState2.lin[1]
 
     def test_fetch_instrument_donor_empty_instrument_is_cached(self):
-        self.instance._getDetectorState = mock.Mock(return_value=self.detectorState2)
+        self.instance.dataService.generateStateId = mock.Mock(return_value=(self.stateId2, self.detectorState2))
         self.instance._updateNeutronCacheFromADS = mock.Mock()
         self.instance._updateInstrumentCacheFromADS = mock.Mock()
         self.instance._loadedRuns = {}
         self.instance._loadedInstruments = {}
         testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
-        assert self.instance._loadedInstruments == {(self.runNumber, self.useLiteMode): testWS}
+        assert self.instance._loadedInstruments == {(self.stateId2, self.useLiteMode): testWS}
 
     def test_update_instrument_cache_from_ADS_to_cache(self):
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=self.sampleWS)
         self.instance._loadedInstruments = {}
-        self.instance._updateInstrumentCacheFromADS(self.runNumber, self.useLiteMode)
-        assert self.instance._loadedInstruments == {(self.runNumber, self.useLiteMode): self.sampleWS}
+        key = self.instance._key(self.stateId, self.useLiteMode)
+        self.instance._updateInstrumentCacheFromADS(self.runNumber, self.useLiteMode, key)
+        assert self.instance._loadedInstruments == {(self.stateId, self.useLiteMode): self.sampleWS}
 
     def test_update_instrument_cache_from_ADS_cache_del(self):
         testWSName = "not_any_workspace"
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=testWSName)
-        self.instance._loadedInstruments = {(self.runNumber, self.useLiteMode): testWSName}
-        self.instance._updateInstrumentCacheFromADS(self.runNumber, self.useLiteMode)
+        key = self.instance._key(self.stateId, self.useLiteMode)
+        self.instance._loadedInstruments = {key: testWSName}
+        self.instance._updateInstrumentCacheFromADS(self.runNumber, self.useLiteMode, key)
         assert self.instance._loadedInstruments == {}
-
-    def test_get_detector_state(self):
-        detectorState = self.instance._getDetectorState(self.runNumber)
-        assert detectorState == self.detectorState1
 
     def test_fetchCompatibleMask(self):
         # Add an actual instrument state to the sample workspace

@@ -1,20 +1,22 @@
 # Unit tests for `tests/util/state_helpers.py`
+import inspect
 import shutil
-import unittest.mock as mock
 from pathlib import Path
 from shutil import rmtree
-
-import h5py
-import numpy as np
-import pytest
 
 ##
 ## Put test-related imports at the end, so that the normal non-test import sequence is unmodified.
 ##
+from unittest import mock
+
+import numpy as np
+import pytest
 from util.dao import DAOFactory
+from util.h5py_helpers import mockH5File
 from util.state_helpers import reduction_root_redirect, state_root_override, state_root_redirect
 
 from snapred.backend.dao.indexing.Versioning import VERSION_START
+from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config
@@ -31,34 +33,22 @@ def _cleanup_directories():
         shutil.rmtree(stateRootPath)
 
 
-def mockPVFile(detectorState: DetectorState) -> mock.Mock:
-    dict_ = {
-        "run_number/value": np.array(["123456"], dtype="S6"),
-        "start_time/value": np.array(["2023-06-14T14:06:40.429048667"], dtype="S30"),
-        "end_time/value": np.array(["2023-06-14T14:07:56.123123123"], dtype="S30"),
-        "BL3:Chop:Skf1:WavelengthUserReq/value": np.array([detectorState.wav]),
-        "det_arc1/value": np.array([detectorState.arc[0]]),
-        "det_arc2/value": np.array([detectorState.arc[1]]),
-        "BL3:Det:TH:BL:Frequency/value": np.array([detectorState.freq]),
-        "BL3:Mot:OpticsPos:Pos/value": np.array([detectorState.guideStat]),
-        "det_lin1/value": np.array([detectorState.lin[0]]),
-        "det_lin2/value": np.array([detectorState.lin[1]]),
+def mockPVFile(detectorState: DetectorState) -> mock.MagicMock:
+    DASlogs = {
+        "BL3:Chop:Skf1:WavelengthUserReq": np.array([detectorState.wav]),
+        "det_arc1": np.array([detectorState.arc[0]]),
+        "det_arc2": np.array([detectorState.arc[1]]),
+        "BL3:Det:TH:BL:Frequency": np.array([detectorState.freq]),
+        "BL3:Mot:OpticsPos:Pos": np.array([detectorState.guideStat]),
+        "det_lin1": np.array([detectorState.lin[0]]),
+        "det_lin2": np.array([detectorState.lin[1]]),
     }
-
-    mock_ = mock.MagicMock(spec=h5py.Group)
-
-    # Return either the mock group itself or the relevant dataset
-    def side_effect_getitem(key: str):
-        if key == "entry/DASlogs":
-            return mock_
-        return dict_[key]
-
-    mock_.__getitem__.side_effect = side_effect_getitem
-    # Typically you don’t need to override __setitem__ or .get unless your test calls them
-    mock_.__contains__.side_effect = dict_.__contains__
-    mock_.keys.side_effect = dict_.keys
-
-    return mock_
+    specialValues = {
+        "run_number": "123456",
+        "start_time": "2023-06-14T14:06:40.429048667",
+        "end_time": "2023-06-14T14:07:56.123123123",
+    }
+    return mockH5File(DASlogs, **specialValues)
 
 
 @mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
@@ -66,15 +56,19 @@ def mockPVFile(detectorState: DetectorState) -> mock.Mock:
 @mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
+@mock.patch.object(inspect.getmodule(RunMetadata), "h5py")
 def test_state_root_override_enter(
+    mockH5py,
     mockReadPVFile,
     mockGetInstrumentConfig,
     mockReadDefaultGroupingMap,
     mockGenerateStateId,
     mockWriteDefaultDiffCalTable,  # noqa ARG001
 ):
-    # see `test_LocalDataService::test_initializeState`
+    # See `test_LocalDataService::test_initializeState`.
     mockReadPVFile.return_value = mockPVFile(DAOFactory.unreal_detector_state)
+    # We also need to mock out the `RunMetadata` "lazy" `h5py.File` descriptor.
+    mockH5py.File = mock.Mock(return_value=mockReadPVFile.return_value)
 
     testCalibrationData = DAOFactory.calibrationParameters("57514", True, 1)
     mockGetInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
@@ -101,7 +95,9 @@ def test_state_root_override_enter(
 @mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
+@mock.patch.object(inspect.getmodule(RunMetadata), "h5py")
 def test_state_root_override_exit(
+    mockH5py,
     mockReadPVFile,
     mockGetInstrumentConfig,
     mockReadDefaultGroupingMap,
@@ -109,6 +105,8 @@ def test_state_root_override_exit(
 ):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = mockPVFile(DAOFactory.unreal_detector_state)
+    # We also need to mock out the `RunMetadata` "lazy" `h5py.File` descriptor.
+    mockH5py.File = mock.Mock(return_value=mockReadPVFile.return_value)
 
     testCalibrationData = DAOFactory.calibrationParameters("57514", True, 1)
     mockGetInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
@@ -130,7 +128,9 @@ def test_state_root_override_exit(
 @mock.patch.object(LocalDataService, "_readDefaultGroupingMap")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
+@mock.patch.object(inspect.getmodule(RunMetadata), "h5py")
 def test_state_root_override_exit_no_delete(
+    mockH5py,
     mockReadPVFile,
     mockGetInstrumentConfig,
     mockReadDefaultGroupingMap,
@@ -138,6 +138,8 @@ def test_state_root_override_exit_no_delete(
 ):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = mockPVFile(DAOFactory.unreal_detector_state)
+    # We also need to mock out the `RunMetadata` "lazy" `h5py.File` descriptor.
+    mockH5py.File = mock.Mock(return_value=mockReadPVFile.return_value)
 
     testCalibrationData = DAOFactory.calibrationParameters("57514", True, 1)
     mockGetInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig

@@ -103,7 +103,7 @@ class ImitationDataService(LocalDataService):
 
     def getIPTS(self, *x, **y):
         # if this is not overridden, it creates hundreds of headaches
-        return Resource.getPath("inputs/testInstrument/IPTS-456/")
+        return Path(Resource.getPath("inputs/testInstrument/IPTS-456/"))
 
     def generateStateId(self, runId: str) -> Tuple[str, DetectorState]:
         return self.stateId, self.detectorState

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
 
 
-class RunFeedbackRequest(BaseModel):
+class RunMetadataRequest(BaseModel):
     runId: str
