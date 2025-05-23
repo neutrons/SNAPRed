@@ -177,7 +177,7 @@ class _Config:
         if (userHome / "snapred-user.yml").exists():
             with open(str(userHome / "snapred-user.yml"), "r") as f:
                 applicationYml = yaml.safe_load(f)
-            version = applicationYml.get("version", None)
+            version = applicationYml.get("application", {"version": None})["version"]
 
             # generate human readable timestamp
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

@@ -360,7 +360,12 @@ def test_swapToUserYml_archive():
     # setup temp dir
     with TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpPath:
         # mock out path's home method
-        with mock.patch("snapred.meta.Config.Path.home") as mockHome:
+        with (
+            mock.patch("snapred.meta.Config.Path.home") as mockHome,
+            mock.patch("snapred.meta.Config.datetime") as mockDateTime,
+        ):
+            dateTime = "2023-10-01 12:00:00"
+            mockDateTime.datetime.now().strftime.return_value = dateTime
             Config.snapredVersion = lambda: "1.0.0"
             mockHome.return_value = Path(tmpPath)
             Config.swapToUserYml()
@@ -377,6 +382,6 @@ def test_swapToUserYml_archive():
                 assert yml["application"]["version"] == "1.0.8"
                 assert yml["instrument"]["calibration"]["home"] is not None
             assert (Path(tmpPath) / ".snapred" / "snapred-user.yml").exists()
-            assert (Path(tmpPath) / ".snapred" / "snapred-user-1.0.0.yml.bak").exists(), os.listdir(
+            assert (Path(tmpPath) / ".snapred" / f"snapred-user-1.0.0-{dateTime}.yml.bak").exists(), os.listdir(
                 Path(tmpPath) / ".snapred"
             )
