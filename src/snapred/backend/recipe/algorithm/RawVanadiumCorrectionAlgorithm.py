@@ -52,6 +52,8 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
         self.geometry = ingredients.calibrantSample.geometry
         self.material = ingredients.calibrantSample.material
         self.sampleShape = self.geometry.shape
+        self.lambdaMin = ingredients.instrumentState.particleBounds.wavelength.minimum
+        self.lambdaMax = ingredients.instrumentState.particleBounds.wavelength.maximum
 
     def unbagGroceries(self) -> None:
         self.inputVanadiumWS = self.getPropertyValue("InputWorkspace")
@@ -82,6 +84,30 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             OutputWorkspace=outputWS,
             BinningMode="Logarithmic",
         )
+
+        # Malcolm added these lines ##################
+        self.mantidSnapper.ConvertUnits(
+            "Convert workspace to wavelength units",
+            InputWorkspace=outputWS,
+            Outputworkspace=outputWS,
+            Target="Wavelength",
+        )
+
+        self.mantidSnapper.CropWorkspace(
+            "crop all events outside of range",
+            InputWorkspace=outputWS,
+            Outputworkspace=outputWS,
+            XMin=self.lambdaMin,
+            XMax=self.lambdaMax,
+        )
+
+        self.mantidSnapper.ConvertUnits(
+            "Ensure workspace is in TOF units",
+            InputWorkspace=outputWS,
+            Outputworkspace=outputWS,
+            Target="TOF",
+        )
+        ################################
 
         self.mantidSnapper.MakeDirtyDish(
             "make a copy of data after chop",
