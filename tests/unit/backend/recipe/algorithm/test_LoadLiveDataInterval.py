@@ -628,7 +628,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
             mock_chunkWs.getPulseTimeMax.return_value = DateAndTime(
                 (datetime.datetime.fromisoformat(self.startTime) + timedelta(minutes=15)).isoformat()
             )
-            mock_chunkIntervals = [ # noqa: F841
+            mock_chunkIntervals = [  # noqa: F841
                 (mock_chunkWs.getPulseTimeMin.return_value, mock_chunkWs.getPulseTimeMax.return_value)
             ]
             mock_mtd = mock.MagicMock()
@@ -683,7 +683,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
             mock_chunkWs.getPulseTimeMax.return_value = DateAndTime(
                 (datetime.datetime.fromisoformat(self.startTime) + timedelta(minutes=15)).isoformat()
             )
-            mock_chunkIntervals = [ # noqa: F841
+            mock_chunkIntervals = [  # noqa: F841
                 (mock_chunkWs.getPulseTimeMin.return_value, mock_chunkWs.getPulseTimeMax.return_value)
             ]
             mock_mtd = mock.MagicMock()
@@ -704,7 +704,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
     def test_exec_filter_init(self):
         mock_LoadLiveData = mock.Mock()
 
-        def createChildAlgorithm_(self_, *args, **_kwargs): # noqa: ARG001
+        def createChildAlgorithm_(self_, *args, **_kwargs):  # noqa: ARG001
             name = args[0]
             match name:
                 case "LoadLiveData":
@@ -725,7 +725,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
 
         with (
             mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "ConfigService") as mock_ConfigService,
-            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "logger") as mock_logger, # noqa: F841
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "logger") as mock_logger,  # noqa: F841
             mock.patch.object(LoadLiveDataInterval, "_createChildAlgorithm") as mock_createChildAlgorithm,
             mock.patch.object(self.instance, "mantidSnapper") as mock_snapper,
             mock.patch.object(self.instance, "isLogging") as mock_isLogging,
@@ -739,7 +739,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
             mock_chunkWs.getPulseTimeMax.return_value = DateAndTime(
                 (datetime.datetime.fromisoformat(self.startTime) + timedelta(minutes=15)).isoformat()
             )
-            mock_chunkIntervals = [ # noqa: F841
+            mock_chunkIntervals = [  # noqa: F841
                 (mock_chunkWs.getPulseTimeMin.return_value, mock_chunkWs.getPulseTimeMax.return_value)
             ]
             mock_mtd = mock.MagicMock()
@@ -773,7 +773,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
         # For this test, the complete interval will be loaded at once.
         mock_LoadLiveData = self._mockLoadLiveData((self.fullWs,))
 
-        def createChildAlgorithm_(self_, *args, **_kwargs): # noqa: ARG001
+        def createChildAlgorithm_(self_, *args, **_kwargs):  # noqa: ARG001
             name = args[0]
             match name:
                 case "LoadLiveData":
@@ -829,7 +829,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
         mock_LoadLiveData = self._mockLoadLiveData(self.chunkWss)
         mock_FilterByTime = mock.Mock()
 
-        def createChildAlgorithm_(self_, *args, **_kwargs): # noqa: ARG001
+        def createChildAlgorithm_(self_, *args, **_kwargs):  # noqa: ARG001
             name = args[0]
             match name:
                 case "LoadLiveData":
@@ -891,7 +891,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
         mock_LoadLiveData = self._mockLoadLiveData(self.chunkWss[-1::-1])
         mock_FilterByTime = mock.Mock()
 
-        def createChildAlgorithm_(self_, *args, **_kwargs): # noqa: ARG001
+        def createChildAlgorithm_(self_, *args, **_kwargs):  # noqa: ARG001
             name = args[0]
             match name:
                 case "LoadLiveData":
@@ -955,7 +955,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
         mock_LoadLiveData = self._mockLoadLiveData([self.chunkWss[i] for i in (0, 3, 1, 2)])
         mock_FilterByTime = mock.Mock()
 
-        def createChildAlgorithm_(self_, *args, **_kwargs): # noqa: ARG001
+        def createChildAlgorithm_(self_, *args, **_kwargs):  # noqa: ARG001
             name = args[0]
             match name:
                 case "LoadLiveData":
@@ -1029,7 +1029,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
         )
         mock_FilterByTime = mock.Mock()
 
-        def createChildAlgorithm_(self_, *args, **_kwargs): # noqa: ARG001
+        def createChildAlgorithm_(self_, *args, **_kwargs):  # noqa: ARG001
             name = args[0]
             match name:
                 case "LoadLiveData":
@@ -1039,7 +1039,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
 
         # Set the start and end times so that no filtering is required.
         requiredStartTime = self.sampleRunInterval[0]
-        requiredEndTime = self.sampleRunInterval[1] # noqa: F841
+        requiredEndTime = self.sampleRunInterval[1]  # noqa: F841
 
         self.instance.initialize()
         self._setProperties(

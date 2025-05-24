@@ -31,8 +31,9 @@ class LoadLiveDataInterval(PythonAlgorithm):
     @classproperty
     def USING_ADARA_FileReader(cls):
         # Enable a correction for the limitations of the mock "ADARA_FileReader":
-        return Config["liveData.facility.name"] == "TEST_LIVE" and Config["liveData.instrument.name"] == "ADARA_FileReader"
-
+        return (
+            Config["liveData.facility.name"] == "TEST_LIVE" and Config["liveData.instrument.name"] == "ADARA_FileReader"
+        )
 
     def category(self):
         return "Live data"
@@ -115,7 +116,7 @@ class LoadLiveDataInterval(PythonAlgorithm):
                 errors["EndTime"] = "'StartTime' must be before 'EndTime'."
 
         try:
-            instrument = ConfigService.getFacility().instrument(self.getProperty("Instrument").value) # noqa: F841
+            instrument = ConfigService.getFacility().instrument(self.getProperty("Instrument").value)  # noqa: F841
         except RuntimeError as e:
             if "FacilityInfo search object" not in str(e):
                 raise
@@ -185,7 +186,7 @@ class LoadLiveDataInterval(PythonAlgorithm):
         *,
         # `exact`: match the boundary points, otherwise cover, but don't necessarily match the inverval boundaries
         exact,
-        comparisonThreshold=ConfigValue("liveData.time_comparison_threshold")
+        comparisonThreshold=ConfigValue("liveData.time_comparison_threshold"),
     ):
         startDelta = requiredStartTime - intervalPulseTimeMin
         endDelta = intervalPulseTimeMax - requiredEndTime
@@ -250,7 +251,7 @@ class LoadLiveDataInterval(PythonAlgorithm):
     def _noDataGaps(
         cls,
         intervals: List[Tuple[np.datetime64, np.datetime64]],
-        comparisonThreshold=ConfigValue("liveData.time_comparison_threshold")
+        comparisonThreshold=ConfigValue("liveData.time_comparison_threshold"),
     ) -> bool:
         # Check a list of intervals for interval-to-interval gaps.
 
