@@ -24,8 +24,7 @@ class RunNumber(BaseModel):
                 f"Run number {value} does not meet the minimum required value or does not have cached data available."
             )
             raise ValueError(
-                f"Run number {value} is below the minimum value or data does not exist."
-                "Please enter a valid run number."
+                f"Run number {value} is below the minimum value or data does not exist.Please enter a valid run number."
             )
 
         return value
