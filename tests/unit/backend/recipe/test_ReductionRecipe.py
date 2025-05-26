@@ -867,7 +867,7 @@ class ReductionRecipeTest(TestCase):
         # Assertions for the group being fully masked
         groupNames = (recipe.ingredients.pixelGroups[0].focusGroup.name,)
         expected_warning_message = (
-            f"\nAll pixels within the '{groupNames[0]}' grouping are masked.\n" "This grouping will be skipped!"
+            f"\nAll pixels within the '{groupNames[0]}' grouping are masked.\nThis grouping will be skipped!"
         )
 
         # Check that the expected warnings were logged.
@@ -1063,9 +1063,9 @@ class ReductionRecipeTest(TestCase):
             result = recipe.execute()  # noqa: F841
 
         # Ensure no algorithms were applied for the fully masked groups.
-        assert (
-            recipe._applyRecipe.call_count == 0
-        ), "Expected _applyRecipe to not be called for the fully masked groups."
+        assert recipe._applyRecipe.call_count == 0, (
+            "Expected _applyRecipe to not be called for the fully masked groups."
+        )
 
     def test_cook(self):
         recipe = ReductionRecipe()
