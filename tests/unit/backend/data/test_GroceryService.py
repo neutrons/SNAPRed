@@ -1003,7 +1003,7 @@ class TestGroceryService(unittest.TestCase):
         res = self.instance.fetchNeutronDataSingleUse(liteItem)
         assert self.instance._loadedRuns.get(testKeyLite) is None
         workspaceNameLite = self.instance._createNeutronWorkspaceName(liteItem.runNumber, liteItem.useLiteMode)
-        self.instance.convertToLiteMode.assert_called_once_with(workspaceNameLite, export=False)
+        self.instance.convertToLiteMode.assert_called_once_with(workspaceNameLite, export=True)
         assert mtd.doesExist(workspaceNameLite)
 
     def test_fetch_cached_native(self):
@@ -1348,7 +1348,7 @@ class TestGroceryService(unittest.TestCase):
                                 mock.call(mock.sentinel.nativeWorkspaceName, workspaceName),
                             ]
                         )
-                        mockConvertToLiteMode.assert_called_once_with(workspaceName, export=False)
+                        mockConvertToLiteMode.assert_called_once_with(workspaceName, export=True)
                         mockUpdateNeutronCache.assert_has_calls(
                             [mock.call(runNumber, True), mock.call(runNumber, False)]
                         )
@@ -1361,7 +1361,7 @@ class TestGroceryService(unittest.TestCase):
                             mockCreateNeutronWorkspaceName(runNumber, False),
                             item.loader,
                         )
-                        mockConvertToLiteMode.assert_called_once_with(workspaceName, export=False)
+                        mockConvertToLiteMode.assert_called_once_with(workspaceName, export=True)
                         mockUpdateNeutronCache.assert_has_calls(
                             [mock.call(runNumber, True), mock.call(runNumber, False)]
                         )

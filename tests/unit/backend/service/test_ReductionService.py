@@ -527,6 +527,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = True
         fakeDataService.normalizationExists.return_value = True
+        fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
         fakeExportService = mock.Mock()
         fakeExportService.checkWritePermissions.return_value = False
@@ -540,6 +541,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = True
         fakeDataService.normalizationExists.return_value = True
+        fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
         fakeExportService = mock.Mock()
         fakeExportService.checkWritePermissions.return_value = False

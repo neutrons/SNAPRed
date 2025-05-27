@@ -2504,9 +2504,7 @@ def test_readWriteNormalizationState():
     mockNormalization = mock.Mock(spec=Normalization, seedRun=runNumber, useLiteMode=useLiteMode)
 
     localDataService.writeNormalizationState(mockNormalization)
-    localDataService.normalizationIndexer.assert_called_once_with(
-        mockNormalization.seedRun, mockNormalization.useLiteMode
-    )
+    localDataService.normalizationIndexer.assert_called_once_with(mockNormalization.useLiteMode, "123")
     mockNormalizationIndexer.writeParameters.assert_called_once_with(mockNormalization)
     localDataService.normalizationIndexer.reset_mock()
     mockNormalizationIndexer.reset_mock()
