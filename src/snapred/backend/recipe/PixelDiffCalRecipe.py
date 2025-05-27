@@ -334,7 +334,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         logger.info(f"Pixel calibration converged.  Offsets: {self.medianOffsets}")
 
         # create for inspection
-        outputWorkspace = f"__{self.wsDSP}_afterCrossCor"
+        outputWorkspace = f"{self.wsDSP}_afterCrossCor"
         self.convertUnitsAndRebin(self.wsTOF, outputWorkspace)
         self.mantidSnapper.DeleteWorkspace(
             "Deleting tof workspace",

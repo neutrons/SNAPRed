@@ -19,6 +19,7 @@ from snapred.backend.dao.request import (
     RunMetadataRequest,
     SimpleDiffCalRequest,
 )
+from snapred.backend.dao.request.RenameWorkspaceRequest import RenameWorkspaceRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
@@ -617,6 +618,12 @@ class DiffCalWorkflow(WorkflowImplementer):
         response = self.request(path="calibration/assessment", payload=payload)
         assessmentResponse = response.data
         self.calibrationRecord = assessmentResponse.record
+
+        # rename self.pixelCalibratedWorkspace
+        renameRequest = RenameWorkspaceRequest(
+            oldName=self.pixelCalibratedWorkspace, newName=f"__{self.pixelCalibratedWorkspace}"
+        )
+        self.request(path="workspace/rename", payload=renameRequest)
 
         self.outputs.update(assessmentResponse.metricWorkspaces)
         for calibrationWorkspaces in self.calibrationRecord.workspaces.values():
