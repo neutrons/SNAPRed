@@ -921,7 +921,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         permissionsRequest = CalibrationWritePermissionsRequest(
             runNumber=request.runNumber, continueFlags=request.continueFlags
         )
-        with pytest.raises(RuntimeError, match=r".*you don't have permissions to write.*"):
+        with pytest.raises(ContinueWarning, match=r".*you don't have permissions to write.*"):
             self.instance.validateWritePermissions(permissionsRequest)
 
     @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)

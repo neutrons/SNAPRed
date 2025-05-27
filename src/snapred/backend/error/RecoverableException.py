@@ -19,6 +19,7 @@ class RecoverableException(Exception):
     class Type(Flag):
         UNSET = 0
         STATE_UNINITIALIZED = auto()
+        CALIBRATION_HOME_WRITE_PERMISSION = auto()
 
     class Model(BaseModel):
         message: str

@@ -104,6 +104,10 @@ def clear_loggers():  # noqa: PT004
 #     that have occurred since their initialization.
 #
 
+@pytest.fixture(autouse=True, scope="function")
+def _reset_Config():
+    Config.reload()
+
 @pytest.fixture(autouse=True)
 def _reset_Singletons(request):
     if not "integration" in request.keywords:
