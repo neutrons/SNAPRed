@@ -147,29 +147,29 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
 
     @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.logger")
     @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchGroceriesAlgorithm")
-    def test_fetch_logging_LoadLiveData(self, mockAlgo, mockLogger):
+    def test_fetch_logging_LoadLiveDataInterval(self, mockAlgo, mockLogger):
         """Test that fetch logs correct source: live data"""
         mock_instance = mockAlgo.return_value
         mock_instance.execute.return_value = "data"
-        mock_instance.getPropertyValue.return_value = "LoadLiveData"
+        mock_instance.getPropertyValue.return_value = "LoadLiveDataInterval"
 
         self.clearoutWorkspaces()
-        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveData")
+        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveDataInterval")
         mockLogger.info.assert_called_with(f"Fetching live data into {res['workspace']}")
         mockLogger.debug.assert_called_with(f"Finished fetching {res['workspace']} from live-data listener")
 
     @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchGroceriesAlgorithm")
-    def test_fetch_with_LoadLiveData(self, mockAlgo):
-        """Test fetch method with LoadLiveData loader"""
+    def test_fetch_with_LoadLiveDataInterval(self, mockAlgo):
+        """Test fetch method with LoadLiveDataInterval loader"""
         mock_instance = mockAlgo.return_value
         mock_instance.execute.return_value = "data"
-        mock_instance.getPropertyValue.return_value = "LoadLiveData"
+        mock_instance.getPropertyValue.return_value = "LoadLiveDataInterval"
 
         self.clearoutWorkspaces()
-        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveData")
+        res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveDataInterval")
         assert len(res) > 0
         assert res["result"]
-        assert res["loader"] == "LoadLiveData"
+        assert res["loader"] == "LoadLiveDataInterval"
         assert res["workspace"] == self.fetchedWSname
 
     def test_fetch_failed(self):

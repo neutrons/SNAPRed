@@ -90,6 +90,13 @@ liveData:
     name: ${instrument.name}
     # name: ADARA_FileReader
 
+  # Maximum accumulated wait time during the load of a live-data interval.
+  dataLoadTimeout: 120 # seconds
+  chunkLoadWait: 3 # seconds
+
+  # Comparison threshold for the data pulse-time interval.
+  time_comparison_threshold: 10 # seconds
+
   # The ONLY supported mode right now is 'REPLACE':
   #   any other mode requires stay-resident `LoadLiveData` treatment.
   accumulationMethod: Replace

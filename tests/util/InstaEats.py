@@ -168,7 +168,7 @@ class InstaEats(GroceryService):
 
         # Live-data mode can be requested explicitly,
         #   but it also serves as the fallback mode.
-        liveDataMode = loader == "LoadLiveData" or liveDataArgs is not None
+        liveDataMode = loader == "LoadLiveDataInterval" or liveDataArgs is not None
 
         success = False
         convertToLiteMode = False
@@ -242,12 +242,11 @@ class InstaEats(GroceryService):
                 loaderArgs = {
                     "Facility": Config["liveData.facility.name"],
                     "Instrument": Config["liveData.instrument.name"],
-                    "AccumulationMethod": Config["liveData.accumulationMethod"],
                     "PreserveEvents": True,
                     "StartTime": startTime,
                 }
                 data = self.grocer.executeRecipe(
-                    workspace=nativeRawWorkspaceName, loader="LoadLiveData", loaderArgs=json.dumps(loaderArgs)
+                    workspace=nativeRawWorkspaceName, loader="LoadLiveDataInterval", loaderArgs=json.dumps(loaderArgs)
                 )
                 if data["result"]:
                     # For `InstaEats` purposes: here we are never going to trigger this case:

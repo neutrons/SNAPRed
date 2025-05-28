@@ -43,7 +43,7 @@ class FetchGroceriesRecipe:
             "result": False,
             "loader": "",
         }
-        liveDataMode = loader == "LoadLiveData"
+        liveDataMode = loader == "LoadLiveDataInterval"
         if liveDataMode:
             logger.info(f"Fetching live data into {workspace}")
         else:
