@@ -133,6 +133,7 @@ class TestNormalizationService(unittest.TestCase):
         )
 
         self.instance = NormalizationService()
+        self.instance.dataFactoryService.constructStateId = MagicMock(return_value=("12345", None))
         self.instance.sousChef = SculleryBoy()
         mockRecipeInst = mockRecipe.return_value
         mockRecipeInst.executeRecipe.return_value = "expected"
@@ -164,6 +165,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance._sameStates = MagicMock(return_value=True)
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService = MagicMock()
+        self.instance.dataFactoryService.constructStateId = MagicMock(return_value=("12345", None))
 
         FarmFreshIngredients.return_value.get.return_value = True
 
@@ -200,6 +202,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance = NormalizationService()
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="path/to/cif")
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
 
         mockRecipeInst = mockRecipe.return_value
 
@@ -217,6 +220,7 @@ class TestNormalizationService(unittest.TestCase):
             side_effect=[mock.sentinel.version1, mock.sentinel.version2],
         )
         request = mock.Mock(runNumbers=[mock.sentinel.run1, mock.sentinel.run2], useLiteMode=True)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
         response = self.instance.matchRunsToNormalizationVersions(request)
         assert response == {
             mock.sentinel.run1: mock.sentinel.version1,
@@ -231,6 +235,7 @@ class TestNormalizationService(unittest.TestCase):
         }
         mockGroceries = [mock.sentinel.grocery1, mock.sentinel.grocery2, mock.sentinel.grocery2]
         self.instance.matchRunsToNormalizationVersions = mock.Mock(return_value=mockCalibrations)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
         self.instance.groceryService.fetchGroceryList = mock.Mock(return_value=mockGroceries)
         self.instance.groceryClerk = mock.Mock()
 
@@ -243,6 +248,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance = NormalizationService()
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.createNormalizationRecord = MagicMock()
+        self.instance.dataFactoryService.constructStateId = MagicMock(return_value=("12345", None))
 
         result = self.instance.normalizationAssessment(self.request)
 
@@ -284,6 +290,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.groceryService = mockGroceryService
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=mock.Mock(runNumber="12345"))
@@ -327,6 +334,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance._sameStates = mock.Mock(return_value=True)
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
         permissionsRequest = CalibrationWritePermissionsRequest(
             runNumber=self.request.runNumber, continueFlags=self.request.continueFlags
         )
@@ -339,6 +347,7 @@ class TestNormalizationService(unittest.TestCase):
         request = mock.Mock(runNumber="12345", backgroundRunNumber="67890", continueFlags=ContinueWarning.Type.UNSET)
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=None)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
 
         with pytest.raises(
             ContinueWarning,
@@ -354,6 +363,7 @@ class TestNormalizationService(unittest.TestCase):
         )
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=None)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
         self.instance._validateDiffractionCalibrationExists(request)
 
     def test_validateRequest_different_states(self):
@@ -397,6 +407,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.groceryService = mock.Mock()
         self.instance.groceryService.workSpaceDoesExist = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="path/to/cif")
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)

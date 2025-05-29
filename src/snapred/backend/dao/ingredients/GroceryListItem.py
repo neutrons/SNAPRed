@@ -99,7 +99,7 @@ class GroceryListItem(BaseModel):
     # name the property the workspace will be used for
     propertyName: Optional[str] = None
 
-    alternativeState: Optional[str] = None
+    state: Optional[str] = None
 
     def builder():
         # NOTE this import is here to avoid circular dependencies -- don't bother trying to move it
@@ -167,8 +167,8 @@ class GroceryListItem(BaseModel):
                         raise ValueError("diffraction-calibration input table workspace requires a run number")
                 # output (i.e. special-order) workspaces
                 case "diffcal_output" | "diffcal_diagnostic":
-                    if v.get("runNumber") is None:
-                        raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
+                    if v.get("state") is None:
+                        raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a state")
                     if v.get("instrumentPropertySource") is not None:
                         raise ValueError("Loading diffcal-output data should not specify an instrument")
                     if v.get("useLiteMode") is None:
@@ -176,15 +176,15 @@ class GroceryListItem(BaseModel):
                     if v.get("diffCalVersion") is None:
                         raise ValueError("diffcal output can only be loaded with a diffCalVersion number")
                 case "diffcal_table" | "diffcal_mask":
-                    if v.get("runNumber") is None:
-                        raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
+                    if v.get("state") is None:
+                        raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a state")
                     if v.get("useLiteMode") is None:
                         raise ValueError("Loading diffcal table requires specifying resolution (lite/native)")
                     if v.get("diffCalVersion") is None:
                         raise ValueError("diffcal tables can only be loaded with a diffCalVersion number")
                 case "normalization":
-                    if v.get("runNumber") is None:
-                        raise ValueError(f"normalization {v['workspaceType']} requires run number")
+                    if v.get("state") is None:
+                        raise ValueError(f"normalization {v['workspaceType']} requires state")
                     if v.get("normCalVersion") is None:
                         raise ValueError("normalization output can only be loaded with a normCalVersion number")
                 case "reduction_pixel_mask":

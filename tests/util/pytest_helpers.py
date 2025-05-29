@@ -160,7 +160,8 @@ def calibration_home_from_mirror():
         # WARNING: for these integration tests `LocalDataService` is a singleton.
         #   The Indexer's `lru_cache` MUST be reset after the Config override, otherwise
         #     it will return indexers synched to the previous `Config["instrument.calibration.powder.home"]`.
-        LocalDataService()._indexer.cache_clear()
+        LocalDataService().calibrationIndexer.cache_clear()
+        LocalDataService().normalizationIndexer.cache_clear()
 
         # Create symlinks to metadata files and directories.
         metadatas = [Path("LiteGroupMap.hdf"), Path("PixelGroupingDefinitions"), Path("SNAPLite.xml")]
@@ -172,7 +173,8 @@ def calibration_home_from_mirror():
 
     # teardown => __exit__
     _stack.close()
-    LocalDataService()._indexer.cache_clear()
+    LocalDataService().calibrationIndexer.cache_clear()
+    LocalDataService().normalizationIndexer.cache_clear()
 
 
 @pytest.fixture

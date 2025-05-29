@@ -54,6 +54,7 @@ from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe, GroupD
 from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe, PixelDiffCalServing
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
+from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.FromString import FromString
@@ -88,7 +89,7 @@ class CalibrationService(Service):
         self.dataFactoryService = DataFactoryService()
         self.dataExportService = DataExportService()
         self.groceryService = GroceryService()
-        self.groceryClerk = GroceryListItem.builder()
+        self.groceryClerk: GroceryListBuilder = GroceryListItem.builder()
         self.sousChef = SousChef()
         self.registerPath("ingredients", self.prepDiffractionCalibrationIngredients)
         self.registerPath("groceries", self.fetchDiffractionCalibrationGroceries)
@@ -125,6 +126,7 @@ class CalibrationService(Service):
     ) -> DiffractionCalibrationIngredients:
         # fetch the ingredients needed to focus and plot the peaks
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
+        state, _ = self.dataFactoryService.constructStateId(request.runNumber)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -138,6 +140,7 @@ class CalibrationService(Service):
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
             fwhmMultipliers=request.fwhmMultipliers,
             maxChiSq=request.maxChiSq,
+            state=state,
         )
         ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
         ingredients.removeBackground = request.removeBackground
@@ -152,14 +155,16 @@ class CalibrationService(Service):
         if request.startingTableVersion == VersionState.DEFAULT:
             request.startingTableVersion = VERSION_START()
 
+        state, _ = self.dataFactoryService.constructStateId(request.runNumber)
+
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
             request.useLiteMode
-        ).dirty().add()
+        ).diffCalVersion(request.startingTableVersion).state(state).dirty().add()
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(
             request.focusGroup.name
         ).useLiteMode(request.useLiteMode).dirty().add()
         self.groceryClerk.name("previousCalibration").diffcal_table(
-            request.runNumber, request.startingTableVersion
+            state, request.startingTableVersion, request.runNumber
         ).useLiteMode(request.useLiteMode).dirty().add()
         # names
         diffcalOutputName = (
@@ -278,10 +283,9 @@ class CalibrationService(Service):
     @FromString
     def focusSpectra(self, request: FocusSpectraRequest):
         # prep the ingredients -- a pixel group
+        state, _ = self.dataFactoryService.constructStateId(request.runNumber)
         farmFresh = FarmFreshIngredients(
-            runNumber=request.runNumber,
-            useLiteMode=request.useLiteMode,
-            focusGroups=[request.focusGroup],
+            runNumber=request.runNumber, useLiteMode=request.useLiteMode, focusGroups=[request.focusGroup], state=state
         )
         pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
         # fetch the grouping workspace
@@ -327,8 +331,9 @@ class CalibrationService(Service):
         """
         entry = self.dataFactoryService.createCalibrationIndexEntry(request.createIndexEntryRequest)
         record = self.dataFactoryService.createCalibrationRecord(request.createRecordRequest)
+        state, _ = self.dataFactoryService.constructStateId(entry.runNumber)
         version = entry.version
-        if self.dataFactoryService.calibrationExists(entry.runNumber, entry.useLiteMode):
+        if self.dataFactoryService.calibrationExists(entry.runNumber, entry.useLiteMode, state):
             if version == VERSION_START():
                 raise RuntimeError("Overwriting the default calibration is not allowed.")
 
@@ -395,7 +400,8 @@ class CalibrationService(Service):
         """
         run = request.runConfig
         version = request.version
-        return self.dataFactoryService.getCalibrationRecord(run.runNumber, run.useLiteMode, version)
+        state, _ = self.dataFactoryService.constructStateId(run.runNumber)
+        return self.dataFactoryService.getCalibrationRecord(run.runNumber, run.useLiteMode, version, state)
 
     def matchRunsToCalibrationVersions(self, request: MatchRunsRequest) -> Dict[str, Any]:
         """
@@ -403,8 +409,9 @@ class CalibrationService(Service):
         """
         response = {}
         for runNumber in request.runNumbers:
+            state, _ = self.dataFactoryService.constructStateId(runNumber)
             response[runNumber] = self.dataFactoryService.getLatestApplicableCalibrationVersion(
-                runNumber, request.useLiteMode
+                runNumber, request.useLiteMode, state
             )
         return response
 
@@ -413,12 +420,14 @@ class CalibrationService(Service):
         calibrations = self.matchRunsToCalibrationVersions(request)
         for runNumber in request.runNumbers:
             if runNumber in calibrations:
-                self.groceryClerk.diffcal_table(runNumber, calibrations[runNumber]).useLiteMode(
+                state, _ = self.dataFactoryService.constructStateId(runNumber)
+                # TODO: add a specified version to the grocery list
+                self.groceryClerk.diffcal_table(state, calibrations[runNumber], sampleRunNumber=runNumber).useLiteMode(
                     request.useLiteMode
                 ).add()
                 # Calibration masks are also required, and are automatically loaded at the same time,
                 #   however we need the actual mask-workspace name to be in the returned workspaces set.
-                self.groceryClerk.diffcal_mask(runNumber, calibrations[runNumber]).useLiteMode(
+                self.groceryClerk.diffcal_mask(state, calibrations[runNumber], sampleRunNumber=runNumber).useLiteMode(
                     request.useLiteMode
                 ).add()
         workspaces = set(self.groceryService.fetchGroceryList(self.groceryClerk.buildList()))
@@ -478,7 +487,8 @@ class CalibrationService(Service):
     @FromString
     def getCalibrationIndex(self, request: CalibrationIndexRequest):
         run = request.run
-        calibrationIndex = self.dataFactoryService.getCalibrationIndex(run.runNumber, run.useLiteMode)
+        state, _ = self.dataFactoryService.constructStateId(run.runNumber)
+        calibrationIndex = self.dataFactoryService.getCalibrationIndex(run.useLiteMode, state)
         return calibrationIndex
 
     @FromString
@@ -486,8 +496,8 @@ class CalibrationService(Service):
         runId = request.runId
         useLiteMode = request.useLiteMode
         version = request.version
-
-        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, useLiteMode, version)
+        state, _ = self.dataFactoryService.constructStateId(runId)
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, useLiteMode, version, state)
         if calibrationRecord is None:
             errorTxt = f"No calibration record found for run {runId}, version {version}."
             logger.error(errorTxt)
@@ -530,7 +540,7 @@ class CalibrationService(Service):
             self.groceryClerk.name(wngt.DIFFCAL_OUTPUT + "_" + str(n).zfill(4))
             if wng.Units.DSP.lower() in wsName:
                 (
-                    self.groceryClerk.diffcal_output(runId, version)
+                    self.groceryClerk.diffcal_output(state, version)
                     .useLiteMode(useLiteMode)
                     .unit(wng.Units.DSP)
                     .group(calibrationRecord.focusGroupCalibrationMetrics.focusGroupName)
@@ -544,7 +554,7 @@ class CalibrationService(Service):
             self.groceryClerk.name(wngt.DIFFCAL_DIAG + "_" + str(n).zfill(4))
             if wng.Units.DIAG.lower() in wsName:
                 (
-                    self.groceryClerk.diffcal_diagnostic(runId, version)
+                    self.groceryClerk.diffcal_diagnostic(state, version)
                     .useLiteMode(useLiteMode)
                     .unit(wng.Units.DIAG)
                     .group(calibrationRecord.focusGroupCalibrationMetrics.focusGroupName)
@@ -559,11 +569,11 @@ class CalibrationService(Service):
             # Diffraction calibration requires a complete pair 'table' + 'mask':
             #   as above, the specific property name used here is not important.
             self.groceryClerk.name(wngt.DIFFCAL_TABLE + "_" + str(n).zfill(4)).diffcal_table(
-                runId, version
+                state, version, runId
             ).useLiteMode(useLiteMode).add()
-            self.groceryClerk.name(wngt.DIFFCAL_MASK + "_" + str(n).zfill(4)).diffcal_mask(runId, version).useLiteMode(
-                useLiteMode
-            ).add()
+            self.groceryClerk.name(wngt.DIFFCAL_MASK + "_" + str(n).zfill(4)).diffcal_mask(
+                state, version, runId
+            ).useLiteMode(useLiteMode).add()
 
         if workspaces:
             raise RuntimeError(f"not implemented: unable to load unexpected workspace types: {workspaces}")
@@ -572,6 +582,7 @@ class CalibrationService(Service):
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
+        state, _ = self.dataFactoryService.constructStateId(request.run.runNumber)
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.run.runNumber,
@@ -585,6 +596,7 @@ class CalibrationService(Service):
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
             fwhmMultipliers=request.fwhmMultipliers,
             maxChiSq=request.maxChiSq,
+            state=state,
         )
         pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
         detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh)

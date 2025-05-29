@@ -144,7 +144,7 @@ class TestSousChef(unittest.TestCase):
             spec=FarmFreshIngredients,
             runNumber="12345",
             useLiteMode=True,
-            alternativeState=None,
+            state=None,
         )
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
         self.instance.dataFactoryService.getDefaultInstrumentState = mock.Mock(return_value=mock.Mock())
@@ -487,6 +487,7 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepPixelGroup = mock.Mock()
         self.instance.prepDetectorPeaks = mock.Mock()
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("stateId", "DetectorState"))
 
         res = self.instance.prepNormalizationIngredients(self.ingredients)
 
@@ -506,6 +507,7 @@ class TestSousChef(unittest.TestCase):
         self.instance.prepPixelGroup = mock.Mock()
         self.instance.prepDetectorPeaks = mock.Mock()
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("stateId", "DetectorState"))
 
         result = self.instance.prepDiffractionCalibrationIngredients(self.ingredients)
 

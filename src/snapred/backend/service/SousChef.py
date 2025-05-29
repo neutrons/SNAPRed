@@ -61,7 +61,7 @@ class SousChef(Service):
 
     def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
         calibration = self.dataFactoryService.getCalibrationState(
-            ingredients.runNumber, ingredients.useLiteMode, ingredients.alternativeState
+            ingredients.runNumber, ingredients.useLiteMode, ingredients.state
         )
         # NOTE: This generates a new instrument state based on the appropriate SNAPInstPrm, as opposed to
         #       passing the previous instrument state forward.
@@ -74,16 +74,14 @@ class SousChef(Service):
     def prepInstrumentState(self, ingredients: FarmFreshIngredients) -> InstrumentState:
         # check if a calibration exists else just use default state
         instrumentState = None
-        if self.dataFactoryService.calibrationExists(
-            ingredients.runNumber, ingredients.useLiteMode, ingredients.alternativeState
-        ):
+        if self.dataFactoryService.calibrationExists(ingredients.runNumber, ingredients.useLiteMode, ingredients.state):
             calibration = self.prepCalibration(ingredients)
             instrumentState = calibration.instrumentState
         else:
-            if ingredients.alternativeState is not None:
+            if ingredients.state is not None:
                 raise ValueError(
                     (
-                        f"Alternative calibration state {ingredients.alternativeState}",
+                        f"Alternative calibration state {ingredients.state}",
                         f" not found for run {ingredients.runNumber}.",
                     )
                 )
@@ -247,7 +245,7 @@ class SousChef(Service):
             ingredients.runNumber,
             ingredients.useLiteMode,
             ingredients.versions.calibration,
-            ingredients.alternativeState,
+            ingredients.state,
         )
         if calibrationRecord is not None:
             ingredients.calibrantSamplePath = calibrationRecord.calculationParameters.calibrantSamplePath
@@ -277,7 +275,7 @@ class SousChef(Service):
         ingredients: FarmFreshIngredients,
     ) -> Tuple[FarmFreshIngredients, float, Optional[str]]:
         normalizationRecord = self.dataFactoryService.getNormalizationRecord(
-            ingredients.runNumber, ingredients.useLiteMode, ingredients.versions.normalization
+            ingredients.runNumber, ingredients.useLiteMode, ingredients.state, ingredients.versions.normalization
         )
         smoothingParameter = Config["calibration.parameters.default.smoothing"]
         calibrantSamplePath = None
@@ -311,7 +309,8 @@ class SousChef(Service):
         )
 
     def verifyCalibrationExists(self, runNumber: str, useLiteMode: bool) -> bool:
-        if not self.dataFactoryService.calibrationExists(runNumber, useLiteMode):
+        state, _ = self.dataFactoryService.constructStateId(runNumber)
+        if not self.dataFactoryService.calibrationExists(runNumber, useLiteMode, state):
             recoveryData = {
                 "runNumber": runNumber,
                 "useLiteMode": useLiteMode,
