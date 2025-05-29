@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Dict
 
 from mantid.api import (
@@ -115,6 +116,25 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
 
         return issues
 
+    def validateCalibrationFile(self, filepath: str):
+        # confirm the .h5 file contains a group called "calibration"
+        path = Path(filepath)
+        if not path.exists():
+            raise RuntimeError(f"Calibration file {filepath} does not exist")
+
+        # check table with h5py
+        import h5py
+
+        with h5py.File(filepath, "r") as f:
+            if "calibration" not in f:
+                raise RuntimeError(f"Calibration file {filepath} does not contain a 'calibration' group")
+            # ensure that "calibration" group contains datasets [detid, difc, group, instrument, use]
+            calibrationGroup = f["calibration"]
+            requiredDatasets = ["detid", "difc", "group", "instrument", "use"]
+            for dataset in requiredDatasets:
+                if dataset not in calibrationGroup:
+                    raise RuntimeError(f"Calibration file {filepath} does not contain the required dataset '{dataset}'")
+
     def PyExec(self) -> None:
         filename = self.getPropertyValue("Filename")
         outWS = self.getPropertyValue("OutputWorkspace")
@@ -134,6 +154,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                         OutputWorkspace=outWS,
                     )
                 case "LoadCalibrationWorkspaces":
+                    self.validateCalibrationFile(filename)
                     loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))
                     self.mantidSnapper.LoadCalibrationWorkspaces(
                         "Loading diffraction-calibration workspaces",
@@ -170,7 +191,6 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     )
 
             self.mantidSnapper.executeQueue()
-
         else:
             logger.debug(f"A workspace with name {outWS} already exists in the ADS, and so will not be loaded")
             loaderType = ""

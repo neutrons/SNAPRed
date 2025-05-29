@@ -1,4 +1,5 @@
 import datetime
+from pathlib import Path
 from typing import Any, ClassVar, Literal, NamedTuple, Optional, get_args
 
 from pydantic import BaseModel, model_validator
@@ -71,6 +72,7 @@ class GroceryListItem(BaseModel):
     runNumber: Optional[str] = None
     normCalVersion: Optional[int] = None
     diffCalVersion: Optional[int] = None
+    diffCalPath: Optional[Path] = None
     timestamp: Optional[float] = None
     groupingScheme: Optional[str] = None
 
@@ -100,6 +102,9 @@ class GroceryListItem(BaseModel):
     propertyName: Optional[str] = None
 
     state: Optional[str] = None
+
+    # allow specification of a path nonstandard file.
+    path: Optional[Path] = None
 
     def builder():
         # NOTE this import is here to avoid circular dependencies -- don't bother trying to move it

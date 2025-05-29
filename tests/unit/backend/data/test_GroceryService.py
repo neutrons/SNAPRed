@@ -926,6 +926,7 @@ class TestGroceryService(unittest.TestCase):
                 loader="",
                 liveDataArgs=None,
                 diffCalVersion=None,
+                diffCalPath=None,
             )
 
         testItem = generateTestItem()
@@ -993,6 +994,7 @@ class TestGroceryService(unittest.TestCase):
                 loader="",
                 liveDataArgs=None,
                 diffCalVersion=None,
+                diffCalPath=None,
             )
             m.model_copy.side_effect = generateTestItem
             return m
@@ -1036,6 +1038,7 @@ class TestGroceryService(unittest.TestCase):
                 state="stateId",
                 liveDataArgs=None,
                 diffCalVersion=None,
+                diffCalPath=None,
             )
 
         testItem = generateTestItem()
@@ -1135,6 +1138,7 @@ class TestGroceryService(unittest.TestCase):
                 loader="",
                 liveDataArgs=None,
                 diffCalVersion=None,
+                diffCalPath=None,
             )
             m.model_copy.side_effect = generateTestItem
             return m
@@ -2757,10 +2761,48 @@ class TestGroceryService(unittest.TestCase):
             # fetch the workspace
             assert not mtd.doesExist(diffCalTableName)
 
-            print(groceryList)
-            items = self.instance.fetchGroceryList(groceryList)
+            with Config_override("instrument.native.pixelResolution", 16):
+                items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalTableName
             assert mtd.doesExist(diffCalTableName)
+
+    def test_validateCalibrationTable(self):
+        # load a diffcal table and validate it
+        testCalibrationTable = self.generateTestDiffcalTable()
+        item = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()[0]
+        with Config_override("instrument.native.pixelResolution", 16):
+            self.instance._validateCalibrationTable(item, testCalibrationTable)
+
+    def test_validateCalibrationTable_fail_workspaceExists(self):
+        item = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()[0]
+        with pytest.raises(
+            RuntimeError,
+            match="does not exist in the ADS.",
+        ):
+            self.instance._validateCalibrationTable(item, "does not exist")
+
+    def test_validateCalibrationTable(self):
+        # load a diffcal table and validate it
+        testCalibrationTable = self.generateTestDiffcalTable()
+        item = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()[0]
+        with pytest.raises(
+            RuntimeError,
+            match="but expected 1179648 rows for the native resolution.",
+        ):
+            self.instance._validateCalibrationTable(item, testCalibrationTable)
+
+    def test_validateCalibrationTable_fail_invalidDifcValues(self):
+        # load a diffcal table and validate it
+        testCalibrationTable = self.generateTestDiffcalTable()
+        mtd[testCalibrationTable].removeColumn("difc")
+        mtd[testCalibrationTable].addColumn("float", "difc")
+        item = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()[0]
+        with Config_override("instrument.native.pixelResolution", 16):
+            with pytest.raises(
+                RuntimeError,
+                match="All 'difc' values must be positive floats.",
+            ):
+                self.instance._validateCalibrationTable(item, testCalibrationTable)
 
     def test_fetch_grocery_list_diffcal_table_cached(self):
         # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:
@@ -2771,6 +2813,7 @@ class TestGroceryService(unittest.TestCase):
         diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
         diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
         self.instance.dataService.calibrationIndexer = self.mockIndexer(calType="calibration")
+        self.instance._createDiffCalTableFilepathFromWsName = mock.Mock(return_value="does/not/matter/is/cached")
         self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
 
         # Both table and mask workspace must be resident in the ADS, otherwise a reload will be triggered.
@@ -2819,8 +2862,8 @@ class TestGroceryService(unittest.TestCase):
             )
             assert mtd.doesExist(diffCalTableName)
             assert not mtd.doesExist(diffCalMaskName)
-
-            wss = self.instance.fetchGroceryList(groceryList)  # noqa: F841
+            with Config_override("instrument.native.pixelResolution", 16):
+                wss = self.instance.fetchGroceryList(groceryList)  # noqa: F841
             assert mtd.doesExist(diffCalTableName)
             assert mtd.doesExist(diffCalMaskName)
 
@@ -2847,7 +2890,8 @@ class TestGroceryService(unittest.TestCase):
 
             assert not mtd.doesExist(diffCalTableName)
             assert not mtd.doesExist(diffCalMaskName)
-            items = self.instance.fetchGroceryList(groceryList)
+            with Config_override("instrument.native.pixelResolution", 16):
+                items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalTableName
             assert mtd.doesExist(diffCalTableName)
             assert mtd.doesExist(diffCalMaskName)
@@ -2875,7 +2919,8 @@ class TestGroceryService(unittest.TestCase):
 
             assert not mtd.doesExist(diffCalMaskName)
             self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-            items = self.instance.fetchGroceryList(groceryList)
+            with Config_override("instrument.native.pixelResolution", 16):
+                items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
 
@@ -2889,8 +2934,9 @@ class TestGroceryService(unittest.TestCase):
             diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
             diffCalMaskName = None
             self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-            self.instance.fetchCalibrationWorkspaces = mock.Mock()
-            items = self.instance.fetchGroceryList(groceryList)
+            self.instance.fetchCalibrationWorkspaces = mock.Mock(return_value=(diffCalTableName, None))
+            with Config_override("instrument.native.pixelResolution", 16):
+                items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == ""
 
     def test_fetch_grocery_list_diffcal_mask_cached(self):
@@ -2949,7 +2995,8 @@ class TestGroceryService(unittest.TestCase):
 
             assert not mtd.doesExist(diffCalMaskName)
             assert not mtd.doesExist(diffCalTableName)
-            items = self.instance.fetchGroceryList(groceryList)
+            with Config_override("instrument.native.pixelResolution", 16):
+                items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
             assert mtd.doesExist(diffCalTableName)
@@ -3379,16 +3426,10 @@ class TestGroceryService(unittest.TestCase):
         #   => so we need to extract and compare the call args as lists.
         assert list(self.instance.fetchGroceryList.call_args[0][0]) == list(groceryDict.values())
 
-    def test_fetch_default_diffcal_table(self):
-        """
-        Use the test instrument to create a default DIFC table from the method.
-        Compare to known values, found independently in mantid workbench.
-        """
-        runNumber = "123"
-        useLiteMode = True
-
+    def generateTestDiffcalTable(self, refTable=None):
         ## Create the reference table
-        refTable = mtd.unique_name(prefix="_table_")
+        if refTable is None:
+            refTable = mtd.unique_name(prefix="_table_")
         # these values found from mantid workbench, CalculateDIFC with test instrument
         known_difc = [
             2434.197617645125,
@@ -3415,6 +3456,18 @@ class TestGroceryService(unittest.TestCase):
             OutputWorkspace=refTable,
             ListOfDict=json.dumps(known_list_of_dict),
         )
+        return refTable
+
+    def test_fetch_default_diffcal_table(self):
+        """
+        Use the test instrument to create a default DIFC table from the method.
+        Compare to known values, found independently in mantid workbench.
+        """
+        runNumber = "123"
+        useLiteMode = True
+
+        ## Create the reference table
+        refTable = self.generateTestDiffcalTable()
 
         ## Create the default diffcal table
         idfWS = mtd.unique_name(prefix="_idf_")

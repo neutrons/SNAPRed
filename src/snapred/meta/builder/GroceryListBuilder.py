@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+from pathlib import Path
 from typing import Dict, List
 
 from snapred.backend.dao.indexing.Versioning import Version
@@ -32,6 +33,14 @@ class GroceryListBuilder:
 
     def state(self, state: str) -> GroceryListBuilder:
         self._tokens["state"] = state
+        return self
+
+    def path(self, path: Path) -> GroceryListBuilder:
+        self._tokens["path"] = path
+        return self
+
+    def diffcalPath(self, path: Path) -> GroceryListBuilder:
+        self._tokens["diffcalPath"] = path
         return self
 
     def diffCalVersion(self, version: Version) -> GroceryListBuilder:
