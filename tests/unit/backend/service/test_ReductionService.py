@@ -137,6 +137,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
+        self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.request.continueFlags = ContinueWarning.Type.UNSET
         res = self.instance.fetchReductionGroceries(self.request)
@@ -148,7 +149,9 @@ class TestReductionService(unittest.TestCase):
 
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("state", None))
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
+        self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.instance.groceryService.dataService.hasLiveDataConnection = mock.Mock(return_value=True)
 
@@ -159,7 +162,7 @@ class TestReductionService(unittest.TestCase):
 
         self.instance.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
             request.useLiteMode
-        ).liveData(duration=request.liveDataDuration).diffCalVersion(1).dirty().add()
+        ).liveData(duration=request.liveDataDuration).diffCalVersion(1).state("state").dirty().add()
         liveDataInputGroceryItem = self.instance.groceryClerk.buildList()[0]
 
         res = self.instance.fetchReductionGroceries(request)  # noqa: F841
@@ -177,6 +180,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
+        self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.instance.prepCombinedMask = mock.Mock(return_value=mock.sentinel.mask)
         self.request.continueFlags = ContinueWarning.Type.UNSET
@@ -210,7 +214,9 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("state", None))
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
+        self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
         self.instance._markWorkspaceMetadata = mock.Mock()
 
         result = self.instance.reduction(self.request)
@@ -316,7 +322,7 @@ class TestReductionService(unittest.TestCase):
         self.instance._markWorkspaceMetadata(request, wsName)
         self.instance.groceryService.writeWorkspaceMetadataAsTags.assert_called_once_with(wsName, metadata)
 
-    def test_markWorkspaceMetadata_alternativeState(self):
+    def test_markWorkspaceMetadata_state(self):
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getCalibrationDataPath = mock.Mock(return_value="path")
 
@@ -461,6 +467,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = True
         fakeDataService.normalizationExists.return_value = True
+        fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
         self.instance.validateReduction(self.request)
 
@@ -472,6 +479,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = False
         fakeDataService.normalizationExists.return_value = True
+        fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
         with pytest.raises(ContinueWarning) as excInfo:
             self.instance.validateReduction(self.request)
@@ -482,6 +490,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = True
         fakeDataService.normalizationExists.return_value = False
+        fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
         with pytest.raises(ContinueWarning) as excInfo:
             self.instance.validateReduction(self.request)
@@ -492,6 +501,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = False
         fakeDataService.normalizationExists.return_value = False
+        fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
         self.request.continueFlags = (
             ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
@@ -503,6 +513,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = True
         fakeDataService.normalizationExists.return_value = True
+        fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
         fakeExportService = mock.Mock()
         fakeExportService.checkWritePermissions.return_value = False
@@ -516,6 +527,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = True
         fakeDataService.normalizationExists.return_value = True
+        fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
         fakeExportService = mock.Mock()
         fakeExportService.checkWritePermissions.return_value = False
@@ -529,6 +541,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = True
         fakeDataService.normalizationExists.return_value = True
+        fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
         fakeExportService = mock.Mock()
         fakeExportService.checkWritePermissions.return_value = False
@@ -542,6 +555,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = True
         fakeDataService.normalizationExists.return_value = True
+        fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
         fakeExportService = mock.Mock()
         fakeExportService.checkReductionWritePermissions.return_value = False
@@ -554,6 +568,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = False
         fakeDataService.normalizationExists.return_value = False
+        fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
 
         fakeExportService = mock.Mock()
@@ -572,6 +587,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = False
         fakeDataService.normalizationExists.return_value = False
+        fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
         fakeExportService = mock.Mock()
         fakeExportService.checkWritePermissions.return_value = False
@@ -589,6 +605,7 @@ class TestReductionService(unittest.TestCase):
         fakeDataService = mock.Mock()
         fakeDataService.calibrationExists.return_value = False
         fakeDataService.normalizationExists.return_value = False
+        fakeDataService.constructStateId.return_value = ("fake", None)
         self.instance.dataFactoryService = fakeDataService
         fakeExportService = mock.Mock()
         fakeExportService.checkReductionWritePermissions.return_value = False
@@ -928,7 +945,7 @@ class TestReductionServiceMasks:
 
             # prepare the expected grocery dicionary
             groceryClerk = self.service.groceryClerk
-            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, 1).useLiteMode(
+            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(self.stateId1, 1, request.runNumber).useLiteMode(
                 request.useLiteMode
             ).add()
             for mask in (self.maskWS1, self.maskWS2):
@@ -1004,7 +1021,7 @@ class TestReductionServiceMasks:
 
             # prepare the expected grocery dicionary
             groceryClerk = self.service.groceryClerk
-            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(request.runNumber, 1, None).useLiteMode(
+            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(self.stateId1, 1, request.runNumber).useLiteMode(
                 request.useLiteMode
             ).add()
             exp = self.service.groceryService.fetchGroceryDict(groceryClerk.buildDict())
@@ -1020,7 +1037,6 @@ class TestReductionServiceMasks:
         NOTE this probably belongs more properly to the other test class.
         However, it was already here, for simplicity of review I am not moving it.
         """
-
         # timestamp must be unique: see comment at `test_prepCombinedMask`.
         timestamp = self.service.getUniqueTimestamp()
         request = ReductionRequest(
@@ -1045,9 +1061,11 @@ class TestReductionServiceMasks:
         groceryClerk = self.service.groceryClerk
         groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).diffCalVersion(
             request.versions.calibration
-        ).dirty().add()
+        ).state(self.stateId1).dirty().add()
         groceryClerk.name("normalizationWorkspace").normalization(
-            request.runNumber, request.versions.normalization
+            request.runNumber,
+            self.stateId1,
+            request.versions.normalization,
         ).useLiteMode(request.useLiteMode).diffCalVersion(1).dirty().add()
         loadableOtherGroceryItems = groceryClerk.buildDict()
         residentOtherGroceryKwargs = {"combinedPixelMask": combinedMaskName}

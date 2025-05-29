@@ -110,6 +110,7 @@ with mock.patch.dict(
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataFactoryService.createCalibrationIndexEntry = mock.Mock()
         calibrationService.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
+        calibrationService.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         calibrationService.dataFactoryService.createCalibrationRecord = mock.Mock(
             return_value=mock.Mock(
                 runNumber="012345",
@@ -132,6 +133,7 @@ with mock.patch.dict(
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataFactoryService.createCalibrationIndexEntry = mock.Mock()
         calibrationService.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
+        calibrationService.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         calibrationService.dataFactoryService.createCalibrationRecord = mock.Mock(
             return_value=mock.Mock(
                 runNumber="012345",
@@ -152,6 +154,7 @@ with mock.patch.dict(
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataFactoryService.createCalibrationIndexEntry = mock.Mock()
         calibrationService.dataFactoryService.calibrationExists = mock.Mock(return_value=False)
+        calibrationService.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         calibrationService.dataFactoryService.createCalibrationRecord = mock.Mock(
             return_value=mock.Mock(
                 runNumber="012345",
@@ -165,11 +168,13 @@ with mock.patch.dict(
     def test_load():
         calibrationService = CalibrationService()
         calibrationService.dataFactoryService.getCalibrationRecord = mock.Mock(return_value="passed")
+        calibrationService.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         res = calibrationService.load(mock.Mock())
         assert res == calibrationService.dataFactoryService.getCalibrationRecord.return_value
 
     def test_getCalibrationIndex():
         calibrationService = CalibrationService()
+        calibrationService.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         calibrationService.dataFactoryService.getCalibrationIndex = mock.Mock(
             return_value=IndexEntry(runNumber="1", useLiteMode=True, comments="", author="", version=1)
         )
@@ -349,6 +354,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="good/cif/path")
         self.instance.dataFactoryService.createCalibrationRecord = mock.Mock(return_value=expectedRecord)
         self.instance.dataExportService.getUniqueTimestamp = mock.Mock(return_value=timestamp)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         self.instance._collectMetrics = mock.Mock(return_value=fakeMetrics)
 
         # Call the method to test
@@ -461,6 +467,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     ):
         mockRequest = mock.Mock(runId=self.runNumber, version=self.version, checkExistent=False)
         calibrationRecord = DAOFactory.calibrationRecord(runNumber="57514", version=1)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         # Clear the input metrics list
         calibrationRecord.focusGroupCalibrationMetrics.calibrationMetric = []
         mockCalibrationMetricsWorkspaceIngredients.return_value = mock.Mock(
@@ -477,6 +484,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpDir:
             calibRecord = DAOFactory.calibrationRecord()
             self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
+            self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = mock.Mock(return_value=tmpDir)
@@ -515,7 +523,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         record = DAOFactory.calibrationRecord(version=version)
         parameters = DAOFactory.calibrationParameters(version=version)
         with state_root_redirect(self.localDataService) as tmpRoot:
-            indexer = self.localDataService.calibrationIndexer(record.runNumber, record.useLiteMode)
+            indexer = self.localDataService.calibrationIndexer(record.useLiteMode, "stateId")
             recordFilepath = indexer.recordPath(version)
             tmpRoot.saveObjectAt(record, recordFilepath)
             tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
@@ -548,8 +556,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         version = randint(2, 120)
         record = DAOFactory.calibrationRecord(version=version)
         parameters = DAOFactory.calibrationParameters(version=version)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         with state_root_redirect(self.localDataService) as tmpRoot:
-            indexer = self.localDataService.calibrationIndexer(record.runNumber, record.useLiteMode)
+            indexer = self.localDataService.calibrationIndexer(record.useLiteMode, "stateId")
             recordFilepath = indexer.recordPath(version)
             tmpRoot.saveObjectAt(record, recordFilepath)
             tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
@@ -589,6 +598,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         calibRecord = DAOFactory.calibrationRecord(runNumber="57514", version=1)
         calibRecord.workspaces[wngt.DIFFCAL_OUTPUT] = ["_diffoc_057514_v0001"]  # NOTE no unit token
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("stateId", None))
 
         # Call the method to test. Use a mocked run and a mocked version
         mockRequest = mock.Mock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
@@ -605,6 +615,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             }
         )
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
 
         mockFetchGroceryDict = mock.Mock(return_value={})
         self.instance.groceryService.fetchGroceryDict = mockFetchGroceryDict
@@ -630,6 +641,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             wngt.RAW_VANADIUM: ["_unexpected_workspace_type"],
         }
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
 
         mockRequest = mock.Mock(
             spec=CalibrationLoadAssessmentRequest,
@@ -646,6 +658,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockFF = mock.Mock()
         FarmFreshIngredients.return_value = mockFF
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
 
         # self.instance.sousChef = SculleryBoy() #
         self.instance.sousChef = mock.Mock(spec_set=SousChef)
@@ -661,6 +674,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     def test_fetchDiffractionCalibrationGroceries(self):
         self.instance.groceryClerk = mock.Mock(spec=GroceryListBuilder)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
 
         runNumber = "12345"
         useLiteMode = True
@@ -935,6 +949,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     ):
         FarmFreshIngredients.return_value = mock.Mock(runNumber="123")
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("stateId", None))
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
         self.instance.sousChef = SculleryBoy()
@@ -975,6 +990,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         request = mock.Mock(runNumber="12345", focusGroup=mock.Mock(name="group1"))
         self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("stateId", None))
 
         focusedWorkspace = (
             wng.run()
@@ -1011,6 +1027,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         request = mock.Mock(runNumber="12345", focusGroup=mock.Mock(name="group1"))
         self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("stateId", None))
 
         # create the focused wprkspace in the ADS
         focusedWorkspace = (
@@ -1046,6 +1063,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(
             side_effect=[mock.sentinel.version1, mock.sentinel.version2, mock.sentinel.version3],
         )
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("stateId", None))
         request = mock.Mock(runNumbers=[mock.sentinel.run1, mock.sentinel.run2], useLiteMode=True)
         response = self.instance.matchRunsToCalibrationVersions(request)
         assert response == {
@@ -1068,6 +1086,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             mock.sentinel.grocery2_mask,
         ]
         self.instance.matchRunsToCalibrationVersions = mock.Mock(return_value=mockCalibrations)
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("stateId", None))
         self.instance.groceryService.fetchGroceryList = mock.Mock(return_value=mockGroceries)
         self.instance.groceryClerk = mock.Mock()
 

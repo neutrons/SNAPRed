@@ -87,6 +87,7 @@ class NormalizationService(Service):
 
         # prepare ingredients
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
+        state, _ = self.dataFactoryService.constructStateId(request.runNumber)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -94,6 +95,7 @@ class NormalizationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             crystalDBounds=request.crystalDBounds,
+            state=state,
         )
         ingredients = self.sousChef.prepNormalizationIngredients(farmFresh)
 
@@ -114,16 +116,16 @@ class NormalizationService(Service):
                 detectorPeaks=ingredients.detectorPeaks,
             ).dict()
         calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
-            request.runNumber, request.useLiteMode
+            request.runNumber, request.useLiteMode, state
         )
         # gather needed groceries and ingredients
         if request.correctedVanadiumWs is None:
             self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
                 request.useLiteMode
-            ).diffCalVersion(calVersion).dirty().add()
+            ).diffCalVersion(calVersion).state(state).dirty().add()
             self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
                 request.useLiteMode
-            ).diffCalVersion(calVersion).dirty().add()
+            ).diffCalVersion(calVersion).state(state).dirty().add()
         else:
             # check that the corrected vanadium workspaces exist already
             if request.correctedVanadiumWs != correctedVanadium:
@@ -141,10 +143,10 @@ class NormalizationService(Service):
         ).add()
 
         calRunNumber = self.dataFactoryService.getCalibrationRecord(
-            request.runNumber, request.useLiteMode, calVersion
+            request.runNumber, request.useLiteMode, calVersion, state
         ).runNumber
 
-        self.groceryClerk.name("maskWorkspace").diffcal_mask(request.runNumber, calVersion).useLiteMode(
+        self.groceryClerk.name("maskWorkspace").diffcal_mask(state, calVersion, request.runNumber).useLiteMode(
             request.useLiteMode
         ).add()
 
@@ -251,9 +253,9 @@ class NormalizationService(Service):
         continueFlags = ContinueWarning.Type.UNSET
 
         self.sousChef.verifyCalibrationExists(request.runNumber, request.useLiteMode)
-
+        state, _ = self.dataFactoryService.constructStateId(request.runNumber)
         calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
-            request.runNumber, request.useLiteMode
+            request.runNumber, request.useLiteMode, state
         )
         if calVersion is None:
             continueFlags = continueFlags | ContinueWarning.Type.DEFAULT_DIFFRACTION_CALIBRATION
@@ -308,6 +310,7 @@ class NormalizationService(Service):
     @FromString
     @Register("assessment")
     def normalizationAssessment(self, request: NormalizationRequest):
+        state, _ = self.dataFactoryService.constructStateId(request.runNumber)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             focusGroups=[request.focusGroup],
@@ -315,6 +318,7 @@ class NormalizationService(Service):
             calibrantSamplePath=request.calibrantSamplePath,
             fwhmMultipliers=request.fwhmMultipliers,
             crystalDBounds=request.crystalDBounds,
+            state=state,
         )
         normalization = parse_obj_as(Normalization, self.sousChef.prepCalibration(farmFresh))
 
@@ -365,6 +369,7 @@ class NormalizationService(Service):
 
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
+        state, _ = self.dataFactoryService.constructStateId(request.runNumber)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -372,6 +377,7 @@ class NormalizationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
+            state=state,
         )
         ingredients = self.sousChef.prepNormalizationIngredients(farmFresh)
         return RawVanadiumCorrectionRecipe().executeRecipe(
@@ -382,10 +388,12 @@ class NormalizationService(Service):
         )
 
     def focusSpectra(self, request: FocusSpectraRequest):
+        state, _ = self.dataFactoryService.constructStateId(request.runNumber)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
             focusGroups=[request.focusGroup],
+            state=state,
         )
         ingredients = self.sousChef.prepPixelGroup(farmFresh)
         return FocusSpectraRecipe().executeRecipe(
@@ -399,6 +407,7 @@ class NormalizationService(Service):
     @Register("smooth")
     def smoothDataExcludingPeaks(self, request: SmoothDataExcludingPeaksRequest):
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
+        state, _ = self.dataFactoryService.constructStateId(request.runNumber)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -406,6 +415,7 @@ class NormalizationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
+            state=state,
         )
         peaks = self.sousChef.prepDetectorPeaks(farmFresh, purgePeaks=False)
 
@@ -435,8 +445,9 @@ class NormalizationService(Service):
         """
         response = {}
         for runNumber in request.runNumbers:
+            state, _ = self.dataFactoryService.constructStateId(runNumber)
             response[runNumber] = self.dataFactoryService.getLatestApplicableNormalizationVersion(
-                runNumber, request.useLiteMode
+                runNumber, request.useLiteMode, state
             )
         return response
 
@@ -446,7 +457,8 @@ class NormalizationService(Service):
         normalizations = self.matchRunsToNormalizationVersions(request)
         for runNumber in request.runNumbers:
             if normalizations.get(runNumber) is not None:
-                self.groceryClerk.normalization(runNumber, normalizations[runNumber]).useLiteMode(
+                state, _ = self.dataFactoryService.constructStateId(runNumber)
+                self.groceryClerk.normalization(runNumber, state, normalizations[runNumber]).useLiteMode(
                     request.useLiteMode
                 ).add()
         return set(self.groceryService.fetchGroceryList(self.groceryClerk.buildList())), normalizations

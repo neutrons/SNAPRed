@@ -6,6 +6,9 @@ docs/source/developer/dao.rst
 docs/source/developer/snapred/*
 mantidlog.txt
 
+# vscode configuration
+.vscode/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

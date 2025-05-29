@@ -128,7 +128,7 @@ class ImitationDataService(LocalDataService):
         grocer = ImitationGroceryService()
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
         filename = Path(outWS + ".h5")
-        calibrationDataPath = self.calibrationIndexer(runNumber, useLiteMode).versionPath(version)
+        calibrationDataPath = self.calibrationIndexer(useLiteMode, self.stateId).versionPath(version)
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
 
     # TODO delete this method override when SaveNexusProcessed has been fixed
@@ -261,11 +261,11 @@ class TestVersioning(TestCase):
         self.instance.dataFactoryService.lookupService = self.localDataService
         self.instance.sousChef.dataFactoryService = self.instance.dataFactoryService
 
-        self.stateId = self.localDataService.generateStateId(self.runNumber)
+        self.stateId, _ = self.localDataService.generateStateId(self.runNumber)
         self.stateRoot = self.localDataService.constructCalibrationStateRoot(self.stateId)
 
         # grab the associated Indexer
-        self.indexer = self.localDataService.calibrationIndexer(self.runNumber, self.useLiteMode)
+        self.indexer = self.localDataService.calibrationIndexer(self.useLiteMode, self.stateId)
 
         # create an InterfaceController
         self.api = InterfaceController()
