@@ -421,8 +421,6 @@ class GroceryService:
         return wng.diffCalMask().runNumber(runNumber).version(version).build()
 
     def _lookupNormcalRunNumber(self, sampleRunNumber: str, useLiteMode: bool, version: int, state: str):
-        # runNumber = self._lookupNormcalRunNumber(<run number>, <use lite mode> [, ...])
-
         indexer = self.dataService.normalizationIndexer(useLiteMode, state)
         record = indexer.readRecord(version)
 

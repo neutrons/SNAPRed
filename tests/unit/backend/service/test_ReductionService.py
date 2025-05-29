@@ -1037,9 +1037,6 @@ class TestReductionServiceMasks:
         NOTE this probably belongs more properly to the other test class.
         However, it was already here, for simplicity of review I am not moving it.
         """
-
-        # self.service.dataFactoryService.constructStateId = mock.Mock(return_value=(self.stateId1, None))
-
         # timestamp must be unique: see comment at `test_prepCombinedMask`.
         timestamp = self.service.getUniqueTimestamp()
         request = ReductionRequest(
