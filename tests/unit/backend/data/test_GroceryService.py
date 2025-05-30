@@ -926,6 +926,7 @@ class TestGroceryService(unittest.TestCase):
                 loader="",
                 liveDataArgs=None,
                 diffCalVersion=None,
+                diffCalPath=None,
             )
 
         testItem = generateTestItem()
@@ -993,6 +994,7 @@ class TestGroceryService(unittest.TestCase):
                 loader="",
                 liveDataArgs=None,
                 diffCalVersion=None,
+                diffCalPath=None,
             )
             m.model_copy.side_effect = generateTestItem
             return m
@@ -1036,6 +1038,7 @@ class TestGroceryService(unittest.TestCase):
                 state="stateId",
                 liveDataArgs=None,
                 diffCalVersion=None,
+                diffCalPath=None,
             )
 
         testItem = generateTestItem()
@@ -1135,6 +1138,7 @@ class TestGroceryService(unittest.TestCase):
                 loader="",
                 liveDataArgs=None,
                 diffCalVersion=None,
+                diffCalPath=None,
             )
             m.model_copy.side_effect = generateTestItem
             return m
@@ -2757,8 +2761,8 @@ class TestGroceryService(unittest.TestCase):
             # fetch the workspace
             assert not mtd.doesExist(diffCalTableName)
 
-            print(groceryList)
-            items = self.instance.fetchGroceryList(groceryList)
+            with Config_override("instrument.native.pixelResolution", 16):
+                items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalTableName
             assert mtd.doesExist(diffCalTableName)
 
@@ -2819,8 +2823,8 @@ class TestGroceryService(unittest.TestCase):
             )
             assert mtd.doesExist(diffCalTableName)
             assert not mtd.doesExist(diffCalMaskName)
-
-            wss = self.instance.fetchGroceryList(groceryList)  # noqa: F841
+            with Config_override("instrument.native.pixelResolution", 16):
+                wss = self.instance.fetchGroceryList(groceryList)  # noqa: F841
             assert mtd.doesExist(diffCalTableName)
             assert mtd.doesExist(diffCalMaskName)
 
@@ -2847,7 +2851,8 @@ class TestGroceryService(unittest.TestCase):
 
             assert not mtd.doesExist(diffCalTableName)
             assert not mtd.doesExist(diffCalMaskName)
-            items = self.instance.fetchGroceryList(groceryList)
+            with Config_override("instrument.native.pixelResolution", 16):
+                items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalTableName
             assert mtd.doesExist(diffCalTableName)
             assert mtd.doesExist(diffCalMaskName)
@@ -2875,7 +2880,8 @@ class TestGroceryService(unittest.TestCase):
 
             assert not mtd.doesExist(diffCalMaskName)
             self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-            items = self.instance.fetchGroceryList(groceryList)
+            with Config_override("instrument.native.pixelResolution", 16):
+                items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
 
@@ -2889,8 +2895,9 @@ class TestGroceryService(unittest.TestCase):
             diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
             diffCalMaskName = None
             self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-            self.instance.fetchCalibrationWorkspaces = mock.Mock()
-            items = self.instance.fetchGroceryList(groceryList)
+            self.instance.fetchCalibrationWorkspaces = mock.Mock(return_value=(diffCalTableName, None))
+            with Config_override("instrument.native.pixelResolution", 16):
+                items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == ""
 
     def test_fetch_grocery_list_diffcal_mask_cached(self):
@@ -2949,7 +2956,8 @@ class TestGroceryService(unittest.TestCase):
 
             assert not mtd.doesExist(diffCalMaskName)
             assert not mtd.doesExist(diffCalTableName)
-            items = self.instance.fetchGroceryList(groceryList)
+            with Config_override("instrument.native.pixelResolution", 16):
+                items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
             assert mtd.doesExist(diffCalTableName)

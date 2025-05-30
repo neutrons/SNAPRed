@@ -299,7 +299,9 @@ class TestReductionService(unittest.TestCase):
             self.instance.validateReduction(mockRequest)
 
     def test_markWorkspaceMetadata(self):
-        request = mock.Mock(continueFlags=ContinueWarning.Type.UNSET, alternativeState=None)
+        request = mock.Mock(
+            continueFlags=ContinueWarning.Type.UNSET, alternativeState=None, alternativeCalibrationFile=None
+        )
         metadata = WorkspaceMetadata(diffcalState="exists", normalizationState="exists")
         wsName = "test"
         self.instance.groceryService = mock.Mock()
@@ -315,7 +317,11 @@ class TestReductionService(unittest.TestCase):
         self.instance.groceryService.writeWorkspaceMetadataAsTags.assert_called_once_with(wsName, metadata)
 
     def test_markWorkspaceMetadata_continueNormalization(self):
-        request = mock.Mock(continueFlags=ContinueWarning.Type.MISSING_NORMALIZATION, alternativeState=None)
+        request = mock.Mock(
+            continueFlags=ContinueWarning.Type.MISSING_NORMALIZATION,
+            alternativeState=None,
+            alternativeCalibrationFile=None,
+        )
         metadata = WorkspaceMetadata(diffcalState="exists", normalizationState="fake")
         wsName = "test"
         self.instance.groceryService = mock.Mock()
