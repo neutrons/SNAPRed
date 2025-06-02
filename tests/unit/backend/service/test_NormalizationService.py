@@ -321,9 +321,9 @@ class TestNormalizationService(unittest.TestCase):
 
         self.instance.normalization(self.request)
 
-        assert (
-            mockVanadiumCorrection.call_count == 0
-        ), "Vanadium correction should not be called when correctedVanadiumWs is set"
+        assert mockVanadiumCorrection.call_count == 0, (
+            "Vanadium correction should not be called when correctedVanadiumWs is set"
+        )
 
         self.request.correctedVanadiumWs = "bad name"
         with pytest.raises(RuntimeError, match="Corrected vanadium of unexpected name provided."):
