@@ -1377,7 +1377,6 @@ class GroceryService:
             tableWorkspaceName = path.stem
             maskWorkspaceName = f"{tableWorkspaceName}_mask"
             self._loadCalibrationFile(item, str(item.path), tableWorkspaceName, maskWorkspaceName)
-            # TODO: Validate Calbration
 
         return tableWorkspaceName, maskWorkspaceName
 

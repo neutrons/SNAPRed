@@ -3735,6 +3735,22 @@ class TestGroceryService(unittest.TestCase):
         assert mtd[nonemptymask].getNumberMasked() != 0
         assert self.instance.checkPixelMask(nonemptymask)
 
+    def test_fetchDiffCalForSample_altPath(self):
+        item = GroceryListItem(
+            workspaceType="diffcal_table",
+            path=Path("some/path/to/diffcal_table.h5"),
+            state="stateId",
+            useLiteMode=True,
+            diffCalVersion=0,
+        )
+        with mock.patch.object(
+            self.instance,
+            "_loadCalibrationFile",
+        ):
+            tableName, maskName = self.instance.fetchDiffCalForSample(item)
+            assert tableName == "diffcal_table"
+            assert maskName == "diffcal_table_mask"
+
     def test_processNeutronDataCopy(self):
         # confirm that appropriate algorthims are applied to the workspace
         testCalibrationData = DAOFactory.calibrationParameters()
