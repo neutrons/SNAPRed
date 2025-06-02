@@ -113,9 +113,9 @@ class state_root_redirect:
         # assert Path(target).exists()
 
     def saveObjectAt(self, thing: BaseModel, target: str):
-        assert (
-            Path(self.tmpdir.name) in Path(target).parents
-        ), f"{self.tmpdir.name} is not any of {list(Path(target).parents)}"
+        assert Path(self.tmpdir.name) in Path(target).parents, (
+            f"{self.tmpdir.name} is not any of {list(Path(target).parents)}"
+        )
 
         Path(target).parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(thing, target)
