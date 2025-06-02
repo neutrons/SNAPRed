@@ -72,7 +72,7 @@ class GroceryListItem(BaseModel):
     runNumber: Optional[str] = None
     normCalVersion: Optional[int] = None
     diffCalVersion: Optional[int] = None
-    diffCalPath: Optional[Path] = None
+    diffcalPath: Optional[Path] = None
     timestamp: Optional[float] = None
     groupingScheme: Optional[str] = None
 
