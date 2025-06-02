@@ -926,7 +926,7 @@ class TestGroceryService(unittest.TestCase):
                 loader="",
                 liveDataArgs=None,
                 diffCalVersion=None,
-                diffCalPath=None,
+                diffcalPath=None,
             )
 
         testItem = generateTestItem()
@@ -994,7 +994,7 @@ class TestGroceryService(unittest.TestCase):
                 loader="",
                 liveDataArgs=None,
                 diffCalVersion=None,
-                diffCalPath=None,
+                diffcalPath=None,
             )
             m.model_copy.side_effect = generateTestItem
             return m
@@ -1038,7 +1038,7 @@ class TestGroceryService(unittest.TestCase):
                 state="stateId",
                 liveDataArgs=None,
                 diffCalVersion=None,
-                diffCalPath=None,
+                diffcalPath=None,
             )
 
         testItem = generateTestItem()
@@ -1138,7 +1138,7 @@ class TestGroceryService(unittest.TestCase):
                 loader="",
                 liveDataArgs=None,
                 diffCalVersion=None,
-                diffCalPath=None,
+                diffcalPath=None,
             )
             m.model_copy.side_effect = generateTestItem
             return m

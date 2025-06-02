@@ -1370,7 +1370,7 @@ class GroceryService:
         # to that of the table workspace.  Because of possible confusion with
         # the behavior of the mask workspace, the workspace name is overridden here.
 
-        path = item.path if item.path is not None else item.diffCalPath
+        path = item.path if item.path is not None else item.diffcalPath
         if path is None:
             tableWorkspaceName, maskWorkspaceName = self.fetchCalibrationWorkspaces(item)
         else:
@@ -1646,7 +1646,7 @@ class GroceryService:
 
             self.deleteWorkspaceUnconditional(monitorWs)
 
-        if item.diffCalVersion is not None or item.diffCalPath is not None:
+        if item.diffCalVersion is not None or item.diffcalPath is not None:
             # then load a diffcal table and apply it.
             # NOTE: This can result in a different diffcal being applied to normalization vs sample
             #       This is the expected and desired behavior.
