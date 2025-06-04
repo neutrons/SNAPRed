@@ -300,6 +300,7 @@ class LoadLiveDataInterval(PythonAlgorithm):
             loadLiveData.execute()
 
             run = self.mantidSnapper.mtd[chunkWs].getRun()
+            activeRunNumber = self.mantidSnapper.mtd[chunkWs].getRunNumber() 
 
             logger.info(f"Run interval: ({run.startTime().to_datetime64()}, {run.endTime().to_datetime64()})")
             logger.info(
@@ -328,7 +329,11 @@ class LoadLiveDataInterval(PythonAlgorithm):
                 waitTime += waitTimeIncrement
                 # Load another chunk of data.
                 loadLiveData.execute()
-
+                
+                # Check for possible run-state change:
+                if activeRunNumber != self.mantidSnapper.mtd[chunkWs].getRunNumber():
+                    break
+                
                 logger.info(
                     f"Loaded-chunk interval: ({self.mantidSnapper.mtd[chunkWs].getPulseTimeMin().to_datetime64()}, "
                     f"{self.mantidSnapper.mtd[chunkWs].getPulseTimeMax().to_datetime64()})"
