@@ -1,9 +1,9 @@
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
-class SNAPRequest(BaseModel):
+class SNAPRequest(BaseModel, arbitrary_types_allowed=True):
     """
 
     `SNAPRequest` represents the structure of a request within the SNAPRed,
@@ -14,3 +14,4 @@ class SNAPRequest(BaseModel):
 
     path: str
     payload: Optional[Any] = None
+    hooks: Optional[dict[str, Callable]] = Field(exclude=True)
