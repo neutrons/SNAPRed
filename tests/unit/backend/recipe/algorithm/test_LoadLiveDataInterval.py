@@ -701,6 +701,61 @@ class TestLoadLiveDataInterval(unittest.TestCase):
             msg = mock_logger.warning.mock_calls[0].args[0]
             assert "A timeout occurred during data loading" in msg
 
+    def test_exec_load_run_state_change(self):
+        mock_LoadLiveData = mock.Mock()
+
+        self.instance.initialize()
+        self._setProperties(
+            self.instance,
+            OutputWorkspace=self.outputWs,
+            StartTime=self.startTime,
+            # bypass `FilterByTime` call: use the default-value for EndTime
+            Instrument=Config["instrument.name"],
+            PreserveEvents=self.preserveEvents,
+        )
+
+        with (
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "ConfigService") as mock_ConfigService,
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "logger") as mock_logger,
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "sleep") as mock_sleep,
+            mock.patch.object(self.instance, "createChildAlgorithm") as mock_createChildAlgorithm,
+            mock.patch.object(self.instance, "mantidSnapper") as mock_snapper,
+            mock.patch.object(self.instance, "isLogging") as mock_isLogging,
+            mock.patch.object(LoadLiveDataInterval, "_loadIsComplete") as mock_loadIsComplete,
+        ):
+            mock_ConfigService.getFacility.return_value.instrument.return_value = mock.sentinel.InstrumentInfo
+            mock_createChildAlgorithm.return_value = mock_LoadLiveData
+
+            mock_chunkWs = mock.Mock()
+            mock_chunkWs.getPulseTimeMin.return_value = DateAndTime(self.startTime)
+            mock_chunkWs.getPulseTimeMax.return_value = DateAndTime(
+                (datetime.datetime.fromisoformat(self.startTime) + timedelta(minutes=15)).isoformat()
+            )
+            
+            # Force a run-state change during the chunk-assembly loop:
+            # * Note that there's no separate log message for this case,
+            #   which is not an error.  When required, the state-change will be logged elsewhere.
+            # * In the case of the present test however, the assembled data-interval will be incomplete.
+            mock_chunkWs.getRunNumber.side_effect = ("12345", "12345", 0)
+            
+            mock_chunkIntervals = [  # noqa: F841
+                (mock_chunkWs.getPulseTimeMin.return_value, mock_chunkWs.getPulseTimeMax.return_value)
+            ]
+            mock_mtd = mock.MagicMock()
+            mock_mtd.__getitem__.return_value = mock_chunkWs
+            mock_mtd.doesExist.side_effect = lambda ws: ws == mock.sentinel.chunkWs
+            mock_mtd.unique_hidden_name.return_value = mock.sentinel.chunkWs
+            mock_snapper.mtd = mock_mtd
+
+            mock_isLogging.return_value = mock.sentinel.isLogging
+
+            mock_loadIsComplete.return_value = False
+            mock_sleep.side_effect = lambda _: None
+
+            self.instance.execute()
+            msg = mock_logger.warning.mock_calls[0].args[0]
+            assert "The complete data interval could not be loaded" in msg
+
     def test_exec_filter_init(self):
         mock_LoadLiveData = mock.Mock()
 
