@@ -1,7 +1,7 @@
 # ruff: noqa: F811
 import json
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
@@ -863,7 +863,7 @@ class GroceryService:
         return data
 
     def _fetchLiveData(self, item: GroceryListItem):
-        loader = "LoadLiveData"
+        loader = "LoadLiveDataInterval"
         runNumber, useLiteMode, liveDataArgs = item.runNumber, item.useLiteMode, item.liveDataArgs
         workspaceName: WorkspaceName = self._createNeutronWorkspaceName(runNumber, useLiteMode)
         # Live-data fallback
@@ -872,22 +872,20 @@ class GroceryService:
                 # Only warn if live-data mode hasn't been explicitly requested.
                 logger.warning(f"Input data for run '{runNumber}' was not found in IPTS, trying live-data fallback...")
 
-            # When not specified in the `liveDataArgs` or when `liveDataArgs.duration == 0`,
+            # When not specified in the `liveDataArgs` or when `liveDataArgs.duration == timedelta(0)`,
             #   the default behavior will be to load the entire run.
             startTime = (
                 (datetime.utcnow() - liveDataArgs.duration).isoformat()
-                if liveDataArgs is not None and liveDataArgs.duration != 0
+                if liveDataArgs is not None and liveDataArgs.duration != timedelta(0)
                 else RunMetadata.FROM_START_ISO8601
             )
 
             loaderArgs = {
                 "Facility": Config["liveData.facility.name"],
                 "Instrument": Config["liveData.instrument.name"],
-                "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
                 "StartTime": startTime,
             }
-
             data = self.grocer.executeRecipe(workspace=workspaceName, loader=loader, loaderArgs=json.dumps(loaderArgs))
             data["fromLiveData"] = True
             if data["result"]:

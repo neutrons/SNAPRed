@@ -58,7 +58,7 @@ class GroceryListItem(BaseModel):
         "LoadNexusMonitors",
         "LoadEventNexus",
         "LoadGroupingDefinition",
-        "LoadLiveData",
+        "LoadLiveDataInterval",
         "LoadNexus",
         "LoadNexusProcessed",
     ] = ""

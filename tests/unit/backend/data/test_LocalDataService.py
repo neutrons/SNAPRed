@@ -2515,80 +2515,15 @@ def test_readWriteNormalizationState():
 
 
 def test_readDetectorState():
+    # Verify that `readDetectorState` uses `readRunMetadata`.
     runNumber = "123"
     expected = mockDetectorState("123")
     mockMetadata = mock.Mock(spec=RunMetadata, runNumber=runNumber, detectorState=expected)
-    mockRunMetadata = mock.Mock(fromNeXusLogs=mock.Mock(return_value=mockMetadata))
-    with mock.patch(ThisService + "RunMetadata", mockRunMetadata) as mockMetaData:  # noqa: F841
-        instance = LocalDataService()
-        instance._readPVFile = mock.Mock(return_value=mock.sentinel.h5)
-        instance._constructPVFilePath = mock.Mock(return_value="/mock/path")
-        actual = instance.readDetectorState(runNumber)
-        assert actual == expected
-        mockRunMetadata.fromNeXusLogs.assert_called_once_with(mock.sentinel.h5)
-
-
-def test_readDetectorState_no_PVFile():
-    # test live-data fallback, with run number mismatch
-    runNumber = "123"
     instance = LocalDataService()
-    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists for run"))
-    instance.readLiveMetadata = mock.Mock(return_value=mock.MagicMock(runNumber=-1))
-    instance.hasLiveDataConnection = mock.Mock(return_value=True)
-    with pytest.raises(
-        RuntimeError,
-        match=(
-            f"No PVFile exists for run: {runNumber}, and it isn't the live run: "
-            + f"{instance.readLiveMetadata.return_value.runNumber}."
-        ),
-    ):
-        instance.readDetectorState(runNumber)
-
-
-def test_readDetectorState_no_PVFile_no_connection():
-    runNumber = "12345"
-    instance = LocalDataService()
-    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("lah dee dah"))
-    instance.hasLiveDataConnection = mock.Mock(return_value=False)
-    with pytest.raises(FileNotFoundError, match="lah dee dah"):
-        instance.readDetectorState(runNumber)
-
-
-def test_readDetectorState_live_run():
-    runNumber = "123"
-    expected = mockDetectorState(runNumber)
-    mockRunMetadata = mock.Mock(spec=RunMetadata, runNumber=runNumber, detectorState=expected, protonCharge=1000.0)
-
-    instance = LocalDataService()
-    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists for run"))
-    instance.hasLiveDataConnection = mock.Mock(return_value=True)
-    instance.readLiveMetadata = mock.Mock(return_value=mockRunMetadata)
-
+    instance.readRunMetadata = mock.Mock(return_value=mockMetadata)
     actual = instance.readDetectorState(runNumber)
     assert actual == expected
-
-    instance._readPVFile.assert_called_once_with(runNumber)
-    instance.hasLiveDataConnection.assert_called_once()
-    instance.readLiveMetadata.assert_called_once()
-
-
-def test_readDetectorState_live_run_mismatch():
-    # Test that an unexpected live run number throws an exception.
-    runNumber0 = "12345"
-    runNumber1 = "67890"
-    mockRunMetadata = mock.Mock(
-        spec=RunMetadata, runNumber=runNumber1, detectorState=mockDetectorState(runNumber1), protonCharge=1000.0
-    )
-
-    instance = LocalDataService()
-    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists for run"))
-    instance.hasLiveDataConnection = mock.Mock(return_value=True)
-    instance.readLiveMetadata = mock.Mock(return_value=mockRunMetadata)
-
-    with pytest.raises(
-        RuntimeError, match=f"No PVFile exists for run: {runNumber0}, and it isn't the live run: {runNumber1}"
-    ):
-        instance.readDetectorState(runNumber0)
+    instance.readRunMetadata.assert_called_once_with(runNumber)
 
 
 @mock.patch(ThisService + "MantidSnapper")

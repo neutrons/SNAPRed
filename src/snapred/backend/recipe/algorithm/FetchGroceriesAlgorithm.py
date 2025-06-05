@@ -34,7 +34,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             FileProperty(
                 "Filename",
                 defaultValue="",
-                # `Filename` is an optional property when `loader == 'LoadLiveData'`.
+                # `Filename` is an optional property when `loader == 'LoadLiveDataInterval'`.
                 action=FileAction.OptionalLoad,
                 extensions=["xml", "h5", "nxs", "hd5"],
                 direction=Direction.Input,
@@ -54,7 +54,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     "LoadCalibrationWorkspaces",
                     "LoadEventNexus",
                     "LoadGroupingDefinition",
-                    "LoadLiveData",
+                    "LoadLiveDataInterval",
                     "LoadNexus",
                     "LoadNexusProcessed",
                     "LoadNexusMonitors",
@@ -100,7 +100,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                 issues["OutputWorkspace"] = f"loader '{loader}' requires an 'OutputWorkspace' argument"
 
         # `LoaderArgs` property:
-        if loader in ["LoadCalibrationWorkspaces", "LoadLiveData"]:
+        if loader in ["LoadCalibrationWorkspaces", "LoadLiveDataInterval"]:
             if self.getProperty("LoaderArgs").isDefault:
                 issues["LoaderArgs"] = f"loader '{loader}' requires additional keyword arguments"
         elif not self.getProperty("LoaderArgs").isDefault:
@@ -121,7 +121,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         loaderType = self.getPropertyValue("LoaderType")
 
         # Allow live-data mode to replace an existing workspace
-        addOrReplace = loaderType == "LoadLiveData"
+        addOrReplace = loaderType == "LoadLiveDataInterval"
 
         # TODO: the `if .. doesExist` should be centralized to cache treatment
         #    here, it is redundant.
@@ -152,13 +152,12 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                         OutputWorkspace=outWS,
                         **{instrumentPropertySource: instrumentSource},
                     )
-                case "LoadLiveData":
+                case "LoadLiveDataInterval":
                     loaderArgs = json.loads(self.getPropertyValue("LoaderArgs"))
-                    self.mantidSnapper.LoadLiveData(
-                        "loading live-data chunk",
+                    self.mantidSnapper.LoadLiveDataInterval(
+                        "loading live-data interval",
                         OutputWorkspace=outWS,
                         Instrument=loaderArgs["Instrument"],
-                        AccumulationMethod=loaderArgs["AccumulationMethod"],
                         PreserveEvents=loaderArgs["PreserveEvents"],
                         StartTime=loaderArgs["StartTime"],
                     )
@@ -176,7 +175,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             loaderType = ""
 
         if loaderType in ["LoadNexus", "LoadEventNexus", "LoadNexusProcessed"]:
-            # TODO: (1) Does `LoadLiveData` correctly set the instrument parameters?
+            # TODO: (1) Does `LoadLiveData` / `LoadLiveDataInterval` correctly set the instrument parameters?
             # TODO: (2) See EWM#7437:
             #   this clause is necessary to be able to accurately set detector positions
             #   on files written prior to the merge of the

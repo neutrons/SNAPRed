@@ -1411,7 +1411,6 @@ class TestGroceryService(unittest.TestCase):
             expectedLoaderArgs = {
                 "Facility": Config["liveData.facility.name"],
                 "Instrument": Config["liveData.instrument.name"],
-                "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
                 "StartTime": expectedStartTime.isoformat(),
             }
@@ -1486,7 +1485,7 @@ class TestGroceryService(unittest.TestCase):
                 # Action-related mocks:
                 mockFetchGroceriesRecipe.executeRecipe.return_value = {
                     "result": True,
-                    "loader": "LoadLiveData",
+                    "loader": "LoadLiveDataInterval",
                     "workspace": workspaceName,
                 }
 
@@ -1512,7 +1511,7 @@ class TestGroceryService(unittest.TestCase):
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
-                    loader="LoadLiveData",
+                    loader="LoadLiveDataInterval",
                     loaderArgs=json.dumps(expectedLoaderArgs),
                 )
                 if useLiteMode:
@@ -1543,7 +1542,6 @@ class TestGroceryService(unittest.TestCase):
             expectedLoaderArgs = {
                 "Facility": Config["liveData.facility.name"],
                 "Instrument": Config["liveData.instrument.name"],
-                "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
                 "StartTime": expectedStartTime.isoformat(),
             }
@@ -1617,7 +1615,7 @@ class TestGroceryService(unittest.TestCase):
                 # Action-related mocks:
                 mockFetchGroceriesRecipe.executeRecipe.return_value = {
                     "result": True,
-                    "loader": "LoadLiveData",
+                    "loader": "LoadLiveDataInterval",
                     "workspace": workspaceName,
                 }
 
@@ -1644,7 +1642,7 @@ class TestGroceryService(unittest.TestCase):
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
-                    loader="LoadLiveData",
+                    loader="LoadLiveDataInterval",
                     loaderArgs=json.dumps(expectedLoaderArgs),
                 )
                 mockConvertToLiteMode.assert_not_called()
@@ -1668,7 +1666,6 @@ class TestGroceryService(unittest.TestCase):
             expectedLoaderArgs = {
                 "Facility": Config["liveData.facility.name"],
                 "Instrument": Config["liveData.instrument.name"],
-                "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
                 "StartTime": RunMetadata.FROM_START_ISO8601,
             }
@@ -1740,7 +1737,7 @@ class TestGroceryService(unittest.TestCase):
                 # Action-related mocks:
                 mockFetchGroceriesRecipe.executeRecipe.return_value = {
                     "result": True,
-                    "loader": "LoadLiveData",
+                    "loader": "LoadLiveDataInterval",
                     "workspace": workspaceName,
                 }
 
@@ -1761,7 +1758,7 @@ class TestGroceryService(unittest.TestCase):
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
-                    loader="LoadLiveData",
+                    loader="LoadLiveDataInterval",
                     loaderArgs=json.dumps(expectedLoaderArgs),
                 )
                 if useLiteMode:
@@ -1788,7 +1785,6 @@ class TestGroceryService(unittest.TestCase):
             expectedLoaderArgs = {
                 "Facility": Config["liveData.facility.name"],
                 "Instrument": Config["liveData.instrument.name"],
-                "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
                 "StartTime": RunMetadata.FROM_START_ISO8601,
             }
@@ -1860,7 +1856,7 @@ class TestGroceryService(unittest.TestCase):
                 # Action-related mocks:
                 mockFetchGroceriesRecipe.executeRecipe.return_value = {
                     "result": True,
-                    "loader": "LoadLiveData",
+                    "loader": "LoadLiveDataInterval",
                     "workspace": workspaceName,
                 }
 
@@ -1884,7 +1880,7 @@ class TestGroceryService(unittest.TestCase):
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
-                    loader="LoadLiveData",
+                    loader="LoadLiveDataInterval",
                     loaderArgs=json.dumps(expectedLoaderArgs),
                 )
                 mockConvertToLiteMode.assert_not_called()
@@ -2079,7 +2075,6 @@ class TestGroceryService(unittest.TestCase):
             expectedLoaderArgs = {
                 "Facility": Config["liveData.facility.name"],
                 "Instrument": Config["liveData.instrument.name"],
-                "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
                 "StartTime": expectedStartTime.isoformat(),
             }
@@ -2154,7 +2149,7 @@ class TestGroceryService(unittest.TestCase):
                 # Action-related mocks:
                 mockFetchGroceriesRecipe.executeRecipe.return_value = {
                     "result": True,
-                    "loader": "LoadLiveData",
+                    "loader": "LoadLiveDataInterval",
                     "workspace": workspaceName,
                 }
 
@@ -2187,7 +2182,7 @@ class TestGroceryService(unittest.TestCase):
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
-                    loader="LoadLiveData",
+                    loader="LoadLiveDataInterval",
                     loaderArgs=json.dumps(expectedLoaderArgs),
                 )
                 mockRunMetadata.fromRun.assert_called_once_with(mock.sentinel.run)
@@ -2222,7 +2217,6 @@ class TestGroceryService(unittest.TestCase):
             expectedLoaderArgs = {
                 "Facility": Config["liveData.facility.name"],
                 "Instrument": Config["liveData.instrument.name"],
-                "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
                 "StartTime": expectedStartTime.isoformat(),
             }
@@ -2292,7 +2286,7 @@ class TestGroceryService(unittest.TestCase):
                 # Action-related mocks:
                 mockFetchGroceriesRecipe.executeRecipe.return_value = {
                     "result": True,
-                    "loader": "LoadLiveData",
+                    "loader": "LoadLiveDataInterval",
                     "workspace": workspaceName,
                 }
 
@@ -2323,7 +2317,7 @@ class TestGroceryService(unittest.TestCase):
                 # it gets loaded into the native workspace first, then cache renames it to raw
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
-                    loader="LoadLiveData",
+                    loader="LoadLiveDataInterval",
                     loaderArgs=json.dumps(expectedLoaderArgs),
                 )
                 mockConvertToLiteMode.assert_not_called()
@@ -2347,7 +2341,6 @@ class TestGroceryService(unittest.TestCase):
             expectedLoaderArgs = {
                 "Facility": Config["liveData.facility.name"],
                 "Instrument": Config["liveData.instrument.name"],
-                "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
                 "StartTime": RunMetadata.FROM_START_ISO8601,
             }
@@ -2415,7 +2408,7 @@ class TestGroceryService(unittest.TestCase):
                 # Action-related mocks:
                 mockFetchGroceriesRecipe.executeRecipe.return_value = {
                     "result": True,
-                    "loader": "LoadLiveData",
+                    "loader": "LoadLiveDataInterval",
                     "workspace": workspaceName,
                 }
 
@@ -2446,7 +2439,7 @@ class TestGroceryService(unittest.TestCase):
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
-                    loader="LoadLiveData",
+                    loader="LoadLiveDataInterval",
                     loaderArgs=json.dumps(expectedLoaderArgs),
                 )
                 if useLiteMode:
@@ -2476,7 +2469,6 @@ class TestGroceryService(unittest.TestCase):
             expectedLoaderArgs = {
                 "Facility": Config["liveData.facility.name"],
                 "Instrument": Config["liveData.instrument.name"],
-                "AccumulationMethod": Config["liveData.accumulationMethod"],
                 "PreserveEvents": True,
                 "StartTime": RunMetadata.FROM_START_ISO8601,
             }
@@ -2543,7 +2535,7 @@ class TestGroceryService(unittest.TestCase):
                 # Action-related mocks:
                 mockFetchGroceriesRecipe.executeRecipe.return_value = {
                     "result": True,
-                    "loader": "LoadLiveData",
+                    "loader": "LoadLiveDataInterval",
                     "workspace": workspaceName,
                 }
 
@@ -2569,7 +2561,7 @@ class TestGroceryService(unittest.TestCase):
                 mockHasLiveDataConnection.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
-                    loader="LoadLiveData",
+                    loader="LoadLiveDataInterval",
                     loaderArgs=json.dumps(expectedLoaderArgs),
                 )
                 mockConvertToLiteMode.assert_not_called()

@@ -4,7 +4,7 @@ description = "A desktop application for Lifecycle Managment of data collected f
 dynamic = ["version"]
 requires-python = ">=3.10"
 dependencies = [
-    "mantidworkbench >= 6.12.0.2rc2",
+    "mantidworkbench >= 6.12.0.2rc3",
     "pyoncat ~= 1.6"
 ]
 readme = "README.md"

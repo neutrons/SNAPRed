@@ -54,7 +54,8 @@ class MantidSnapper:
     ##
     ## KNOWN NON-REENTRANT ALGORITHMS
     ##
-    _nonReentrantMutexes = {"LoadLiveData": Lock()}
+    _liveDataLock = Lock()
+    _nonReentrantMutexes = {"LoadLiveData": _liveDataLock, "LoadLiveDataInterval": _liveDataLock}
 
     ##
     ## KNOWN NON-CONCURRENT ALGORITHMS
@@ -166,7 +167,6 @@ class MantidSnapper:
     @classmethod
     def _createAlgorithm(cls, name):
         alg = AlgorithmManager.create(name)
-
         alg.setChild(True)
         alg.setAlwaysStoreInADS(True)
         alg.setRethrows(True)

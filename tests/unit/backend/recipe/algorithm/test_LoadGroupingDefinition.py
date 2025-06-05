@@ -58,7 +58,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
                 cls.isFull: "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition.xml",
             }
 
-            # file locations for remtoe grouping files
+            # file locations for remote grouping files
             pgdFolder = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/"
             cls.remoteGroupingFile = {
                 (cls.isLite, "xml"): f"{pgdFolder}SNAPFocGrp_Column.lite.xml",
