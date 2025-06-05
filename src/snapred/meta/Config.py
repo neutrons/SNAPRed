@@ -1,8 +1,10 @@
 import copy
+import datetime
 import importlib.resources as resources
 import logging
 import os
 import re
+import shutil
 import sys
 from glob import glob
 from pathlib import Path
@@ -10,7 +12,18 @@ from typing import Any, Dict, List, TypeVar
 
 import yaml
 
+from snapred import __version__ as snapredVersion
 from snapred.meta.decorators.Singleton import Singleton
+
+
+def isTestEnv() -> bool:
+    """
+    Check if the current environment is a test environment.
+    This is determined by the presence of the "env" environment variable
+    and whether it contains the string "test".
+    """
+    env = os.environ.get("env")
+    return env and "test" in env and "conftest" in sys.modules
 
 
 def _find_root_dir():
@@ -19,8 +32,7 @@ def _find_root_dir():
 
         # Using `"test" in env` here allows different versions of "[category]_test.yml" to be used for different
         #  test categories: e.g. unit tests use "test.yml" but integration tests use "integration_test.yml".
-        env = os.environ.get("env")
-        if env and "test" in env and "conftest" in sys.modules:
+        if isTestEnv():
             # WARNING: there are now multiple "conftest.py" at various levels in the test hierarchy.
             MODULE_ROOT = MODULE_ROOT.parent.parent / "tests"
     except Exception as e:
@@ -103,7 +115,12 @@ class _Config:
                 " WITHOUT CAREFUL CONSIDERATION of the file indexes on disk."
             ),
         }
+
         self.reload()
+        # if snapred-user.yml exists, then load it by default
+        if (self._userHome() / "snapred-user.yml").exists() and not isTestEnv():
+            self._logger.info("Found user configuration file, swapping to it")
+            self.swapToUserYml()
 
     def _fix_directory_properties(self):
         """Some developers set instrument.home to use ~/ and this fixes that"""
@@ -119,7 +136,7 @@ class _Config:
         if "samples" in self._config and "home" in self._config["samples"]:
             self._config["samples"]["home"] = expandhome(self._config["samples"]["home"])
 
-    def reload(self) -> None:
+    def reload(self, env_name=None) -> None:
         # use refresh to do initial load, clearing shouldn't matter
         self.refresh(self._defaultEnv, True)
 
@@ -141,8 +158,9 @@ class _Config:
         # see if user used environment injection to modify what is needed
         # this will get from the os environment or from the currently loaded one
         # first case wins
-
-        self.env = os.environ.get("env", self._config.get("environment", None))
+        self.env = env_name
+        if self.env is None:
+            self.env = os.environ.get("env", self._config.get("environment", None))
         if self.env is not None:
             self._logger.info(f"Loading environment config: {self.env}")
             self.refresh(self.env)
@@ -162,6 +180,102 @@ class _Config:
         with open(backupFile, "w") as file:
             yaml.dump(self._config, file, default_flow_style=False)
         self._logger.info(f"Backup of application.yml created at {backupFile.absolute()}")
+
+    def loadEnv(self, env_name: str) -> None:
+        # load the new environment
+        self.reload(env_name)
+
+    @staticmethod
+    def _timestamp():
+        return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
+
+    def archiveUserYml(self):
+        # check if snapred-user.yml exists
+        userHome = self._userHome()
+        if (userHome / "snapred-user.yml").exists():
+            version = self.getUserYmlVersionDisk()
+
+            # generate human readable timestamp
+            timestamp = self._timestamp()
+
+            # archive the old snapred-user.yml
+            archivePath = userHome / f"snapred-user-{version}-{timestamp}.yml.bak"
+            shutil.copy(str(userHome / "snapred-user.yml"), str(archivePath))
+
+    @staticmethod
+    def _userHome():
+        return Path.home() / ".snapred"
+
+    def snapredVersion(self):
+        return snapredVersion
+
+    def getUserYmlVersionDisk(self):
+        # check if snapred-user.yml exists
+        userHome = self._userHome()
+        if (userHome / "snapred-user.yml").exists():
+            with open(str(userHome / "snapred-user.yml"), "r") as f:
+                applicationYml = yaml.safe_load(f)
+            version = applicationYml.get("application", {"version": None})["version"]
+            return version
+        else:
+            return None
+
+    def swapToUserYml(self):
+        # generate root directory for user configurations
+        userHome = self._userHome()
+
+        try:
+            if not userHome.exists():
+                userHome.mkdir(parents=True, exist_ok=True)
+
+            # check if snapred-user.yml exists
+            if self.getUserYmlVersionDisk() != self.snapredVersion():
+                # if the version is not the same, then we need to archive the old one
+                if self.getUserYmlVersionDisk() is not None:
+                    self._logger.warning(
+                        "The user configuration file is out of date" "A new configuration file will be generated."
+                    )
+                # archive the old snapred-user.yml
+                self.archiveUserYml()
+                # generate a new valid snapred-user.yml
+                self._generateUserYml()
+
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(
+                (
+                    "Unable to swap to user configuration: "
+                    f"{userHome / 'snapred-user.yml'}"
+                    "\nOriginal configuration maintained."
+                )
+            ) from e
+        else:
+            # load the user yml file if the filesystem is ready
+            self.loadEnv(str(userHome / "snapred-user.yml"))
+            # archive a backup of the current user yml
+            self.archiveUserYml()
+
+    def _generateUserYml(self):
+        userHome = self._userHome()
+        # copy commented out application.yml as snapred-user.yml
+        # read the application.yml as a dict from resources
+        applicationYml = None
+        with Resource.open("application.yml", "r") as f:
+            applicationYml = yaml.safe_load(f)
+
+        # overwrite the snapred-user.yml calibration home with the user specified one
+        userCalibrationHome = str(userHome / "Calibration")
+        applicationYml["instrument"]["calibration"]["home"] = userCalibrationHome
+        if applicationYml.get("application") is None:
+            applicationYml["application"] = {}
+        applicationYml["application"]["version"] = self.snapredVersion()
+        applicationYml["environment"] = "snapred-user"
+
+        # convert the dict back to a yaml string
+        applicationYmlStr = yaml.dump(applicationYml, default_flow_style=False)
+
+        # write the application.yml to the user home as snapred-user.yml
+        with open(userHome / "snapred-user.yml", "w") as f:
+            f.write(applicationYmlStr)
 
     def getCurrentEnv(self) -> str:
         if self.env is not None:

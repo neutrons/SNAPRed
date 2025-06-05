@@ -4,6 +4,7 @@ import glob
 import json
 import os
 import re
+import shutil
 import socket
 import tempfile
 import time
@@ -167,6 +168,47 @@ class LocalDataService:
         while path_ and not path_.exists():
             path_ = path_.parent
         return LocalDataService._hasWritePermissionstoPath(path_) if (path_ and path_.exists()) else False
+
+    @staticmethod
+    def generateUserRootFolder():
+        originalCalibrationHome = Path(Config["instrument.calibration.home"])
+        Config.swapToUserYml()
+        userCalibrationHome = Path(Config["instrument.calibration.home"])
+        LocalDataService.copyCalibrationRootSkeleton(originalCalibrationHome, userCalibrationHome)
+
+    @staticmethod
+    def copyCalibrationRootSkeleton(originalCalibrationHome: Path, newCalibrationHome: Path):
+        if not newCalibrationHome.exists():
+            # need to copy: SNAPInstPrm, CalibrantSamples, Powder/PixelGroupingDefinitions, Powder/SNAPLite.xml,
+            newCalibrationHome.mkdir(parents=True, exist_ok=True)
+            itemsToCopy = [
+                "SNAPInstPrm",
+                "CalibrantSamples",
+                "Powder/PixelGroupingDefinitions",
+                "Powder/SNAPLite.xml",
+            ]
+
+            # Validate all items first
+            for item in itemsToCopy:
+                src = originalCalibrationHome / item
+                if not (src.exists()):
+                    raise FileNotFoundError(f"Failure to find {item} when creating user calibration home")
+            # then copy them
+            for item in itemsToCopy:
+                src = originalCalibrationHome / item
+                dst = newCalibrationHome / item
+                if src.is_dir():
+                    dst.mkdir(parents=True, exist_ok=True)
+
+                    # ignoreing hidden directories
+                    def ignore_hidden_paths(_, files):
+                        return [f for f in files if f.startswith(".")]
+
+                    shutil.copytree(src, dst, dirs_exist_ok=True, ignore=ignore_hidden_paths)
+                else:
+                    dst.write_bytes(src.read_bytes())
+        else:
+            logger.info(f"User calibration home already exists: {newCalibrationHome}.")
 
     @staticmethod
     def getUniqueTimestamp() -> float:

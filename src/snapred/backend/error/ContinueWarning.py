@@ -2,6 +2,8 @@ from enum import Flag, auto
 
 from pydantic import BaseModel
 
+from snapred.meta.Config import Config
+
 
 class ContinueWarning(Exception):
     """
@@ -17,6 +19,7 @@ class ContinueWarning(Exception):
         MISSING_NORMALIZATION = auto()
         LOW_PEAK_COUNT = auto()
         NO_WRITE_PERMISSIONS = auto()
+        CALIBRATION_HOME_WRITE_PERMISSION = auto()
         CONTINUE_WITHOUT_NORMALIZATION = auto()
 
     class Model(BaseModel):
@@ -39,3 +42,22 @@ class ContinueWarning(Exception):
     def parse_raw(raw):
         raw = ContinueWarning.Model.model_validate_json(raw)
         return ContinueWarning(raw.message, raw.flags)
+
+    @staticmethod
+    def calibrationHomeWritePermission():
+        calibrationHome = Config["instrument.calibration.home"]
+        spaces24 = "".join(["&nbsp;"] * 24)
+        spaces12 = "".join(["&nbsp;"] * 12)
+        return ContinueWarning(
+            "<font size = "
+            "2"
+            " >"
+            + f"<p>{spaces12}It looks like you don't have permissions to write to "
+            + f"<br>{spaces24}<b>{calibrationHome}</b>,<br>"
+            + "This is a requirement in order to run the diffraction-calibration and normalization workflows.</p>"
+            + f"{spaces12}<p>Would you like to swap to your user generated calibration home instead?</p>"
+            + "<br><b>WARNING: This will create/archive SNAPRed managed <br>files in `~/.snapred`"
+            + "<br><br>SNAPRed will use config `~/.snapred/snapred-user.yml` <br>until it is moved or renamed.</p>"
+            + "</font>",
+            flags=ContinueWarning.Type.CALIBRATION_HOME_WRITE_PERMISSION,
+        )

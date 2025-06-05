@@ -56,6 +56,9 @@ class DataExportService:
     def checkWritePermissions(self, path: Path) -> bool:
         return self.dataService.checkWritePermissions(path)
 
+    def generateUserRootFolder(self):
+        self.dataService.generateUserRootFolder()
+
     ##### CALIBRATION METHODS #####
 
     def copyCalibration(
