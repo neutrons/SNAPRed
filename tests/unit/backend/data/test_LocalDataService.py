@@ -2553,7 +2553,7 @@ def test_readDetectorState():
     expected = mockDetectorState("123")
     mockMetadata = mock.Mock(spec=RunMetadata, runNumber=runNumber, detectorState=expected)
     instance = LocalDataService()
-    instance.readRunMetadata = mock.Mock(return_value= mockMetadata)
+    instance.readRunMetadata = mock.Mock(return_value=mockMetadata)
     actual = instance.readDetectorState(runNumber)
     assert actual == expected
     instance.readRunMetadata.assert_called_once_with(runNumber)

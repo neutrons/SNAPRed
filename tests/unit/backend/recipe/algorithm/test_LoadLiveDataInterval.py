@@ -731,13 +731,13 @@ class TestLoadLiveDataInterval(unittest.TestCase):
             mock_chunkWs.getPulseTimeMax.return_value = DateAndTime(
                 (datetime.datetime.fromisoformat(self.startTime) + timedelta(minutes=15)).isoformat()
             )
-            
+
             # Force a run-state change during the chunk-assembly loop:
             # * Note that there's no separate log message for this case,
             #   which is not an error.  When required, the state-change will be logged elsewhere.
             # * In the case of the present test however, the assembled data-interval will be incomplete.
             mock_chunkWs.getRunNumber.side_effect = ("12345", "12345", 0)
-            
+
             mock_chunkIntervals = [  # noqa: F841
                 (mock_chunkWs.getPulseTimeMin.return_value, mock_chunkWs.getPulseTimeMax.return_value)
             ]

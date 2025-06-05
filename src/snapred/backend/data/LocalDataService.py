@@ -982,7 +982,7 @@ class LocalDataService:
 
     def readDetectorState(self, runNumber: str) -> DetectorState | None:
         # Assemble a detector state from either the PVLogs, or the current live-data run.
-        
+
         # Note that `readRunMetadata` uses `lru_cache`: it is redundant to additionally apply it to this
         #   method.
         return self.readRunMetadata(runNumber).detectorState
