@@ -15,6 +15,7 @@ from snapred.backend.dao.request import (
     ReductionExportRequest,
     ReductionRequest,
 )
+from snapred.backend.dao.request.ReductionRequest import Versions
 from snapred.backend.dao.response.ReductionResponse import ReductionResponse
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
@@ -122,7 +123,10 @@ class ReductionService(Service):
         # Check if a normalization is present
         normalizationExists = self.dataFactoryService.normalizationExists(request.runNumber, request.useLiteMode, state)
 
-        calibrationExists = self.dataFactoryService.calibrationExists(request.runNumber, request.useLiteMode, state)
+        calibrationExists = (
+            self.dataFactoryService.calibrationExists(request.runNumber, request.useLiteMode, state)
+            or request.alternativeCalibrationFile is not None
+        )
 
         # Determine the action based on missing components
         if not calibrationExists and normalizationExists:
@@ -234,9 +238,10 @@ class ReductionService(Service):
             if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
                 # If a diffraction calibration exists,
                 #   its version will have been filled in by `fetchReductionGroceries`.
-                calibration = self.dataFactoryService.getCalibrationRecord(
-                    request.runNumber, request.useLiteMode, request.versions.calibration, state
-                )
+                if request.alternativeCalibrationFile is None:
+                    calibration = self.dataFactoryService.getCalibrationRecord(
+                        request.runNumber, request.useLiteMode, request.versions.calibration, state
+                    )
             if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
                 normalization = self.dataFactoryService.getNormalizationRecord(
                     request.runNumber, request.useLiteMode, state, request.versions.normalization
@@ -340,7 +345,12 @@ class ReductionService(Service):
             calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
                 runNumber, useLiteMode, state=state
             )
-        if calVersion is not None:  # WARNING: version may be _zero_!
+
+        if request.alternativeCalibrationFile is not None:
+            self.groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(state, 0, runNumber).useLiteMode(
+                useLiteMode
+            ).path(request.alternativeCalibrationFile).add()
+        elif calVersion is not None:  # WARNING: version may be _zero_!
             self.groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(state, calVersion, runNumber).useLiteMode(
                 useLiteMode
             ).add()
@@ -403,7 +413,8 @@ class ReductionService(Service):
         if state is None:
             # If no alternativeState state is provided, use the sample's state.
             state, _ = self.dataFactoryService.constructStateId(request.runNumber)
-
+        if request.alternativeCalibrationFile is not None:
+            request.versions = Versions(0, request.versions.normalization)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -450,7 +461,10 @@ class ReductionService(Service):
             # If no alternativeState state is provided, use the sample's state.
             state, _ = self.dataFactoryService.constructStateId(request.runNumber)
 
-        if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
+        if (
+            ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags
+            and request.alternativeCalibrationFile is None
+        ):
             calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
                 request.runNumber, request.useLiteMode, state
             )
@@ -464,10 +478,15 @@ class ReductionService(Service):
         if not self.groceryService.checkPixelMask(combinedPixelMask):
             combinedPixelMask = None
 
-        # gather the input workspace and the diffcal table
-        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
-            request.useLiteMode
-        ).diffCalVersion(calVersion).state(state).dirty()
+        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).state(
+            state
+        ).dirty()
+
+        if request.alternativeCalibrationFile is not None:
+            # gather the input workspace and the diffcal table
+            self.groceryClerk.diffcalPath(request.alternativeCalibrationFile)
+        else:
+            self.groceryClerk.diffCalVersion(calVersion)
 
         if not request.liveDataMode:
             self.groceryClerk.add()
@@ -479,7 +498,14 @@ class ReductionService(Service):
                 request.runNumber,
                 state,
                 normVersion,
-            ).useLiteMode(request.useLiteMode).diffCalVersion(calVersion).dirty().add()
+            ).useLiteMode(request.useLiteMode).dirty()
+
+            if request.alternativeCalibrationFile is not None:
+                # gather the input workspace and the diffcal table
+                self.groceryClerk.diffcalPath(request.alternativeCalibrationFile)
+            else:
+                self.groceryClerk.diffCalVersion(calVersion)
+            self.groceryClerk.add()
 
         groceries = self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
@@ -505,6 +531,10 @@ class ReductionService(Service):
                 request.runNumber, request.useLiteMode, state=state
             )
             altDiffcalPath = str(self.dataFactoryService.getCalibrationDataPath(request.useLiteMode, altVersion, state))
+        elif request.alternativeCalibrationFile is not None:
+            calibrationState = DiffcalStateMetadata.ALTERNATE
+            altVersion = 0  # Version zero for an alternative calibration file.
+            altDiffcalPath = str(request.alternativeCalibrationFile)
         else:
             calibrationState = DiffcalStateMetadata.EXISTS
         # The reduction workflow will automatically create a "fake" vanadium, so it shouldnt ever be None?

@@ -207,11 +207,7 @@ class ImitationGroceryService(GroceryService):
 
         CloneWorkspace(InputWorkspace=self.diffcalTableWS, OutputWorkspace=tableWorkspaceName)
         CloneWorkspace(InputWorkspace=self.maskWS, OutputWorkspace=maskWorkspaceName)
-        return {
-            "result": True,
-            "loader": "LoadCalibrationWorkspaces",
-            "workspace": tableWorkspaceName,
-        }
+        return tableWorkspaceName, maskWorkspaceName
 
     def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: int | Any) -> str:
         tableWorkspaceName = self.createDiffCalTableWorkspaceName("default", useLiteMode, version)
