@@ -9,12 +9,11 @@ from mantid.simpleapi import CalculateDiffCalTable, mtd
 from util.diffraction_calibration_synthetic_data import SyntheticData
 from util.helpers import deleteWorkspaceNoThrow, maskGroups, mutableWorkspaceClones, setGroupSpectraToZero
 
-# needed to make mocked ingredients
 from snapred.backend.log.logger import snapredLogger
 
-# the algorithm to test
+# The `Recipe` to test
 from snapred.backend.recipe.GroupDiffCalRecipe import (
-    GroupDiffCalRecipe as Recipe,  # noqa: E402
+    GroupDiffCalRecipe as Recipe  # noqa: E402
 )
 
 logger = snapredLogger.getLogger(__name__)

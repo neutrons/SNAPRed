@@ -27,3 +27,23 @@ test:
         - DSP_57514_Column.nxs
         - DSP_57514_Mid.nxs
       root: /outputs/calibration/
+
+
+logging:
+  # logging.NOTSET: 0, logging.DEBUG: 10, logging.INFO: 20, logging:WARNING: 30, logging.ERROR: 40, logging.CRITICAL: 50
+  mantid:
+    # IMPORTANT: "root" level determines override for message-pane level:
+    #    do not set to *debug* for live-data usage!
+    root:
+      level: 10
+    stream:
+      level: 10
+      format: 'MANTID %(levelname)s - %(message)s'
+    file:
+      level: 10
+      format: 'MANTID FILE %(levelname)s - %(message)s'
+      output: '/dev/null'
+  SNAP:
+    stream:
+      level: 10
+      format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'

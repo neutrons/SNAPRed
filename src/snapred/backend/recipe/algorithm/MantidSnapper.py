@@ -81,7 +81,7 @@ class MantidSnapper:
     _infoMutex = Lock()
     _workspacesInfo: Dict[str, Dict[str, Any]] = {}
 
-    def __init__(self, parentAlgorithm, name):
+    def __init__(self, parentAlgorithm, name, non_queued_execution=False):
         """
                                         :;:::::;:
                                       ;;;;;::;;:::::::
@@ -108,8 +108,12 @@ class MantidSnapper:
                                         0dlo0
                                           OO
         """
+        
+        # `non_queued_execution`: flag to allow immediate (as opposed to deferred) execution when debugging.
+        
         self.parentAlgorithm = parentAlgorithm
         self._name = name
+        self._non_queued_execution = non_queued_execution
         self._endrange = 0
         self._progressCounter = 0
         self._prog_reporter = None
@@ -162,6 +166,10 @@ class MantidSnapper:
                 NamedOutputsTuple = namedtuple("{}Outputs".format(key), outputProperties.keys())
                 outputProperties = NamedOutputsTuple(**outputProperties)
 
+            # debugging-mode: non-deferred execution
+            if self._non_queued_execution:
+                self.executeQueue()
+            
             return outputProperties
 
         return enqueueAlgorithm
@@ -177,6 +185,9 @@ class MantidSnapper:
         alg = AlgorithmManager.create(name)
 
         alg.setChild(True)
+        # *** DEBUG ***
+        alg.setLogging(True)
+        
         if name in cls._quietAlgorithms:
             # This allows a distinction between `setChild`, and logging completely turned off.
             alg.setLogging(False)

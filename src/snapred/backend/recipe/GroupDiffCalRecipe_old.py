@@ -7,6 +7,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.meta.Config import Config
+from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
@@ -27,15 +28,20 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
     One part of diffraction calibration.
     """
 
-    NOYZE_2_MIN = Config["calibration.fitting.minSignal2Noise"]
-    MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
-
     def __init__(self, utensils: Utensils = None):
         if utensils is None:
-            utensils = Utensils(non_queued_execution=True)
+            utensils = Utensils()
             utensils.PyInit()
         self.mantidSnapper = utensils.mantidSnapper
         self._counts = 0
+
+    @classproperty
+    def NOYZE_2_MIN(cls):
+        return Config["calibration.fitting.minSignal2Noise"]
+
+    @classproperty
+    def MAX_CHI_SQ(cls):
+        return Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def logger(self):
         return logger
@@ -75,7 +81,11 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         self.runNumber: str = ingredients.runConfig.runNumber
 
         # from grouping parameters, read the overall min/max d-spacings
-        self.pixelGroup = ingredients.pixelGroup
+        self.dMin = ingredients.pixelGroup.dMin()
+        self.dMax = ingredients.pixelGroup.dMax()
+        self.dBin = ingredients.pixelGroup.dBin()
+
+        self.grouping = ingredients.pixelGroup.focusGroup.name
 
         # used to be a constant pulled from application.yml
         self.maxChiSq = ingredients.maxChiSq
@@ -112,6 +122,7 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         self.originalWStof = groceries["inputWorkspace"]
         self.focusWS = groceries["groupingWorkspace"]
         self.outputWStof = wng.diffCalOutput().runNumber(self.runNumber).build()
+        self.outputWStofFocused = wng.diffCalOutput().runNumber(self.runNumber).group(self.grouping).build()
         self.outputWSdSpacing = groceries.get(
             "outputWorkspace", wng.diffCalOutput().runNumber(self.runNumber).unit("DSP").build()
         )
@@ -119,19 +130,6 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
 
         self.maskWS = groceries.get("maskWorkspace", wng.diffCalMask().runNumber(self.runNumber).build())
 
-        # *** DEBUG ***
-        # Print the pixels belonging to each group:
-        print("SUBGROUPS:")
-        subgroups = self.mantidSnapper.mtd[self.focusWS]
-        detectorInfo = subgroups.detectorInfo()
-        for n in range(subgroups.getNumberHistograms()):
-            detectorIds = subgroups.getSpectrum(n).getDetectorIDs()
-            detectorIndices =  [detectorInfo.indexOf(did) for did in detectorIds]
-            ixIds = zip(detectorIndices, detectorIds)
-            print(f"  wi: {n}; gid: {subgroups.readY(n)[0]}; pixels (ix, id): {[ixId for ixId in ixIds]}") 
-        for gid in self.groupIDs:
-            print(f"  gid: {gid}: pixel-ids: {subgroups.getDetectorIDsOfGroup(int(gid))}")
-        
         # set the previous calibration table, or create if none given
         # TODO: use workspace namer
         DIFCprev: str = groceries.get("previousCalibration", "")
@@ -236,13 +234,6 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
                 StartWorkspaceIndex=index,
                 StopWorkspaceIndex=index,
             )
-            
-            # *** DEBUG ***
-            mask = self.mantidSnapper.mtd[self.maskWS]
-            print(f"group-ID: {groupID}:")
-            print(f"  masked: {self.mantidSnapper.mtd[self.maskWS].getNumberMasked()}")
-            print(f"  masked-pixels: {[ix for ix in range(mask.getNumberHistograms()) if bool(mask.readY(ix)[0])]}")
-            
             self.mantidSnapper.ConjoinDiagnosticWorkspaces(
                 "Combine the diagnostic outputs",
                 DiagnosticWorkspace=diagnosticWSgroup,
@@ -277,23 +268,37 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         )
         self.convertAndFocusAndReturn(self.originalWStof, self.outputWSdSpacing, "after", "dSpacing", False)
 
-        # prepare a TOF-units clone of the final output workspace
+        # add the TOF-spacing workspace to the diagnostic workspace group
         self.mantidSnapper.CloneWorkspace(
-            "Clone the final dSpacing output",
+            "Clone the final output that is in dSpacing units",
             InputWorkspace=self.outputWSdSpacing,
             OutputWorkspace=self.outputWStof,
         )
         self.mantidSnapper.ConvertUnits(
             "Convert the clone of the final output back to TOF",
             InputWorkspace=self.outputWStof,
-            OutputWorkspace=self.outputWStof,
+            OutputWorkspace=self.outputWStofFocused,
             Target="TOF",
+        )
+        self.mantidSnapper.DeleteWorkspace(
+            "Deleting unused workspace",
+            Workspace=self.outputWStof,
         )
 
     def execute(self):
         self.mantidSnapper.executeQueue()
         diagnostic = self.mantidSnapper.mtd[self.diagnosticWS]
-        diagnostic.add(self.outputWStof)
+        diagnostic.add(self.outputWStofFocused)
+        for ws in diagnostic.getNames():
+            if self.diagnosticSuffix[FitOutputEnum.PeakPosition] in ws:
+                self.mantidSnapper.DeleteWorkspace(
+                    "Deleting unused workspace",
+                    Workspace=ws,
+                )
+                self.mantidSnapper.executeQueue()
+                break
+
+        self.mantidSnapper.executeQueue()
 
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> GroupDiffCalServing:
         self.prep(ingredients, groceries)
@@ -320,14 +325,24 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
             Target="dSpacing",
         )
 
-        # Diffraction focus, and rebin the d-spacing data.
-        self.mantidSnapper.FocusSpectraAlgorithm(
+        # Diffraction-focus the d-spacing data
+        self.mantidSnapper.DiffractionFocussing(
             "Diffraction-focus the d-spacing data",
             InputWorkspace=tmpWSdsp,
             GroupingWorkspace=self.focusWS,
             OutputWorkspace=tmpWSdsp,
-            PixelGroup=self.pixelGroup.model_dump_json(),
-            PreserveEvents=keepEvents
+        )
+
+        # Ragged rebin the diffraction-focussed data
+        self.mantidSnapper.RebinRagged(
+            "Ragged rebin the diffraction-focussed data",
+            InputWorkspace=tmpWSdsp,
+            OutputWorkspace=tmpWSdsp,
+            XMin=self.dMin,
+            XMax=self.dMax,
+            Delta=self.dBin,
+            preserveEvents=keepEvents,
+            FullBinsOnly=True,
         )
 
         if units == "TOF":
