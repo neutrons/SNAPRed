@@ -179,6 +179,25 @@ class Indexer:
             version = max(versions)
         return version
 
+    def latestApplicableEntry(self, runNumber: str) -> IndexEntry:
+        """
+        The most recent index entry in time, which is applicable to the run number.
+        """
+        # sort by timestamp
+        entries = list(self.index.values())
+        entries.sort(key=lambda x: x.timestamp)
+        # filter for latest applicable
+        relevantEntries = list(filter(lambda x: self._isApplicableEntry(x, runNumber), entries))
+        if len(relevantEntries) < 1:
+            entry = None
+        elif len(relevantEntries) == 1:
+            entry = relevantEntries[0]
+        else:
+            if self.defaultVersion() in self.index:
+                relevantEntries.remove(self.index[self.defaultVersion()])
+            entry = relevantEntries[-1]
+        return entry
+
     def latestApplicableVersion(self, runNumber: str) -> int:
         """
         The most recent version in time, which is applicable to the run number.
@@ -214,14 +233,14 @@ class Indexer:
 
     def validateVersion(self, version):
         try:
-            VersionedObject(version=version)
+            VersionedObject.validate_version(version)
             return True
         except ValueError:
             # This error would only ever result from a software bug.
             # Saving/Loading/Refering to erroneous "current" versions just serves to obfuscate the error.
             raise ValueError(
                 (
-                    f"The indexer has encountered an invalid version: {version}.",
+                    f"The indexer has encountered an invalid version: {version}\n",
                     "This is a software error.  Please report this to your IS or CIS",
                     "so it may be patched.",
                 )
@@ -303,12 +322,31 @@ class Indexer:
         res.pop(self.defaultVersion(), None)
         return list(res.values())
 
+    def recoverIndex(self) -> Dict[int, IndexEntry]:
+        # iterate through the directory structure and create an index from the files
+        indexPath: Path = self.indexPath()
+        entries = []
+        versions = self.readDirectoryList()
+        for version in versions:
+            versionPath = self.versionPath(self._flattenVersion(version))
+            if versionPath.exists():
+                # read the record file
+                record = self.readRecord(version)
+                entries.append(record.indexEntry)
+        # write the index to the file
+        indexPath.parent.mkdir(parents=True, exist_ok=True)
+        write_model_list_pretty(entries, indexPath)
+        return entries
+
     def readIndex(self) -> Dict[int, IndexEntry]:
         # create the index from the index file
         indexPath: Path = self.indexPath()
         indexList: List[IndexEntry] = []
         if indexPath.exists():
             indexList = parse_file_as(List[IndexEntry], indexPath)
+        else:
+            logger.warning(f"Index file {indexPath} missing, recovering index from directory structure.")
+            indexList = self.recoverIndex()
         return {entry.version: entry for entry in indexList}
 
     def writeIndex(self):
@@ -328,6 +366,9 @@ class Indexer:
     ## RECORD READ / WRITE METHODS ##
 
     def createRecord(self, *, version, **other_arguments):
+        entry = other_arguments.get("indexEntry")
+        entry["version"] = self._flattenVersion(version)
+        other_arguments["indexEntry"] = entry
         record = RECORD_TYPE[self.indexerType](
             version=self._flattenVersion(version),
             **other_arguments,
@@ -378,42 +419,12 @@ class Indexer:
     def versionExists(self, version: Version):
         return self._flattenVersion(version) in self.index
 
-    def writeNewVersion(self, record: Record, entry: IndexEntry):
-        """
-        Coupled write of a record and an index entry.
-        As required for new records.
-        """
-        if self.versionExists(record.version):
-            raise ValueError(f"Version {record.version} already exists in index, please write a new version.")
-
-        if entry.appliesTo is None:
-            entry.appliesTo = ">=" + record.runNumber
-
-        self.addIndexEntry(entry)
-        # make sure they flatten to the same value.
-        record.version = entry.version
-        record.calculationParameters.version = entry.version
-        self.writeRecord(record)
-
     def versionedObjectPath(self, type_: Type[T], version: Version):
         """
         Path to a specific version of a calculation record
         """
         fileName = FRIENDLY_NAME_MAPPING.get(type_.__name__, type_.__name__)
         return self.versionPath(version) / f"{fileName}.json"
-
-    def writeNewVersionedObject(self, obj: VersionedObject, entry: IndexEntry):
-        """
-        Coupled write of parameters and an index entry.
-        As required for new parameters.
-        """
-        if self.versionExists(obj.version):
-            raise ValueError(f"Version {obj.version} already exists in index, please write a new version.")
-
-        self.addIndexEntry(entry)
-        # make sure they flatten to the same value.
-        obj.version = entry.version
-        self.writeVersionedObject(obj)
 
     def writeVersionedObject(self, obj: VersionedObject):
         """
@@ -422,8 +433,11 @@ class Indexer:
         """
         obj.version = self._flattenVersion(obj.version)
 
-        if not self.versionExists(obj.version):
-            raise ValueError(f"Version {obj.version} not found in index, please write an index entry first.")
+        if obj.indexEntry.appliesTo is None:
+            obj.indexEntry.appliesTo = ">=" + obj.runNumber
+
+        self.addIndexEntry(obj.indexEntry)
+        obj.version = obj.indexEntry.version
 
         filePath = self.versionedObjectPath(type(obj), obj.version)
         filePath.parent.mkdir(parents=True, exist_ok=True)
@@ -454,6 +468,9 @@ class Indexer:
     ## STATE PARAMETER READ / WRITE METHODS ##
 
     def createParameters(self, *, version, **other_arguments) -> CalculationParameters:
+        entry = other_arguments.get("indexEntry")
+        entry["version"] = self._flattenVersion(version)
+        other_arguments["indexEntry"] = entry
         return PARAMS_TYPE[self.indexerType](
             version=self._flattenVersion(version),
             **other_arguments,

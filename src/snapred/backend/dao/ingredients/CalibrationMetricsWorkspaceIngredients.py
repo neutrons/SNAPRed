@@ -2,7 +2,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, model_validator
 
-from snapred.backend.dao.calibration import CalibrationRecord
+from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
+from snapred.backend.dao.indexing.Versioning import Version
 
 
 class CalibrationMetricsWorkspaceIngredients(BaseModel):
@@ -15,7 +16,9 @@ class CalibrationMetricsWorkspaceIngredients(BaseModel):
 
     """
 
-    calibrationRecord: CalibrationRecord
+    runNumber: int
+    version: Version
+    focusGroupCalibrationMetrics: FocusGroupMetric
     timestamp: Optional[float] = None
 
     @model_validator(mode="before")

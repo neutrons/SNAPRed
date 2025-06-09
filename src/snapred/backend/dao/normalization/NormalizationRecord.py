@@ -44,4 +44,4 @@ class NormalizationRecord(Record, extra="ignore"):
     @field_validator("calibrationVersionUsed", mode="before")
     @classmethod
     def version_is_integer(cls, v: Any) -> Any:
-        return VersionedObject(version=v).version
+        return VersionedObject.validate_version(v)

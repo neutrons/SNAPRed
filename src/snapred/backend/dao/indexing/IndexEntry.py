@@ -1,12 +1,10 @@
 import time
 from typing import Any, Optional
 
-from pydantic import Field, field_validator, model_validator
-
-from snapred.backend.dao.indexing.Versioning import VersionedObject
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-class IndexEntry(VersionedObject, extra="ignore"):
+class IndexEntry(BaseModel, extra="ignore"):
     """
 
     This is the basic, bare-bones entry for workflow indices.
@@ -27,6 +25,7 @@ class IndexEntry(VersionedObject, extra="ignore"):
     comments: Optional[str] = None
     author: Optional[str] = None
     timestamp: float = Field(default_factory=lambda: time.time())
+    version: int
 
     @classmethod
     def parseConditional(cls, conditional: str):

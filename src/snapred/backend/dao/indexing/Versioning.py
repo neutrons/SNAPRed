@@ -1,6 +1,7 @@
 import numpy
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.meta.Config import Config
 from snapred.meta.Enum import StrEnum
 
@@ -29,6 +30,7 @@ class VersionedObject(BaseModel):
     # Base class for all versioned DAO
 
     version: Version
+    indexEntry: IndexEntry
 
     @field_validator("version", mode="before")
     def validate_version(cls, value: Version) -> Version:
