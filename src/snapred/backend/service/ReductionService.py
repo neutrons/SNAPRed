@@ -129,8 +129,7 @@ class ReductionService(Service):
             # Case: No calibration but normalization exists
             continueFlags |= ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
             message = (
-                "Warning: diffraction calibration is missing."
-                "If you continue, default instrument geometry will be used."
+                "Warning: diffraction calibration is missing.If you continue, default instrument geometry will be used."
             )
         elif calibrationExists and not normalizationExists:
             # Case: Calibration exists but normalization is missing
