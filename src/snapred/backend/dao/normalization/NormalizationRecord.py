@@ -3,7 +3,8 @@ from typing import Any, List
 from pydantic import Field, field_validator
 
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionedObject
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject
+from snapred.backend.dao.indexing.Versioning import VERSION_START, Version
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -44,4 +45,4 @@ class NormalizationRecord(Record, extra="ignore"):
     @field_validator("calibrationVersionUsed", mode="before")
     @classmethod
     def version_is_integer(cls, v: Any) -> Any:
-        return VersionedObject(version=v).version
+        return VersionedObject.validate_version(v)

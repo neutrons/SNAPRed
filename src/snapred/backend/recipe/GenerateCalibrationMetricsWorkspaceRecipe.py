@@ -33,21 +33,21 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
         self.mantidSnapper = MantidSnapper(None, self.__class__.__name__)
 
     def executeRecipe(self, ingredients: Ingredients):
-        runId = ingredients.calibrationRecord.runNumber
+        runId = ingredients.runNumber
 
         if ingredients.timestamp is not None:
             timestamp = ingredients.timestamp
             ws_table = wng.diffCalTimedMetric().runNumber(runId).timestamp(timestamp).metricName("table").build()
             logger.info(f"Executing recipe {__name__} for run: {runId} timestamp: {wnvf.formatTimestamp(timestamp)}")
         else:
-            version = ingredients.calibrationRecord.version
+            version = ingredients.version
             ws_table = wng.diffCalMetric().runNumber(runId).version(version).metricName("table").build()
             logger.info(f"Executing recipe {__name__} for run: {runId} calibration version: {version}")
 
         try:
             # create a table workspace with all metrics
             GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
-                ListOfDict=list_to_raw(ingredients.calibrationRecord.focusGroupCalibrationMetrics.calibrationMetric),
+                ListOfDict=list_to_raw(ingredients.focusGroupCalibrationMetrics.calibrationMetric),
                 OutputWorkspace=ws_table,
             )
             outputs = []
