@@ -1,6 +1,8 @@
+import numpy as np
+from pydantic import BaseModel
 from typing import Dict, List, Set
 
-from pydantic import BaseModel
+from mantid.api import IEventWorkspace
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
@@ -30,7 +32,7 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
 
     def __init__(self, utensils: Utensils = None):
         if utensils is None:
-            utensils = Utensils()
+            utensils = Utensils(non_queued_execution=True)
             utensils.PyInit()
         self.mantidSnapper = utensils.mantidSnapper
         self._counts = 0
@@ -120,6 +122,10 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         self.diagnosticSuffix = FIT_PEAK_DIAG_SUFFIX.copy()
 
         self.originalWStof = groceries["inputWorkspace"]
+                
+        # *** DEBUG ***
+        print(f"============= INPUT DATA: {'IS' if isinstance(self.mantidSnapper.mtd[self.originalWStof], IEventWorkspace) else 'IS NOT'} EVENT data! ===============")
+        
         self.focusWS = groceries["groupingWorkspace"]
         self.outputWStof = wng.diffCalOutput().runNumber(self.runNumber).build()
         self.outputWStofFocused = wng.diffCalOutput().runNumber(self.runNumber).group(self.grouping).build()
@@ -372,3 +378,12 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
                 InputWorkspace=tmpWSdsp,
                 OutputWorkspace=outputWS,
             )
+        
+        # *** DEBUG ***
+        print("----- After `DiffractionFocussing`: -----")
+        ws_ = self.mantidSnapper.mtd[outputWS]
+        print(f"  workspace: {str(ws_)}\n    {ws_.id()}\n    {'IS' if isinstance(ws_, IEventWorkspace) else 'IS NOT'} an EVENT workspace")
+        for i in range(ws_.getNumberHistograms()):
+            x = ws_.readX(i)
+            dx = np.diff(x, 1)
+            print(f"  wi: {i}: [{x[0]}, {x[-1]}] |{len(x)}| -- {(dx[0], dx[1], dx[2])}...")
