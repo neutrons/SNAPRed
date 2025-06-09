@@ -2,7 +2,7 @@ from qtpy.QtCore import Slot
 
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Versioning import VersionedObject, VersionState
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject, VersionState
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.request import (
     CalculateResidualRequest,
@@ -618,8 +618,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         )
 
         response = self.request(path="calibration/assessment", payload=payload)
-        assessmentResponse = response.data
-        self.calibrationRecord = assessmentResponse.record
+        self.assessmentResponse = response.data
 
         if "afterCrossCor" in self.pixelCalibratedWorkspace:
             # rename self.pixelCalibratedWorkspace
@@ -628,8 +627,8 @@ class DiffCalWorkflow(WorkflowImplementer):
             )
             self.request(path="workspace/rename", payload=renameRequest)
 
-        self.outputs.update(assessmentResponse.metricWorkspaces)
-        for calibrationWorkspaces in self.calibrationRecord.workspaces.values():
+        self.outputs.update(self.assessmentResponse.metricWorkspaces)
+        for calibrationWorkspaces in self.assessmentResponse.workspaces.values():
             self.outputs.update(calibrationWorkspaces)
         self._assessmentView.updateRunNumber(self.runNumber, self.useLiteMode)
         return response
@@ -645,12 +644,12 @@ class DiffCalWorkflow(WorkflowImplementer):
     def _getSaveSelection(self, dropDown):
         selection = dropDown.currentText()
         if selection == self._saveView.currentIterationText:
-            return self.calibrationRecord.workspaces
+            return self.assessmentResponse.workspaces
 
         iteration = int(selection)
         return {
             wsKey: [self.renameTemplate.format(workspaceName=wsName, iteration=iteration) for wsName in wsNames]
-            for wsKey, wsNames in self.calibrationRecord.workspaces.items()
+            for wsKey, wsNames in self.assessmentResponse.workspaces.items()
         }
 
     def _resetSaveView(self):
@@ -664,13 +663,13 @@ class DiffCalWorkflow(WorkflowImplementer):
         version = view.fieldVersion.get(VersionState.NEXT)
         appliesTo = view.fieldAppliesTo.get(f">={runNumber}")
         # validate the version number
-        version = VersionedObject(version=version).version
+        version = VersionedObject.validate_version(version)
         # validate appliesTo field
         appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
 
         # if this is not the first iteration, account for choice.
         if workflowPresenter.iteration > 1:
-            self.calibrationRecord.workspaces = self._getSaveSelection(self._saveView.iterationDropdown)
+            self.assessmentResponse.workspaces = self._getSaveSelection(self._saveView.iterationDropdown)
 
         createIndexEntryRequest = CreateIndexEntryRequest(
             runNumber=runNumber,
@@ -684,14 +683,14 @@ class DiffCalWorkflow(WorkflowImplementer):
             runNumber=runNumber,
             useLiteMode=self.useLiteMode,
             version=version,
-            calculationParameters=self.calibrationRecord.calculationParameters,
-            crystalInfo=self.calibrationRecord.crystalInfo,
-            pixelGroups=self.calibrationRecord.pixelGroups,
-            focusGroupCalibrationMetrics=self.calibrationRecord.focusGroupCalibrationMetrics,
-            workspaces=self.calibrationRecord.workspaces,
+            calculationParameters=self.assessmentResponse.calculationParameters,
+            crystalInfo=self.assessmentResponse.crystalInfo,
+            pixelGroups=self.assessmentResponse.pixelGroups,
+            focusGroupCalibrationMetrics=self.assessmentResponse.focusGroupCalibrationMetrics,
+            workspaces=self.assessmentResponse.workspaces,
+            indexEntry=createIndexEntryRequest,
         )
         payload = CalibrationExportRequest(
-            createIndexEntryRequest=createIndexEntryRequest,
             createRecordRequest=createRecordRequest,
         )
 

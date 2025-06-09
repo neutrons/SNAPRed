@@ -1,6 +1,7 @@
 from pydantic import ConfigDict
 
 from snapred.backend.dao.normalization import NormalizationRecord
+from snapred.backend.dao.request.CreateIndexEntryRequest import CreateIndexEntryRequest
 
 
 class CreateNormalizationRecordRequest(NormalizationRecord, extra="forbid"):
@@ -8,6 +9,7 @@ class CreateNormalizationRecordRequest(NormalizationRecord, extra="forbid"):
     The needed data to create a NormalizationRecord.
     """
 
+    indexEntry: CreateIndexEntryRequest
     model_config = ConfigDict(
         # required in order to use 'WorkspaceName'
         arbitrary_types_allowed=True,
