@@ -1034,7 +1034,7 @@ class TestReductionServiceMasks:
 
             # prepare the expected grocery dicionary
             groceryClerk = self.service.groceryClerk
-            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(self.stateId1, 0, request.runNumber).useLiteMode(
+            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(self.stateId1, 1, request.runNumber).useLiteMode(
                 request.useLiteMode
             ).filePath(request.alternativeCalibrationFilePath).add()
             for mask in (self.maskWS1, self.maskWS2):

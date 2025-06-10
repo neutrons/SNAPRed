@@ -2787,7 +2787,7 @@ class TestGroceryService(unittest.TestCase):
         item = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()[0]
         with pytest.raises(
             RuntimeError,
-            match="but expected 1179648 rows for the native resolution.",
+            match="Expected 1179648 rows for the native resolution.",
         ):
             self.instance._validateCalibrationTable(item, testCalibrationTable)
 

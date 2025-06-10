@@ -1153,6 +1153,21 @@ class GroceryService:
                 "All 'difc' values must be positive floats."
             )
 
+    def _validateCalibrationMask(self, item: GroceryListItem, maskWorkspaceName: str):
+        targetPixelCount = (
+            Config["instrument.lite.pixelResolution"]
+            if item.useLiteMode
+            else Config["instrument.native.pixelResolution"]
+        )
+        numHistos = self.mantidSnapper.mtd[maskWorkspaceName].getNumberHistograms()
+        if numHistos != targetPixelCount:
+            liteStr = "lite" if item.useLiteMode else "native"
+            raise RuntimeError(
+                f"Mask workspace '{maskWorkspaceName}' has {numHistos} histograms"
+                f"\nExpected {targetPixelCount} histograms for the {liteStr} resolution."
+                f"\ni.e. one histogram per pixel of the instrument."
+            )
+
     def _loadCalibrationFile(
         self, item: GroceryListItem, filename: str, tableWorkspaceName: str, maskWorkspaceName: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -1194,11 +1209,7 @@ class GroceryService:
             self._validateCalibrationTable(item, tableWorkspaceName)
 
             if bool(maskWorkspaceName):
-                if not self.dataService.isCompatibleMask(maskWorkspaceName, sampleRunNumber, useLiteMode):
-                    raise RuntimeError(
-                        f"Mask workspace '{maskWorkspaceName}' is not compatible with run {sampleRunNumber} "
-                        f"and lite mode {useLiteMode}."
-                    )
+                self._validateCalibrationMask(item, maskWorkspaceName)
 
         return data
 
