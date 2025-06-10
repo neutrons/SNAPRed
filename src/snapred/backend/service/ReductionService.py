@@ -470,10 +470,7 @@ class ReductionService(Service):
             # If no alternativeState state is provided, use the sample's state.
             state, _ = self.dataFactoryService.constructStateId(request.runNumber)
 
-        if (
-            ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags
-            and request.alternativeCalibrationFilePath is None
-        ):
+        if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
             calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
                 request.runNumber, request.useLiteMode, state
             )
@@ -489,13 +486,11 @@ class ReductionService(Service):
 
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).state(
             state
-        ).dirty()
+        ).dirty().diffCalVersion(calVersion)
 
         if request.alternativeCalibrationFilePath is not None:
             # gather the input workspace and the diffcal table
             self.groceryClerk.diffCalFilePath(request.alternativeCalibrationFilePath)
-        else:
-            self.groceryClerk.diffCalVersion(calVersion)
 
         if not request.liveDataMode:
             self.groceryClerk.add()
@@ -507,13 +502,12 @@ class ReductionService(Service):
                 request.runNumber,
                 state,
                 normVersion,
-            ).useLiteMode(request.useLiteMode).dirty()
+            ).useLiteMode(request.useLiteMode).dirty().diffCalVersion(calVersion)
 
             if request.alternativeCalibrationFilePath is not None:
                 # gather the input workspace and the diffcal table
                 self.groceryClerk.diffCalFilePath(request.alternativeCalibrationFilePath)
-            else:
-                self.groceryClerk.diffCalVersion(calVersion)
+
             self.groceryClerk.add()
 
         groceries = self.groceryService.fetchGroceryDict(

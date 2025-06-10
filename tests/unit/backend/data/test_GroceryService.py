@@ -2766,6 +2766,24 @@ class TestGroceryService(unittest.TestCase):
             assert items[0] == diffCalTableName
             assert mtd.doesExist(diffCalTableName)
 
+    def test_validateCalibrationMask(self):
+        # load a diffcal mask and validate it
+        item = mock.Mock(useLiteMode=False)
+        with (
+            mock.patch.object(self.instance, "mantidSnapper") as mockSnapper,
+            Config_override("instrument.native.pixelResolution", 16),
+        ):
+            mockWs = mock.Mock()
+            mockWs.getNumberHistograms.return_value = 16
+            mockSnapper.mtd.__getitem__.return_value = mockWs
+            self.instance._validateCalibrationMask(item, "someMask")
+            mockWs.getNumberHistograms.return_value = 1337
+            with pytest.raises(
+                RuntimeError,
+                match="Expected 16 histograms for the native resolution.",
+            ):
+                self.instance._validateCalibrationMask(item, "someMask")
+
     def test_validateCalibrationTable(self):
         # load a diffcal table and validate it
         testCalibrationTable = self.generateTestDiffcalTable()

@@ -511,6 +511,11 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService = fakeDataService
         self.instance.validateReduction(self.request)
 
+    def test_validateReduction_alternativeCalibrationFilePath_notExist(self):
+        self.request.alternativeCalibrationFilePath = Path("path/to/nonexistent/calibration/file")
+        with pytest.raises(RuntimeError, match="does not exist"):
+            self.instance.validateReduction(self.request)
+
     def test_validateReduction_noCalibration(self):
         # assert ContinueWarning is raised
 
@@ -1183,6 +1188,13 @@ class TestReductionServiceMasks:
 
             # check -- with invalid combinedPixelMask, no mask is added
             mockCheckPixelMask.return_value = False
+            self.service.fetchReductionGroceries(request)
+            self.service.groceryService.fetchGroceryDict.assert_called_with(
+                loadableOtherGroceryItems,
+            )
+            request.alternativeCalibrationFilePath = Path("some/path/to/calibration/file")
+            loadableOtherGroceryItems["inputWorkspace"].diffCalFilePath = request.alternativeCalibrationFilePath
+            loadableOtherGroceryItems["normalizationWorkspace"].diffCalFilePath = request.alternativeCalibrationFilePath
             self.service.fetchReductionGroceries(request)
             self.service.groceryService.fetchGroceryDict.assert_called_with(
                 loadableOtherGroceryItems,
