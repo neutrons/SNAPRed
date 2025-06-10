@@ -926,7 +926,7 @@ class TestGroceryService(unittest.TestCase):
                 loader="",
                 liveDataArgs=None,
                 diffCalVersion=None,
-                diffcalPath=None,
+                diffCalFilePath=None,
             )
 
         testItem = generateTestItem()
@@ -994,7 +994,7 @@ class TestGroceryService(unittest.TestCase):
                 loader="",
                 liveDataArgs=None,
                 diffCalVersion=None,
-                diffcalPath=None,
+                diffCalFilePath=None,
             )
             m.model_copy.side_effect = generateTestItem
             return m
@@ -1038,7 +1038,7 @@ class TestGroceryService(unittest.TestCase):
                 state="stateId",
                 liveDataArgs=None,
                 diffCalVersion=None,
-                diffcalPath=None,
+                diffCalFilePath=None,
             )
 
         testItem = generateTestItem()
@@ -1138,7 +1138,7 @@ class TestGroceryService(unittest.TestCase):
                 loader="",
                 liveDataArgs=None,
                 diffCalVersion=None,
-                diffcalPath=None,
+                diffCalFilePath=None,
             )
             m.model_copy.side_effect = generateTestItem
             return m
@@ -3738,7 +3738,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetchDiffCalForSample_altPath(self):
         item = GroceryListItem(
             workspaceType="diffcal_table",
-            path=Path("some/path/to/diffcal_table.h5"),
+            filePath=Path("some/path/to/diffcal_table.h5"),
             state="stateId",
             useLiteMode=True,
             diffCalVersion=0,

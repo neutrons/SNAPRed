@@ -72,7 +72,7 @@ class GroceryListItem(BaseModel):
     runNumber: Optional[str] = None
     normCalVersion: Optional[int] = None
     diffCalVersion: Optional[int] = None
-    diffcalPath: Optional[Path] = None
+    diffCalFilePath: Optional[Path] = None
     timestamp: Optional[float] = None
     groupingScheme: Optional[str] = None
 
@@ -104,7 +104,7 @@ class GroceryListItem(BaseModel):
     state: Optional[str] = None
 
     # allow specification of a path nonstandard file.
-    path: Optional[Path] = None
+    filePath: Optional[Path] = None
 
     def builder():
         # NOTE this import is here to avoid circular dependencies -- don't bother trying to move it

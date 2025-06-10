@@ -1143,7 +1143,8 @@ class GroceryService:
         if len(tableInst.column("detid")) != totalExpectedRows:
             raise RuntimeError(
                 f"Calibration table workspace '{tableWorkspaceName}' has {len(tableInst.column('detid'))} rows, "
-                f"but expected {totalExpectedRows} rows for the {'lite' if item.useLiteMode else 'native'} resolution."
+                f"\nExpected {totalExpectedRows} rows for the {'lite' if item.useLiteMode else 'native'} resolution."
+                f"\ni.e. one row per pixel of the instrument."
             )
         # ensure all difc's are positive floats
         if not all(isinstance(difc, float) and difc > 0 for difc in tableInst.column("difc")):
@@ -1172,7 +1173,7 @@ class GroceryService:
                 if not item.instrumentPropertySource
                 else (item.instrumentPropertySource, item.instrumentSource)
             )
-            logger.info(f"Loading calibration file {filename} for run {sampleRunNumber} with lite mode {useLiteMode}")
+            logger.debug(f"Loading calibration file {filename} for run {sampleRunNumber} with lite mode {useLiteMode}")
             data = self.grocer.executeRecipe(
                 filename=filename,
                 # IMPORTANT: Both table and mask workspaces will be loaded,
@@ -1191,6 +1192,14 @@ class GroceryService:
             )
             data["workspace"] = tableWorkspaceName
             self._validateCalibrationTable(item, tableWorkspaceName)
+
+            if bool(maskWorkspaceName):
+                if not self.dataService.isCompatibleMask(maskWorkspaceName, sampleRunNumber, useLiteMode):
+                    raise RuntimeError(
+                        f"Mask workspace '{maskWorkspaceName}' is not compatible with run {sampleRunNumber} "
+                        f"and lite mode {useLiteMode}."
+                    )
+
         return data
 
     # this isnt really a fetch method, this generates data
@@ -1370,13 +1379,13 @@ class GroceryService:
         # to that of the table workspace.  Because of possible confusion with
         # the behavior of the mask workspace, the workspace name is overridden here.
 
-        path = item.path if item.path is not None else item.diffcalPath
+        path = item.filePath if item.filePath is not None else item.diffCalFilePath
         if path is None:
             tableWorkspaceName, maskWorkspaceName = self.fetchCalibrationWorkspaces(item)
         else:
             tableWorkspaceName = path.stem
             maskWorkspaceName = f"{tableWorkspaceName}_mask"
-            self._loadCalibrationFile(item, str(item.path), tableWorkspaceName, maskWorkspaceName)
+            self._loadCalibrationFile(item, str(item.filePath), tableWorkspaceName, maskWorkspaceName)
 
         return tableWorkspaceName, maskWorkspaceName
 
@@ -1646,7 +1655,7 @@ class GroceryService:
 
             self.deleteWorkspaceUnconditional(monitorWs)
 
-        if item.diffCalVersion is not None or item.diffcalPath is not None:
+        if item.diffCalVersion is not None or item.diffCalFilePath is not None:
             # then load a diffcal table and apply it.
             # NOTE: This can result in a different diffcal being applied to normalization vs sample
             #       This is the expected and desired behavior.

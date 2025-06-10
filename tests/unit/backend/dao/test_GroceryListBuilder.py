@@ -44,13 +44,13 @@ class TestGroceryListBuilder(unittest.TestCase):
         assert item.useLiteMode is False
         assert item.workspaceType == "diffcal"
 
-    def test_diffcal_diffcalPath(self):
-        diffcalPath = Path(Resource.getPath("inputs/testDiffCal/emptyDiffCal.nxs"))
-        item = GroceryListBuilder().diffcal(self.runNumber).native().diffcalPath(diffcalPath).build()
+    def test_diffcal_diffCalFilePath(self):
+        diffCalFilePath = Path(Resource.getPath("inputs/testDiffCal/emptyDiffCal.nxs"))
+        item = GroceryListBuilder().diffcal(self.runNumber).native().diffCalFilePath(diffCalFilePath).build()
         assert item.runNumber == self.runNumber
         assert item.useLiteMode is False
         assert item.workspaceType == "diffcal"
-        assert item.diffcalPath == diffcalPath
+        assert item.diffCalFilePath == diffCalFilePath
 
     def test_nexus_native_lite(self):
         item = GroceryListBuilder().neutron(self.runNumber).native().build()

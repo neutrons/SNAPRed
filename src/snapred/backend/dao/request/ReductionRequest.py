@@ -36,7 +36,7 @@ class ReductionRequest(BaseModel):
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
 
     alternativeState: Optional[str] = None
-    alternativeCalibrationFile: Optional[Path] = None
+    alternativeCalibrationFilePath: Optional[Path] = None
 
     @field_validator("versions")
     @classmethod

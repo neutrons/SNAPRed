@@ -135,7 +135,7 @@ class TestReductionService(unittest.TestCase):
 
     def test_prepReductionIngredients_alternateiveCalibrationFile(self):
         # Call the method with the provided parameters
-        self.request.alternativeCalibrationFile = "path/to/calibration/file"
+        self.request.alternativeCalibrationFilePath = "path/to/calibration/file"
         result = self.instance.prepReductionIngredients(self.request)
 
         farmFresh = FarmFreshIngredients(
@@ -320,7 +320,7 @@ class TestReductionService(unittest.TestCase):
 
     def test_markWorkspaceMetadata(self):
         request = mock.Mock(
-            continueFlags=ContinueWarning.Type.UNSET, alternativeState=None, alternativeCalibrationFile=None
+            continueFlags=ContinueWarning.Type.UNSET, alternativeState=None, alternativeCalibrationFilePath=None
         )
         metadata = WorkspaceMetadata(diffcalState="exists", normalizationState="exists")
         wsName = "test"
@@ -336,11 +336,11 @@ class TestReductionService(unittest.TestCase):
         self.instance._markWorkspaceMetadata(request, wsName)
         self.instance.groceryService.writeWorkspaceMetadataAsTags.assert_called_once_with(wsName, metadata)
 
-    def test_markWorkspaceMetadata_alternativeCalibrationFile(self):
+    def test_markWorkspaceMetadata_alternativeCalibrationFilePath(self):
         request = mock.Mock(
             continueFlags=ContinueWarning.Type.UNSET,
             alternativeState=None,
-            alternativeCalibrationFile="path/to/calibration/file",
+            alternativeCalibrationFilePath="path/to/calibration/file",
         )
         metadata = WorkspaceMetadata(
             diffcalState="alternate", altDiffcalPath="path/to/calibration/file", normalizationState="exists"
@@ -354,7 +354,7 @@ class TestReductionService(unittest.TestCase):
         request = mock.Mock(
             continueFlags=ContinueWarning.Type.MISSING_NORMALIZATION,
             alternativeState=None,
-            alternativeCalibrationFile=None,
+            alternativeCalibrationFilePath=None,
         )
         metadata = WorkspaceMetadata(diffcalState="exists", normalizationState="fake")
         wsName = "test"
@@ -1005,7 +1005,7 @@ class TestReductionServiceMasks:
             assert realKwargs == residentMaskGroceryKwargs
             mockFetchGroceryDict.assert_called_with(loadableMaskGroceryItems, **residentMaskGroceryKwargs)
 
-    def test_prepCombinedMask_load_alternativeCalibrationFile(self):
+    def test_prepCombinedMask_load_alternativeCalibrationFilePath(self):
         """
         Check that prepCombinedMask correctly loads all things it should
         """
@@ -1029,14 +1029,14 @@ class TestReductionServiceMasks:
                 timestamp=timestamp,
                 versions=Versions(1, 2),
                 pixelMasks=[self.maskWS1, self.maskWS2, self.maskWS5],
-                alternativeCalibrationFile="some/path/to/calibration/file",
+                alternativeCalibrationFilePath="some/path/to/calibration/file",
             )
 
             # prepare the expected grocery dicionary
             groceryClerk = self.service.groceryClerk
             groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(self.stateId1, 0, request.runNumber).useLiteMode(
                 request.useLiteMode
-            ).path(request.alternativeCalibrationFile).add()
+            ).filePath(request.alternativeCalibrationFilePath).add()
             for mask in (self.maskWS1, self.maskWS2):
                 runNumber, timestamp = mask.tokens("runNumber", "timestamp")
                 groceryClerk.name(mask).reduction_pixel_mask(runNumber, timestamp).useLiteMode(
