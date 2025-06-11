@@ -309,7 +309,7 @@ class CalibrationService(Service):
                 GroupingWorkspace=groupingWorkspace,
                 OutputWorkspace=focusedWorkspace,
                 PixelGroup=pixelGroup,
-                PreserveEvents=request.preserveEvents
+                PreserveEvents=request.preserveEvents,
             )
         return focusedWorkspace, groupingWorkspace
 

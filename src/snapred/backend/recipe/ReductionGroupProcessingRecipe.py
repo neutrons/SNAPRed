@@ -61,7 +61,7 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
             OutputWorkspace=self.outputWS,
             GroupingWorkspace=self.groupingWS,
             PixelGroup=self.pixelGroup.model_dump_json(),
-            PreserveEvents=self.preserveEvents
+            PreserveEvents=self.preserveEvents,
         )
 
         normalizeArgs = {

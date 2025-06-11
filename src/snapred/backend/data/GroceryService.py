@@ -2,13 +2,13 @@
 import json
 from collections.abc import Iterable
 from datetime import datetime, timedelta
-import numpy as np
 from pathlib import Path
-from pydantic import validate_call
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
+import numpy as np
 from mantid.api import FileLoaderRegistry
 from mantid.dataobjects import MaskWorkspace
+from pydantic import validate_call
 
 from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionState
 from snapred.backend.dao.ingredients import GroceryListItem
@@ -283,11 +283,7 @@ class GroceryService:
 
     @validate_call
     def _lookupNormalizationWorkspaceFilename(
-        self,
-        normcalRunNumber: str,
-        useLiteMode: bool,
-        version: Optional[int],
-        state: str
+        self, normcalRunNumber: str, useLiteMode: bool, version: Optional[int], state: str
     ) -> str:
         # NOTE: The normCal Record currently does NOT store workspace type -> workspace name mappings.
         #       It is just a list of workspace names. So we need to infer.
@@ -859,8 +855,8 @@ class GroceryService:
                 # In this case, specifying only a single bin allows a much faster load.
                 loader = FileLoaderRegistry.Instance().chooseLoader(str(filePath)).name()
                 if loader == "LoadEventNexus":
-                    loaderArgs = '{"NumberOfBins": 1}' 
-            data = self.grocer.executeRecipe(str(filePath), workspaceName, loader, loaderArgs=loaderArgs)       
+                    loaderArgs = '{"NumberOfBins": 1}'
+            data = self.grocer.executeRecipe(str(filePath), workspaceName, loader, loaderArgs=loaderArgs)
         else:
             data = missingDataHandler()
             workspaceName = data["workspace"]
@@ -1194,7 +1190,7 @@ class GroceryService:
             item.normCalVersion,
             item.state,
             item.loader,
-            item.hidden
+            item.hidden,
         )
         normcalRunNumber = self._lookupNormcalRunNumber(runNumber, useLiteMode, version, state)
         workspaceName = self._createNormalizationWorkspaceName(normcalRunNumber, useLiteMode, version, hidden)
@@ -1210,17 +1206,13 @@ class GroceryService:
 
             # then load the new one
             filePath = self._lookupNormalizationWorkspaceFilename(normcalRunNumber, useLiteMode, version, state)
-            
+
             # TODO: Unfortunately, `LoadNexusProcessed` does not support the `NumberOfBins=1` optimization for loading
             # event data.  Probably: event-format normalization data should be saved with only one bin to speed up reload.
             # (See also:  "nexus.dataFormat.event" flag in "application.yml".)
 
             # Note: 'LoadNexusProcessed' neither requires nor makes use of an instrument donor.
-            data = self.grocer.executeRecipe(
-                filename=filePath,
-                workspace=workspaceName,
-                loader=loader
-            )
+            data = self.grocer.executeRecipe(filename=filePath, workspace=workspaceName, loader=loader)
             self._processNeutronDataCopy(item, workspaceName)
             self.normalizationCache.add(workspaceName)
         return data
@@ -1340,10 +1332,7 @@ class GroceryService:
         # the behavior of the mask workspace, the workspace name is overridden here.
 
         tableWorkspaceName, maskWorkspaceName = self._lookupDiffCalWorkspaceNames(
-            item.runNumber,
-            item.useLiteMode,
-            item.state,
-            item.diffCalVersion
+            item.runNumber, item.useLiteMode, item.state, item.diffCalVersion
         )
 
         self.fetchCalibrationWorkspaces(item)
@@ -1388,7 +1377,7 @@ class GroceryService:
                     if item.keepItClean:
                         result = self.fetchNeutronDataCached(item)
                     else:
-                        result = self.fetchNeutronDataSingleUse(item)                    
+                        result = self.fetchNeutronDataSingleUse(item)
                 # for grouping definitions
                 case "grouping":
                     result = self.fetchGroupingDefinition(item)

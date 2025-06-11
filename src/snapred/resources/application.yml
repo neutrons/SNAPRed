@@ -124,7 +124,7 @@ nexus:
   file:
     prefix: SNAP_
     extension: .nxs.h5
-  dataFormat: 
+  dataFormat:
     # Assume that input data will be in event format:
     event: true
 

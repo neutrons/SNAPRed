@@ -198,10 +198,7 @@ class NormalizationService(Service):
         groceries["outputWorkspace"] = focusedVanadium
 
         ReductionGroupProcessingRecipe().cook(
-            ReductionGroupProcessingRecipe.Ingredients(
-                pixelGroup=ingredients.pixelGroup,
-                preserveEvents=False
-            ),
+            ReductionGroupProcessingRecipe.Ingredients(pixelGroup=ingredients.pixelGroup, preserveEvents=False),
             groceries={
                 "inputWorkspace": groceries["inputWorkspace"],
                 "outputWorkspace": groceries["outputWorkspace"],
@@ -400,7 +397,7 @@ class NormalizationService(Service):
             GroupingWorkspace=request.groupingWorkspace,
             OutputWorkspace=request.outputWorkspace,
             PixelGroup=pixelGroup,
-            PreserveEvents=request.preserveEvents
+            PreserveEvents=request.preserveEvents,
         )
 
     @FromString
