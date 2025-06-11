@@ -146,7 +146,7 @@ class TestNormalizationService(unittest.TestCase):
             GroupingWorkspace=mockRequest.groupingWorkspace,
             OutputWorkspace=mockRequest.outputWorkspace,
             PixelGroup=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
-            PreserveEvents=False
+            PreserveEvents=False,
         )
         assert res == mockRecipeInstance.executeRecipe.return_value
 

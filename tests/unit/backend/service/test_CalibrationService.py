@@ -1004,12 +1004,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         runNumber = "12345"
         groupingName = "group1"
         focusedWorkspace = (
-            wng.run()
-            .runNumber(runNumber)
-            .group(groupingName)
-            .unit(wng.Units.DSP)
-            .auxiliary("F-dc")
-            .build()
+            wng.run().runNumber(runNumber).group(groupingName).unit(wng.Units.DSP).auxiliary("F-dc").build()
         )
         assert not mtd.doesExist(focusedWorkspace)
         groupingWorkspace = self.instance.groceryService.fetchGroupingDefinition.return_value["workspace"]
@@ -1021,7 +1016,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             focusGroup=FocusGroup(name=groupingName, definition="path/to/grouping"),
             preserveEvents=False,
             inputWorkspace=focusedWorkspace,
-            groupingWorkspace=groupingWorkspace
+            groupingWorkspace=groupingWorkspace,
         )
 
         # Call the method with the provided parameters
@@ -1037,7 +1032,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             GroupingWorkspace=groupingWorkspace,
             OutputWorkspace=focusedWorkspace,
             PixelGroup=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
-            PreserveEvents=request.preserveEvents
+            PreserveEvents=request.preserveEvents,
         )
         assert res == (focusedWorkspace, groupingWorkspace)
 

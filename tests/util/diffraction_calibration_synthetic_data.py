@@ -71,9 +71,9 @@ class SyntheticData(object):
 
         # Overall _magnitude_ scale factor:
         self.scale = scale
-        
+
         self.numEvents = numEvents
-        
+
         # ad hoc S/N factor: reduce S/N (from scale) using this factor.
         self.signalToNoiseDivisor = 20.0
 
@@ -161,12 +161,7 @@ class SyntheticData(object):
 
     @staticmethod
     def _fakePowderDiffractionPeakList(
-        tofMin: float,
-        tofMax: float,
-        dMin: float,
-        dMax: float, 
-        scale: float,
-        signalToNoiseDivisor: float
+        tofMin: float, tofMax: float, dMin: float, dMax: float, scale: float, signalToNoiseDivisor: float
     ) -> Tuple[List[Tuple[float, float, float]], str]:
         """Duplicate the `CreateSampleWorkspace` 'Powder Diffraction' predefined function,
              but in d-spacing instead of TOF units.

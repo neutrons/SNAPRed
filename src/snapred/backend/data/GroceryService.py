@@ -859,8 +859,8 @@ class GroceryService:
                 # In this case, specifying only a single bin allows a much faster load.
                 loader = FileLoaderRegistry.Instance().chooseLoader(str(filePath)).name()
                 if loader == "LoadEventNexus":
-                    loaderArgs = '{"NumberOfBins": 1}' 
-            data = self.grocer.executeRecipe(str(filePath), workspaceName, loader, loaderArgs=loaderArgs)       
+                    loaderArgs = '{"NumberOfBins": 1}'
+            data = self.grocer.executeRecipe(str(filePath), workspaceName, loader, loaderArgs=loaderArgs)
         else:
             data = missingDataHandler()
             workspaceName = data["workspace"]

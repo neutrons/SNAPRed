@@ -1,15 +1,21 @@
 # ruff: noqa: E722, PT011, PT012, F811
-from collections import namedtuple
 import datetime
 import inspect
 import itertools
 import json
 import os
-from pathlib import Path
-from random import randint
 import shutil
 import time
 
+##
+## In order to preserve the import order as much as possible, add test-related imports at the end.
+##
+import unittest
+from pathlib import Path
+from random import randint
+from unittest import mock
+
+import pytest
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
@@ -30,6 +36,14 @@ from mantid.simpleapi import (
     SaveNexusProcessed,
     mtd,
 )
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
+from util.Config_helpers import Config_override
+from util.dao import DAOFactory
+from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
+from util.instrument_helpers import addInstrumentLogs, getInstrumentLogDescriptors, mapFromSampleLogs
+from util.kernel_helpers import tupleFromQuat, tupleFromV3D
+from util.state_helpers import reduction_root_redirect, state_root_redirect
+from util.WhateversInTheFridge import WhateversInTheFridge
 
 import snapred.backend.recipe.algorithm  # noqa: F401
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem, LiveDataArgs
@@ -47,22 +61,6 @@ from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType
-
-##
-## In order to preserve the import order as much as possible, add test-related imports at the end.
-##
-import unittest
-from unittest import mock
-import pytest
-from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
-from util.Config_helpers import Config_override
-from util.dao import DAOFactory
-from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
-from util.instrument_helpers import addInstrumentLogs, getInstrumentLogDescriptors, mapFromSampleLogs
-from util.kernel_helpers import tupleFromQuat, tupleFromV3D
-from util.state_helpers import reduction_root_redirect, state_root_redirect
-from util.WhateversInTheFridge import WhateversInTheFridge
-
 
 ThisService = "snapred.backend.data.GroceryService."
 
@@ -98,11 +96,7 @@ class TestGroceryService(unittest.TestCase):
         cls.rtolValue = 1.0e-10
 
         CreateSampleWorkspace(
-            OutputWorkspace=cls.sampleWS,
-            WorkspaceType="Event",
-            XUnit="TOF",
-            NumBanks=4,
-            BankPixelWidth=2
+            OutputWorkspace=cls.sampleWS, WorkspaceType="Event", XUnit="TOF", NumBanks=4, BankPixelWidth=2
         )
         LoadInstrument(
             Workspace=cls.sampleWS,
@@ -1238,7 +1232,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetchNeutronDataSingleUse(self, mockFileLoaderRegistry):
         # Test all 16, non-live-data cases (including each setting of the `Config["nexus.dataFormat.event"]` flag).
         # Note: this test does not test "in cache" cases: those are treated elsewhere
-        
+
         def mockIAlgorithm(name: str) -> mock.Mock:
             mock_ = mock.Mock()
             mock_.name.return_value = name
@@ -1248,8 +1242,9 @@ class TestGroceryService(unittest.TestCase):
             # Treat the two possible settings of the `Config["nexus.dataFormat.event"]` flag.
 
             with Config_override("nexus.dataFormat.event", nexus_dataFormat_event):
-                mockFileLoaderRegistry.Instance.return_value.chooseLoader.return_value = \
-                    mockIAlgorithm("LoadEventNexus" if Config["nexus.dataFormat.event"] else "LoadNexusProcessed")
+                mockFileLoaderRegistry.Instance.return_value.chooseLoader.return_value = mockIAlgorithm(
+                    "LoadEventNexus" if Config["nexus.dataFormat.event"] else "LoadNexusProcessed"
+                )
 
                 runNumber = self.runNumber
 
@@ -1276,7 +1271,9 @@ class TestGroceryService(unittest.TestCase):
                         mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
                         mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
                         mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
-                        mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
+                        mock.patch.object(
+                            instance, "_createRawNeutronWorkspaceName"
+                        ) as mockCreateRawNeutronWorkspaceName,
                         mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
                         mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                         mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
@@ -1320,12 +1317,16 @@ class TestGroceryService(unittest.TestCase):
 
                         # BUILD the item argument:
                         item = GroceryListItem(
-                            workspaceType="neutron", runNumber=runNumber, useLiteMode=useLiteMode, loader="", liveDataArgs=None
+                            workspaceType="neutron",
+                            runNumber=runNumber,
+                            useLiteMode=useLiteMode,
+                            loader="",
+                            liveDataArgs=None,
                         )
                         # LOADER and LOADERARGS will be overridden on the `LoadEventNexus` call,
                         #   when `Config['nexus.dataFormat.event']` is set:
                         loader = ""
-                        loaderArgs = '{}'
+                        loaderArgs = "{}"
                         if Config["nexus.dataFormat.event"]:
                             loader = "LoadEventNexus"
                             loaderArgs = '{"NumberOfBins": 1}'
@@ -1349,10 +1350,7 @@ class TestGroceryService(unittest.TestCase):
                                 # lite mode and lite-mode exists on disk
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                                    str(liteModeFilePath),
-                                    workspaceName,
-                                    loader,
-                                    loaderArgs=loaderArgs
+                                    str(liteModeFilePath), workspaceName, loader, loaderArgs=loaderArgs
                                 )
                                 mockConvertToLiteMode.assert_not_called()
                                 mockUpdateNeutronCache.assert_called_with(runNumber, True)
@@ -1386,7 +1384,7 @@ class TestGroceryService(unittest.TestCase):
                                     str(nativeModeFilePath),
                                     mockCreateNeutronWorkspaceName(runNumber, False),
                                     loader,
-                                    loaderArgs=loaderArgs
+                                    loaderArgs=loaderArgs,
                                 )
                                 mockConvertToLiteMode.assert_called_once_with(workspaceName, export=True)
                                 mockUpdateNeutronCache.assert_has_calls(
@@ -1397,10 +1395,7 @@ class TestGroceryService(unittest.TestCase):
                                 # native mode and native exists on disk
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                                    str(nativeModeFilePath),
-                                    workspaceName,
-                                    loader,
-                                    loaderArgs=loaderArgs
+                                    str(nativeModeFilePath), workspaceName, loader, loaderArgs=loaderArgs
                                 )
                                 mockConvertToLiteMode.assert_not_called()
                                 mockUpdateNeutronCache.assert_called_with(runNumber, False)
@@ -1920,7 +1915,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetchNeutronDataCached(self, mockFileLoaderRegistry):
         # Test all 16, non-live-data cases (including each setting of the `Config["nexus.dataFormat.event"]` flag).
         # Note: this test does not test "in cache" cases: those are treated elsewhere
-        
+
         def mockIAlgorithm(name: str) -> mock.Mock:
             mock_ = mock.Mock()
             mock_.name.return_value = name
@@ -1930,8 +1925,9 @@ class TestGroceryService(unittest.TestCase):
             # Treat the two possible settings of the `Config["nexus.dataFormat.event"]` flag.
 
             with Config_override("nexus.dataFormat.event", nexus_dataFormat_event):
-                mockFileLoaderRegistry.Instance.return_value.chooseLoader.return_value = \
-                    mockIAlgorithm("LoadEventNexus" if Config["nexus.dataFormat.event"] else "LoadNexusProcessed")
+                mockFileLoaderRegistry.Instance.return_value.chooseLoader.return_value = mockIAlgorithm(
+                    "LoadEventNexus" if Config["nexus.dataFormat.event"] else "LoadNexusProcessed"
+                )
 
                 runNumber = self.runNumber
 
@@ -1960,8 +1956,12 @@ class TestGroceryService(unittest.TestCase):
                         mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
                         mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
                         mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
-                        mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
-                        mock.patch.object(instance, "_createCopyNeutronWorkspaceName") as mockCreateCopyNeutronWorkspaceName,
+                        mock.patch.object(
+                            instance, "_createRawNeutronWorkspaceName"
+                        ) as mockCreateRawNeutronWorkspaceName,
+                        mock.patch.object(
+                            instance, "_createCopyNeutronWorkspaceName"
+                        ) as mockCreateCopyNeutronWorkspaceName,
                         mock.patch.object(instance.dataService, "hasLiveDataConnection") as mockHasLiveDataConnection,
                         mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                         mock.patch.object(instance, "renameWorkspace") as mockRenameWorkspace,
@@ -2014,12 +2014,16 @@ class TestGroceryService(unittest.TestCase):
 
                         # BUILD the item argument:
                         item = GroceryListItem(
-                            workspaceType="neutron", runNumber=runNumber, useLiteMode=useLiteMode, loader="", liveDataArgs=None
+                            workspaceType="neutron",
+                            runNumber=runNumber,
+                            useLiteMode=useLiteMode,
+                            loader="",
+                            liveDataArgs=None,
                         )
                         # LOADER and LOADERARGS will be overridden on the `LoadEventNexus` call,
                         #   when `Config['nexus.dataFormat.event']` is set:
                         loader = ""
-                        loaderArgs = '{}'
+                        loaderArgs = "{}"
                         if Config["nexus.dataFormat.event"]:
                             loader = "LoadEventNexus"
                             loaderArgs = '{"NumberOfBins": 1}'
@@ -2043,10 +2047,7 @@ class TestGroceryService(unittest.TestCase):
                                 assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
                                 liteWorkspaceName = mockCreateNeutronWorkspaceName(runNumber, True)
                                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                                    str(liteModeFilePath),
-                                    liteWorkspaceName,
-                                    loader,
-                                    loaderArgs=loaderArgs
+                                    str(liteModeFilePath), liteWorkspaceName, loader, loaderArgs=loaderArgs
                                 )
                                 mockConvertToLiteMode.assert_not_called()
                                 mockUpdateNeutronCache.assert_has_calls([mock.call(runNumber, True)])
@@ -2072,7 +2073,7 @@ class TestGroceryService(unittest.TestCase):
                                     str(nativeModeFilePath),
                                     mockCreateNeutronWorkspaceName(runNumber, False),
                                     loader,
-                                    loaderArgs=loaderArgs
+                                    loaderArgs=loaderArgs,
                                 )
                                 liteWorkspaceName = mockCreateNeutronWorkspaceName(runNumber, True)
                                 mockConvertToLiteMode.assert_called_once_with(liteWorkspaceName, export=True)
@@ -2085,10 +2086,7 @@ class TestGroceryService(unittest.TestCase):
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 assert instance._loadedRuns[(runNumber, useLiteMode)] == (1 if not useLiteMode else 0)
                                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
-                                    str(nativeModeFilePath),
-                                    workspaceName,
-                                    loader,
-                                    loaderArgs=loaderArgs
+                                    str(nativeModeFilePath), workspaceName, loader, loaderArgs=loaderArgs
                                 )
                                 mockConvertToLiteMode.assert_not_called()
                                 mockUpdateNeutronCache.assert_has_calls([mock.call(runNumber, False)])

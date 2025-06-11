@@ -104,7 +104,9 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         if loader in ["LoadCalibrationWorkspaces", "LoadLiveDataInterval"]:
             if self.getProperty("LoaderArgs").isDefault:
                 issues["LoaderArgs"] = f"loader '{loader}' requires additional keyword arguments"
-        elif loader not in ["LoadEventNexus",]:
+        elif loader not in [
+            "LoadEventNexus",
+        ]:
             if not self.getProperty("LoaderArgs").isDefault:
                 issues["LoaderArgs"] = f"Loader '{loader}' does not have any keyword arguments"
 
@@ -159,10 +161,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             match loaderType:
                 case "":
                     _, loaderType, _ = self.mantidSnapper.Load(
-                        "Loading with unspecified loader",
-                        Filename=filename,
-                        OutputWorkspace=outWS,
-                        **loaderArgs
+                        "Loading with unspecified loader", Filename=filename, OutputWorkspace=outWS, **loaderArgs
                     )
                 case "LoadCalibrationWorkspaces":
                     self.validateCalibrationFile(filename)

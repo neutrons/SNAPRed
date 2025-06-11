@@ -330,7 +330,7 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
             GroupingWorkspace=self.focusWS,
             OutputWorkspace=tmpWSdsp,
             PixelGroup=self.pixelGroup.model_dump_json(),
-            PreserveEvents=keepEvents
+            PreserveEvents=keepEvents,
         )
 
         if units == "TOF":

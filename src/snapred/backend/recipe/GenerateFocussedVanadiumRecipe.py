@@ -67,7 +67,7 @@ class GenerateFocussedVanadiumRecipe(Recipe[Ingredients]):
         """
         # Note: rebinning of the input workspace is no longer required here.
         #   After `ReductionGroupProcessing`, the workspace will already have optimal ragged binning.
-        
+
         if self.artificialNormalizationIngredients is not None:
             self.queueArtificialNormalization()
         else:

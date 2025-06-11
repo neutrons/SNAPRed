@@ -22,7 +22,7 @@ class TestFocusSpectra(unittest.TestCase):
 
         self.pixelGroup = DAOFactory.synthetic_pixel_group.copy()
         self.preserveEvents = False
-        
+
         self.fakeRawData = f"_test_focusSpectra_{self.fakeRunNumber}"
         self.fakeGroupingWorkspace = f"_test_focusSpectra_difc_{self.fakeRunNumber}"
         self.makeFakeNeutronData(self.fakeRawData, self.fakeGroupingWorkspace)
@@ -133,17 +133,17 @@ class TestFocusSpectra(unittest.TestCase):
         algo.setProperty("PixelGroup", self.pixelGroup.model_dump_json())
         algo.setProperty("PreserveEvents", self.preserveEvents)
         assert algo.execute()
-        
+
         outputWs = algo.getProperty("OutputWorkspace").valueAsStr
         # write outputWs to file
         from mantid.simpleapi import Load, RebinRagged
 
         RebinRagged(InputWorkspace=outputWs, OutputWorkspace=outputWs, XMin=2000, XMax=14500, Delta=1)
         Load(Resource.getPath(f"/outputs/focus_spectra/{outputWs}.nxs"), OutputWorkspace=outputWs + "_loaded")
-                
+
         # assert that outputWs is focussed correctly
         assert mtd[outputWs].getNumberHistograms() == mtd[outputWs + "_loaded"].getNumberHistograms()
-        
+
         # check block size
         assert mtd[outputWs].blocksize() == mtd[outputWs + "_loaded"].blocksize()
         assert_almost_equal(
