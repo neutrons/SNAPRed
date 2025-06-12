@@ -403,9 +403,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Assert expected calibration metric workspaces have been generated
         for wsName in expectedWorkspaces:
-            assert self.instance.dataFactoryService.workspaceDoesExist(
-                wsName
-            ), f"{wsName} missing, existing workspaces: {mtd.getObjectNames()}"
+            assert self.instance.dataFactoryService.workspaceDoesExist(wsName), (
+                f"{wsName} missing, existing workspaces: {mtd.getObjectNames()}"
+            )
 
     def test_save_respects_version(self):
         version = 1
@@ -594,16 +594,16 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                     .metricName(metric)
                     .build()
                 )
-                assert self.instance.dataFactoryService.workspaceDoesExist(
-                    ws_name
-                ), f"{ws_name} missing, existing workspaces: {mtd.getObjectNames()}"
+                assert self.instance.dataFactoryService.workspaceDoesExist(ws_name), (
+                    f"{ws_name} missing, existing workspaces: {mtd.getObjectNames()}"
+                )
 
             # Assert all "persistent" workspaces have been loaded
             for wsNames in record.workspaces.values():
                 for wsName in wsNames:
-                    assert self.instance.dataFactoryService.workspaceDoesExist(
-                        wsName
-                    ), f"{wsName} missing, existing workspaces: {mtd.getObjectNames()}"
+                    assert self.instance.dataFactoryService.workspaceDoesExist(wsName), (
+                        f"{wsName} missing, existing workspaces: {mtd.getObjectNames()}"
+                    )
 
     def test_load_quality_assessment_no_units(self):
         calibRecord = DAOFactory.calibrationRecord(runNumber="57514", version=1)
