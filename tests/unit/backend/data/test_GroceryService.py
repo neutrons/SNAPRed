@@ -3756,7 +3756,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetchDiffCalForSample_altPath(self):
         item = GroceryListItem(
             workspaceType="diffcal_table",
-            filePath=Path("some/path/to/diffcal_table.h5"),
+            diffCalFilePath=Path("some/path/to/diffcal_table.h5"),
             state="stateId",
             useLiteMode=True,
             diffCalVersion=0,
