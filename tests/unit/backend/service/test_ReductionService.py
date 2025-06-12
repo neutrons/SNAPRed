@@ -1041,7 +1041,7 @@ class TestReductionServiceMasks:
             groceryClerk = self.service.groceryClerk
             groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(self.stateId1, 1, request.runNumber).useLiteMode(
                 request.useLiteMode
-            ).filePath(request.alternativeCalibrationFilePath).add()
+            ).diffCalFilePath(request.alternativeCalibrationFilePath).add()
             for mask in (self.maskWS1, self.maskWS2):
                 runNumber, timestamp = mask.tokens("runNumber", "timestamp")
                 groceryClerk.name(mask).reduction_pixel_mask(runNumber, timestamp).useLiteMode(

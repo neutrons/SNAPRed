@@ -1390,13 +1390,13 @@ class GroceryService:
         # to that of the table workspace.  Because of possible confusion with
         # the behavior of the mask workspace, the workspace name is overridden here.
 
-        path = item.filePath if item.filePath is not None else item.diffCalFilePath
-        if path is None:
+        filePath = item.diffCalFilePath
+        if filePath is None:
             tableWorkspaceName, maskWorkspaceName = self.fetchCalibrationWorkspaces(item)
         else:
-            tableWorkspaceName = path.stem
+            tableWorkspaceName = filePath.stem
             maskWorkspaceName = f"{tableWorkspaceName}_mask"
-            self._loadCalibrationFile(item, str(item.filePath), tableWorkspaceName, maskWorkspaceName)
+            self._loadCalibrationFile(item, str(filePath), tableWorkspaceName, maskWorkspaceName)
 
         return tableWorkspaceName, maskWorkspaceName
 

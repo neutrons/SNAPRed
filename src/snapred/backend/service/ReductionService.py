@@ -362,7 +362,7 @@ class ReductionService(Service):
                 useLiteMode
             )
             if request.alternativeCalibrationFilePath is not None:
-                self.groceryClerk.filePath(request.alternativeCalibrationFilePath)
+                self.groceryClerk.diffCalFilePath(request.alternativeCalibrationFilePath)
             self.groceryClerk.add()
 
         # if the user specified masks to use, also pull those

@@ -35,10 +35,6 @@ class GroceryListBuilder:
         self._tokens["state"] = state
         return self
 
-    def filePath(self, filePath: Path) -> GroceryListBuilder:
-        self._tokens["filePath"] = filePath
-        return self
-
     def diffCalFilePath(self, path: Path) -> GroceryListBuilder:
         self._tokens["diffCalFilePath"] = path
         return self

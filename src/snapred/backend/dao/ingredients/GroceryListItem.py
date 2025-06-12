@@ -103,9 +103,6 @@ class GroceryListItem(BaseModel):
 
     state: Optional[str] = None
 
-    # allow specification of a path nonstandard file.
-    filePath: Optional[Path] = None
-
     def builder():
         # NOTE this import is here to avoid circular dependencies -- don't bother trying to move it
         from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
