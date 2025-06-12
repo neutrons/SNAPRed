@@ -198,9 +198,13 @@ class SyntheticData(object):
             Peak(centres[6], 19.2404 * dspDomain / tofDomain, scale * 3.64069),
             Peak(centres[7], 21.1127 * dspDomain / tofDomain, scale * 2.8998),
             Peak(centres[8], 21.9932 * dspDomain / tofDomain, scale * 2.05237),
-            Peak(centres[9], 25.2751 * dspDomain / tofDomain, scale * 8.40976),
+            Peak(centres[9], 25.2751 * dspDomain / tofDomain, scale * 8.40976)
         ]
-        background = f"name= LinearBackground,A0={scale * 0.0850208 / f_SN},A1={scale * -4.89583e-06 * dspDomain / tofDomain / f_SN};"
+        background =\
+            f"name= LinearBackground,"\
+            + f"A0={scale * 0.0850208 / f_SN},"\
+            + f"A1={scale * -4.89583e-06 * dspDomain / tofDomain / f_SN};"
+
         return peaks, background
 
     def generateWorkspaces(self, rawWS: str, groupingWS: str, maskWS: str) -> None:
