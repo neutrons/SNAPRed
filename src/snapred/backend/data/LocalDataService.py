@@ -343,8 +343,8 @@ class LocalDataService:
                 newWorkspaceName = re.sub(r"v\d+", wnvf.formatVersion(targetVersion), workspaceName)
                 sourceRecord.workspaces[workspaceType].append(newWorkspaceName)
 
-        targetIndexer.writeVersionedObject(sourceRecord)
-        targetIndexer.writeVersionedObject(sourceParameters)
+        targetIndexer.writeIndexedObject(sourceRecord)
+        targetIndexer.writeIndexedObject(sourceParameters)
 
         for workspaceType, workspaceNames in sourceRecord.workspaces.items():
             for workspaceName, sourceWorkspaceName in zip(workspaceNames, sourceWorspaces[workspaceType]):
@@ -566,14 +566,14 @@ class LocalDataService:
             author=author,
         )
         instrumentParameters.indexEntry = newEntry
-        indexer.writeVersionedObject(instrumentParameters)
+        indexer.writeIndexedObject(instrumentParameters)
 
     def readInstrumentParameters(self, runNumber: str):
         indexer = self.instrumentParameterIndexer()
         version = indexer.latestApplicableVersion(runNumber)
         if version is None:
             raise FileNotFoundError(f"No instrument parameters found for run {runNumber}")
-        return indexer.readVersionedObject(InstrumentConfig, version)
+        return indexer.readIndexedObject(InstrumentConfig, version)
 
     ##### NORMALIZATION METHODS #####
 

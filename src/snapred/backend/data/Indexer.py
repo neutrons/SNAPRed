@@ -9,9 +9,9 @@ from snapred.backend.dao import InstrumentConfig
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
+from snapred.backend.dao.indexing.IndexedObject import IndexedObject
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.VersionedObject import VersionedObject
 from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionState
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
@@ -23,7 +23,7 @@ from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_
 
 logger = snapredLogger.getLogger(__name__)
 
-T = TypeVar("T", bound=VersionedObject)
+T = TypeVar("T", bound=IndexedObject)
 
 """
     The Indexer will automatically track versions and produce the next and current versions.
@@ -234,7 +234,7 @@ class Indexer:
 
     def validateVersion(self, version):
         try:
-            VersionedObject.validate_version(version)
+            IndexedObject.validate_version(version)
             return True
         except ValueError:
             # This error would only ever result from a software bug.
@@ -390,7 +390,7 @@ class Indexer:
         If no version given, defaults to current version
         """
         recordType = self._determineRecordType(version)
-        return self.readVersionedObject(recordType, version)
+        return self.readIndexedObject(recordType, version)
 
     def _flattenVersion(self, version: Version):
         """
@@ -420,7 +420,7 @@ class Indexer:
     def versionExists(self, version: Version):
         return self._flattenVersion(version) in self.index
 
-    def versionedObjectPath(self, type_: Type[T], version: Version):
+    def indexedObjectPath(self, type_: Type[T], version: Version):
         """
         Path to a specific version of a calculation record
         """
@@ -428,14 +428,14 @@ class Indexer:
         return self.versionPath(version) / f"{fileName}.json"
 
     @validate_call
-    def writeVersionedObject(self, obj: VersionedObject, overwrite: bool = False):
+    def writeIndexedObject(self, obj: IndexedObject, overwrite: bool = False):
         """
         Will save at the version on the object.
         If the version is invalid, will throw an error and refuse to save.
         """
         obj.version = self._flattenVersion(obj.version)
         obj.indexEntry.version = obj.version
-        filePath = self.versionedObjectPath(type(obj), obj.version)
+        filePath = self.indexedObjectPath(type(obj), obj.version)
         if not overwrite and filePath.exists():
             objTypeName = type(obj).__name__
             raise ValueError(
@@ -455,11 +455,11 @@ class Indexer:
 
         self.dirVersions.add(obj.version)
 
-    def readVersionedObject(self, type_: Type[T], version: Version) -> VersionedObject:
+    def readIndexedObject(self, type_: Type[T], version: Version) -> IndexedObject:
         """
         If no version given, defaults to current version
         """
-        filePath = self.versionedObjectPath(type_, version)
+        filePath = self.indexedObjectPath(type_, version)
         obj = None
         if filePath.exists():
             obj = parse_file_as(type_, filePath)
@@ -472,7 +472,7 @@ class Indexer:
         Will save at the version on the record.
         If the version is invalid, will throw an error and refuse to save.
         """
-        self.writeVersionedObject(record, overwrite=overwrite)
+        self.writeIndexedObject(record, overwrite=overwrite)
 
     ## STATE PARAMETER READ / WRITE METHODS ##
 
@@ -489,11 +489,11 @@ class Indexer:
         """
         If no version given, defaults to current version
         """
-        return self.readVersionedObject(PARAMS_TYPE[self.indexerType], version)
+        return self.readIndexedObject(PARAMS_TYPE[self.indexerType], version)
 
     def writeParameters(self, parameters: CalculationParameters, overwrite: bool = False):
         """
         Will save at the version on the calculation parameters.
         If the version is invalid, will throw an error and refuse to save.
         """
-        self.writeVersionedObject(parameters, overwrite=overwrite)
+        self.writeIndexedObject(parameters, overwrite=overwrite)

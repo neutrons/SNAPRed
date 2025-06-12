@@ -526,7 +526,12 @@ class CalibrationService(Service):
 
         # generate metrics workspaces
         GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
-            CalibrationMetricsWorkspaceIngredients(calibrationRecord=calibrationRecord)
+            CalibrationMetricsWorkspaceIngredients(
+                runNumber=calibrationRecord.runNumber,
+                version=calibrationRecord.version,
+                focusGroupCalibrationMetrics=calibrationRecord.focusGroupCalibrationMetrics,
+                timestamp=self.dataExportService.getUniqueTimestamp(),
+            )
         )
 
         # load persistent data workspaces, assuming all workspaces are of WNG-type

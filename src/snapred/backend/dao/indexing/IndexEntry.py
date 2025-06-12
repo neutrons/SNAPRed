@@ -1,12 +1,13 @@
 import time
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+import numpy as np
+from pydantic import Field, field_validator, model_validator
 
-from snapred.backend.dao.indexing.Versioning import Version
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject
 
 
-class IndexEntry(BaseModel, extra="ignore"):
+class IndexEntry(VersionedObject, extra="ignore"):
     """
 
     This is the basic, bare-bones entry for workflow indices.
@@ -24,7 +25,6 @@ class IndexEntry(BaseModel, extra="ignore"):
     comments: Optional[str] = None
     author: Optional[str] = None
     timestamp: float = Field(default_factory=lambda: time.time())
-    version: Version
 
     @classmethod
     def parseConditional(cls, conditional: str):
@@ -61,6 +61,12 @@ class IndexEntry(BaseModel, extra="ignore"):
 
         return v
 
+    @field_validator("useLiteMode", mode="before")
+    def convert_numpy_bool(cls, value):
+        if isinstance(value, np.bool_):
+            return bool(value)
+        return value
+
     @model_validator(mode="before")
     @classmethod
     def validate_timestamp(cls, v: Any):
@@ -70,4 +76,5 @@ class IndexEntry(BaseModel, extra="ignore"):
                 # support reading the _legacy_ timestamp integer encoding
                 if isinstance(timestamp, int):
                     v["timestamp"] = float(timestamp) / 1000.0
+
         return v

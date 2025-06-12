@@ -18,9 +18,9 @@ from util.dao import DAOFactory
 
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
+from snapred.backend.dao.indexing.IndexedObject import IndexedObject
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.VersionedObject import VersionedObject
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.data.Indexer import DEFAULT_RECORD_TYPE, Indexer, IndexerType
@@ -102,7 +102,7 @@ class TestIndexer(unittest.TestCase):
             creationDate=datetime.today().isoformat(),
             name="",
             version=version,
-            indexEntry=DAOFactory.indexEntry,
+            indexEntry=DAOFactory.indexEntryBoilerplate,
         )
 
     def indexEntryFromRecord(self, record: Record) -> IndexEntry:
@@ -909,45 +909,45 @@ class TestIndexer(unittest.TestCase):
 
     ### TEST STATE PARAMETER READ / WRITE METHODS ###
 
-    def test_readVersionedObject_none(self):
+    def test_readIndexedObject_none(self):
         version = randint(1, 100)
         indexer = self.initIndexer()
         assert not self.parametersPath(version).exists()
         with pytest.raises(FileNotFoundError, match=r".*No CalculationParameters found at*"):
             indexer.readParameters(version)
 
-    def test_readWriteVersionedObject(self):
+    def test_readWriteIndexedObject(self):
         version = VersionState.NEXT
         indexer = self.initIndexer()
-        versionedObj = VersionedObject(version=version, indexEntry=self.indexEntry(version))
-        indexer.writeVersionedObject(versionedObj)
-        assert indexer.versionedObjectPath(VersionedObject, 0).exists()
-        res = indexer.readVersionedObject(VersionedObject, 0)
+        versionedObj = IndexedObject(version=version, indexEntry=self.indexEntry(version))
+        indexer.writeIndexedObject(versionedObj)
+        assert indexer.indexedObjectPath(IndexedObject, 0).exists()
+        res = indexer.readIndexedObject(IndexedObject, 0)
         assert res == versionedObj
         assert res.version == 0
 
         with pytest.raises(ValueError, match=r".*already exists. \nA version collision has occurred*"):
-            indexer.writeVersionedObject(versionedObj)
+            indexer.writeIndexedObject(versionedObj)
 
-    def test_readWriteVersionedObject_next_overwrite(self):
+    def test_readWriteIndexedObject_next_overwrite(self):
         version = VersionState.NEXT
         indexer = self.initIndexer()
-        versionedObj = VersionedObject(version=version, indexEntry=self.indexEntry(version))
-        indexer.writeVersionedObject(versionedObj)
-        assert indexer.versionedObjectPath(VersionedObject, 0).exists()
-        res = indexer.readVersionedObject(VersionedObject, 0)
+        versionedObj = IndexedObject(version=version, indexEntry=self.indexEntry(version))
+        indexer.writeIndexedObject(versionedObj)
+        assert indexer.indexedObjectPath(IndexedObject, 0).exists()
+        res = indexer.readIndexedObject(IndexedObject, 0)
         assert res == versionedObj
         assert res.version == 0
 
-        versionedObj = VersionedObject(version=version, indexEntry=self.indexEntry(version))
-        indexer.writeVersionedObject(versionedObj)
-        res = indexer.readVersionedObject(VersionedObject, 1)
+        versionedObj = IndexedObject(version=version, indexEntry=self.indexEntry(version))
+        indexer.writeIndexedObject(versionedObj)
+        res = indexer.readIndexedObject(IndexedObject, 1)
         assert res == versionedObj
         assert res.version == 1
 
         # Overwrite the versioned object
-        versionedObj = VersionedObject(version=1, indexEntry=self.indexEntry(1))
-        indexer.writeVersionedObject(versionedObj, overwrite=True)
+        versionedObj = IndexedObject(version=1, indexEntry=self.indexEntry(1))
+        indexer.writeIndexedObject(versionedObj, overwrite=True)
         latestVersion = indexer.latestApplicableVersion(9999)
         assert latestVersion == 1
 

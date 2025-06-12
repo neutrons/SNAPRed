@@ -82,7 +82,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
-from snapred.meta.redantic import parse_file_as, write_model_pretty
+from snapred.meta.redantic import parse_file_as, parse_obj_as, write_model_pretty
 
 LocalDataServiceModule = importlib.import_module(LocalDataService.__module__)
 ThisService = "snapred.backend.data.LocalDataService."
@@ -352,7 +352,7 @@ def test_write_instrument_parameters():
     localDataService.instrumentParameterIndexer.return_value = mockIndexer
     mockInstrumentParameters = mock.Mock(spec=InstrumentConfig)
     localDataService.writeInstrumentParameters(mockInstrumentParameters, ">1,<2", "test author")
-    mockIndexer.writeVersionedObject.assert_called_with(mockInstrumentParameters)
+    mockIndexer.writeIndexedObject.assert_called_with(mockInstrumentParameters)
 
 
 ### TESTS OF MISCELLANEOUS METHODS ###
@@ -380,7 +380,7 @@ def _readInstrumentParameters():
 def test_readInstrumentParameters():
     localDataService = LocalDataService()
     mockIndexer = mock.Mock()
-    mockIndexer.readVersionedObject = mock.Mock(return_value=_readInstrumentParameters())
+    mockIndexer.readIndexedObject = mock.Mock(return_value=_readInstrumentParameters())
     localDataService.instrumentParameterIndexer = mock.Mock(return_value=mockIndexer)
     actual = localDataService.readInstrumentParameters(123)
     assert actual is not None
@@ -1980,7 +1980,7 @@ def readSyntheticReductionRecord():
         #      it will recreate the `WorkspaceName(<original name>)` and
         #        the `_builder` args will be stripped.
         #   (TODO: is this still correct?  I think it works now.)
-        record = ReductionRecord.model_validate(dict_)
+        record = ReductionRecord(**dict_)
         record.workspaceNames = wss
 
         return record
@@ -2183,7 +2183,7 @@ def test_writeReductionData_metadata(readSyntheticReductionRecord, createReducti
     # In order to facilitate parallel testing: any workspace name used by this test should be unique.
     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
     _uniqueTimestamp = 1718909723.027197
-    testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
+    testRecord: ReductionRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = ENDURING_STATE_ID
@@ -2208,7 +2208,9 @@ def test_writeReductionData_metadata(readSyntheticReductionRecord, createReducti
         assert filePath.exists()
         with h5py.File(filePath, "r") as h5:
             dict_ = n5m.extractMetadataGroup(h5, "/metadata")
-            actualRecord = ReductionRecord.model_validate(dict_)
+            assert "indexEntry" in dict_["calibration"]
+
+            actualRecord = parse_obj_as(ReductionRecord, dict_)
             assert actualRecord == testRecord
 
 
