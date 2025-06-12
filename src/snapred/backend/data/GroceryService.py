@@ -1274,8 +1274,8 @@ class GroceryService:
             filePath = self._lookupNormalizationWorkspaceFilename(normcalRunNumber, useLiteMode, version, state)
             
             # TODO: Unfortunately, `LoadNexusProcessed` does not support the `NumberOfBins=1` optimization for loading
-            # event data.  Probably: event-format normalization data should be saved with only one bin to speed up reload.
-            # (See also:  "nexus.dataFormat.event" flag in "application.yml".)
+            # event data.  Possible work-around: event-format normalization data should be saved with only one bin
+            # to speed up reload.  (See also:  "nexus.dataFormat.event" flag in "application.yml".)
 
             # Note: 'LoadNexusProcessed' neither requires nor makes use of an instrument donor.
             data = self.grocer.executeRecipe(
