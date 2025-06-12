@@ -131,6 +131,14 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             # ensure that "calibration" group contains datasets [detid, difc, group, instrument, use]
             calibrationGroup = f["calibration"]
             requiredDatasets = ["detid", "difc", "group", "instrument", "use"]
+            optionalDatasets = ["tzero", "difa"]
+
+            # check for unexpected datasets
+            for dataset in calibrationGroup.keys():
+                if dataset not in requiredDatasets and dataset not in optionalDatasets:
+                    raise RuntimeError(f"Calibration file {filepath} contains unexpected dataset '{dataset}'")
+
+            # check that at least the required datasets are present
             for dataset in requiredDatasets:
                 if dataset not in calibrationGroup:
                     raise RuntimeError(f"Calibration file {filepath} does not contain the required dataset '{dataset}'")
