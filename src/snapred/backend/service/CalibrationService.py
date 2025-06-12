@@ -224,7 +224,7 @@ class CalibrationService(Service):
             res.result = False
             raise Exception(
                 (
-                    f"WARNING: More than {threshold*100}% of pixels failed calibration. Please check your input "
+                    f"WARNING: More than {threshold * 100}% of pixels failed calibration. Please check your input "
                     "data. If input data has poor statistics, you may get better results by disabling Cross "
                     "Correlation. You can also improve statistics by activating Lite mode if this is not "
                     "already activated."

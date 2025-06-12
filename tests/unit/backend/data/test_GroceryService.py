@@ -964,9 +964,9 @@ class TestGroceryService(unittest.TestCase):
         # create a clean version so a raw exists in cache
         res = self.instance.fetchNeutronDataCached(testItem)
         assert self.instance.mantidSnapper.CloneWorkspace.call_count == 1
-        assert mtd.doesExist(
-            rawWorkspaceName
-        ), f"Raw workspace {rawWorkspaceName} not available in {mtd.getObjectNames()}"
+        assert mtd.doesExist(rawWorkspaceName), (
+            f"Raw workspace {rawWorkspaceName} not available in {mtd.getObjectNames()}"
+        )
         assert not mtd.doesExist(workspaceName)
         assert len(self.instance._loadedRuns) == 1
         testKey = self.instance._key(testItem.runNumber, testItem.useLiteMode)
@@ -1071,12 +1071,12 @@ class TestGroceryService(unittest.TestCase):
         assert res["workspace"] == workspaceNameCopy1
         assert self.instance._loadedRuns == {testKey: 1}
         # assert the correct workspaces exist: a raw and a copy
-        assert mtd.doesExist(
-            workspaceNameRaw
-        ), f"Raw workspace {workspaceNameRaw} not available in {mtd.getObjectNames()}"
-        assert mtd.doesExist(
-            workspaceNameCopy1
-        ), f"Copy workspace {workspaceNameCopy1} not available in {mtd.getObjectNames()}"
+        assert mtd.doesExist(workspaceNameRaw), (
+            f"Raw workspace {workspaceNameRaw} not available in {mtd.getObjectNames()}"
+        )
+        assert mtd.doesExist(workspaceNameCopy1), (
+            f"Copy workspace {workspaceNameCopy1} not available in {mtd.getObjectNames()}"
+        )
         # test the workspace is correct
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,

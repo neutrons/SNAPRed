@@ -69,9 +69,9 @@ class TestRemoveSmoothedBackground(unittest.TestCase):
             assert groupID in algo.groupIDs, f"Group ID {groupID} not found in maskRegions"
 
         expected_group_ids = [peakList.groupID for peakList in peaks]
-        assert (
-            algo.groupIDs == expected_group_ids
-        ), f"Group IDs in workspace and peak list do not match: {algo.groupIDs} vs {expected_group_ids}"
+        assert algo.groupIDs == expected_group_ids, (
+            f"Group IDs in workspace and peak list do not match: {algo.groupIDs} vs {expected_group_ids}"
+        )
 
     def test_incorrect_group_ids(self):
         peaks = [

@@ -233,7 +233,7 @@ class _Config:
                 # if the version is not the same, then we need to archive the old one
                 if self.getUserYmlVersionDisk() is not None:
                     self._logger.warning(
-                        "The user configuration file is out of date" "A new configuration file will be generated."
+                        "The user configuration file is out of dateA new configuration file will be generated."
                     )
                 # archive the old snapred-user.yml
                 self.archiveUserYml()
