@@ -621,7 +621,7 @@ class LocalDataService:
         """
         state, _ = self.generateStateId(record.runNumber)
         indexer = self.normalizationIndexer(record.useLiteMode, state)
-        record.calculationParameters.indexEntry = record.indexEntry
+        record.calculationParameters.indexEntry = record.indexEntry.model_copy()
         # write the record to file
         indexer.writeRecord(record)
         # separately write the normalization state
@@ -690,7 +690,7 @@ class LocalDataService:
         """
         stateId, _ = self.generateStateId(record.runNumber)
         indexer = self.calibrationIndexer(record.useLiteMode, stateId)
-        record.calculationParameters.indexEntry = record.indexEntry
+        record.calculationParameters.indexEntry = record.indexEntry.model_copy()
         # write record to file
         indexer.writeRecord(record)
         # separately write the calibration state
@@ -1097,7 +1097,7 @@ class LocalDataService:
                 useLiteMode=liteMode,
                 creationDate=datetime.datetime.now(),
                 version=version,
-                indexEntry=entry,
+                indexEntry=entry.model_dump(),
             )
 
             # NOTE: this creates a bare record without any other CalibrationRecord data

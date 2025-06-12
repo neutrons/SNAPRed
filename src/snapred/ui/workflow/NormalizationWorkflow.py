@@ -1,7 +1,7 @@
 from qtpy.QtCore import Slot
 
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Versioning import VersionedObject, VersionState
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject, VersionState
 from snapred.backend.dao.request import (
     CalculateNormalizationResidualRequest,
     CalibrationWritePermissionsRequest,

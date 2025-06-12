@@ -3,7 +3,7 @@ from datetime import datetime
 import numpy
 from pydantic import ConfigDict, field_validator
 
-from snapred.backend.dao.indexing.Versioning import VersionedObject
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 # NOTE: the request __init__ loads CalibrationExportRequest, which imports Calibration,

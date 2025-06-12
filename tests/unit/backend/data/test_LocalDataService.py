@@ -1,7 +1,6 @@
 import datetime
 import functools
 import importlib
-import json
 import logging
 import os
 import re
@@ -49,6 +48,7 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import ReductionIngredients
+from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.ObjectSHA import ObjectSHA
@@ -280,12 +280,21 @@ def do_test_write_record_with_version(workflow: Literal["Calibration", "Normaliz
     localDataService.generateStateId = mock.Mock(return_value=("stateId", None))
     with mock.patch.object(localDataService, f"{workflow.lower()}Indexer", mock.Mock(return_value=mockIndexer)):
         for useLiteMode in [True, False]:
+            indexEntry = IndexEntry(
+                runNumber="123",
+                useLiteMode=useLiteMode,
+                appliesTo=">=1",
+                comments="test comment",
+                author="test author",
+                version=randint(1, 120),
+            )
             record = globals()[f"{workflow}Record"].model_construct(
                 runNumber="xyz",
                 useLiteMode=useLiteMode,
                 workspaces={},
-                version=randint(1, 120),
+                version=indexEntry.version,
                 calculationParameters=mock.Mock(),
+                indexEntry=indexEntry,
             )
             getattr(localDataService, f"write{workflow}Record")(record)
             mockIndexer.writeRecord.assert_called_with(record)
@@ -341,9 +350,9 @@ def test_write_instrument_parameters():
     mockEntry = mock.Mock()
     mockIndexer.createIndexEntry = mock.Mock(return_value=mockEntry)
     localDataService.instrumentParameterIndexer.return_value = mockIndexer
-    instrumentParameters = _readInstrumentParameters()
-    localDataService.writeInstrumentParameters(instrumentParameters, ">1,<2", "test author")
-    mockIndexer.writeNewVersionedObject.assert_called_with(instrumentParameters, mockEntry)
+    mockInstrumentParameters = mock.Mock(spec=InstrumentConfig)
+    localDataService.writeInstrumentParameters(mockInstrumentParameters, ">1,<2", "test author")
+    mockIndexer.writeVersionedObject.assert_called_with(mockInstrumentParameters)
 
 
 ### TESTS OF MISCELLANEOUS METHODS ###
@@ -364,9 +373,7 @@ def test_fileExists_no():
 
 
 def _readInstrumentParameters():
-    instrumentParameters = None
-    with Resource.open("inputs/SNAPInstPrm.json", "r") as file:
-        instrumentParameters = json.loads(file.read())
+    instrumentParameters = parse_file_as(InstrumentConfig, Resource.getPath("inputs/SNAPInstPrm.json"))
     return instrumentParameters
 
 
@@ -377,8 +384,8 @@ def test_readInstrumentParameters():
     localDataService.instrumentParameterIndexer = mock.Mock(return_value=mockIndexer)
     actual = localDataService.readInstrumentParameters(123)
     assert actual is not None
-    assert actual["version"] == 1.4
-    assert actual["name"] == "SNAP"
+    assert actual.version == 0
+    assert actual.name == "SNAP"
 
 
 def getMockInstrumentConfig():
@@ -1017,8 +1024,7 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
         # move the calculation parameters into correct folder
         indexer = localDataService.calibrationIndexer(True, "stateId")
         record = DAOFactory.calibrationRecord("57514", True, indexer.defaultVersion())
-        entry = entryFromRecord(record)
-        indexer.writeNewVersion(record, entry)
+        indexer.writeRecord(record)
         indexer.writeParameters(DAOFactory.calibrationParameters("57514", True, indexer.defaultVersion()))
         indexer.index = {indexer.defaultVersion(): mock.MagicMock(appliesTo="57514", version=indexer.defaultVersion())}
 
@@ -1574,6 +1580,8 @@ def test_readWriteCalibrationRecord():
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
         record = DAOFactory.calibrationRecord("57514", useLiteMode, version=1)
+        record.indexEntry.version = 1
+        record.calculationParameters.version = 1
         with state_root_redirect(localDataService):
             entry = entryFromRecord(record)
             localDataService.writeCalibrationIndexEntry(entry)
@@ -1767,16 +1775,19 @@ def test_readWriteNormalizationRecord():
         currentVersion = randint(VERSION_START(), 120)
         runNumber = record.runNumber
         record.version = currentVersion
+        record.indexEntry.version = currentVersion
+        record.calculationParameters.version = currentVersion
         # NOTE redirect nested so assertion occurs outside of redirect
         # failing assertions inside tempdirs can create unwanted files
         with state_root_redirect(localDataService):
-            entry = entryFromRecord(record)
-            localDataService.writeNormalizationRecord(record, entry)
+            localDataService.writeNormalizationRecord(record)
             indexer = localDataService.normalizationIndexer(useLiteMode, "stateId")
 
             indexer.index = {currentVersion: mock.MagicMock(appliesTo=runNumber, version=currentVersion)}
-            actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode, "stateId")
+            actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode, "stateId", currentVersion)
         assert actualRecord.version == record.version
+        assert actualRecord.version == actualRecord.indexEntry.version
+        assert record.indexEntry.version == record.version
         assert actualRecord.calculationParameters.version == record.calculationParameters.version
         assert actualRecord == record
 
@@ -2825,6 +2836,15 @@ def test_initializeState(mockRunMetadata):
 
         actual = localDataService.initializeState(runNumber, useLiteMode, "test")
         actual.creationDate = testCalibrationData.creationDate
+
+    testCalibrationData.indexEntry.comments = (
+        "The default configuration when loading StateConfig if none other is found"
+    )
+    testCalibrationData.indexEntry.author = "SNAPRed Internal"
+    testCalibrationData.indexEntry.appliesTo = ">=0"
+    testCalibrationData.indexEntry.version = VERSION_START()
+    # this is generate at runtime of the test, so just overwrite it.
+    testCalibrationData.indexEntry.timestamp = actual.indexEntry.timestamp
 
     assert actual == testCalibrationData
     assert localDataService._writeDefaultDiffCalTable.call_count == 2

@@ -4,6 +4,7 @@ from random import randint
 from snapred.backend.dao import CrystallographicInfo, CrystallographicPeak
 from snapred.backend.dao.calibration import Calibration, CalibrationMetric, CalibrationRecord, FocusGroupMetric
 from snapred.backend.dao.GSASParameters import GSASParameters
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.ingredients import PeakIngredients
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.Limit import BinnedValue, Limit
@@ -70,6 +71,16 @@ class DAOFactory:
 
     ## INSTRUMENT CONFIG
 
+    indexEntry = {
+        "version": 0,
+        "useLiteMode": True,
+        "appliesTo": ">=1",
+        "comments": "This is a test index entry",
+        "author": "Test Author",
+        "timestamp": 1700000000.0,  # Example timestamp
+        "runNumber": "12345",
+    }
+
     instrument_config_boilerplate = {
         "version": 0,
         "facility": "SNS",
@@ -91,6 +102,7 @@ class DAOFactory:
         "delThWithGuide": 0.0032,
         "width": 1600.0,
         "frequency": 60.4,
+        "indexEntry": indexEntry,
     }
 
     default_instrument_config = InstrumentConfig(
@@ -492,6 +504,12 @@ class DAOFactory:
         name="test",
         instrumentState=default_instrument_state.model_copy(),
     ) -> Calibration:
+        indexEntry = IndexEntry(**DAOFactory.indexEntry)
+        indexEntry.runNumber = runNumber
+        indexEntry.useLiteMode = useLiteMode
+        indexEntry.version = version
+        indexEntry.appliesTo = f">={runNumber}"
+
         return Calibration(
             seedRun=runNumber,
             useLiteMode=useLiteMode,
@@ -499,6 +517,7 @@ class DAOFactory:
             creationDate=creationDate,
             name=name,
             instrumentState=instrumentState,
+            indexEntry=indexEntry,
         )
 
     ## CALIBRATION RECORD
@@ -534,6 +553,7 @@ class DAOFactory:
             runNumber=runNumber,
             useLiteMode=useLiteMode,
             version=version,
+            indexEntry=IndexEntry(**DAOFactory.indexEntry),
             **other_properties,
         )
 
@@ -561,6 +581,7 @@ class DAOFactory:
             creationDate=creationDate,
             name=name,
             instrumentState=instrumentState,
+            indexEntry=IndexEntry(**DAOFactory.indexEntry),
         )
 
     ## NORMALIZATION RECORD
@@ -598,6 +619,7 @@ class DAOFactory:
             runNumber=runNumber,
             useLiteMode=useLiteMode,
             version=version,
+            indexEntry=IndexEntry(**DAOFactory.indexEntry),
             **other_properties,
         )
 

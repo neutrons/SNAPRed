@@ -332,7 +332,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     @mock.patch(thisService + "FarmFreshIngredients")
     @mock.patch(thisService + "FitMultiplePeaksRecipe")
-    def test_assessQuality(self, FitMultiplePeaksRecipe, FarmFreshIngredients):
+    @mock.patch(thisService + "GenerateCalibrationMetricsWorkspaceRecipe")
+    def test_assessQuality(
+        self, mockGenerateCalibrationMetricsWorkspaceRecipe, FitMultiplePeaksRecipe, FarmFreshIngredients
+    ):
         # Mock input data
         timestamp = time.time()
         mockFarmFreshIngredients = mock.Mock(
@@ -356,14 +359,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataExportService.getUniqueTimestamp = mock.Mock(return_value=timestamp)
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         self.instance._collectMetrics = mock.Mock(return_value=fakeMetrics)
-
+        workspaces = {
+            wngt.DIFFCAL_OUTPUT: [self.sampleWS],
+            wngt.DIFFCAL_TABLE: [self.sampleTableWS],
+            wngt.DIFFCAL_MASK: [self.sampleMaskWS],
+        }
         # Call the method to test
         request = CalibrationAssessmentRequest(
-            workspaces={
-                wngt.DIFFCAL_OUTPUT: [self.sampleWS],
-                wngt.DIFFCAL_TABLE: [self.sampleTableWS],
-                wngt.DIFFCAL_MASK: [self.sampleMaskWS],
-            },
+            workspaces=workspaces,
             run=RunConfig(runNumber=self.runNumber),
             useLiteMode=True,
             focusGroup={"name": fakeMetrics.focusGroupName, "definition": ""},
@@ -383,11 +386,17 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 FarmFreshIngredients.return_value,
             ),
         )
+        mockGenerateCalibrationMetricsWorkspaceRecipe.return_value.executeRecipe.return_value = expectedWorkspaces
         self.instance.dataFactoryService.getCifFilePath.assert_called_once_with("biscuit")
 
         # Assert the result is as expected
         assert response.model_dump() == {
-            "record": expectedRecord.model_dump(),
+            "version": expectedRecord.version,
+            "calculationParameters": expectedRecord.calculationParameters.model_dump(),
+            "crystalInfo": expectedRecord.crystalInfo.model_dump(),
+            "pixelGroups": expectedRecord.pixelGroups,
+            "focusGroupCalibrationMetrics": fakeMetrics,
+            "workspaces": workspaces,
             "metricWorkspaces": expectedWorkspaces,
         }
 

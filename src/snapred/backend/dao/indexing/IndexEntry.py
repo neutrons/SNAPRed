@@ -3,6 +3,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from snapred.backend.dao.indexing.Versioning import Version
+
 
 class IndexEntry(BaseModel, extra="ignore"):
     """
@@ -16,16 +18,13 @@ class IndexEntry(BaseModel, extra="ignore"):
 
     """
 
-    # inherits from VersionedObject:
-    # - version: int
-
     runNumber: str
     useLiteMode: bool
     appliesTo: Optional[str] = None
     comments: Optional[str] = None
     author: Optional[str] = None
     timestamp: float = Field(default_factory=lambda: time.time())
-    version: int
+    version: Version
 
     @classmethod
     def parseConditional(cls, conditional: str):

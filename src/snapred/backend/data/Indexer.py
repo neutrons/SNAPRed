@@ -11,7 +11,8 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationDefault
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionedObject, VersionState
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject
+from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionState
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -426,12 +427,21 @@ class Indexer:
         fileName = FRIENDLY_NAME_MAPPING.get(type_.__name__, type_.__name__)
         return self.versionPath(version) / f"{fileName}.json"
 
-    def writeVersionedObject(self, obj: VersionedObject):
+    @validate_call
+    def writeVersionedObject(self, obj: VersionedObject, overwrite: bool = False):
         """
         Will save at the version on the object.
         If the version is invalid, will throw an error and refuse to save.
         """
         obj.version = self._flattenVersion(obj.version)
+        obj.indexEntry.version = obj.version
+        filePath = self.versionedObjectPath(type(obj), obj.version)
+        if not overwrite and filePath.exists():
+            objTypeName = type(obj).__name__
+            raise ValueError(
+                f"{objTypeName} with version {obj.version} already exists. "
+                f"\nA version collision has occurred. No {objTypeName} was saved."
+            )
 
         if obj.indexEntry.appliesTo is None:
             obj.indexEntry.appliesTo = ">=" + obj.runNumber
@@ -439,7 +449,6 @@ class Indexer:
         self.addIndexEntry(obj.indexEntry)
         obj.version = obj.indexEntry.version
 
-        filePath = self.versionedObjectPath(type(obj), obj.version)
         filePath.parent.mkdir(parents=True, exist_ok=True)
 
         write_model_pretty(obj, filePath)
@@ -458,12 +467,12 @@ class Indexer:
             raise FileNotFoundError(f"No {type_.__name__} found at {filePath} for version {version}")
         return obj
 
-    def writeRecord(self, record: Record):
+    def writeRecord(self, record: Record, overwrite: bool = False):
         """
         Will save at the version on the record.
         If the version is invalid, will throw an error and refuse to save.
         """
-        self.writeVersionedObject(record)
+        self.writeVersionedObject(record, overwrite=overwrite)
 
     ## STATE PARAMETER READ / WRITE METHODS ##
 
@@ -482,9 +491,9 @@ class Indexer:
         """
         return self.readVersionedObject(PARAMS_TYPE[self.indexerType], version)
 
-    def writeParameters(self, parameters: CalculationParameters):
+    def writeParameters(self, parameters: CalculationParameters, overwrite: bool = False):
         """
         Will save at the version on the calculation parameters.
         If the version is invalid, will throw an error and refuse to save.
         """
-        self.writeVersionedObject(parameters)
+        self.writeVersionedObject(parameters, overwrite=overwrite)

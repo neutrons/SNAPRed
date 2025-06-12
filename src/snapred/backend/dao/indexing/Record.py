@@ -4,7 +4,7 @@ import numpy
 from pydantic import ConfigDict, field_validator
 
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
-from snapred.backend.dao.indexing.Versioning import VersionedObject
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject
 
 
 class Record(VersionedObject, extra="allow"):

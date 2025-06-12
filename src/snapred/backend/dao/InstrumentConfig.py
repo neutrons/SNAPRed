@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from snapred.backend.dao.indexing.Versioning import VersionedObject
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject
 from snapred.meta.Config import Config
 
 
