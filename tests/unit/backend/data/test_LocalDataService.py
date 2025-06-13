@@ -2492,6 +2492,7 @@ def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorksp
     localDataService = LocalDataService()
     with state_root_redirect(localDataService):
         localDataService._writeDefaultDiffCalTable(runNumber, useLiteMode)
+        # NOTE: the above method produces no record
         file = localDataService.calibrationIndexer(useLiteMode, "stateId").versionPath(version) / wsName
         file = file.with_suffix(".h5")
         assert file.exists()

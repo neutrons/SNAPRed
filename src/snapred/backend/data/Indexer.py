@@ -330,13 +330,14 @@ class Indexer:
         versions = self.readDirectoryList()
         for version in versions:
             versionPath = self.versionPath(self._flattenVersion(version))
-            if versionPath.exists():
+            if versionPath.exists() and self.recordPath(version).exists():
                 # read the record file
                 record = self.readRecord(version)
                 entries.append(record.indexEntry)
         # write the index to the file
-        indexPath.parent.mkdir(parents=True, exist_ok=True)
-        write_model_list_pretty(entries, indexPath)
+        if len(entries) > 0:
+            indexPath.parent.mkdir(parents=True, exist_ok=True)
+            write_model_list_pretty(entries, indexPath)
         return entries
 
     def readIndex(self) -> Dict[int, IndexEntry]:
