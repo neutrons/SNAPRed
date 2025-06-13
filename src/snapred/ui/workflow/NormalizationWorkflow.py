@@ -1,7 +1,7 @@
 from qtpy.QtCore import Slot
 
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Versioning import VersionedObject, VersionState
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject, VersionState
 from snapred.backend.dao.request import (
     CalculateNormalizationResidualRequest,
     CalibrationWritePermissionsRequest,
@@ -267,8 +267,8 @@ class NormalizationWorkflow(WorkflowImplementer):
             crystalDBounds={"minimum": self.prevXtalDMin, "maximum": self.prevXtalDMax},
             continueFlags=self.continueAnywayFlags,
         )
-        self.recordResponse = self.request(path="normalization/assessment", payload=payload.json())
-        return self.recordResponse
+        self.assessmentResponse = self.request(path="normalization/assessment", payload=payload.json())
+        return self.assessmentResponse
 
     @EntryExitLogger(logger=logger)
     @Slot(WorkflowPresenter, result=SNAPResponse)
@@ -278,14 +278,14 @@ class NormalizationWorkflow(WorkflowImplementer):
         version = view.fieldVersion.get(VersionState.NEXT)
         appliesTo = view.fieldAppliesTo.get(f">={self.calibrationRunNumber}")
         # validate version number
-        version = VersionedObject(version=version).version
+        version = VersionedObject.validate_version(version)
         # validate appliesTo field
         appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
 
-        normalizationRecord = self.recordResponse.data
-        normalizationRecord.workspaceNames.append(self.normalizationResponse.data["smoothedVanadium"])
-        normalizationRecord.workspaceNames.append(self.normalizationResponse.data["focusedVanadium"])
-        normalizationRecord.workspaceNames.append(self.normalizationResponse.data["correctedVanadium"])
+        assessmentResponse = self.assessmentResponse.data
+        assessmentResponse.workspaceNames.append(self.normalizationResponse.data["smoothedVanadium"])
+        assessmentResponse.workspaceNames.append(self.normalizationResponse.data["focusedVanadium"])
+        assessmentResponse.workspaceNames.append(self.normalizationResponse.data["correctedVanadium"])
 
         createIndexEntryRequest = CreateIndexEntryRequest(
             runNumber=runNumber,
@@ -299,13 +299,14 @@ class NormalizationWorkflow(WorkflowImplementer):
             runNumber=runNumber,
             useLiteMode=self.useLiteMode,
             version=version,
-            calculationParameters=normalizationRecord.calculationParameters,
-            backgroundRunNumber=normalizationRecord.backgroundRunNumber,
-            smoothingParameter=normalizationRecord.smoothingParameter,
-            workspaceNames=normalizationRecord.workspaceNames,
-            calibrationVersionUsed=normalizationRecord.calibrationVersionUsed,
-            crystalDBounds=normalizationRecord.crystalDBounds,
-            normalizationCalibrantSamplePath=normalizationRecord.normalizationCalibrantSamplePath,
+            calculationParameters=assessmentResponse.calculationParameters,
+            backgroundRunNumber=assessmentResponse.backgroundRunNumber,
+            smoothingParameter=assessmentResponse.smoothingParameter,
+            workspaceNames=assessmentResponse.workspaceNames,
+            calibrationVersionUsed=assessmentResponse.calibrationVersionUsed,
+            crystalDBounds=assessmentResponse.crystalDBounds,
+            normalizationCalibrantSamplePath=assessmentResponse.normalizationCalibrantSamplePath,
+            indexEntry=createIndexEntryRequest,
         )
 
         payload = NormalizationExportRequest(

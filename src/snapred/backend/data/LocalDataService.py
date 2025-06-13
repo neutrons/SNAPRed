@@ -371,7 +371,9 @@ class LocalDataService:
 
         targetIndexEntry.version = targetVersion
         sourceRecord.version = targetVersion
+        sourceRecord.indexEntry = targetIndexEntry
         sourceParameters.version = targetVersion
+        sourceParameters.indexEntry = targetIndexEntry
 
         targetVersionPath = targetIndexer.versionPath(targetVersion)
 
@@ -383,8 +385,8 @@ class LocalDataService:
                 newWorkspaceName = re.sub(r"v\d+", wnvf.formatVersion(targetVersion), workspaceName)
                 sourceRecord.workspaces[workspaceType].append(newWorkspaceName)
 
-        targetIndexer.writeNewVersionedObject(sourceRecord, targetIndexEntry)
-        targetIndexer.writeVersionedObject(sourceParameters)
+        targetIndexer.writeIndexedObject(sourceRecord)
+        targetIndexer.writeIndexedObject(sourceParameters)
 
         for workspaceType, workspaceNames in sourceRecord.workspaces.items():
             for workspaceName, sourceWorkspaceName in zip(workspaceNames, sourceWorspaces[workspaceType]):
@@ -605,14 +607,15 @@ class LocalDataService:
             appliesTo=appliesTo,
             author=author,
         )
-        indexer.writeNewVersionedObject(instrumentParameters, newEntry)
+        instrumentParameters.indexEntry = newEntry
+        indexer.writeIndexedObject(instrumentParameters)
 
     def readInstrumentParameters(self, runNumber: str):
         indexer = self.instrumentParameterIndexer()
         version = indexer.latestApplicableVersion(runNumber)
         if version is None:
             raise FileNotFoundError(f"No instrument parameters found for run {runNumber}")
-        return indexer.readVersionedObject(InstrumentConfig, version)
+        return indexer.readIndexedObject(InstrumentConfig, version)
 
     ##### NORMALIZATION METHODS #####
 
@@ -652,7 +655,7 @@ class LocalDataService:
 
         return record
 
-    def writeNormalizationRecord(self, record: NormalizationRecord, entry: Optional[IndexEntry] = None):
+    def writeNormalizationRecord(self, record: NormalizationRecord):
         """
         Persists a `NormalizationRecord` to either a new version folder, or overwrites a specific version.
         Record must be set with correct version.
@@ -660,11 +663,9 @@ class LocalDataService:
         """
         state, _ = self.generateStateId(record.runNumber)
         indexer = self.normalizationIndexer(record.useLiteMode, state)
+        record.calculationParameters.indexEntry = record.indexEntry.model_copy()
         # write the record to file
-        if entry is None:
-            indexer.writeRecord(record)
-        else:
-            indexer.writeNewVersion(record, entry)
+        indexer.writeRecord(record)
         # separately write the normalization state
         indexer.writeParameters(record.calculationParameters)
 
@@ -723,7 +724,7 @@ class LocalDataService:
 
         return record
 
-    def writeCalibrationRecord(self, record: CalibrationRecord, entry: Optional[IndexEntry] = None):
+    def writeCalibrationRecord(self, record: CalibrationRecord):
         """
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
         Record must be set with correct version.
@@ -731,12 +732,9 @@ class LocalDataService:
         """
         stateId, _ = self.generateStateId(record.runNumber)
         indexer = self.calibrationIndexer(record.useLiteMode, stateId)
-        if entry is None:
-            # write record to file
-            indexer.writeRecord(record)
-        else:
-            # write record to file
-            indexer.writeNewVersion(record, entry)
+        record.calculationParameters.indexEntry = record.indexEntry.model_copy()
+        # write record to file
+        indexer.writeRecord(record)
         # separately write the calibration state
         indexer.writeParameters(record.calculationParameters)
 
@@ -1126,27 +1124,7 @@ class LocalDataService:
         for liteMode in [True, False]:
             indexer = self.calibrationIndexer(liteMode, state)
             version = indexer.defaultVersion()
-            calibration = indexer.createParameters(
-                instrumentState=instrumentState,
-                name=name,
-                seedRun=runId,
-                useLiteMode=liteMode,
-                creationDate=datetime.datetime.now(),
-                version=version,
-            )
 
-            # NOTE: this creates a bare record without any other CalibrationRecord data
-            defaultDiffCalTableName = grocer.createDiffCalTableWorkspaceName("default", liteMode, version)
-            workspaces: Dict[WorkspaceType, List[WorkspaceName]] = {
-                wngt.DIFFCAL_TABLE: [defaultDiffCalTableName],
-            }
-            record = CalibrationDefaultRecord(
-                runNumber=runId,
-                useLiteMode=liteMode,
-                version=version,
-                calculationParameters=calibration,
-                workspaces=workspaces,
-            )
             entry = indexer.createIndexEntry(
                 runNumber=runId,
                 useLiteMode=liteMode,
@@ -1155,8 +1133,33 @@ class LocalDataService:
                 author="SNAPRed Internal",
                 comments="The default configuration when loading StateConfig if none other is found",
             )
+
+            calibration = indexer.createParameters(
+                instrumentState=instrumentState,
+                name=name,
+                seedRun=runId,
+                useLiteMode=liteMode,
+                creationDate=datetime.datetime.now(),
+                version=version,
+                indexEntry=entry.model_dump(),
+            )
+
+            # NOTE: this creates a bare record without any other CalibrationRecord data
+            defaultDiffCalTableName = grocer.createDiffCalTableWorkspaceName("default", liteMode, version)
+            workspaces: Dict[WorkspaceType, List[WorkspaceName]] = {
+                wngt.DIFFCAL_TABLE: [defaultDiffCalTableName],
+            }
+
+            record = CalibrationDefaultRecord(
+                runNumber=runId,
+                useLiteMode=liteMode,
+                version=version,
+                calculationParameters=calibration,
+                workspaces=workspaces,
+                indexEntry=entry,
+            )
             # write the calibration state
-            indexer.writeNewVersion(record, entry)
+            indexer.writeRecord(record)
             indexer.writeParameters(record.calculationParameters)
             # write the default diffcal table
             self._writeDefaultDiffCalTable(runId, liteMode)
