@@ -40,6 +40,11 @@ class GroceryListBuilder:
         return self
 
     def diffCalVersion(self, version: Version) -> GroceryListBuilder:
+        """
+        Specify the version of the diffcal metadata to use,
+        In the case no diffCalFilePath is specified,
+        this determines the diffCalFile as well.
+        """
         self._tokens["diffCalVersion"] = version
         return self
 

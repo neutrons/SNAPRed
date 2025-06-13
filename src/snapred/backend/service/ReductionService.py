@@ -484,12 +484,15 @@ class ReductionService(Service):
         if not self.groceryService.checkPixelMask(combinedPixelMask):
             combinedPixelMask = None
 
+        # Build the grocery clerk items to fetch the workspaces.
+        # Build item for sample run workspace
+        # NOTE: diffCalVersion specifies only the metadata version in the case diffCalFilePath is provided.
+        #       Else the index is used to determine the diffCalFile.
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).state(
             state
         ).dirty().diffCalVersion(calVersion)
 
         if request.alternativeCalibrationFilePath is not None:
-            # gather the input workspace and the diffcal table
             self.groceryClerk.diffCalFilePath(request.alternativeCalibrationFilePath)
 
         if not request.liveDataMode:
@@ -497,6 +500,7 @@ class ReductionService(Service):
         else:
             self.groceryClerk.liveData(duration=request.liveDataDuration).add()
 
+        # Build item for normalization workspace
         if normVersion is not None:  # WARNING: version may be _zero_!
             self.groceryClerk.name("normalizationWorkspace").normalization(
                 request.runNumber,
@@ -505,7 +509,6 @@ class ReductionService(Service):
             ).useLiteMode(request.useLiteMode).dirty().diffCalVersion(calVersion)
 
             if request.alternativeCalibrationFilePath is not None:
-                # gather the input workspace and the diffcal table
                 self.groceryClerk.diffCalFilePath(request.alternativeCalibrationFilePath)
 
             self.groceryClerk.add()
