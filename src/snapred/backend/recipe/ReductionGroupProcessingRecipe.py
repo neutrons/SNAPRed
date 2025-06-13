@@ -27,6 +27,7 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
 
     def chopIngredients(self, ingredients):
         self.pixelGroup = ingredients.pixelGroup
+        self.preserveEvents = ingredients.preserveEvents
         logger.debug(f"dMin: {self.pixelGroup.dMin()}")
         logger.debug(f"dMax: {self.pixelGroup.dMax()}")
         logger.debug(f"dBin: {self.pixelGroup.dBin()}")
@@ -59,8 +60,8 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
             InputWorkspace=self.rawInput,
             OutputWorkspace=self.outputWS,
             GroupingWorkspace=self.groupingWS,
-            PixelGroup=self.pixelGroup.json(),
-            RebinOutput=True,
+            PixelGroup=self.pixelGroup.model_dump_json(),
+            PreserveEvents=self.preserveEvents,
         )
 
         normalizeArgs = {

@@ -51,7 +51,7 @@ class ReductionIngredients(BaseModel):
         return self.detectorPeaksMany[groupingIndex]
 
     def groupProcessing(self, groupingIndex: int) -> ReductionGroupProcessingIngredients:
-        return ReductionGroupProcessingIngredients(pixelGroup=self.pixelGroups[groupingIndex])
+        return ReductionGroupProcessingIngredients(pixelGroup=self.pixelGroups[groupingIndex], preserveEvents=False)
 
     def generateFocussedVanadium(self, groupingIndex: int) -> GenerateFocussedVanadiumIngredients:
         return GenerateFocussedVanadiumIngredients(

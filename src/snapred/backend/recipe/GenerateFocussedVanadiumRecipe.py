@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Set, Tuple
 
 from snapred.backend.dao.ingredients import GenerateFocussedVanadiumIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.RebinFocussedGroupDataRecipe import RebinFocussedGroupDataRecipe
 from snapred.backend.recipe.Recipe import Recipe
 
 logger = snapredLogger.getLogger(__name__)
@@ -61,20 +60,13 @@ class GenerateFocussedVanadiumRecipe(Recipe[Ingredients]):
             SmoothingParameter=self.smoothingParameter,
         )
 
-    def _rebinInputWorkspace(self):
-        """
-        Rebins the input workspace to the pixel group.
-        """
-        rebinRecipe = RebinFocussedGroupDataRecipe(self.utensils)
-        rebinIngredients = RebinFocussedGroupDataRecipe.Ingredients(pixelGroup=self.pixelGroup)
-        rebinRecipe.cook(rebinIngredients, {"inputWorkspace": self.inputWS})
-
     def queueAlgos(self):
         """
-        Queues up the procesing algorithms for the recipe.
+        Queues up the processing algorithms for the recipe.
         Requires: unbagged groceries.
         """
-        self._rebinInputWorkspace()
+        # Note: rebinning of the input workspace is no longer required here.
+        #   After `ReductionGroupProcessing`, the workspace will already have optimal ragged binning.
 
         if self.artificialNormalizationIngredients is not None:
             self.queueArtificialNormalization()

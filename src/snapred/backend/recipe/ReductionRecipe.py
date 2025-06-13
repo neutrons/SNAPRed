@@ -267,7 +267,6 @@ class ReductionRecipe(Recipe[Ingredients]):
         )
 
         if self.normalizationWs:
-            # Temporarily convert the normalization workspace to d-spacing
             self.mantidSnapper.ConvertUnits(
                 "Converting normalization data to d-spacing",
                 InputWorkspace=self.normalizationWs,

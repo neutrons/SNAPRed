@@ -91,13 +91,3 @@ class TestGenerateFocussedVanadiumRecipe(unittest.TestCase):
 
         assert self.recipe.cook.called
         assert output[0] == self.recipe.cook.return_value
-
-    @mock.patch(f"{ThisRecipe}.RebinFocussedGroupDataRecipe")
-    def test_rebinInputWorkspace(self, mockRebinRecipe):
-        self.recipe.prep(self.fakeIngredients, self.groceryList)
-        self.recipe._rebinInputWorkspace()
-
-        mockRebinRecipe().cook.assert_called_with(
-            mockRebinRecipe.Ingredients(pixelGroup=self.fakeIngredients.pixelGroup),
-            {"inputWorkspace": self.fakeInputWorkspace},
-        )
