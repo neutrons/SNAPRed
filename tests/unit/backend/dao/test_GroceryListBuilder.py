@@ -2,6 +2,7 @@
 # Add test-related imports last.
 import unittest
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from mantid.simpleapi import (
@@ -42,6 +43,14 @@ class TestGroceryListBuilder(unittest.TestCase):
         assert item.runNumber == self.runNumber
         assert item.useLiteMode is False
         assert item.workspaceType == "diffcal"
+
+    def test_diffcal_diffCalFilePath(self):
+        diffCalFilePath = Path(Resource.getPath("inputs/testDiffCal/emptyDiffCal.nxs"))
+        item = GroceryListBuilder().diffcal(self.runNumber).native().diffCalFilePath(diffCalFilePath).build()
+        assert item.runNumber == self.runNumber
+        assert item.useLiteMode is False
+        assert item.workspaceType == "diffcal"
+        assert item.diffCalFilePath == diffCalFilePath
 
     def test_nexus_native_lite(self):
         item = GroceryListBuilder().neutron(self.runNumber).native().build()

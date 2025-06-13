@@ -20,6 +20,7 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
+from util.Config_helpers import Config_override
 from util.dao import DAOFactory
 from util.state_helpers import state_root_redirect
 
@@ -538,9 +539,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 checkExistent=False,
             )
             self.instance.groceryService._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+            self.instance.groceryService._validateCalibrationMask = mock.Mock(return_value=True)
 
-            # Load the assessment workspaces:
-            self.instance.loadQualityAssessment(mockRequest)
+            with Config_override("instrument.lite.pixelResolution", 16):
+                # Load the assessment workspaces:
+                self.instance.loadQualityAssessment(mockRequest)
 
             # Delete any existing _metric_ workspaces:
             for ws in mtd.getObjectNames():
@@ -574,8 +577,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 checkExistent=False,
             )
             self.instance.groceryService._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+            self.instance.groceryService._validateCalibrationMask = mock.Mock(return_value=True)
 
-            self.instance.loadQualityAssessment(mockRequest)
+            with Config_override("instrument.lite.pixelResolution", 16):
+                self.instance.loadQualityAssessment(mockRequest)
 
             # Assert the expected calibration metric workspaces have been generated
             for metric in ["sigma", "strain"]:

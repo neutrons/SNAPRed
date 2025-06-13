@@ -133,6 +133,26 @@ class TestReductionService(unittest.TestCase):
         assert ReductionIngredients.model_validate(result)
         assert result == expected
 
+    def test_prepReductionIngredients_alternateiveCalibrationFile(self):
+        # Call the method with the provided parameters
+        self.request.alternativeCalibrationFilePath = "path/to/calibration/file"
+        result = self.instance.prepReductionIngredients(self.request)
+
+        farmFresh = FarmFreshIngredients(
+            runNumber=self.request.runNumber,
+            useLiteMode=self.request.useLiteMode,
+            timestamp=self.request.timestamp,
+            focusGroups=self.request.focusGroups,
+            keepUnfocused=self.request.keepUnfocused,
+            convertUnitsTo=self.request.convertUnitsTo,
+            versions=Versions(0, self.request.versions.normalization),
+        )
+        expected = self.instance.sousChef.prepReductionIngredients(farmFresh)
+        expected.artificialNormalizationIngredients = self.request.artificialNormalizationIngredients
+
+        assert ReductionIngredients.model_validate(result)
+        assert result == expected
+
     def test_fetchReductionGroceries(self):
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
@@ -299,7 +319,9 @@ class TestReductionService(unittest.TestCase):
             self.instance.validateReduction(mockRequest)
 
     def test_markWorkspaceMetadata(self):
-        request = mock.Mock(continueFlags=ContinueWarning.Type.UNSET, alternativeState=None)
+        request = mock.Mock(
+            continueFlags=ContinueWarning.Type.UNSET, alternativeState=None, alternativeCalibrationFilePath=None
+        )
         metadata = WorkspaceMetadata(diffcalState="exists", normalizationState="exists")
         wsName = "test"
         self.instance.groceryService = mock.Mock()
@@ -314,8 +336,26 @@ class TestReductionService(unittest.TestCase):
         self.instance._markWorkspaceMetadata(request, wsName)
         self.instance.groceryService.writeWorkspaceMetadataAsTags.assert_called_once_with(wsName, metadata)
 
+    def test_markWorkspaceMetadata_alternativeCalibrationFilePath(self):
+        request = mock.Mock(
+            continueFlags=ContinueWarning.Type.UNSET,
+            alternativeState=None,
+            alternativeCalibrationFilePath="path/to/calibration/file",
+        )
+        metadata = WorkspaceMetadata(
+            diffcalState="alternate", altDiffcalPath="path/to/calibration/file", normalizationState="exists"
+        )
+        wsName = "test"
+        self.instance.groceryService = mock.Mock()
+        self.instance._markWorkspaceMetadata(request, wsName)
+        self.instance.groceryService.writeWorkspaceMetadataAsTags.assert_called_once_with(wsName, metadata)
+
     def test_markWorkspaceMetadata_continueNormalization(self):
-        request = mock.Mock(continueFlags=ContinueWarning.Type.MISSING_NORMALIZATION, alternativeState=None)
+        request = mock.Mock(
+            continueFlags=ContinueWarning.Type.MISSING_NORMALIZATION,
+            alternativeState=None,
+            alternativeCalibrationFilePath=None,
+        )
         metadata = WorkspaceMetadata(diffcalState="exists", normalizationState="fake")
         wsName = "test"
         self.instance.groceryService = mock.Mock()
@@ -470,6 +510,11 @@ class TestReductionService(unittest.TestCase):
         fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
         self.instance.validateReduction(self.request)
+
+    def test_validateReduction_alternativeCalibrationFilePath_notExist(self):
+        self.request.alternativeCalibrationFilePath = Path("path/to/nonexistent/calibration/file")
+        with pytest.raises(RuntimeError, match="does not exist"):
+            self.instance.validateReduction(self.request)
 
     def test_validateReduction_noCalibration(self):
         # assert ContinueWarning is raised
@@ -965,6 +1010,55 @@ class TestReductionServiceMasks:
             assert realKwargs == residentMaskGroceryKwargs
             mockFetchGroceryDict.assert_called_with(loadableMaskGroceryItems, **residentMaskGroceryKwargs)
 
+    def test_prepCombinedMask_load_alternativeCalibrationFilePath(self):
+        """
+        Check that prepCombinedMask correctly loads all things it should
+        """
+        with (
+            mock.patch.object(self.service.groceryService, "fetchGroceryDict") as mockFetchGroceryDict,
+            mock.patch.object(self.service.dataFactoryService, "getLatestApplicableCalibrationVersion", return_value=1),
+        ):
+            fetchGroceryCallArgs = []
+
+            def trackFetchGroceryDict(*args, **kwargs):
+                fetchGroceryCallArgs.append((args, kwargs))
+                return mock.MagicMock()
+
+            mockFetchGroceryDict.side_effect = trackFetchGroceryDict
+
+            # timestamp must be unique: see comment at `test_prepCombinedMask`.
+            timestamp = self.service.getUniqueTimestamp()
+            request = ReductionRequest(
+                runNumber=self.runNumber1,
+                useLiteMode=self.useLiteMode,
+                timestamp=timestamp,
+                versions=Versions(1, 2),
+                pixelMasks=[self.maskWS1, self.maskWS2, self.maskWS5],
+                alternativeCalibrationFilePath="some/path/to/calibration/file",
+            )
+
+            # prepare the expected grocery dicionary
+            groceryClerk = self.service.groceryClerk
+            groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(self.stateId1, 1, request.runNumber).useLiteMode(
+                request.useLiteMode
+            ).diffCalFilePath(request.alternativeCalibrationFilePath).add()
+            for mask in (self.maskWS1, self.maskWS2):
+                runNumber, timestamp = mask.tokens("runNumber", "timestamp")
+                groceryClerk.name(mask).reduction_pixel_mask(runNumber, timestamp).useLiteMode(
+                    request.useLiteMode
+                ).add()
+
+            loadableMaskGroceryItems = groceryClerk.buildDict()
+            residentMaskGroceryKwargs = {self.maskWS5.toString(): self.maskWS5}
+
+            self.service.prepCombinedMask(request)
+
+            realArgs = fetchGroceryCallArgs[0][0][0]
+            realKwargs = fetchGroceryCallArgs[0][1]
+            assert realArgs == loadableMaskGroceryItems
+            assert realKwargs == residentMaskGroceryKwargs
+            mockFetchGroceryDict.assert_called_with(loadableMaskGroceryItems, **residentMaskGroceryKwargs)
+
     def test_prepCombinedMask_only_diffcal(self):
         """
         Check that prepCombinedMask will still work if only a diffcal file is present
@@ -1094,6 +1188,13 @@ class TestReductionServiceMasks:
 
             # check -- with invalid combinedPixelMask, no mask is added
             mockCheckPixelMask.return_value = False
+            self.service.fetchReductionGroceries(request)
+            self.service.groceryService.fetchGroceryDict.assert_called_with(
+                loadableOtherGroceryItems,
+            )
+            request.alternativeCalibrationFilePath = Path("some/path/to/calibration/file")
+            loadableOtherGroceryItems["inputWorkspace"].diffCalFilePath = request.alternativeCalibrationFilePath
+            loadableOtherGroceryItems["normalizationWorkspace"].diffCalFilePath = request.alternativeCalibrationFilePath
             self.service.fetchReductionGroceries(request)
             self.service.groceryService.fetchGroceryDict.assert_called_with(
                 loadableOtherGroceryItems,

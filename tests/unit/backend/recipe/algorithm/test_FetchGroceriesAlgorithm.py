@@ -2,6 +2,7 @@
 
 import os
 import unittest
+from tempfile import TemporaryDirectory
 from unittest import mock
 
 import pytest
@@ -148,6 +149,50 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         # unset the instrument name
         algo.setPropertyValue("InstrumentFilename", "")
         assert len(algo.validateInputs()) == 0
+
+    def test_validateCalibrationFile(self):
+        """Test that the calibration file is validated correctly"""
+        algo = Algo()
+        algo.initialize()
+        # check that the file does not exist
+        with pytest.raises(RuntimeError) as e:
+            algo.validateCalibrationFile("non_existent_file.h5")
+            assert "does not exist" in e.msg()
+
+        # check that the file exists but does not contain a calibration group
+        with pytest.raises(RuntimeError) as e:
+            algo.validateCalibrationFile(self.filepath)
+            assert "does not contain a 'calibration' group" in e.msg()
+
+        # create a valid calibration file
+        import h5py
+
+        with TemporaryDirectory() as tempdir_path:
+            calibrationFile = os.path.join(tempdir_path, "valid_calibration.h5")
+            with h5py.File(calibrationFile, "w") as f:
+                calibrationGroup = f.create_group("calibration")
+                calibrationGroup.create_dataset("detid", data=[1, 2, 3])
+                calibrationGroup.create_dataset("difc", data=[0.1, 0.2, 0.3])
+                calibrationGroup.create_dataset("group", data=[1, 1, 2])
+                calibrationGroup.create_dataset("instrument", data=["SNAP"] * 3)
+
+            # validate file missing fields
+            with pytest.raises(RuntimeError, match="does not contain the required dataset 'use'"):
+                algo.validateCalibrationFile(calibrationFile)
+
+            # add missing datasets
+            with h5py.File(calibrationFile, "a") as f:
+                calibrationGroup = f["calibration"]
+                calibrationGroup.create_dataset("use", data=[True] * 3)
+                # validate the valid calibration file
+            algo.validateCalibrationFile(calibrationFile)
+
+            # create a file with an unexpected dataset
+            with h5py.File(calibrationFile, "a") as f:
+                calibrationGroup = f["calibration"]
+                calibrationGroup.create_dataset("unexpected", data=[1, 2, 3])
+            with pytest.raises(RuntimeError, match="contains unexpected dataset 'unexpected'"):
+                algo.validateCalibrationFile(calibrationFile)
 
     def test_loadNexusNoLoader(self):
         """Test that loading works if no loader specified"""

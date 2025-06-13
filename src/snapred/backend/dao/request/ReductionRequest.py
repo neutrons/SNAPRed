@@ -1,4 +1,5 @@
 import datetime
+from pathlib import Path
 from typing import List, NamedTuple, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -35,6 +36,7 @@ class ReductionRequest(BaseModel):
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
 
     alternativeState: Optional[str] = None
+    alternativeCalibrationFilePath: Optional[Path] = None
 
     @field_validator("versions")
     @classmethod

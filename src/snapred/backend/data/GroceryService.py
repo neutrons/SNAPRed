@@ -1110,6 +1110,65 @@ class GroceryService:
             sampleRunNumber, useLiteMode, state, version
         )
 
+        # table + mask are in the same hdf5 file:
+        filename = self._createDiffCalTableFilepathFromWsName(useLiteMode, version, tableWorkspaceName, state=state)
+
+        self._loadCalibrationFile(item, filename, tableWorkspaceName, maskWorkspaceName)
+
+        return tableWorkspaceName, maskWorkspaceName
+
+    def _validateCalibrationTable(self, item: GroceryListItem, tableWorkspaceName: str):
+        """
+        Validate the calibration table workspace.
+
+        :param item: a GroceryListItem corresponding to the calibration table
+        :type item: GroceryListItem
+        :param tableWorkspaceName: the name of the calibration table workspace
+        :type tableWorkspaceName: str
+        """
+        tableInst = self.getWorkspaceForName(tableWorkspaceName)
+        if tableInst is None:
+            raise RuntimeError(f"Calibration table workspace '{tableWorkspaceName}' does not exist in the ADS.")
+
+        # Tables should have uniform rows.
+        # len(tableInst.column("detid")) != len(tableInst.column("difc")):
+
+        totalExpectedRows = (
+            Config["instrument.lite.pixelResolution"]
+            if item.useLiteMode
+            else Config["instrument.native.pixelResolution"]
+        )
+        if len(tableInst.column("detid")) != totalExpectedRows:
+            raise RuntimeError(
+                f"Calibration table workspace '{tableWorkspaceName}' has {len(tableInst.column('detid'))} rows, "
+                f"\nExpected {totalExpectedRows} rows for the {'lite' if item.useLiteMode else 'native'} resolution."
+                f"\ni.e. one row per pixel of the instrument."
+            )
+        # ensure all difc's are positive floats
+        if not all(isinstance(difc, float) and difc > 0 for difc in tableInst.column("difc")):
+            raise RuntimeError(
+                f"Calibration table workspace '{tableWorkspaceName}' has invalid 'difc' values. "
+                "All 'difc' values must be positive floats."
+            )
+
+    def _validateCalibrationMask(self, item: GroceryListItem, maskWorkspaceName: str):
+        targetPixelCount = (
+            Config["instrument.lite.pixelResolution"]
+            if item.useLiteMode
+            else Config["instrument.native.pixelResolution"]
+        )
+        numHistos = self.mantidSnapper.mtd[maskWorkspaceName].getNumberHistograms()
+        if numHistos != targetPixelCount:
+            liteStr = "lite" if item.useLiteMode else "native"
+            raise RuntimeError(
+                f"Mask workspace '{maskWorkspaceName}' has {numHistos} histograms"
+                f"\nExpected {targetPixelCount} histograms for the {liteStr} resolution."
+                f"\ni.e. one histogram per pixel of the instrument."
+            )
+
+    def _loadCalibrationFile(
+        self, item: GroceryListItem, filename: str, tableWorkspaceName: str, maskWorkspaceName: Optional[str] = None
+    ) -> Dict[str, Any]:
         # Table + mask are in the same hdf5 file: all of these clauses must deal with _both_!
         if self.workspaceDoesExist(tableWorkspaceName) and (
             maskWorkspaceName is None or self.workspaceDoesExist(maskWorkspaceName)
@@ -1120,15 +1179,14 @@ class GroceryService:
                 "workspace": tableWorkspaceName,
             }
         else:
-            # table + mask are in the same hdf5 file:
-            filename = self._createDiffCalTableFilepathFromWsName(useLiteMode, version, tableWorkspaceName, state=state)
+            sampleRunNumber, useLiteMode = item.runNumber, item.useLiteMode
 
-            # Unless overridden: use a cached workspace as the instrument donor.
             instrumentPropertySource, instrumentSource = (
                 ("InstrumentDonor", self._fetchInstrumentDonor(sampleRunNumber, useLiteMode))
                 if not item.instrumentPropertySource
                 else (item.instrumentPropertySource, item.instrumentSource)
             )
+            logger.debug(f"Loading calibration file {filename} for run {sampleRunNumber} with lite mode {useLiteMode}")
             data = self.grocer.executeRecipe(
                 filename=filename,
                 # IMPORTANT: Both table and mask workspaces will be loaded,
@@ -1146,6 +1204,10 @@ class GroceryService:
                 ),
             )
             data["workspace"] = tableWorkspaceName
+            self._validateCalibrationTable(item, tableWorkspaceName)
+
+            if bool(maskWorkspaceName):
+                self._validateCalibrationMask(item, maskWorkspaceName)
 
         return data
 
@@ -1326,14 +1388,14 @@ class GroceryService:
         # to that of the table workspace.  Because of possible confusion with
         # the behavior of the mask workspace, the workspace name is overridden here.
 
-        tableWorkspaceName, maskWorkspaceName = self._lookupDiffCalWorkspaceNames(
-            item.runNumber,
-            item.useLiteMode,
-            item.state,
-            item.diffCalVersion,
-        )
+        filePath: Path = item.diffCalFilePath
+        if filePath is None:
+            tableWorkspaceName, maskWorkspaceName = self.fetchCalibrationWorkspaces(item)
+        else:
+            tableWorkspaceName = filePath.stem
+            maskWorkspaceName = f"{tableWorkspaceName}_mask"
+            self._loadCalibrationFile(item, str(filePath.resolve()), tableWorkspaceName, maskWorkspaceName)
 
-        self.fetchCalibrationWorkspaces(item)
         return tableWorkspaceName, maskWorkspaceName
 
     def fetchNormCalForSample(self, item: GroceryListItem) -> WorkspaceName:
@@ -1602,7 +1664,7 @@ class GroceryService:
 
             self.deleteWorkspaceUnconditional(monitorWs)
 
-        if item.diffCalVersion is not None:
+        if item.diffCalVersion is not None or item.diffCalFilePath is not None:
             # then load a diffcal table and apply it.
             # NOTE: This can result in a different diffcal being applied to normalization vs sample
             #       This is the expected and desired behavior.

@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy
@@ -31,6 +32,8 @@ class ReductionRecord(BaseModel):
     pixelGroupingParameters: Dict[str, List[PixelGroupingParameters]]
 
     workspaceNames: List[WorkspaceName]
+
+    alternativeCalibrationFilePath: Optional[Path] = None
 
     """
     *Other details to include above*:
