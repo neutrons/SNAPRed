@@ -42,7 +42,8 @@ class LiteDataService(Service):
         liteDataMap = self._ensureLiteDataMap()
         runNumber = inputWorkspace.split("_")[-1].lstrip("0")
 
-        ffIngredients = FarmFreshIngredients(runNumber=runNumber, useLiteMode=True)
+        state, _ = self.dataFactoryService.constructStateId(runNumber)
+        ffIngredients = FarmFreshIngredients(runNumber=runNumber, useLiteMode=True, state=state)
         ingredients = self.sousChef.prepInstrumentState(ffIngredients)
 
         recipeKwargs = {

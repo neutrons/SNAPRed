@@ -212,7 +212,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             # It probably should not be removed, even after that fix is merged.
             self.mantidSnapper.mtd[outWS].populateInstrumentParameters()
 
-        self.setPropertyValue("OutputWorkspace", outWS)
+        self.setPropertyValue("OutputWorkspace", outWS)        
         self.setPropertyValue("LoaderType", str(loaderType))
 
 
