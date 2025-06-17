@@ -283,11 +283,7 @@ class GroceryService:
 
     @validate_call
     def _lookupNormalizationWorkspaceFilename(
-        self,
-        normcalRunNumber: str,
-        useLiteMode: bool,
-        version: Optional[int],
-        state: str
+        self, normcalRunNumber: str, useLiteMode: bool, version: Optional[int], state: str
     ) -> str:
         # NOTE: The normCal Record currently does NOT store workspace type -> workspace name mappings.
         #       It is just a list of workspace names. So we need to infer.

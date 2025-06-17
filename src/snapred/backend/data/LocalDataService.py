@@ -2,7 +2,6 @@ import copy
 import datetime
 import glob
 import json
-import numpy as np
 import os
 import re
 import shutil
@@ -16,6 +15,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 import h5py
+import numpy as np
 from mantid.api import IEventWorkspace, Run
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import ConfigService, PhysicalConstants
@@ -698,10 +698,10 @@ class LocalDataService:
                     XMin=list((np.nan,) * numberOfSpectra),
                     XMax=list((np.nan,) * numberOfSpectra),
                     Delta=list((TOFOuterBound,) * numberOfSpectra),
-                    PreserveEvents=True
+                    PreserveEvents=True,
                 )
                 self.mantidSnapper.executeQueue()
-                            
+
             filename = Path(workspace + ".nxs")
             self.writeWorkspace(normalizationDataPath, filename, workspace)
 

@@ -106,7 +106,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             DMin=self.pixelGroup.dMin(),
             DMax=self.pixelGroup.dMax(),
             Delta=self.pixelGroup.dBin(),
-            FullBinsOnly=True
+            FullBinsOnly=True,
         )
         # With these arguments, output from `DiffractionFocussing` will now have ragged binning,
         #   so the former call to `RebinRagged` has been removed.

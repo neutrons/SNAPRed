@@ -161,10 +161,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             match loaderType:
                 case "":
                     _, loaderType, _ = self.mantidSnapper.Load(
-                        "Loading with unspecified loader",
-                        Filename=filename,
-                        OutputWorkspace=outWS,
-                        **loaderArgs
+                        "Loading with unspecified loader", Filename=filename, OutputWorkspace=outWS, **loaderArgs
                     )
                 case "LoadCalibrationWorkspaces":
                     self.mantidSnapper.LoadCalibrationWorkspaces(
@@ -194,10 +191,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     )
                 case _:
                     getattr(self.mantidSnapper, loaderType)(
-                        f"Loading data using {loaderType}",
-                        Filename=filename,
-                        OutputWorkspace=outWS,
-                        **loaderArgs
+                        f"Loading data using {loaderType}", Filename=filename, OutputWorkspace=outWS, **loaderArgs
                     )
 
             self.mantidSnapper.executeQueue()

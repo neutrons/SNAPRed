@@ -1790,17 +1790,14 @@ def test_writeNormalizationWorkspaces(cleanup_workspace_at_exit):
     testNormalizationRecord = DAOFactory.normalizationRecord(version=version)
     with (
         mock.patch.object(localDataService, "generateInstrumentState") as mockGenerateInstrumentState,
-        state_root_redirect(localDataService, stateId=stateId)
+        state_root_redirect(localDataService, stateId=stateId),
     ):
         mockGenerateInstrumentState.return_value = mock.Mock(
             spec=InstrumentState,
             id=mock.Mock(spec=ObjectSHA, hex=ENDURING_STATE_ID),
-            particleBounds=mock.Mock(
-                spec=ParticleBounds,
-                tof=Limit(minimum=0.001, maximum=200000.0)
-            )
+            particleBounds=mock.Mock(spec=ParticleBounds, tof=Limit(minimum=0.001, maximum=200000.0)),
         )
-        
+
         # Workspace names need to match the names that are used in the test record.
         runNumber = testNormalizationRecord.runNumber  # noqa: F841
         useLiteMode = testNormalizationRecord.useLiteMode
