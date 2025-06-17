@@ -203,19 +203,11 @@ class Indexer:
         """
         The most recent version in time, which is applicable to the run number.
         """
-        # sort by timestamp
-        entries = list(self.index.values())
-        entries.sort(key=lambda x: x.timestamp)
-        # filter for latest applicable
-        relevantEntries = list(filter(lambda x: self._isApplicableEntry(x, runNumber), entries))
-        if len(relevantEntries) < 1:
+        latestEntry = self.latestApplicableEntry(runNumber)
+        if latestEntry is None:
             version = None
-        elif len(relevantEntries) == 1:
-            version = relevantEntries[0].version
         else:
-            if self.defaultVersion() in self.index:
-                relevantEntries.remove(self.index[self.defaultVersion()])
-            version = relevantEntries[-1].version
+            version = latestEntry.version
         return version
 
     def nextVersion(self) -> int:
