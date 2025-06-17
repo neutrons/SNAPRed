@@ -211,7 +211,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             #   `SaveNexus` 'instrument_parameter_map' write-precision fix.
             # It probably should not be removed, even after that fix is merged.
             self.mantidSnapper.mtd[outWS].populateInstrumentParameters()
-
+        
         self.setPropertyValue("OutputWorkspace", outWS)        
         self.setPropertyValue("LoaderType", str(loaderType))
 
