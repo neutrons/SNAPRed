@@ -700,6 +700,10 @@ class LocalDataService:
                     PreserveEvents=True
                 )
                 self.mantidSnapperExecuteQueue()
+                
+                # *** DEBUG ***
+                ws = self.mantidSnapper.mtd[workspace]
+                print(f"====== writing event workspace: BINS: {max([len(ws.readX(n)) for n in range(ws.getNumberHistograms())])}")
                             
             filename = Path(workspace + ".nxs")
             self.writeWorkspace(normalizationDataPath, filename, workspace)

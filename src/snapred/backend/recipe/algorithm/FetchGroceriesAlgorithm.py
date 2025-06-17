@@ -6,6 +6,7 @@ from mantid.api import (
     AlgorithmFactory,
     FileAction,
     FileProperty,
+    IEventWorkspace,
     PropertyMode,
     PythonAlgorithm,
     WorkspaceProperty,
@@ -211,6 +212,11 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             #   `SaveNexus` 'instrument_parameter_map' write-precision fix.
             # It probably should not be removed, even after that fix is merged.
             self.mantidSnapper.mtd[outWS].populateInstrumentParameters()
+
+        # *** DEBUG ***
+        ws_ = self.mantidSnapper.mtd[outWS]
+        if isinstance(ws_, IEventWorkspace):
+            print(f"====== loaded event workspace: BINS: {max([len(ws_.readX(n)) for n in range(ws_.getNumberHistograms())])}")
         
         self.setPropertyValue("OutputWorkspace", outWS)        
         self.setPropertyValue("LoaderType", str(loaderType))
