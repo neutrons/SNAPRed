@@ -32,8 +32,8 @@ from mantid.simpleapi import (
     DeleteWorkspaces,
     EditInstrumentGeometry,
     GroupWorkspaces,
-    LoadInstrument,
     LoadEmptyInstrument,
+    LoadInstrument,
     LoadNexusProcessed,
     RenameWorkspaces,
     SaveDiffCal,
@@ -1892,17 +1892,14 @@ def test_writeNormalizationWorkspaces_event_binning(cleanup_workspace_at_exit):
             filePath = basePath / Path(wsName + ".nxs")
             reloadedWsName = wsName + "_reloaded"
             assert (filePath).exists()
-            LoadNexusProcessed(
-                FileName=str(filePath),
-                OutputWorkspace=reloadedWsName
-            )
+            LoadNexusProcessed(FileName=str(filePath), OutputWorkspace=reloadedWsName)
             assert mtd.doesExist(reloadedWsName)
             cleanup_workspace_at_exit(reloadedWsName)
             ws_ = mtd[reloadedWsName]
             maxBinEdges = max([len(ws_.readX(n)) for n in range(ws_.getNumberHistograms())])
             assert maxBinEdges == 2
-            
-                        
+
+
 ### TESTS OF REDUCTION METHODS ###
 
 
