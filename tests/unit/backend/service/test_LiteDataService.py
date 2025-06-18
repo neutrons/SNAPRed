@@ -36,6 +36,8 @@ class TestLiteDataService(unittest.TestCase):
         liteDataService.sousChef.prepInstrumentState = Mock()
         liteDataService.sousChef.prepInstrumentState.return_value = Mock()
         liteDataService.sousChef.prepInstrumentState.return_value.model_dump_json.return_value = "{}"  # noqa: E501
+        liteDataService.dataFactoryService = Mock()
+        liteDataService.dataFactoryService.constructStateId = Mock(return_value=("state_id", "state"))
 
         with TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/") as tmpdir:
             outputPath = Path(tmpdir, "555.nxs.h5")
@@ -75,6 +77,8 @@ class TestLiteDataService(unittest.TestCase):
         liteDataService.sousChef.prepInstrumentState = Mock()
         liteDataService.sousChef.prepInstrumentState.return_value = Mock()
         liteDataService.sousChef.prepInstrumentState.return_value.model_dump_json.return_value = "{}"  # noqa: E501
+        liteDataService.dataFactoryService = Mock()
+        liteDataService.dataFactoryService.constructStateId = Mock(return_value=("state_id", "state"))
 
         inputWorkspace = "_test_liteservice_555"
         outputWorkspace = "_test_output_lite_"
