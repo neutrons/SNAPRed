@@ -328,3 +328,8 @@ ui:
 
 system:
   max_hdf5_descriptors: 5
+
+lockfile:
+  ttl: 10 # seconds
+  timeout: 60 # seconds
+  root: /tmp/snapred

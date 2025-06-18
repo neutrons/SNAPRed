@@ -330,6 +330,14 @@ class NormalizationService(Service):
         )
         return self.dataFactoryService.createNormalizationRecord(createRecordRequest)
 
+    # @FromString
+    # @Register("obtainLock")
+    # def obtainLock(self, request: CalibrationLockRequest):
+    #     return self.dataExportService.obtainNormalizationLock(
+    #         runNumber=request.runNumber,
+    #         useLiteMode=request.useLiteMode,
+    #     )
+
     @FromString
     @Register("save")
     def saveNormalization(self, request: NormalizationExportRequest):
