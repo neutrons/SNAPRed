@@ -32,7 +32,9 @@ from mantid.simpleapi import (
     DeleteWorkspaces,
     EditInstrumentGeometry,
     GroupWorkspaces,
+    LoadInstrument,
     LoadEmptyInstrument,
+    LoadNexusProcessed,
     RenameWorkspaces,
     SaveDiffCal,
     mtd,
@@ -1830,6 +1832,77 @@ def test_writeNormalizationWorkspaces(cleanup_workspace_at_exit):
             assert (basePath / filename).exists()
 
 
+def test_writeNormalizationWorkspaces_event_binning(cleanup_workspace_at_exit):
+    version = randint(2, 120)
+    stateId = ENDURING_STATE_ID
+    localDataService = LocalDataService()
+    testNormalizationRecord = DAOFactory.normalizationRecord(version=version)
+    with (
+        mock.patch.object(localDataService, "generateInstrumentState") as mockGenerateInstrumentState,
+        Config_override("nexus.dataFormat.event", True),
+        state_root_redirect(localDataService, stateId=stateId),
+    ):
+        mockGenerateInstrumentState.return_value = mock.Mock(
+            spec=InstrumentState,
+            id=mock.Mock(spec=ObjectSHA, hex=ENDURING_STATE_ID),
+            particleBounds=mock.Mock(spec=ParticleBounds, tof=Limit(minimum=0.001, maximum=200000.0)),
+        )
+
+        # Workspace names need to match the names that are used in the test record.
+        runNumber = testNormalizationRecord.runNumber  # noqa: F841
+        useLiteMode = testNormalizationRecord.useLiteMode
+        newWorkspaceNames = []
+        for ws in testNormalizationRecord.workspaceNames:
+            newWorkspaceNames.append(ws + "_" + wnvf.formatVersion(version))
+        testNormalizationRecord.workspaceNames = newWorkspaceNames
+        testWS0, testWS1, testWS2 = testNormalizationRecord.workspaceNames
+
+        basePath = localDataService.normalizationIndexer(useLiteMode, "stateId").versionPath(version)
+
+        # Create sample workspaces containing event data.
+        CreateSampleWorkspace(
+            OutputWorkspace=testWS0,
+            WorkspaceType="Event",
+            Function="Powder Diffraction",
+            XUnit="TOF",
+            NumBanks=4,  # must produce same number of pixels as fake instrument
+            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
+        )
+        LoadInstrument(
+            Workspace=testWS0,
+            Filename=fakeInstrumentFilePath,
+            RewriteSpectraMap=True,
+        )
+        # Verify that the original sample workspace is non-trivially binned.
+        assert len(mtd[testWS0].readX(0)) > 2
+
+        CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS1)
+        CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS2)
+        assert mtd.doesExist(testWS0)
+        cleanup_workspace_at_exit(testWS0)
+        assert mtd.doesExist(testWS1)
+        cleanup_workspace_at_exit(testWS1)
+        assert mtd.doesExist(testWS2)
+        cleanup_workspace_at_exit(testWS2)
+
+        localDataService.writeNormalizationWorkspaces(testNormalizationRecord)
+
+        # Verify that each reloaded workspace is trivially binned.
+        for wsName in testNormalizationRecord.workspaceNames:
+            filePath = basePath / Path(wsName + ".nxs")
+            reloadedWsName = wsName + "_reloaded"
+            assert (filePath).exists()
+            LoadNexusProcessed(
+                FileName=str(filePath),
+                OutputWorkspace=reloadedWsName
+            )
+            assert mtd.doesExist(reloadedWsName)
+            cleanup_workspace_at_exit(reloadedWsName)
+            ws_ = mtd[reloadedWsName]
+            maxBinEdges = max([len(ws_.readX(n)) for n in range(ws_.getNumberHistograms())])
+            assert maxBinEdges == 2
+            
+                        
 ### TESTS OF REDUCTION METHODS ###
 
 
