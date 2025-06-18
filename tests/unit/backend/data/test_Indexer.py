@@ -864,6 +864,19 @@ class TestIndexer(unittest.TestCase):
 
     # write #
 
+    def test_obtainLock(self):
+        # ensure the indexer can obtain a lock
+        indexer = self.initIndexer()
+        lock = indexer.obtainLock()
+        assert lock is not None
+        lock.release()
+
+    def test_lockContext(self):
+        # ensure the indexer can use a context manager to obtain a lock
+        indexer = self.initIndexer()
+        with indexer._lockContext() as lock:
+            assert lock is not None
+
     def test_writeRecord_with_version(self):
         # this test ensures a record can be written to the indicated version
         # create a record and write it

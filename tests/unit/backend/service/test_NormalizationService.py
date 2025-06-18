@@ -17,6 +17,7 @@ from snapred.backend.dao.indexing.Versioning import VersionState
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationAssessmentResponse import NormalizationAssessmentResponse
 from snapred.backend.dao.request import CalibrationWritePermissionsRequest
+from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.meta.redantic import parse_obj_as
@@ -486,3 +487,17 @@ class TestNormalizationService(unittest.TestCase):
         residual = self.instance.calculateResidual(request)
         assert mtd.doesExist(residual)
         assert np.allclose(mtd[residual].readY(0), np.array([0, 0, 0, 0]))
+
+    def test_obtainLock(self):
+        runNumber = "123456"
+        useLiteMode = True
+        request = CalibrationLockRequest(
+            runNumber=runNumber,
+            useLiteMode=useLiteMode,
+        )
+        with mock.patch.object(self.instance.dataExportService.dataService, "generateStateId") as mockGenerateStateId:
+            mockGenerateStateId.return_value = ("1a2b3c4d5e6f7a8b", None)
+            lock = self.instance.obtainLock(request)
+            assert mockGenerateStateId.called
+            assert lock is not None
+        lock.release()

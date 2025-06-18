@@ -331,3 +331,9 @@ ui:
 
 system:
   max_hdf5_descriptors: 5
+
+lockfile:
+  ttl: 10 # seconds
+  timeout: 60 # seconds
+  # Shared scratch directory across analysis nodes.
+  root: /SNS/EXAMPLES/scratch/snapred

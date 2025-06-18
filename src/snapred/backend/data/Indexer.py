@@ -18,6 +18,7 @@ from snapred.backend.dao.normalization.NormalizationRecord import NormalizationR
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Enum import StrEnum
+from snapred.meta.LockFile import LockFile, LockManager
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
 
@@ -110,6 +111,16 @@ class Indexer:
         if self.rootDirectory.exists():
             self.reconcileIndexToFiles()
             self.writeIndex()
+
+    def obtainLock(self):
+        """
+        Obtain a lock on the indexer directory.
+        This is used to prevent concurrent writes to the indexer.
+        """
+        return LockFile(self.rootDirectory)
+
+    def _lockContext(self):
+        return LockManager(self.rootDirectory)
 
     def readDirectoryList(self):
         # create the directory version list from the directory structure
@@ -408,9 +419,10 @@ class Indexer:
         return {entry.version: entry for entry in indexList}
 
     def writeIndex(self):
-        path = self.indexPath()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        write_model_list_pretty(self.index.values(), path)
+        with self._lockContext():
+            path = self.indexPath()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            write_model_list_pretty(self.index.values(), path)
 
     def addIndexEntry(self, entry: IndexEntry):
         """
@@ -490,27 +502,28 @@ class Indexer:
         Will save at the version on the object.
         If the version is invalid, will throw an error and refuse to save.
         """
-        obj.version = self._flattenVersion(obj.version)
-        obj.indexEntry.version = obj.version
-        filePath = self.indexedObjectFilePath(type(obj), obj.version)
-        if not overwrite and filePath.exists():
-            objTypeName = type(obj).__name__
-            raise ValueError(
-                f"{objTypeName} with version {obj.version} already exists. "
-                f"\nA version collision has occurred. No {objTypeName} was saved."
-            )
+        with self._lockContext():
+            obj.version = self._flattenVersion(obj.version)
+            obj.indexEntry.version = obj.version
+            filePath = self.indexedObjectFilePath(type(obj), obj.version)
+            if not overwrite and filePath.exists():
+                objTypeName = type(obj).__name__
+                raise ValueError(
+                    f"{objTypeName} with version {obj.version} already exists. "
+                    f"\nA version collision has occurred. No {objTypeName} was saved."
+                )
 
-        if obj.indexEntry.appliesTo is None:
-            obj.indexEntry.appliesTo = ">=" + obj.runNumber
+            if obj.indexEntry.appliesTo is None:
+                obj.indexEntry.appliesTo = ">=" + obj.runNumber
 
-        self.addIndexEntry(obj.indexEntry)
-        obj.version = obj.indexEntry.version
+            self.addIndexEntry(obj.indexEntry)
+            obj.version = obj.indexEntry.version
 
-        filePath.parent.mkdir(parents=True, exist_ok=True)
+            filePath.parent.mkdir(parents=True, exist_ok=True)
 
-        write_model_pretty(obj, filePath)
+            write_model_pretty(obj, filePath)
 
-        self.dirVersions.add(obj.version)
+            self.dirVersions.add(obj.version)
 
     def readIndexedObject(self, type_: Type[T], version: Version) -> IndexedObject:
         """

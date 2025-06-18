@@ -60,6 +60,7 @@ from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.InternalConstants import ReservedRunNumber, ReservedStateId
+from snapred.meta.LockFile import LockFile
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     ValueFormatter as wnvf,
 )
@@ -563,15 +564,21 @@ class LocalDataService:
 
     @lru_cache
     @validate_call
-    def calibrationIndexer(self, useLiteMode: bool, state: str):
+    def calibrationIndexer(self, useLiteMode: bool, state: str) -> Indexer:
         path = self._constructCalibrationStatePath(state, useLiteMode)
         return Indexer(indexerType=IndexerType.CALIBRATION, directory=path)
 
+    def obtainCalibrationLock(self, useLiteMode: bool, state: str) -> LockFile:
+        return self.calibrationIndexer(useLiteMode, state).obtainLock()
+
     @lru_cache
     @validate_call
-    def normalizationIndexer(self, useLiteMode: bool, state: str):
+    def normalizationIndexer(self, useLiteMode: bool, state: str) -> Indexer:
         path = self._constructNormalizationStatePath(state, useLiteMode)
         return Indexer(indexerType=IndexerType.NORMALIZATION, directory=path)
+
+    def obtainNormalizationLock(self, useListeMode: bool, state: str) -> LockFile:
+        return self.normalizationIndexer(useListeMode, state).obtainLock()
 
     def instrumentParameterIndexer(self):
         return Indexer(
