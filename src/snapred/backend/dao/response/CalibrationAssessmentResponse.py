@@ -1,11 +1,16 @@
-from typing import List
+from typing import Annotated, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from snapred.backend.dao.calibration import CalibrationRecord
+from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
+from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
+from snapred.backend.dao.indexing.Versioning import Version, VersionState
+from snapred.backend.dao.state.PixelGroup import PixelGroup
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CalibrationAssessmentResponse(BaseModel):
+class CalibrationAssessmentResponse(BaseModel, arbitrary_types_allowed=True):
     """
 
     The CalibrationAssessmentResponse class serves as a response model specifically designed
@@ -15,5 +20,10 @@ class CalibrationAssessmentResponse(BaseModel):
 
     """
 
-    record: CalibrationRecord
+    version: Version = VersionState.NEXT
+    calculationParameters: Calibration
+    crystalInfo: CrystallographicInfo
+    pixelGroups: Optional[List[PixelGroup]] = None
+    focusGroupCalibrationMetrics: FocusGroupMetric
+    workspaces: Dict[Annotated[WorkspaceType, Field(use_enum_values=True)], List[WorkspaceName]]
     metricWorkspaces: List[str]

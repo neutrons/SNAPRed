@@ -398,6 +398,14 @@ class TestVersioning(TestCase):
         }
         params = DAOFactory.calibrationParameters()
         params.creationDate = datetime.today().isoformat()
+        createIndexEntryRequest = {
+            "runNumber": self.runNumber,
+            "useLiteMode": self.useLiteMode,
+            "version": version,
+            "comments": "",
+            "author": "",
+            "appliesTo": f">={self.runNumber}",
+        }
         createRecordRequest = {
             "runNumber": self.runNumber,
             "useLiteMode": self.useLiteMode,
@@ -407,17 +415,9 @@ class TestVersioning(TestCase):
             "pixelGroups": [x.model_dump() for x in DAOFactory.pixelGroups()],
             "focusGroupCalibrationMetrics": DAOFactory.focusGroupCalibrationMetric_Column.model_dump(),
             "workspaces": workspaces,
-        }
-        createIndexEntryRequest = {
-            "runNumber": self.runNumber,
-            "useLiteMode": self.useLiteMode,
-            "version": version,
-            "comments": "",
-            "author": "",
-            "appliesTo": f">={self.runNumber}",
+            "indexEntry": createIndexEntryRequest,
         }
         payload = {
-            "createIndexEntryRequest": createIndexEntryRequest,
             "createRecordRequest": createRecordRequest,
         }
         request = SNAPRequest(path="calibration/save", payload=json.dumps(payload, default=str))

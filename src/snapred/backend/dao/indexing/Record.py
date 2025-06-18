@@ -4,10 +4,10 @@ import numpy
 from pydantic import ConfigDict, field_validator
 
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
-from snapred.backend.dao.indexing.Versioning import VersionedObject
+from snapred.backend.dao.indexing.IndexedObject import IndexedObject
 
 
-class Record(VersionedObject, extra="allow"):
+class Record(IndexedObject, extra="allow"):
     """
 
     This is the basic, bare-bones record of a workflow completion.

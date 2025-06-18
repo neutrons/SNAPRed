@@ -1,9 +1,10 @@
 import time
 from typing import Any, Optional
 
+import numpy as np
 from pydantic import Field, field_validator, model_validator
 
-from snapred.backend.dao.indexing.Versioning import VersionedObject
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject
 
 
 class IndexEntry(VersionedObject, extra="ignore"):
@@ -17,9 +18,6 @@ class IndexEntry(VersionedObject, extra="ignore"):
     This is meant to coordinate with the Indexer service object.
 
     """
-
-    # inherits from VersionedObject:
-    # - version: int
 
     runNumber: str
     useLiteMode: bool
@@ -63,6 +61,12 @@ class IndexEntry(VersionedObject, extra="ignore"):
 
         return v
 
+    @field_validator("useLiteMode", mode="before")
+    def convert_numpy_bool(cls, value):
+        if isinstance(value, np.bool_):
+            return bool(value)
+        return value
+
     @model_validator(mode="before")
     @classmethod
     def validate_timestamp(cls, v: Any):
@@ -72,4 +76,5 @@ class IndexEntry(VersionedObject, extra="ignore"):
                 # support reading the _legacy_ timestamp integer encoding
                 if isinstance(timestamp, int):
                     v["timestamp"] = float(timestamp) / 1000.0
+
         return v

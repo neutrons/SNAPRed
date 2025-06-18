@@ -1,7 +1,8 @@
 from qtpy.QtCore import Slot
 
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Versioning import VersionedObject, VersionState
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject, VersionState
+from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.request import (
     CalculateNormalizationResidualRequest,
     CalibrationWritePermissionsRequest,
@@ -215,7 +216,10 @@ class NormalizationWorkflow(WorkflowImplementer):
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=self.focusGroups[self.focusGroupPath],
-            crystalDBounds={"minimum": self.prevXtalDMin, "maximum": self.prevXtalDMax},
+            crystalDBounds=Limit(
+                minimum=self.prevXtalDMin,
+                maximum=self.prevXtalDMax,
+            ),
             continueFlags=self.continueAnywayFlags,
         )
         # take the default smoothing param from the default payload value
@@ -264,11 +268,14 @@ class NormalizationWorkflow(WorkflowImplementer):
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=list(self.focusGroups.items())[self.prevGroupingIndex][1],
             smoothingParameter=self.prevSmoothingParameter,
-            crystalDBounds={"minimum": self.prevXtalDMin, "maximum": self.prevXtalDMax},
+            crystalDBounds=Limit(
+                minimum=self.prevXtalDMin,
+                maximum=self.prevXtalDMax,
+            ),
             continueFlags=self.continueAnywayFlags,
         )
-        self.recordResponse = self.request(path="normalization/assessment", payload=payload.json())
-        return self.recordResponse
+        self.assessmentResponse = self.request(path="normalization/assessment", payload=payload.json())
+        return self.assessmentResponse
 
     @EntryExitLogger(logger=logger)
     @Slot(WorkflowPresenter, result=SNAPResponse)
@@ -278,14 +285,14 @@ class NormalizationWorkflow(WorkflowImplementer):
         version = view.fieldVersion.get(VersionState.NEXT)
         appliesTo = view.fieldAppliesTo.get(f">={self.calibrationRunNumber}")
         # validate version number
-        version = VersionedObject(version=version).version
+        version = VersionedObject.validate_version(version)
         # validate appliesTo field
         appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
 
-        normalizationRecord = self.recordResponse.data
-        normalizationRecord.workspaceNames.append(self.normalizationResponse.data["smoothedVanadium"])
-        normalizationRecord.workspaceNames.append(self.normalizationResponse.data["focusedVanadium"])
-        normalizationRecord.workspaceNames.append(self.normalizationResponse.data["correctedVanadium"])
+        assessmentResponse = self.assessmentResponse.data
+        assessmentResponse.workspaceNames.append(self.normalizationResponse.data["smoothedVanadium"])
+        assessmentResponse.workspaceNames.append(self.normalizationResponse.data["focusedVanadium"])
+        assessmentResponse.workspaceNames.append(self.normalizationResponse.data["correctedVanadium"])
 
         createIndexEntryRequest = CreateIndexEntryRequest(
             runNumber=runNumber,
@@ -299,13 +306,14 @@ class NormalizationWorkflow(WorkflowImplementer):
             runNumber=runNumber,
             useLiteMode=self.useLiteMode,
             version=version,
-            calculationParameters=normalizationRecord.calculationParameters,
-            backgroundRunNumber=normalizationRecord.backgroundRunNumber,
-            smoothingParameter=normalizationRecord.smoothingParameter,
-            workspaceNames=normalizationRecord.workspaceNames,
-            calibrationVersionUsed=normalizationRecord.calibrationVersionUsed,
-            crystalDBounds=normalizationRecord.crystalDBounds,
-            normalizationCalibrantSamplePath=normalizationRecord.normalizationCalibrantSamplePath,
+            calculationParameters=assessmentResponse.calculationParameters,
+            backgroundRunNumber=assessmentResponse.backgroundRunNumber,
+            smoothingParameter=assessmentResponse.smoothingParameter,
+            workspaceNames=assessmentResponse.workspaceNames,
+            calibrationVersionUsed=assessmentResponse.calibrationVersionUsed,
+            crystalDBounds=assessmentResponse.crystalDBounds,
+            normalizationCalibrantSamplePath=assessmentResponse.normalizationCalibrantSamplePath,
+            indexEntry=createIndexEntryRequest,
         )
 
         payload = NormalizationExportRequest(
@@ -324,7 +332,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=list(self.focusGroups.items())[index][1],
             smoothingParameter=smoothingParameter,
-            crystalDBounds={"minimum": xtalDMin, "maximum": xtalDMax},
+            crystalDBounds=Limit(minimum=xtalDMin, maximum=xtalDMax),
             continueFlags=self.continueAnywayFlags,
             correctedVanadiumWs=correctedVanadiumWs,
         )
@@ -384,7 +392,6 @@ class NormalizationWorkflow(WorkflowImplementer):
         xtalDMinValueChanged = xtalDMin != self.prevXtalDMin
         xtalDMaxValueChanged = xtalDMax != self.prevXtalDMax
         peakListWillChange = smoothingValueChanged or xtalDMinValueChanged or xtalDMaxValueChanged
-
         # check the case, apply correct update
         if groupingFileChanged:
             self.callNormalization(
