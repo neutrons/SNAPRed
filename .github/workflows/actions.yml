@@ -23,7 +23,6 @@ jobs:
         condarc: |
           channels:
             - conda-forge
-            - default
             - mantid/label/nightly
         cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
         cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
@@ -74,7 +73,6 @@ jobs:
         condarc: |
           channels:
             - conda-forge
-            - default
             - mantid/label/nightly
         cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
         cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
