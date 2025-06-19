@@ -56,7 +56,7 @@ class RebinFocussedGroupDataRecipe(Recipe[Ingredients]):
 
     def queueAlgos(self):
         """
-        Queues up the procesing algorithms for the recipe.
+        Queues up the processing algorithms for the recipe.
         Requires: unbagged groceries and chopped ingredients.
         """
         self.mantidSnapper.RebinRagged(

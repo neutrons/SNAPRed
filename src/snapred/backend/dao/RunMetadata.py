@@ -49,8 +49,8 @@ class RunMetadata(BaseModel, Mapping):
 
     runTitle: str
 
-    startTime: datetime
-    endTime: datetime
+    startTime: datetime.datetime
+    endTime: datetime.datetime
 
     protonCharge: float
 

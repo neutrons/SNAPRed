@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 from mantid.simpleapi import CloneWorkspace, CreateSingleValuedWorkspace
 from util.Config_helpers import Config_override
+from util.dao import DAOFactory
 
 from snapred.backend.service.LiteDataService import LiteDataService
 from snapred.meta.Config import Resource
@@ -33,6 +34,9 @@ class TestLiteDataService(unittest.TestCase):
 
         liteDataService = LiteDataService()
         liteDataService._ensureLiteDataMap = Mock(return_value="lite_map")
+        liteDataService.dataFactoryService.constructStateId = mock.Mock(
+            return_value=(DAOFactory.real_state_id.hex, DAOFactory.real_detector_state)
+        )
         liteDataService.sousChef.prepInstrumentState = Mock()
         liteDataService.sousChef.prepInstrumentState.return_value = Mock()
         liteDataService.sousChef.prepInstrumentState.return_value.model_dump_json.return_value = "{}"  # noqa: E501
@@ -74,6 +78,9 @@ class TestLiteDataService(unittest.TestCase):
 
         liteDataService = LiteDataService()
         liteDataService._ensureLiteDataMap = Mock(return_value="lite map")
+        liteDataService.dataFactoryService.constructStateId = mock.Mock(
+            return_value=(DAOFactory.real_state_id.hex, DAOFactory.real_detector_state)
+        )
         liteDataService.sousChef.prepInstrumentState = Mock()
         liteDataService.sousChef.prepInstrumentState.return_value = Mock()
         liteDataService.sousChef.prepInstrumentState.return_value.model_dump_json.return_value = "{}"  # noqa: E501

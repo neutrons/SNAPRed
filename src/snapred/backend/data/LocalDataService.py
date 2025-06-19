@@ -15,7 +15,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 import h5py
-from mantid.api import Run
+import numpy as np
+from mantid.api import IEventWorkspace, Run
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import ConfigService, PhysicalConstants
 from pydantic import validate_call
@@ -676,12 +677,31 @@ class LocalDataService:
         Record must be set with correct version and workspace names must be finalized.
         -- assumes that `writeNormalizationRecord` has already been called, and that the version folder exists
         """
-        state, _ = self.generateStateId(record.runNumber)
-        indexer = self.normalizationIndexer(record.useLiteMode, state)
+        instrumentState = self.generateInstrumentState(record.runNumber)
+        indexer = self.normalizationIndexer(record.useLiteMode, instrumentState.id.hex)
         normalizationDataPath: Path = indexer.versionPath(record.version)
         if not normalizationDataPath.exists():
             normalizationDataPath.mkdir(parents=True, exist_ok=True)
+
         for workspace in record.workspaceNames:
+            ws = self.mantidSnapper.mtd[workspace]
+            if Config["nexus.dataFormat.event"] and isinstance(ws, IEventWorkspace):
+                # Remove binning from any event workspaces in order to speed-up reload:
+                #    (XMin, XMax, Delta) == (NaN, NaN, <outer bound>) will create a single bin
+                #    [<actual minimum>, <actual maximum>]
+                TOFOuterBound = instrumentState.particleBounds.tof.maximum * 10.0
+                numberOfSpectra = ws.getNumberHistograms()
+                self.mantidSnapper.RebinRagged(
+                    "strip binning info, before saving normalization workspace",
+                    OutputWorkspace=workspace,
+                    InputWorkspace=workspace,
+                    XMin=list((np.nan,) * numberOfSpectra),
+                    XMax=list((np.nan,) * numberOfSpectra),
+                    Delta=list((TOFOuterBound,) * numberOfSpectra),
+                    PreserveEvents=True,
+                )
+                self.mantidSnapper.executeQueue()
+
             filename = Path(workspace + ".nxs")
             self.writeWorkspace(normalizationDataPath, filename, workspace)
 

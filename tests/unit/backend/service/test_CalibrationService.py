@@ -34,6 +34,7 @@ from snapred.backend.dao.request import (
     CreateCalibrationRecordRequest,
     CreateIndexEntryRequest,
     DiffractionCalibrationRequest,
+    FocusSpectraRequest,
     InitializeStateRequest,
     OverrideRequest,
     SimpleDiffCalRequest,
@@ -996,20 +997,27 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         ConvertUnitsRecipe().executeRecipe.return_value = mock.Mock()
         FocusSpectraRecipe().executeRecipe.return_value = mock.Mock()
 
-        request = mock.Mock(runNumber="12345", focusGroup=mock.Mock(name="group1"))
         self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("stateId", None))
 
+        runNumber = "12345"
+        groupingName = "group1"
         focusedWorkspace = (
-            wng.run()
-            .runNumber(request.runNumber)
-            .group(request.focusGroup.name)
-            .unit(wng.Units.DSP)
-            .auxiliary("F-dc")
-            .build()
+            wng.run().runNumber(runNumber).group(groupingName).unit(wng.Units.DSP).auxiliary("F-dc").build()
         )
         assert not mtd.doesExist(focusedWorkspace)
+        groupingWorkspace = self.instance.groceryService.fetchGroupingDefinition.return_value["workspace"]
+
+        request = mock.Mock(
+            spec=FocusSpectraRequest,
+            runNumber=runNumber,
+            useLiteMode=True,
+            focusGroup=FocusGroup(name=groupingName, definition="path/to/grouping"),
+            preserveEvents=False,
+            inputWorkspace=focusedWorkspace,
+            groupingWorkspace=groupingWorkspace,
+        )
 
         # Call the method with the provided parameters
         res = self.instance.focusSpectra(request)
@@ -1017,14 +1025,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Perform assertions to check the result and method calls
 
         groupingItem = self.instance.groceryClerk.build.return_value
-        groupingWorkspace = self.instance.groceryService.fetchGroupingDefinition.return_value["workspace"]
         assert FarmFreshIngredients.call_count == 1
         self.instance.groceryService.fetchGroupingDefinition.assert_called_once_with(groupingItem)
         FocusSpectraRecipe().executeRecipe.assert_called_once_with(
             InputWorkspace=focusedWorkspace,
             GroupingWorkspace=groupingWorkspace,
-            PixelGroup=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
             OutputWorkspace=focusedWorkspace,
+            PixelGroup=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
+            PreserveEvents=request.preserveEvents,
         )
         assert res == (focusedWorkspace, groupingWorkspace)
 
