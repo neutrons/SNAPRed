@@ -66,7 +66,7 @@ def _generateLockfile(lockedPath: Path):
 
 
 @contextmanager
-def lock(lockedPath: Path):
+def LockManager(lockedPath: Path):
     # Context manager to safely lock a dir for a specific type of operation.
 
     # __enter__
