@@ -17,6 +17,7 @@ from snapred.backend.dao.normalization.NormalizationRecord import NormalizationR
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Enum import StrEnum
+from snapred.meta.LockFile import LockFile
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
 
@@ -103,6 +104,13 @@ class Indexer:
         if self.rootDirectory.exists():
             self.reconcileIndexToFiles()
             self.writeIndex()
+
+    def obtainLock(self):
+        """
+        Obtain a lock on the indexer directory.
+        This is used to prevent concurrent writes to the indexer.
+        """
+        return LockFile(self.rootDirectory)
 
     def readDirectoryList(self):
         # create the directory version list from the directory structure
