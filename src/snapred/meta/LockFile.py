@@ -1,6 +1,7 @@
 # generate lockfile name
 import time
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -44,25 +45,25 @@ def _generateLockfile(lockedPath: Path):
     # get pid
     pid = str(Path("/proc/self").resolve().name)
     lockFileRoot = Config["lockfile.root"]
-    lockfilePath = Path(f"{lockFileRoot}/{pid}_{time.strftime('%Y%m%d_%H%M%S')}.lock")
-    if not lockfilePath.parent.exists():
-        lockfilePath.parent.mkdir(parents=True, exist_ok=True)
+    lockFilePath = Path(f"{lockFileRoot}/{pid}_{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}.lock")
+    if not lockFilePath.parent.exists():
+        lockFilePath.parent.mkdir(parents=True, exist_ok=True)
     # check if any lockfile exists
     maxAgeSeconds = Config["lockfile.ttl"]  # seconds
     timeout = Config["lockfile.timeout"]  # seconds
-    while not _reapOldLockfiles(lockfilePath, maxAgeSeconds, lockedPath):
+    while not _reapOldLockfiles(lockFilePath, maxAgeSeconds, lockedPath):
         # if the lockfile still exists, wait for it to be removed
         time.sleep(maxAgeSeconds)
         timeout -= maxAgeSeconds
         if timeout <= 0:
-            raise RuntimeError(f"Timeout waiting for lockfile {lockfilePath} to be removed.")
+            raise RuntimeError(f"Timeout waiting for lockfile {lockFilePath} to be removed.")
     # create new lockfile
-    lockfilePath.touch(exist_ok=True)
+    lockFilePath.touch(exist_ok=True)
     # append lockedPath to the lockfile
-    with lockfilePath.open("a") as lockFile:
+    with lockFilePath.open("a") as lockFile:
         lockFile.write(str(lockedPath.expanduser().resolve()) + "\n")
 
-    return lockfilePath
+    return lockFilePath
 
 
 @contextmanager
