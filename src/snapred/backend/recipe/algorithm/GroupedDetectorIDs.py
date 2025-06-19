@@ -42,12 +42,16 @@ class GroupedDetectorIDs(PythonAlgorithm):
         self.setRethrows(True)
 
     def PyExec(self):
-        # get handle to group focusing workspace and retrieve workspace indices for all detectors in each group
-        focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
-        focusWS = mtd[focusWSname]
+        # Retrieve pixel-IDs for all pixels in each subgroup.
+        groupingWs = mtd[self.getPropertyValue("GroupingWorkspace")]
+        
         groupWorkspaceIndices: Dict[int, List[int]] = {}
-        for groupID in [int(x) for x in focusWS.getGroupIDs()]:
-            groupWorkspaceIndices[groupID] = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
+        
+        #`<numpy ndarray>.tolist()` both converts to the nearest native-Python type, which is in this case `int`,
+        #    and also converts to a Python list.
+        for subgroupID in groupingWs.getGroupIDs().tolist():
+            groupWorkspaceIndices[subgroupID] = groupingWs.getDetectorIDsOfGroup(subgroupID).tolist()
+        
         self.setProperty("GroupWorkspaceIndices", create_pointer(groupWorkspaceIndices))
 
 

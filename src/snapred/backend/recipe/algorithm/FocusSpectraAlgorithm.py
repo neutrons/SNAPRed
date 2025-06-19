@@ -70,26 +70,63 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         self.groupingWSName = self.getPropertyValue("GroupingWorkspace")
         self.outputWSName = self.getPropertyValue("OutputWorkspace")
 
+    @staticmethod
+    def _appendErrorMessage(errors: Dict[str, str], key: str, msg: str):
+        existingMsg = errors.get(key, "")
+        if bool(existingMsg):
+            existingMsg += "\n"
+        errors[key] = existingMsg + msg
+ 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
-        # make sure the input workspace can be reduced by this grouping workspace
-        inWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
+        
+        inputWs = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
+        
+        groupingWs = self.mantidSnapper.mtd[self.getPropertyValue("GroupingWorkspace")]
+        if not isinstance(groupingWs, GroupingWorkspace):
+            errors["GroupingWorkspace"] = "Grouping workspace must be an instance of `GroupingWorkspace`"
+        
+            # EARLY RETURN:
+            return errors
+            
+        # Make sure that the input-data workspace can be reduced by the grouping workspace.
 
-        groupWS = self.mantidSnapper.mtd[self.getPropertyValue("GroupingWorkspace")]
-        if not isinstance(groupWS, GroupingWorkspace):
-            errors["GroupingWorkspace"] = "Grouping workspace must be an actual GroupingWorkspace"
-        elif inWS.getNumberHistograms() == len(groupWS.getGroupIDs()):
-            msg = "The data appears to have already been diffraction focused"
-            errors["InputWorkspace"] = msg
-            errors["GroupingWorkspace"] = msg
-        elif inWS.getNumberHistograms() != groupWS.getNumberHistograms():
-            msg = f"""
-                The workspaces {self.getPropertyValue("InputWorkspace")}
-                and {self.getPropertyValue("GroupingWorkspace")}
-                have inconsistent number of spectra
-                """
-            errors["InputWorkspace"] = msg
-            errors["GroupingWorkspace"] = msg
+        # The input-data and grouping workspaces must have the same instrument.
+        # Comparing instruments is problematic: however, requiring both the instrument-name,
+        #   and the pixel count to match is a fairly safe verification.    
+        if (inputWs.getInstrument().getName() != groupingWs.getInstrument().getName())\
+            or (inputWs.getInstrument().getNumberDetectors(True)\
+                != groupingWs.getInstrument().getNumberDetectors(True)):
+            msg = "The input-data and grouping workspaces must have the same instrument."
+            self._appendErrorMessage(
+                errors,
+                "InputWorkspace",
+                msg
+            )
+            self._appendErrorMessage(
+                errors,
+                "GroupingWorkspace",
+                msg
+            )
+
+        # Verify that the input-data hasn't already been focussed.
+        if inputWs.getNumberHistograms() == len(groupingWs.getGroupIDs()):
+            self._appendErrorMessage(
+                errors,
+                "InputWorkspace",
+                "The input data appears to already have been diffraction focussed."
+            )
+
+        # Verify that the input-data has one spectrum per [non-monitor] pixel.
+        if inputWs.getNumberHistograms() != inputWs.getInstrument().getNumberDetectors(True):
+            self._appendErrorMessage(
+                errors,
+                "InputWorkspace",
+                "The input workspace must have one spectrum per [non-monitor] pixel."
+            )
+             
+        # IMPORTANT: There is no requirement that the grouping workspace have one spectrum per detector.
+        #   Its spectrum-to-detector map may be used to reduce this number.
 
         return errors
 
@@ -98,7 +135,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         self.unbagGroceries()
 
         self.mantidSnapper.DiffractionFocussing(
-            "Performing Diffraction Focusing ...",
+            "Performing Diffraction Focussing ...",
             InputWorkspace=self.inputWSName,
             GroupingWorkspace=self.groupingWSName,
             OutputWorkspace=self.outputWSName,
@@ -106,7 +143,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             DMin=self.pixelGroup.dMin(),
             DMax=self.pixelGroup.dMax(),
             Delta=self.pixelGroup.dBin(),
-            FullBinsOnly=True,
+            FullBinsOnly=True
         )
         # With these arguments, output from `DiffractionFocussing` will now have ragged binning,
         #   so the former call to `RebinRagged` has been removed.
@@ -114,13 +151,15 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
         # Throughout SNAPRed, the assumption is made that the workspace indices of workspace spectra
-        #   are in order of their subgroup-IDs.  This correspondance, for the `PixelGroup`, is validated here.
+        #   are in order of their subgroup-IDs.  This correspondence is validated here.
         # TODO: FIX THIS ISSUE!
         outputWS = self.mantidSnapper.mtd[self.outputWSName]
         for n, subgroupId in enumerate(self.pixelGroup.groupIDs):
             # After `DiffractionFocussing`, the spectrum number for each spectrum is set to its subgroup-ID.
             if outputWS.getSpectrum(n).getSpectrumNo() != subgroupId:
-                raise RuntimeError("Usage error: subgroup IDs for 'PixelGroup' are not in workspace-index order.")
+                raise RuntimeError(
+                    "Usage error: subgroup IDs for 'PixelGroup' are not in the expected workspace-index order."
+                )
 
         self.setPropertyValue("OutputWorkspace", self.outputWSName)
 

@@ -28,22 +28,25 @@ class PixelGroupingParametersCalculationRecipe:
     def executeRecipe(
         self, ingredients: PixelGroupingIngredients, groceries: Dict[str, WorkspaceName]
     ) -> Dict[str, Any]:
-        logger.info("Executing recipe for: %s" % ingredients.groupingScheme)
+        groupingWorkspace = groceries["groupingWorkspace"]
+        maskWorkspace = groceries.get("maskWorkspace", "")
         data: Dict[str, Any] = {}
-
-        res = self.mantidSnapper.PixelGroupingParametersCalculation(
-            "Calling algorithm",
+        
+        result = self.mantidSnapper.PixelGroupingParametersCalculation(
+            f"Calculating {'masked ' if bool(maskWorkspace) else ''}pixel-grouping parameters "
+            + f"for '{ingredients.groupingScheme if bool(ingredients.groupingScheme) else groupingWorkspace}' grouping",
             Ingredients=ingredients.json(),
-            GroupingWorkspace=groceries["groupingWorkspace"],
-            MaskWorkspace=groceries.get("maskWorkspace", ""),
+            GroupingWorkspace=groupingWorkspace,
+            MaskWorkspace=maskWorkspace
         )
         self.mantidSnapper.executeQueue()
+        
         # NOTE contradictory issues with Callbacks between GUI and unit tests
-        if hasattr(res, "get"):
-            res = res.get()
+        if hasattr(result, "get"):
+            result = result.get()
 
         data["result"] = True
-        pgps = self.parsePGPList(res)
+        pgps = self.parsePGPList(result)
         data["parameters"] = pgps
         data["tof"] = BinnedValue(
             minimum=ingredients.instrumentState.particleBounds.tof.minimum,

@@ -1,9 +1,10 @@
 from typing import Any, Dict
 
+from snapred.backend.dao.ingredients import LiteDataCreationIngredients
 from snapred.backend.dao.request import FarmFreshIngredients
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.recipe.GenericRecipe import LiteDataRecipe as Recipe
+from snapred.backend.recipe.GenericRecipe import LiteDataRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
@@ -44,30 +45,32 @@ class LiteDataService(Service):
 
         state, _ = self.dataFactoryService.constructStateId(runNumber)
         ffIngredients = FarmFreshIngredients(runNumber=runNumber, useLiteMode=True, state=state)
-        ingredients = self.sousChef.prepInstrumentState(ffIngredients)
+
+        instrumentState = self.sousChef.prepInstrumentState(ffIngredients)
+        toleranceOverride = None
+        if (
+            Config.exists("constants.LiteDataCreationAlgo.tolerance")
+            and Config["constants.LiteDataCreationAlgo.toggleCompressionTolerance"]
+        ):
+            toleranceOverride = Config["constants.LiteDataCreationAlgo.tolerance"]
 
         recipeKwargs = {
             "InputWorkspace": inputWorkspace,
             "LiteDataMapWorkspace": liteDataMap,
             "LiteInstrumentDefinitionFile": instrumentDefinition,
             "OutputWorkspace": outputWorkspace,
-            "Ingredients": ingredients.model_dump_json(),
+            "Ingredients": LiteDataCreationIngredients(
+                instrumentState=instrumentState,
+                toleranceOverride=toleranceOverride
+            ).model_dump_json()
         }
 
-        if (
-            Config.exists("constants.LiteDataCreationAlgo.tolerance")
-            and Config["constants.LiteDataCreationAlgo.toggleCompressionTolerance"]
-        ):
-            recipeKwargs["ToleranceOverride"] = Config["constants.LiteDataCreationAlgo.tolerance"]
+        data, tolerance = LiteDataRecipe().executeRecipe(**recipeKwargs)
+        if export:
+            # Export the converted data to disk
+            filePath = self.dataExportService.getFullLiteDataFilePath(runNumber)
+            path = filePath.parent
+            fileName = filePath.name
+            self.dataExportService.exportWorkspace(path, fileName, outputWorkspace)
 
-        try:
-            data, tolerance = Recipe().executeRecipe(**recipeKwargs)
-            if export:
-                # Export the converted data to disk
-                fullPath = self.dataExportService.getFullLiteDataFilePath(runNumber)
-                path = fullPath.parent
-                fileName = fullPath.name
-                self.dataExportService.exportWorkspace(path, fileName, outputWorkspace)
-        except Exception as e:
-            raise e
         return data, tolerance
