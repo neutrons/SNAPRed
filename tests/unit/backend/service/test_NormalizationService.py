@@ -475,9 +475,9 @@ class TestNormalizationService(unittest.TestCase):
             runNumber=runNumber,
             useLiteMode=useLiteMode,
         )
-        with mock.patch.object(self.service.dataExportService.dataService, "generateStateId") as mockGenerateStateId:
+        with mock.patch.object(self.instance.dataExportService.dataService, "generateStateId") as mockGenerateStateId:
             mockGenerateStateId.return_value = ("1a2b3c4d5e6f7a8b", None)
-            lock = self.service.obtainLock(request)
+            lock = self.instance.obtainLock(request)
             assert mockGenerateStateId.called
             assert lock is not None
         lock.release()
