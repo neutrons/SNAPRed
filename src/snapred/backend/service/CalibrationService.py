@@ -35,6 +35,7 @@ from snapred.backend.dao.request import (
     RunMetadataRequest,
     SimpleDiffCalRequest,
 )
+from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
@@ -53,7 +54,7 @@ from snapred.backend.recipe.GenericRecipe import (
 )
 from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe, GroupDiffCalServing
 from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe, PixelDiffCalServing
-from snapred.backend.service.Service import Service
+from snapred.backend.service.Service import Register, Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Config
@@ -92,25 +93,6 @@ class CalibrationService(Service):
         self.groceryService = GroceryService()
         self.groceryClerk: GroceryListBuilder = GroceryListItem.builder()
         self.sousChef = SousChef()
-        self.registerPath("ingredients", self.prepDiffractionCalibrationIngredients)
-        self.registerPath("groceries", self.fetchDiffractionCalibrationGroceries)
-        self.registerPath("focus", self.focusSpectra)
-        self.registerPath("fitpeaks", self.fitPeaks)
-        self.registerPath("save", self.save)
-        self.registerPath("load", self.load)
-        self.registerPath("initializeState", self.initializeState)
-        self.registerPath("hasState", self.hasState)
-        self.registerPath("assessment", self.assessQuality)
-        self.registerPath("loadQualityAssessment", self.loadQualityAssessment)
-        self.registerPath("index", self.getCalibrationIndex)
-        self.registerPath("diffraction", self.diffractionCalibration)
-        self.registerPath("pixel", self.pixelCalibration)
-        self.registerPath("group", self.groupCalibration)
-        self.registerPath("validateWritePermissions", self.validateWritePermissions)
-        self.registerPath("residual", self.calculateResidual)
-        self.registerPath("fetchMatches", self.fetchMatchingCalibrations)
-        self.registerPath("override", self.handleOverrides)
-        self.registerPath("runMetadata", self.runMetadata)
         return
 
     @classproperty
@@ -122,6 +104,7 @@ class CalibrationService(Service):
         return "calibration"
 
     @FromString
+    @Register("ingredients")
     def prepDiffractionCalibrationIngredients(
         self, request: DiffractionCalibrationRequest
     ) -> DiffractionCalibrationIngredients:
@@ -148,6 +131,7 @@ class CalibrationService(Service):
         return ingredients
 
     @FromString
+    @Register("groceries")
     def fetchDiffractionCalibrationGroceries(self, request: DiffractionCalibrationRequest) -> Dict[str, str]:
         # groceries
 
@@ -186,6 +170,7 @@ class CalibrationService(Service):
         )
 
     @FromString
+    @Register("diffraction")
     def diffractionCalibration(self, request: DiffractionCalibrationRequest) -> Dict[str, Any]:
         self.validateRequest(request)
 
@@ -214,6 +199,7 @@ class CalibrationService(Service):
         }
 
     @FromString
+    @Register("pixel")
     def pixelCalibration(self, request: SimpleDiffCalRequest) -> PixelDiffCalServing:
         # cook recipe
         res = PixelDiffCalRecipe().cook(request.ingredients, request.groceries)
@@ -233,6 +219,7 @@ class CalibrationService(Service):
         return res
 
     @FromString
+    @Register("group")
     def groupCalibration(self, request: SimpleDiffCalRequest) -> GroupDiffCalServing:
         # cook recipe
         return GroupDiffCalRecipe().cook(request.ingredients, request.groceries)
@@ -251,6 +238,7 @@ class CalibrationService(Service):
         )
         self.validateWritePermissions(permissionsRequest)
 
+    @Register("validateWritePermissions")
     def validateWritePermissions(self, request: CalibrationWritePermissionsRequest):
         """
         Validate that the diffraction-calibration workflow will be able to save its output.
@@ -272,12 +260,14 @@ class CalibrationService(Service):
             self.dataExportService.generateUserRootFolder()
 
     @FromString
+    @Register("residual")
     def calculateResidual(self, request: CalculateResidualRequest):
         ingredients = None
         groceries = request.model_dump()
         return CalculateDiffCalResidualRecipe().cook(ingredients, groceries)
 
     @FromString
+    @Register("focus")
     def focusSpectra(self, request: FocusSpectraRequest):
         # prep the ingredients -- a pixel group
         state, _ = self.dataFactoryService.constructStateId(request.runNumber)
@@ -314,6 +304,7 @@ class CalibrationService(Service):
         return focusedWorkspace, groupingWorkspace
 
     @FromString
+    @Register("fitpeaks")
     def fitPeaks(self, request: FitMultiplePeaksRequest):
         return FitMultiplePeaksRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
@@ -323,6 +314,15 @@ class CalibrationService(Service):
         )
 
     @FromString
+    @Register("lock")
+    def obtainLock(self, request: CalibrationLockRequest):
+        return self.dataExportService.obtainNormalizationLock(
+            runNumber=request.runNumber,
+            useLiteMode=request.useLiteMode,
+        )
+
+    @FromString
+    @Register("save")
     def save(self, request: CalibrationExportRequest):
         """
         If no version is attached to the request, this will save at next version number
@@ -392,6 +392,7 @@ class CalibrationService(Service):
         self.dataExportService.exportCalibrationWorkspaces(record)
 
     @FromString
+    @Register("load")
     def load(self, request: LoadCalibrationRecordRequest):
         """
         If no version is given, will load the latest version applicable to the run number
@@ -414,6 +415,7 @@ class CalibrationService(Service):
         return response
 
     @FromString
+    @Register("fetchMatches")
     def fetchMatchingCalibrations(self, request: MatchRunsRequest) -> Tuple[Set[WorkspaceName], Dict[str, Any]]:
         calibrations = self.matchRunsToCalibrationVersions(request)
         for runNumber in request.runNumbers:
@@ -442,6 +444,7 @@ class CalibrationService(Service):
         self.dataExportService.exportCalibrationIndexEntry(entry)
 
     @FromString
+    @Register("initializeState")
     def initializeState(self, request: InitializeStateRequest):
         return self.dataExportService.initializeState(request.runId, request.useLiteMode, request.humanReadableName)
 
@@ -454,6 +457,7 @@ class CalibrationService(Service):
         return states
 
     @FromString
+    @Register("hasState")
     def hasState(self, request: HasStateRequest):
         runId = request.runId
         if not RunNumberValidator.validateRunNumber(runId):
@@ -483,6 +487,7 @@ class CalibrationService(Service):
         return FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric)
 
     @FromString
+    @Register("index")
     def getCalibrationIndex(self, request: CalibrationIndexRequest):
         run = request.run
         state, _ = self.dataFactoryService.constructStateId(run.runNumber)
@@ -490,6 +495,7 @@ class CalibrationService(Service):
         return calibrationIndex
 
     @FromString
+    @Register("loadQualityAssessment")
     def loadQualityAssessment(self, request: CalibrationLoadAssessmentRequest):
         runId = request.runId
         useLiteMode = request.useLiteMode
@@ -579,6 +585,7 @@ class CalibrationService(Service):
         self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
 
     @FromString
+    @Register("assessment")
     def assessQuality(self, request: CalibrationAssessmentRequest):
         state, _ = self.dataFactoryService.constructStateId(request.run.runNumber)
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
@@ -625,6 +632,7 @@ class CalibrationService(Service):
         return CalibrationAssessmentResponse(record=record, metricWorkspaces=metricWorkspaces)
 
     @FromString
+    @Register("override")
     def handleOverrides(self, request: OverrideRequest):
         sample: CalibrantSample = self.dataFactoryService.getCalibrantSample(request.calibrantSamplePath)
         if sample.overrides:
@@ -633,5 +641,6 @@ class CalibrationService(Service):
             return None
 
     @FromString
+    @Register("runMetadata")
     def runMetadata(self, request: RunMetadataRequest) -> RunMetadata:
         return self.dataFactoryService.getRunMetadata(request.runId)
