@@ -120,15 +120,16 @@ class SousChef(Service):
         if key not in self._pixelGroupCache:
             focusGroup = self.prepFocusGroup(ingredients)
             instrumentState = self.prepInstrumentState(ingredients)
-            pixelIngredients = PixelGroupingIngredients(
+            pixelGroupingIngredients = PixelGroupingIngredients(
                 instrumentState=instrumentState,
+                groupingScheme=focusGroup.name,
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
             )
             self.groceryClerk.name("groupingWorkspace").fromRun(ingredients.runNumber).grouping(
                 focusGroup.name
             ).useLiteMode(ingredients.useLiteMode).add()
             groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict(), maskWorkspace=pixelMask)
-            data = PixelGroupingParametersCalculationRecipe().executeRecipe(pixelIngredients, groceries)
+            data = PixelGroupingParametersCalculationRecipe().executeRecipe(pixelGroupingIngredients, groceries)
 
             self._pixelGroupCache[key] = PixelGroup(
                 focusGroup=focusGroup,

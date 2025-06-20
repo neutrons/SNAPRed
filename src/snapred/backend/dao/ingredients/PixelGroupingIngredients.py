@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 from snapred.backend.dao.state.InstrumentState import InstrumentState
@@ -11,6 +9,6 @@ class PixelGroupingIngredients(BaseModel):
 
     instrumentState: InstrumentState
 
-    groupingScheme: Optional[str] = None
+    groupingScheme: str | None = None
 
     nBinsAcrossPeakWidth: int = Field(default_factory=lambda: Config["calibration.diffraction.nBinsAcrossPeakWidth"])

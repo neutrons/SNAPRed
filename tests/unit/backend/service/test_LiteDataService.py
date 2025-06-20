@@ -2,19 +2,19 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
-from unittest.mock import Mock, patch
 
 import pytest
 from mantid.simpleapi import CloneWorkspace, CreateSingleValuedWorkspace
 from util.Config_helpers import Config_override
 from util.dao import DAOFactory
 
+from snapred.backend.dao.ingredients.LiteDataCreationIngredients import LiteDataCreationIngredients
 from snapred.backend.service.LiteDataService import LiteDataService
 from snapred.meta.Config import Resource
 
 
 class TestLiteDataService(unittest.TestCase):
-    @patch("snapred.backend.service.LiteDataService.Recipe.executeRecipe")
+    @mock.patch("snapred.backend.service.LiteDataService.LiteDataRecipe.executeRecipe")
     def test_createLiteData_calls_executeRecipe_with_correct_arguments(
         self,
         executeRecipe,
@@ -33,15 +33,19 @@ class TestLiteDataService(unittest.TestCase):
         CreateSingleValuedWorkspace(OutputWorkspace=inputWorkspace)
 
         liteDataService = LiteDataService()
-        liteDataService._ensureLiteDataMap = Mock(return_value="lite_map")
+        liteDataService._ensureLiteDataMap = mock.Mock(return_value="lite_map")
         liteDataService.dataFactoryService.constructStateId = mock.Mock(
             return_value=(DAOFactory.real_state_id.hex, DAOFactory.real_detector_state)
         )
-        liteDataService.sousChef.prepInstrumentState = Mock()
-        liteDataService.sousChef.prepInstrumentState.return_value = Mock()
-        liteDataService.sousChef.prepInstrumentState.return_value.model_dump_json.return_value = "{}"  # noqa: E501
-        liteDataService.dataFactoryService = Mock()
-        liteDataService.dataFactoryService.constructStateId = Mock(return_value=("state_id", "state"))
+        liteDataService.sousChef.prepInstrumentState = mock.Mock()
+        liteDataService.sousChef.prepInstrumentState.return_value = DAOFactory.default_instrument_state.model_copy()
+        liteDataService.dataFactoryService = mock.Mock()
+        liteDataService.dataFactoryService.constructStateId = mock.Mock(
+            return_value=(DAOFactory.magical_state_id.hex, None)
+        )
+        expectedIngredients = LiteDataCreationIngredients(
+            instrumentState=liteDataService.sousChef.prepInstrumentState.return_value
+        )
 
         with TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/") as tmpdir:
             outputPath = Path(tmpdir, "555.nxs.h5")
@@ -56,36 +60,40 @@ class TestLiteDataService(unittest.TestCase):
             OutputWorkspace=outputWorkspace,
             LiteDataMapWorkspace="lite_map",
             LiteInstrumentDefinitionFile=None,
-            Ingredients="{}",
+            Ingredients=expectedIngredients.model_dump_json(),
         )
 
-        liteDataService.dataExportService = Mock()
+        liteDataService.dataExportService = mock.Mock()
         with Config_override("constants.LiteDataCreationAlgo.toggleCompressionTolerance", True):
+            expectedIngredients = LiteDataCreationIngredients(
+                instrumentState=liteDataService.sousChef.prepInstrumentState.return_value, toleranceOverride=-0.123
+            )
+
             liteDataService.createLiteData(inputWorkspace, outputWorkspace)
             executeRecipe.assert_called_with(
                 InputWorkspace=inputWorkspace,
                 OutputWorkspace=outputWorkspace,
                 LiteDataMapWorkspace="lite_map",
                 LiteInstrumentDefinitionFile=None,
-                Ingredients="{}",
-                ToleranceOverride=-0.123,
+                Ingredients=expectedIngredients.model_dump_json(),
             )
 
-    @patch("snapred.backend.recipe.GenericRecipe.GenericRecipe.executeRecipe")
+    @mock.patch("snapred.backend.recipe.GenericRecipe.GenericRecipe.executeRecipe")
     def test_createLiteData_fails(self, mock_executeRecipe):
         mock_executeRecipe.return_value = {}
         mock_executeRecipe.side_effect = RuntimeError("oops!")
 
         liteDataService = LiteDataService()
-        liteDataService._ensureLiteDataMap = Mock(return_value="lite map")
+        liteDataService._ensureLiteDataMap = mock.Mock(return_value="lite map")
         liteDataService.dataFactoryService.constructStateId = mock.Mock(
             return_value=(DAOFactory.real_state_id.hex, DAOFactory.real_detector_state)
         )
-        liteDataService.sousChef.prepInstrumentState = Mock()
-        liteDataService.sousChef.prepInstrumentState.return_value = Mock()
-        liteDataService.sousChef.prepInstrumentState.return_value.model_dump_json.return_value = "{}"  # noqa: E501
-        liteDataService.dataFactoryService = Mock()
-        liteDataService.dataFactoryService.constructStateId = Mock(return_value=("state_id", "state"))
+        liteDataService.sousChef.prepInstrumentState = mock.Mock()
+        liteDataService.sousChef.prepInstrumentState.return_value = DAOFactory.default_instrument_state.model_copy()
+        liteDataService.dataFactoryService = mock.Mock()
+        liteDataService.dataFactoryService.constructStateId = mock.Mock(
+            return_value=(DAOFactory.magical_state_id.hex, None)
+        )
 
         inputWorkspace = "_test_liteservice_555"
         outputWorkspace = "_test_output_lite_"

@@ -56,10 +56,11 @@ class PixelGroupingParametersCalculation(PythonAlgorithm):
         )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
-        return
 
-    def chopIngredients(self, ingredients: PixelGroupingIngredients) -> None:
-        # define/calculate some auxiliary state-derived parameters
+    def chopIngredients(self, ingredients: PixelGroupingIngredients):
+        self.groupingScheme = ingredients.groupingScheme
+
+        # define / calculate some auxiliary state-derived parameters
         self.tofMin = ingredients.instrumentState.particleBounds.tof.minimum
         self.tofMax = ingredients.instrumentState.particleBounds.tof.maximum
         self.deltaTOverT = ingredients.instrumentState.instrumentConfig.delTOverT
@@ -67,7 +68,6 @@ class PixelGroupingParametersCalculation(PythonAlgorithm):
         self.L = ingredients.instrumentState.instrumentConfig.L1 + ingredients.instrumentState.instrumentConfig.L2
         self.delL = self.delLOverL * self.L
         self.delTheta = ingredients.instrumentState.delTh
-        return
 
     def unbagGroceries(self, ingredients: PixelGroupingIngredients):  # noqa: ARG002
         self.groupingWorkspaceName: str = self.getPropertyValue("GroupingWorkspace")
@@ -76,17 +76,15 @@ class PixelGroupingParametersCalculation(PythonAlgorithm):
         self.partialResolutionWorkspaceName: str = self.resolutionWorkspaceName + "_partial"
 
     def PyExec(self):
-        self.log().notice("Calculate pixel grouping state-derived parameters")
-
         lowdSpacingCrop = Config["constants.CropFactors.lowdSpacingCrop"]
         highdSpacingCrop = Config["constants.CropFactors.highdSpacingCrop"]
 
-        if lowdSpacingCrop < 0:
+        if lowdSpacingCrop < 0.0:
             raise ValueError("Low d-spacing crop factor must be positive")
-        if highdSpacingCrop < 0:
+        if highdSpacingCrop < 0.0:
             raise ValueError("High d-spacing crop factor must be positive")
 
-        if (lowdSpacingCrop > 100) or (highdSpacingCrop > 100):
+        if (lowdSpacingCrop > 100.0) or (highdSpacingCrop > 100.0):
             raise ValueError("d-spacing crop factors are too large")
 
         # define/calculate some auxiliary state-derived parameters
@@ -112,8 +110,8 @@ class PixelGroupingParametersCalculation(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
         # Create a grouped-by-detector workspace from the grouping workspace
-        # and estimate the relative resolution for all pixel groupings.
-        # These algorithms use detector mask-flag information from the 'InputWorkspace'.
+        # and estimate the relative resolution for all pixel subgroups.
+        # These algorithms use detector mask-flags information from the 'InputWorkspace'.
 
         self.mantidSnapper.GroupDetectors(
             "Grouping detectors...",
@@ -122,7 +120,7 @@ class PixelGroupingParametersCalculation(PythonAlgorithm):
             OutputWorkspace=self.resolutionWorkspaceName,
         )
 
-        #  => resolution will be _zero_ for any fully-masked pixel group
+        #  Note that resolution will be _zero_ for any fully-masked pixel subgroup.
         self.mantidSnapper.EstimateResolutionDiffraction(
             "Estimating diffraction resolution...",
             InputWorkspace=self.resolutionWorkspaceName,
@@ -138,7 +136,7 @@ class PixelGroupingParametersCalculation(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-        # calculate parameters for all pixel groupings and store them in json format
+        # Calculate parameters for all pixel subgroups.
         allGroupingParams = []
         groupingWS = self.mantidSnapper.mtd[tmpGroupingWSName]
         resolutionWS = self.mantidSnapper.mtd[self.resolutionWorkspaceName]
@@ -178,7 +176,7 @@ class PixelGroupingParametersCalculation(PythonAlgorithm):
                 except RuntimeError as e:
                     # Also entered as defect EWM#5073:
                     # `DetectorInfo.azimuthal()` has issues in calculating ambiguous azimuth values:
-                    #   * by convention, these values can be set to zero, without overly affecting the mean value.
+                    #   * by convention, these values can be treated as zero, without overly affecting the mean value.
                     if "Failed to create up axis orthogonal to the beam direction" not in str(e):
                         raise
                     logger.debug(e)

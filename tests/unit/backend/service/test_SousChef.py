@@ -4,7 +4,7 @@ import unittest
 from unittest import mock
 
 import pytest
-from mantid.simpleapi import DeleteWorkspace, mtd
+from mantid.simpleapi import mtd
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
@@ -34,8 +34,7 @@ class TestSousChef(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        for ws in mtd.getObjectNames():
-            DeleteWorkspace(ws)
+        mtd.clear()
 
     def test_name(self):
         assert SousChef.name() == "souschef"
@@ -209,6 +208,7 @@ class TestSousChef(unittest.TestCase):
         # make necessary assertions
         PixelGroupingIngredients.assert_called_once_with(
             instrumentState=self.instance.prepCalibration.return_value.instrumentState,
+            groupingScheme=self.ingredients.focusGroup.name,
             nBinsAcrossPeakWidth=self.ingredients.nBinsAcrossPeakWidth,
         )
         PixelGroupingParametersCalculationRecipe.return_value.executeRecipe.assert_called_once_with(
