@@ -236,7 +236,6 @@ def test_fail_to_validate_input_format():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-    instrumentState = DAOFactory.synthetic_instrument_state.copy()
     ingredients = LiteDataCreationIngredients(instrumentState=DAOFactory.synthetic_instrument_state.copy())
 
     # load the instrument, and load the grouping file
@@ -297,7 +296,6 @@ def test_input_format_already_lite():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-    instrumentState = DAOFactory.synthetic_instrument_state.copy()
     ingredients = LiteDataCreationIngredients(instrumentState=DAOFactory.synthetic_instrument_state.copy())
 
     LoadEmptyInstrument(
@@ -414,7 +412,6 @@ def testLiteDataCreationAlgoWithCompressionCheck():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-    instrumentState = DAOFactory.synthetic_instrument_state.copy()
     ingredients = LiteDataCreationIngredients(instrumentState=DAOFactory.synthetic_instrument_state.copy())
 
     fullResolution: int = 16

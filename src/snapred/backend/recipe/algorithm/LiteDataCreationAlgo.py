@@ -94,9 +94,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             # "a)": Note that we do not have the lite-mode instrument yet, so we don't validate that here,
             #       otherwise we'd need to load the lite-mode instrument twice.
             if len(groupingWs.getGroupIDs()) != Config["instrument.lite.pixelResolution"]:
-                # *** DEBUG ***
-                print(f"====== a) {len(groupingWs.getGroupIDs())} < {Config['instrument.lite.pixelResolution']}")
-
                 self._appendErrorMessage(
                     errors,
                     "LiteDataMapWorkspace",
@@ -110,12 +107,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             if (inputWs.getInstrument().getName() != groupingWs.getInstrument().getName()) or (
                 inputWs.getInstrument().getNumberDetectors(True) != groupingWs.getInstrument().getNumberDetectors(True)
             ):
-                # *** DEBUG ***
-                print(f"====== b) {inputWs.getInstrument().getName()} != {groupingWs.getInstrument().getName()}")
-                print(
-                    f"       OR {inputWs.getInstrument().getNumberDetectors(True)} != {groupingWs.getInstrument().getNumberDetectors(True)}"
-                )
-
                 msg = "The lite-data map must have the same instrument as the input data workspace."
                 self._appendErrorMessage(errors, "InputWorkspace", msg)
                 self._appendErrorMessage(errors, "LiteDataMapWorkspace", msg)
@@ -124,12 +115,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             if (inputWs.getNumberHistograms() != inputWs.getInstrument().getNumberDetectors(True)) or (
                 inputWs.getNumberHistograms() != Config["instrument.native.pixelResolution"]
             ):
-                # *** DEBUG ***
-                print(
-                    f"====== b) {inputWs.getNumberHistograms()} != {inputWs.getInstrument().getNumberDetectors(True)}"
-                )
-                print(f"      OR {inputWs.getNumberHistograms()} != {Config['instrument.native.pixelResolution']}")
-
                 self._appendErrorMessage(
                     errors,
                     "InputWorkspace",
