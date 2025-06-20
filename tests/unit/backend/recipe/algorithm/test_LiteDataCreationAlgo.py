@@ -1,3 +1,4 @@
+import pytest
 from mantid.simpleapi import (
     CloneWorkspace,
     ConvertToEventWorkspace,
@@ -5,17 +6,14 @@ from mantid.simpleapi import (
     LoadDetectorsGroupingFile,
     LoadEmptyInstrument,
     LoadInstrument,
-    mtd
+    mtd,
 )
+from util.Config_helpers import Config_override
+from util.dao import DAOFactory
 
 from snapred.backend.dao.ingredients import LiteDataCreationIngredients
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.meta.Config import Resource
-
-import unittest.mock as mock
-import pytest
-from util.Config_helpers import Config_override
-from util.dao import DAOFactory
 
 
 @pytest.fixture(autouse=True)
@@ -23,11 +21,11 @@ def _setup_teardown():
     """Clear all workspaces before and after tests."""
     mtd.clear()
     yield
-    
+
     # teardown:
     mtd.clear()
-    
-    
+
+
 def test_LiteDataCreationAlgo_mandatory_properties():
     """Test mandatory input properties."""
     liteDataCreationAlgo = LiteDataCreationAlgo()
@@ -44,16 +42,14 @@ def test_fakeInstrument():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-    ingredients = LiteDataCreationIngredients(
-        instrumentState=DAOFactory.synthetic_instrument_state.copy()
-    )
+    ingredients = LiteDataCreationIngredients(instrumentState=DAOFactory.synthetic_instrument_state.copy())
 
     fullResolution: int = 16
     liteResolution: int = 4
 
     with (
         Config_override("instrument.native.pixelResolution", fullResolution),
-        Config_override("instrument.lite.pixelResolution", liteResolution)
+        Config_override("instrument.lite.pixelResolution", liteResolution),
     ):
         # create simple event data with a different number in each pixel
         CreateWorkspace(
@@ -117,23 +113,21 @@ def test_fakeInstrument():
 
 def test_fail_with_no_output():
     # 'OutputWorkspace' must be specified.
-    
+
     fullInstrumentWS = "_test_lite_algo_native"
     focusWS = "_test_lite_data_map"
 
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-    ingredients = LiteDataCreationIngredients(
-        instrumentState=DAOFactory.synthetic_instrument_state.copy()
-    )
+    ingredients = LiteDataCreationIngredients(instrumentState=DAOFactory.synthetic_instrument_state.copy())
 
     fullResolution: int = 16
     liteResolution: int = 4
 
     with (
         Config_override("instrument.native.pixelResolution", fullResolution),
-        Config_override("instrument.lite.pixelResolution", liteResolution)
+        Config_override("instrument.lite.pixelResolution", liteResolution),
     ):
         # create simple event data with a different number in each pixel
         CreateWorkspace(
@@ -174,7 +168,7 @@ def test_fail_with_no_output():
 def test_fail_to_validate_missing_properties():
     # 'InputWorkspace' must be specified.
     # 'LiteDataMapWorkspace' must be specified.
-    
+
     instrumentWorkspace: str = "_test_lite_idf"
     liteInstrumentWS: str = "_test_lite_algo_lite"
     focusWS = "_test_lite_data_map"
@@ -182,10 +176,8 @@ def test_fail_to_validate_missing_properties():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-    ingredients = LiteDataCreationIngredients(
-        instrumentState=DAOFactory.synthetic_instrument_state.copy()
-    )
-    
+    ingredients = LiteDataCreationIngredients(instrumentState=DAOFactory.synthetic_instrument_state.copy())
+
     # load the instrument, and load the grouping file
     LoadEmptyInstrument(
         OutputWorkspace=instrumentWorkspace,
@@ -197,13 +189,12 @@ def test_fail_to_validate_missing_properties():
         OutputWorkspace=focusWS,
     )
 
-
     fullResolution: int = 16
     liteResolution: int = 4
 
     with (
         Config_override("instrument.native.pixelResolution", fullResolution),
-        Config_override("instrument.lite.pixelResolution", liteResolution)
+        Config_override("instrument.lite.pixelResolution", liteResolution),
     ):
         # setup the algorithm
         liteDataCreationAlgo = LiteDataCreationAlgo()
@@ -216,11 +207,10 @@ def test_fail_to_validate_missing_properties():
         with pytest.raises(RuntimeError) as e:
             liteDataCreationAlgo.execute()
         assert "some invalid properties found" in str(e.value).lower()
-        
 
     with (
         Config_override("instrument.native.pixelResolution", fullResolution),
-        Config_override("instrument.lite.pixelResolution", liteResolution)
+        Config_override("instrument.lite.pixelResolution", liteResolution),
     ):
         # setup the algorithm
         liteDataCreationAlgo = LiteDataCreationAlgo()
@@ -228,7 +218,7 @@ def test_fail_to_validate_missing_properties():
         liteDataCreationAlgo.setPropertyValue("OutputWorkspace", liteInstrumentWS)
         liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
         liteDataCreationAlgo.setPropertyValue("Ingredients", ingredients.model_dump_json())
-        
+
         # try executing without a map workspace -- should complain
         with pytest.raises(RuntimeError) as e:
             liteDataCreationAlgo.execute()
@@ -247,9 +237,7 @@ def test_fail_to_validate_input_format():
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
     instrumentState = DAOFactory.synthetic_instrument_state.copy()
-    ingredients = LiteDataCreationIngredients(
-        instrumentState=DAOFactory.synthetic_instrument_state.copy()
-    )
+    ingredients = LiteDataCreationIngredients(instrumentState=DAOFactory.synthetic_instrument_state.copy())
 
     # load the instrument, and load the grouping file
     LoadEmptyInstrument(
@@ -262,13 +250,12 @@ def test_fail_to_validate_input_format():
         OutputWorkspace=focusWS,
     )
 
-
     fullResolution: int = 16
     liteResolution: int = 4
 
     with (
         Config_override("instrument.native.pixelResolution", fullResolution),
-        Config_override("instrument.lite.pixelResolution", liteResolution)
+        Config_override("instrument.lite.pixelResolution", liteResolution),
     ):
         # setup the algorithm
         liteDataCreationAlgo = LiteDataCreationAlgo()
@@ -284,18 +271,11 @@ def test_fail_to_validate_input_format():
             DataX=[0.5, 1.5] * invalidResolution,
             DataY=range(invalidResolution),
             DataE=[0.01] * invalidResolution,
-            NSpec=invalidResolution
+            NSpec=invalidResolution,
         )
-        ConvertToEventWorkspace(
-            InputWorkspace=invalidWorkspace,
-            OutputWorkspace=invalidWorkspace
-        )
-        LoadInstrument(
-            Workspace=invalidWorkspace,
-            Filename=fullInstrumentFile,
-            RewriteSpectraMap=True
-        )
-        
+        ConvertToEventWorkspace(InputWorkspace=invalidWorkspace, OutputWorkspace=invalidWorkspace)
+        LoadInstrument(Workspace=invalidWorkspace, Filename=fullInstrumentFile, RewriteSpectraMap=True)
+
         liteDataCreationAlgo.setPropertyValue("InputWorkspace", invalidWorkspace)
 
         # should complain inconsistent resolution with lite data map
@@ -308,7 +288,7 @@ def test_input_format_already_lite():
     # Test: converted to lite-mode data is marked correctly as 'Lite'.
     # Test: Usage error: input data already in lite-mode and marked as such.
     # Test: Usage error: input data already in lite-mode and not marked.
-    
+
     instrumentWorkspace: str = "_test_lite_idf"
     inputWorkspace: str = "_test_lite_algo_input"
     outputWorkspace: str = "_test_lite_algo_output"
@@ -318,9 +298,7 @@ def test_input_format_already_lite():
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
     instrumentState = DAOFactory.synthetic_instrument_state.copy()
-    ingredients = LiteDataCreationIngredients(
-        instrumentState=DAOFactory.synthetic_instrument_state.copy()
-    )
+    ingredients = LiteDataCreationIngredients(instrumentState=DAOFactory.synthetic_instrument_state.copy())
 
     LoadEmptyInstrument(
         OutputWorkspace=instrumentWorkspace,
@@ -332,13 +310,12 @@ def test_input_format_already_lite():
         OutputWorkspace=focusWS,
     )
 
-
     fullResolution: int = 16
     liteResolution: int = 4
 
     with (
         Config_override("instrument.native.pixelResolution", fullResolution),
-        Config_override("instrument.lite.pixelResolution", liteResolution)
+        Config_override("instrument.lite.pixelResolution", liteResolution),
     ):
         # setup the algorithm
         liteDataCreationAlgo = LiteDataCreationAlgo()
@@ -387,8 +364,10 @@ def test_input_format_already_lite():
         assert "Lite" in liteWS.getComment()
 
         # run the algo with this lite-mode workspace
-        liteDataCreationAlgo.setPropertyValue("InputWorkspace", inputWorkspace)        
-        with pytest.raises(RuntimeError, match="Usage error: the input workspace has already been converted to lite mode."):
+        liteDataCreationAlgo.setPropertyValue("InputWorkspace", inputWorkspace)
+        with pytest.raises(
+            RuntimeError, match="Usage error: the input workspace has already been converted to lite mode."
+        ):
             liteDataCreationAlgo.execute()
 
         # try running with data already at Lite resolution
@@ -400,7 +379,9 @@ def test_input_format_already_lite():
             NSpec=liteResolution,
         )
         liteDataCreationAlgo.setPropertyValue("InputWorkspace", inputWorkspace)
-        with pytest.raises(RuntimeError, match="Usage error: the input workspace has already been converted to lite mode."):
+        with pytest.raises(
+            RuntimeError, match="Usage error: the input workspace has already been converted to lite mode."
+        ):
             liteDataCreationAlgo.execute()
 
 
@@ -421,7 +402,6 @@ def testLiteDataCreationAlgoWithCompressionCheck():
     from mantid.simpleapi import (
         ConvertToEventWorkspace,
         CreateWorkspace,
-        DeleteWorkspace,
         LoadDetectorsGroupingFile,
         LoadInstrument,
         mtd,
@@ -435,16 +415,14 @@ def testLiteDataCreationAlgoWithCompressionCheck():
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
     instrumentState = DAOFactory.synthetic_instrument_state.copy()
-    ingredients = LiteDataCreationIngredients(
-        instrumentState=DAOFactory.synthetic_instrument_state.copy()
-    )
+    ingredients = LiteDataCreationIngredients(instrumentState=DAOFactory.synthetic_instrument_state.copy())
 
     fullResolution: int = 16
     liteResolution: int = 4
 
     with (
         Config_override("instrument.native.pixelResolution", fullResolution),
-        Config_override("instrument.lite.pixelResolution", liteResolution)
+        Config_override("instrument.lite.pixelResolution", liteResolution),
     ):
         # create simple event data with a different number in each pixel
         CreateWorkspace(

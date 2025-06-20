@@ -59,7 +59,7 @@ class PixelGroupingParametersCalculation(PythonAlgorithm):
 
     def chopIngredients(self, ingredients: PixelGroupingIngredients):
         self.groupingScheme = ingredients.groupingScheme
-        
+
         # define / calculate some auxiliary state-derived parameters
         self.tofMin = ingredients.instrumentState.particleBounds.tof.minimum
         self.tofMax = ingredients.instrumentState.particleBounds.tof.maximum

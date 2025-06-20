@@ -60,9 +60,8 @@ class LiteDataService(Service):
             "LiteInstrumentDefinitionFile": instrumentDefinition,
             "OutputWorkspace": outputWorkspace,
             "Ingredients": LiteDataCreationIngredients(
-                instrumentState=instrumentState,
-                toleranceOverride=toleranceOverride
-            ).model_dump_json()
+                instrumentState=instrumentState, toleranceOverride=toleranceOverride
+            ).model_dump_json(),
         }
 
         data, tolerance = LiteDataRecipe().executeRecipe(**recipeKwargs)

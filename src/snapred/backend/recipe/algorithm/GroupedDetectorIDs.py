@@ -44,14 +44,14 @@ class GroupedDetectorIDs(PythonAlgorithm):
     def PyExec(self):
         # Retrieve pixel-IDs for all pixels in each subgroup.
         groupingWs = mtd[self.getPropertyValue("GroupingWorkspace")]
-        
+
         groupWorkspaceIndices: Dict[int, List[int]] = {}
-        
-        #`<numpy ndarray>.tolist()` both converts to the nearest native-Python type, which is in this case `int`,
+
+        # `<numpy ndarray>.tolist()` both converts to the nearest native-Python type, which is in this case `int`,
         #    and also converts to a Python list.
         for subgroupID in groupingWs.getGroupIDs().tolist():
             groupWorkspaceIndices[subgroupID] = groupingWs.getDetectorIDsOfGroup(subgroupID).tolist()
-        
+
         self.setProperty("GroupWorkspaceIndices", create_pointer(groupWorkspaceIndices))
 
 

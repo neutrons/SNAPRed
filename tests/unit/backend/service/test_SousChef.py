@@ -4,7 +4,7 @@ import unittest
 from unittest import mock
 
 import pytest
-from mantid.simpleapi import DeleteWorkspace, mtd
+from mantid.simpleapi import mtd
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients

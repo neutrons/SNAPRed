@@ -76,55 +76,43 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         if bool(existingMsg):
             existingMsg += "\n"
         errors[key] = existingMsg + msg
- 
+
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
-        
+
         inputWs = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
-        
+
         groupingWs = self.mantidSnapper.mtd[self.getPropertyValue("GroupingWorkspace")]
         if not isinstance(groupingWs, GroupingWorkspace):
             errors["GroupingWorkspace"] = "Grouping workspace must be an instance of `GroupingWorkspace`"
-        
+
             # EARLY RETURN:
             return errors
-            
+
         # Make sure that the input-data workspace can be reduced by the grouping workspace.
 
         # The input-data and grouping workspaces must have the same instrument.
         # Comparing instruments is problematic: however, requiring both the instrument-name,
-        #   and the pixel count to match is a fairly safe verification.    
-        if (inputWs.getInstrument().getName() != groupingWs.getInstrument().getName())\
-            or (inputWs.getInstrument().getNumberDetectors(True)\
-                != groupingWs.getInstrument().getNumberDetectors(True)):
+        #   and the pixel count to match is a fairly safe verification.
+        if (inputWs.getInstrument().getName() != groupingWs.getInstrument().getName()) or (
+            inputWs.getInstrument().getNumberDetectors(True) != groupingWs.getInstrument().getNumberDetectors(True)
+        ):
             msg = "The input-data and grouping workspaces must have the same instrument."
-            self._appendErrorMessage(
-                errors,
-                "InputWorkspace",
-                msg
-            )
-            self._appendErrorMessage(
-                errors,
-                "GroupingWorkspace",
-                msg
-            )
+            self._appendErrorMessage(errors, "InputWorkspace", msg)
+            self._appendErrorMessage(errors, "GroupingWorkspace", msg)
 
         # Verify that the input-data hasn't already been focussed.
         if inputWs.getNumberHistograms() == len(groupingWs.getGroupIDs()):
             self._appendErrorMessage(
-                errors,
-                "InputWorkspace",
-                "The input data appears to already have been diffraction focussed."
+                errors, "InputWorkspace", "The input data appears to already have been diffraction focussed."
             )
 
         # Verify that the input-data has one spectrum per [non-monitor] pixel.
         if inputWs.getNumberHistograms() != inputWs.getInstrument().getNumberDetectors(True):
             self._appendErrorMessage(
-                errors,
-                "InputWorkspace",
-                "The input workspace must have one spectrum per [non-monitor] pixel."
+                errors, "InputWorkspace", "The input workspace must have one spectrum per [non-monitor] pixel."
             )
-             
+
         # IMPORTANT: There is no requirement that the grouping workspace have one spectrum per detector.
         #   Its spectrum-to-detector map may be used to reduce this number.
 
@@ -143,7 +131,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             DMin=self.pixelGroup.dMin(),
             DMax=self.pixelGroup.dMax(),
             Delta=self.pixelGroup.dBin(),
-            FullBinsOnly=True
+            FullBinsOnly=True,
         )
         # With these arguments, output from `DiffractionFocussing` will now have ragged binning,
         #   so the former call to `RebinRagged` has been removed.

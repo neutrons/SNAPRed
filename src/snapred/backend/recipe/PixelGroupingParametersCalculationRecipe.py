@@ -31,16 +31,16 @@ class PixelGroupingParametersCalculationRecipe:
         groupingWorkspace = groceries["groupingWorkspace"]
         maskWorkspace = groceries.get("maskWorkspace", "")
         data: Dict[str, Any] = {}
-        
+
         result = self.mantidSnapper.PixelGroupingParametersCalculation(
             f"Calculating {'masked ' if bool(maskWorkspace) else ''}pixel-grouping parameters "
             + f"for '{ingredients.groupingScheme if bool(ingredients.groupingScheme) else groupingWorkspace}' grouping",
             Ingredients=ingredients.json(),
             GroupingWorkspace=groupingWorkspace,
-            MaskWorkspace=maskWorkspace
+            MaskWorkspace=maskWorkspace,
         )
         self.mantidSnapper.executeQueue()
-        
+
         # NOTE contradictory issues with Callbacks between GUI and unit tests
         if hasattr(result, "get"):
             result = result.get()
