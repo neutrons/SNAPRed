@@ -1,6 +1,7 @@
 import multiprocessing
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 import pytest
 from util.Config_helpers import Config_override
@@ -135,3 +136,18 @@ class TestLockFile:
                 # Reap old lockfiles
                 LockFile(lockedPath)
                 assert len(list(lockFile.lockFilePath.parent.glob("*.lock"))) == 1
+
+    def test_doubleRelease(self):
+        with TemporaryDirectory() as temp_dir:
+            lockedPath = Path(temp_dir)
+            lockFile = LockFile(lockedPath)
+            with mock.patch("snapred.meta.LockFile.logger") as mockLogger:
+                assert lockFile.exists()
+                lockFile.release()
+                assert not lockFile.exists()
+
+                # Releasing again should not raise an error
+                lockFile.release()
+                assert not lockFile.exists()
+                assert mockLogger.warning.call_count == 1
+                assert "has already been released." in mockLogger.warning.call_args[0][0]
