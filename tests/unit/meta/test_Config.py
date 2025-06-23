@@ -18,6 +18,7 @@ import snapred.meta.Config as Config_module
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import (
     Config,
+    DeployEnvEnum,
     Resource,
     _find_root_dir,
     _pythonLoggingLevelFromMantid,
@@ -404,3 +405,43 @@ def test_swapToUserYml_archive():
             assert (Path(tmpPath) / ".snapred" / f"snapred-user-1.0.0-{dateTime}.yml.bak").exists(), os.listdir(
                 Path(tmpPath) / ".snapred"
             )
+
+
+def test_configureForDeploy():
+    # copy application.yml to a temporary directory
+    with TemporaryDirectory() as tmpPath:
+        applicationYmlPath: Path = Path(Resource.getPath("application.yml"))
+        nextApplicationYmlPath = applicationYmlPath.parent / "snapred_next.yml"
+        (Path(tmpPath) / "application.yml").write_bytes(applicationYmlPath.read_bytes())
+        (Path(tmpPath) / "snapred_next.yml").write_bytes(nextApplicationYmlPath.read_bytes())
+        with (
+            mock.patch.object(Resource, "_resourcesPath", Path(tmpPath)),
+            mock.patch.object(Config, "snapredVersion", mock.Mock(return_value="dev")),
+            #   Dont want to overrite the config for the rest of the tests
+            mock.patch.object(Config, "_config", {}),
+        ):
+            Config.configureForDeploy()
+            # check that the file exists
+            assert (Path(tmpPath) / "application.yml").exists()
+            # check that the file is not empty
+            assert (Path(tmpPath) / "application.yml").stat().st_size > 0
+            # check that the file is a valid yaml file
+            with open(Path(tmpPath) / "application.yml", "r") as file:
+                yml = yaml.safe_load(file)
+                assert "CalibrationNext" in yml["instrument"]["calibration"]["home"]
+
+
+def test_configureForDeploy_qa_or_prod():
+    with (
+        mock.patch.object(Config, "snapredVersion", mock.Mock(return_value="1.0.0")) as mockVersion,
+        mock.patch.object(Config, "mergeAndExport", mock.Mock()) as mockMergeExport,
+    ):
+        Config.configureForDeploy()
+        mockVersion.assert_called_once()
+        mockMergeExport.assert_called_once_with(DeployEnvEnum.PROD)
+        mockVersion.reset_mock()
+        mockMergeExport.reset_mock()
+        mockVersion.return_value = "1.0.1rc2"
+        Config.configureForDeploy()
+        mockVersion.assert_called_once()
+        mockMergeExport.assert_called_once_with(DeployEnvEnum.QA)
