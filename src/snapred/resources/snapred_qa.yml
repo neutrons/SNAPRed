@@ -1,0 +1,4 @@
+# environment: qa
+
+instrument:
+    home: ${instrument.home}/shared/CalibrationQA

@@ -5,7 +5,7 @@ from mantid.kernel import amend_config
 import snapred.backend.recipe.algorithm  # noqa: F401
 from snapred import __version__ as snapred_version
 from snapred.backend.log.logger import snapredLogger
-from snapred.meta.Config import Resource
+from snapred.meta.Config import Config, Resource
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -76,6 +76,9 @@ def _createArgparser():
         help="Stop the error reporter from opening if you suffer an exception or crash.",
     )
     parser.add_argument("script", nargs="?", default=None)
+    parser.add_argument(
+        "-c", "--configure", default=False, action="store_true", help="Configure SNAPRed for specified environment"
+    )
     return parser
 
 
@@ -98,28 +101,32 @@ def main(args=None):
         "UpdateInstrumentDefinitions.OnStartup": options.updateinstruments,
         "usagereports.enabled": options.reportusage,
     }
-    with amend_config(**new_config):
-        if options.workbench:
-            warningMessage = (
-                "WARNING: --workbench is a temporary means of starting workbench with the ability to launch SNAPRed"
-            )
-            warningSeperator = "/" * len(warningMessage)
-            warningSeperator = f"{warningSeperator}\n{warningSeperator}"
-            logger.warning(f"\n{warningSeperator}\n\n{warningMessage}\n\n{warningSeperator}\n")
-            _preloadImports()
-            import os
+    if options.configure:
+        Config.configureForDeploy()
+        return 0
+    else:
+        with amend_config(**new_config):
+            if options.workbench:
+                warningMessage = (
+                    "WARNING: --workbench is a temporary means of starting workbench with the ability to launch SNAPRed"
+                )
+                warningSeperator = "/" * len(warningMessage)
+                warningSeperator = f"{warningSeperator}\n{warningSeperator}"
+                logger.warning(f"\n{warningSeperator}\n\n{warningMessage}\n\n{warningSeperator}\n")
+                _preloadImports()
+                import os
 
-            from workbench.app.start import start as workbench_start
+                from workbench.app.start import start as workbench_start
 
-            pid = os.fork()
-            if pid > 0:
-                return 0
+                pid = os.fork()
+                if pid > 0:
+                    return 0
+                else:
+                    workbench_start(options)
             else:
-                workbench_start(options)
-        else:
-            from snapred.ui.main import start
+                from snapred.ui.main import start
 
-            return start(options)
+                return start(options)
 
 
 if __name__ == "__main__":

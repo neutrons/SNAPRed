@@ -1,0 +1,4 @@
+# environment: prod
+
+instrument:
+    home: ${instrument.home}/shared/Calibration

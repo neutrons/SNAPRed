@@ -1,0 +1,4 @@
+# environment: dev
+
+instrument:
+    home: ${instrument.home}/shared/CalibrationNext
