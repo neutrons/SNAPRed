@@ -158,7 +158,7 @@ class _Config:
         and export it to the application.yml file.
         """
         self._logger.debug(f"Merging/exporting configuration with environment: {envName}")
-        self.refresh(envName, True)
+        self.refresh(envName, False)
         # Export the merged configuration to application.yml
         with Resource.open("application.yml", "w") as file:
             yaml.dump(self._config, file, default_flow_style=False)
