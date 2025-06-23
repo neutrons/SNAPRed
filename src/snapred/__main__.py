@@ -101,11 +101,12 @@ def main(args=None):
         "UpdateInstrumentDefinitions.OnStartup": options.updateinstruments,
         "usagereports.enabled": options.reportusage,
     }
-    if options.configure:
-        Config.configureForDeploy()
-        return 0
-    else:
-        with amend_config(**new_config):
+    with amend_config(**new_config):
+        if options.configure:
+            Config.configureForDeploy()
+            print(f"SNAPRed configured to use {Config['instrument.calibration.home']}")
+            return 0
+        else:
             if options.workbench:
                 warningMessage = (
                     "WARNING: --workbench is a temporary means of starting workbench with the ability to launch SNAPRed"
