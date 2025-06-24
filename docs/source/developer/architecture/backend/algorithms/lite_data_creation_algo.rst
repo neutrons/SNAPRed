@@ -3,9 +3,8 @@ Algorithm: `LiteDataCreationAlgo`
 
 Description:
 ------------
-This algorithm converts a full-resolution dataset to a lite resolution dataset
-using a specified grouping workspace. It optionally compresses the output and
-can delete the non-lite workspace.
+This algorithm converts a full-resolution dataset to a lite-resolution dataset
+using a specified grouping workspace. It optionally compresses the output.
 
 Expected Inputs:
 ----------------
