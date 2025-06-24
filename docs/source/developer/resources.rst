@@ -84,7 +84,7 @@ style.qss
 ---------
 
 This is the file that stores its QT stylesheet. Custom css-like style
-overrides go here, and will be applied when SNAPRed is launched 
+overrides go here, and will be applied when SNAPRed is launched
 as a stand-alone application.
 
 .. _workbenchstyleqss:
@@ -93,5 +93,5 @@ workbench_style.qss
 -------------------
 
 This is the file that stores its QT stylesheet. Custom css-like style
-overrides go here, and will be applied when SNAPRed is launched 
+overrides go here, and will be applied when SNAPRed is launched
 from Mantid workbench.
