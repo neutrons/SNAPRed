@@ -1,3 +1,4 @@
+import os
 import sys
 
 from mantid.kernel import amend_config
@@ -82,6 +83,13 @@ def _createArgparser():
     return parser
 
 
+def workbench_start(options):
+    """Start workbench with necessary preloaded snapred imports."""
+    from workbench.app.start import start as workbench_start
+
+    workbench_start(options)
+
+
 def main(args=None):
     parser = _createArgparser()
     options, _ = parser.parse_known_args(args)
@@ -115,9 +123,6 @@ def main(args=None):
                 warningSeperator = f"{warningSeperator}\n{warningSeperator}"
                 logger.warning(f"\n{warningSeperator}\n\n{warningMessage}\n\n{warningSeperator}\n")
                 _preloadImports()
-                import os
-
-                from workbench.app.start import start as workbench_start
 
                 pid = os.fork()
                 if pid > 0:
