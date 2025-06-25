@@ -163,8 +163,8 @@ class Recipe(ABC, Generic[Ingredients]):
         Given the ingredients and groceries, it prepares, executes and returns the final workspace.
         """
         recipeName = self.__class__.__name__
-        self.hookManager.execute(f"Pre{recipeName}", self)
         self.prep(ingredients, groceries)
+        self.hookManager.execute(f"Pre{recipeName}", self)
         result = self.execute()
         self.hookManager.execute(f"Post{recipeName}", self)
         return result
