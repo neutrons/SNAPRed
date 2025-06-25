@@ -14,4 +14,4 @@ class SNAPRequest(BaseModel, arbitrary_types_allowed=True):
 
     path: str
     payload: Optional[Any] = None
-    hooks: Optional[dict[str, Callable]] = Field(exclude=True)
+    hooks: Optional[dict[str, Callable]] = Field(exclude=True, default=None)
