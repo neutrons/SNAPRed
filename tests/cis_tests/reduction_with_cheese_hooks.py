@@ -3,6 +3,7 @@
 from os import path
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.dao.Hook import Hook
 from snapred.backend.dao.request.ReductionRequest import ReductionRequest
 from snapred.backend.service.ReductionService import ReductionService
 
@@ -24,10 +25,8 @@ requestPayload = ReductionRequest(
     focusGroups=[columnGroup],
 )
 
-cheeseMasks = []
-
 # NOTE: Be careful how you define hook methods.  They should not be class methods.
-def cheeseHook(self):
+def cheeseHook(self, cheeseMasks: list[str]):
     # raise RuntimeError(f"Hook Executed!: {cheeseMasks}")
     for mask in cheeseMasks:
         #extract units from ws name (table workspaces don't have logs)
@@ -48,13 +47,16 @@ def cheeseHook(self):
         )
     self.mantidSnapper.executeQueue()
     
+hook = Hook(func=cheeseHook,cheeseMasks=[])
+
 hooks = {
-    "PostPreprocessReductionRecipe" : cheeseHook
+    "PostPreprocessReductionRecipe" : [hook, hook],
+    "UselessFakeHook": [hook],
 }
 
 
 
-request = SNAPRequest(path="reduction", payload=requestPayload.model_dump_json(), hooks=hooks)
+request = SNAPRequest(path="reduction", payload=requestPayload, hooks=hooks)
 
 interface = InterfaceController()
 

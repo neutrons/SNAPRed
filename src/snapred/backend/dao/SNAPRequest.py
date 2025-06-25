@@ -1,6 +1,8 @@
-from typing import Any, Callable, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
+
+from snapred.backend.dao.Hook import Hook
 
 
 class SNAPRequest(BaseModel, arbitrary_types_allowed=True):
@@ -14,4 +16,4 @@ class SNAPRequest(BaseModel, arbitrary_types_allowed=True):
 
     path: str
     payload: Optional[Any] = None
-    hooks: Optional[dict[str, Callable]] = Field(exclude=True)
+    hooks: Optional[dict[str, List[Hook]]] = Field(default=None)

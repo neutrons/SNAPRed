@@ -43,12 +43,7 @@ class InterfaceController:
             service = self.serviceFactory.getService(request.path)
             result = service.orchestrateRecipe(request)
 
-            if not self.hookManager.allHooksExecuted():
-                raise ValueError(
-                    "Not all hooks were executed. "
-                    + f"Executed: {self.hookManager.executed_hooks}, "
-                    + f"Registered: {self.hookManager.hooks.keys()}"
-                )
+            self.hookManager.validateAllHooksExecuted()
 
             message = None
             if snapredLogger.hasWarnings():
