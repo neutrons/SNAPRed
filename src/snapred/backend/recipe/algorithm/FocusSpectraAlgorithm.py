@@ -1,7 +1,8 @@
-from typing import Dict
+from typing import Dict, Tuple
 
 from mantid.api import (
     AlgorithmFactory,
+    ExperimentInfo,
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
@@ -77,6 +78,21 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             existingMsg += "\n"
         errors[key] = existingMsg + msg
 
+    @staticmethod
+    def _instrumentSignature(ws: ExperimentInfo) -> Tuple[str, int]:
+        # Info to implement a practical test for comparing instruments.
+        # (Mantid framework does not provide such a test.)
+        
+        # Instrument name:
+        name = ws.getInstrument().getName()
+        if name.lower().endswith(".xml"):
+            name = name[0: name.rfind(".")]
+        
+        # Number of non-monitor pixels:
+        N_pixels = ws.getInstrument().getNumberDetectors(True)
+        
+        return name, N_pixels
+        
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
 
@@ -94,9 +110,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         # The input-data and grouping workspaces must have the same instrument.
         # Comparing instruments is problematic: however, requiring both the instrument-name,
         #   and the pixel count to match is a fairly safe verification.
-        if (inputWs.getInstrument().getName() != groupingWs.getInstrument().getName()) or (
-            inputWs.getInstrument().getNumberDetectors(True) != groupingWs.getInstrument().getNumberDetectors(True)
-        ):
+        if self._instrumentSignature(inputWs) != self._instrumentSignature(groupingWs):
             msg = "The input-data and grouping workspaces must have the same instrument."
             self._appendErrorMessage(errors, "InputWorkspace", msg)
             self._appendErrorMessage(errors, "GroupingWorkspace", msg)
