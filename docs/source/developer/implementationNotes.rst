@@ -57,5 +57,3 @@ To summarize the important points:
      detector-IDs from all of the participating spectra must be included;
 
   -- grouping-workspace specific methods should be used wherever possible.
-
-

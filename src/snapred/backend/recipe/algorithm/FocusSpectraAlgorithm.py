@@ -82,17 +82,17 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
     def _instrumentSignature(ws: ExperimentInfo) -> Tuple[str, int]:
         # Info to implement a practical test for comparing instruments.
         # (Mantid framework does not provide such a test.)
-        
+
         # Instrument name:
         name = ws.getInstrument().getName()
         if name.lower().endswith(".xml"):
-            name = name[0: name.rfind(".")]
-        
+            name = name[0 : name.rfind(".")]
+
         # Number of non-monitor pixels:
         N_pixels = ws.getInstrument().getNumberDetectors(True)
-        
+
         return name, N_pixels
-        
+
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
 
