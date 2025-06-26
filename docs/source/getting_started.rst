@@ -3,37 +3,43 @@ Getting Started
 
 .. _getting_started:
 
+Developer installation
+----------------------
 
-Instructions for developers
----------------------------
+.. _setup-dev-env:
 
-Conda configuration
-```````````````````
-Create your conda environment using the ``environment.yml`` used by the build servers.
+Pixi configuration
+^^^^^^^^^^^^^^^^^^
 
-.. code-block:: sh
-   :linenos:
+Create your pixi environment using the ``pyproject.toml`` used by the build servers.
+From the root of the source, type the following::
 
-    conda env create --file environment.yml
-    activate SNAPRed
-    python -m pip install -e .
+    pixi install
 
-Line 3 installs the code in `editable mode <https://pip.pypa.io/en/stable/cli/pip_install/#cmdoption-e>`_ so other methods can work.
+To update your environment with changes from the ``pyproject.toml``, type::
 
-If it has been a while, one can update using
+    pixi install
 
-.. code-block:: sh
+.. note::
+    For more information on the available tasks, type ``pixi run --list``.
+.. note::
+    For more details, please see the `pixi documentation <https://pixi.ws/latest/>`_.
+.. note::
+    To install ``pixi``, please see the `installation guide <https://pixi.ws/latest/getting_started/>`_.
 
-    activate SNAPRed
-    conda env update --file environment.yml  --prune
+IDE configuration (optional)
+----------------------------
+The following is for configuring VSCode as the IDE
+but other IDEs may have similar configuration options.
 
-This can be simplified greatly by using `direnv <https://direnv.net/>`_ and an ``.envrc`` file with contents similar to
+VSCode can be configured to use the ``pixi`` environment by adding the following
+to the project's ``.vscode/settings.json`` file:
 
-.. code-block::
+.. code-block:: json
 
-   layout anaconda SNAPRed /opt/anaconda/bin/conda
-
-The location of conda should point at where your version is actually installed.
+    {
+        "python.defaultInterpreterPath": ".pixi/envs/default/bin/python"
+    }
 
 Starting the gui
 ----------------

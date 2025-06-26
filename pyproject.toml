@@ -4,7 +4,6 @@ description = "A desktop application for Lifecycle Managment of data collected f
 dynamic = ["version"]
 requires-python = ">=3.10"
 dependencies = [
-    "mantidworkbench >= 6.12.0.2rc3",
     "pyoncat ~= 1.6"
 ]
 readme = "README.md"
@@ -115,3 +114,96 @@ fail_under = 1
 exclude_lines = [
   'if __name__ == "__main__":'
 ]
+
+# ---------------- #
+# Pixi Config      #
+# ---------------- #
+[tool.pixi.workspace]
+preview = ["pixi-build"]
+channels = [
+  "conda-forge",
+  "neutrons/label/rc",
+  "mantid-ornl/label/rc",
+  "mantid/label/main"
+]
+platforms = ["linux-64"]  # add additional platforms as needed
+
+[tool.pixi.environments]
+default = {features = ["test", "package", "docs", "developer"], solve-group = "default"}
+
+[tool.pixi.pypi-dependencies]
+snapred = { path = ".", editable = true }
+
+[tool.pixi.dependencies]
+python = ">=3.10"
+pip = "*"
+pydantic = ">=2.7.3,<3"
+mantidworkbench = ">=6.12.0.2rc3"
+mantid = ">=6.12.0.2rc2"
+mslice = "*"
+mantidqt = ">=6.12.0.2rc2"
+qtpy = "*"
+muparser = "=2.3.4"
+pycifrw = "*"
+pyqtwebengine = "*"
+git-lfs = "*"
+
+[tool.pixi.package]
+name = "snapred"
+version = "0.0.0"  # placeholder, overwritten by sync-version
+
+[tool.pixi.package.build]
+backend = { name = "pixi-build-python", version = "0.1.*" }
+
+# --------------- #
+# Pixi Tasks      #
+# --------------- #
+[tool.pixi.tasks]
+# PyPi packaging tasks
+build-pypi = { cmd = "hatch build", description = "Build the package for PyPI" }
+publish-pypi = { cmd = "twine upload dist/*", description = "Publish the package to PyPI", depends-on = ["build-pypi"] }
+publish-pypi-test = { cmd = "twine upload --repository testpypi dist/*", description = "Publish the package to TestPyPI", depends-on = ["build-pypi"] }
+clean-pypi = { cmd = "rm -rf dist", description = "Clean the PyPI build artifacts" }
+build-conda-command = { cmd = "pixi build", description = "Build the conda package command" }
+build-conda = { description = "Build the conda package", depends-on = ["sync-version", "build-conda-command", "reset-version"] }
+publish-conda = { cmd = "anaconda upload *.conda", description = "Publish the .conda package to anaconda.org", depends-on = ["build-conda"] }
+clean-conda = { cmd = "rm -f *.conda", description = "Clean the local .conda build artifacts" }
+# Documentation tasks
+build-docs = { cmd = "sphinx-build -b html docs docs/_build", description = "Build the documentation" }
+clean-docs = { cmd = "rm -rf docs/_build", description = "Clean the documentation build artifacts" }
+# Testing tasks
+test = { cmd = "pytest", description = "Run the tests" }  # pytest config above takes care of the arguments
+# MISC
+clean-all = { description = "Clean all build artifacts", depends-on = ["clean-pypi", "clean-docs", "clean-conda"] }
+sync-version = { cmd = "version=$(python -m versioningit); toml set tool.pixi.package.version \"$version\" --toml-path pyproject.toml", description = "Sync pyproject.toml version with Git version" }
+reset-version = { cmd = "toml set tool.pixi.package.version \"0.0.0\" --toml-path pyproject.toml", description = "Reset the package version to 0.0.0" }
+
+# ------------------------------- #
+# Pixi Feature Dependencies       #
+# ------------------------------- #
+[tool.pixi.feature.test.dependencies]
+pytest = "*"
+pytest-qt = "*"
+pytest-cov = "*"
+
+[tool.pixi.feature.package.dependencies]
+boa = "*"
+anaconda-client = "*"
+conda-build = "<24"
+conda-verify = "*"
+check-wheel-contents = ">=0.6.0"
+twine = "*"
+versioningit = "*"
+hatch = "*"
+
+[tool.pixi.feature.developer.dependencies]
+pre-commit = "*"
+ruff = "*"
+python-build = "*"
+
+[tool.pixi.feature.docs.dependencies]
+sphinx = "*"
+sphinx_rtd_theme = "1.2.*"
+sphinxcontrib-mermaid = "*"
+types-pyyaml = "*"
+erdantic = ">=1.0.3"
