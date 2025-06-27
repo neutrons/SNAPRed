@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from snapred.backend.api.ProgressRecorder import ComputationalOrder, Record
 from snapred.backend.dao import RunMetadata
 from snapred.backend.dao.indexing.Versioning import VersionState
 from snapred.backend.dao.ingredients import (
@@ -30,7 +31,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe, ConvertUnitsRecipe
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
-from snapred.backend.service.Service import Service
+from snapred.backend.service.Service import Register, Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.decorators.FromString import FromString
@@ -66,31 +67,12 @@ class ReductionService(Service):
         self.sousChef = SousChef()
         self.mantidSnapper = MantidSnapper(None, __name__)
         self.registerPath("", self.reduction)
-        self.registerPath("ingredients", self.prepReductionIngredients)
-        self.registerPath("metadata", self.getRunMetadata)
-        self.registerPath("groceries", self.fetchReductionGroceries)
-        self.registerPath("groupings", self.fetchReductionGroupings)
-        self.registerPath("loadGroupings", self.loadAllGroupings)
-        self.registerPath("save", self.saveReduction)
-        self.registerPath("load", self.loadReduction)
-        self.registerPath("hasState", self.hasState)
-        self.registerPath("getCompatibleMasks", self.getCompatibleMasks)
-        self.registerPath("getUniqueTimestamp", self.getUniqueTimestamp)
-        self.registerPath("checkWritePermissions", self.checkReductionWritePermissions)
-        self.registerPath("getSavePath", self.getSavePath)
-        self.registerPath("getStateIds", self.getStateIds)
-        self.registerPath("validate", self.validateReduction)
-        self.registerPath("artificialNormalization", self.artificialNormalization)
-        self.registerPath("grabWorkspaceforArtificialNorm", self.grabWorkspaceforArtificialNorm)
-        self.registerPath("hasLiveDataConnection", self.hasLiveDataConnection)
-        self.registerPath("getLiveMetadata", self.getLiveMetadata)
-        self.registerPath("getRunMetadata", self.getRunMetadata)
-        return
 
     @staticmethod
     def name():
         return "reduction"
 
+    @Register("validate")
     def validateReduction(self, request: ReductionRequest):
         """
         Validate the reduction request, providing specific messages if normalization
@@ -199,7 +181,20 @@ class ReductionService(Service):
 
             raise ContinueWarning(msg, continueFlags)
 
+    @staticmethod
+    def _reduction_N_ref(*, instance, request):
+        # Execution-time scaling for the "reduction" method.
+        N_groups = len(request.focusGroups)
+        if not request.liveDataMode:
+            inputFilePath = instance.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
+            if inputFilePath.exists():
+                dataSize = float(inputFilePath.stat().st_size())
+                return N_groups * dataSize
+        return float(N_groups)
+
     @FromString
+    @Register("")
+    @Record(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)
     def reduction(self, request: ReductionRequest):
         """
         Perform reduction on a single run number, once for each grouping in this state.
@@ -266,6 +261,8 @@ class ReductionService(Service):
         )
 
     @FromString
+    @Register("groupings")
+    @Record(N_ref=lambda *,_instance, request: float(len(request.focusGroups)) , order=ComputationalOrder.O_N)
     def fetchReductionGroupings(self, request: ReductionRequest) -> Dict[str, Any]:
         """
         Load all groupings that are valid for a specific state using a ReductionRequest.
@@ -284,6 +281,7 @@ class ReductionService(Service):
         return result
 
     @FromString
+    @Register("loadGroupings")
     def loadAllGroupings(self, runNumber: str, useLiteMode: bool) -> Dict[str, Any]:
         """
         Load all groupings that are valid for a specific state, determined from the run number
@@ -399,6 +397,7 @@ class ReductionService(Service):
         return combinedMask
 
     @FromString
+    @Register("ingredients")
     def prepReductionIngredients(
         self, request: ReductionRequest, combinedPixelMask: Optional[WorkspaceName] = None
     ) -> ReductionIngredients:
@@ -438,6 +437,8 @@ class ReductionService(Service):
         return ingredients
 
     @FromString
+    @Register("groceries")
+    @Record(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)    
     def fetchReductionGroceries(self, request: ReductionRequest) -> Dict[str, Any]:
         """
         Fetch the required groceries, including
@@ -555,25 +556,31 @@ class ReductionService(Service):
         )
         self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
 
+    @Register("save")
+    @Record(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)    
     def saveReduction(self, request: ReductionExportRequest):
         self.dataExportService.exportReductionRecord(request.record)
         self.dataExportService.exportReductionData(request.record)
 
+    @Register("load")
     def loadReduction(self, stateId: str, timestamp: float):
         # How to implement:
         # 1) Create the file path from the stateId and the timestamp;
         # 2) Load the reduction record and workspaces using `DataFactoryService.getReductionData`.
         raise NotImplementedError("not implemented: 'ReductionService.loadReduction")
 
+    @Register("hasState")
     def hasState(self, runNumber: str):
         if not RunNumberValidator.validateRunNumber(runNumber):
             logger.error(f"Invalid run number: {runNumber}")
             return False
         return self.dataFactoryService.checkCalibrationStateExists(runNumber)
 
+    @Register("getUniqueTimestamp")
     def getUniqueTimestamp(self):
         return self.dataExportService.getUniqueTimestamp()
 
+    @Register("checkWritePermissions")
     def checkReductionWritePermissions(self, runNumber: str) -> bool:
         try:
             path = self.dataExportService.getReductionStateRoot(runNumber)
@@ -588,6 +595,7 @@ class ReductionService(Service):
         path = self.dataExportService.getCalibrationStateRoot(runNumber)
         return self.dataExportService.checkWritePermissions(path)
 
+    @Register("getSavePath")
     def getSavePath(self, runNumber: str) -> Path | None:
         path = None
         try:
@@ -598,6 +606,7 @@ class ReductionService(Service):
                 raise
         return path
 
+    @Register("getStateIds")
     def getStateIds(self, runNumbers: List[str]) -> List[str]:
         stateIds = []
         for runNumber in runNumbers:
@@ -630,10 +639,12 @@ class ReductionService(Service):
             versions[version].append(request)
         return versions
 
+    @Register("getCompatibleMasks")
     def getCompatibleMasks(self, request: ReductionRequest) -> List[WorkspaceName]:
         runNumber, useLiteMode = request.runNumber, request.useLiteMode
         return self.dataFactoryService.getCompatibleReductionMasks(runNumber, useLiteMode)
 
+    @Register("artificialNormalization")
     def artificialNormalization(self, request: CreateArtificialNormalizationRequest):
         artificialNormWorkspace = ArtificialNormalizationRecipe().executeRecipe(
             InputWorkspace=request.diffractionWorkspace,
@@ -645,6 +656,19 @@ class ReductionService(Service):
         )
         return artificialNormWorkspace
 
+    @staticmethod
+    def _reduction_artificial_norm_N_ref(*, instance, request):
+        # Execution-time scaling for the "grabWorkspaceForArtificialNorm" method.
+        # (Note: timing details for the `ArtificialNormalizationRecipe` itself is registered at that recipe.)
+        if not request.liveDataMode:
+            inputFilePath = instance.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
+            if inputFilePath.exists():
+                dataSize = float(inputFilePath.stat().st_size())
+                return dataSize
+        return 1.0 # live-data case: not yet fully supported.
+
+    @Register("grabWorkspaceforArtificialNorm")
+    @Record(N_ref=Self._reduction_artificial_norm_N_ref, order=ComputationalOrder.O_N)    
     def grabWorkspaceforArtificialNorm(self, request: ReductionRequest):
         # TODO: REBASE NOTE:
         #   This method actually seems to be a reduction sub-recipe:
@@ -714,12 +738,15 @@ class ReductionService(Service):
         # 4. Return the result
         return artNormBasisWorkspace
 
+    @Register("hasLiveDataConnection")
     def hasLiveDataConnection(self) -> bool:
         """For 'live data' methods: verify that there is a listener connection to the instrument."""
         return self.dataFactoryService.hasLiveDataConnection()
 
+    @Register("getLiveMetadata")
     def getLiveMetadata(self) -> RunMetadata:
         return self.dataFactoryService.getLiveMetadata()
 
+    @Register("getRunMetadata")
     def getRunMetadata(self, runNumber: str) -> RunMetadata:
         return self.dataFactoryService.getRunMetadata(runNumber)
