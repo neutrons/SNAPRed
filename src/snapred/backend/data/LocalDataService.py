@@ -83,13 +83,14 @@ logger = snapredLogger.getLogger(__name__)
     but intersects that of the potential oncat data service interface
 """
 
-
 def _createFileNotFoundError(msg, filename):
     return FileNotFoundError(NOT_FOUND, os.strerror(NOT_FOUND) + " " + msg, filename)
 
 
 @Singleton
 class LocalDataService:
+    _MIN_DATETIME = datetime(datetime.MINYEAR, 1, 1, 0, 0, 0, 0).astimezone()
+
     # conversion factor from microsecond/Angstrom to meters
     # (TODO: FIX THIS COMMENT! Obviously `m2cm` doesn't convert from 1.0 / Angstrom to 1.0 / meters.)
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
@@ -1542,3 +1543,67 @@ class LocalDataService:
     def readLiveData(self, ws: WorkspaceName, duration: int) -> WorkspaceName:
         # A duration of zero => read all of the available data.
         return self._readLiveData(ws, duration)
+
+    ### GENERALIZED PROGRESS REPORTING:
+    
+    def progressRecordsPath(self) -> Path:
+        return Config.userApplicationDataHome / "workflows-data" / "timing"
+
+    def progressRecordsFilenameStem(self) -> str:
+        return "execution_timing"
+    
+    def progressRecordsFilename(self, timestamp: datetime):
+        _timestamp = timestamp
+        # Prohibit naive timestamps
+        if timestamp.tzinfo is None:
+            # By default: add the local timezone.
+            _timestamp = timestamp.astimezone()
+        return self.progressRecordsFilenameStem + "_" + _timestamp.isoformat() + ".json"
+    
+    def _latestProgressRecordsFilePath(self, earliest: bool = False) -> Tuple[Path | None, int]:
+        # Find the latest (or earliest) records filePath, and the count of entries in the records directory.
+        
+        filename = None
+        fileRegex = re.compile(f"{self.progressRecordsFilenameStem()}_{{.*}}\\.json")
+        timestamp = self._MIN_DATETIME if not earliest\
+                    else datetime.now().astimezone()
+        comparator = max if not earliest else min
+        count = 0
+        
+        with os.scandir(self._recordsPath) as entries:
+            for entry in entries:
+                if not entry.is_file():
+                    continue
+                match = fileRegex.match(entry.name):
+                if match:
+                   timestamp = comparator(match.group(1), timestamp)
+                   count += 1
+                   
+            if timestamp != self._MIN_DATETIME:
+                filename = self.progressRecordsFilename(timestamp)
+        return (self.progressRecordsPath() / filename, count) if bool(filename)\
+            else (None, count)
+    
+    def progressRecordsSaveFilePath(self):
+        now = self.getUniqueTimestamp().astimezone().isoformat()
+        return self.progressRecordsPath() / (self.progressRecordsFilenameStem() + "_" + now + ".json")
+    
+    def readProgressRecords(self) -> ProgressRecorder:
+        latestRecordsFilePath, _ = self._latestProgressRecordsFilePath()
+        if latestRecordsFilePath is None:
+            # First start
+            return ProgressRecorder()
+        with open(latestRecordsFilePath) as data:
+            return ProgressRecorder.model_validate_json(data.read())
+
+    def writeProgressRecords(self, records: ProgressRecorder):
+        self.progressRecordsPath().mkdir(parents=True, exist_ok=True)
+        
+        saveFilePath = self.progressRecordsSaveFilePath()
+        with open(saveFilePath, "w") as data:
+            data.write(instance.model_dump_json())
+        
+        # Limit the number of saved records files.
+        earliestRecordsFilePath, count = self._latestProgressRecordsFilePath(earliest=True)
+        if count > Config["workflows_data.timing.max_records"]:
+            earliestRecordsFilePath.unlink()
