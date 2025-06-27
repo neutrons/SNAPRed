@@ -170,10 +170,10 @@ def test_state_root_redirect_no_stateid():
         # make sure a file can be added inside the directory -- can be any file
         # verify it can be found by data services and equals the value written
         localDataService.calibrationExists = mock.Mock(return_value=True)
-        expected = DAOFactory.calibrationParameters("xyz", True, 1)
+        expected = DAOFactory.calibrationParameters("123", True, 1)
         indexer = localDataService.calibrationIndexer(True, "stateId")
         tmpRoot.saveObjectAt(expected, indexer.parametersPath(1))
-        ans = localDataService.readCalibrationState("xyz", True, "stateId", 1)
+        ans = localDataService.readCalibrationState("123", True, "stateId", 1)
         assert ans == expected
         # make sure files can only be added inside the directory
         with pytest.raises(AssertionError):

@@ -6,6 +6,7 @@ from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
+from snapred.backend.dao.request.CreateIndexEntryRequest import CreateIndexEntryRequest
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
@@ -25,6 +26,7 @@ class CreateCalibrationRecordRequest(BaseModel, extra="forbid", strict=False):
     pixelGroups: Optional[List[PixelGroup]] = None
     focusGroupCalibrationMetrics: FocusGroupMetric
     workspaces: Dict[Annotated[WorkspaceType, Field(use_enum_values=True)], List[WorkspaceName]]
+    indexEntry: CreateIndexEntryRequest
 
     model_config = ConfigDict(
         # required in order to use 'WorkspaceName'

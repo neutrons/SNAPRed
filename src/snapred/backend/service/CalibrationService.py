@@ -22,7 +22,6 @@ from snapred.backend.dao.request import (
     CalibrationIndexRequest,
     CalibrationLoadAssessmentRequest,
     CalibrationWritePermissionsRequest,
-    CreateCalibrationRecordRequest,
     DiffractionCalibrationRequest,
     FarmFreshIngredients,
     FitMultiplePeaksRequest,
@@ -327,11 +326,10 @@ class CalibrationService(Service):
         """
         If no version is attached to the request, this will save at next version number
         """
-        entry = self.dataFactoryService.createCalibrationIndexEntry(request.createIndexEntryRequest)
         record = self.dataFactoryService.createCalibrationRecord(request.createRecordRequest)
-        state, _ = self.dataFactoryService.constructStateId(entry.runNumber)
-        version = entry.version
-        if self.dataFactoryService.calibrationExists(entry.runNumber, entry.useLiteMode, state):
+        state, _ = self.dataFactoryService.constructStateId(record.runNumber)
+        version = record.version
+        if self.dataFactoryService.calibrationExists(record.runNumber, record.useLiteMode, state):
             if version == VERSION_START():
                 raise RuntimeError("Overwriting the default calibration is not allowed.")
 
@@ -388,7 +386,7 @@ class CalibrationService(Service):
         record.workspaces = savedWorkspaces
 
         # save the objects at the indicated version
-        self.dataExportService.exportCalibrationRecord(record, entry)
+        self.dataExportService.exportCalibrationRecord(record)
         self.dataExportService.exportCalibrationWorkspaces(record)
 
     @FromString
@@ -526,7 +524,12 @@ class CalibrationService(Service):
 
         # generate metrics workspaces
         GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
-            CalibrationMetricsWorkspaceIngredients(calibrationRecord=calibrationRecord)
+            CalibrationMetricsWorkspaceIngredients(
+                runNumber=calibrationRecord.runNumber,
+                version=calibrationRecord.version,
+                focusGroupCalibrationMetrics=calibrationRecord.focusGroupCalibrationMetrics,
+                timestamp=self.dataExportService.getUniqueTimestamp(),
+            )
         )
 
         # load persistent data workspaces, assuming all workspaces are of WNG-type
@@ -606,23 +609,29 @@ class CalibrationService(Service):
         )
         metrics = self._collectMetrics(fitResults, request.focusGroup, pixelGroup)
 
-        createRecordRequest = CreateCalibrationRecordRequest(
-            runNumber=request.run.runNumber,
+        version = self.dataFactoryService.getNextCalibrationVersion(
             useLiteMode=request.useLiteMode,
+            state=state,
+        )
+        timestamp = self.dataExportService.getUniqueTimestamp()
+        metricWorkspaces = GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
+            CalibrationMetricsWorkspaceIngredients(
+                runNumber=request.run.runNumber,
+                version=version,
+                focusGroupCalibrationMetrics=metrics,
+                timestamp=timestamp,
+            )
+        )
+
+        return CalibrationAssessmentResponse(
+            version=version,
             crystalInfo=self.sousChef.prepCrystallographicInfo(farmFresh),
             calculationParameters=self.sousChef.prepCalibration(farmFresh),
             pixelGroups=[pixelGroup],
             focusGroupCalibrationMetrics=metrics,
             workspaces=request.workspaces,
+            metricWorkspaces=metricWorkspaces,
         )
-        record = self.dataFactoryService.createCalibrationRecord(createRecordRequest)
-
-        timestamp = self.dataExportService.getUniqueTimestamp()
-        metricWorkspaces = GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
-            CalibrationMetricsWorkspaceIngredients(calibrationRecord=record, timestamp=timestamp)
-        )
-
-        return CalibrationAssessmentResponse(record=record, metricWorkspaces=metricWorkspaces)
 
     @FromString
     def handleOverrides(self, request: OverrideRequest):
