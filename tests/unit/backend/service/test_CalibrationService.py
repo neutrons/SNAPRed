@@ -21,7 +21,8 @@ from mantid.simpleapi import (
     mtd,
 )
 from util.Config_helpers import Config_override
-from util.dao import DAOFactory, assertEqualModel, assertEqualModelList
+from util.dao import DAOFactory
+from util.Pydantic_util import assertEqualModel, assertEqualModelList
 from util.state_helpers import state_root_redirect
 
 from snapred.backend.dao.request import (
