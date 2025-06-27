@@ -1,6 +1,6 @@
 from typing import Annotated, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
@@ -10,7 +10,7 @@ from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CalibrationAssessmentResponse(BaseModel, arbitrary_types_allowed=True):
+class CalibrationAssessmentResponse(BaseModel):
     """
 
     The CalibrationAssessmentResponse class serves as a response model specifically designed
@@ -27,3 +27,6 @@ class CalibrationAssessmentResponse(BaseModel, arbitrary_types_allowed=True):
     focusGroupCalibrationMetrics: FocusGroupMetric
     workspaces: Dict[Annotated[WorkspaceType, Field(use_enum_values=True)], List[WorkspaceName]]
     metricWorkspaces: List[str]
+
+    # To allow WorkspaceName to be used as a type
+    model_config = ConfigDict(arbitrary_types_allowed=True)

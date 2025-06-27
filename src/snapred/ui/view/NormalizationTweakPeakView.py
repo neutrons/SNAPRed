@@ -81,7 +81,7 @@ class NormalizationTweakPeakView(BackendRequestView):
 
         # a big ol recalculate button
         self.recalculationButton = QPushButton("Recalculate")
-        self.recalculationButton.clicked.connect(self.emitValueChange)
+        self.recalculationButton.clicked.connect(self.validateAndEmitValueChange)
 
         # add all elements to the grid layout
         layout_ = self.layout()
@@ -170,7 +170,7 @@ class NormalizationTweakPeakView(BackendRequestView):
         return (index, smoothingValue, xtalDMin, xtalDMax)
 
     @Slot()
-    def emitValueChange(self):
+    def validateAndEmitValueChange(self):
         form = self.validateAndReadForm()
         if form is not None:
             self.signalValueChanged.emit(*form)

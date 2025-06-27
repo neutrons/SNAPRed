@@ -23,6 +23,8 @@ from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_
 
 logger = snapredLogger.getLogger(__name__)
 
+# T is used to pull the type of IndexedObject used in the Indexer methods
+# e.g. the filename is determined by the type of IndexedObject,
 T = TypeVar("T", bound=IndexedObject)
 
 """
@@ -230,7 +232,7 @@ class Indexer:
             return True
         except ValueError:
             # This error would only ever result from a software bug.
-            # Saving/Loading/Refering to erroneous "current" versions just serves to obfuscate the error.
+            # Saving/Loading/Referring to erroneous "current" versions just serves to obfuscate the error.
             raise ValueError(
                 (
                     f"The indexer has encountered an invalid version: {version}\n",
@@ -337,7 +339,13 @@ class Indexer:
         indexPath: Path = self.indexPath()
         indexList: List[IndexEntry] = []
         if indexPath.exists():
-            indexList = parse_file_as(List[IndexEntry], indexPath)
+            try:
+                indexList = parse_file_as(List[IndexEntry], indexPath)
+            except Exception:  # noqa: BLE001
+                logger.error(
+                    f"Index file {indexPath} is corrupted or invalid. Recovering index from directory structure."
+                )
+                indexList = self.recoverIndex()
         elif self.rootDirectory.exists():
             logger.warning(f"Index file {indexPath} missing, recovering index from directory structure.")
             indexList = self.recoverIndex()
@@ -413,7 +421,7 @@ class Indexer:
     def versionExists(self, version: Version):
         return self._flattenVersion(version) in self.index
 
-    def indexedObjectPath(self, type_: Type[T], version: Version):
+    def indexedObjectFilePath(self, type_: Type[T], version: Version):
         """
         Path to a specific version of a calculation record
         """
@@ -428,7 +436,7 @@ class Indexer:
         """
         obj.version = self._flattenVersion(obj.version)
         obj.indexEntry.version = obj.version
-        filePath = self.indexedObjectPath(type(obj), obj.version)
+        filePath = self.indexedObjectFilePath(type(obj), obj.version)
         if not overwrite and filePath.exists():
             objTypeName = type(obj).__name__
             raise ValueError(
@@ -452,7 +460,7 @@ class Indexer:
         """
         If no version given, defaults to current version
         """
-        filePath = self.indexedObjectPath(type_, version)
+        filePath = self.indexedObjectFilePath(type_, version)
         obj = None
         if filePath.exists():
             obj = parse_file_as(type_, filePath)
@@ -471,7 +479,7 @@ class Indexer:
 
     def createParameters(self, *, version, **other_arguments) -> CalculationParameters:
         entry = other_arguments.get("indexEntry")
-        entry["version"] = self._flattenVersion(version)
+        entry.version = self._flattenVersion(version)
         other_arguments["indexEntry"] = entry
         return PARAMS_TYPE[self.indexerType](
             version=self._flattenVersion(version),

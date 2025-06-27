@@ -1,7 +1,5 @@
 from qtpy.QtCore import Slot
 
-from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.VersionedObject import VersionedObject, VersionState
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.request import (
     CalculateNormalizationResidualRequest,
@@ -281,13 +279,7 @@ class NormalizationWorkflow(WorkflowImplementer):
     @Slot(WorkflowPresenter, result=SNAPResponse)
     def _saveNormalization(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
-        runNumber = view.fieldRunNumber.get()
-        version = view.fieldVersion.get(VersionState.NEXT)
-        appliesTo = view.fieldAppliesTo.get(f">={self.calibrationRunNumber}")
-        # validate version number
-        version = VersionedObject.validate_version(version)
-        # validate appliesTo field
-        appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
+        runNumber, _, version, appliesTo, comments, author = view.validateAndReadForm()
 
         assessmentResponse = self.assessmentResponse.data
         assessmentResponse.workspaceNames.append(self.normalizationResponse.data["smoothedVanadium"])
@@ -299,8 +291,8 @@ class NormalizationWorkflow(WorkflowImplementer):
             useLiteMode=self.useLiteMode,
             version=version,
             appliesTo=appliesTo,
-            comments=view.fieldComments.get(),
-            author=view.fieldAuthor.get(),
+            comments=comments,
+            author=author,
         )
         createRecordRequest = CreateNormalizationRecordRequest(
             runNumber=runNumber,

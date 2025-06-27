@@ -1,8 +1,6 @@
 from qtpy.QtCore import Slot
 
 from snapred.backend.dao import RunConfig
-from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.VersionedObject import VersionedObject, VersionState
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.request import (
     CalculateResidualRequest,
@@ -658,14 +656,8 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     @Slot(WorkflowPresenter, result=SNAPResponse)
     def _saveCalibration(self, workflowPresenter):
-        view = workflowPresenter.widget.tabView
-        runNumber = view.fieldRunNumber.get()
-        version = view.fieldVersion.get(VersionState.NEXT)
-        appliesTo = view.fieldAppliesTo.get(f">={runNumber}")
-        # validate the version number
-        version = VersionedObject.validate_version(version)
-        # validate appliesTo field
-        appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
+        view: DiffCalSaveView = workflowPresenter.widget.tabView
+        runNumber, version, appliesTo, comments, author = view.validateAndReadForm()
 
         # if this is not the first iteration, account for choice.
         if workflowPresenter.iteration > 1:
@@ -676,8 +668,8 @@ class DiffCalWorkflow(WorkflowImplementer):
             useLiteMode=self.useLiteMode,
             version=version,
             appliesTo=appliesTo,
-            comments=view.fieldComments.get(),
-            author=view.fieldAuthor.get(),
+            comments=comments,
+            author=author,
         )
         createRecordRequest = CreateCalibrationRecordRequest(
             runNumber=runNumber,

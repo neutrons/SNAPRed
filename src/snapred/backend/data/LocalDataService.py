@@ -1161,7 +1161,7 @@ class LocalDataService:
                 useLiteMode=liteMode,
                 creationDate=datetime.datetime.now(),
                 version=version,
-                indexEntry=entry.model_dump(),
+                indexEntry=entry,
             )
 
             # NOTE: this creates a bare record without any other CalibrationRecord data

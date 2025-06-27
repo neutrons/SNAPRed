@@ -724,6 +724,7 @@ class TestIndexer(unittest.TestCase):
         indexer = self.initIndexer()
         indexer.index = index
         indexer.writeIndex()
+        assert indexer.indexPath().exists()
         ans = indexer.readIndex()
         assert ans == index
 
@@ -921,7 +922,7 @@ class TestIndexer(unittest.TestCase):
         indexer = self.initIndexer()
         versionedObj = IndexedObject(version=version, indexEntry=self.indexEntry(version))
         indexer.writeIndexedObject(versionedObj)
-        assert indexer.indexedObjectPath(IndexedObject, 0).exists()
+        assert indexer.indexedObjectFilePath(IndexedObject, 0).exists()
         res = indexer.readIndexedObject(IndexedObject, 0)
         assert res == versionedObj
         assert res.version == 0
@@ -934,7 +935,7 @@ class TestIndexer(unittest.TestCase):
         indexer = self.initIndexer()
         versionedObj = IndexedObject(version=version, indexEntry=self.indexEntry(version))
         indexer.writeIndexedObject(versionedObj)
-        assert indexer.indexedObjectPath(IndexedObject, 0).exists()
+        assert indexer.indexedObjectFilePath(IndexedObject, 0).exists()
         res = indexer.readIndexedObject(IndexedObject, 0)
         assert res == versionedObj
         assert res.version == 0
