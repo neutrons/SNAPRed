@@ -43,6 +43,5 @@ class VersionedObject(BaseModel):
 
     model_config = ConfigDict(
         strict=True,
-        use_enum_values=True,
         validate_assignment=True,
     )
