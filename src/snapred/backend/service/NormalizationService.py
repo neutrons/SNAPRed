@@ -30,6 +30,7 @@ from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.profiling.ProgressRecorder import ComputationalOrder, WallClockTime
 from snapred.backend.recipe.GenericRecipe import (
     ConvertUnitsRecipe,
     FocusSpectraRecipe,
@@ -42,6 +43,7 @@ from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroup
 from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.service.Service import Register, Service
 from snapred.backend.service.SousChef import SousChef
+from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -79,6 +81,62 @@ class NormalizationService(Service):
     def name():
         return "normalization"
 
+    def _groupingAlreadyCalculated(self, request: NormalizationRequest) -> bool:
+        # Return True if this grouping has already been calculated, and the workspaces are present in the ADS.
+        groupingScheme = request.focusGroup.name
+
+        # required workspaces
+        correctedVanadium = wng.rawVanadium().runNumber(request.runNumber).build()
+        focusedVanadium = wng.run().runNumber(request.runNumber).group(groupingScheme).auxiliary("S+F-Vanadium").build()
+        smoothedVanadium = wng.smoothedFocusedRawVanadium().runNumber(request.runNumber).group(groupingScheme).build()
+
+        return (
+            self.groceryService.workspaceDoesExist(correctedVanadium)
+            and self.groceryService.workspaceDoesExist(focusedVanadium)
+            and self.groceryService.workspaceDoesExist(smoothedVanadium)
+        )
+
+    @FromString
+    def _normalization_N_ref(self, request: NormalizationRequest) -> float | None:
+        # Calculate the reference value to use during the estimation of execution time for the "normalization" method.
+
+        # -- Returning `None` means that the `N_ref` value cannot be calculated, or alternatively,
+        #    that it should not be used.
+        # -- Please see:
+        #    `snapred.readthedocs.io/en/latest/developer/implementation_notes/profiling_and_progress_recording.html`.
+
+        #    Several cases are identified where the N_ref value from this method should not be used.
+        #    These are:
+        #   -- quick return when the normalization has already been calculated for the required grouping;
+        #   -- quick calculation when the `request.correctedVanadiumWs` has already been calculated and is passed in.
+
+        # TODO: if the "already calculated" special cases were dealt with at the workflow level, the profiling
+        #   attached to this method could be much more effective!
+
+        # TODO: here it is assumed (for the moment) that the geometry is always that of a cylindrical sample.
+        #   For a more generally applicable solution, a few details of the sample geometry should probably be added
+        #   to a part of the <step key> that does _not_ show up in its <loggable step name>.
+        #   Eventually addressing this issue is important: because the execution time estimate for a spherical sample
+        #   is expected to be completely different than that for a cylindrical sample!
+        #   Unfortunately, we don't have these details at the point this method is called. This would possibly
+        #   be an argument for _not_ decorating "normalization", and alternatively adding profiling to a context-manager
+        #   profiled substep below.  OR to simply decorate the `RawVanadiumCorrectionRecipe` instead.
+
+        N_ref = None
+        if not self._groupingAlreadyCalculated(request) and request.correctedVanadiumWs is None:
+            # Constants affecting the execution-time scaling (see "TODO" comment above):
+            numberOfSlices = Config["constants.RawVanadiumCorrection.numberOfSlices"]
+            numberOfAnnuli = Config["constants.RawVanadiumCorrection.numberOfAnnuli"]
+
+            inputFilePath = self.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
+            if inputFilePath.exists():
+                # As the workspaces aren't loaded yet this estimate uses the file size.
+                # Note: `st_size` is in bytes.
+                dataSize = float(inputFilePath.stat().st_size)
+                N_ref = float(numberOfSlices * numberOfAnnuli * dataSize)
+        return N_ref
+
+    @WallClockTime(N_ref=_normalization_N_ref, order=ComputationalOrder.O_N)
     @FromString
     @Register("")
     def normalization(self, request: NormalizationRequest):
@@ -86,154 +144,169 @@ class NormalizationService(Service):
 
         groupingScheme = request.focusGroup.name
 
-        # prepare ingredients
-        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
-        state, _ = self.dataFactoryService.constructStateId(request.runNumber)
-        farmFresh = FarmFreshIngredients(
-            runNumber=request.runNumber,
-            useLiteMode=request.useLiteMode,
-            focusGroups=[request.focusGroup],
-            cifPath=cifPath,
-            calibrantSamplePath=request.calibrantSamplePath,
-            crystalDBounds=request.crystalDBounds,
-            state=state,
-        )
-
-        # prepare and check focus group workspaces -- see if grouping already calculated
-        correctedVanadium = wng.rawVanadium().runNumber(request.runNumber).build()
-        focusedVanadium = wng.run().runNumber(request.runNumber).group(groupingScheme).auxiliary("S+F-Vanadium").build()
-        smoothedVanadium = wng.smoothedFocusedRawVanadium().runNumber(request.runNumber).group(groupingScheme).build()
-
-        if (
-            self.groceryService.workspaceDoesExist(correctedVanadium)
-            and self.groceryService.workspaceDoesExist(focusedVanadium)
-            and self.groceryService.workspaceDoesExist(smoothedVanadium)
+        # Profiling sub-step: "load-and-prepare-data".
+        with WallClockTime(
+            "load-and-prepare-data",
+            N_ref=NormalizationService._normalization_N_ref,
+            N_ref_args=((self, request), {}),
+            order=ComputationalOrder.O_N,
         ):
+            # prepare ingredients
+            cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
+            state, _ = self.dataFactoryService.constructStateId(request.runNumber)
+            farmFresh = FarmFreshIngredients(
+                runNumber=request.runNumber,
+                useLiteMode=request.useLiteMode,
+                focusGroups=[request.focusGroup],
+                cifPath=cifPath,
+                calibrantSamplePath=request.calibrantSamplePath,
+                crystalDBounds=request.crystalDBounds,
+                state=state,
+            )
+
+            # prepare and check focus group workspaces -- see if grouping already calculated
+            correctedVanadium = wng.rawVanadium().runNumber(request.runNumber).build()
+            focusedVanadium = (
+                wng.run().runNumber(request.runNumber).group(groupingScheme).auxiliary("S+F-Vanadium").build()
+            )
+            smoothedVanadium = (
+                wng.smoothedFocusedRawVanadium().runNumber(request.runNumber).group(groupingScheme).build()
+            )
+
             calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
                 request.runNumber, request.useLiteMode, state
             )
+
+            if self._groupingAlreadyCalculated(request):
+                self.groceryClerk.name("maskWorkspace").diffcal_mask(state, calVersion, request.runNumber).useLiteMode(
+                    request.useLiteMode
+                ).add()
+                groceries = self.groceryService.fetchGroceryDict(
+                    self.groceryClerk.buildDict(),
+                )
+                maskWorkspace = groceries["maskWorkspace"]
+                # NOTE: It needs to be checked with Malcolm if peaks should be purged
+                detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh, purgePeaks=False, pixelMask=maskWorkspace)
+                return NormalizationResponse(
+                    correctedVanadium=correctedVanadium,
+                    focusedVanadium=focusedVanadium,
+                    smoothedVanadium=smoothedVanadium,
+                    detectorPeaks=detectorPeaks,
+                ).dict()
+
+            # gather needed groceries and ingredients
+            if request.correctedVanadiumWs is None:
+                self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
+                    request.useLiteMode
+                ).diffCalVersion(calVersion).state(state).dirty().add()
+                self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
+                    request.useLiteMode
+                ).diffCalVersion(calVersion).state(state).dirty().add()
+            else:
+                # check that the corrected vanadium workspaces exist already
+                if request.correctedVanadiumWs != correctedVanadium:
+                    raise RuntimeError(
+                        (
+                            "Corrected vanadium of unexpected name provided. Is this workspace still compatible?"
+                            f"{request.correctedVanadiumWs} vs {correctedVanadium}"
+                        )
+                    )
+                if not self.groceryService.workspaceDoesExist(correctedVanadium):
+                    raise RuntimeError(f"Supplied corrected vanadium {correctedVanadium} does not exist.")
+
+            self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(groupingScheme).useLiteMode(
+                request.useLiteMode
+            ).add()
+
+            calRunNumber = self.dataFactoryService.getCalibrationRecord(
+                request.runNumber, request.useLiteMode, calVersion, state
+            ).runNumber
+
             self.groceryClerk.name("maskWorkspace").diffcal_mask(state, calVersion, request.runNumber).useLiteMode(
                 request.useLiteMode
             ).add()
+
             groceries = self.groceryService.fetchGroceryDict(
                 self.groceryClerk.buildDict(),
             )
-            maskWorkspace = groceries["maskWorkspace"]
-            # NOTE: It needs to be checked with Malcolm if peaks should be purged
-            detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh, purgePeaks=False, pixelMask=maskWorkspace)
+            ingredients = self.sousChef.prepNormalizationIngredients(farmFresh, groceries["maskWorkspace"])
+
+        # Profiling sub-step: "normalize-data".
+        with WallClockTime(
+            "normalize-data",
+            N_ref=NormalizationService._normalization_N_ref,
+            N_ref_args=((self, request), {}),
+            order=ComputationalOrder.O_N,
+        ):
+            if request.correctedVanadiumWs is None:
+                self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
+                # NOTE: This used to point at other methods in this service to accomplish the same thing
+                #       It looks like it got reverted accidentally?
+                #       I'm leaving them as is but this should be fixed.
+                # 1. correctiom
+                RawVanadiumCorrectionRecipe().executeRecipe(
+                    InputWorkspace=groceries["inputWorkspace"],
+                    BackgroundWorkspace=groceries["backgroundWorkspace"],
+                    Ingredients=ingredients,
+                    OutputWorkspace=correctedVanadium,
+                )
+
+                # TODO: delete inputWorkspace and backgroundWorkspace as they are no longer needed
+                self.groceryService.deleteWorkspace(groceries["inputWorkspace"])
+                self.groceryService.deleteWorkspace(groceries["backgroundWorkspace"])
+
+            # 1.5 Apply latest calibration before focussing, if unable to mark it as uncalibrated?
+            # Apply diffcal and mask
+            groceries["inputWorkspace"] = correctedVanadium
+            groceries["outputWorkspace"] = focusedVanadium
+
+            PreprocessReductionRecipe().cook(
+                PreprocessReductionRecipe.Ingredients(),
+                groceries={
+                    "inputWorkspace": groceries["inputWorkspace"],
+                    "outputWorkspace": groceries["outputWorkspace"],
+                    "maskWorkspace": groceries["maskWorkspace"],
+                },
+            )
+
+            groceries["inputWorkspace"] = focusedVanadium
+
+            # focus and normalize by current
+            ConvertUnitsRecipe().executeRecipe(
+                InputWorkspace=groceries["inputWorkspace"],
+                OutputWorkspace=groceries["outputWorkspace"],
+                Target="dSpacing",
+                EMode="Elastic",
+            )
+
+            groceries["inputWorkspace"] = focusedVanadium
+            groceries["outputWorkspace"] = focusedVanadium
+
+            ReductionGroupProcessingRecipe().cook(
+                ReductionGroupProcessingRecipe.Ingredients(pixelGroup=ingredients.pixelGroup, preserveEvents=False),
+                groceries={
+                    "inputWorkspace": groceries["inputWorkspace"],
+                    "outputWorkspace": groceries["outputWorkspace"],
+                    "groupingWorkspace": groceries["groupingWorkspace"],
+                },
+            )
+
+            # 2. focus
+            # 3. smooth
+            SmoothDataExcludingPeaksRecipe().executeRecipe(
+                InputWorkspace=focusedVanadium,
+                DetectorPeaks=create_pointer(ingredients.detectorPeaks),
+                SmoothingParameter=request.smoothingParameter,
+                OutputWorkspace=smoothedVanadium,
+            )
+            # done
             return NormalizationResponse(
                 correctedVanadium=correctedVanadium,
                 focusedVanadium=focusedVanadium,
                 smoothedVanadium=smoothedVanadium,
-                detectorPeaks=detectorPeaks,
+                detectorPeaks=ingredients.detectorPeaks,
+                calibrationRunNumber=calRunNumber,
             ).dict()
-        calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
-            request.runNumber, request.useLiteMode, state
-        )
-        # gather needed groceries and ingredients
-        if request.correctedVanadiumWs is None:
-            self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(
-                request.useLiteMode
-            ).diffCalVersion(calVersion).state(state).dirty().add()
-            self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
-                request.useLiteMode
-            ).diffCalVersion(calVersion).state(state).dirty().add()
-        else:
-            # check that the corrected vanadium workspaces exist already
-            if request.correctedVanadiumWs != correctedVanadium:
-                raise RuntimeError(
-                    (
-                        "Corrected vanadium of unexpected name provided. Is this workspace still compatible?"
-                        f"{request.correctedVanadiumWs} vs {correctedVanadium}"
-                    )
-                )
-            if not self.groceryService.workspaceDoesExist(correctedVanadium):
-                raise RuntimeError(f"Supplied corrected vanadium {correctedVanadium} does not exist.")
-
-        self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(groupingScheme).useLiteMode(
-            request.useLiteMode
-        ).add()
-
-        calRunNumber = self.dataFactoryService.getCalibrationRecord(
-            request.runNumber, request.useLiteMode, calVersion, state
-        ).runNumber
-
-        self.groceryClerk.name("maskWorkspace").diffcal_mask(state, calVersion, request.runNumber).useLiteMode(
-            request.useLiteMode
-        ).add()
-
-        groceries = self.groceryService.fetchGroceryDict(
-            self.groceryClerk.buildDict(),
-        )
-        ingredients = self.sousChef.prepNormalizationIngredients(farmFresh, groceries["maskWorkspace"])
-        if request.correctedVanadiumWs is None:
-            self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
-            # NOTE: This used to point at other methods in this service to accomplish the same thing
-            #       It looks like it got reverted accidentally?
-            #       I'm leaving them as is but this should be fixed.
-            # 1. correctiom
-            RawVanadiumCorrectionRecipe().executeRecipe(
-                InputWorkspace=groceries["inputWorkspace"],
-                BackgroundWorkspace=groceries["backgroundWorkspace"],
-                Ingredients=ingredients,
-                OutputWorkspace=correctedVanadium,
-            )
-
-            # TODO: delete inputWorkspace and backgroundWorkspace as they are no longer needed
-            self.groceryService.deleteWorkspace(groceries["inputWorkspace"])
-            self.groceryService.deleteWorkspace(groceries["backgroundWorkspace"])
-        # 1.5 Apply latest calibration before focussing, if unable to mark it as uncalibrated?
-        # Apply diffcal and mask
-        groceries["inputWorkspace"] = correctedVanadium
-        groceries["outputWorkspace"] = focusedVanadium
-
-        PreprocessReductionRecipe().cook(
-            PreprocessReductionRecipe.Ingredients(),
-            groceries={
-                "inputWorkspace": groceries["inputWorkspace"],
-                "outputWorkspace": groceries["outputWorkspace"],
-                "maskWorkspace": groceries["maskWorkspace"],
-            },
-        )
-
-        groceries["inputWorkspace"] = focusedVanadium
-
-        # focus and normalize by current
-        ConvertUnitsRecipe().executeRecipe(
-            InputWorkspace=groceries["inputWorkspace"],
-            OutputWorkspace=groceries["outputWorkspace"],
-            Target="dSpacing",
-            EMode="Elastic",
-        )
-
-        groceries["inputWorkspace"] = focusedVanadium
-        groceries["outputWorkspace"] = focusedVanadium
-
-        ReductionGroupProcessingRecipe().cook(
-            ReductionGroupProcessingRecipe.Ingredients(pixelGroup=ingredients.pixelGroup, preserveEvents=False),
-            groceries={
-                "inputWorkspace": groceries["inputWorkspace"],
-                "outputWorkspace": groceries["outputWorkspace"],
-                "groupingWorkspace": groceries["groupingWorkspace"],
-            },
-        )
-
-        # 2. focus
-        # 3. smooth
-        SmoothDataExcludingPeaksRecipe().executeRecipe(
-            InputWorkspace=focusedVanadium,
-            DetectorPeaks=create_pointer(ingredients.detectorPeaks),
-            SmoothingParameter=request.smoothingParameter,
-            OutputWorkspace=smoothedVanadium,
-        )
-        # done
-        return NormalizationResponse(
-            correctedVanadium=correctedVanadium,
-            focusedVanadium=focusedVanadium,
-            smoothedVanadium=smoothedVanadium,
-            detectorPeaks=ingredients.detectorPeaks,
-            calibrationRunNumber=calRunNumber,
-        ).dict()
 
     def _markWorkspaceMetadata(self, request: NormalizationRequest, workspace: WorkspaceName):
         if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION in request.continueFlags:

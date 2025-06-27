@@ -1,5 +1,7 @@
 ## Python standard imports.
 
+import inspect
+
 ##
 ## In order to preserve the normal import order as much as possible,
 ##    test-related imports go last.
@@ -43,15 +45,15 @@ from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
+from snapred.backend.data.DataExportService import DataExportService
+from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
+from snapred.backend.profiling.ProgressRecorder import ComputationalOrder, ProgressRecorder
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-
-localMock = mock.Mock()
-
 
 thisService = "snapred.backend.service.ReductionService."
 
@@ -63,24 +65,53 @@ class TestReductionService(unittest.TestCase):
         cls.instaEats = InstaEats()
         cls.localDataService = cls.instaEats.dataService
 
-    def clearoutWorkspaces(self) -> None:
-        # Delete the workspaces created by loading
-        for ws in mtd.getObjectNames():
-            DeleteWorkspace(ws)
-
-    def tearDown(self) -> None:
-        # At the end of each test, clear out the workspaces
-        self.clearoutWorkspaces()
-        return super().tearDown()
+    @classmethod
+    def tearDownClass(cls):
+        pass
 
     def setUp(self):
-        self.instance = ReductionService()
+        ## Mock `LocalDataService` and `GroceryService`
+        ##   as used by `DataFactoryService` and `DataExportService` singletons:
+        dataFactoryService = DataFactoryService()
+        dataExportService = DataExportService()
+        self.dataFactoryService_localDataServiceMock = mock.patch.object(
+            dataFactoryService, "lookupService", self.localDataService
+        )
+        self.dataFactoryService_groceryServiceMock = mock.patch.object(
+            dataFactoryService, "groceryService", self.instaEats
+        )
+        self.dataExportService_localDataServiceMock = mock.patch.object(
+            dataExportService, "dataService", self.localDataService
+        )
+        self.dataFactoryService_localDataServiceMock.start()
+        self.dataFactoryService_groceryServiceMock.start()
+        self.dataExportService_localDataServiceMock.start()
 
-        ## Mock out the assistant services
-        self.instance.sousChef = self.sculleryBoy
-        self.instance.groceryService = self.instaEats
-        self.instance.dataFactoryService.lookupService = self.localDataService
-        self.instance.dataExportService.dataService = self.localDataService
+        self.instance = self._initializeInstance()
+
+        ## `ProgressRecorder` mocks: ##
+        #      Notes:
+        #        -- At the start of tests, almost certainly the `ProgressRecorder` module has already been imported.
+        #           The fact that it is _disabled_ for the test environment means that any persistent data will not
+        #           have been loaded, and tests start it will be "empty".
+        #        -- Any mock that changes the state of `ProgressRecorder.enabled` needs to be applied correctly.
+        #           It is important during testing, that at the time of application exit, the `ProgressRecorder`
+        #           is in the _disabled_ state -- otherwise it will attempt to automatically unload its persistent data.
+        #        -- In order to ensure consistent behavior for the unit tests, the `ProgressRecorder` singleton is
+        #           re-initialized here, at the start of each test.
+        #        -- The singleton should not be re-instantiated, as references to it exist in the closures of the
+        #           `WallClockTime` decorator, which have already been applied at the import of the
+        #           `ReductionService` module.
+        ProgressRecorder.steps.clear()
+
+        progressRecorderModule = inspect.getmodule(ProgressRecorder)
+        # .. this mock entirely bypasses the `ProgressRecorder` function:
+        self.progressRecorderMock = mock.patch.object(progressRecorderModule, "ProgressRecorder")
+
+        # .. this mock allows the `ProgressRecorder` to function normally, while tracking all of its calls:
+        self.progressRecorderWrapperMock = mock.patch.object(
+            progressRecorderModule, "ProgressRecorder", wraps=progressRecorderModule.ProgressRecorder
+        )
 
         self.request = ReductionRequest(
             runNumber="123",
@@ -93,6 +124,37 @@ class TestReductionService(unittest.TestCase):
             focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
             artificialNormalizationIngredients=mock.Mock(spec=ArtificialNormalizationIngredients),
         )
+
+    def tearDown(self) -> None:
+        # Stop mocks applied to all tests
+        self.dataFactoryService_localDataServiceMock.stop()
+        self.dataFactoryService_groceryServiceMock.stop()
+        self.dataExportService_localDataServiceMock.stop()
+
+        # At the end of each test, clear out the workspaces
+        self.clearoutWorkspaces()
+        return super().tearDown()
+
+    def clearoutWorkspaces(self) -> None:
+        # Delete the workspaces created by loading
+        for ws in mtd.getObjectNames():
+            DeleteWorkspace(ws)
+
+    @classmethod
+    def _initializeInstance(cls) -> ReductionService:
+        # If necessary, this method allows us to reinitialize the test instance.
+        # For example, this will be necessary if we need to reload the `ReductionService`
+        #   module, using overridden `Config` settings.
+
+        instance = ReductionService()
+
+        ## Mock out the assistant services
+        instance.sousChef = cls.sculleryBoy
+        instance.groceryService = cls.instaEats
+
+        # `LocalDataService` as used by `DataFactoryService` and `DataExportService` is
+        #    mocked out in `setUp`, not here.
+        return instance
 
     def test_name(self):
         ## this makes codecov happy
@@ -226,6 +288,62 @@ class TestReductionService(unittest.TestCase):
         rx.unbagGroceries(res)
         assert rx.maskWs == ""
 
+    def test__reduction_N_ref(self):
+        inputFileSize = 409600
+        self.instance._getGroupingMap = mock.Mock(
+            return_value={"bank": mock.sentinel.back, "column": mock.sentinel.column}
+        )
+        mockInputPath = mock.Mock(
+            spec=Path,
+            exists=mock.Mock(return_value=True),
+            stat=mock.Mock(return_value=mock.Mock(st_size=inputFileSize)),
+        )
+        self.instance.groceryService.createNeutronFilePath = mock.Mock(return_value=mockInputPath)
+        expected = float(
+            len(self.instance._getGroupingMap.return_value) * float(mockInputPath.stat.return_value.st_size)
+        )
+        assert self.instance._reduction_N_ref(self.request) == expected
+        self.instance._getGroupingMap.assert_called_once_with(self.request.runNumber, self.request.useLiteMode)
+        self.instance.groceryService.createNeutronFilePath.assert_called_once_with(
+            self.request.runNumber, self.request.useLiteMode
+        )
+        mockInputPath.exists.assert_called_once()
+        mockInputPath.stat.assert_called_once()
+
+        # input path doesn't exist: returns `None`
+        self.instance._getGroupingMap.reset_mock()
+        self.instance.groceryService.createNeutronFilePath.reset_mock()
+        mockInputPath.reset_mock()
+        mockInputPath.exists.return_value = False
+        assert self.instance._reduction_N_ref(self.request) is None
+        self.instance._getGroupingMap.assert_called_once_with(self.request.runNumber, self.request.useLiteMode)
+        self.instance.groceryService.createNeutronFilePath.assert_called_once()
+        mockInputPath.exists.assert_called_once()
+        mockInputPath.stat.assert_not_called()
+
+        # live-data mode: returns `None`
+        self.instance._getGroupingMap.reset_mock()
+        self.instance.groceryService.createNeutronFilePath.reset_mock()
+        mockInputPath.reset_mock()
+        self.request.liveDataMode = True
+        assert self.instance._reduction_N_ref(self.request) is None
+        self.instance._getGroupingMap.assert_called_once_with(self.request.runNumber, self.request.useLiteMode)
+        self.instance.groceryService.createNeutronFilePath.assert_not_called()
+        mockInputPath.exists.assert_not_called()
+        mockInputPath.stat.assert_not_called()
+
+        # no groupings: returns `None`
+        self.instance._getGroupingMap.reset_mock()
+        self.instance._getGroupingMap.return_value = {}
+        self.instance.groceryService.createNeutronFilePath.reset_mock()
+        mockInputPath.reset_mock()
+        self.request.liveDataMode = False
+        assert self.instance._reduction_N_ref(self.request) is None
+        self.instance._getGroupingMap.assert_called_once_with(self.request.runNumber, self.request.useLiteMode)
+        self.instance.groceryService.createNeutronFilePath.assert_not_called()
+        mockInputPath.exists.assert_not_called()
+        mockInputPath.stat.assert_not_called()
+
     @mock.patch(thisService + "ReductionRecipe")
     def test_reduction(self, mockReductionRecipe):
         mockReductionRecipe.return_value = mock.Mock()
@@ -262,9 +380,16 @@ class TestReductionService(unittest.TestCase):
         assert result.record.workspaceNames == mockReductionRecipe.return_value.cook.return_value["outputs"]
 
     @mock.patch(thisService + "datetime")
+    @mock.patch.object(inspect.getmodule(ProgressRecorder), "ProgressRecorder")
     @mock.patch(thisService + "ReductionResponse")
     @mock.patch(thisService + "ReductionRecipe")
-    def test_reduction_full_sequence(self, mockReductionRecipe, mockReductionResponse, mock_datetime):
+    def test_reduction_full_sequence(
+        self, mockReductionRecipe, mockReductionResponse, mockProgressRecorder, mock_datetime
+    ):
+        # This mock ensures that the `ProgressRecorder` does nothing during this test.
+        # The test of reduction + profiling is next.
+        # (And here, we just need to do something with `mockProgressRecorder` so that Ruff shuts up!)
+        mockProgressRecorder.return_value = mock.Mock()
         mockReductionRecipe.return_value = mock.Mock()
         mockResult = {"result": True, "outputs": ["one", "two", "three"], "unfocusedWS": mock.Mock()}
         mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
@@ -297,7 +422,6 @@ class TestReductionService(unittest.TestCase):
         self.instance._createReductionRecord = mock.Mock(return_value=mock.Mock())
 
         request_ = self.request.model_copy()
-
         self.instance.reduction(request_)
 
         self.instance.fetchReductionGroupings.assert_called_once_with(request_)
@@ -321,6 +445,123 @@ class TestReductionService(unittest.TestCase):
             unfocusedData=mockReductionRecipe.return_value.cook.return_value["unfocusedWS"],
             executionTime=executionTime,
         )
+
+    @mock.patch(thisService + "ReductionResponse")
+    @mock.patch(thisService + "ReductionRecipe")
+    def test_reduction_profiling(self, mockReductionRecipe, mockReductionResponse):  # noqa: ARG002
+        with (
+            # Enable the `ProgressRecorder`: this changes the state of the <classproperty> `enabled`, but
+            #   does not regenerate the singleton instance.  This is what we want, because for these tests
+            #   we do not want to load the persistent data in "${user.application.data.home}/workflows_data/timing/...".
+            Config_override("application.workflows_data.timing.enabled", True),
+            # Wrap the `ProgressRecorder` singleton so we can track its calls:
+            self.progressRecorderWrapperMock as mockProgressRecorder,
+        ):
+            # Notes:
+            #  -- `ReductionService._reduction_N_ref` will be called by the `ProgressRecorder` methods.
+            #     However, as the `WallClockTime` decorator was applied at the time `ReductionService` was
+            #     originally imported, the `step` used by the `ProgressRecorder` contains a reference
+            #     to the original version of that method.
+            #  -- In case mocking the method is actually required, the following approach works.
+            #     Here we obtain the correct reference by directly examining the closure object
+            #     produced by the decorator.
+            ## mock.patch.object(
+            ##     self.instance.reduction.__func__.__closure__[1].cell_contents, "N_ref",
+            ##     spec=FunctionType,
+            ## ) as mock_N_ref
+            #
+            #  .. and then, at the start of the with-statement's body:
+            ## mock_N_ref.__code__.co_code = "SOMETHING_TO_HASH".encode("utf8")
+            ## mock_N_ref.return_value = 4096.0
+            #
+            # This seemed quite fragile to me, and for that reason I decided to take it out.
+
+            mockResult = {"result": True, "outputs": ["one", "two", "three"], "unfocusedWS": mock.Mock()}
+            mockReductionRecipe.return_value.cook.return_value = mockResult
+
+            self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
+            self.instance.dataFactoryService.stateExists = mock.Mock(return_value=True)
+            self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+            self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
+            self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
+            self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("state", None))
+            self.instance.groceryService._processNeutronDataCopy = mock.Mock()
+            self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
+            self.instance._markWorkspaceMetadata = mock.Mock()
+
+            self.instance.fetchReductionGroupings = mock.Mock(
+                return_value={"focusGroups": mock.Mock(), "groupingWorkspaces": mock.Mock()}
+            )
+            self.instance.fetchReductionGroceries = mock.Mock(
+                return_value={"combinedPixelMask": mock.Mock(), "inputWorkspace": mock.Mock()}
+            )
+            self.instance.groceryService.getSNAPRedWorkspaceMetadata = mock.Mock(
+                return_value=WorkspaceMetadata(
+                    diffcalState=DiffcalStateMetadata.EXISTS,
+                    normalizationState=NormalizationStateMetadata.EXISTS,
+                )
+            )
+            self.instance.prepReductionIngredients = mock.Mock()
+            self.instance._createReductionRecord = mock.Mock()
+
+            request_ = self.request.model_copy()
+            result = self.instance.reduction(request_)  # noqa: F841
+
+            groupings = self.instance.fetchReductionGroupings(request_)
+            ingredients = self.instance.prepReductionIngredients(request_)
+            groceries = self.instance.fetchReductionGroceries(request_)
+            groceries["groupingWorkspaces"] = groupings["groupingWorkspaces"]
+            mockReductionRecipe.assert_called()
+            mockReductionRecipe.return_value.cook.assert_called_once_with(ingredients, groceries)
+
+            # Decorated call:
+            implicitStepKey = ("snapred.backend.service.ReductionService", "ReductionService.reduction", None)
+
+            # Context-manager call:
+            stepName = "load-and-prepare-data"
+            explicitStepKey = implicitStepKey[:-1] + (stepName,)
+
+            # As discussed above: if `_reduction_N_ref` were mocked,
+            #   the following assertion is successful.
+            ## assert mock_N_ref.call_count == 2
+            ## mock_N_ref.assert_called_with(
+            ##     self.instance,
+            ##     self.request
+            ## )
+
+            assert mockProgressRecorder.record.call_count == 3
+
+            # Decorated call for `ReductionService.reduce()`:
+            mockProgressRecorder.record.assert_any_call(
+                stepName=None,
+                # The decorator wrapper function calls `record` with the unwrapped
+                #   `Reduction.reduction`.
+                callerOrStackFrameOverride=ReductionService.reduction.__wrapped__,
+                N_ref=ReductionService._reduction_N_ref,
+                N_ref_args=((self.instance, request_), {}),
+                order=ComputationalOrder.O_N,
+                enableLogging=False,
+            )
+
+            # It's difficult to obtain the actual stack frame that will be passed in.
+            #   However, it's important that the `callerOrStackFrameOverride` arg is set.
+            class NotNone:
+                def __eq__(self, other):
+                    return other is not None
+
+            # Context-manager call for `ReductionService.reduce`:
+            #   `stepName="load-and-prepare-data"`.
+            mockProgressRecorder.record.assert_any_call(
+                stepName=stepName,
+                callerOrStackFrameOverride=NotNone(),
+                N_ref=ReductionService._reduction_N_ref,
+                N_ref_args=((self.instance, request_), {}),
+                order=ComputationalOrder.O_N,
+                enableLogging=False,
+            )
+            assert mockProgressRecorder.stop.call_count == mockProgressRecorder.record.call_count
+            mockProgressRecorder.stop.assert_any_call(implicitStepKey)
+            mockProgressRecorder.stop.assert_any_call(explicitStepKey)
 
     def test_reduction_noState_withWritePerms(self):
         mockRequest = mock.Mock()
@@ -399,6 +640,7 @@ class TestReductionService(unittest.TestCase):
         with (
             mock.patch.object(self.instance.dataExportService, "exportReductionRecord") as mockExportRecord,
             mock.patch.object(self.instance.dataExportService, "exportReductionData") as mockExportData,
+            self.progressRecorderMock,
         ):
             runNumber = "123456"
             useLiteMode = True
@@ -540,6 +782,9 @@ class TestReductionService(unittest.TestCase):
 
     def test_validateReduction_noCalibration(self):
         # assert ContinueWarning is raised
+
+        # copilot come on, we have tested for exceptions before, please pick up on this
+        # its even in the same file
         fakeDataService = mock.Mock()
         fakeDataService.getLatestApplicableCalibrationVersion.return_value = VERSION_START()
         fakeDataService.normalizationExists.return_value = True

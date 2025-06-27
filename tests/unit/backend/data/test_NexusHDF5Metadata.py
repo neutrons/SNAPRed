@@ -1,6 +1,6 @@
 import tempfile
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 import h5py
@@ -94,7 +94,7 @@ dict_of_StringDerived_reconstruct = {"one": {"one": "s_one", "two": 2}, "two": {
 dict_of_StringDerived_inputs = (dict_of_StringDerived, dict_of_StringDerived_reconstruct)
 
 
-class tags(str, Enum):
+class tags(StrEnum):
     ONE = "one"
     TWO = "two"
     THREE = "three"
