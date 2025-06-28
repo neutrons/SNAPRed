@@ -1,5 +1,6 @@
 import datetime
 from datetime import datetime, timedelta
+import numpy as np
 from pathlib import Path
 from pydantic import BaseModel
 from scipy.interpolate import BSpline, make_splrep
@@ -81,11 +82,41 @@ class _Estimate(BaseModel):
         return float(self._spl(N))
 
     def update(self, measurements: List[_Measurement], order: Callable[[float], float]):
-        Ns = np.array([order(measurement.N_ref) for measurement in measurements])
-        dts = np.array([measurement.dt for measurement in measurements])
+        # Update the spline model of the time dependence.
+        Ns, dts = self._prepareData(measurements, order)
         self._spl = make_splrep(Ns, dts, k=3)
         self.tck = (list(spl.tck[0]), list(spl.tck[1]), spl.tck[2])
 
+    def _prepareData(self, measurements: List[_Measurement], order: Callable[[float], float]) -> Tuple[List[float], List[float]]:        
+        # Sort and accumulate the measurement data.
+        ps = sorted([(order(measurement.N_ref), measurement.dt) for measurement in measurements], key=lambda t: t[0])
+        Ns, dts = unzip(self._accumulateDuplicates(ps))
+        return Ns, dts
+            
+    def _accumulateDuplicates(self, ps: List[Tuple(float, float)]) -> List[Tuple(float, float)]:
+        # Accumulate adjacent measurements with the same N value.
+        ps_ = []
+        p_prev = None
+        count = 0
+        for p in ps:
+            n, dt = p
+            if p_prev is not None:
+                n_prev, dt_prev = p_prev
+                if np.isclose(n, n_prev):
+                    # accumulate
+                    dt_prev += dt
+                    count += 1
+                elif count > 1:
+                    # take the mean value
+                    dt_prev /= count
+                    count = 0
+                    continue
+            ps_.append(p)
+            count = 1
+            p_prev = p
+        return ps_
+
+    
 class _ProgressStep(BaseModel):
     # How to calculate the execution-time estimate
     details: Step
