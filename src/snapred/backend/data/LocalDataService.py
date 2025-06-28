@@ -1552,22 +1552,23 @@ class LocalDataService:
     def progressRecordsFilenameStem(self) -> str:
         return "execution_timing"
     
-    def progressRecordsFilename(self, timestamp: datetime):
+    def progressRecordsFilePath(self, timestamp: datetime):
         _timestamp = timestamp
         # Prohibit naive timestamps
         if timestamp.tzinfo is None:
             # By default: add the local timezone.
             _timestamp = timestamp.astimezone()
-        return self.progressRecordsFilenameStem + "_" + _timestamp.isoformat() + ".json"
-    
-    def _latestProgressRecordsFilePath(self, earliest: bool = False) -> Tuple[Path | None, int]:
-        # Find the latest (or earliest) records filePath, and the count of entries in the records directory.
-        
+        return self.progressRecordsPath() / (self.progressRecordsFilenameStem + "_" + _timestamp.isoformat() + ".json")
+
+    def _progressRecordsFilesInfo(self) -> Tuple[Path, Path, int]:
+        # Find progress-records files:
+        #   as: (<earliest filePath>, <latest filePath>, <total number of files>).
         filename = None
         fileRegex = re.compile(f"{self.progressRecordsFilenameStem()}_{{.*}}\\.json")
-        timestamp = self._MIN_DATETIME if not earliest\
-                    else datetime.now().astimezone()
-        comparator = max if not earliest else min
+        latestTime = self._MIN_DATETIME
+        latestFilePath = None
+        earliestTime = datetime.now().astimezone()
+        earliestFilePath = None
         count = 0
         
         with os.scandir(self._recordsPath) as entries:
@@ -1575,21 +1576,24 @@ class LocalDataService:
                 if not entry.is_file():
                     continue
                 match = fileRegex.match(entry.name):
-                if match:
-                   timestamp = comparator(match.group(1), timestamp)
-                   count += 1
-                   
-            if timestamp != self._MIN_DATETIME:
-                filename = self.progressRecordsFilename(timestamp)
-        return (self.progressRecordsPath() / filename, count) if bool(filename)\
-            else (None, count)
+                if not match:
+                    continue
+                timestamp = match.group(1)
+                if timestamp < earliestTime:
+                    earliestTime = timestamp
+                    earliestFilePath = self.progressRecordsFilePath(timestamp)
+                elif timestamp > latestTime:
+                    latestTime = timestamp
+                    latestFilePath = self.progressRecordsFilePath(timestamp)
+                count += 1
+        return earliestFilePath, latestFilePath, count
     
     def progressRecordsSaveFilePath(self):
         now = self.getUniqueTimestamp().astimezone().isoformat()
-        return self.progressRecordsPath() / (self.progressRecordsFilenameStem() + "_" + now + ".json")
+        return self.progressRecordsFilePath(now)
     
     def readProgressRecords(self) -> ProgressRecorder:
-        latestRecordsFilePath, _ = self._latestProgressRecordsFilePath()
+        _, latestRecordsFilePath, _ = self._progressRecordsFilesInfo()
         if latestRecordsFilePath is None:
             # First start
             return ProgressRecorder()
@@ -1604,6 +1608,6 @@ class LocalDataService:
             data.write(instance.model_dump_json())
         
         # Limit the number of saved records files.
-        earliestRecordsFilePath, count = self._latestProgressRecordsFilePath(earliest=True)
-        if count > Config["workflows_data.timing.max_records"]:
+        earliestRecordsFilePath, _, count = self._progressRecordsFilesInfo()
+        if count > Config["workflows_data.timing.max_files"]:
             earliestRecordsFilePath.unlink()

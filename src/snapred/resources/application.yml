@@ -324,7 +324,11 @@ metadata:
 
 workflows_data:
   timing:
-    max_records: 5
+    max_files: 5
+    max_measurements: 50
+    
+    # update estimates if off by 20%
+    update_threshold: 0.2
     
 ui:
   default:

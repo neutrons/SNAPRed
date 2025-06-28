@@ -2,6 +2,7 @@ import datetime
 from datetime import datetime, timedelta
 from pathlib import Path
 from pydantic import BaseModel
+from scipy.interpolate import BSpline, make_splrep
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
@@ -17,47 +18,80 @@ class Step(BaseModel):
     # name in <workflow> scope
     name: str
     
-    # <referenceWorkspace>.getMemorySize() used as `N_ref`
-    referenceWorkspace: str | None
+    # float(<referenceWorkspace>.getMemorySize()) is used as `N_ref`
+    referenceWorkspace: str | None = None
+    
+    # float(<path>.stat().st_size) is used as `N_ref`
+    referencePath: Path | None = None
     
     # Function to normalize `N_ref` to `N`: e.g. `N <- N_ref * log(N_ref)`.
     order: Callable[[float] float] = lambda N: N
-
+    
+    def N_ref(self) -> float:
+        # Access the reference value
+        N_ref = None
+        if self.referenceWorkspace is not None:
+            if self.mantidSnapper.mtd.doesExist(self.referenceWorkspace):
+                N_ref = float(self.mantidSnapper.mtd[self.referenceWorkspace].getMemorySize())
+        elif self.referencePath is not None:
+            if self.referencePath.exists():
+                N_ref = float(self.referencePath.stat().st_size)
+        return N_ref
 
 class _Measurement(BaseModel):
     # Post-execution timing data from a specific workflow step.
-    dt: timedelta
+    dt: float # seconds
+    
+    # Non-normalized reference value:
+    #   note that the normalized value is N = order(N_ref).
+    # (We retain the original value, which is the data point itself.)
     N_ref: float | None
 
 
 class _Estimate(BaseModel):
-    # Estimated time for a specific workflow step.
-    dt: timedelta
-    
-    # Mean value of order-normalized N_ref:
-    N: float | None = None
-    
-    # Number of records contributing to the running mean.
+
+    # Number of contributing `_Measurement` records.
     count: int | None = None
 
+    # Spline args from most recent "update" calculation.
+    tck: Tuple[List[float], List[float], int] = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.tck is not None:
+            self._spl = BSpline(*self.tck, extrapolate=True)
+        
     @classmethod
     def default(cls) -> "Estimate":
-        # Don't use default attributes, as this method
+        # We don't use default attributes, as this method
         #   may eventually depend on arguments.
-        return Estimate(timedelta(minutes=2.0))
-    
-    def accumulate(self, measurement: _Measurement, order: Callable[[float], float]):
-        next_N = measurement.N_ref
-        return Estimate_(
-          == we are here==
-        )
-    
+        
+        # 60.0s to process 1GB of data.
+        Ns = [0.0, 1.0e9]
+        dts = [0.0, 60.0]
+        estimate = _Estimate()
+        estimate.update(Ns, dts, lamba N_ref: N_ref)
+        return estimate
+            
+    # Estimate time for a specific workflow step.
+    def dt(self, N) -> timedelta:
+        # Estimate dt from normalized 'N'.
+        if self._spl is None:
+            raise RuntimeError("Usage error: `dt` called before `update`.")
+        return float(self._spl(N))
+
+    def update(self, measurements: List[_Measurement], order: Callable[[float], float]):
+        Ns = np.array([order(measurement.N_ref) for measurement in measurements])
+        dts = np.array([measurement.dt for measurement in measurements])
+        self._spl = make_splrep(Ns, dts, k=3)
+        self.tck = (list(spl.tck[0]), list(spl.tck[1]), spl.tck[2])
+
 class _ProgressStep(BaseModel):
     # How to calculate the execution-time estimate
     details: Step
     
     # Post-execution timing data for the step.
-    records: List[_Measurement]
+    measurements: List[_Measurement]
     
     # Time estimate for the step.
     estimate: _Estimate
@@ -76,6 +110,7 @@ class ProgressRecorder(BaseModel):
         # Assume that there are no _nested_ workflows!
         self._workflowStartTime = None
         self._stepStartTime = None
+        self.currentStep = None
         
         self.mantidSnapper = MantidSnapper(parentAlgorithm=None, name=self.__class__.__name__)
         atexit.register(ProgressRecorder._unloadResident, self)
@@ -99,7 +134,7 @@ class ProgressRecorder(BaseModel):
                
     def register(self, workflowName: str, steps: List[Step]):
         # Register a list of progress-recording steps, 
-        #   and where possible, not overwrite any existing information.
+        #   and where possible, do not overwrite existing information.
         
         workflow_steps = self.stepss.get(workflowName, {})
         # Add the default "start" and "end" steps.
@@ -107,14 +142,14 @@ class ProgressRecorder(BaseModel):
             _step = Step(name="start")
             workflow_steps["start"] = _ProgressStep(
                 details=_step
-                records=[],
+                measurements=[],
                 estimate=_Estimate.default()
             )
         if "end" not in workflow_steps:
             _step = Step(name="end")
             workflow_steps["end"] = _ProgressStep(
                 details=_step,
-                records=[],
+                measurements=[],
                 estimate=_Estimate.default()
             )
        
@@ -128,7 +163,7 @@ class ProgressRecorder(BaseModel):
             # Initialize a new version of the step.
             workflow_steps[step.name] = _ProgressStep(
                 details=step,
-                records=[],
+                measurements=[],
                 estimate=_Estimate.default()
             )
 
@@ -141,18 +176,74 @@ class ProgressRecorder(BaseModel):
             raise RuntimeError(f"Unregistered workflow: '{workflowName}'.")
         step = self.stepss[workflowName].get(stepName)
         if step is None:
-            raise RuntimeError(f"Workflow '{workflowName}': unregistered step '{stepName}'.")
-
+            raise RuntimeError(f"Workflow '{workflowName}': unregistered step '{stepName}'.")        
+        
         # Get the elapsed time, and start timing the next step.
         startStep = self._startStepTime
-        elapsed = self._startNextStep() - startStep
+        elapsed = float((self._startNextStep() - startStep).total_seconds())
+
+        # FINALIZE the measurement data for the previous step.
+        if self.currentStep is not None:
+            # Compute the required reference value.
+            N_ref = self.currentStep.N_ref()
+
+            self.currentStep.measurements.append(
+                _Measurement(dt=elapsed, N_ref=N_ref)
+            )
         
-        N_ref = None
-        if self.mantidSnapper.mtd.doesExist(step.referenceWorkspace):
-            N_ref = self.mantidSnapper.mtd[step.referenceWorkspace].getMemorySize()
-        measurement =  _Measurement(
-            dt=elapsed,
-            N_ref=N_ref
-        ) 
-        step.records.append(measurement)
+            # Restrict the maximum length of the measurements lists.
+            max_measurements = Config["workflows_data.timing.max_measurments"]
+            if len(self.currentStep.measurements) > max_measurements:
+                # Forget the oldest
+                self.currentStep.measurements = self.currentStep.measurements[-max_measurements:]
+         
+            # If necessary, update the estimate for the previous step.
+            estimated_dt = self.currentStep.estimate.dt(self.currentStep.details.order(N_ref))
+            if abs(estimated_dt - elapsed) / elapsed > Config["workflows_data.timing.update_threshold"]:
+                self.currentStep.estimate.update(self.currentStep.measurements, self.currentStep.details.order)
+                
+        # Go to the next step.
+        self.currentStep = step
+
+    def stepTimeRemaining(self) -> float:
+        # Estimate the time remaining for the current step.
+        if self.currentStep is None:
+            raise RuntimeError("No workflow step is in progress.") 
+    
+        elapsed = float((self._startStepTime - datetime.now().astimezone()).total_seconds())
         
+        N_ref = self.currentStep.N_ref()
+        remainder = self.currentStep.estimate.dt(self.currentStep.details.order(N_ref)) - elapsed
+        if remainder < 0.0:
+            remainder = 0.0
+        return remainder
+
+
+    def workflowTimeRemaining(self, workflowInstance) -> float:
+        # Estimate the time remaining for the current workflow.
+        # (This will only be accurate for the case where all reference-workspaces or paths
+        #  are available at the time of this call!)
+
+        # Validate the workflow registration.
+        workflowName = workflowInstance.__class__.__name__
+        if workflowName not in self.stepss:
+            raise RuntimeError(f"Unregistered workflow: '{workflowName}'.")
+        steps = self.stepss[workflowName]
+        
+        default_N_ref = 1.0e9 # use when actual N_ref for a step doesn't exist yet
+        now = datetime.now().astimezone()
+        start = self._workflowStartTime if bool(self._workflowStartTime) else now
+        elapsed = float((now - start).total_seconds())
+        
+        total = 0.0
+        for step in steps:
+            N_ref = step.N_ref()
+            if N_ref is None:
+                N_ref = default_N_ref
+            total += step.estimate.dt(step.details.order(N_ref))
+        
+        remainder = total - elapsed
+        if remainder < 0.0:
+            remainder = 0.0
+        return remainder
+ 
