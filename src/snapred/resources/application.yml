@@ -327,6 +327,9 @@ workflows_data:
     max_files: 5
     max_measurements: 50
     
+    # spline order for time estimates
+    spline_order: 3
+    
     # update estimates if off by 20%
     update_threshold: 0.2
     

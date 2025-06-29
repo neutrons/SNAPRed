@@ -9,7 +9,6 @@ from pydantic import WithJsonSchema
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated, Self
 
-# *** DEBUG *** : CIRCULAR IMPORT?!
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty

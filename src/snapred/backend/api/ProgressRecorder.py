@@ -1,14 +1,42 @@
 import datetime
 from datetime import datetime, timedelta
+from enum import Enum
+from functools import cached_property
 import numpy as np
 from pathlib import Path
 from pydantic import BaseModel
 from scipy.interpolate import BSpline, make_splrep
+from typing import ClassVar, Self
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
-from snapred.meta.decorators.classproperty import classproperty
+from snapred.meta.decorators.classproperty import classproperty, cached_classproperty
 from snapred.meta.decorators.Singleton import Singleton
+
+class ComputationOrder(str, Enum):
+    
+    O_LOGN  = "O_LOGN"
+    O_N     = "O_N"
+    O_NLOGN = "O_NLOGN"
+    O_N_2   = "O_N_2"
+    O_N_3   = "O_N_3"
+     
+    def __call__(self, N_ref: float) -> float:
+        N = None
+        match self:
+            case O_LOGN:
+                N = np.log(N_ref)
+            case O_N:
+                N = N_ref
+            case O_NLOGN:
+                N = N_ref * np.log(N_ref)
+            case O_N_2:
+                N = N_ref**(2.0)
+            case O_N_3:
+                N = N_ref**(3.0)
+            case _:
+                raise RuntimeError(f"unrecognized `ComputationalOrder`: {self}")
+        return N
 
 
 class Step(BaseModel):
@@ -25,8 +53,9 @@ class Step(BaseModel):
     # float(<path>.stat().st_size) is used as `N_ref`
     referencePath: Path | None = None
     
-    # Function to normalize `N_ref` to `N`: e.g. `N <- N_ref * log(N_ref)`.
-    order: Callable[[float] float] = lambda N: N
+    # Normalization of `N_ref`, from the as-saved measurement, to `N`, as used by
+    #   the spline fit.
+    order: ComputationalOrder = ComputationalOrder.O_N
     
     def N_ref(self) -> float:
         # Access the reference value
@@ -44,36 +73,48 @@ class _Measurement(BaseModel):
     dt: float # seconds
     
     # Non-normalized reference value:
-    #   note that the normalized value is N = order(N_ref).
-    # (We retain the original value, which is the data point itself.)
+    #   only the original value should be saved, which is the data point itself.
+    # In case there's no `N_ref`, this `_Measurement` only includes timing data.
     N_ref: float | None
 
 
 class _Estimate(BaseModel):
-
-    # Number of contributing `_Measurement` records.
-    count: int | None = None
+    # (<Number of distinct contributing `_Measurement` records>,
+    #    <Total number of contributing records>)
+    count: Tuple[int, int] | None = None
 
     # Spline args from most recent "update" calculation.
     tck: Tuple[List[float], List[float], int] = None
 
+    _default: ClassVar[Self] = None
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.tck is not None:
             self._spl = BSpline(*self.tck, extrapolate=True)
-        
-    @classmethod
-    def default(cls) -> "Estimate":
+
+    @classproperty
+    def SPLINE_ORDER(cls):
+        return Config["workflows_data.timing.spline_order"]
+            
+    @classproperty
+    def default(cls) -> Self:
         # We don't use default attributes, as this method
         #   may eventually depend on arguments.
         
-        # 60.0s to process 1GB of data.
-        Ns = [0.0, 1.0e9]
-        dts = [0.0, 60.0]
-        estimate = _Estimate()
-        estimate.update(Ns, dts, lamba N_ref: N_ref)
-        return estimate
-            
+        # Implementation notes:
+        # * This caches the `_default` value as a class attribute.
+        # * TODO: Attempting a `cached_classproperty` implementation had some 
+        #   issues that need to be resolved.
+        
+        if cls._default is None:
+            # 60.0s to process 1GB of data.
+            Ns = np.linspace(0.0, 1.0e9, self.SPLINE_ORDER + 1)
+            dts = np.linspace(0.0, 60.0, self.SPLINE_ORDER + 1)
+            cls._default = _Estimate()
+            cls._default.update(Ns, dts, ComputationalOrder.O_N)
+        return cls._default
+                    
     # Estimate time for a specific workflow step.
     def dt(self, N) -> timedelta:
         # Estimate dt from normalized 'N'.
@@ -84,8 +125,12 @@ class _Estimate(BaseModel):
     def update(self, measurements: List[_Measurement], order: Callable[[float], float]):
         # Update the spline model of the time dependence.
         Ns, dts = self._prepareData(measurements, order)
-        self._spl = make_splrep(Ns, dts, k=3)
-        self.tck = (list(spl.tck[0]), list(spl.tck[1]), spl.tck[2])
+        if len(Ns) > self.SPLINE_ORDER + 1:
+            # retain counts contributing to the estimate: (|<distinct points>|, |<all points>|)
+            self.count = (len(Ns), len(measurements))
+            
+            self._spl = make_splrep(Ns, dts, k=self.SPLINE_ORDER)
+            self.tck = (list(spl.tck[0]), list(spl.tck[1]), spl.tck[2])
 
     def _prepareData(self, measurements: List[_Measurement], order: Callable[[float], float]) -> Tuple[List[float], List[float]]:        
         # Sort and accumulate the measurement data.
@@ -94,7 +139,8 @@ class _Estimate(BaseModel):
         return Ns, dts
             
     def _accumulateDuplicates(self, ps: List[Tuple(float, float)]) -> List[Tuple(float, float)]:
-        # Accumulate adjacent measurements with the same N value.
+        # Accumulate adjacent measurements with the same N values;
+        #   as part of the fitting process, this is applied _after_ the computational-order normalization.
         ps_ = []
         p_prev = None
         count = 0
@@ -118,7 +164,7 @@ class _Estimate(BaseModel):
 
     
 class _ProgressStep(BaseModel):
-    # How to calculate the execution-time estimate
+    # Information about how to calculate the execution-time estimate
     details: Step
     
     # Post-execution timing data for the step.
@@ -174,14 +220,14 @@ class ProgressRecorder(BaseModel):
             workflow_steps["start"] = _ProgressStep(
                 details=_step
                 measurements=[],
-                estimate=_Estimate.default()
+                estimate=_Estimate.default
             )
         if "end" not in workflow_steps:
             _step = Step(name="end")
             workflow_steps["end"] = _ProgressStep(
                 details=_step,
                 measurements=[],
-                estimate=_Estimate.default()
+                estimate=_Estimate.default
             )
        
         for step in steps:
@@ -195,7 +241,7 @@ class ProgressRecorder(BaseModel):
             workflow_steps[step.name] = _ProgressStep(
                 details=step,
                 measurements=[],
-                estimate=_Estimate.default()
+                estimate=_Estimate.default
             )
 
         self.stepss[workflowName] = workflow_steps
@@ -218,6 +264,7 @@ class ProgressRecorder(BaseModel):
             # Compute the required reference value.
             N_ref = self.currentStep.N_ref()
 
+            # Record the execution-time measurement
             self.currentStep.measurements.append(
                 _Measurement(dt=elapsed, N_ref=N_ref)
             )
@@ -276,5 +323,4 @@ class ProgressRecorder(BaseModel):
         remainder = total - elapsed
         if remainder < 0.0:
             remainder = 0.0
-        return remainder
- 
+        return remainder 
