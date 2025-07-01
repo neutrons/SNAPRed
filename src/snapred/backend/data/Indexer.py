@@ -317,17 +317,72 @@ class Indexer:
         res.pop(self.defaultVersion(), None)
         return list(res.values())
 
+    def isValidVersionFolder(self, version: Version):
+        """
+        Validates that the version folder exists and is a directory.
+        If it does not exist, it will create the directory.
+        """
+        versionPath = self.versionPath(self._flattenVersion(version))
+        record = self.readRecord(version)
+        if record is None:
+            logger.error(f"Record for version {version} does not exist at {self.recordPath(version)}. ")
+            return False
+        if record.version != self._flattenVersion(version):
+            logger.error(f"Record version {record.version} does not match requested version {version}. ")
+            return False
+
+        parameter = self.readParameters(version)
+        if parameter is None:
+            logger.error(f"Parameters for version {version} do not exist at {self.parametersPath(version)}. ")
+            return False
+        if parameter.version != self._flattenVersion(version):
+            logger.error(f"Parameters version {parameter.version} does not match requested version {version}. ")
+            return False
+
+        filesInFolder = list(versionPath.glob("*"))
+        # filter out *Record.json and *Parameters.json files
+        parametersFile = self.parametersPath(version)
+        recordFile = self.recordPath(version)
+        filesInFolder = [f for f in filesInFolder if f not in (parametersFile, recordFile)]
+
+        # check if all files have a version in the name that matches the version
+        versionString = wnvf.pathVersion(self._flattenVersion(version))
+        for file in filesInFolder:
+            if versionString not in file.name:
+                logger.error(
+                    f"File {file} in version folder {versionPath} does not have a the correct version in the name. "
+                )
+                return False
+        return True
+
     def recoverIndex(self) -> Dict[int, IndexEntry]:
         # iterate through the directory structure and create an index from the files
         indexPath: Path = self.indexPath()
         entries = []
         versions = self.readDirectoryList()
         for version in versions:
-            versionPath = self.versionPath(self._flattenVersion(version))
-            if versionPath.exists() and self.recordPath(version).exists():
+            if self.isValidVersionFolder(version):
                 # read the record file
                 record = self.readRecord(version)
                 entries.append(record.indexEntry)
+            else:
+                logger.error(f"Version folder {self.versionPath(version)} is not valid. Skipping version {version}.")
+
+        # assert whether entries matches current index
+        if len(entries) != len(self.index):
+            logger.warning(
+                f"Recovered index has {len(entries)} entries, "
+                f"but the current index has {len(self.index)} entries. "
+                "This may indicate a mismatch between the index and the directory structure."
+            )
+        prospectiveIndex = {entry.version: entry for entry in entries}
+        # if the index is empty, or the versions do not match, overwrite the index
+        if prospectiveIndex != self.index:
+            logger.warning(
+                "Recovered index does not match current index. Overwriting current index with recovered index."
+            )
+            self.index = prospectiveIndex
+
         # write the index to the file
         if len(entries) > 0:
             indexPath.parent.mkdir(parents=True, exist_ok=True)
@@ -338,17 +393,13 @@ class Indexer:
         # create the index from the index file
         indexPath: Path = self.indexPath()
         indexList: List[IndexEntry] = []
-        if indexPath.exists():
-            try:
-                indexList = parse_file_as(List[IndexEntry], indexPath)
-            except Exception:  # noqa: BLE001
-                logger.error(
-                    f"Index file {indexPath} is corrupted or invalid. Recovering index from directory structure."
-                )
-                indexList = self.recoverIndex()
-        elif self.rootDirectory.exists():
-            logger.warning(f"Index file {indexPath} missing, recovering index from directory structure.")
-            indexList = self.recoverIndex()
+        try:
+            indexList = parse_file_as(List[IndexEntry], indexPath)
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(
+                f"Index file {indexPath} is corrupted, invalid, or missing. "
+                "Please contact your IS or CIS for assistance."
+            ) from e
         return {entry.version: entry for entry in indexList}
 
     def writeIndex(self):
