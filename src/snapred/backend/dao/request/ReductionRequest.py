@@ -38,7 +38,8 @@ class ReductionRequest(BaseModel):
 
     alternativeState: Optional[str] = None
     alternativeCalibrationFilePath: Optional[Path] = None
-    hooks: Dict[str, List[Hook]] | None = None
+
+    hooks: Optional[Dict[str, List[Hook]]] = None
 
     @field_validator("versions")
     @classmethod

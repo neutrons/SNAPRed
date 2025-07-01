@@ -1,10 +1,11 @@
 from typing import Any, Callable
 
 from pydantic import BaseModel, field_serializer
+from pydantic.json_schema import SkipJsonSchema
 
 
 class Hook(BaseModel, arbitrary_types_allowed=True):
-    func: Callable
+    func: SkipJsonSchema[Callable]
     kwargs: dict[str, Any] = {}
 
     def __init__(self, func: Callable, **kwargs) -> None:
