@@ -98,7 +98,8 @@ class Indexer:
         self.recoveryMode = recoveryMode
         self.indexerType = indexerType
         self.rootDirectory = Path(directory)
-        self.index = self.readIndex()
+        # no index on disk is valid until we attempt to read an indexed object.
+        self.index = self.readIndex(init=True)
         self.dirVersions = self.readDirectoryList()
         self.reconcileIndexToFiles()
 
@@ -323,20 +324,24 @@ class Indexer:
         Validates that the version folder exists and is a directory.
         If it does not exist, it will create the directory.
         """
-        record = self.readRecord(version)
-        if record is None:
-            logger.error(f"Record for version {version} does not exist at {self.recordPath(version)}. ")
-            return False
-        if record.version != self._flattenVersion(version):
-            logger.error(f"Record version {record.version} does not match requested version {version}. ")
-            return False
+        try:
+            record = self.readRecord(version)
+            if record is None:
+                logger.error(f"Record for version {version} does not exist at {self.recordPath(version)}. ")
+                return False
+            if record.version != self._flattenVersion(version):
+                logger.error(f"Record version {record.version} does not match requested version {version}. ")
+                return False
 
-        parameter = self.readParameters(version)
-        if parameter is None:
-            logger.error(f"Parameters for version {version} do not exist at {self.parametersPath(version)}. ")
-            return False
-        if parameter.version != self._flattenVersion(version):
-            logger.error(f"Parameters version {parameter.version} does not match requested version {version}. ")
+            parameter = self.readParameters(version)
+            if parameter is None:
+                logger.error(f"Parameters for version {version} do not exist at {self.parametersPath(version)}. ")
+                return False
+            if parameter.version != self._flattenVersion(version):
+                logger.error(f"Parameters version {parameter.version} does not match requested version {version}. ")
+                return False
+        except Exception:  # noqa: BLE001
+            logger.error(f"Version folder {self.versionPath(version)} is not able to be validated.")
             return False
 
         # NOTE: Cannot actually validate the additional files in the version folder,
@@ -380,14 +385,14 @@ class Indexer:
             write_model_list_pretty(entries, indexPath)
         return entries
 
-    def readIndex(self) -> Dict[int, IndexEntry]:
+    def readIndex(self, init=False) -> Dict[int, IndexEntry]:
         # create the index from the index file
         indexPath: Path = self.indexPath()
         indexList: List[IndexEntry] = []
         try:
             indexList = parse_file_as(List[IndexEntry], indexPath)
         except Exception as e:  # noqa: BLE001
-            if not self.recoveryMode:
+            if not init and not self.recoveryMode:
                 raise RuntimeError(
                     f"Index file {indexPath} is corrupted, invalid, or missing. "
                     "Please contact your IS or CIS for assistance."
@@ -503,6 +508,7 @@ class Indexer:
         """
         If no version given, defaults to current version
         """
+        self.index = self.readIndex(init=False)
         filePath = self.indexedObjectFilePath(type_, version)
         obj = None
         if filePath.exists():

@@ -11,5 +11,5 @@ lds = LocalDataService()
 path = lds._constructNormalizationStatePath(state, useLiteMode)
 normalizationIndexer = Indexer(indexerType=IndexerType.NORMALIZATION, directory=path, recoveryMode=True)
 
-normalizationIndexer.recoverIndex()
+normalizationIndexer.recoverIndex(dryrun=False)
 
