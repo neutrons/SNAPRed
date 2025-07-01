@@ -18,13 +18,6 @@ groups = reductionService.loadAllGroupings(runId, useLiteMode)
 # find column group
 columnGroup = next((group for group in groups["focusGroups"] if "column" in group.name.lower()), None)
 
-requestPayload = ReductionRequest(
-    runNumber=runId,
-    useLiteMode=useLiteMode,
-    timestamp=time.time(),
-    focusGroups=[columnGroup],
-)
-
 # NOTE: Be careful how you define hook methods.  They should not be class methods.
 def cheeseHook(self, cheeseMasks: list[str]):
     # raise RuntimeError(f"Hook Executed!: {cheeseMasks}")
@@ -54,6 +47,13 @@ hooks = {
     "UselessFakeHook": [hook],
 }
 
+requestPayload = ReductionRequest(
+    runNumber=runId,
+    useLiteMode=useLiteMode,
+    timestamp=time.time(),
+    focusGroups=[columnGroup],
+    hooks=hooks, # so that they are persisted to disk.
+)
 
 
 request = SNAPRequest(path="reduction", payload=requestPayload, hooks=hooks)
