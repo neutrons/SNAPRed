@@ -4,6 +4,7 @@ from os import path
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.Hook import Hook
+from snapred.backend.dao.request.ReductionExportRequest import ReductionExportRequest
 from snapred.backend.dao.request.ReductionRequest import ReductionRequest
 from snapred.backend.service.ReductionService import ReductionService
 
@@ -44,7 +45,6 @@ hook = Hook(func=cheeseHook,cheeseMasks=[])
 
 hooks = {
     "PostPreprocessReductionRecipe" : [hook, hook],
-    "UselessFakeHook": [hook],
 }
 
 requestPayload = ReductionRequest(
@@ -60,4 +60,8 @@ request = SNAPRequest(path="reduction", payload=requestPayload, hooks=hooks)
 
 interface = InterfaceController()
 
+record = interface.executeRequest(request).data.record
+
+exportRequest = ReductionExportRequest(record=record)
+request = SNAPRequest(path="reduction/save", payload=exportRequest)
 interface.executeRequest(request)
