@@ -1,5 +1,6 @@
 from typing import List
 
+from snapred.backend.api.HookManager import HookManager
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import SNAPRequest, SNAPResponse
 from snapred.backend.dao.SNAPResponse import ResponseCode
@@ -23,6 +24,7 @@ class InterfaceController:
     """
 
     serviceFactory = ServiceFactory()
+    hookManager = HookManager()
 
     def __init__(self):
         # make a singleton instance if one doesnt exist
@@ -37,9 +39,11 @@ class InterfaceController:
         try:
             self.logger.debug(f"Request Received: {request.json()}")
             snapredLogger.clearWarnings()
-
+            self.hookManager.register(request.hooks)
             service = self.serviceFactory.getService(request.path)
             result = service.orchestrateRecipe(request)
+
+            self.hookManager.validateAllHooksExecuted()
 
             message = None
             if snapredLogger.hasWarnings():
@@ -65,6 +69,7 @@ class InterfaceController:
 
         finally:
             snapredLogger.clearWarnings()
+            self.hookManager.reset()
 
         self.logger.debug(response.json())
         return response

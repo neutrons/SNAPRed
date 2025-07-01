@@ -263,6 +263,7 @@ class ReductionService(Service):
             },
             workspaceNames=workspaceNames,
             alternativeCalibrationFilePath=request.alternativeCalibrationFilePath,
+            hooks=request.hooks,
         )
 
     @FromString

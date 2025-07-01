@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from snapred.backend.dao.calibration import CalibrationDefaultRecord
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.Hook import Hook
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -34,6 +35,7 @@ class ReductionRecord(BaseModel):
     workspaceNames: List[WorkspaceName]
 
     alternativeCalibrationFilePath: Optional[Path] = None
+    hooks: Dict[str, List[Hook]] | None = None
 
     """
     *Other details to include above*:
