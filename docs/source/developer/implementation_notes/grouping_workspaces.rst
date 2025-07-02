@@ -6,7 +6,7 @@ A `GroupingWorkspace` represents a one-to-many mapping between integer subgroup-
 A `GroupingWorkspace` is a subclass of `SpecialWorkspace2D`, which is a
 workspace where each spectrum consists of a single-value.  The single-value in this case
 is the subgroup-ID.  Note that each subgroup-ID may have multiple spectra associated with it.
-The subgroup-ID *zero* has a special meaning: which is usually that the associated pixel-IDs should be ignored (e.g. for *masked* pixels). 
+The subgroup-ID *zero* has a special meaning: which is usually that the associated pixel-IDs should be ignored (e.g. for *masked* pixels).
 
 Accessing the grouping-workspace's spectrum-to-detector map, e.g. using `getDetectorIDs(wi)`, a set of pixel-IDs associated with
 the spectrum at each workspace-index can be determined.  Assembling the complete set of pixel-IDs corresponding to a subgroup requires assembling
@@ -39,9 +39,9 @@ To summarize the important points:
   -- The subgroup-IDs may be repeated: this is why it's important to use `getDetectorIDsOfGroup`;
 
   -- The ordering of subgroup-IDs is arbitrary: that is, don't depend on workspace-index specifics;
-  
+
   -- It isn't necessary that the subgroups include *all* pixel-IDs; unused pixels may be grouped into subgroup *zero*, but if this fact were to be used during implementation, it must be verified;
-  
+
   -- It isn't necessary that a pixel-ID be included in only one subgroup, although usually this will be the case;
 
   -- Grouping-workspace specific methods should be used wherever possible.  By using these methods,
