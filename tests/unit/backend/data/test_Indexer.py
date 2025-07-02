@@ -53,9 +53,16 @@ class TestIndexer(unittest.TestCase):
         for version in versions:
             self.writeRecordVersion(version)
 
+    def prepareCalculationParameters(self, versions: List[int]):
+        # create calculation parameters for all versions
+        # and write them to disk
+        for version in versions:
+            self.writeCalculationParametersVersion(version)
+
     def prepareVersions(self, versions: List[int]):
         self.prepareIndex(versions)
         self.prepareRecords(versions)
+        self.prepareCalculationParameters(versions)
 
     def initIndexer(self, indexerType=IndexerType.DEFAULT):
         # create an indexer of specific type inside the temporrary directory
@@ -140,7 +147,7 @@ class TestIndexer(unittest.TestCase):
 
     def parametersPath(self, version):
         # a filepath where records should be written
-        return self.versionPath(version) / "Parameters.json"
+        return self.versionPath(version) / "CalculationParameters.json"
 
     def makeVersionDir(self, version):
         self.versionPath(version).mkdir(exist_ok=True)
@@ -159,6 +166,11 @@ class TestIndexer(unittest.TestCase):
         # create and write a record with a specific version and optional run number
         record = self.record(version, runNumber=runNumber)
         self.writeRecord(record)
+
+    def writeCalculationParametersVersion(self, version):
+        # create and write calculation parameters with a specific version
+        params = self.calculationParameters(version)
+        write_model_pretty(params, self.parametersPath(version))
 
     ## TESTS OF INITIALIZER ##
 
@@ -970,12 +982,54 @@ class TestIndexer(unittest.TestCase):
             indexer.readIndex()
 
     def test_readIndex_emptyIndex(self):
-        # ensure that if the index is empty, an empty dict is returned
-        with tempfile.TemporaryDirectory() as tempdir:
-            indexer = self.initIndexer()
-            indexer.rootDirectory = Path(tempdir)
-            indexPath = indexer.indexPath()
-            if indexPath.exists():
-                indexPath.unlink()
-            indexPath.write_text("[]")  # write an empty index
-            assert indexer.readIndex() == {}
+        indexer = self.initIndexer()
+        indexPath = indexer.indexPath()
+        if indexPath.exists():
+            indexPath.unlink()
+        indexPath.write_text("[]")  # write an empty index
+        assert indexer.readIndex() == {}
+
+    def test_recoverIndex(self):
+        indexer = self.initIndexer()
+        indexPath = indexer.indexPath()
+        if indexPath.exists():
+            indexPath.unlink()
+        # write a corrupted index
+        indexPath.write_text("corrupted data")
+        with pytest.raises(RuntimeError, match="is corrupted, invalid, or missing."):
+            indexer.readIndex()
+        # recover the index
+        self.prepareVersions([1, 2, 3])
+        indexer.indexPath().unlink()
+        indexer.recoveryMode = True
+        indexer.recoverIndex(dryrun=False)
+        assert len(indexer.readIndex()) == 3
+
+    def test_recoverIndex_corruptVersions(self):
+        indexer = self.initIndexer()
+        indexPath = indexer.indexPath()
+        if indexPath.exists():
+            indexPath.unlink()
+        # write a corrupted index
+        indexPath.write_text("corrupted data")
+        with pytest.raises(RuntimeError, match="is corrupted, invalid, or missing."):
+            indexer.readIndex()
+        # recover the index
+        self.prepareVersions([1, 2, 3, 4, 5])
+
+        indexer.recordPath(1).unlink()
+        indexer.parametersPath(2).unlink()
+
+        record = indexer.readRecord(4)
+        record.version = 5
+        indexer.recordPath(4).write_text(record.model_dump_json())
+
+        parameters = indexer.readParameters(5)
+        parameters.version = 6
+        indexer.parametersPath(5).write_text(parameters.model_dump_json())
+
+        indexer.indexPath().unlink()
+
+        indexer.recoveryMode = True
+        indexer.recoverIndex(dryrun=False)
+        assert len(indexer.readIndex()) == 1

@@ -82,6 +82,7 @@ FRIENDLY_NAME_MAPPING = {
     ReductionRecord.__name__: "ReductionRecord",
     InstrumentConfig.__name__: "SNAPInstPrm",
     CalculationParameters.__name__: "CalculationParameters",
+    Record.__name__: "Record",
 }
 
 
@@ -280,13 +281,17 @@ class Indexer:
         """
         Path to a specific version of a calculation record
         """
-        return self.versionPath(version) / f"{self.indexerType}Record.json"
+        recordType = self._determineRecordType(version)
+        recordFriendlyName = FRIENDLY_NAME_MAPPING[recordType.__name__]
+        return self.versionPath(version) / f"{recordFriendlyName}.json"
 
     def parametersPath(self, version: int):
         """
         Path to a specific version of calculation parameters
         """
-        return self.versionPath(version) / f"{self.indexerType}Parameters.json"
+        parameterType = PARAMS_TYPE[self.indexerType]
+        parameterFriendlyName = FRIENDLY_NAME_MAPPING[parameterType.__name__]
+        return self.versionPath(version) / f"{parameterFriendlyName}.json"
 
     def versionPath(self, version: int) -> Path:
         self.validateVersion(version)
@@ -340,8 +345,8 @@ class Indexer:
             if parameter.version != self._flattenVersion(version):
                 logger.error(f"Parameters version {parameter.version} does not match requested version {version}. ")
                 return False
-        except Exception:  # noqa: BLE001
-            logger.error(f"Version folder {self.versionPath(version)} is not able to be validated.")
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Version folder {self.versionPath(version)} is not able to be validated.: {e}")
             return False
 
         # NOTE: Cannot actually validate the additional files in the version folder,
