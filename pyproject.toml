@@ -4,7 +4,6 @@ description = "A desktop application for Lifecycle Managment of data collected f
 dynamic = ["version"]
 requires-python = ">=3.10"
 dependencies = [
-    "mantidworkbench >= 6.12.0.2rc3",
     "pyoncat ~= 1.6"
 ]
 readme = "README.md"
@@ -115,3 +114,105 @@ fail_under = 1
 exclude_lines = [
   'if __name__ == "__main__":'
 ]
+
+# ---------------- #
+# Pixi Config      #
+# ---------------- #
+[tool.pixi.workspace]
+preview = ["pixi-build"]
+channels = [
+  "conda-forge",
+  "neutrons/label/rc",
+  "mantid-ornl/label/rc",
+  "mantid/label/main"
+]
+platforms = ["linux-64"]  # add additional platforms as needed
+
+[tool.pixi.environments]
+default = {features = ["test", "package", "docs", "developer"], solve-group = "default"}
+docs = {features = ["docs"], solve-group = "docs"}
+
+[tool.pixi.pypi-dependencies]
+snapred = { path = ".", editable = true }
+
+[tool.pixi.dependencies]
+python = ">=3.10"
+pip = "*"
+pydantic = ">=2.7.3,<3"
+mantidworkbench = ">=6.12.0.2rc2"
+mantid = ">=6.12.0.2rc2"
+mslice = "*"
+mantidqt = ">=6.12.0.2rc2"
+qtpy = "*"
+muparser = "=2.3.4"
+pycifrw = "*"
+pyqtwebengine = "*"
+git-lfs = "*"
+
+[tool.pixi.package]
+name = "snapred"
+version = "0.0.0"  # placeholder, overwritten by sync-version
+
+[tool.pixi.package.build]
+backend = { name = "pixi-build-python", version = "0.1.*" }
+
+# --------------- #
+# Pixi Tasks      #
+# --------------- #
+[tool.pixi.tasks]
+# PyPi packaging tasks
+build-pypi = { cmd = "hatch build", description = "Build the package for PyPI" }
+publish-pypi = { cmd = "twine upload dist/*", description = "Publish the package to PyPI", depends-on = ["build-pypi"] }
+publish-pypi-test = { cmd = "twine upload --repository testpypi dist/*", description = "Publish the package to TestPyPI", depends-on = ["build-pypi"] }
+clean-pypi = { cmd = "rm -rf dist", description = "Clean the PyPI build artifacts" }
+build-conda-command = { cmd = "pixi build", description = "Build the conda package command" }
+build-conda = { description = "Build the conda package", depends-on = ["sync-version", "build-conda-command", "reset-version"] }
+publish-conda = { cmd = "anaconda upload *.conda", description = "Publish the .conda package to anaconda.org", depends-on = ["build-conda"] }
+clean-conda = { cmd = "rm -f *.conda", description = "Clean the local .conda build artifacts" }
+# Documentation tasks
+build-docs = { cmd = "sphinx-build -b html docs/source docs/_build", description = "Build the documentation" }
+clean-docs = { cmd = "rm -rf docs/_build", description = "Clean the documentation build artifacts" }
+docs-serve = { cmd = "python -m http.server 8000 -d docs/_build", description = "Serve documentation locally on port 8000" }
+docs-autobuild = { cmd = "sphinx-autobuild docs/source docs/_build --host 0.0.0.0 --port 8000", description = "Auto-rebuild and serve docs on changes" }
+# Testing tasks
+test = { cmd = "pytest --cov=src/snapred --cov-report=xml --cov-report=term", description = "Run the tests with coverage" }
+test-integration = { cmd = "pytest -m integration --cov=src/snapred --cov-report=xml --cov-report=term", description = "Run integration tests with coverage" }
+test-all = { cmd = "pytest -m 'not datarepo' --cov=src/snapred --cov-report=xml --cov-report=term", description = "Run all tests except datarepo tests" }
+# MISC
+clean-all = { description = "Clean all build artifacts", depends-on = ["clean-pypi", "clean-docs", "clean-conda"] }
+sync-version = { cmd = "version=$(python -m versioningit); python -c \"import toml; data=toml.load('pyproject.toml'); data['tool']['pixi']['package']['version']='$version'; open('pyproject.toml', 'w').write(toml.dump(data))\"", description = "Sync pyproject.toml version with Git version" }
+reset-version = { cmd = "python -c \"import toml; data=toml.load('pyproject.toml'); data['tool']['pixi']['package']['version']='0.0.0'; open('pyproject.toml', 'w').write(toml.dump(data))\"", description = "Reset the package version to 0.0.0" }
+# Application tasks
+snapred = { cmd = "python -m snapred", description = "Start the SNAPRed application" }
+
+# ------------------------------- #
+# Pixi Feature Dependencies       #
+# ------------------------------- #
+[tool.pixi.feature.test.dependencies]
+pytest = "*"
+pytest-qt = "*"
+pytest-cov = "*"
+
+[tool.pixi.feature.package.dependencies]
+boa = "*"
+anaconda-client = "*"
+conda-build = "<24"
+conda-verify = "*"
+check-wheel-contents = ">=0.6.0"
+twine = "*"
+versioningit = "*"
+hatch = "*"
+toml = "*"
+
+[tool.pixi.feature.developer.dependencies]
+pre-commit = "*"
+ruff = "*"
+python-build = "*"
+
+[tool.pixi.feature.docs.dependencies]
+sphinx = "*"
+sphinx_rtd_theme = "*"
+sphinxcontrib-mermaid = "*"
+types-pyyaml = "*"
+erdantic = "*"
+versioningit = "*"

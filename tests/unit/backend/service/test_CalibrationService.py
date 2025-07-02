@@ -24,7 +24,6 @@ from util.Config_helpers import Config_override
 from util.dao import DAOFactory
 from util.state_helpers import state_root_redirect
 
-from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
 from snapred.backend.dao.request import (
     CalculateResidualRequest,
     CalibrationAssessmentRequest,
@@ -338,7 +337,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Mock input data
         timestamp = time.time()
         mockFarmFreshIngredients = mock.Mock(
-            spec=FarmFreshIngredients,
             runNumber="12345",
             useLiteMode=True,
             timestamp=timestamp,
@@ -473,7 +471,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Clear the input metrics list
         calibrationRecord.focusGroupCalibrationMetrics.calibrationMetric = []
         mockCalibrationMetricsWorkspaceIngredients.return_value = mock.Mock(
-            spec=CalibrationMetricsWorkspaceIngredients,
             calibrationRecord=calibrationRecord,
             timestamp=self.timestamp,
         )

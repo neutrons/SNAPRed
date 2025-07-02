@@ -189,7 +189,7 @@ class TestNormalizationService(unittest.TestCase):
         mockRecipe,
         FarmFreshIngredients,
     ):
-        FarmFreshIngredients.return_value = mock.Mock(spec=FarmFreshIngredients)
+        FarmFreshIngredients.return_value = mock.Mock()
         mockRequest = SmoothDataExcludingPeaksRequest(
             runNumber="12345",
             useLiteMode=True,
