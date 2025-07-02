@@ -349,7 +349,6 @@ class Indexer:
                     logger.error(f"Parameters version {parameter.version} does not match requested version {version}. ")
                     return False
         except Exception as e:  # noqa: BLE001
-            raise
             logger.error(f"Version folder {self.versionPath(version)} is not able to be validated.: {e}")
             return False
 
