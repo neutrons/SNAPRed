@@ -57,7 +57,7 @@ RECORD_TYPE = {
     IndexerType.CALIBRATION: CalibrationRecord,
     IndexerType.NORMALIZATION: NormalizationRecord,
     IndexerType.REDUCTION: ReductionRecord,
-    IndexerType.INSTRUMENT_PARAMETER: None,
+    IndexerType.INSTRUMENT_PARAMETER: InstrumentConfig,
     IndexerType.DEFAULT: Record,
 }
 
@@ -71,6 +71,7 @@ PARAMS_TYPE = {
     IndexerType.NORMALIZATION: Normalization,
     IndexerType.REDUCTION: CalculationParameters,
     IndexerType.DEFAULT: CalculationParameters,
+    IndexerType.INSTRUMENT_PARAMETER: None,
 }
 
 FRIENDLY_NAME_MAPPING = {
@@ -330,22 +331,25 @@ class Indexer:
         If it does not exist, it will create the directory.
         """
         try:
-            record = self.readRecord(version)
-            if record is None:
-                logger.error(f"Record for version {version} does not exist at {self.recordPath(version)}. ")
-                return False
-            if record.version != self._flattenVersion(version):
-                logger.error(f"Record version {record.version} does not match requested version {version}. ")
-                return False
+            if RECORD_TYPE[self.indexerType] is not None:
+                record = self.readRecord(version)
+                if record is None:
+                    logger.error(f"Record for version {version} does not exist at {self.recordPath(version)}. ")
+                    return False
+                if record.version != self._flattenVersion(version):
+                    logger.error(f"Record version {record.version} does not match requested version {version}. ")
+                    return False
 
-            parameter = self.readParameters(version)
-            if parameter is None:
-                logger.error(f"Parameters for version {version} do not exist at {self.parametersPath(version)}. ")
-                return False
-            if parameter.version != self._flattenVersion(version):
-                logger.error(f"Parameters version {parameter.version} does not match requested version {version}. ")
-                return False
+            if PARAMS_TYPE[self.indexerType] is not None:
+                parameter = self.readParameters(version)
+                if parameter is None:
+                    logger.error(f"Parameters for version {version} do not exist at {self.parametersPath(version)}. ")
+                    return False
+                if parameter.version != self._flattenVersion(version):
+                    logger.error(f"Parameters version {parameter.version} does not match requested version {version}. ")
+                    return False
         except Exception as e:  # noqa: BLE001
+            raise
             logger.error(f"Version folder {self.versionPath(version)} is not able to be validated.: {e}")
             return False
 
