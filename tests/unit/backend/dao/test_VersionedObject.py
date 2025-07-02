@@ -4,13 +4,14 @@ from random import randint
 
 import pytest
 from numpy import int64
+from util.dao import DAOFactory
 
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject
 from snapred.backend.dao.indexing.Versioning import (
     VERSION_START,
-    VersionedObject,
     VersionState,
 )
 
@@ -25,24 +26,24 @@ def test_init_bad():
 
 
 def test_init_name_default():
-    vo = VersionedObject(version=VersionState.DEFAULT)
+    vo = VersionedObject(version=VersionState.DEFAULT, indexEntry=DAOFactory.indexEntry())
     assert vo.version == VersionState.DEFAULT
 
 
 def test_init_none():
     with pytest.raises(ValueError):
-        VersionedObject(version=None)
+        VersionedObject(version=None, indexEntry=DAOFactory.indexEntry())
 
 
 def test_init_default():
-    vo = VersionedObject(version=VersionState.DEFAULT)
+    vo = VersionedObject(version=VersionState.DEFAULT, indexEntry=DAOFactory.indexEntry())
     assert vo.version == VersionState.DEFAULT
 
 
 def test_init_int():
     for i in range(10):
         version = randint(0, 1000)
-        vo = VersionedObject(version=version)
+        vo = VersionedObject(version=version, indexEntry=DAOFactory.indexEntry())
         assert vo.version == version
 
 
@@ -54,25 +55,25 @@ def test_init_int64():
     for i in range(10):
         version = int64(randint(0, 1000))
         assert not isinstance(version, int)
-        vo = VersionedObject(version=version)
+        vo = VersionedObject(version=version, indexEntry=DAOFactory.indexEntry())
         assert vo.version == version
 
 
 def test_write_version_int():
     for i in range(10):
         version = randint(0, 1000)
-        vo = VersionedObject(version=version)
+        vo = VersionedObject(version=version, indexEntry=DAOFactory.indexEntry())
         assert vo.model_dump_json() == f'{{"version":{version}}}'
         assert vo.model_dump()["version"] == version
 
 
 def test_write_version_none():
     with pytest.raises(ValueError):
-        VersionedObject(version=None)
+        VersionedObject(version=None, indexEntry=DAOFactory.indexEntry())
 
 
 def test_write_version_default():
-    vo = VersionedObject(version=VERSION_START())
+    vo = VersionedObject(version=VERSION_START(), indexEntry=DAOFactory.indexEntry())
     assert vo.version == VERSION_START()
     assert vo.model_dump_json() == f'{{"version":{VERSION_START()}}}'
     assert vo.model_dump_json() != f'{{"version":"{VERSION_START()}"}}'
@@ -82,7 +83,7 @@ def test_write_version_default():
 def test_can_set_valid():
     old_version = randint(0, 120)
     new_version = randint(0, 120)
-    vo = VersionedObject(version=old_version)
+    vo = VersionedObject(version=old_version, indexEntry=DAOFactory.indexEntry())
     vo.version = new_version
     assert vo.version == new_version
 
@@ -94,7 +95,7 @@ def test_can_set_valid():
 
 
 def test_cannot_set_invalid():
-    vo = VersionedObject(version=randint(0, 120))
+    vo = VersionedObject(version=randint(0, 120), indexEntry=DAOFactory.indexEntry())
     with pytest.raises(ValueError):
         vo.version = None
     with pytest.raises(ValueError):
@@ -110,7 +111,7 @@ def test_shaped_liked_itself():
     """
 
     # version is default
-    vo_old = VersionedObject(version=VersionState.DEFAULT)
+    vo_old = VersionedObject(version=VersionState.DEFAULT, indexEntry=DAOFactory.indexEntry())
     with pytest.raises(ValueError, match="must be flattened to an int before writing to"):
         vo_old.model_dump_json()
     vo_old.version = VERSION_START()
@@ -122,7 +123,7 @@ def test_shaped_liked_itself():
     assert vo_old == vo_new
 
     # version is integer
-    vo_old = VersionedObject(version=randint(0, 120))
+    vo_old = VersionedObject(version=randint(0, 120), indexEntry=DAOFactory.indexEntry())
     vo_new = VersionedObject.model_validate(vo_old.model_dump())
     assert vo_old == vo_new
     vo_new = VersionedObject.model_validate(vo_old.model_dump())
@@ -212,6 +213,7 @@ def recordWithVersion(version):
         runNumber="xyz",
         useLiteMode=True,
         calculationParameters=CalculationParameters.model_construct(),
+        indexEntry=DAOFactory.indexEntry(),
     )
 
 

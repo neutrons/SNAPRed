@@ -158,13 +158,11 @@ class SousChef(Service):
     def prepCrystallographicInfo(self, ingredients: FarmFreshIngredients) -> CrystallographicInfo:
         samplePath = Path(ingredients.calibrantSamplePath).stem
         ingredients.cifPath = self.dataFactoryService.getCifFilePath(samplePath)
-        key = (
-            ingredients.cifPath,
-            ingredients.crystalDBounds.minimum,
-            ingredients.crystalDBounds.maximum,
-            ingredients.calibrantSamplePath,
-        )
-        return CrystallographicInfoService().ingest(*(key[:-1]))["crystalInfo"]
+        return CrystallographicInfoService().ingest(
+            cifPath=ingredients.cifPath,
+            crystalDMin=ingredients.crystalDBounds.minimum,
+            crystalDMax=ingredients.crystalDBounds.maximum,
+        )["crystalInfo"]
 
     def prepPeakIngredients(
         self, ingredients: FarmFreshIngredients, pixelMask: Optional[WorkspaceName] = None

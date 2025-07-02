@@ -81,7 +81,7 @@ class NormalizationTweakPeakView(BackendRequestView):
 
         # a big ol recalculate button
         self.recalculationButton = QPushButton("Recalculate")
-        self.recalculationButton.clicked.connect(self.emitValueChange)
+        self.recalculationButton.clicked.connect(self.validateAndEmitValueChange)
 
         # add all elements to the grid layout
         layout_ = self.layout()
@@ -134,8 +134,7 @@ class NormalizationTweakPeakView(BackendRequestView):
     def updateFields(self, sampleIndex, groupingIndex, smoothingParameter):
         self.signalUpdateFields.emit(sampleIndex, groupingIndex, smoothingParameter)
 
-    @Slot()
-    def emitValueChange(self):
+    def validateAndReadForm(self):
         # verify the fields before recalculation
         try:
             index = self.groupingFileDropdown.currentIndex()
@@ -168,7 +167,13 @@ class NormalizationTweakPeakView(BackendRequestView):
                 QMessageBox.Ok,
             )
             return
-        self.signalValueChanged.emit(index, smoothingValue, xtalDMin, xtalDMax)
+        return (index, smoothingValue, xtalDMin, xtalDMax)
+
+    @Slot()
+    def validateAndEmitValueChange(self):
+        form = self.validateAndReadForm()
+        if form is not None:
+            self.signalValueChanged.emit(*form)
 
     def updateWorkspaces(self, focusWorkspace, smoothedWorkspace, peaks, residualWorkspace):
         self.focusWorkspace = focusWorkspace
