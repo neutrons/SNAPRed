@@ -3,9 +3,8 @@ Algorithm: `LiteDataCreationAlgo`
 
 Description:
 ------------
-This algorithm converts a full-resolution dataset to a lite resolution dataset
-using a specified grouping workspace. It optionally compresses the output and
-can delete the non-lite workspace.
+This algorithm converts a full-resolution dataset to a lite-resolution dataset
+using a specified grouping workspace. It optionally compresses the output.
 
 Expected Inputs:
 ----------------
@@ -27,11 +26,11 @@ Expected Inputs:
    - **Property Mode**: `Mandatory`
    - **Description**: Path to the lite instrument definition file.
 
-4. **AutoDeleteNonLiteWS**:
-   - **Type**: `Bool`
+4. **Ingredients**:
+   - **Type**: `String`
    - **Direction**: `Input`
-   - **Property Mode**: `Optional`
-   - **Description**: Flag indicating whether to automatically delete the non-lite workspace after conversion.
+   - **Property Mode**: `Mandatory`
+   - **Description**: JSON-format 'LiteDataCreationIngredients': compression-related args.
 
 Expected Outputs:
 -----------------
@@ -40,3 +39,9 @@ Expected Outputs:
    - **Direction**: `Output`
    - **Property Mode**: `Mandatory`
    - **Description**: The workspace reduced to lite resolution and compressed.
+
+2. **Tolerance**:
+   - **Type**: `float`
+   - **Direction**: `Output`
+   - **Property Mode**: `Mandatory`
+   - **Description**: The compression tolerance 'deltaT' when compression has been used.
