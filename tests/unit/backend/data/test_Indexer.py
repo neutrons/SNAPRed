@@ -962,3 +962,20 @@ class TestIndexer(unittest.TestCase):
         assert indexer._determineRecordType(indexer.defaultVersion()) == DEFAULT_RECORD_TYPE.get(
             IndexerType.CALIBRATION
         )
+
+    def test_readIndex_noIndex(self):
+        # ensure that if the index is not present, an error is raised
+        indexer = self.initIndexer()
+        with pytest.raises(RuntimeError, match="is corrupted, invalid, or missing."):
+            indexer.readIndex()
+
+    def test_readIndex_emptyIndex(self):
+        # ensure that if the index is empty, an empty dict is returned
+        with tempfile.TemporaryDirectory() as tempdir:
+            indexer = self.initIndexer()
+            indexer.rootDirectory = Path(tempdir)
+            indexPath = indexer.indexPath()
+            if indexPath.exists():
+                indexPath.unlink()
+            indexPath.write_text("[]")  # write an empty index
+            assert indexer.readIndex() == {}
