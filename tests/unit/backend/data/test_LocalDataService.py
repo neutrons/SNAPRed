@@ -50,8 +50,8 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import ReductionIngredients
-from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
+from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.ObjectSHA import ObjectSHA
@@ -225,7 +225,8 @@ def do_test_index_missing(workflow):
     # but it existed and didn't hurt to retain
     localDataService = LocalDataService()
     with state_root_redirect(localDataService):
-        assert len(getattr(localDataService, f"read{workflow}Index")(True, "stateId")) == 0
+        with pytest.raises(RuntimeError, match="is corrupted, invalid, or missing"):
+            getattr(localDataService, f"read{workflow}Index")(True, "stateId")
 
 
 def do_test_workflow_indexer(workflow):
@@ -317,6 +318,7 @@ def do_test_read_state_with_version(workflow: Literal["Calibration", "Normalizat
                 expectedState = paramFactory(version=version)
                 indexerMethod = getattr(localDataService, f"{workflow.lower()}Indexer")
                 indexer = indexerMethod(useLiteMode, tmpRoot.stateId)
+                indexer.readIndex = mock.Mock()
                 tmpRoot.saveObjectAt(expectedState, indexer.parametersPath(version))
                 assert indexer.parametersPath(version).exists()
                 actualState = getattr(localDataService, f"read{workflow}State")(
@@ -335,6 +337,7 @@ def do_test_read_state_no_version(workflow: Literal["Calibration", "Normalizatio
             expectedParameters = getattr(DAOFactory, f"{workflow.lower()}Parameters")()
             indexerMethod = getattr(localDataService, f"{workflow.lower()}Indexer")
             indexer = indexerMethod(useLiteMode, tmpRoot.stateId)
+            indexer.readIndex = mock.Mock()
             tmpRoot.saveObjectAt(expectedParameters, indexer.parametersPath(currentVersion))
             indexer.index = {
                 currentVersion: mock.MagicMock(appliesTo="123", version=currentVersion)
@@ -409,6 +412,7 @@ def test_readStateConfig_default():
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
         indexer = localDataService.calibrationIndexer(True, "stateId")
+        indexer.readIndex = mock.Mock()
         parameters = DAOFactory.calibrationParameters("57514", True, indexer.defaultVersion())
         groupingMap = DAOFactory.groupingMap_SNAP(parameters.instrumentState.id)
         tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
@@ -432,6 +436,7 @@ def test_readStateConfig_previous():
     localDataService.generateStateId = mock.Mock(return_value=(groupingMap.stateId, None))
     with state_root_redirect(localDataService) as tmpRoot:
         indexer = localDataService.calibrationIndexer(True, "stateId")
+        indexer.readIndex = mock.Mock()
         tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
         tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
         indexer.index = {
@@ -451,6 +456,7 @@ def test_readStateConfig_attaches_grouping_map():
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
         indexer = localDataService.calibrationIndexer(True, "stateId")
+        indexer.readIndex = mock.Mock()
         tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
         tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
         indexer.index = {
@@ -471,6 +477,7 @@ def test_readStateConfig_invalid_grouping_map():
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
         indexer = localDataService.calibrationIndexer(True, "stateId")
+        indexer.readIndex = mock.Mock()
         tmpRoot.saveObjectAt(groupingMap, localDataService._groupingMapPath(tmpRoot.stateId))
         tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
         indexer.index = {
@@ -493,6 +500,7 @@ def test_readStateConfig_calls_prepareStateRoot():
     localDataService = LocalDataService()
     with state_root_redirect(localDataService, stateId=expected.instrumentState.id.hex) as tmpRoot:
         indexer = localDataService.calibrationIndexer(True, "stateId")
+        indexer.readIndex = mock.Mock()
         tmpRoot.saveObjectAt(expected, indexer.parametersPath(version))
         indexer.index = {
             version: mock.MagicMock(appliesTo="57514", version=version)

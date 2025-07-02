@@ -715,7 +715,8 @@ class TestIndexer(unittest.TestCase):
 
     def test_readIndex_nothing(self):
         indexer = self.initIndexer()
-        assert len(indexer.readIndex()) == 0
+        with pytest.raises(RuntimeError, match="is corrupted, invalid, or missing."):
+            indexer.readIndex()
 
     def test_readWriteIndex(self):
         # test that an index can be read/written correctly
@@ -827,6 +828,7 @@ class TestIndexer(unittest.TestCase):
     def test_readRecord_none(self):
         version = randint(1, 11)
         indexer = self.initIndexer()
+        indexer.readIndex = mock.Mock()
         assert not self.recordPath(version).exists()
         with pytest.raises(FileNotFoundError, match=r".*No Record found at*"):
             indexer.readRecord(version)
@@ -835,6 +837,7 @@ class TestIndexer(unittest.TestCase):
         record = self.record(randint(1, 100))
         self.writeRecord(record)
         indexer = self.initIndexer()
+        indexer.readIndex = mock.Mock()
         res = indexer.readRecord(record.version)
         assert res == record
 
@@ -843,6 +846,7 @@ class TestIndexer(unittest.TestCase):
         record = self.record(randint(1, 100))
         self.writeRecord(record)
         indexer = self.initIndexer()
+        indexer.readIndex = mock.Mock()
         with pytest.raises(ValueError, match=r".*The indexer has encountered an invalid version*"):
             indexer.readRecord("*")
 
@@ -913,6 +917,7 @@ class TestIndexer(unittest.TestCase):
     def test_readIndexedObject_none(self):
         version = randint(1, 100)
         indexer = self.initIndexer()
+        indexer.readIndex = mock.Mock()
         assert not self.parametersPath(version).exists()
         with pytest.raises(FileNotFoundError, match=r".*No CalculationParameters found at*"):
             indexer.readParameters(version)

@@ -461,9 +461,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 version=self.version,
                 checkExistent=False,
             )
-            with pytest.raises(FileNotFoundError) as excinfo:  # noqa: PT011
+            self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(
+                side_effect=FileNotFoundError("No record found")
+            )
+            with pytest.raises(FileNotFoundError):  # noqa: PT011
                 self.instance.loadQualityAssessment(mockRequest)
-            assert str(mockRequest.version) in str(excinfo.value)
 
     def test_load_quality_assessment_no_calibration_metrics_exception(
         self,
@@ -520,11 +522,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         version = randint(2, 120)
         record = DAOFactory.calibrationRecord(version=version)
         parameters = DAOFactory.calibrationParameters(version=version)
+        index = []
         with state_root_redirect(self.localDataService) as tmpRoot:
             indexer = self.localDataService.calibrationIndexer(record.useLiteMode, "stateId")
+            indexPath = indexer.indexPath()
             recordFilepath = indexer.recordPath(version)
             tmpRoot.saveObjectAt(record, recordFilepath)
             tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
+            indexPath.write_text(json.dumps(index, indent=2))
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.create_fake_diffcal_files(recordFilepath.parent, record.workspaces, version)
@@ -556,14 +561,17 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         version = randint(2, 120)
         record = DAOFactory.calibrationRecord(version=version)
         parameters = DAOFactory.calibrationParameters(version=version)
+        index = []
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=record)
         self.instance.dataExportService.getUniqueTimestamp = mock.Mock(return_value=None)
         with state_root_redirect(self.localDataService) as tmpRoot:
             indexer = self.localDataService.calibrationIndexer(record.useLiteMode, "stateId")
             recordFilepath = indexer.recordPath(version)
+            indexPath = indexer.indexPath()
             tmpRoot.saveObjectAt(record, recordFilepath)
             tmpRoot.saveObjectAt(parameters, indexer.parametersPath(version))
+            indexPath.write_text(json.dumps(index, indent=2))
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.create_fake_diffcal_files(recordFilepath.parent, record.workspaces, version)

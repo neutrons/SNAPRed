@@ -172,6 +172,7 @@ def test_state_root_redirect_no_stateid():
         localDataService.calibrationExists = mock.Mock(return_value=True)
         expected = DAOFactory.calibrationParameters("123", True, 1)
         indexer = localDataService.calibrationIndexer(True, "stateId")
+        indexer.readIndex = mock.Mock(return_value=[])
         tmpRoot.saveObjectAt(expected, indexer.parametersPath(1))
         ans = localDataService.readCalibrationState("123", True, "stateId", 1)
         assert ans == expected
