@@ -155,6 +155,10 @@ version = "0.0.0"  # placeholder, overwritten by sync-version
 
 [tool.pixi.package.build]
 backend = { name = "pixi-build-python", version = "0.1.*" }
+channels = [
+  "https://prefix.dev/pixi-build-backends",
+  "https://prefix.dev/conda-forge",
+]
 
 # --------------- #
 # Pixi Tasks      #
@@ -180,8 +184,8 @@ test-integration = { cmd = "pytest -m integration --cov=src/snapred --cov-report
 test-all = { cmd = "pytest -m 'not datarepo' --cov=src/snapred --cov-report=xml --cov-report=term", description = "Run all tests except datarepo tests" }
 # MISC
 clean-all = { description = "Clean all build artifacts", depends-on = ["clean-pypi", "clean-docs", "clean-conda"] }
-sync-version = { cmd = "version=$(python -m versioningit); python -c \"import toml; data=toml.load('pyproject.toml'); data['tool']['pixi']['package']['version']='$version'; open('pyproject.toml', 'w').write(toml.dump(data))\"", description = "Sync pyproject.toml version with Git version" }
-reset-version = { cmd = "python -c \"import toml; data=toml.load('pyproject.toml'); data['tool']['pixi']['package']['version']='0.0.0'; open('pyproject.toml', 'w').write(toml.dump(data))\"", description = "Reset the package version to 0.0.0" }
+sync-version = { cmd = "version=$(python -m versioningit); python -c \"import toml; data=toml.load('pyproject.toml'); data['tool']['pixi']['package']['version']='$version'; open('pyproject.toml', 'w').write(toml.dumps(data))\"", description = "Sync pyproject.toml version with Git version" }
+reset-version = { cmd = "python -c \"import toml; data=toml.load('pyproject.toml'); data['tool']['pixi']['package']['version']='0.0.0'; open('pyproject.toml', 'w').write(toml.dumps(data))\"", description = "Reset the package version to 0.0.0" }
 # Application tasks
 snapred = { cmd = "python -m snapred", description = "Start the SNAPRed application" }
 
