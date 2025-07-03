@@ -1,10 +1,10 @@
 from pydantic import Field
 
-from snapred.backend.dao.indexing.Versioning import VersionedObject
+from snapred.backend.dao.indexing.IndexedObject import IndexedObject
 from snapred.meta.Config import Config
 
 
-class InstrumentConfig(VersionedObject):
+class InstrumentConfig(IndexedObject):
     """Class to hold the instrument parameters."""
 
     facility: str

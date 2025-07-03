@@ -9,9 +9,10 @@ from snapred.backend.dao import InstrumentConfig
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
+from snapred.backend.dao.indexing.IndexedObject import IndexedObject
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionedObject, VersionState
+from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionState
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -22,7 +23,9 @@ from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_
 
 logger = snapredLogger.getLogger(__name__)
 
-T = TypeVar("T", bound=VersionedObject)
+# T is used to pull the type of IndexedObject used in the Indexer methods
+# e.g. the filename is determined by the type of IndexedObject,
+T = TypeVar("T", bound=IndexedObject)
 
 """
     The Indexer will automatically track versions and produce the next and current versions.
@@ -54,7 +57,7 @@ RECORD_TYPE = {
     IndexerType.CALIBRATION: CalibrationRecord,
     IndexerType.NORMALIZATION: NormalizationRecord,
     IndexerType.REDUCTION: ReductionRecord,
-    IndexerType.INSTRUMENT_PARAMETER: None,
+    IndexerType.INSTRUMENT_PARAMETER: InstrumentConfig,
     IndexerType.DEFAULT: Record,
 }
 
@@ -68,6 +71,7 @@ PARAMS_TYPE = {
     IndexerType.NORMALIZATION: Normalization,
     IndexerType.REDUCTION: CalculationParameters,
     IndexerType.DEFAULT: CalculationParameters,
+    IndexerType.INSTRUMENT_PARAMETER: None,
 }
 
 FRIENDLY_NAME_MAPPING = {
@@ -79,6 +83,7 @@ FRIENDLY_NAME_MAPPING = {
     ReductionRecord.__name__: "ReductionRecord",
     InstrumentConfig.__name__: "SNAPInstPrm",
     CalculationParameters.__name__: "CalculationParameters",
+    Record.__name__: "Record",
 }
 
 
@@ -91,10 +96,12 @@ class Indexer:
     ## CONSTRUCTOR / DESTRUCTOR METHODS ##
 
     @validate_call
-    def __init__(self, *, indexerType: IndexerType, directory: Path | str) -> None:
+    def __init__(self, *, indexerType: IndexerType, directory: Path | str, recoveryMode: bool = False) -> None:
+        self.recoveryMode = recoveryMode
         self.indexerType = indexerType
         self.rootDirectory = Path(directory)
-        self.index = self.readIndex()
+        # no index on disk is valid until we attempt to read an indexed object.
+        self.index = self.readIndex(init=True)
         self.dirVersions = self.readDirectoryList()
         self.reconcileIndexToFiles()
 
@@ -179,9 +186,9 @@ class Indexer:
             version = max(versions)
         return version
 
-    def latestApplicableVersion(self, runNumber: str) -> int:
+    def latestApplicableEntry(self, runNumber: str) -> IndexEntry:
         """
-        The most recent version in time, which is applicable to the run number.
+        The most recent index entry in time, which is applicable to the run number.
         """
         # sort by timestamp
         entries = list(self.index.values())
@@ -189,13 +196,24 @@ class Indexer:
         # filter for latest applicable
         relevantEntries = list(filter(lambda x: self._isApplicableEntry(x, runNumber), entries))
         if len(relevantEntries) < 1:
-            version = None
+            entry = None
         elif len(relevantEntries) == 1:
-            version = relevantEntries[0].version
+            entry = relevantEntries[0]
         else:
             if self.defaultVersion() in self.index:
                 relevantEntries.remove(self.index[self.defaultVersion()])
-            version = relevantEntries[-1].version
+            entry = relevantEntries[-1]
+        return entry
+
+    def latestApplicableVersion(self, runNumber: str) -> int:
+        """
+        The most recent version in time, which is applicable to the run number.
+        """
+        latestEntry = self.latestApplicableEntry(runNumber)
+        if latestEntry is None:
+            version = None
+        else:
+            version = latestEntry.version
         return version
 
     def nextVersion(self) -> int:
@@ -214,14 +232,14 @@ class Indexer:
 
     def validateVersion(self, version):
         try:
-            VersionedObject(version=version)
+            IndexedObject.validate_version(version)
             return True
         except ValueError:
             # This error would only ever result from a software bug.
-            # Saving/Loading/Refering to erroneous "current" versions just serves to obfuscate the error.
+            # Saving/Loading/Referring to erroneous "current" versions just serves to obfuscate the error.
             raise ValueError(
                 (
-                    f"The indexer has encountered an invalid version: {version}.",
+                    f"The indexer has encountered an invalid version: {version}\n",
                     "This is a software error.  Please report this to your IS or CIS",
                     "so it may be patched.",
                 )
@@ -264,13 +282,17 @@ class Indexer:
         """
         Path to a specific version of a calculation record
         """
-        return self.versionPath(version) / f"{self.indexerType}Record.json"
+        recordType = self._determineRecordType(version)
+        recordFriendlyName = FRIENDLY_NAME_MAPPING[recordType.__name__]
+        return self.versionPath(version) / f"{recordFriendlyName}.json"
 
     def parametersPath(self, version: int):
         """
         Path to a specific version of calculation parameters
         """
-        return self.versionPath(version) / f"{self.indexerType}Parameters.json"
+        parameterType = PARAMS_TYPE[self.indexerType]
+        parameterFriendlyName = FRIENDLY_NAME_MAPPING[parameterType.__name__]
+        return self.versionPath(version) / f"{parameterFriendlyName}.json"
 
     def versionPath(self, version: int) -> Path:
         self.validateVersion(version)
@@ -303,12 +325,86 @@ class Indexer:
         res.pop(self.defaultVersion(), None)
         return list(res.values())
 
-    def readIndex(self) -> Dict[int, IndexEntry]:
+    def isValidVersionFolder(self, version: Version):
+        """
+        Validates that the version folder exists and is a directory.
+        If it does not exist, it will create the directory.
+        """
+        try:
+            if RECORD_TYPE[self.indexerType] is not None:
+                record = self.readRecord(version)
+                if record is None:
+                    logger.error(f"Record for version {version} does not exist at {self.recordPath(version)}. ")
+                    return False
+                if record.version != self._flattenVersion(version):
+                    logger.error(f"Record version {record.version} does not match requested version {version}. ")
+                    return False
+
+            if PARAMS_TYPE[self.indexerType] is not None:
+                parameter = self.readParameters(version)
+                if parameter is None:
+                    logger.error(f"Parameters for version {version} do not exist at {self.parametersPath(version)}. ")
+                    return False
+                if parameter.version != self._flattenVersion(version):
+                    logger.error(f"Parameters version {parameter.version} does not match requested version {version}. ")
+                    return False
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Version folder {self.versionPath(version)} is not able to be validated.: {e}")
+            return False
+
+        # NOTE: Cannot actually validate the additional files in the version folder,
+        #       They are outside of scope and management of the Indexer.
+        #       And may be arbitrary.
+
+        return True
+
+    def recoverIndex(self, dryrun=True) -> Dict[int, IndexEntry]:
+        # iterate through the directory structure and create an index from the files
+        indexPath: Path = self.indexPath()
+        entries = []
+        versions = self.readDirectoryList()
+        for version in versions:
+            if self.isValidVersionFolder(version):
+                # read the record file
+                record = self.readRecord(version)
+                entries.append(record.indexEntry)
+            else:
+                logger.error(f"Version folder {self.versionPath(version)} is not valid. Skipping version {version}.")
+
+        # assert whether entries matches current index
+        if len(entries) != len(self.index):
+            logger.warning(
+                f"Recovered index has {len(entries)} entries, "
+                f"but the current index has {len(self.index)} entries. "
+                "This may indicate a mismatch between the index and the directory structure."
+            )
+        prospectiveIndex = {entry.version: entry for entry in entries}
+        # if the index is empty, or the versions do not match, overwrite the index
+        if prospectiveIndex != self.index:
+            logger.warning(
+                "Recovered index does not match current index. Overwriting current index with recovered index."
+            )
+            if not dryrun:
+                self.index = prospectiveIndex
+
+        # write the index to the file
+        if len(entries) > 0 and not dryrun:
+            indexPath.parent.mkdir(parents=True, exist_ok=True)
+            write_model_list_pretty(entries, indexPath)
+        return entries
+
+    def readIndex(self, init=False) -> Dict[int, IndexEntry]:
         # create the index from the index file
         indexPath: Path = self.indexPath()
         indexList: List[IndexEntry] = []
-        if indexPath.exists():
+        try:
             indexList = parse_file_as(List[IndexEntry], indexPath)
+        except Exception as e:  # noqa: BLE001
+            if not init and not self.recoveryMode:
+                raise RuntimeError(
+                    f"Index file {indexPath} is corrupted, invalid, or missing. "
+                    "Please contact your IS or CIS for assistance."
+                ) from e
         return {entry.version: entry for entry in indexList}
 
     def writeIndex(self):
@@ -328,6 +424,9 @@ class Indexer:
     ## RECORD READ / WRITE METHODS ##
 
     def createRecord(self, *, version, **other_arguments):
+        entry = other_arguments.get("indexEntry")
+        entry["version"] = self._flattenVersion(version)
+        other_arguments["indexEntry"] = entry
         record = RECORD_TYPE[self.indexerType](
             version=self._flattenVersion(version),
             **other_arguments,
@@ -348,7 +447,7 @@ class Indexer:
         If no version given, defaults to current version
         """
         recordType = self._determineRecordType(version)
-        return self.readVersionedObject(recordType, version)
+        return self.readIndexedObject(recordType, version)
 
     def _flattenVersion(self, version: Version):
         """
@@ -378,65 +477,47 @@ class Indexer:
     def versionExists(self, version: Version):
         return self._flattenVersion(version) in self.index
 
-    def writeNewVersion(self, record: Record, entry: IndexEntry):
-        """
-        Coupled write of a record and an index entry.
-        As required for new records.
-        """
-        if self.versionExists(record.version):
-            raise ValueError(f"Version {record.version} already exists in index, please write a new version.")
-
-        if entry.appliesTo is None:
-            entry.appliesTo = ">=" + record.runNumber
-
-        self.addIndexEntry(entry)
-        # make sure they flatten to the same value.
-        record.version = entry.version
-        record.calculationParameters.version = entry.version
-        self.writeRecord(record)
-
-    def versionedObjectPath(self, type_: Type[T], version: Version):
+    def indexedObjectFilePath(self, type_: Type[T], version: Version):
         """
         Path to a specific version of a calculation record
         """
         fileName = FRIENDLY_NAME_MAPPING.get(type_.__name__, type_.__name__)
         return self.versionPath(version) / f"{fileName}.json"
 
-    def writeNewVersionedObject(self, obj: VersionedObject, entry: IndexEntry):
-        """
-        Coupled write of parameters and an index entry.
-        As required for new parameters.
-        """
-        if self.versionExists(obj.version):
-            raise ValueError(f"Version {obj.version} already exists in index, please write a new version.")
-
-        self.addIndexEntry(entry)
-        # make sure they flatten to the same value.
-        obj.version = entry.version
-        self.writeVersionedObject(obj)
-
-    def writeVersionedObject(self, obj: VersionedObject):
+    @validate_call
+    def writeIndexedObject(self, obj: IndexedObject, overwrite: bool = False):
         """
         Will save at the version on the object.
         If the version is invalid, will throw an error and refuse to save.
         """
         obj.version = self._flattenVersion(obj.version)
+        obj.indexEntry.version = obj.version
+        filePath = self.indexedObjectFilePath(type(obj), obj.version)
+        if not overwrite and filePath.exists():
+            objTypeName = type(obj).__name__
+            raise ValueError(
+                f"{objTypeName} with version {obj.version} already exists. "
+                f"\nA version collision has occurred. No {objTypeName} was saved."
+            )
 
-        if not self.versionExists(obj.version):
-            raise ValueError(f"Version {obj.version} not found in index, please write an index entry first.")
+        if obj.indexEntry.appliesTo is None:
+            obj.indexEntry.appliesTo = ">=" + obj.runNumber
 
-        filePath = self.versionedObjectPath(type(obj), obj.version)
+        self.addIndexEntry(obj.indexEntry)
+        obj.version = obj.indexEntry.version
+
         filePath.parent.mkdir(parents=True, exist_ok=True)
 
         write_model_pretty(obj, filePath)
 
         self.dirVersions.add(obj.version)
 
-    def readVersionedObject(self, type_: Type[T], version: Version) -> VersionedObject:
+    def readIndexedObject(self, type_: Type[T], version: Version) -> IndexedObject:
         """
         If no version given, defaults to current version
         """
-        filePath = self.versionedObjectPath(type_, version)
+        self.index = self.readIndex(init=False)
+        filePath = self.indexedObjectFilePath(type_, version)
         obj = None
         if filePath.exists():
             obj = parse_file_as(type_, filePath)
@@ -444,16 +525,19 @@ class Indexer:
             raise FileNotFoundError(f"No {type_.__name__} found at {filePath} for version {version}")
         return obj
 
-    def writeRecord(self, record: Record):
+    def writeRecord(self, record: Record, overwrite: bool = False):
         """
         Will save at the version on the record.
         If the version is invalid, will throw an error and refuse to save.
         """
-        self.writeVersionedObject(record)
+        self.writeIndexedObject(record, overwrite=overwrite)
 
     ## STATE PARAMETER READ / WRITE METHODS ##
 
     def createParameters(self, *, version, **other_arguments) -> CalculationParameters:
+        entry = other_arguments.get("indexEntry")
+        entry.version = self._flattenVersion(version)
+        other_arguments["indexEntry"] = entry
         return PARAMS_TYPE[self.indexerType](
             version=self._flattenVersion(version),
             **other_arguments,
@@ -463,11 +547,11 @@ class Indexer:
         """
         If no version given, defaults to current version
         """
-        return self.readVersionedObject(PARAMS_TYPE[self.indexerType], version)
+        return self.readIndexedObject(PARAMS_TYPE[self.indexerType], version)
 
-    def writeParameters(self, parameters: CalculationParameters):
+    def writeParameters(self, parameters: CalculationParameters, overwrite: bool = False):
         """
         Will save at the version on the calculation parameters.
         If the version is invalid, will throw an error and refuse to save.
         """
-        self.writeVersionedObject(parameters)
+        self.writeIndexedObject(parameters, overwrite=overwrite)

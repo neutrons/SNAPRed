@@ -87,6 +87,13 @@ class DataFactoryService:
     def calibrationExists(self, runId: str, useLiteMode: bool, state: str):
         return self.lookupService.calibrationExists(runId, useLiteMode, state)
 
+    def getNextCalibrationVersion(self, useLiteMode: bool, state: str) -> Version:
+        """
+        Returns the next version number for a calibration record.
+        If no calibration exists, returns VersionState.NEXT.
+        """
+        return self.lookupService.calibrationIndexer(useLiteMode, state).nextVersion()
+
     @validate_call
     def getCalibrationDataPath(self, useLiteMode: bool, version: Version, state: Optional[str] = None):
         return self.lookupService.calibrationIndexer(useLiteMode, state=state).versionPath(version)

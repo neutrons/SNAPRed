@@ -11,3 +11,4 @@ Developer Docs
    dao
    feature/workflow/index
    workflowDiagrams
+   implementation_notes/index

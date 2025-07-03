@@ -1,6 +1,9 @@
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import QLabel
 
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject
+from snapred.backend.dao.indexing.Versioning import VersionState
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 
@@ -56,6 +59,17 @@ class NormalizationSaveView(BackendRequestView):
         _layout.addWidget(self.fieldAppliesTo)
         _layout.addWidget(self.fieldComments)
         _layout.addWidget(self.fieldAuthor)
+
+    def validateAndReadForm(self):
+        runNumber = self.fieldRunNumber.text()
+        backgroundRunNumber = self.fieldBackgroundRunNumber.text()
+        version = self.fieldVersion.text() or VersionState.NEXT
+        appliesTo = self.fieldAppliesTo.text() or f">={runNumber}"
+        # validate the version number
+        version = VersionedObject.validate_version(version)
+        # validate appliesTo field
+        appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
+        return runNumber, backgroundRunNumber, version, appliesTo, self.fieldComments.text(), self.fieldAuthor.text()
 
     @Slot(str)
     def _updateRunNumber(self, runNumber: str):

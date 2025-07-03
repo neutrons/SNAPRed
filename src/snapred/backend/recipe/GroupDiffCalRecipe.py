@@ -67,13 +67,13 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         groupIDs = [peakList.groupID for peakList in ingredients.groupedPeakLists]
         if groupIDs != pixelGroupIDs:
             raise RuntimeError(
-                f"Group IDs do not match between peak list and the pixel group: {groupIDs} vs {pixelGroupIDs}"
+                f"Group IDs do not match between peak list and the pixel group: '{groupIDs}' vs. '{pixelGroupIDs}'"
             )
 
         diffocWS = self.mantidSnapper.mtd[groceries["groupingWorkspace"]]
-        if groupIDs != list(diffocWS.getGroupIDs()):
+        if groupIDs != diffocWS.getGroupIDs().tolist():
             raise RuntimeError(
-                f"Group IDs do not match between peak list and focus WS: {groupIDs} vs {diffocWS.getGroupIDs()}"
+                f"Group IDs do not match between peak list and focus WS: '{groupIDs}' vs. '{diffocWS.getGroupIDs()}'"
             )
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
@@ -107,8 +107,6 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
                 allPeakBoundaries.append(peak.maximum)
             self.groupedPeaks[peakList.groupID] = allPeaks
             self.groupedPeakBoundaries[peakList.groupID] = allPeakBoundaries
-        # NOTE: this sort is necessary to correspond to the sort inside mantid's GroupingWorkspace
-        self.groupIDs = sorted(self.groupIDs)
 
     def unbagGroceries(self, groceries: Dict[str, WorkspaceName]) -> None:
         """

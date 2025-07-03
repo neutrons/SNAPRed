@@ -1,6 +1,9 @@
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import QComboBox, QLabel
 
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.VersionedObject import VersionedObject
+from snapred.backend.dao.indexing.Versioning import VersionState
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 
@@ -57,6 +60,16 @@ class DiffCalSaveView(BackendRequestView):
         _layout.addWidget(self.fieldAppliesTo)
         _layout.addWidget(self.fieldComments)
         _layout.addWidget(self.fieldAuthor)
+
+    def validateAndReadForm(self):
+        runNumber = self.fieldRunNumber.get()
+        version = self.fieldVersion.get(VersionState.NEXT)
+        appliesTo = self.fieldAppliesTo.get(f">={runNumber}")
+        # validate the version number
+        version = VersionedObject.validate_version(version)
+        # validate appliesTo field
+        appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
+        return runNumber, version, appliesTo, self.fieldComments.get(), self.fieldAuthor.get()
 
     # This signal boilerplate mumbo jumbo is necessary because worker threads cant update the gui directly
     # So we have to send a signal to the main thread to update the gui, else we get an unhelpful segfault

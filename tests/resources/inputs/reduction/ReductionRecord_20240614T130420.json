@@ -417,7 +417,16 @@
                     "delThNoGuide": 0.0006667,
                     "delThWithGuide": 0.0032,
                     "width": 1600.0,
-                    "frequency": 60.4
+                    "frequency": 60.4,
+                    "indexEntry": {
+                        "version": 0,
+                        "useLiteMode": true,
+                        "appliesTo": ">=1",
+                        "comments": "This is a test index entry",
+                        "author": "Test Author",
+                        "timestamp": 1700000000.0,
+                        "runNumber": "12345"
+                    }
                 },
                 "detectorState": {
                     "arc": [
@@ -460,7 +469,25 @@
             "useLiteMode": true,
             "creationDate": "2023-06-05T15:49:59.583421",
             "name": "test",
-            "version": 1
+            "version": 1,
+            "indexEntry": {
+                "version": 0,
+                "useLiteMode": true,
+                "appliesTo": ">=1",
+                "comments": "This is a test index entry",
+                "author": "Test Author",
+                "timestamp": 1700000000.0,
+                "runNumber": "12345"
+            }
+        },
+        "indexEntry": {
+            "version": 0,
+            "useLiteMode": true,
+            "appliesTo": ">=1",
+            "comments": "This is a test index entry",
+            "author": "Test Author",
+            "timestamp": 1700000000.0,
+            "runNumber": "12345"
         },
         "pixelGroups": [
             {
@@ -710,7 +737,16 @@
                     "delThNoGuide": 0.0006667,
                     "delThWithGuide": 0.0032,
                     "width": 1600.0,
-                    "frequency": 60.4
+                    "frequency": 60.4,
+                    "indexEntry": {
+                        "version": 0,
+                        "useLiteMode": true,
+                        "appliesTo": ">=1",
+                        "comments": "This is a test index entry",
+                        "author": "Test Author",
+                        "timestamp": 1700000000.0,
+                        "runNumber": "12345"
+                    }
                 },
                 "detectorState": {
                     "arc": [
@@ -753,7 +789,16 @@
             "useLiteMode": true,
             "creationDate": "2023-06-05T15:49:59.583421",
             "name": "test",
-            "version": 0
+            "version": 0,
+            "indexEntry": {
+                "version": 0,
+                "useLiteMode": true,
+                "appliesTo": ">=1",
+                "comments": "This is a test index entry",
+                "author": "Test Author",
+                "timestamp": 1700000000.0,
+                "runNumber": "12345"
+            }
         },
         "workspaceNames": [
             "fitted_strippedFocussedData_stripped_0",
@@ -763,7 +808,16 @@
         "version": 7,
         "calibrationVersionUsed": 1,
         "crystalDBounds": {"minimum": 0.4, "maximum": 100.0},
-        "normalizationCalibrantSamplePath": "/SNS/SNAP/shared/Calibration/Calibrants/Al2O3/Al2O3_20240614T130420.nxs"
+        "normalizationCalibrantSamplePath": "/SNS/SNAP/shared/Calibration/Calibrants/Al2O3/Al2O3_20240614T130420.nxs",
+        "indexEntry": {
+            "version": 0,
+            "useLiteMode": true,
+            "appliesTo": ">=1",
+            "comments": "This is a test index entry",
+            "author": "Test Author",
+            "timestamp": 1700000000.0,
+            "runNumber": "12345"
+        }
     },
     "calculationParameters": {
         "instrumentState": {
@@ -794,7 +848,16 @@
                 "delThNoGuide": 0.0006667,
                 "delThWithGuide": 0.0032,
                 "width": 1600.0,
-                "frequency": 60.4
+                "frequency": 60.4,
+                "indexEntry": {
+                    "version": 0,
+                    "useLiteMode": true,
+                    "appliesTo": ">=1",
+                    "comments": "This is a test index entry",
+                    "author": "Test Author",
+                    "timestamp": 1700000000.0,
+                    "runNumber": "12345"
+                }
             },
             "detectorState": {
                 "arc": [
@@ -837,7 +900,16 @@
         "useLiteMode": true,
         "creationDate": "2023-06-05T15:49:59.583421",
         "name": "test",
-        "version": 1
+        "version": 1,
+        "indexEntry": {
+            "version": 0,
+            "useLiteMode": true,
+            "appliesTo": ">=1",
+            "comments": "This is a test index entry",
+            "author": "Test Author",
+            "timestamp": 1700000000.0,
+            "runNumber": "12345"
+        }
     },
     "pixelGroupingParameters": {
         "Column": [

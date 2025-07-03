@@ -120,15 +120,16 @@ class SousChef(Service):
         if key not in self._pixelGroupCache:
             focusGroup = self.prepFocusGroup(ingredients)
             instrumentState = self.prepInstrumentState(ingredients)
-            pixelIngredients = PixelGroupingIngredients(
+            pixelGroupingIngredients = PixelGroupingIngredients(
                 instrumentState=instrumentState,
+                groupingScheme=focusGroup.name,
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
             )
             self.groceryClerk.name("groupingWorkspace").fromRun(ingredients.runNumber).grouping(
                 focusGroup.name
             ).useLiteMode(ingredients.useLiteMode).add()
             groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict(), maskWorkspace=pixelMask)
-            data = PixelGroupingParametersCalculationRecipe().executeRecipe(pixelIngredients, groceries)
+            data = PixelGroupingParametersCalculationRecipe().executeRecipe(pixelGroupingIngredients, groceries)
 
             self._pixelGroupCache[key] = PixelGroup(
                 focusGroup=focusGroup,
@@ -157,13 +158,11 @@ class SousChef(Service):
     def prepCrystallographicInfo(self, ingredients: FarmFreshIngredients) -> CrystallographicInfo:
         samplePath = Path(ingredients.calibrantSamplePath).stem
         ingredients.cifPath = self.dataFactoryService.getCifFilePath(samplePath)
-        key = (
-            ingredients.cifPath,
-            ingredients.crystalDBounds.minimum,
-            ingredients.crystalDBounds.maximum,
-            ingredients.calibrantSamplePath,
-        )
-        return CrystallographicInfoService().ingest(*(key[:-1]))["crystalInfo"]
+        return CrystallographicInfoService().ingest(
+            cifPath=ingredients.cifPath,
+            crystalDMin=ingredients.crystalDBounds.minimum,
+            crystalDMax=ingredients.crystalDBounds.maximum,
+        )["crystalInfo"]
 
     def prepPeakIngredients(
         self, ingredients: FarmFreshIngredients, pixelMask: Optional[WorkspaceName] = None
