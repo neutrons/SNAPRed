@@ -337,7 +337,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Mock input data
         timestamp = time.time()
         mockFarmFreshIngredients = mock.Mock(
-            spec=FarmFreshIngredients,
             runNumber="12345",
             useLiteMode=True,
             timestamp=timestamp,
@@ -467,14 +466,26 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             with pytest.raises(FileNotFoundError):  # noqa: PT011
                 self.instance.loadQualityAssessment(mockRequest)
 
+    @mock.patch(thisService + "GenerateCalibrationMetricsWorkspaceRecipe")
+    @mock.patch(thisService + "CalibrationMetricsWorkspaceIngredients")
     def test_load_quality_assessment_no_calibration_metrics_exception(
         self,
+        mockCalibrationMetricsWorkspaceIngredients,
+        mockGenerateCalibrationMetricsWorkspaceRecipe,
     ):
         mockRequest = mock.Mock(runId=self.runNumber, version=self.version, checkExistent=False)
         calibrationRecord = DAOFactory.calibrationRecord(runNumber="57514", version=1)
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         # Clear the input metrics list
         calibrationRecord.focusGroupCalibrationMetrics.calibrationMetric = []
+        mockCalibrationMetricsWorkspaceIngredients.return_value = mock.Mock(
+            calibrationRecord=calibrationRecord,
+            timestamp=self.timestamp,
+        )
+        # Mock the recipe to raise the expected exception
+        mockGenerateCalibrationMetricsWorkspaceRecipe.return_value.executeRecipe.side_effect = Exception(
+            "input table is empty"
+        )
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibrationRecord)
         with pytest.raises(Exception, match=r".*input table is empty.*"):
             self.instance.loadQualityAssessment(mockRequest)
