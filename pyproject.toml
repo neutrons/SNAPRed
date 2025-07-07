@@ -4,7 +4,7 @@ description = "A desktop application for Lifecycle Managment of data collected f
 dynamic = ["version"]
 requires-python = ">=3.10"
 dependencies = [
-    "pyoncat ~= 1.6"
+    "pyoncat ~= 2.1"
 ]
 readme = "README.md"
 license = { text = "GPL3.0" }
