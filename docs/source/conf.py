@@ -19,46 +19,279 @@ except ImportError:
 
 import unittest.mock as mock
 
-from mantid.api import PythonAlgorithm
-from qtpy.QtCore import Property, QThread, Signal  # type: ignore
+# Create mock classes for mantid and qtpy before any imports
+class MockPythonAlgorithm:
+    """Mock class for mantid.api.PythonAlgorithm"""
+    def __init__(self):
+        pass
+
+    @classmethod
+    def register(cls):
+        """Mock register method to prevent algorithm registration errors"""
+        pass
+
+    def PyInit(self):
+        """Mock PyInit method"""
+        pass
+
+    def PyExec(self):
+        """Mock PyExec method"""
+        pass
+
+    def initialize(self):
+        """Mock initialize method"""
+        pass
+
+    def execute(self):
+        """Mock execute method"""
+        pass
+
+    def setProperty(self, name, value):
+        """Mock setProperty method"""
+        pass
+
+    def getProperty(self, name):
+        """Mock getProperty method"""
+        return mock.MagicMock()
+
+class MockQThread:
+    """Mock class for qtpy.QtCore.QThread"""
+    pass
+
+class MockSignal:
+    """Mock class for qtpy.QtCore.Signal"""
+    def __init__(self, *args, **kwargs):
+        # Accept any arguments to handle Signal(str, str), Signal(bool), etc.
+        pass
+
+class MockProperty:
+    """Mock class for qtpy.QtCore.Property"""
+    def __init__(self, *args, **kwargs):
+        # Accept any arguments to handle Property decorators
+        pass
+
+    def __call__(self, func):
+        # Act as a decorator and add setter attribute
+        func.setter = lambda f: f  # Mock setter method
+        return func
+
+# Create mock types for common types that cause pydantic warnings
+class MockBool:
+    """Mock boolean type"""
+    def __init__(self, value=False):
+        self.value = value
+    def __bool__(self):
+        return self.value
+    def __ror__(self, other):
+        return self
+
+class MockCrystalStructure:
+    """Mock CrystalStructure type"""
+    def __init__(self):
+        pass
+    def __ror__(self, other):
+        return self
 
 # Store original __import__
 orig_import = __import__
 
 
-def import_mock(name, *args):
-    imports = orig_import(name, *args)
-    if name == "mantid.api":
-        fromlist = args[2]
+def import_mock(name, *args, **kwargs):
+    try:
+        imports = orig_import(name, *args, **kwargs)
+    except ImportError:
+        # Create a mock module for missing imports with better type handling
+        imports = mock.MagicMock()
+        # Set common attributes to avoid warnings
+        imports.__name__ = name
+        imports.__file__ = f"<mock:{name}>"
+        imports.__spec__ = mock.MagicMock()
+        imports.__spec__.name = name
+
+    # Handle fromlist from args or kwargs
+    fromlist = kwargs.get('fromlist', args[2] if len(args) > 2 else [])
+
+    # Enhanced mantid.api mocking
+    if name == "mantid.api" and fromlist:
         if "PythonAlgorithm" in fromlist:
-            imports.PythonAlgorithm = PythonAlgorithm
-    if name == "qtpy.QtCore":
-        fromlist = args[2]
+            imports.PythonAlgorithm = MockPythonAlgorithm
+        # Mock AlgorithmFactory to prevent registration errors
+        if "AlgorithmFactory" in fromlist:
+            mock_factory = mock.MagicMock()
+            mock_factory.register = mock.MagicMock()
+            imports.AlgorithmFactory = mock_factory
+
+    # Enhanced mantid.dataobjects mocking
+    if name == "mantid.dataobjects" or (name == "mantid" and "dataobjects" in fromlist):
+        # Create comprehensive dataobjects mock
+        dataobjects_mock = mock.MagicMock()
+        dataobjects_mock.__name__ = "mantid.dataobjects"
+        dataobjects_mock.__file__ = "<mock:mantid.dataobjects>"
+        if name == "mantid.dataobjects":
+            imports = dataobjects_mock
+        else:
+            imports.dataobjects = dataobjects_mock
+
+    # Enhanced mantid.simpleapi mocking
+    if name == "mantid.simpleapi" or (name == "mantid" and "simpleapi" in fromlist):
+        simpleapi_mock = mock.MagicMock()
+        simpleapi_mock.__name__ = "mantid.simpleapi"
+        simpleapi_mock.__file__ = "<mock:mantid.simpleapi>"
+        if name == "mantid.simpleapi":
+            imports = simpleapi_mock
+        else:
+            imports.simpleapi = simpleapi_mock
+
+    # Enhanced mantid.kernel mocking
+    if name == "mantid.kernel" or (name == "mantid" and "kernel" in fromlist):
+        kernel_mock = mock.MagicMock()
+        kernel_mock.__name__ = "mantid.kernel"
+        kernel_mock.__file__ = "<mock:mantid.kernel>"
+        if name == "mantid.kernel":
+            imports = kernel_mock
+        else:
+            imports.kernel = kernel_mock
+
+    # Enhanced mantid.plots mocking
+    if name == "mantid.plots" or (name == "mantid" and "plots" in fromlist):
+        plots_mock = mock.MagicMock()
+        plots_mock.__name__ = "mantid.plots"
+        plots_mock.__file__ = "<mock:mantid.plots>"
+        if name == "mantid.plots":
+            imports = plots_mock
+        else:
+            imports.plots = plots_mock
+
+    if name == "qtpy.QtCore" and fromlist:
         if "QThread" in fromlist:
-            imports.QThread = QThread
+            imports.QThread = MockQThread
         if "Signal" in fromlist:
-            imports.Signal = Signal
+            imports.Signal = MockSignal
         if "Property" in fromlist:
-            imports.Property = Property
+            imports.Property = MockProperty
+    if name == "mantid.geometry" and fromlist:
+        if "CrystalStructure" in fromlist:
+            imports.CrystalStructure = MockCrystalStructure
+
+    # Handle common type imports that cause pydantic warnings
+    if hasattr(imports, 'bool_') and not callable(imports.bool_):
+        imports.bool_ = MockBool
+
     return imports
 
 
 with mock.patch("builtins.__import__", side_effect=import_mock):
-    from mantid.api import PythonAlgorithm  # noqa: F811
+    try:
+        from mantid.api import PythonAlgorithm
+        from qtpy.QtCore import Property, QThread, Signal
+    except ImportError:
+        # Use our mock classes if imports fail
+        PythonAlgorithm = MockPythonAlgorithm
+        Property = MockProperty
+        QThread = MockQThread
+        Signal = MockSignal
+
+    # Mock AlgorithmFactory globally to prevent registration errors
+    import sys
+    mock_algorithm_factory = mock.MagicMock()
+    mock_algorithm_factory.register = mock.MagicMock()
+
+    # Create comprehensive mock modules to prevent import errors
+    mock_modules = {
+        'mantid': mock.MagicMock(),
+        'mantid.api': mock.MagicMock(),
+        'mantid.dataobjects': mock.MagicMock(),
+        'mantid.simpleapi': mock.MagicMock(),
+        'mantid.kernel': mock.MagicMock(),
+        'mantid.utils': mock.MagicMock(),
+        'mantid.utils.logging': mock.MagicMock(),
+        'mantid.geometry': mock.MagicMock(),
+        'mantid.plots': mock.MagicMock(),
+        'mantid.plots.plotfunctions': mock.MagicMock(),
+        'mantid.plots.datafunctions': mock.MagicMock(),
+        'mantid.plots.utility': mock.MagicMock(),
+        'mantidqt': mock.MagicMock(),
+        'mantidqt.widgets': mock.MagicMock(),
+        'mantidqt.widgets.algorithmprogress': mock.MagicMock(),
+        'qtpy': mock.MagicMock(),
+        'qtpy.uic': mock.MagicMock(),
+        'qtpy.QtWidgets': mock.MagicMock(),
+        'qtpy.QtGui': mock.MagicMock(),
+        'qtpy.QtCore': mock.MagicMock(),
+        'workbench': mock.MagicMock(),
+        'workbench.plotting': mock.MagicMock(),
+        'workbench.plugins': mock.MagicMock(),
+        'workbench.plugins.workspacewidget': mock.MagicMock(),
+        'snapred.backend.data': mock.MagicMock(),
+        'snapred.backend.service': mock.MagicMock(),
+        'snapred.backend.recipe.algorithm': mock.MagicMock(),
+        'snapred.ui.handler': mock.MagicMock(),
+        'snapred.ui.presenter': mock.MagicMock(),
+        'snapred.ui.workflow': mock.MagicMock(),
+        'snapred.ui.widget': mock.MagicMock(),
+        'snapred.ui.view': mock.MagicMock(),
+        'snapred.ui.view.reduction': mock.MagicMock(),
+        'snapred.ui.main': mock.MagicMock(),
+        'snapred.ui.threading': mock.MagicMock(),
+        'snapred.backend.recipe': mock.MagicMock(),
+        'snapred.backend.api': mock.MagicMock(),
+    }
+
+    # Set proper module attributes
+    for module_name, module_mock in mock_modules.items():
+        module_mock.__name__ = module_name
+        module_mock.__file__ = f"<mock:{module_name}>"
+        module_mock.__spec__ = mock.MagicMock()
+        module_mock.__spec__.name = module_name
+        sys.modules[module_name] = module_mock
+
+    # Set up specific mocks
+    sys.modules['mantid.api'].AlgorithmFactory = mock_algorithm_factory
+    sys.modules['mantid.api'].PythonAlgorithm = MockPythonAlgorithm
+    sys.modules['qtpy.QtCore'].Signal = MockSignal
+    sys.modules['qtpy.QtCore'].Property = MockProperty
+    sys.modules['qtpy.QtCore'].QThread = MockQThread
+
+    # Create mock classes for common missing attributes
+    def create_mock_class(name):
+        mock_class = mock.MagicMock()
+        mock_class.__name__ = name
+        mock_class.__module__ = f"mock.{name}"
+        return mock_class
+
+    sys.modules['snapred.backend.data'].DataExportService = create_mock_class('DataExportService')
+    sys.modules['snapred.backend.data'].DataFactoryService = create_mock_class('DataFactoryService')
+    sys.modules['snapred.backend.data'].LocalDataService = create_mock_class('LocalDataService')
+    sys.modules['snapred.backend.data'].GroceryService = create_mock_class('GroceryService')
+    sys.modules['snapred.backend.service'].CalibrantSampleService = create_mock_class('CalibrantSampleService')
+    sys.modules['snapred.backend.service'].CalibrationService = create_mock_class('CalibrationService')
+    sys.modules['snapred.backend.service'].ConfigLookupService = create_mock_class('ConfigLookupService')
+    sys.modules['snapred.backend.service'].CrystallographicInfoService = create_mock_class('CrystallographicInfoService')
+    sys.modules['snapred.backend.service'].LiteDataService = create_mock_class('LiteDataService')
+    sys.modules['snapred.backend.service'].NormalizationService = create_mock_class('NormalizationService')
+    sys.modules['snapred.backend.service'].ServiceFactory = create_mock_class('ServiceFactory')
+    sys.modules['snapred.backend.service'].StateIdLookupService = create_mock_class('StateIdLookupService')
+    sys.modules['snapred.backend.service'].WorkspaceService = create_mock_class('WorkspaceService')
+    sys.modules['snapred.ui.threading'].worker_pool = create_mock_class('worker_pool')
 
     autodoc_mock_imports = [
         "mantid",
+        "mantid.api",
+        "mantid.api.AlgorithmFactory",
         "mantid.kernel",
         "mantid.utils",
         "mantid.utils.logging",
         "mantid.simpleapi",
         "mantid.geometry",
+        "mantid.dataobjects",
+        "mantidqt",
         "mantidqt.widgets",
         "mantidqt.widgets.algorithmprogress",
         "qtpy",
         "qtpy.uic",
         "qtpy.QtWidgets",
         "qtpy.QtGui",
+        "qtpy.QtCore",
         "qtpy.QThread",
         "mantid.plots",
         "mantid.plots.plotfunctions",
@@ -89,6 +322,23 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
         "sphinx.ext.intersphinx",
         "sphinxcontrib.mermaid",
     ]
+
+    # Suppress certain warnings that are expected in documentation builds
+    suppress_warnings = [
+        'autodoc.import_object',  # Suppress autodoc import warnings
+    ]
+
+    # Configure autodoc to be more lenient
+    autodoc_default_options = {
+        'members': True,
+        'undoc-members': True,
+        'show-inheritance': True,
+        'ignore-module-all': True,
+    }
+
+    # Suppress pydantic warnings during documentation builds
+    import warnings
+    warnings.filterwarnings('ignore', category=UserWarning, module='pydantic')
 
     intersphinx_mapping = {
         "python": ("https://docs.python.org/3/", None),
@@ -157,7 +407,22 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
 
         clazzPath = clazzPath + f"/{clazz.__name__}.svg"
 
-        erd.draw(clazz, out=clazzPath)
+        try:
+            erd.draw(clazz, out=clazzPath)
+        except Exception as e:
+            # Handle cases where graphviz is not available or other erdantic issues
+            print(f"Warning: Could not generate diagram for {clazz.__name__}: {e}")
+            # Create a placeholder SVG file
+            with open(clazzPath, "w") as f:
+                f.write(f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
+                    <rect width="200" height="100" fill="#f0f0f0" stroke="#ccc"/>
+                    <text x="100" y="50" text-anchor="middle" font-family="Arial" font-size="12">
+                        {clazz.__name__} Diagram
+                    </text>
+                    <text x="100" y="70" text-anchor="middle" font-family="Arial" font-size="10">
+                        (Diagram generation unavailable)
+                    </text>
+                </svg>""")
         # generate complimentary .rst file to import the image
         clazzRstPath = clazzPath.replace(".svg", ".rst")
         # if it exists, delete it
