@@ -64,8 +64,7 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
         Main interface method for the recipe.
         Given the ingredients and groceries, it prepares, executes and returns the final workspace.
         """
-        self.prep(ingredients, groceries)
-        self.execute()
+        super().cook(ingredients, groceries)
         return self.sampleWs
 
     def cater(self, shipment: List[Pallet]) -> List[Dict[str, Any]]:
