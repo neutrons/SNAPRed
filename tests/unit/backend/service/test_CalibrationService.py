@@ -38,6 +38,7 @@ from snapred.backend.dao.request import (
     OverrideRequest,
     SimpleDiffCalRequest,
 )
+from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
@@ -1331,3 +1332,17 @@ class TestDiffractionCalibration(unittest.TestCase):
         mask = mtd[res["maskWorkspace"]]
         assert mask.getNumberMasked() == 0
         assert res["steps"][-1] <= self.fakeIngredients.convergenceThreshold
+
+    def test_obtainLock(self):
+        runNumber = "123456"
+        useLiteMode = True
+        request = CalibrationLockRequest(
+            runNumber=runNumber,
+            useLiteMode=useLiteMode,
+        )
+        with mock.patch.object(self.service.dataExportService.dataService, "generateStateId") as mockGenerateStateId:
+            mockGenerateStateId.return_value = ("1a2b3c4d5e6f7a8b", None)
+            lock = self.service.obtainLock(request)
+            assert mockGenerateStateId.called
+            assert lock is not None
+        lock.release()

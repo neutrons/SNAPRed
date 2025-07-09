@@ -1485,6 +1485,22 @@ def test_readNormalizationIndex():
     do_test_read_index("Normalization")
 
 
+def test_obtainNormalizationLock():
+    # verify that the lock is obtained and released correctly
+    localDataService = LocalDataService()
+    lock = localDataService.obtainNormalizationLock(True, "stateId")
+    assert lock is not None
+    lock.release()
+
+
+def test_obtainCalibrationLock():
+    # verify that the lock is obtained and released correctly
+    localDataService = LocalDataService()
+    lock = localDataService.obtainCalibrationLock(True, "stateId")
+    assert lock is not None
+    lock.release()
+
+
 def test_readWriteCalibrationIndexEntry():
     entry = IndexEntry(
         runNumber="57514",

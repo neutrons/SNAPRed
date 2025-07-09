@@ -15,6 +15,7 @@ from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantS
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.LockFile import LockFile
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 # TODO these are export methods, they should not return anything
@@ -58,6 +59,14 @@ class DataExportService:
 
     def generateUserRootFolder(self):
         self.dataService.generateUserRootFolder()
+
+    def obtainNormalizationLock(self, runNumber: str, useLiteMode: bool) -> LockFile:
+        stateId, _ = self.dataService.generateStateId(runNumber)
+        return self.dataService.obtainNormalizationLock(useLiteMode, stateId)
+
+    def obtainCalibrationLock(self, runNumber: str, useLiteMode: bool) -> LockFile:
+        stateId, _ = self.dataService.generateStateId(runNumber)
+        return self.dataService.obtainCalibrationLock(useLiteMode, stateId)
 
     ##### CALIBRATION METHODS #####
 

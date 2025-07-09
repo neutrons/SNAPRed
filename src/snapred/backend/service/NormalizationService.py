@@ -21,6 +21,7 @@ from snapred.backend.dao.request import (
     SmoothDataExcludingPeaksRequest,
     VanadiumCorrectionRequest,
 )
+from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
 from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
 from snapred.backend.data.DataExportService import DataExportService
@@ -325,6 +326,14 @@ class NormalizationService(Service):
             crystalDBounds=request.crystalDBounds,
         )
         return assessmentResponse
+
+    @FromString
+    @Register("lock")
+    def obtainLock(self, request: CalibrationLockRequest):
+        return self.dataExportService.obtainNormalizationLock(
+            runNumber=request.runNumber,
+            useLiteMode=request.useLiteMode,
+        )
 
     @FromString
     @Register("save")

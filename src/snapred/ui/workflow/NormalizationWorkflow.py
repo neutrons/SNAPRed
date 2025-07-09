@@ -11,11 +11,13 @@ from snapred.backend.dao.request import (
     NormalizationRequest,
     RunMetadataRequest,
 )
+from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.EntryExitLogger import EntryExitLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
+from snapred.meta.LockFile import LockFile
 from snapred.meta.validator.RunNumberValidator import RunNumberValidator
 from snapred.ui.presenter.WorkflowPresenter import WorkflowPresenter
 from snapred.ui.view.NormalizationRequestView import NormalizationRequestView
@@ -129,7 +131,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             runId=runNumber,
             useLiteMode=useLiteMode,
         )
-        hasState = self.request(path="calibration/hasState", payload=payload.json()).data
+        hasState = self.request(path="calibration/hasState", payload=payload.model_dump_json()).data
         if hasState:
             self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
         else:
@@ -144,7 +146,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         if not RunNumberValidator.validateRunNumber(runNumber):
             return SNAPResponse(code=ResponseCode.OK)
         payload = RunMetadataRequest(runId=runNumber)
-        metadata = self.request(path="calibration/runMetadata", payload=payload.json()).data
+        metadata = self.request(path="calibration/runMetadata", payload=payload.model_dump_json()).data
         self._requestView.updateRunMetadata(metadata)
         return SNAPResponse(code=ResponseCode.OK)
 
@@ -236,7 +238,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._saveView.updateRunNumber(self.runNumber)
         self._saveView.updateBackgroundRunNumber(self.backgroundRunNumber)
 
-        self.normalizationResponse = self.request(path="normalization", payload=payload.json())
+        self.normalizationResponse = self.request(path="normalization", payload=payload.model_dump_json())
         focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
         smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
         self.correctedVanadiumWorkspace = self.normalizationResponse.data["correctedVanadium"]
@@ -272,12 +274,18 @@ class NormalizationWorkflow(WorkflowImplementer):
             ),
             continueFlags=self.continueAnywayFlags,
         )
-        self.assessmentResponse = self.request(path="normalization/assessment", payload=payload.json())
+        self.assessmentResponse = self.request(path="normalization/assessment", payload=payload.model_dump_json())
         return self.assessmentResponse
 
     @EntryExitLogger(logger=logger)
     @Slot(WorkflowPresenter, result=SNAPResponse)
     def _saveNormalization(self, workflowPresenter):
+        lockPayload = CalibrationLockRequest(
+            runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
+        )
+        lock: LockFile = self.request(path="normalization/lock", payload=lockPayload.model_dump_json()).data
+
         view = workflowPresenter.widget.tabView
         runNumber, _, version, appliesTo, comments, author = view.validateAndReadForm()
 
@@ -312,7 +320,8 @@ class NormalizationWorkflow(WorkflowImplementer):
             createIndexEntryRequest=createIndexEntryRequest,
             createRecordRequest=createRecordRequest,
         )
-        response = self.request(path="normalization/save", payload=payload.json())
+        response = self.request(path="normalization/save", payload=payload.model_dump_json())
+        lock.release()
         return response
 
     @EntryExitLogger(logger=logger)
@@ -328,7 +337,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             continueFlags=self.continueAnywayFlags,
             correctedVanadiumWs=correctedVanadiumWs,
         )
-        self.normalizationResponse = self.request(path="normalization", payload=payload.json())
+        self.normalizationResponse = self.request(path="normalization", payload=payload.model_dump_json())
 
         focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
         smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
@@ -355,7 +364,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             crystalDMin=xtalDMin,
             crystalDMax=xtalDMax,
         )
-        response = self.request(path="normalization/smooth", payload=payload.json())
+        response = self.request(path="normalization/smooth", payload=payload.model_dump_json())
 
         peaks = response.data["detectorPeaks"]
         residualWorkspace = self._calcResidual(focusWorkspace, smoothWorkspace)
