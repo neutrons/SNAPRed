@@ -1293,7 +1293,7 @@ class GroceryService:
             # Note: 'LoadNexusProcessed' neither requires nor makes use of an instrument donor.
             data = self.grocer.executeRecipe(filename=filePath, workspace=workspaceName, loader=loader)
             if useLiteMode:
-                self.updateInstrument(item, workspaceName)
+                self.updateInstrument(workspaceName)
             self._processNeutronDataCopy(item, workspaceName)
             self.normalizationCache.add(workspaceName)
         return data

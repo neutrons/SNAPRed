@@ -3065,9 +3065,10 @@ class TestGroceryService(unittest.TestCase):
         with state_root_redirect(self.instance.dataService) as tmpRoot:
             self.instance.dataService.normalizationIndexer = self.mockIndexer(tmpRoot.path(), "normalization")
             groceryList = (
-                GroceryListItem.builder().native().normalization(self.runNumber1, "statId", self.version).buildList()
+                GroceryListItem.builder().lite().normalization(self.runNumber1, "statId", self.version).buildList()
             )
             self.instance._processNeutronDataCopy = mock.Mock()
+            self.instance.updateInstrument = mock.Mock()
             self.instance.dataService.generateInstrumentState = mock.Mock(
                 return_value=DAOFactory.default_instrument_state
             )
@@ -3089,6 +3090,7 @@ class TestGroceryService(unittest.TestCase):
             assert items[0] == normalizationWorkspaceName
             assert mtd.doesExist(normalizationWorkspaceName)
             self.instance._processNeutronDataCopy.assert_called_once_with(groceryList[0], normalizationWorkspaceName)
+            self.instance.updateInstrument.assert_called_once_with(normalizationWorkspaceName)
 
             mockLogger.info.assert_any_call(
                 f"Fetching normalization workspace for run {self.runNumber1}, version {self.version}"
