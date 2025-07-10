@@ -822,6 +822,7 @@ class GroceryService:
                 RewriteSpectraMap=False,
             )
             self.mantidSnapper.executeQueue()
+            self.mantidSnapper.mtd[workspace].populateInstrumentParameters()
 
     def _fetchNeutronDataSingleUse(self, item: GroceryListItem, missingDataHandler: Callable) -> Dict[str, Any]:
         """
