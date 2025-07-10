@@ -556,7 +556,6 @@ class ReductionService(Service):
         self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
 
     def saveReduction(self, request: ReductionExportRequest):
-        raise RuntimeError("test")
         self.dataExportService.exportReductionRecord(request.record)
         self.dataExportService.exportReductionData(request.record)
 
