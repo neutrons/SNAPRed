@@ -3905,3 +3905,27 @@ class TestGroceryService(unittest.TestCase):
             assert instance.grocer.executeRecipe.call_args[0][0] == str(
                 self.instance._createNeutronFilePath(item.runNumber, False)
             )
+
+    def test_updateInstrument(self):
+        with (
+            mock.patch.object(self.instance, "getWorkspaceForName") as mockWorkspaceFunc,
+            mock.patch.object(self.instance, "mantidSnapper") as mockSnapper,
+        ):
+            mockWorkspace = mock.Mock()
+            mockWorkspaceFunc.return_value = mockWorkspace
+            mockWorkspace.getInstrument().getName.return_value = "snap"
+            mockWorkspace.getNumberHistograms.return_value = Config["instrument.lite.pixelResolution"]
+
+            mockSnapper.mtd = {"wsName": mockWorkspaceFunc}
+
+            self.instance.updateInstrument("wsName")
+
+            assert mockWorkspaceFunc().getInstrument().getName.call_count == 1
+            assert self.instance.mantidSnapper.executeQueue.call_count == 1
+            assert self.instance.mantidSnapper.LoadInstrument.call_count == 1
+            self.instance.mantidSnapper.LoadInstrument.assert_called_once_with(
+                "Replacing instrument definition with Lite instrument",
+                Workspace="wsName",
+                Filename=Config["instrument.lite.definition.file"],
+                RewriteSpectraMap=False,
+            )
