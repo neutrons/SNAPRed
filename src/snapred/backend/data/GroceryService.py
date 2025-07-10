@@ -809,6 +809,20 @@ class GroceryService:
                 raise RuntimeError(f"unable to load workspace {name} from {filePath}")
         return data
 
+    def updateInstrument(self, workspace: str) -> None:
+        ws = self.getWorkspaceForName(workspace)
+        instName = ws.getInstrument().getName().lower()
+        if ws.getNumberHistograms() == Config["instrument.lite.pixelResolution"] and "snaplite" not in instName:
+            # then the workspace was incorrectly saved to disk but is in fact lite data.
+            # This can happen if generated externally by someones script.
+            self.mantidSnapper.LoadInstrument(
+                "Replacing instrument definition with Lite instrument",
+                Workspace=workspace,
+                Filename=Config["instrument.lite.definition.file"],
+                RewriteSpectraMap=False,
+            )
+            self.mantidSnapper.executeQueue()
+
     def _fetchNeutronDataSingleUse(self, item: GroceryListItem, missingDataHandler: Callable) -> Dict[str, Any]:
         """
         Fetch a neutron data file, without copy-protection.
@@ -857,6 +871,8 @@ class GroceryService:
                 if loader == "LoadEventNexus":
                     loaderArgs = '{"NumberOfBins": 1}'
             data = self.grocer.executeRecipe(str(filePath), workspaceName, loader, loaderArgs=loaderArgs)
+            if useLiteMode:
+                self.updateInstrument(workspaceName)
         else:
             data = missingDataHandler()
             workspaceName = data["workspace"]
@@ -1275,6 +1291,8 @@ class GroceryService:
 
             # Note: 'LoadNexusProcessed' neither requires nor makes use of an instrument donor.
             data = self.grocer.executeRecipe(filename=filePath, workspace=workspaceName, loader=loader)
+            if useLiteMode:
+                self.updateInstrument(item, workspaceName)
             self._processNeutronDataCopy(item, workspaceName)
             self.normalizationCache.add(workspaceName)
         return data
