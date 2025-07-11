@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from snapred.backend.api.ProgressRecorder import ComputationalOrder, Record
+from snapred.backend.api.ProgressRecorder import ComputationalOrder, Recordable
 from snapred.backend.dao import RunMetadata
 from snapred.backend.dao.indexing.Versioning import VersionState
 from snapred.backend.dao.ingredients import (
@@ -194,7 +194,7 @@ class ReductionService(Service):
 
     @FromString
     @Register("")
-    @Record(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)
+    @Recordable(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)
     def reduction(self, request: ReductionRequest):
         """
         Perform reduction on a single run number, once for each grouping in this state.
@@ -262,7 +262,7 @@ class ReductionService(Service):
 
     @FromString
     @Register("groupings")
-    @Record(N_ref=lambda *,_instance, request: float(len(request.focusGroups)) , order=ComputationalOrder.O_N)
+    @Recordable(N_ref=lambda *,_instance, request: float(len(request.focusGroups)) , order=ComputationalOrder.O_N)
     def fetchReductionGroupings(self, request: ReductionRequest) -> Dict[str, Any]:
         """
         Load all groupings that are valid for a specific state using a ReductionRequest.
@@ -438,7 +438,7 @@ class ReductionService(Service):
 
     @FromString
     @Register("groceries")
-    @Record(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)    
+    @Recordable(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)    
     def fetchReductionGroceries(self, request: ReductionRequest) -> Dict[str, Any]:
         """
         Fetch the required groceries, including
@@ -557,7 +557,7 @@ class ReductionService(Service):
         self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
 
     @Register("save")
-    @Record(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)    
+    @Recordable(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)    
     def saveReduction(self, request: ReductionExportRequest):
         self.dataExportService.exportReductionRecord(request.record)
         self.dataExportService.exportReductionData(request.record)
@@ -668,7 +668,7 @@ class ReductionService(Service):
         return 1.0 # live-data case: not yet fully supported.
 
     @Register("grabWorkspaceforArtificialNorm")
-    @Record(N_ref=Self._reduction_artificial_norm_N_ref, order=ComputationalOrder.O_N)    
+    @Recordable(N_ref=Self._reduction_artificial_norm_N_ref, order=ComputationalOrder.O_N)    
     def grabWorkspaceforArtificialNorm(self, request: ReductionRequest):
         # TODO: REBASE NOTE:
         #   This method actually seems to be a reduction sub-recipe:

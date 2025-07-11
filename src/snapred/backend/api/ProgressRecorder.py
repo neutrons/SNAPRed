@@ -1,7 +1,7 @@
 from collections import defaultdict
 import datetime
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property
 from hashlib import sha256
 import numpy as np
@@ -16,7 +16,7 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty, cached_classproperty
 from snapred.meta.decorators.Singleton import Singleton
 
-class ComputationOrder(str, Enum):
+class ComputationOrder(StrEnum):
     
     O_0     = "O_0"
     O_LOGN  = "O_LOGN"
@@ -645,7 +645,7 @@ class _ProgressRecorder(BaseModel):
 ProgressRecorder = _ProgressRecorder.instance()
 
 
-def Record(N_ref: Callable[[Dict[str, Any]], float], order: ComputationalOrder) -> Any:
+def Recordable(N_ref: Callable[[Dict[str, Any]], float], order: ComputationalOrder) -> Any:
     # A decorator to register an _implicit_ process-recording step for any <class>, <class instance>, method, or function.
     
     # Notes:
@@ -658,7 +658,7 @@ def Record(N_ref: Callable[[Dict[str, Any]], float], order: ComputationalOrder) 
     #     For this type of explicit recording, `stepName`, `N_ref`, `N_ref_kwargs` and `order` parameters
     #     must all be specified.
     
-    def _Record(caller):
+    def _Recordable(caller):
         recorder = _ProgressRecorder.instance()
         # Implicit recording uses the "trivial" 'stepName'.
         key = recorder.getStepKey(caller)
@@ -670,5 +670,5 @@ def Record(N_ref: Callable[[Dict[str, Any]], float], order: ComputationalOrder) 
         
         return caller
     
-    return _Record
+    return _Recordable
 

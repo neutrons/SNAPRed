@@ -2,7 +2,7 @@ import re
 import sys
 from copy import deepcopy
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, List, NamedTuple, Optional, Tuple
 
 from pydantic import WithJsonSchema
@@ -14,7 +14,7 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
 
 
-class WorkspaceType(str, Enum):
+class WorkspaceType(StrEnum):
     # TODO: not yet completely connected: should be a mixin to the WNG class itself...
     #   For the moment: the <enum>.value will be `_WorkspaceNameGenerator` method name
     RUN = "run"
