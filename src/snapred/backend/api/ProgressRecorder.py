@@ -1,14 +1,12 @@
-from collections import defaultdict
-import datetime
 from datetime import datetime, timedelta
 from enum import StrEnum
-from functools import cached_property
+import functools
 from hashlib import sha256
 import numpy as np
 from pathlib import Path
 from pydantic import BaseModel
 from scipy.interpolate import BSpline, make_splrep
-from types import FrameType
+from types import FrameType, FunctionType, MethodType
 from typing import ClassVar, Dict, Self
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -67,13 +65,14 @@ class _Step(BaseModel):
     
     # Standard computational-order is used to normalize `N_ref`, from the as-saved measurement,
     #   to `N`, as used by the estimate's spline fit.
-    order: ComputationalOrder
+    order: ComputationalOrder = ComputationalOrder.O_0
     
     def __init__(self, *, **kwargs):
         # The persistent part of the `Step`, as the Pydantic model,
         #   retains the hash digest of the `N_ref`-callable, but not the callable itself.
         
-        N_ref_callable = kwargs.get("N_ref")
+        # This sets the default `N_ref` to `O_0`: any incoming `N_ref` will override this.
+        N_ref_callable = kwargs.get("N_ref", lambda *_args, **_kwargs: 1.0)
         N_ref_hash = Self._callable_hash(N_ref_callable)
         super().__init__(
             **dict(
@@ -87,16 +86,24 @@ class _Step(BaseModel):
      def setDetails(
             self,
             N_ref: Callable[[Dict[str, Any]], float] = None, 
-            order: ComputationalOrder = None,
-            **kwargs    
+            N_ref_args: Tuple[Tuple[Any, ...], Dict[str, Any]] = None
+            order: ComputationalOrder = None
          ):
-         # Only set values when incoming values are not `None`.
+         # Values will only be modified when incoming args are not `None`.
+         #   * For steps declared using the decorator, all values except for the
+         #     `N_ref_args` will be set by the decorator. `N_ref_args` will then
+         #     be set when the wrapped function is actually called.
+         #   * For explicitly-named steps declared using the context manager, or by calling
+         #     `record` directly, all values will be set at once. 
+         Some values are set when the step is registered, e.g. as used by the decorator.
+         # 
          if N_ref is not None:
              self._N_ref = N_ref
+             self.N_ref_hash = Self._callable_hash(N_ref)
+         if N_ref_args is not None:
+             self._N_ref_args = N_ref_args
          if order is not None:
-             details.set_order(order)
-         if bool(kwargs):
-             self._N_ref_kwargs = kwargs
+             self.order = order
                  
     @property
     def name(self) -> str:
@@ -473,10 +480,11 @@ class _ProgressRecorder(BaseModel):
 
     @classmethod
     def isLoggingEnabledForStep(cls, caller):
-        if issubclass(caller, Recipe) and Config["workflows_data.timing.recipe_logging"]:
-            return True
         if isinstance(caller, MethodType) and issubclass(caller.__class__, Service)\
             and Config["workflows_data.timing.service_logging"]:
+            return True
+        if isinstance(caller, MethodType) and issubclass(caller.__class__, Recipe)\
+            and Config["workflows_data.timing.recipe_logging"]:
             return True
         return False
         
@@ -488,6 +496,14 @@ class _ProgressRecorder(BaseModel):
         #   * In general, the key tuple will be `(<module name>, <fully qualified class or method name>, <explicit step name>)`.
         #   * `None` is a valid entry for any tuple component;
         #   * Caller's frame is actually two-frames up from the current frame.
+        #   * TODO?: We could potentially support class types, but without special casing (e.g. `Recipe.cook`),
+        #     it's difficult to figure out which method of the class to use as the progress-recorded step.
+        
+        if bool(callerOverride) and not (isinstance(callerOverride, MethodType) or isinstance(callerOverride, FunctionType):
+            # TODO: We could potentially support class types, but without special casing (e.g. `Recipe.cook`),
+            #   it's difficult to figure out which method of the class to use as the progress-recording step.
+            raise RuntimeError("Usage error: when `callerOverride` is set, it must either be a method or a function.")
+            
         callerObjectOrStackFrame = callerOverride if callerOverride is not None else inspect.currentframe().f_back.f_back
         key = cls._getCallerFullyQualifiedName(callerObjectOrStackFrame) + (stepName,)
         return key
@@ -515,30 +531,43 @@ class _ProgressRecorder(BaseModel):
             *,
             callerOverride = None, 
             stepName: str = None,
-            N_ref: Callable[[Any, ...], float] = None,
-            order: ComputationalOrder = ComputationalOrder.O_0
-            **kwargs: Dict[str, Any] = {}
+            N_ref: Callable[[Any, ...], float] = None
+            N_ref_args: Tuple[Tuple[Any, ...], Dict[str, Any]] = None
+            order: ComputationalOrder = None
         ) -> Tuple[str,...]:
         # Initialize the elapsed wall-clock time measurement for a processing step.
         # args: 
-        #   'stepName': [optional] if provided this is the name in the _local_ (e.g. <class instance>, <method>, <function>, or <module>) scope.
-        #   'N_ref': an optional keyword-arg only callable
-        #   'N_ref_kwargs': the keyword-args dict for `N_ref`
-        #   'order': the computational order of the step.  This is used to _normalize_ the `N_ref` value prior to estimating the step.
+        #   'stepName': [optional] if provided this is an additional suffix key added to
+        #      the step key generated from the _local_ (e.g. <class instance>, <method>, <function>, or <module>) scope.
+        #   'N_ref': an optional callable
+        #   'N_ref_args': the args to be used when calling `N_ref` as `(args, kwargs)`
+        #   'order': the computational order of the step.  This will be used to _normalize_ the `N_ref` value prior to estimating the step.
         
         # returns:
-        #   tuple of str keys used to uniquely identify the step
+        #   the tuple of str keys used to uniquely identify the step
         
         # Usage notes:
-        #   * Each call to `record` _must_ have a corresponding call to `stop`.  At the moment, these should be enforced 
-        #     using `finally` blocks.
-        #   * Any call to `stop` should only record the measurement if no exception has been raised.
-        #   * The `N_ref` callable and its keyword arguments, may optionally be used.  When not used
-        #     the proces step will be estimated as constant time.
+        #   * Each call to `record` _must_ have a corresponding call to `stop`
+        #     -- these calls are matched using the step key.
+        #     This requirement will generally be enforced using the context manager, and / or its decorator
+        #     as implemented below.  Alternatively, this requirement can be enforced 
+        #     by calling `stop` within a `finally` block.
+        #   * Other than the previous, calls to `record` can be nested as required by the process being profiled.
+        #   * IMPORTANT: any call to `stop` should only record the measurement if no exception has been raised.
+        #     This is quite important as a mis-recorded measurement may affect all future estimates!
+        #   * The `N_ref` callable will in general accept the same arguments as the function whose progress is being recorded.
+        #     Alternatively, for explicitly named sub-steps, any `N_ref` that matches the specified `N_ref_args` will be fine.
+        #   * IMPORTANT: `N_ref` should return `None` if no value can be calculated.  This ensures that no persistent
+        #     measurement data will be entered based on such a value.  For example, in `ReductionService`, the time estimate
+        #     for the live-data case is not yet implemented.  When the `N_ref` sees that the `request.liveData` flag is set,
+        #     it returns `None`.
+        #   * When an `N_ref` is not specified, the default will be to treat the estimate for the process step
+        #     as scaling with _constant_ time -- i.e the estimate will be average of past execution times for the step.
+        
         
         key = self.getStepKey(callerOverride=callerOverride, stepName=stepName)
         step = self.getStep(key, create=True)
-        step.setDetails(N_ref=N_ref, order=order, **kwargs)
+        step.setDetails(N_ref=N_ref, N_ref_args=N_ref_args, order=order)
         step.start()
         
         if step.loggingEnabled:
@@ -585,30 +614,35 @@ class _ProgressRecorder(BaseModel):
         if sys.exc_info[0] is not None:
             elapsed = float((now - startTime).total_seconds())
             N_ref = step.details.N_ref()
-            step.measurements.append(
-                _Measurement(dt=elapsed, N_ref=N_ref) 
-            ) 
+            # Do not record the measurement if `N_ref` cannot be calculated.
+            if N_ref is not None:
+                step.measurements.append(
+                    _Measurement(dt=elapsed, N_ref=N_ref) 
+                ) 
         
-            # Restrict the maximum length of the measurements list.
-            max_measurements = Config["workflows_data.timing.max_measurments"]
-            if len(step.measurements) > max_measurements:
-                # Forget the oldest
-                self.currentStep.measurements = self.currentStep.measurements[-max_measurements:]
-         
-            # If necessary, update the estimate for the step.
-            estimated_dt = step.estimate.dt(step.details.order(N_ref) if N_ref is not None else None)
-            if abs(estimated_dt - elapsed) / elapsed > Config["workflows_data.timing.update_threshold"]:
-                step.estimate.update(step.measurements, step.details.order)
+                # Restrict the maximum length of the measurements list.
+                max_measurements = Config["workflows_data.timing.max_measurments"]
+                if len(step.measurements) > max_measurements:
+                    # Forget the oldest
+                    self.currentStep.measurements = self.currentStep.measurements[-max_measurements:]
+
+                # If necessary, update the estimate for the step.
+                estimated_dt = step.estimate.dt(step.details.order(N_ref) if N_ref is not None else None)
+                if abs(estimated_dt - elapsed) / elapsed > Config["workflows_data.timing.update_threshold"]:
+                    step.estimate.update(step.measurements, step.details.order)
             
     def stepTimeRemaining(self, key: Tuple[str, ...]) -> float:
-        # Estimate the time remaining for the specified step.
+        # Estimate the time remaining for the specified step,
+        # or return `None` if not enough data is available yet to create an estimate,
         step = self.getStep(key)
 
         elapsed = float((step.startTime - datetime.now().astimezone()).total_seconds())        
         N_ref = step.details.N_ref()
-        remainder = step.estimate.dt(step.details.order(N_ref)) - elapsed
-        if remainder < 0.0:
-            remainder = 0.0
+        remainder = None
+        if N_ref is not None:
+            remainder = step.estimate.dt(step.details.order(N_ref)) - elapsed
+            if remainder < 0.0:
+                remainder = 0.0
         return remainder
     
     """
@@ -645,30 +679,93 @@ class _ProgressRecorder(BaseModel):
 ProgressRecorder = _ProgressRecorder.instance()
 
 
-def Recordable(N_ref: Callable[[Dict[str, Any]], float], order: ComputationalOrder) -> Any:
-    # A decorator to register an _implicit_ process-recording step for any <class>, <class instance>, method, or function.
-    
-    # Notes:
-    #   * `N_ref` should be a static method, using only _named_ keyword arguments.
-    #   * In order to function correctly, this decorator requires support from a surrounding infrastructure.
-    #   * At present, Service-derived methods (through `InterfaceManager`) and Recipes
-    #     (e.g. using the base-class `cook` method) are supported.
-    #   * Progress recording for any other method types, or sub-sections of any method is supported by calling
-    #     `ProgressRecorder.record` directly within the method's scope of execution.
-    #     For this type of explicit recording, `stepName`, `N_ref`, `N_ref_kwargs` and `order` parameters
-    #     must all be specified.
-    
-    def _Recordable(caller):
-        recorder = _ProgressRecorder.instance()
-        # Implicit recording uses the "trivial" 'stepName'.
-        key = recorder.getStepKey(caller)
-        enableLogging = _ProgressRecorder.isLoggingEnabledForStep(caller)
-        step = recorder.getStep(key, create=True)
+class WallClockTime():
+    # A decorator or context manager to register a process-recording step for any method, or function.
         
-        # This initializes everything but `N_ref_kwargs`, which will be set at point-of-use.
-        step.setDetails(key, N_ref=N_ref, order=order, enableLogging=enableLogging)
-        
-        return caller
-    
-    return _Recordable
+    def __init__(
+            self,
+            *, # Keyword only args
+            callerOverride = None, 
+            stepName: str = None,
+            N_ref: Callable[..., float] = None
+            N_ref_args: Tuple[Tuple[Any, ...], Dict[str, Any]] = None
+            order: ComputationalOrder = None
+        ):
+        # When used as a decorator:
+        #   -- `caller` must be defined;
+        #   -- `stepName` must not be defined;
+        #   -- `N_ref` may optionally be defined;
+        #   -- `N_ref_args` must not be defined;
+        #   -- `order` may optionally be defined.
+        # When used as a context manager:
+        #   -- `caller` should not be defined -- it will be assessed automatically;
+        #   -- `stepName` must be defined;
+        #   -- `N_ref` and `N_ref_args` may optionally be defined;
+        #   -- `order` may optionally be defined.
+        # In either case:
+        #   when `N_ref`, `N_ref_args`, and `order` are left as `None` at time of execution,
+        #   a constant-time estimate will be used.
 
+        self.callerOverride = callerOverride
+        self.stepName = stepName
+        self.N_ref = N_ref
+        self.N_ref_args = N_ref_args
+        self.order = order
+        self._stepKey = None
+        
+    def __call__(self, func: Callable[..., Any]) -> Callable[..., Any]:
+        # Use as decorator
+        
+        if not (bool(self.callerOverride) or bool(self.stepName):
+            raise RuntimeError(
+                      "Usage error: on a `WallClockTime` decorated function:\n"
+                      + "  `callerOverride` must be specified;\n"
+                      + "  `stepName` must not be specified."
+                  )
+        
+        @functools.wraps(func)  # Retain metadata about `func`.
+        def _wrapper(*args, **kwargs):
+            # Allow the called function's `args`, and `kwargs` to be available
+            #   to the `N_ref` used by the progress-reporting step.
+            try:
+                if self._stepKey is not None:
+                    raise RuntimeError(
+                              "Usage error: `WallClockTime` as decorator cannot be nested or re-used."
+                          )
+                self._stepKey = ProgressRecorder.record(
+                    callerOverride=func,
+                    N_ref=self.N_ref,
+                    N_ref_args=(args, kwargs),
+                    order=self.order
+                )
+                result = func(*args, **kwargs)
+            finally:
+                if self._stepKey is not None:
+                    ProgressRecorder.stop(self._stepKey)
+            return result
+
+        return _wrapper
+
+    def __enter__(self):        
+        if bool(self.callerOverride) or not bool(self.stepName):
+            raise RuntimeError(
+                      "Usage error: `WallClockTime` as context manager:\n"
+                      + "  `callerOverride` must not be specified;\n"
+                      + "  `stepName` must be specified."
+                  )
+        if self._stepKey is not None:
+            raise RuntimeError(
+                      "Usage error: `WallClockTime` as context manager cannot be nested or re-used."
+                  )
+        self._stepKey = ProgressRecorder.record(
+            stepName=self.stepName,
+            N_ref=self.N_ref,
+            N_ref_args=self.N_ref_args,
+            order=self.order
+        )
+    
+    def __exit__(self, *exc):
+        if self._stepKey is not None:
+            ProgressRecorder.stop(self._stepKey)
+        if bool(exc[0]):
+            raise

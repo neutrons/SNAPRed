@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from snapred.backend.api.ProgressRecorder import ComputationalOrder, Recordable
+from snapred.backend.api.ProgressRecorder import ComputationalOrder, WallClockTime
 from snapred.backend.dao import RunMetadata
 from snapred.backend.dao.indexing.Versioning import VersionState
 from snapred.backend.dao.ingredients import (
@@ -182,7 +182,7 @@ class ReductionService(Service):
             raise ContinueWarning(msg, continueFlags)
 
     @staticmethod
-    def _reduction_N_ref(*, instance, request):
+    def _reduction_N_ref(instance, request):
         # Execution-time scaling for the "reduction" method.
         N_groups = len(request.focusGroups)
         if not request.liveDataMode:
@@ -194,7 +194,7 @@ class ReductionService(Service):
 
     @FromString
     @Register("")
-    @Recordable(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)
+    @WallClockTime(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)
     def reduction(self, request: ReductionRequest):
         """
         Perform reduction on a single run number, once for each grouping in this state.
@@ -262,7 +262,7 @@ class ReductionService(Service):
 
     @FromString
     @Register("groupings")
-    @Recordable(N_ref=lambda *,_instance, request: float(len(request.focusGroups)) , order=ComputationalOrder.O_N)
+    @WallClockTime(N_ref=lambda _instance, request: float(len(request.focusGroups)) , order=ComputationalOrder.O_N)
     def fetchReductionGroupings(self, request: ReductionRequest) -> Dict[str, Any]:
         """
         Load all groupings that are valid for a specific state using a ReductionRequest.
@@ -438,7 +438,7 @@ class ReductionService(Service):
 
     @FromString
     @Register("groceries")
-    @Recordable(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)    
+    @WallClockTime(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)    
     def fetchReductionGroceries(self, request: ReductionRequest) -> Dict[str, Any]:
         """
         Fetch the required groceries, including
@@ -556,8 +556,22 @@ class ReductionService(Service):
         )
         self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
 
+    @staticmethod
+    def _reduction_save_N_ref(instance: ReductionService, request: ReductionExportRequest) -> float:
+        # Execution-time scaling for the "reduction/save" method.
+        dataSize = 0.0
+        try:
+            for ws in request.record.workspaceNames:
+                if not instance.mantidSnapper.mtd.doesExist(ws):
+                    raise RuntimeError("all workspaces should be resident")
+                dataSize += instance.mantidSnapper.mtd[ws].getMemorySize()
+        except RuntimeError:
+            # For timing purposes we don't care, except that we must not enter an invalid measurement!
+            dataSize = None
+        return dataSize
+    
     @Register("save")
-    @Recordable(N_ref=Self._reduction_N_ref, order=ComputationalOrder.O_N)    
+    @WallClockTime(N_ref=Self._reduction_save_N_ref, order=ComputationalOrder.O_N)    
     def saveReduction(self, request: ReductionExportRequest):
         self.dataExportService.exportReductionRecord(request.record)
         self.dataExportService.exportReductionData(request.record)
@@ -657,7 +671,7 @@ class ReductionService(Service):
         return artificialNormWorkspace
 
     @staticmethod
-    def _reduction_artificial_norm_N_ref(*, instance, request):
+    def _reduction_artificial_norm_N_ref(instance, request):
         # Execution-time scaling for the "grabWorkspaceForArtificialNorm" method.
         # (Note: timing details for the `ArtificialNormalizationRecipe` itself is registered at that recipe.)
         if not request.liveDataMode:
@@ -668,7 +682,7 @@ class ReductionService(Service):
         return 1.0 # live-data case: not yet fully supported.
 
     @Register("grabWorkspaceforArtificialNorm")
-    @Recordable(N_ref=Self._reduction_artificial_norm_N_ref, order=ComputationalOrder.O_N)    
+    @WallClockTime(N_ref=Self._reduction_artificial_norm_N_ref, order=ComputationalOrder.O_N)    
     def grabWorkspaceforArtificialNorm(self, request: ReductionRequest):
         # TODO: REBASE NOTE:
         #   This method actually seems to be a reduction sub-recipe:
