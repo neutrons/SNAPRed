@@ -37,12 +37,14 @@ instrument:
   parameters:
     home: ${instrument.calibration.home}/SNAPInstPrm
   native:
+    name: SNAP
     pixelResolution: 1179648
     # pixelResolution: 72
     definition:
       file: ${module.root}/resources/SNAP_Definition.xml
       # file: ${module.root}/resources/ultralite/CRACKLE_Definition.xml
   lite:
+    name: SNAPLite
     pixelResolution: 18432
     # pixelResolution: 18
     definition:

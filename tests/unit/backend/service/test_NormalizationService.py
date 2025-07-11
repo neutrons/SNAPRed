@@ -429,6 +429,16 @@ class TestNormalizationService(unittest.TestCase):
         self.instance._sameStates = mock.Mock(return_value=True)
         self.instance.sousChef = SculleryBoy()
         self.instance.groceryService = mock.Mock()
+        self.instance.groceryService.fetchGroceryDict = mock.Mock(
+            return_value={
+                "backgroundWorkspace": "bg_ws",
+                "inputWorkspace": "input_ws",
+                "groupingWorkspace": "grouping_ws",
+                "outputWorkspace": "output_ws",
+                "diffcalWorkspace": "diffcal_ws",
+                "maskWorkspace": "mask_ws",
+            }
+        )
         self.instance.groceryService.workSpaceDoesExist = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="path/to/cif")
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
