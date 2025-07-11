@@ -131,6 +131,8 @@ platforms = ["linux-64"]  # add additional platforms as needed
 [tool.pixi.environments]
 default = {features = ["test", "package", "docs", "developer"], solve-group = "default"}
 docs = {features = ["docs"], solve-group = "docs"}
+# Environment for local Mantid development - excludes conda Mantid packages
+local-mantid = {features = ["local-mantid"], solve-group = "local-mantid"}
 
 [tool.pixi.pypi-dependencies]
 snapred = { path = ".", editable = true }
@@ -220,3 +222,40 @@ sphinxcontrib-mermaid = "*"
 types-pyyaml = "*"
 erdantic = "*"
 versioningit = "*"
+
+# ------------------------------- #
+# Local Mantid Development Feature #
+# ------------------------------- #
+[tool.pixi.feature.local-mantid.dependencies]
+# Essential dependencies for SNAPRed without conda Mantid packages
+python = ">=3.10"
+pip = "*"
+pydantic = ">=2.7.3,<3"
+qtpy = "*"
+muparser = "=2.3.4"
+pycifrw = "*"
+pyqtwebengine = "*"
+git-lfs = "*"
+# Test dependencies
+pytest = "*"
+pytest-qt = "*"
+pytest-cov = "*"
+# Developer dependencies
+pre-commit = "*"
+ruff = "*"
+python-build = "*"
+
+# Environment variables for local Mantid build
+[tool.pixi.feature.local-mantid.activation.env]
+MANTID_BUILD_DIR = "/path/to/mantid/build"
+PYTHONPATH = "${MANTID_BUILD_DIR}/Framework/PythonInterface:${MANTID_BUILD_DIR}/bin:${PYTHONPATH}"
+LD_LIBRARY_PATH = "${MANTID_BUILD_DIR}/lib:${MANTID_BUILD_DIR}/bin:${LD_LIBRARY_PATH}"
+MANTIDPATH = "${MANTID_BUILD_DIR}"
+
+[tool.pixi.feature.local-mantid.tasks]
+# Test that local Mantid can be imported
+test-local-mantid = { cmd = "python -c \"import sys; print('Python paths:'); [print(f'  {p}') for p in sys.path[:5]]; print('\\nTesting Mantid import...'); import mantid; print(f'✅ Mantid imported from: {mantid.__file__}'); print(f'✅ Mantid version: {mantid.__version__}')\"", description = "Test that local Mantid build can be imported" }
+# Start SNAPRed with local Mantid build
+snapred-local = { cmd = "python -c \"import sys; sys.path.insert(0, '${MANTID_BUILD_DIR}/bin'); exec(open('src/snapred/__main__.py').read())\"", description = "Start SNAPRed with local Mantid build" }
+# Alternative launch method using module
+snapred-local-module = { cmd = "python -m snapred", description = "Start SNAPRed with local Mantid (using module import)" }

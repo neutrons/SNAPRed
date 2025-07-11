@@ -41,6 +41,91 @@ to the project's ``.vscode/settings.json`` file:
         "python.defaultInterpreterPath": ".pixi/envs/default/bin/python"
     }
 
+Local Mantid development (optional)
+-----------------------------------
+
+SNAPRed supports development with a local Mantid build instead of the conda-distributed packages.
+This is useful for developers who need to make simultaneous changes to both SNAPRed and Mantid.
+
+Prerequisites
+^^^^^^^^^^^^^
+
+- A local Mantid build directory (e.g., from building Mantid from source)
+- Python interface files copied from Mantid source to build directory
+
+Setup
+^^^^^
+
+1. **Configure the build path** in ``pyproject.toml``:
+
+   .. code-block:: toml
+
+       [tool.pixi.feature.local-mantid.activation.env]
+       MANTID_BUILD_DIR = "/path/to/your/mantid/build"
+
+   **Examples:**
+
+   - ``/home/username/mantid/build``
+   - ``/usr/local/mantid/build``
+   - ``/opt/mantid/build``
+
+2. **Copy Python interface files** (if not already present):
+
+   .. code-block:: sh
+
+       cp -r /path/to/mantid/source/Framework/PythonInterface/mantid/* \
+             /path/to/mantid/build/Framework/PythonInterface/mantid/
+
+3. **Install the local-mantid environment**:
+
+   .. code-block:: sh
+
+       pixi install --environment local-mantid
+
+Usage
+^^^^^
+
+**Test the local Mantid configuration:**
+
+.. code-block:: sh
+
+    pixi run --environment local-mantid test-local-mantid
+
+**Start SNAPRed with local Mantid:**
+
+.. code-block:: sh
+
+    pixi run --environment local-mantid snapred-local-module
+
+**Enter development shell:**
+
+.. code-block:: sh
+
+    pixi shell --environment local-mantid
+
+How it works
+^^^^^^^^^^^^
+
+The ``local-mantid`` environment:
+
+- Excludes conda Mantid packages (``mantid``, ``mantidworkbench``, ``mantidqt``)
+- Sets environment variables to prioritize your local build:
+
+  - ``PYTHONPATH``: Points to local Python interface
+  - ``LD_LIBRARY_PATH``: Points to local shared libraries
+  - ``MANTIDPATH``: Points to local build directory
+
+- Includes all other SNAPRed dependencies (testing, development tools, etc.)
+
+Troubleshooting
+^^^^^^^^^^^^^^^
+
+**Import errors:** Ensure Python interface files exist in ``${MANTID_BUILD_DIR}/Framework/PythonInterface/mantid/``
+
+**Library errors:** Check that ``${MANTID_BUILD_DIR}/lib`` contains the required shared libraries
+
+**Path conflicts:** Verify that ``test-local-mantid`` shows your local build path, not conda paths
+
 Starting the gui
 ----------------
 
