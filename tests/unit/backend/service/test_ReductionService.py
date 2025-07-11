@@ -157,6 +157,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
+        self.instance.groceryService._validateWorkspaceInstrument = mock.Mock()
         self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.request.continueFlags = ContinueWarning.Type.UNSET
@@ -171,6 +172,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("state", None))
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
+        self.instance.groceryService._validateWorkspaceInstrument = mock.Mock()
         self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.instance.groceryService.dataService.hasLiveDataConnection = mock.Mock(return_value=True)
@@ -200,6 +202,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
+        self.instance.groceryService._validateWorkspaceInstrument = mock.Mock()
         self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.instance.prepCombinedMask = mock.Mock(return_value=mock.sentinel.mask)
@@ -236,6 +239,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("state", None))
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
+        self.instance.groceryService._validateWorkspaceInstrument = mock.Mock()
         self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
         self.instance._markWorkspaceMetadata = mock.Mock()
 

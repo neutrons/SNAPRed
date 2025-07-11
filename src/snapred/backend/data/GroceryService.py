@@ -809,21 +809,6 @@ class GroceryService:
                 raise RuntimeError(f"unable to load workspace {name} from {filePath}")
         return data
 
-    def updateInstrument(self, workspace: str) -> None:
-        ws = self.getWorkspaceForName(workspace)
-        instName = ws.getInstrument().getName().lower()
-        if ws.getNumberHistograms() == Config["instrument.lite.pixelResolution"] and "snaplite" not in instName:
-            # then the workspace was incorrectly saved to disk but is in fact lite data.
-            # This can happen if generated externally by someones script.
-            self.mantidSnapper.LoadInstrument(
-                "Replacing instrument definition with Lite instrument",
-                Workspace=workspace,
-                Filename=Config["instrument.lite.definition.file"],
-                RewriteSpectraMap=False,
-            )
-            self.mantidSnapper.executeQueue()
-            self.mantidSnapper.mtd[workspace].populateInstrumentParameters()
-
     def _fetchNeutronDataSingleUse(self, item: GroceryListItem, missingDataHandler: Callable) -> Dict[str, Any]:
         """
         Fetch a neutron data file, without copy-protection.
@@ -872,8 +857,7 @@ class GroceryService:
                 if loader == "LoadEventNexus":
                     loaderArgs = '{"NumberOfBins": 1}'
             data = self.grocer.executeRecipe(str(filePath), workspaceName, loader, loaderArgs=loaderArgs)
-            if useLiteMode:
-                self.updateInstrument(workspaceName)
+            self._validateWorkspaceInstrument(item, workspaceName)
         else:
             data = missingDataHandler()
             workspaceName = data["workspace"]
@@ -1172,19 +1156,43 @@ class GroceryService:
                 "All 'difc' values must be positive floats."
             )
 
-    def _validateCalibrationMask(self, item: GroceryListItem, maskWorkspaceName: str):
+    def validateInstrument(self, workspace: str) -> None:
+        ws = self.getWorkspaceForName(workspace)
+        instName = ws.getInstrument().getName().lower()
+        if ws.getNumberHistograms() == Config["instrument.lite.pixelResolution"] and "snaplite" not in instName:
+            raise RuntimeError(
+                f"Workspace {workspace} does not have the expected number of histograms for the instrument: "
+                f"{Config['instrument.lite.pixelResolution']}, but has {ws.getNumberHistograms()}"
+            )
+
+    def _validateWorkspaceInstrument(self, item: GroceryListItem, workspaceName: str):
         targetPixelCount = (
             Config["instrument.lite.pixelResolution"]
             if item.useLiteMode
             else Config["instrument.native.pixelResolution"]
         )
-        numHistos = self.mantidSnapper.mtd[maskWorkspaceName].getNumberHistograms()
+        targetInstrumentName = (
+            Config["instrument.lite.name"].lower() if item.useLiteMode else Config["instrument.native.name"].lower()
+        )
+        otherInstrumentName = (
+            Config["instrument.native.name"].lower() if item.useLiteMode else Config["instrument.lite.name"].lower()
+        )
+        liteStr = "lite" if item.useLiteMode else "native"
+        ws = self.mantidSnapper.mtd[workspaceName]
+        numHistos = ws.getNumberHistograms()
+        instrumentName = ws.getInstrument().getName().lower()
         if numHistos != targetPixelCount:
-            liteStr = "lite" if item.useLiteMode else "native"
             raise RuntimeError(
-                f"Mask workspace '{maskWorkspaceName}' has {numHistos} histograms"
+                f"Workspace '{workspaceName}' has {numHistos} histograms"
                 f"\nExpected {targetPixelCount} histograms for the {liteStr} resolution."
                 f"\ni.e. one histogram per pixel of the instrument."
+                f"\nPlease contact your IS or CIS for assistance."
+            )
+        if targetInstrumentName not in instrumentName and otherInstrumentName in instrumentName:
+            raise RuntimeError(
+                f"Workspace '{workspaceName}' has an instrument with name '{instrumentName}'"
+                f"\nExpected {targetInstrumentName} for the {liteStr} resolution."
+                f"\nPlease contact your IS or CIS for assistance."
             )
 
     def _loadCalibrationFile(
@@ -1228,7 +1236,7 @@ class GroceryService:
             self._validateCalibrationTable(item, tableWorkspaceName)
 
             if bool(maskWorkspaceName):
-                self._validateCalibrationMask(item, maskWorkspaceName)
+                self._validateWorkspaceInstrument(item, maskWorkspaceName)
 
         return data
 
@@ -1292,8 +1300,7 @@ class GroceryService:
 
             # Note: 'LoadNexusProcessed' neither requires nor makes use of an instrument donor.
             data = self.grocer.executeRecipe(filename=filePath, workspace=workspaceName, loader=loader)
-            if useLiteMode:
-                self.updateInstrument(workspaceName)
+            self._validateWorkspaceInstrument(item, workspaceName)
             self._processNeutronDataCopy(item, workspaceName)
             self.normalizationCache.add(workspaceName)
         return data

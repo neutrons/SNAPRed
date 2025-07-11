@@ -886,7 +886,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_fetch_dirty_nexus_native(self):
         """Test the correct behavior when fetching raw nexus data"""
-
+        self.instance._validateWorkspaceInstrument = mock.Mock()
         self.instance.convertToLiteMode = mock.Mock()
         self.instance.mantidSnapper = mock.MagicMock()
         self.instance.mantidSnapper.CloneWorkspace = mock.MagicMock(
@@ -1007,6 +1007,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_cached_native(self):
         """Test the correct behavior when fetching nexus data"""
         self.instance._createNeutronFilePath = mock.Mock()
+        self.instance._validateWorkspaceInstrument = mock.Mock()
         self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
         self.instance.mantidSnapper = mock.MagicMock()
         self.instance.mantidSnapper.CloneWorkspace = mock.MagicMock(
@@ -1105,6 +1106,7 @@ class TestGroceryService(unittest.TestCase):
         The cases where the data is cached or the file exists are tested above.
         This tests cases of using native-resolution data and auto-reducing.
         """
+        self.instance._validateWorkspaceInstrument = mock.Mock()
         self.instance.convertToLiteMode = mock.Mock()
         self.instance._createNeutronFilePath = mock.Mock()
         self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
@@ -1249,6 +1251,7 @@ class TestGroceryService(unittest.TestCase):
                 runNumber = self.runNumber
 
                 for flags in itertools.product((False, True), repeat=4):
+                    self.instance._validateWorkspaceInstrument = mock.Mock()
                     useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
 
                     instance = GroceryService()
@@ -1348,6 +1351,7 @@ class TestGroceryService(unittest.TestCase):
 
                             case (True, _, True, _):
                                 # lite mode and lite-mode exists on disk
+                                self.instance._validateWorkspaceInstrument.assert_called_once()
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                                     str(liteModeFilePath), workspaceName, loader, loaderArgs=loaderArgs
@@ -1379,6 +1383,7 @@ class TestGroceryService(unittest.TestCase):
 
                             case (True, _, _, True):
                                 # lite mode and native exists on disk
+                                self.instance._validateWorkspaceInstrument.assert_called_once()
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                                     str(nativeModeFilePath),
@@ -1393,6 +1398,7 @@ class TestGroceryService(unittest.TestCase):
 
                             case (False, _, _, True):
                                 # native mode and native exists on disk
+                                self.instance._validateWorkspaceInstrument.assert_called_once()
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                                     str(nativeModeFilePath), workspaceName, loader, loaderArgs=loaderArgs
@@ -1915,7 +1921,6 @@ class TestGroceryService(unittest.TestCase):
     def test_fetchNeutronDataCached(self, mockFileLoaderRegistry):
         # Test all 16, non-live-data cases (including each setting of the `Config["nexus.dataFormat.event"]` flag).
         # Note: this test does not test "in cache" cases: those are treated elsewhere
-
         def mockIAlgorithm(name: str) -> mock.Mock:
             mock_ = mock.Mock()
             mock_.name.return_value = name
@@ -1932,6 +1937,7 @@ class TestGroceryService(unittest.TestCase):
                 runNumber = self.runNumber
 
                 for flags in itertools.product((False, True), repeat=4):
+                    self.instance._validateWorkspaceInstrument = mock.Mock()
                     useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
 
                     instance = GroceryService()
@@ -2043,6 +2049,7 @@ class TestGroceryService(unittest.TestCase):
 
                             case (True, _, True, _):
                                 # lite mode and lite-mode exists on disk
+                                self.instance._validateWorkspaceInstrument.assert_called_once()
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
                                 liteWorkspaceName = mockCreateNeutronWorkspaceName(runNumber, True)
@@ -2066,6 +2073,7 @@ class TestGroceryService(unittest.TestCase):
 
                             case (True, _, _, True):
                                 # lite mode and native exists on disk
+                                self.instance._validateWorkspaceInstrument.assert_called_once()
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 assert instance._loadedRuns[(runNumber, False)] == 0
                                 assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
@@ -2083,6 +2091,7 @@ class TestGroceryService(unittest.TestCase):
 
                             case (False, _, _, True):
                                 # native mode and native exists on disk
+                                self.instance._validateWorkspaceInstrument.assert_called_once()
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 assert instance._loadedRuns[(runNumber, useLiteMode)] == (1 if not useLiteMode else 0)
                                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
@@ -2815,13 +2824,14 @@ class TestGroceryService(unittest.TestCase):
             mockWs = mock.Mock()
             mockWs.getNumberHistograms.return_value = 16
             mockSnapper.mtd.__getitem__.return_value = mockWs
-            self.instance._validateCalibrationMask(item, "someMask")
+            mockWs.getInstrument().getName.return_value = "snap"
+            self.instance._validateWorkspaceInstrument(item, "someMask")
             mockWs.getNumberHistograms.return_value = 1337
             with pytest.raises(
                 RuntimeError,
                 match="Expected 16 histograms for the native resolution.",
             ):
-                self.instance._validateCalibrationMask(item, "someMask")
+                self.instance._validateWorkspaceInstrument(item, "someMask")
 
     def test_validateCalibrationTable(self):
         # load a diffcal table and validate it
@@ -3068,7 +3078,7 @@ class TestGroceryService(unittest.TestCase):
                 GroceryListItem.builder().lite().normalization(self.runNumber1, "statId", self.version).buildList()
             )
             self.instance._processNeutronDataCopy = mock.Mock()
-            self.instance.updateInstrument = mock.Mock()
+            self.instance._validateWorkspaceInstrument = mock.Mock()
             self.instance.dataService.generateInstrumentState = mock.Mock(
                 return_value=DAOFactory.default_instrument_state
             )
@@ -3090,7 +3100,9 @@ class TestGroceryService(unittest.TestCase):
             assert items[0] == normalizationWorkspaceName
             assert mtd.doesExist(normalizationWorkspaceName)
             self.instance._processNeutronDataCopy.assert_called_once_with(groceryList[0], normalizationWorkspaceName)
-            self.instance.updateInstrument.assert_called_once_with(normalizationWorkspaceName)
+            self.instance._validateWorkspaceInstrument.assert_called_once_with(
+                groceryList[0], normalizationWorkspaceName
+            )
 
             mockLogger.info.assert_any_call(
                 f"Fetching normalization workspace for run {self.runNumber1}, version {self.version}"
@@ -3101,6 +3113,7 @@ class TestGroceryService(unittest.TestCase):
         # Test of workspace type "normalization" as `Input` argument in the `GroceryList`
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
         self.instance._processNeutronDataCopy = mock.Mock()
+        self.instance._validateWorkspaceInstrument = mock.Mock()
         with state_root_redirect(self.instance.dataService) as tmpRoot:
             self.instance.dataService.normalizationIndexer = self.mockIndexer(tmpRoot.path(), "normalization")
             self.instance.dataService.generateInstrumentState = mock.Mock(
@@ -3906,28 +3919,4 @@ class TestGroceryService(unittest.TestCase):
             assert instance.grocer.executeRecipe.call_count == 1
             assert instance.grocer.executeRecipe.call_args[0][0] == str(
                 self.instance._createNeutronFilePath(item.runNumber, False)
-            )
-
-    def test_updateInstrument(self):
-        with (
-            mock.patch.object(self.instance, "getWorkspaceForName") as mockWorkspaceFunc,
-            mock.patch.object(self.instance, "mantidSnapper") as mockSnapper,
-        ):
-            mockWorkspace = mock.Mock()
-            mockWorkspaceFunc.return_value = mockWorkspace
-            mockWorkspace.getInstrument().getName.return_value = "snap"
-            mockWorkspace.getNumberHistograms.return_value = Config["instrument.lite.pixelResolution"]
-
-            mockSnapper.mtd = {"wsName": mockWorkspaceFunc}
-
-            self.instance.updateInstrument("wsName")
-
-            assert mockWorkspaceFunc().getInstrument().getName.call_count == 1
-            assert self.instance.mantidSnapper.executeQueue.call_count == 1
-            assert self.instance.mantidSnapper.LoadInstrument.call_count == 1
-            self.instance.mantidSnapper.LoadInstrument.assert_called_once_with(
-                "Replacing instrument definition with Lite instrument",
-                Workspace="wsName",
-                Filename=Config["instrument.lite.definition.file"],
-                RewriteSpectraMap=False,
             )
