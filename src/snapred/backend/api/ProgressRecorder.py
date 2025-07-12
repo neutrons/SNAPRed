@@ -685,26 +685,27 @@ class WallClockTime():
     def __init__(
             self,
             *, # Keyword only args
-            callerOverride = None, 
+            callerOverride: str = None, 
             stepName: str = None,
             N_ref: Callable[..., float] = None
             N_ref_args: Tuple[Tuple[Any, ...], Dict[str, Any]] = None
             order: ComputationalOrder = None
         ):
         # When used as a decorator:
-        #   -- `caller` must be defined;
+        #   -- `callerOverride` is defined _only_ if the decoratee is a class:
+        #      in this case it specifies the name of the class method to be profiled;
         #   -- `stepName` must not be defined;
         #   -- `N_ref` may optionally be defined;
         #   -- `N_ref_args` must not be defined;
         #   -- `order` may optionally be defined.
         # When used as a context manager:
-        #   -- `caller` should not be defined -- it will be assessed automatically;
+        #   -- `callerOverride` should not be defined;
         #   -- `stepName` must be defined;
         #   -- `N_ref` and `N_ref_args` may optionally be defined;
         #   -- `order` may optionally be defined.
         # In either case:
-        #   when `N_ref`, `N_ref_args`, and `order` are left as `None` at time of execution,
-        #   a constant-time estimate will be used.
+        #   -- when `N_ref`, `N_ref_args`, and `order` are left as `None`:
+        #      at time of execution, a constant-time estimate will be used.
 
         self.callerOverride = callerOverride
         self.stepName = stepName
@@ -713,15 +714,23 @@ class WallClockTime():
         self.order = order
         self._stepKey = None
         
-    def __call__(self, func: Callable[..., Any]) -> Callable[..., Any]:
-        # Use as decorator
+    def __call__(self, decoratee: type | MethodType | FunctionType ) -> type | MethodType | FunctionType:
+        # Apply as a decorator
         
-        if not (bool(self.callerOverride) or bool(self.stepName):
+        if bool(self.stepName):
             raise RuntimeError(
-                      "Usage error: on a `WallClockTime` decorated function:\n"
-                      + "  `callerOverride` must be specified;\n"
+                      "Usage error: on a `WallClockTime` decorated function or class:\n"
                       + "  `stepName` must not be specified."
                   )
+                  
+        func = decoratee
+        if isinstance(decoratee, type):
+            if not bool(self.callerOverride):
+                raise RuntimeError(
+                          "Usage error: on a `WallClockTime` decorated class:\n"
+                          + "  `callerOverride` must be specified: this is the name of the to-be-profiled method.\n"
+                      )
+            func = decoratee.__getattribute__(callerOverride)
         
         @functools.wraps(func)  # Retain metadata about `func`.
         def _wrapper(*args, **kwargs):
@@ -744,6 +753,9 @@ class WallClockTime():
                     ProgressRecorder.stop(self._stepKey)
             return result
 
+        if isinstance(decoratee, type):
+            decoratee.__setattribute__(self.callerOverride, _wrapper)
+            return decoratee
         return _wrapper
 
     def __enter__(self):        
