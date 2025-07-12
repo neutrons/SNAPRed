@@ -347,7 +347,12 @@ workflows_data:
     
     # update estimates if off by 20%
     update_threshold: 0.2
-
+    
+    # log completion time estimate at start of each step
+    log_level: 20 # logging.INFO
+    service_logging: true
+    recipe_logging: true
+    
 ui:
   default:
     reduction:
