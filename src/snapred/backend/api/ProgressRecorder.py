@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from enum import StrEnum
 import functools
 from hashlib import sha256
+import json
 import numpy as np
 from pathlib import Path
 from pydantic import BaseModel, field_validator, field_serializer
@@ -143,8 +144,7 @@ class _Step(BaseModel):
         sha = sha256()
         sha.update(func.__code__.co_code)
         return sha.hexdigest()
-        
-    
+     
 class _Measurement(BaseModel):
     # Contains post-execution timing data from a specific workflow step.
     
@@ -571,7 +571,6 @@ class _ProgressRecorder(BaseModel):
     @field_validator("steps", mode="before")
     @classmethod
     def _validate_steps(cls, value: Any):
-        breakpoint()
         if isinstance(value, list):
             return {step.details.key: step for step in value}
         return v

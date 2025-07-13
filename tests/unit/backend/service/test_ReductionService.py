@@ -46,6 +46,7 @@ import unittest.mock as mock
 import pytest
 
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
+from util.Config_helpers import Config_override
 from util.helpers import arrayFromMask, createCompatibleMask, maskFromArray
 from util.InstaEats import InstaEats
 from util.SculleryBoy import SculleryBoy
@@ -61,23 +62,10 @@ class TestReductionService(unittest.TestCase):
         cls.sculleryBoy = SculleryBoy()
         cls.instaEats = InstaEats()
         cls.localDataService = cls.instaEats.dataService
-        cls.progressRecorderMock = mock.patch.object(inspect.getmodule(ProgressRecorder), "ProgressRecorder")
-        # cls.progressRecorderMock.start()
         
     @classmethod
     def tearDownClass(cls):
-        # cls.progressRecorderMock.stop()
         pass
-
-    def clearoutWorkspaces(self) -> None:
-        # Delete the workspaces created by loading
-        for ws in mtd.getObjectNames():
-            DeleteWorkspace(ws)
-
-    def tearDown(self) -> None:
-        # At the end of each test, clear out the workspaces
-        self.clearoutWorkspaces()
-        return super().tearDown()
 
     def setUp(self):
         self.instance = ReductionService()
@@ -87,7 +75,18 @@ class TestReductionService(unittest.TestCase):
         self.instance.groceryService = self.instaEats
         self.instance.dataFactoryService.lookupService = self.localDataService
         self.instance.dataExportService.dataService = self.localDataService
-
+        
+        ## Allow the `ProgressRecorder` to optionally be bypassed, or to be wrapped.
+        progressRecorderModule = inspect.getmodule(ProgressRecorder)
+        
+        # .. Apply to all tests: mock the `ProgressRecorder.LocalDataService` so progress data is not read or saved.
+        self.progressRecorderDataServiceMock = mock.patch.object(progressRecorderModule, "LocalDataService", return_value=self.localDataService)
+        self.progressRecorderDataServiceMock.start()
+        
+        # .. Apply to specific tests => use as a context manager:
+        self.progressRecorderMock = mock.patch.object(progressRecorderModule, "ProgressRecorder")
+        self.progressRecorderWrapperMock = mock.patch.object(progressRecorderModule, "ProgressRecorder", wraps=progressRecorderModule.ProgressRecorder)
+        
         self.request = ReductionRequest(
             runNumber="123",
             useLiteMode=False,
@@ -99,6 +98,19 @@ class TestReductionService(unittest.TestCase):
             focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
             artificialNormalizationIngredients=mock.Mock(spec=ArtificialNormalizationIngredients),
         )
+
+    def tearDown(self) -> None:
+        # Stop mocks applied to all tests
+        self.progressRecorderDataServiceMock.stop()
+        
+        # At the end of each test, clear out the workspaces
+        self.clearoutWorkspaces()
+        return super().tearDown()
+
+    def clearoutWorkspaces(self) -> None:
+        # Delete the workspaces created by loading
+        for ws in mtd.getObjectNames():
+            DeleteWorkspace(ws)
 
     def test_name(self):
         ## this makes codecov happy
@@ -257,9 +269,10 @@ class TestReductionService(unittest.TestCase):
         assert result.record.workspaceNames == mockReductionRecipe.return_value.cook.return_value["outputs"]
 
     @mock.patch(thisService + "datetime")
+    @mock.patch.object(inspect.getmodule(ProgressRecorder), "ProgressRecorder")
     @mock.patch(thisService + "ReductionResponse")
     @mock.patch(thisService + "ReductionRecipe")
-    def test_reduction_full_sequence(self, mockReductionRecipe, mockReductionResponse, mock_datetime):
+    def test_reduction_full_sequence(self, mockReductionRecipe, mockReductionResponse, mockProgressRecorder, mock_datetime):
         mockReductionRecipe.return_value = mock.Mock()
         mockResult = {"result": True, "outputs": ["one", "two", "three"], "unfocusedWS": mock.Mock()}
         mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
@@ -385,6 +398,7 @@ class TestReductionService(unittest.TestCase):
         with (
             mock.patch.object(self.instance.dataExportService, "exportReductionRecord") as mockExportRecord,
             mock.patch.object(self.instance.dataExportService, "exportReductionData") as mockExportData,
+            self.progressRecorderMock as mockProgressRecorder
         ):
             runNumber = "123456"
             useLiteMode = True
@@ -399,6 +413,37 @@ class TestReductionService(unittest.TestCase):
                 self.instance.saveReduction(request)
                 mockExportRecord.assert_called_once_with(record)
                 mockExportData.assert_called_once_with(record)
+    
+    def test_saveReduction_profiling(self):
+        with (
+            mock.patch.object(self.instance.dataExportService, "exportReductionRecord") as mockExportRecord,
+            mock.patch.object(self.instance.dataExportService, "exportReductionData") as mockExportData,
+            mock.patch.object(self.instance.mantidSnapper, "_mtd") as mockMtd,
+            self.progressRecorderWrapperMock as mockProgressRecorder,
+            Config_override("workflows_data.timing.enabled", True)
+        ):
+            mockWs = mock.Mock(
+                getMemorySize=mock.Mock(return_value=4096)
+            )
+            mockMtd.__getitem__ = mock.Mock(return_value=mockWs)
+            mockMtd.doesExist = mock.Mock(return_value=True)
+            
+            runNumber = "123456"
+            useLiteMode = True
+            timestamp = self.instance.getUniqueTimestamp()
+            record = ReductionRecord.model_construct(
+                runNumber=runNumber,
+                useLiteMode=useLiteMode,
+                timestamp=timestamp,
+                workspaceNames=["one", "two", "three"]
+            )
+            request = ReductionExportRequest(record=record)
+            with reduction_root_redirect(self.localDataService):
+                self.instance.saveReduction(request)
+                mockExportRecord.assert_called_once_with(record)
+                mockExportData.assert_called_once_with(record)
+                mockProgressRecorder.record.assert_called_once()
+                mockProgressRecorder.stop.assert_called_once()
 
     def test_loadReduction(self):
         ## this makes codecov happy

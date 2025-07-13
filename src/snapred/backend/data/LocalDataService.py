@@ -1603,7 +1603,7 @@ class LocalDataService:
         _, latestRecordsFilePath, _ = self._progressRecordsFilesInfo()
         if latestRecordsFilePath is None:
             # First start
-            return "{}"
+            return "{\"steps\": []}"
         with open(latestRecordsFilePath) as data:
             return data.read()
 
