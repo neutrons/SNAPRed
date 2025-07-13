@@ -361,7 +361,7 @@ class _ProgressRecorder(BaseModel):
     @classmethod
     def _unloadResident(cls):
         # Unload method to register with `atexit`.
-        LocalDataService().writeProgressRecords(cls.instance().model_dump_json())      
+        LocalDataService().writeProgressRecords(cls.instance().model_dump_json(indent=2))      
         
     @classmethod
     def _getCallerFullyQualifiedName(cls, callerObjectOrStackFrame) -> Tuple[str | None, ...]:
