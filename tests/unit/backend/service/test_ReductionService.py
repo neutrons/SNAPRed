@@ -1,11 +1,13 @@
 ## Python standard imports.
 
 from datetime import datetime, timedelta
+import importlib
 import inspect
 from pathlib import Path
 from typing import List
 import numpy as np
 import pydantic
+import sys
 
 ## Mantid imports
 from mantid.simpleapi import (
@@ -68,13 +70,7 @@ class TestReductionService(unittest.TestCase):
         pass
 
     def setUp(self):
-        self.instance = ReductionService()
-
-        ## Mock out the assistant services
-        self.instance.sousChef = self.sculleryBoy
-        self.instance.groceryService = self.instaEats
-        self.instance.dataFactoryService.lookupService = self.localDataService
-        self.instance.dataExportService.dataService = self.localDataService
+        self.instance = self._initializeInstance()
         
         ## Allow the `ProgressRecorder` to optionally be bypassed, or to be wrapped.
         progressRecorderModule = inspect.getmodule(ProgressRecorder)
@@ -83,7 +79,7 @@ class TestReductionService(unittest.TestCase):
         self.progressRecorderDataServiceMock = mock.patch.object(progressRecorderModule, "LocalDataService", return_value=self.localDataService)
         self.progressRecorderDataServiceMock.start()
         
-        # .. Apply to specific tests => use as a context manager:
+        # .. Apply to specific tests => e.g., use as a context manager:
         self.progressRecorderMock = mock.patch.object(progressRecorderModule, "ProgressRecorder")
         self.progressRecorderWrapperMock = mock.patch.object(progressRecorderModule, "ProgressRecorder", wraps=progressRecorderModule.ProgressRecorder)
         
@@ -111,7 +107,24 @@ class TestReductionService(unittest.TestCase):
         # Delete the workspaces created by loading
         for ws in mtd.getObjectNames():
             DeleteWorkspace(ws)
+    
+    @classmethod
+    def _initializeInstance(cls) -> ReductionService:
+        # If necessary, this method allows us to reinitialize the test instance.
+        # For example, this will be necessary if we need to reload the `ReductionService`
+        #   module, using overridden `Config` settings.
+  
+        instance = ReductionService()
 
+        ## Mock out the assistant services
+        instance.sousChef = cls.sculleryBoy
+        instance.groceryService = cls.instaEats
+        instance.dataFactoryService.lookupService = cls.localDataService
+        instance.dataExportService.dataService = cls.localDataService
+        
+        return instance
+     
+    
     def test_name(self):
         ## this makes codecov happy
         assert "reduction" == self.instance.name()
@@ -416,34 +429,45 @@ class TestReductionService(unittest.TestCase):
     
     def test_saveReduction_profiling(self):
         with (
-            mock.patch.object(self.instance.dataExportService, "exportReductionRecord") as mockExportRecord,
-            mock.patch.object(self.instance.dataExportService, "exportReductionData") as mockExportData,
-            mock.patch.object(self.instance.mantidSnapper, "_mtd") as mockMtd,
-            self.progressRecorderWrapperMock as mockProgressRecorder,
-            Config_override("workflows_data.timing.enabled", True)
+            # 1) Enable the `ProgressRecorder`: this changes the state of the <classproperty> `enabled`, but
+            #   should not regenerate the instance.  This is what we want, because we do not want to read
+            #   the persistent data from whatever's in "~/.snapred/workflows_data/timing/...".
+            Config_override("workflows_data.timing.enabled", True),
+            # 2) Reload `ReductionService` so that the `WallClockTime` decorators will be applied under the new `Config` settings:
+            mock.patch.dict(sys.modules, {"snapred.backend.service.ReductionService": importlib.reload(inspect.getmodule(ReductionService))}),
+            # 3) Replace the `ReductionService` reference used by this current test module:
+            mock.patch.object(sys.modules[__name__], "ReductionService", inspect.getmodule(ReductionService).ReductionService)
         ):
-            mockWs = mock.Mock(
-                getMemorySize=mock.Mock(return_value=4096)
-            )
-            mockMtd.__getitem__ = mock.Mock(return_value=mockWs)
-            mockMtd.doesExist = mock.Mock(return_value=True)
-            
-            runNumber = "123456"
-            useLiteMode = True
-            timestamp = self.instance.getUniqueTimestamp()
-            record = ReductionRecord.model_construct(
-                runNumber=runNumber,
-                useLiteMode=useLiteMode,
-                timestamp=timestamp,
-                workspaceNames=["one", "two", "three"]
-            )
-            request = ReductionExportRequest(record=record)
-            with reduction_root_redirect(self.localDataService):
-                self.instance.saveReduction(request)
-                mockExportRecord.assert_called_once_with(record)
-                mockExportData.assert_called_once_with(record)
-                mockProgressRecorder.record.assert_called_once()
-                mockProgressRecorder.stop.assert_called_once()
+            # Initialize an instance of `ReductionService` using the newly `WallClockTime`-decorated methods.
+            instance = self._initializeInstance()
+            with (
+                mock.patch.object(instance.dataExportService, "exportReductionRecord") as mockExportRecord,
+                mock.patch.object(instance.dataExportService, "exportReductionData") as mockExportData,
+                mock.patch.object(instance.mantidSnapper, "_mtd") as mockMtd,
+                self.progressRecorderWrapperMock as mockProgressRecorder,
+            ):
+                mockWs = mock.Mock(
+                    getMemorySize=mock.Mock(return_value=4096)
+                )
+                mockMtd.__getitem__ = mock.Mock(return_value=mockWs)
+                mockMtd.doesExist = mock.Mock(return_value=True)
+
+                runNumber = "123456"
+                useLiteMode = True
+                timestamp = self.instance.getUniqueTimestamp()
+                record = ReductionRecord.model_construct(
+                    runNumber=runNumber,
+                    useLiteMode=useLiteMode,
+                    timestamp=timestamp,
+                    workspaceNames=["one", "two", "three"]
+                )
+                request = ReductionExportRequest(record=record)
+                with reduction_root_redirect(self.localDataService):
+                    instance.saveReduction(request)
+                    mockExportRecord.assert_called_once_with(record)
+                    mockExportData.assert_called_once_with(record)
+                    mockProgressRecorder.record.assert_called_once()
+                    mockProgressRecorder.stop.assert_called_once()
 
     def test_loadReduction(self):
         ## this makes codecov happy

@@ -621,11 +621,10 @@ class WallClockTime():
         self._enableLogging = enableLogging
         
     def __call__(self, decoratee: type | FunctionType ) -> type | FunctionType:
-        # Apply as a decorator
-        
+        # Apply as a decorator       
         if not _ProgressRecorder.enabled:
             return decoratee
-            
+        
         if bool(self.stepName):
             raise RuntimeError(
                       "Usage error: on a `WallClockTime` decorated function or class:\n"
