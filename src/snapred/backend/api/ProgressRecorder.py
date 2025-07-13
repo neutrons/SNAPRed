@@ -6,11 +6,14 @@ from hashlib import sha256
 import numpy as np
 from pathlib import Path
 from pydantic import BaseModel
+import re
 from scipy.interpolate import BSpline, make_splrep
+import sys
 from types import FrameType, FunctionType, MethodType
 from typing import Any, Callable, ClassVar, Dict, List, Self, Tuple
 
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.GenericRecipe import GenericRecipe
 from snapred.backend.recipe.Recipe import Recipe
 from snapred.backend.service.Service import Service
@@ -18,6 +21,10 @@ from snapred.backend.service.Service import Service
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.Singleton import Singleton
+
+
+logger = snapredLogger.getLogger(__name__)
+
 
 class ComputationalOrder(StrEnum):
     
@@ -35,17 +42,17 @@ class ComputationalOrder(StrEnum):
             raise RuntimeError("Usage error: incoming 'N_ref' must have a value.")
         N = None
         match self:
-            case Self.O_0:
+            case ComputationalOrder.O_0:
                 N = 1.0
-            case Self.O_LOGN:
+            case ComputationalOrder.O_LOGN:
                 N = np.log(N_ref)
-            case Self.O_N:
+            case ComputationalOrder.O_N:
                 N = N_ref
-            case Self.O_NLOGN:
+            case ComputationalOrder.O_NLOGN:
                 N = N_ref * np.log(N_ref)
-            case Self.O_N_2:
+            case ComputationalOrder.O_N_2:
                 N = N_ref**(2.0)
-            case Self.O_N_3:
+            case ComputationalOrder.O_N_3:
                 N = N_ref**(3.0)
             case _:
                 raise RuntimeError(f"unrecognized `ComputationalOrder`: {self}")
@@ -114,24 +121,12 @@ class _Step(BaseModel):
             self._N_ref_args = N_ref_args
         if order is not None:
             self.order = order
-                 
-    @property
-    def name(self) -> str:
-        # The human-readable name for the step.
-        return ".".join(filter(lambda s: bool(s), self.key))
 
     def N_ref(self) -> float | None:
         # Access the reference value
         N_ref = None
         if self._N_ref is not None:
-            N_ref = self._N_ref(**self._N_ref_kwargs)
-            """
-                if self.mantidSnapper.mtd.doesExist(self.referenceWorkspace):
-                    N_ref = float(self.mantidSnapper.mtd[self.referenceWorkspace].getMemorySize())
-            elif self.referencePath is not None:
-                if self.referencePath.exists():
-                    N_ref = float(self.referencePath.stat().st_size)
-            """
+            N_ref = self._N_ref(*self._N_ref_args[0], **self._N_ref_args[1])
         return N_ref
 
     @staticmethod
@@ -180,7 +175,8 @@ class _Estimate(BaseModel):
             # Note that this _does_ allow degree `k == 0`: 
             #   but any construction of the actual `BSpline` not using `construct_fast` will
             #   prohibit that.  (See comments at `_update` below.)
-            self._spl = BSpline.construct_fast(*self.tck, extrapolate=True)
+            _tck = (np.array(self.tck[0]), np.array(self.tck[1]), self.tck[2])
+            self._spl = BSpline.construct_fast(*_tck, extrapolate=True)
 
     @classproperty
     def SPLINE_ORDER(cls):
@@ -201,8 +197,8 @@ class _Estimate(BaseModel):
         if cls._default is None:
             # A linear estimator:
             #   based on 60.0s to process 1GB of data.
-            Ns = [0.0, 1.0e9]
-            dts = [0.0, 60.0]
+            Ns = np.array([0.0, 1.0e9])
+            dts = np.array([0.0, 60.0])
             cls._default = _Estimate()
             cls._default._update(Ns, dts, len(Ns))
         
@@ -241,46 +237,49 @@ class _Estimate(BaseModel):
             #   * This treatment also works for degree `k==0` (i.e. a spline representing a _constant_ value),
             #     however constructing a `BSpline` from the resulting `tck` requires the use of `BSpline.construct_fast(*tck)`,
             #     otherwise the knot vector will be judged to be too short.
-            self._spl = make_splrep(Ns if not Ns[0] is None else [0.0], dts, k=splineOrder)
+            self._spl = make_splrep(Ns if not Ns[0] is None else np.array([0.0]), dts, k=splineOrder)
             self.tck = (list(self._spl.tck[0]), list(self._spl.tck[1]), self._spl.tck[2])
 
     def _prepareData(self, measurements: List[_Measurement], order: Callable[[float], float]) -> Tuple[List[float], List[float]]:        
         # Sort and accumulate the measurement data.
         
         ts = [(order(measurement.N_ref) if measurement.N_ref is not None else None, measurement.dt)\
-                 for measurement in self.measurements]
+                 for measurement in measurements]
         # Either all of the `N_ref` will be `float`, or all will be `None`.
         if ts[0][0] is not None:
             ts = sorted(ts, key=lambda t: t[0])
             if ts[0][0] != 0.0:
                 # Insert a "tie" point at (N==0.0, dt==0.0).
                 ts.insert(0, (0.0, 0.0))
-        Ns, dts = unzip(self._accumulateDuplicates(ts))
-        return Ns, dts
+        Ns, dts = self._accumulateDuplicates(ts)
+        return np.array(Ns), np.array(dts)
             
-    def _accumulateDuplicates(self, ps: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
+    def _accumulateDuplicates(self, ps: List[Tuple[float, float]]) -> Tuple[List[float], List[float]]:
         # Accumulate adjacent measurements with the same N values;
         #   as part of the fitting process, this is applied _after_ the computational-order normalization.
-        ps_ = []
+        Ns_, dts_ = [], []
         p_prev = None
         count = 0
         for p in ps:
             n, dt = p
             if p_prev is not None:
-                n_prev, dt_prev = p_prev
+                if count == 0:
+                    n_prev, dt_prev = p_prev
                 if (n is None and n_prev is None) or np.isclose(n, n_prev):
                     # accumulate
                     dt_prev += dt
                     count += 1
+                    continue
                 elif count > 1:
                     # take the mean value
                     dt_prev /= count
+                    Ns_.append(n_prev)
+                    dts_.append(dt_prev)
                     count = 0
-                    continue
-            ps_.append(p)
-            count = 1
+            Ns_.append(n)
+            dts_.append(dt)
             p_prev = p
-        return ps_
+        return Ns_, dts_
 
     
 class ProgressStep(BaseModel):
@@ -316,11 +315,16 @@ class ProgressStep(BaseModel):
         self._startTime = datetime.now(timezone.utc)
     
     def stop(self) -> datetime:
-        time_ = self._startTime
-        if time_ is None:
-            raise RuntimeError("Usage error: attempt to `stop` unstarted step '{self.details.name}'.")
+        _time = self._startTime
+        if _time is None:
+            raise RuntimeError(f"Usage error: attempt to `stop` unstarted step {self.name}.")
         self._startTime = None
-        return time_
+        return _time
+                 
+    @property
+    def name(self) -> str:
+        # A human-readable name for the step.
+        return ".".join(filter(lambda s: bool(s), self.details.key))
         
     @property
     def startTime(self) -> datetime:
@@ -341,26 +345,10 @@ class _ProgressRecorder(BaseModel):
     #     although this feature is not presently used.
     #   * Additional information is associated with the order of the steps in the list.  However
     #     this is also not presently used.
-    _stepss: Dict[Tuple[str | None, ...], List[ProgressStep]] = {}
+    stepss: Dict[Tuple[str | None, ...], ProgressStep] = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
-        """        
-        # If elapsed wall-clock time is being recorded:
-        #   the workflow stack will always have at least one entry, which is the name of the current workflow.
-        self._workflowStack: List[str] = []
-        
-        # The recipe stack may also have entries, unless the current step is recording
-        #   elapsed time within the outer workflow scope.
-        self._recipeStack : List[str] = []
-        
-        # Call counts within the global scope (that of the fully-scoped step name):
-        #   this dict is filled in as execution progresses.
-        #   If any fully-scoped <step name> is entered more than once,
-        #   this allows the additional entries to be distinct.
-        self._callCounts: defaultdict[str, int] = defaultdict(int)
-        """
         
         # Automatically persist the progress data at application exit.
         atexit.register(_ProgressRecorder._unloadResident)
@@ -375,87 +363,6 @@ class _ProgressRecorder(BaseModel):
         # Unload method to register with `atexit`.
         LocalDataService().writeProgressRecords(cls.instance().model_dump_json())      
         
-    """
-    def _currentStepName(self) -> str:
-        # The fully-scoped <step name> of the current progress-recording step.
-        # (Note: <call count> is not dealt with here.)
-        if not bool(self._workflowStack):
-            raise RuntimeError("Usage error: cannot record progress outside of any workflow.")
-        name = ".".join(self._workflowStack)
-        if bool(self._recipeStack):
-            name = name + "." + ".".join(self._recipeStack)
-        return name
-    
-    # Recording methods using the scope[s] stacks:
-    def enterWorkflow(self, servicePath: str):
-        self._workflowStack.append(servicePath)
-        self.record("entry")
-        
-    def exitWorkflow(self):
-        # End recording for the _current_ (i.e. innermost) workflow.
-        self.stop()
-        self._workflowStack.pop()
-        
-    def enterRecipe(self, recipe: Recipe):
-        self._recipeStack.append(recipe.__class__.__name__)
-        self.record("entry")
-    
-    def exitRecipe(self):
-        # End recording for the _current_ (i.e. innermost) recipe.
-        self.stop()
-        self._recipeStack.pop()
-
-    def _start(self) -> datetime:
-        self._startNextStep()
-        self._workflowStartTime = self._stepStartTime
-        return self._workflowStartTime
-    
-    def _end(self):
-        pass
-
-    def _startNextStep(self) -> datetime:
-        self._stepStartTime = datetime.now().()
-        return self._stepStartTime
-               
-    def register(self, workflowName: str, steps: List[Step]):
-        # Register a list of progress-recording steps, 
-        #   and where possible, do not overwrite existing information.
-        
-        == workflowName.methodName ==
-        workflow_steps = self._stepss.get(workflowName, {})
-        # Add the default "start" and "end" steps.
-        if "start" not in workflow_steps:
-            workflow_steps["start"] = ProgressStep(
-                details=Step(name="start"),
-                measurements=[],
-                estimate=_Estimate.default()
-            )
-        if "end" not in workflow_steps:
-            workflow_steps["end"] = ProgressStep(
-                details=Step(name="end"),
-                measurements=[],
-                estimate=_Estimate.default()
-            )
-       
-        for step in steps:
-            _step = workflow_steps.get(step.name)
-            if bool(_step) and _step == step:
-                # Step details haven't changed:
-                #   use the existing execution-time data.
-                continue
-            
-            # Not a previously registered step:
-            #   initialize a new step.
-            workflow_steps[step.name] = ProgressStep(
-                details=step,
-                measurements=[],
-                estimate=_Estimate.default()
-            )
-
-        == DID we just lose the "ordering" here? ==
-        self._stepss[workflowName] = workflow_steps
-    """
-
     @classmethod
     def _getCallerFullyQualifiedName(cls, callerObjectOrStackFrame) -> Tuple[str | None, ...]:
         # Caller key based on its (<module>, <fully-qualified name>).
@@ -502,18 +409,10 @@ class _ProgressRecorder(BaseModel):
         return (module_name, qualified_name)
 
     @classmethod
-    def isLoggingEnabledForStep(cls, caller):
-        if not isinstance(caller, FunctionType):
-            raise RuntimeError(f"Usage error: expecting `FunctionType` not {type(caller)}.")
-        if issubclass(caller.__class__, Service)\
-            and Config["workflows_data.timing.service_logging"]:
-            return True
-        if issubclass(caller.__class__, (GenericRecipe, Recipe))\
-            and Config["workflows_data.timing.recipe_logging"]:
-            return True
-        # By default, all progress logging must be explicitly enabled.
-        return False
-        
+    def isLoggingEnabledForStep(cls, wrappedFunc: FunctionType):
+        _pattern = re.compile(Config["workflows_data.timing.logging.qualname_regex"])
+        return bool(_pattern.match(wrappedFunc.__qualname__))
+
     @classmethod
     def getStepKey(cls, *, callerOverride: MethodType | FunctionType=None, stepName=None) -> Tuple[str | None, ...]:
         # Compute a unique key for the current process step.
@@ -538,15 +437,16 @@ class _ProgressRecorder(BaseModel):
             create: bool = False
         ) -> ProgressStep:
         # Get the `ProgressStep` corresponding to the specified step key.
-        step = self._stepss.get(key)
+        step = self.stepss.get(key)
         if step is None:
             if not create:
-                raise RuntimeError(f"Usage error: progress-recording step '{key}' does not exist.")
+                raise RuntimeError(f"Usage error: progress-recording step {key} does not exist.")
             step = ProgressStep(
                        details=_Step(
                            key=key
                        )
                    )
+            self.stepss[key] = step
         return step
 
                 
@@ -591,56 +491,30 @@ class _ProgressRecorder(BaseModel):
         
         key = self.getStepKey(callerOverride=callerOverride, stepName=stepName)
         step = self.getStep(key, create=True)
-        step.setDetails(N_ref=N_ref, N_ref_args=N_ref_args, order=order)
+        step.setDetails(N_ref=N_ref, N_ref_args=N_ref_args, order=order, enableLogging=enableLogging)
         step.start()
         
         if step.loggingEnabled:
             N_ref_ = step.details.N_ref()
             if N_ref_ is not None:
-                dt = step.estimate.dt(step.details.order(N_ref))
-                logger.log(Config["workflows_data.timing.loglevel"], f"running {step.name} -- estimated completion in {dt} seconds.")
+                dt = step.estimate.dt(step.details.order(N_ref_))
+                logger.log(Config["workflows_data.timing.logging.loglevel"], f"running {step.name} -- estimated completion in {dt} seconds.")
             else:
-                logger.log(Config["workflows_data.timing.loglevel"], f"running {step.name} -- <no timing data is available>.")
-        """
-        # Get the elapsed time, and start timing the next step.
-        startStep = self._startStepTime
-        elapsed = float((self._startNextStep() - startStep).total_seconds())
-
-        # FINALIZE the measurement data for the previous step.
-        if self.currentStep is not None:
-            # Compute the required reference value.
-            == `N_ref()` calls the `Callable` passed in when the step was registered,
-            ==   using the *step_args passed into `record`! ==
-            N_ref = self.currentStep.N_ref()
-
-            # Record the execution-time measurement
-            self.currentStep.measurements.append(
-                _Measurement(dt=elapsed, N_ref=N_ref)
-            )
+                logger.log(Config["workflows_data.timing.logging.loglevel"], f"running {step.name} -- <no timing data is available>.")
         
-            # Restrict the maximum length of the measurements lists.
-            max_measurements = Config["workflows_data.timing.max_measurments"]
-            if len(self.currentStep.measurements) > max_measurements:
-                # Forget the oldest
-                self.currentStep.measurements = self.currentStep.measurements[-max_measurements:]
-         
-            # If necessary, update the estimate for the previous step.
-            estimated_dt = self.currentStep.estimate.dt(self.currentStep.details.order(N_ref) if N_ref is not None else None)
-            if abs(estimated_dt - elapsed) / elapsed > Config["workflows_data.timing.update_threshold"]:
-                self.currentStep.estimate.update(self.currentStep.measurements, self.currentStep.details.order)
-                
-        # Go to the next step.
-        self.currentStep = step
-        """
+        # Return the key
+        return key
         
     def stop(self, key: Tuple[str | None, ...]):
         step = self.getStep(key)
-        now = datetime.now(timezone.utc)
+        
+        stopTime = datetime.now(timezone.utc)
         startTime = step.stop()
         
         # Do not record the measurement if any exception has been raised.
-        if sys.exc_info[0] is not None:
-            elapsed = float((now - startTime).total_seconds())
+        if sys.exc_info()[0] is None:
+            elapsed = float((stopTime - startTime).total_seconds())
+            
             N_ref = step.details.N_ref()
             # Do not record the measurement if `N_ref` cannot be calculated.
             if N_ref is not None:
@@ -649,13 +523,13 @@ class _ProgressRecorder(BaseModel):
                 ) 
         
                 # Restrict the maximum length of the measurements list.
-                max_measurements = Config["workflows_data.timing.max_measurments"]
+                max_measurements = Config["workflows_data.timing.max_measurements"]
                 if len(step.measurements) > max_measurements:
                     # Forget the oldest
                     self.currentStep.measurements = self.currentStep.measurements[-max_measurements:]
 
                 # If necessary, update the estimate for the step.
-                estimated_dt = step.estimate.dt(step.details.order(N_ref) if N_ref is not None else None)
+                estimated_dt = step.estimate.dt(step.details.order(N_ref))
                 if abs(estimated_dt - elapsed) / elapsed > Config["workflows_data.timing.update_threshold"]:
                     step.estimate.update(step.measurements, step.details.order)
             
@@ -681,9 +555,9 @@ class _ProgressRecorder(BaseModel):
 
         # Validate the workflow registration.
         workflowName = workflowInstance.__class__.__name__
-        if workflowName not in self._stepss:
+        if workflowName not in self.stepss:
             raise RuntimeError(f"Unregistered workflow: '{workflowName}'.")
-        steps = self._stepss[workflowName]
+        steps = self.stepss[workflowName]
         
         default_N_ref = 1.0e9 # use when actual N_ref for a step doesn't exist yet
         now = datetime.now().astimezone()
@@ -745,7 +619,6 @@ class WallClockTime():
         
     def __call__(self, decoratee: type | FunctionType ) -> type | FunctionType:
         # Apply as a decorator
-        
         if bool(self.stepName):
             raise RuntimeError(
                       "Usage error: on a `WallClockTime` decorated function or class:\n"
@@ -763,24 +636,34 @@ class WallClockTime():
         
         @functools.wraps(func)  # Retain metadata about `func`.
         def _wrapper(*args, **kwargs):
-            # Allow the called function's `args`, and `kwargs` to be available
-            #   to the `N_ref` used by the progress-reporting step.
+            # The purpose of this wrapper is to allow the called function's 
+            #  `args`, and `kwargs` to be available
+            #     to the `N_ref` used by the progress-reporting step.
+            
+            # Logging is either enabled explicitly,
+            #   or is enabled depending on the specifics of the fully-qualified name of the function.
+            enableLogging = self._enableLogging or ProgressRecorder.isLoggingEnabledForStep(func)
+            
             try:
                 if self._stepKey is not None:
                     raise RuntimeError(
-                              "Usage error: `WallClockTime` as decorator cannot be nested or re-used."
+                              "Usage error: `WallClockTime` as decorator cannot be nested."
                           )
                 self._stepKey = ProgressRecorder.record(
                     callerOverride=func,
                     N_ref=self.N_ref,
                     N_ref_args=(args, kwargs),
                     order=self.order,
-                    enableLogging=self._enableLogging or _ProgressRecorder.isLoggingEnabledForStep(func)
+                    enableLogging=enableLogging
                 )
                 result = func(*args, **kwargs)
             finally:
                 if self._stepKey is not None:
+                    # We need to call `stop` regardless of `sys.exc_info()`.
+                    # TODO: I'm concerned here about what happens if an additional exception
+                    #   is raised in `stop` -- I really only want the first one!
                     ProgressRecorder.stop(self._stepKey)
+                    self._stepKey = None
             return result
 
         if isinstance(decoratee, type):
@@ -809,6 +692,8 @@ class WallClockTime():
     
     def __exit__(self, *exc):
         if self._stepKey is not None:
+            # We need to call `stop` regardless of `sys.exc_info()`.
+            # TODO: I'm concerned here about what happens if an additional exception
+            #   is raised in `stop` -- I really only want the first one!
             ProgressRecorder.stop(self._stepKey)
-        if bool(exc[0]):
-            raise
+         

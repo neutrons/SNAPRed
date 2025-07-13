@@ -1593,7 +1593,7 @@ class LocalDataService:
         return earliestFilePath, latestFilePath, count
     
     def _progressRecordsSaveFilePath(self):
-        now = self.getUniqueTimestamp().astimezone(timezone.utc).isoformat()
+        now = datetime.fromtimestamp(self.getUniqueTimestamp(), tz=timezone.utc)
         return self._progressRecordsFilePath(now)
     
     def readProgressRecords(self) -> str:

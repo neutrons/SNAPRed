@@ -339,6 +339,8 @@ metadata:
 
 workflows_data:
   timing:
+    enable: true
+    
     max_files: 5
     max_measurements: 50
     
@@ -348,10 +350,11 @@ workflows_data:
     # update estimates if off by 20%
     update_threshold: 0.2
     
-    # log completion time estimate at start of each step
-    log_level: 20 # logging.INFO
-    service_logging: true
-    recipe_logging: true
+    # logging of execution-time information:
+    logging:
+      #fully-qualified name of profiled method must match this regex:
+      qualname_regex: "(.*Service.*)|(.*Recipe.*)"
+      loglevel: 20 # logging.INFO
     
 ui:
   default:

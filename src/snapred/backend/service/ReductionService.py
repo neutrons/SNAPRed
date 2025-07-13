@@ -183,18 +183,19 @@ class ReductionService(Service):
 
     def _reduction_N_ref(self, request: ReductionRequest):
         # Execution-time scaling for the "reduction" method.
+        N_ref = None
         N_groups = len(request.focusGroups)
-        assert  N_groups >= 1
-        if not request.liveDataMode:
+        if N_groups >= 1 and not request.liveDataMode:
             inputFilePath = self.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
             if inputFilePath.exists():
                 dataSize = float(inputFilePath.stat().st_size())
-                return N_groups * dataSize
-        return float(N_groups)
+                N_ref = float(N_groups * dataSize)
+        # return None if `N_ref` cannot be calculated!
+        return N_ref
 
+    @WallClockTime(N_ref=_reduction_N_ref, order=ComputationalOrder.O_N)
     @FromString
     @Register("")
-    @WallClockTime(N_ref=_reduction_N_ref, order=ComputationalOrder.O_N)
     def reduction(self, request: ReductionRequest):
         """
         Perform reduction on a single run number, once for each grouping in this state.
@@ -260,9 +261,9 @@ class ReductionService(Service):
             alternativeCalibrationFilePath=request.alternativeCalibrationFilePath,
         )
 
+    @WallClockTime(N_ref=lambda _instance, request: float(len(request.focusGroups)) , order=ComputationalOrder.O_N)
     @FromString
     @Register("groupings")
-    @WallClockTime(N_ref=lambda _instance, request: float(len(request.focusGroups)) , order=ComputationalOrder.O_N)
     def fetchReductionGroupings(self, request: ReductionRequest) -> Dict[str, Any]:
         """
         Load all groupings that are valid for a specific state using a ReductionRequest.
@@ -436,9 +437,9 @@ class ReductionService(Service):
         ingredients.artificialNormalizationIngredients = request.artificialNormalizationIngredients
         return ingredients
 
+    @WallClockTime(N_ref=_reduction_N_ref, order=ComputationalOrder.O_N)    
     @FromString
     @Register("groceries")
-    @WallClockTime(N_ref=_reduction_N_ref, order=ComputationalOrder.O_N)    
     def fetchReductionGroceries(self, request: ReductionRequest) -> Dict[str, Any]:
         """
         Fetch the required groceries, including
@@ -568,10 +569,11 @@ class ReductionService(Service):
             # Consume the exception:
             #   for timing purposes we don't care, except that we must not enter an invalid measurement!
             dataSize = None
+        # return `None` if `N_ref` cannot be calculated!
         return dataSize
     
-    @Register("save")
     @WallClockTime(N_ref=_reduction_save_N_ref, order=ComputationalOrder.O_N)    
+    @Register("save")
     def saveReduction(self, request: ReductionExportRequest):
         self.dataExportService.exportReductionRecord(request.record)
         self.dataExportService.exportReductionData(request.record)
@@ -673,15 +675,16 @@ class ReductionService(Service):
     def _reduction_artificial_norm_N_ref(self, request: ReductionRequest):
         # Execution-time scaling for the "grabWorkspaceForArtificialNorm" method.
         # (Note: timing details for the `ArtificialNormalizationRecipe` itself is registered at that recipe.)
+        N_ref = None
         if not request.liveDataMode:
             inputFilePath = self.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
             if inputFilePath.exists():
-                dataSize = float(inputFilePath.stat().st_size())
-                return dataSize
-        return None # live-data case: not yet fully supported.
+                N_ref = float(inputFilePath.stat().st_size())
+        # return `None` if `N_ref` cannot be calculated!
+        return N_ref
 
-    @Register("grabWorkspaceforArtificialNorm")
     @WallClockTime(N_ref=_reduction_artificial_norm_N_ref, order=ComputationalOrder.O_N)    
+    @Register("grabWorkspaceforArtificialNorm")
     def grabWorkspaceforArtificialNorm(self, request: ReductionRequest):
         # TODO: REBASE NOTE:
         #   This method actually seems to be a reduction sub-recipe:
