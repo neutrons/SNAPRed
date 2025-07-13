@@ -339,7 +339,7 @@ metadata:
 
 workflows_data:
   timing:
-    enable: true
+    enabled: false
     
     max_files: 5
     max_measurements: 50

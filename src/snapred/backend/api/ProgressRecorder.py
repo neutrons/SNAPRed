@@ -5,7 +5,7 @@ import functools
 from hashlib import sha256
 import numpy as np
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, field_serializer
 import re
 from scipy.interpolate import BSpline, make_splrep
 import sys
@@ -349,23 +349,31 @@ class _ProgressRecorder(BaseModel):
     #     although this feature is not presently used.
     #   * Additional information is associated with the order of the steps in the list.  However
     #     this is also not presently used.
-    stepss: Dict[Tuple[str | None, ...], ProgressStep] = {}
+    steps: Dict[Tuple[str | None, ...], ProgressStep] = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         # Automatically persist the progress data at application exit.
         atexit.register(_ProgressRecorder._unloadResident)
-
+    
+    @classproperty
+    def enabled(cls):
+        return Config["workflows_data.timing.enabled"]
+        
     @classmethod
     @functools.lru_cache(maxsize=None)
     def instance(cls) -> Self:
-        return cls.model_validate_json(LocalDataService().readProgressRecords())
+        if cls.enabled:
+            return cls.model_validate_json(LocalDataService().readProgressRecords())
+        # When not enabled, we still need to return an "empty" instance.
+        return cls()
 
     @classmethod
     def _unloadResident(cls):
         # Unload method to register with `atexit`.
-        LocalDataService().writeProgressRecords(cls.instance().model_dump_json(indent=2))      
+        if cls.enabled:
+            LocalDataService().writeProgressRecords(cls.instance().model_dump_json(indent=2))      
         
     @classmethod
     def _getCallerFullyQualifiedName(cls, callerObjectOrStackFrame) -> Tuple[str | None, ...]:
@@ -441,7 +449,7 @@ class _ProgressRecorder(BaseModel):
             create: bool = False
         ) -> ProgressStep:
         # Get the `ProgressStep` corresponding to the specified step key.
-        step = self.stepss.get(key)
+        step = self.steps.get(key)
         if step is None:
             if not create:
                 raise RuntimeError(f"Usage error: progress-recording step {key} does not exist.")
@@ -450,7 +458,7 @@ class _ProgressRecorder(BaseModel):
                            key=key
                        )
                    )
-            self.stepss[key] = step
+            self.steps[key] = step
         return step
 
                 
@@ -492,7 +500,9 @@ class _ProgressRecorder(BaseModel):
         #   * When an `N_ref` is not specified, the default will be to treat the estimate for the process step
         #     as scaling with _constant_ time -- i.e the estimate will be average of past execution times for the step.
         
-        
+        if not _ProgressRecorder.enabled:
+            return None
+            
         key = self.getStepKey(callerOverride=callerOverride, stepName=stepName)
         step = self.getStep(key, create=True)
         step.setDetails(N_ref=N_ref, N_ref_args=N_ref_args, order=order, enableLogging=enableLogging)
@@ -510,6 +520,9 @@ class _ProgressRecorder(BaseModel):
         return key
         
     def stop(self, key: Tuple[str | None, ...]):
+        if not _ProgressRecorder.enabled:
+            return
+            
         step = self.getStep(key)
         
         stopTime = datetime.now(timezone.utc)
@@ -540,6 +553,10 @@ class _ProgressRecorder(BaseModel):
     def stepTimeRemaining(self, key: Tuple[str | None, ...]) -> float:
         # Estimate the time remaining for the specified step,
         # or return `None` if not enough data is available yet to create an estimate,
+        
+        if not _ProgressRecorder.enabled:
+            return None
+        
         step = self.getStep(key)
 
         elapsed = float((step.startTime - datetime.now(timezone.utc)).total_seconds())        
@@ -551,6 +568,19 @@ class _ProgressRecorder(BaseModel):
                 remainder = 0.0
         return remainder
 
+    @field_validator("steps", mode="before")
+    @classmethod
+    def _validate_steps(cls, value: Any):
+        breakpoint()
+        if isinstance(value, list):
+            return {step.details.key: step for step in value}
+        return v
+        
+    @field_serializer("steps")
+    def _serialize_steps(self, steps: Dict[Tuple[str, ...], ProgressStep], _info) -> List[ProgressStep]:
+        # By default `Tuple[str, ...]` keys dont' work well in JSON.
+        return list(self.steps.values())
+    
 # The singleton of `_ProgressRecorder`.
 ProgressRecorder = _ProgressRecorder.instance()
 
@@ -593,6 +623,10 @@ class WallClockTime():
         
     def __call__(self, decoratee: type | FunctionType ) -> type | FunctionType:
         # Apply as a decorator
+        
+        if not _ProgressRecorder.enabled:
+            return decoratee
+            
         if bool(self.stepName):
             raise RuntimeError(
                       "Usage error: on a `WallClockTime` decorated function or class:\n"
@@ -645,7 +679,10 @@ class WallClockTime():
             return decoratee
         return _wrapper
 
-    def __enter__(self):        
+    def __enter__(self):
+        if not _ProgressRecorder.enabled:
+            return None
+                    
         if bool(self.callerOverride) or not bool(self.stepName):
             raise RuntimeError(
                       "Usage error: `WallClockTime` as context manager:\n"
@@ -663,8 +700,12 @@ class WallClockTime():
             order=self.order,
             enableLogging=self._enableLogging
         )
+        return self._stepKey
     
     def __exit__(self, *exc):
+        if not _ProgressRecorder.enabled:
+            return
+            
         if self._stepKey is not None:
             # We need to call `stop` regardless of `sys.exc_info()`.
             # TODO: I'm concerned here about what happens if an additional exception

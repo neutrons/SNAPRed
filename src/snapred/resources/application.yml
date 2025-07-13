@@ -324,6 +324,8 @@ metadata:
 
 workflows_data:
   timing:
+    enabled: true
+    
     max_files: 5
     max_measurements: 50
     
@@ -335,8 +337,10 @@ workflows_data:
        
     # logging of execution-time information:
     logging:
-      #to enable logging: the fully-qualified name of a profiled method must match this regex.
+      # to enable logging:
+      #   the fully-qualified name of a profiled method must match this regex.
       qualname_regex: "(.*Service.*)|(.*Recipe.*)"
+      
       loglevel: 20 # logging.INFO
 
 ui:
