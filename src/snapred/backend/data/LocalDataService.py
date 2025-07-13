@@ -1566,7 +1566,7 @@ class LocalDataService:
         # Find progress-records files:
         #   as: (<earliest filePath>, <latest filePath>, <total number of files>).
         filename = None
-        fileRegex = re.compile(f"{self._progressRecordsFilenameStem}_{{.*}}\\.json")
+        fileRegex = re.compile(f"({self._progressRecordsFilenameStem})_(.*)\\.json")
         latestTime = self._MIN_DATETIME
         earliestTime = datetime.now(timezone.utc)
         
@@ -1579,16 +1579,18 @@ class LocalDataService:
                 for entry in entries:
                     if not entry.is_file():
                         continue
+
                     match = fileRegex.match(entry.name)
                     if not match:
                         continue
-                    timestamp = match.group(1)
+                        
+                    timestamp = datetime.fromisoformat(match.group(2))
                     if timestamp < earliestTime:
                         earliestTime = timestamp
-                        earliestFilePath = self.progressRecordsFilePath(timestamp)
+                        earliestFilePath = self._progressRecordsFilePath(timestamp)
                     elif timestamp > latestTime:
                         latestTime = timestamp
-                        latestFilePath = self.progressRecordsFilePath(timestamp)
+                        latestFilePath = self._progressRecordsFilePath(timestamp)
                     count += 1
         return earliestFilePath, latestFilePath, count
     

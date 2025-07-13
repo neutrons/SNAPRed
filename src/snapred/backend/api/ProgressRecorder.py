@@ -84,6 +84,7 @@ class _Step(BaseModel):
     def __init__(
             self, *,
             key: Tuple[str | None, ...],
+            N_ref_hash: str | None = None,
             # Default values compute constant-time estimate.
             N_ref: Callable[..., float] = lambda *_args, **_kwargs: 1.0,
             N_ref_args: Tuple[Tuple[Any,...], Dict[str, Any]] = ((), {}),
@@ -91,10 +92,13 @@ class _Step(BaseModel):
         ):
         # The persistent part of the `Step`, as the Pydantic model,
         #   retains the hash digest of the `N_ref`-callable, but not the callable itself.
-        N_ref_hash = _Step._callable_hash(N_ref)
+        N_ref_hash_ = _Step._callable_hash(N_ref)
+        if N_ref_hash is not None and N_ref_hash_ != N_ref_hash:
+            logger.warning(f"`N_ref` for step {key} has been modified.")
+        
         super().__init__(
             key=key,
-            N_ref_hash=N_ref_hash,
+            N_ref_hash=N_ref_hash_,
             order=order
         )
         self._N_ref = N_ref
@@ -546,36 +550,6 @@ class _ProgressRecorder(BaseModel):
             if remainder < 0.0:
                 remainder = 0.0
         return remainder
-    
-    """
-    def workflowTimeRemaining(self, workflowInstance) -> float:
-        # Estimate the time remaining for the current workflow.
-        # (This will only be accurate for the case where all reference-workspaces or paths
-        #  are available at the time of this call!)
-
-        # Validate the workflow registration.
-        workflowName = workflowInstance.__class__.__name__
-        if workflowName not in self.stepss:
-            raise RuntimeError(f"Unregistered workflow: '{workflowName}'.")
-        steps = self.stepss[workflowName]
-        
-        default_N_ref = 1.0e9 # use when actual N_ref for a step doesn't exist yet
-        now = datetime.now().astimezone()
-        start = self._workflowStartTime if bool(self._workflowStartTime) else now
-        elapsed = float((now - start).total_seconds())
-        
-        total = 0.0
-        for step in steps: == ordered dict? ==
-            N_ref = step.N_ref() == this only works if the *args are something simple, like `request` ==
-            if N_ref is None:
-                N_ref = default_N_ref
-            total += step.estimate.dt(step.details.order(N_ref)) == that is, maybe we don't have all to compute `N_ref` yet! ==
-        
-        remainder = total - elapsed
-        if remainder < 0.0:
-            remainder = 0.0
-        return remainder 
-    """
 
 # The singleton of `_ProgressRecorder`.
 ProgressRecorder = _ProgressRecorder.instance()

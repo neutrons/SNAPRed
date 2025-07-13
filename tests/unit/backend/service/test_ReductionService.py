@@ -1,31 +1,20 @@
 ## Python standard imports.
 
-##
-## In order to preserve the normal import order as much as possible,
-##    test-related imports go last.
-##
-import unittest
-import unittest.mock as mock
 from datetime import datetime, timedelta
+import inspect
 from pathlib import Path
 from typing import List
-
 import numpy as np
 import pydantic
-import pytest
 
 ## Mantid imports
 from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
-from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
-from util.helpers import arrayFromMask, createCompatibleMask, maskFromArray
-from util.InstaEats import InstaEats
-from util.SculleryBoy import SculleryBoy
-from util.state_helpers import reduction_root_redirect
 
 ## SNAPRed imports
+from snapred.backend.api.ProgressRecorder import ProgressRecorder
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import WorkspaceMetadata
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
@@ -48,7 +37,19 @@ from snapred.backend.service.ReductionService import ReductionService
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
-localMock = mock.Mock()
+##
+## In order to preserve the normal import order as much as possible,
+##    test-related imports go last.
+##
+import unittest
+import unittest.mock as mock
+import pytest
+
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
+from util.helpers import arrayFromMask, createCompatibleMask, maskFromArray
+from util.InstaEats import InstaEats
+from util.SculleryBoy import SculleryBoy
+from util.state_helpers import reduction_root_redirect
 
 
 thisService = "snapred.backend.service.ReductionService."
@@ -60,6 +61,13 @@ class TestReductionService(unittest.TestCase):
         cls.sculleryBoy = SculleryBoy()
         cls.instaEats = InstaEats()
         cls.localDataService = cls.instaEats.dataService
+        cls.progressRecorderMock = mock.patch.object(inspect.getmodule(ProgressRecorder), "ProgressRecorder")
+        # cls.progressRecorderMock.start()
+        
+    @classmethod
+    def tearDownClass(cls):
+        # cls.progressRecorderMock.stop()
+        pass
 
     def clearoutWorkspaces(self) -> None:
         # Delete the workspaces created by loading
