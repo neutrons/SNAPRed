@@ -108,14 +108,14 @@ How it works
 
 The ``local-mantid`` environment:
 
-- Excludes conda Mantid packages (``mantid``, ``mantidworkbench``, ``mantidqt``)
-- Sets environment variables to prioritize your local build:
+- **Uses the** ``mantid-developer`` **package directly** - This automatically includes all the same build tools, libraries, and dependencies that Mantid developers use, ensuring perfect compatibility and automatic updates when the mantid-developer environment changes
+- **Handles package conflicts via environment variables** - While ``mantid-developer`` installs conda versions of ``mantid``, ``mantidworkbench``, and ``mantidqt``, our environment variables ensure your local build takes precedence:
 
-  - ``PYTHONPATH``: Points to local Python interface
-  - ``LD_LIBRARY_PATH``: Points to local shared libraries
+  - ``PYTHONPATH``: Points to local Python interface first
+  - ``LD_LIBRARY_PATH``: Points to local shared libraries first
   - ``MANTIDPATH``: Points to local build directory
 
-- Includes all other SNAPRed dependencies (testing, development tools, etc.)
+This approach exactly mirrors the typical developer workflow of using the ``mantid-developer`` environment, but automatically stays in sync with any dependency changes made by the Mantid team.
 
 Troubleshooting
 ^^^^^^^^^^^^^^^

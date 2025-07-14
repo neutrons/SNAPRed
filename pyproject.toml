@@ -227,23 +227,21 @@ versioningit = "*"
 # Local Mantid Development Feature #
 # ------------------------------- #
 [tool.pixi.feature.local-mantid.dependencies]
-# Essential dependencies for SNAPRed without conda Mantid packages
-python = ">=3.10"
-pip = "*"
-pydantic = ">=2.7.3,<3"
-qtpy = "*"
-muparser = "=2.3.4"
-pycifrw = "*"
-pyqtwebengine = "*"
+# Use mantid-developer package to automatically get all required dependencies
+# This ensures we stay in sync with any changes to the mantid development environment
+mantid-developer = ">=6.12.20250630.858,<7"
+
+# Additional development dependencies for SNAPRed that may not be in mantid-developer
 git-lfs = "*"
-# Test dependencies
 pytest = "*"
 pytest-qt = "*"
 pytest-cov = "*"
-# Developer dependencies
-pre-commit = "*"
 ruff = "*"
 python-build = "*"
+
+# Note: mantid-developer will install mantid, mantidworkbench, mantidqt packages
+# However, our environment variables (PYTHONPATH, LD_LIBRARY_PATH) will ensure
+# the local Mantid build takes precedence over these conda packages
 
 # Environment variables for local Mantid build
 [tool.pixi.feature.local-mantid.activation.env]
