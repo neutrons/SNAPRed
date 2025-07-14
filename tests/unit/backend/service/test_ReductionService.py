@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import importlib
 import inspect
 from pathlib import Path
+from types import FunctionType
 from typing import List
 import numpy as np
 import pydantic
@@ -85,8 +86,6 @@ class TestReductionService(unittest.TestCase):
         self.dataFactoryService_groceryServiceMock.start()
         self.dataExportService_localDataServiceMock.start()
         
-        # instance.dataFactoryService.lookupService = cls.localDataService
-        # instance.dataExportService.dataService = cls.localDataService
         self.instance = self._initializeInstance()
         
         ## `ProgressRecorder` mocks: ##
@@ -356,6 +355,67 @@ class TestReductionService(unittest.TestCase):
             executionTime=executionTime,
         )
 
+    @mock.patch(thisService + "ReductionRecipe")
+    def test_reduction_profiling(self, mockReductionRecipe):
+        with (
+            # Enable the `ProgressRecorder`:
+            #  (see the additional comment about this below at `test_saveReduction_profiling`). 
+            Config_override("workflows_data.timing.enabled", True),
+            # Wrap the `ProgressRecorder` singleton so we can track its calls:
+            self.progressRecorderWrapperMock as mockProgressRecorder,
+            # The `WallClockTime`-decorator for `ReductionService.reduction` applied a reference to the 
+            #   _original_ version of `ReductionService._reduction_N_ref`, so we need to replace that
+            #   reference with a mock.  The following directly accesses the decorator's closure.
+            # TODO: Please come up with a more straightforward way to do this!
+            mock.patch.object(
+                self.instance.reduction.__func__.__closure__[1].cell_contents, "N_ref",
+                spec=FunctionType,
+                wraps=lambda *_args, **_kwargs: 4096.0) as mock_N_ref
+        ):
+            # Notes:
+            #  `ReductionService._reduction_N_ref` will be called by the `ProgressRecorder` methods:
+            #    as the `WallClockTime` decorator was applied at the time `ReductionService` was
+            #    originally imported, the step used by the `ProgressRecorder` contains a reference
+            #    to the original version of that method.
+            #  -- Mocking it out on `ReductionService` won't work, as its a reference to the original.
+            #  -- Mocking out the `WallClockTime` decorator itself, and then forcing an `importlib.reload(<reduction service module>)`
+            #     is another, seemingly more complicated alternative.
+            mock_N_ref.__code__.co_code = "N_REF_SOMETHING_TO_HASH".encode("utf8")
+            mock_N_ref.return_value = 4096.0
+            
+            mockReductionRecipe.return_value = mock.Mock()
+            mockResult = {
+                "result": True,
+                "outputs": ["one", "two", "three"],
+            }
+            mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
+            self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
+            self.instance.dataFactoryService.stateExists = mock.Mock(return_value=True)
+            self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
+            self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
+            self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
+            self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("state", None))
+            self.instance.groceryService._processNeutronDataCopy = mock.Mock()
+            self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
+            self.instance._markWorkspaceMetadata = mock.Mock()
+
+            result = self.instance.reduction(self.request)
+            groupings = self.instance.fetchReductionGroupings(self.request)
+            ingredients = self.instance.prepReductionIngredients(self.request)
+            groceries = self.instance.fetchReductionGroceries(self.request)
+            groceries["groupingWorkspaces"] = groupings["groupingWorkspaces"]
+            mockReductionRecipe.assert_called()
+            mockReductionRecipe.return_value.cook.assert_called_once_with(ingredients, groceries)
+            assert result.record.workspaceNames == mockReductionRecipe.return_value.cook.return_value["outputs"]
+            
+            assert mock_N_ref.call_count == 2
+            mock_N_ref.assert_called_with(
+                self.instance,
+                self.request
+            )
+            assert mockProgressRecorder.record.call_count == 5
+            assert mockProgressRecorder.stop.call_count == 5
+            
     def test_reduction_noState_withWritePerms(self):
         mockRequest = mock.Mock()
         self.instance.dataFactoryService.stateExists = mock.Mock(return_value=False)
@@ -493,7 +553,7 @@ class TestReductionService(unittest.TestCase):
                     N_ref=ReductionService._saveReduction_N_ref,
                     N_ref_args=((self.instance, request), {}),
                     order=ComputationalOrder.O_N,
-                    enableLogging=True
+                    enableLogging=False
                 )
                 mockProgressRecorder.stop.assert_called_once_with(stepKey)
 

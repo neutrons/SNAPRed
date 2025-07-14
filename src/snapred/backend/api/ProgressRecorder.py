@@ -509,7 +509,7 @@ class _ProgressRecorder(BaseModel):
         
         if not _ProgressRecorder.enabled:
             return None
-            
+           
         key = self.getStepKey(callerOverride=callerOverride, stepName=stepName)
         step = self.getStep(key, create=True)
         
@@ -565,7 +565,7 @@ class _ProgressRecorder(BaseModel):
         self._logTimeRemaining(step)
     
     def _logTimeRemaining(self, step: ProgressStep):
-        key = step.key
+        key = step.details.key
         loggableStepName = step.name
         if bool(key[-1]):
             # For explicitly-named steps, only include the full name
@@ -576,7 +576,7 @@ class _ProgressRecorder(BaseModel):
         remainder = self._stepTimeRemaining(step)
         if remainder is not None:
             if remainder > 0.0:
-                logger.log(Config["workflows_data.timing.logging.loglevel"], f"{loggableStepName} -- estimated completion in {dt} seconds.")
+                logger.log(Config["workflows_data.timing.logging.loglevel"], f"{loggableStepName} -- estimated completion in {remainder} seconds.")
             else:
                 logger.warning(f"{loggableStepName} -- completion is taking longer than expected.")                
         else:
