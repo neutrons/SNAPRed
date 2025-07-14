@@ -3920,3 +3920,40 @@ class TestGroceryService(unittest.TestCase):
             assert instance.grocer.executeRecipe.call_args[0][0] == str(
                 self.instance._createNeutronFilePath(item.runNumber, False)
             )
+
+    def test_validateWorkspaceInstrument(self):
+        with mock.patch.object(self.instance, "mantidSnapper") as mockSnapper:
+            mockWorkspace = mock.Mock()
+            mockWorkspace.getInstrument = mock.Mock(return_value=mock.Mock())
+            mockWorkspace.getInstrument().getName = mock.Mock(return_value="SNAP")
+            mockWorkspace.getNumberHistograms = mock.Mock(return_value=Config["instrument.native.pixelResolution"])
+            mockSnapper.mtd.__getitem__ = mock.Mock(return_value=mockWorkspace)
+
+            item = GroceryListItem(workspaceType="neutron", runNumber="123", useLiteMode=False, loader="")
+            self.instance._validateWorkspaceInstrument(item, "wsName")
+
+            mockWorkspace.getNumberHistograms.return_value = Config["instrument.lite.pixelResolution"]
+            with pytest.raises(RuntimeError, match=f"Expected {Config['instrument.native.pixelResolution']} spectra."):
+                self.instance._validateWorkspaceInstrument(item, "wsName")
+
+            mockWorkspace.getNumberHistograms.return_value = Config["instrument.native.pixelResolution"]
+            item = GroceryListItem(workspaceType="neutron", runNumber="123", useLiteMode=True, loader="")
+
+            with pytest.raises(
+                RuntimeError,
+                match=f"Expected {Config['instrument.lite.pixelResolution']} spectra for the lite resolution.",
+            ):
+                self.instance._validateWorkspaceInstrument(item, "wsName")
+
+            item = GroceryListItem(workspaceType="neutron", runNumber="123", useLiteMode=False, loader="")
+            mockWorkspace.getInstrument().getName.return_value = "SNAPlite"
+
+            with pytest.raises(RuntimeError, match="Expected instrument to be snap for the native resolution."):
+                self.instance._validateWorkspaceInstrument(item, "wsName")
+
+            item = GroceryListItem(workspaceType="neutron", runNumber="123", useLiteMode=True, loader="")
+            mockWorkspace.getInstrument().getName.return_value = "SNAP"
+            mockWorkspace.getNumberHistograms.return_value = Config["instrument.lite.pixelResolution"]
+
+            with pytest.raises(RuntimeError, match="Expected instrument to be snaplite for the lite resolution."):
+                self.instance._validateWorkspaceInstrument(item, "wsName")

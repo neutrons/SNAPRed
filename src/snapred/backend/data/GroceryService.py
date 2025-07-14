@@ -1174,24 +1174,21 @@ class GroceryService:
         targetInstrumentName = (
             Config["instrument.lite.name"].lower() if item.useLiteMode else Config["instrument.native.name"].lower()
         )
-        otherInstrumentName = (
-            Config["instrument.native.name"].lower() if item.useLiteMode else Config["instrument.lite.name"].lower()
-        )
-        liteStr = "lite" if item.useLiteMode else "native"
+        resolutionName = "lite" if item.useLiteMode else "native"
         ws = self.mantidSnapper.mtd[workspaceName]
         numHistos = ws.getNumberHistograms()
         instrumentName = ws.getInstrument().getName().lower()
         if numHistos != targetPixelCount:
             raise RuntimeError(
                 f"Workspace '{workspaceName}' has {numHistos} histograms"
-                f"\nExpected {targetPixelCount} histograms for the {liteStr} resolution."
+                f"\nExpected {targetPixelCount} spectra for the {resolutionName} resolution."
                 f"\ni.e. one histogram per pixel of the instrument."
                 f"\nPlease contact your IS or CIS for assistance."
             )
-        if targetInstrumentName not in instrumentName and otherInstrumentName in instrumentName:
+        if targetInstrumentName != instrumentName:
             raise RuntimeError(
                 f"Workspace '{workspaceName}' has an instrument with name '{instrumentName}'"
-                f"\nExpected {targetInstrumentName} for the {liteStr} resolution."
+                f"\nExpected instrument to be {targetInstrumentName} for the {resolutionName} resolution."
                 f"\nPlease contact your IS or CIS for assistance."
             )
 
