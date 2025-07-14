@@ -1156,15 +1156,6 @@ class GroceryService:
                 "All 'difc' values must be positive floats."
             )
 
-    def validateInstrument(self, workspace: str) -> None:
-        ws = self.getWorkspaceForName(workspace)
-        instName = ws.getInstrument().getName().lower()
-        if ws.getNumberHistograms() == Config["instrument.lite.pixelResolution"] and "snaplite" not in instName:
-            raise RuntimeError(
-                f"Workspace {workspace} does not have the expected number of histograms for the instrument: "
-                f"{Config['instrument.lite.pixelResolution']}, but has {ws.getNumberHistograms()}"
-            )
-
     def _validateWorkspaceInstrument(self, item: GroceryListItem, workspaceName: str):
         targetPixelCount = (
             Config["instrument.lite.pixelResolution"]
