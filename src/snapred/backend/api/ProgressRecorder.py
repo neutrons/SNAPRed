@@ -95,7 +95,10 @@ class _Step(BaseModel):
         #   retains the hash digest of the `N_ref`-callable, but not the callable itself.
         N_ref_hash_ = _Step._callable_hash(N_ref)
         if N_ref_hash is not None and N_ref_hash_ != N_ref_hash:
-            logger.warning(f"`N_ref` for step {key} has been modified.")
+            logger.warning(
+                f"`N_ref` for step {key} has been modified from that used in previously-saved data.\n"
+                + "  In this case, usually the previous timing measurements for the step should be discarded."
+            )
         
         super().__init__(
             key=key,
@@ -421,9 +424,13 @@ class _ProgressRecorder(BaseModel):
         return (module_name, qualified_name)
 
     @classmethod
-    def isLoggingEnabledForStep(cls, wrappedFunc: FunctionType):
+    def isLoggingEnabledForStep(cls, key: Tuple[str, ...]) -> bool:
+        # Determine whether or not to log a step, based on the qualified name of its scope.
         _pattern = re.compile(Config["workflows_data.timing.logging.qualname_regex"])
-        return bool(_pattern.match(wrappedFunc.__qualname__))
+        
+        # key components: (<module name>, <fully-qualified scope name>, <explicit step name>)
+        qualifiedName = key[-2]
+        return bool(_pattern.match(qualifiedName))
 
     @classmethod
     def getStepKey(cls, *, callerOverride: MethodType | FunctionType=None, stepName=None) -> Tuple[str | None, ...]:
@@ -505,16 +512,16 @@ class _ProgressRecorder(BaseModel):
             
         key = self.getStepKey(callerOverride=callerOverride, stepName=stepName)
         step = self.getStep(key, create=True)
+        
+        # Logging is either enabled by explicit request,
+        #   or is enabled depending on the specifics of the scope of the step's key.
+        enableLogging |= ProgressRecorder.isLoggingEnabledForStep(key)       
+        
         step.setDetails(N_ref=N_ref, N_ref_args=N_ref_args, order=order, enableLogging=enableLogging)
         step.start()
         
         if step.loggingEnabled:
-            N_ref_ = step.details.N_ref()
-            if N_ref_ is not None:
-                dt = step.estimate.dt(step.details.order(N_ref_))
-                logger.log(Config["workflows_data.timing.logging.loglevel"], f"running {step.name} -- estimated completion in {dt} seconds.")
-            else:
-                logger.log(Config["workflows_data.timing.logging.loglevel"], f"running {step.name} -- <no timing data is available>.")
+            self._logTimeRemaining(step)
         
         # Return the key
         return key
@@ -546,28 +553,52 @@ class _ProgressRecorder(BaseModel):
                     self.currentStep.measurements = self.currentStep.measurements[-max_measurements:]
 
                 # If necessary, update the estimate for the step.
-                estimated_dt = step.estimate.dt(step.details.order(N_ref))
-                if abs(estimated_dt - elapsed) / elapsed > Config["workflows_data.timing.update_threshold"]:
-                    step.estimate.update(step.measurements, step.details.order)
-            
-    def stepTimeRemaining(self, key: Tuple[str | None, ...]) -> float:
+                if len(step.measurements) >= Config["workflows_data.timing.update_minimum_count"]:
+                    # Enough data points are available to perform an update.
+                    estimated_dt = step.estimate.dt(step.details.order(N_ref))
+                    if abs(estimated_dt - elapsed) / elapsed > Config["workflows_data.timing.update_threshold"]:
+                        # The relative error from the current estimate is greater than the threshold.
+                        step.estimate.update(step.measurements, step.details.order)
+
+    def logTimeRemaining(self, key: Tuple[str | None, ...]):
+        step = self.getStep(key)
+        self._logTimeRemaining(step)
+    
+    def _logTimeRemaining(self, step: ProgressStep):
+        key = step.key
+        loggableStepName = step.name
+        if bool(key[-1]):
+            # For explicitly-named steps, only include the full name
+            #   when there is no step for the _parent_ scope.
+            parentKey = key[:-1] + (None,)
+            if parentKey in self.steps:
+                loggableStepName = f"  ..  {key[-1]}"
+        remainder = self._stepTimeRemaining(step)
+        if remainder is not None:
+            if remainder > 0.0:
+                logger.log(Config["workflows_data.timing.logging.loglevel"], f"{loggableStepName} -- estimated completion in {dt} seconds.")
+            else:
+                logger.warning(f"{loggableStepName} -- completion is taking longer than expected.")                
+        else:
+            logger.log(Config["workflows_data.timing.logging.loglevel"], f"{loggableStepName} -- <no timing data is available>.")
+    
+    def stepTimeRemaining(self, key: Tuple[str | None, ...]) -> float | None:
         # Estimate the time remaining for the specified step,
         # or return `None` if not enough data is available yet to create an estimate,
-        
-        if not _ProgressRecorder.enabled:
-            return None
-        
         step = self.getStep(key)
-
-        elapsed = float((step.startTime - datetime.now(timezone.utc)).total_seconds())        
+        return self._stepTimeRemaining(step)
+    
+    @classmethod
+    def _stepTimeRemaining(cls, step: ProgressStep) -> float | None:
+        elapsed = float((datetime.now(timezone.utc) - step.startTime).total_seconds())        
         N_ref = step.details.N_ref()
         remainder = None
         if N_ref is not None:
             remainder = step.estimate.dt(step.details.order(N_ref)) - elapsed
             if remainder < 0.0:
                 remainder = 0.0
-        return remainder
-
+        return remainder          
+    
     @field_validator("steps", mode="before")
     @classmethod
     def _validate_steps(cls, value: Any):
@@ -577,7 +608,7 @@ class _ProgressRecorder(BaseModel):
         
     @field_serializer("steps")
     def _serialize_steps(self, steps: Dict[Tuple[str, ...], ProgressStep], _info) -> List[ProgressStep]:
-        # By default `Tuple[str, ...]` keys dont' work well in JSON.
+        # By default `Tuple[str, ...]` keys don't serialize correctly to JSON.
         return list(self.steps.values())
     
 # The singleton of `_ProgressRecorder`.
@@ -622,8 +653,9 @@ class WallClockTime():
         
     def __call__(self, decoratee: type | FunctionType ) -> type | FunctionType:
         # Apply as a decorator       
-        if not _ProgressRecorder.enabled:
-            return decoratee
+        
+        # Important: whether or not this decorator is applied should not depend on `_ProgressRecorder.enabled`,
+        #   otherwise it unnecessarily complicates any `Config` reload!
         
         if bool(self.stepName):
             raise RuntimeError(
@@ -646,10 +678,6 @@ class WallClockTime():
             #  `args`, and `kwargs` to be available
             #     to the `N_ref` used by the progress-reporting step.
             
-            # Logging is either enabled explicitly,
-            #   or is enabled depending on the specifics of the fully-qualified name of the function.
-            enableLogging = self._enableLogging or ProgressRecorder.isLoggingEnabledForStep(func)
-            
             try:
                 if self._stepKey is not None:
                     raise RuntimeError(
@@ -660,7 +688,7 @@ class WallClockTime():
                     N_ref=self.N_ref,
                     N_ref_args=(args, kwargs),
                     order=self.order,
-                    enableLogging=enableLogging
+                    enableLogging=self._enableLogging
                 )
                 result = func(*args, **kwargs)
             finally:
@@ -691,6 +719,7 @@ class WallClockTime():
             raise RuntimeError(
                       "Usage error: `WallClockTime` as context manager cannot be nested or re-used."
                   )
+        
         self._stepKey = ProgressRecorder.record(
             stepName=self.stepName,
             N_ref=self.N_ref,

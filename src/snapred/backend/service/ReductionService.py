@@ -557,7 +557,7 @@ class ReductionService(Service):
         )
         self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
 
-    def _reduction_save_N_ref(self, request: ReductionExportRequest) -> float:
+    def _saveReduction_N_ref(self, request: ReductionExportRequest) -> float:
         # Execution-time scaling for the "reduction/save" method.
         dataSize = 0.0
         try:
@@ -572,7 +572,7 @@ class ReductionService(Service):
         # return `None` if `N_ref` cannot be calculated!
         return dataSize
     
-    @WallClockTime(N_ref=_reduction_save_N_ref, order=ComputationalOrder.O_N)    
+    @WallClockTime(N_ref=_saveReduction_N_ref, order=ComputationalOrder.O_N)    
     @Register("save")
     def saveReduction(self, request: ReductionExportRequest):
         self.dataExportService.exportReductionRecord(request.record)
@@ -672,7 +672,7 @@ class ReductionService(Service):
         )
         return artificialNormWorkspace
 
-    def _reduction_artificial_norm_N_ref(self, request: ReductionRequest):
+    def _artificialNorm_N_ref(self, request: ReductionRequest):
         # Execution-time scaling for the "grabWorkspaceForArtificialNorm" method.
         # (Note: timing details for the `ArtificialNormalizationRecipe` itself is registered at that recipe.)
         N_ref = None
@@ -683,7 +683,7 @@ class ReductionService(Service):
         # return `None` if `N_ref` cannot be calculated!
         return N_ref
 
-    @WallClockTime(N_ref=_reduction_artificial_norm_N_ref, order=ComputationalOrder.O_N)    
+    @WallClockTime(N_ref=_artificialNorm_N_ref, order=ComputationalOrder.O_N)    
     @Register("grabWorkspaceforArtificialNorm")
     def grabWorkspaceforArtificialNorm(self, request: ReductionRequest):
         # TODO: REBASE NOTE:

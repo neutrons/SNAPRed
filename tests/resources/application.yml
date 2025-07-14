@@ -339,6 +339,7 @@ metadata:
 
 workflows_data:
   timing:
+    # Enable the `ProgressRecorder`.
     enabled: false
     
     max_files: 5
@@ -349,6 +350,8 @@ workflows_data:
     
     # update estimates if off by 20%
     update_threshold: 0.2
+    # update only when sufficient data points are available
+    update_minimum_count: 5
     
     # logging of execution-time information:
     logging:

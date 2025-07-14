@@ -16,7 +16,7 @@ from mantid.simpleapi import (
 )
 
 ## SNAPRed imports
-from snapred.backend.api.ProgressRecorder import ProgressRecorder
+from snapred.backend.api.ProgressRecorder import ComputationalOrder, ProgressRecorder
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import WorkspaceMetadata
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
@@ -32,6 +32,8 @@ from snapred.backend.dao.request.ReductionRequest import Versions
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.FocusGroup import FocusGroup
+from snapred.backend.data.DataFactoryService import DataFactoryService
+from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
@@ -70,17 +72,35 @@ class TestReductionService(unittest.TestCase):
         pass
 
     def setUp(self):
+        ## Mock `LocalDataService` and `GroceryService` as used by `DataFactoryService` and `DataExportService` singletons:
+        dataFactoryService = DataFactoryService()
+        dataExportService = DataExportService()
+        self.dataFactoryService_localDataServiceMock\
+            = mock.patch.object(dataFactoryService, "lookupService", self.localDataService)
+        self.dataFactoryService_groceryServiceMock\
+            = mock.patch.object(dataFactoryService, "groceryService", self.instaEats)
+        self.dataExportService_localDataServiceMock\
+            = mock.patch.object(dataExportService, "dataService", self.localDataService)
+        self.dataFactoryService_localDataServiceMock.start()
+        self.dataFactoryService_groceryServiceMock.start()
+        self.dataExportService_localDataServiceMock.start()
+        
+        # instance.dataFactoryService.lookupService = cls.localDataService
+        # instance.dataExportService.dataService = cls.localDataService
         self.instance = self._initializeInstance()
         
-        ## Allow the `ProgressRecorder` to optionally be bypassed, or to be wrapped.
+        ## `ProgressRecorder` mocks: ##
+        #      Notes:
+        #        -- At this time, almost certainly the `ProgressRecorder` module has already been imported.
+        #           The fact that it is _disabled_ for the test environment means that any persistent data will not
+        #           have been loaded, and it will be "empty".
+        #        -- Any mock that changes the state of `ProgressRecorder.enabled` needs to be applied correctly --
+        #           it is _very_ important during testing, that at the time of application exit, the `ProgressRecorder`
+        #           in the _disabled_ state -- otherwise, it will attempt to automatically unload its persistent data.
         progressRecorderModule = inspect.getmodule(ProgressRecorder)
-        
-        # .. Apply to all tests: mock the `ProgressRecorder.LocalDataService` so progress data is not read or saved.
-        self.progressRecorderDataServiceMock = mock.patch.object(progressRecorderModule, "LocalDataService", return_value=self.localDataService)
-        self.progressRecorderDataServiceMock.start()
-        
-        # .. Apply to specific tests => e.g., use as a context manager:
+        # .. this mock entirely bypasses the `ProgressRecorder` function:
         self.progressRecorderMock = mock.patch.object(progressRecorderModule, "ProgressRecorder")
+        # .. this mock allows the `ProgressRecorder` to function normally, while tracking all of its calls:
         self.progressRecorderWrapperMock = mock.patch.object(progressRecorderModule, "ProgressRecorder", wraps=progressRecorderModule.ProgressRecorder)
         
         self.request = ReductionRequest(
@@ -97,8 +117,10 @@ class TestReductionService(unittest.TestCase):
 
     def tearDown(self) -> None:
         # Stop mocks applied to all tests
-        self.progressRecorderDataServiceMock.stop()
-        
+        self.dataFactoryService_localDataServiceMock.stop()
+        self.dataFactoryService_groceryServiceMock.stop()
+        self.dataExportService_localDataServiceMock.stop()
+                
         # At the end of each test, clear out the workspaces
         self.clearoutWorkspaces()
         return super().tearDown()
@@ -119,9 +141,9 @@ class TestReductionService(unittest.TestCase):
         ## Mock out the assistant services
         instance.sousChef = cls.sculleryBoy
         instance.groceryService = cls.instaEats
-        instance.dataFactoryService.lookupService = cls.localDataService
-        instance.dataExportService.dataService = cls.localDataService
         
+        # `LocalDataService` as used by `DataFactoryService` and `DataExportService` is
+        #    mocked out in `setUp`, not here.        
         return instance
      
     
@@ -429,45 +451,51 @@ class TestReductionService(unittest.TestCase):
     
     def test_saveReduction_profiling(self):
         with (
-            # 1) Enable the `ProgressRecorder`: this changes the state of the <classproperty> `enabled`, but
+            # Enable the `ProgressRecorder`: this changes the state of the <classproperty> `enabled`, but
             #   should not regenerate the instance.  This is what we want, because we do not want to read
             #   the persistent data from whatever's in "~/.snapred/workflows_data/timing/...".
             Config_override("workflows_data.timing.enabled", True),
-            # 2) Reload `ReductionService` so that the `WallClockTime` decorators will be applied under the new `Config` settings:
-            mock.patch.dict(sys.modules, {"snapred.backend.service.ReductionService": importlib.reload(inspect.getmodule(ReductionService))}),
-            # 3) Replace the `ReductionService` reference used by this current test module:
-            mock.patch.object(sys.modules[__name__], "ReductionService", inspect.getmodule(ReductionService).ReductionService)
+            #
+            # Wrap the `ProgressRecorder` singleton so we can track its calls:
+            self.progressRecorderWrapperMock as mockProgressRecorder,
+            #
+            mock.patch.object(self.instance.dataExportService, "exportReductionRecord") as mockExportRecord,
+            mock.patch.object(self.instance.dataExportService, "exportReductionData") as mockExportData,
+            mock.patch.object(self.instance.mantidSnapper, "_mtd") as mockMtd,
         ):
-            # Initialize an instance of `ReductionService` using the newly `WallClockTime`-decorated methods.
-            instance = self._initializeInstance()
-            with (
-                mock.patch.object(instance.dataExportService, "exportReductionRecord") as mockExportRecord,
-                mock.patch.object(instance.dataExportService, "exportReductionData") as mockExportData,
-                mock.patch.object(instance.mantidSnapper, "_mtd") as mockMtd,
-                self.progressRecorderWrapperMock as mockProgressRecorder,
-            ):
-                mockWs = mock.Mock(
-                    getMemorySize=mock.Mock(return_value=4096)
-                )
-                mockMtd.__getitem__ = mock.Mock(return_value=mockWs)
-                mockMtd.doesExist = mock.Mock(return_value=True)
+            # `ReductionService._reduction_save_N_ref` will be called by the `ProgressRecorder` methods:
+            #   `<workspace>.getMemorySize` will be called for each workspace in `<reduction record>.workspaceNames`.
+            mockWs = mock.Mock(
+                getMemorySize=mock.Mock(return_value=4096)
+            )
+            mockMtd.__getitem__ = mock.Mock(return_value=mockWs)
+            mockMtd.doesExist = mock.Mock(return_value=True)
 
-                runNumber = "123456"
-                useLiteMode = True
-                timestamp = self.instance.getUniqueTimestamp()
-                record = ReductionRecord.model_construct(
-                    runNumber=runNumber,
-                    useLiteMode=useLiteMode,
-                    timestamp=timestamp,
-                    workspaceNames=["one", "two", "three"]
+            runNumber = "123456"
+            useLiteMode = True
+            timestamp = self.instance.getUniqueTimestamp()
+            record = ReductionRecord.model_construct(
+                runNumber=runNumber,
+                useLiteMode=useLiteMode,
+                timestamp=timestamp,
+                workspaceNames=["one", "two", "three"]
+            )
+            request = ReductionExportRequest(record=record)
+            stepKey = ("snapred.backend.service.ReductionService", "ReductionService.saveReduction", None)
+            with reduction_root_redirect(self.localDataService):
+                self.instance.saveReduction(request)
+                mockExportRecord.assert_called_once_with(record)
+                mockExportData.assert_called_once_with(record)
+                mockProgressRecorder.record.assert_called_once_with(
+                    # The decorator wrapper function calls `record` with the unwrapped
+                    #   `Reduction.saveReduction`.
+                    callerOverride=ReductionService.saveReduction.__wrapped__,
+                    N_ref=ReductionService._saveReduction_N_ref,
+                    N_ref_args=((self.instance, request), {}),
+                    order=ComputationalOrder.O_N,
+                    enableLogging=True
                 )
-                request = ReductionExportRequest(record=record)
-                with reduction_root_redirect(self.localDataService):
-                    instance.saveReduction(request)
-                    mockExportRecord.assert_called_once_with(record)
-                    mockExportData.assert_called_once_with(record)
-                    mockProgressRecorder.record.assert_called_once()
-                    mockProgressRecorder.stop.assert_called_once()
+                mockProgressRecorder.stop.assert_called_once_with(stepKey)
 
     def test_loadReduction(self):
         ## this makes codecov happy
