@@ -2809,7 +2809,10 @@ class TestGroceryService(unittest.TestCase):
             # fetch the workspace
             assert not mtd.doesExist(diffCalTableName)
 
-            with Config_override("instrument.native.pixelResolution", 16):
+            with (
+                Config_override("instrument.native.pixelResolution", 16),
+                Config_override("instrument.native.name", "fakesnap"),
+            ):
                 items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalTableName
             assert mtd.doesExist(diffCalTableName)
@@ -2829,7 +2832,7 @@ class TestGroceryService(unittest.TestCase):
             mockWs.getNumberHistograms.return_value = 1337
             with pytest.raises(
                 RuntimeError,
-                match="Expected 16 histograms for the native resolution.",
+                match="Expected 16 spectra for the native resolution.",
             ):
                 self.instance._validateWorkspaceInstrument(item, "someMask")
 
@@ -2929,7 +2932,10 @@ class TestGroceryService(unittest.TestCase):
             )
             assert mtd.doesExist(diffCalTableName)
             assert not mtd.doesExist(diffCalMaskName)
-            with Config_override("instrument.native.pixelResolution", 16):
+            with (
+                Config_override("instrument.native.pixelResolution", 16),
+                Config_override("instrument.native.name", "fakesnap"),
+            ):
                 wss = self.instance.fetchGroceryList(groceryList)  # noqa: F841
             assert mtd.doesExist(diffCalTableName)
             assert mtd.doesExist(diffCalMaskName)
@@ -2957,7 +2963,10 @@ class TestGroceryService(unittest.TestCase):
 
             assert not mtd.doesExist(diffCalTableName)
             assert not mtd.doesExist(diffCalMaskName)
-            with Config_override("instrument.native.pixelResolution", 16):
+            with (
+                Config_override("instrument.native.pixelResolution", 16),
+                Config_override("instrument.native.name", "fakesnap"),
+            ):
                 items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalTableName
             assert mtd.doesExist(diffCalTableName)
@@ -2986,7 +2995,10 @@ class TestGroceryService(unittest.TestCase):
 
             assert not mtd.doesExist(diffCalMaskName)
             self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-            with Config_override("instrument.native.pixelResolution", 16):
+            with (
+                Config_override("instrument.native.pixelResolution", 16),
+                Config_override("instrument.native.name", "fakesnap"),
+            ):
                 items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
@@ -3062,7 +3074,10 @@ class TestGroceryService(unittest.TestCase):
 
             assert not mtd.doesExist(diffCalMaskName)
             assert not mtd.doesExist(diffCalTableName)
-            with Config_override("instrument.native.pixelResolution", 16):
+            with (
+                Config_override("instrument.native.pixelResolution", 16),
+                Config_override("instrument.native.name", "fakesnap"),
+            ):
                 items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
