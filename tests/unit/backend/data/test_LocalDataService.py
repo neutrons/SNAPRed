@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timedelta
 import functools
 import importlib
 import logging
@@ -161,8 +161,8 @@ def mockNeXusLogsMapping(detectorState: DetectorState) -> mock.Mock:
 
     dict_ = {
         "run_number": "123456",
-        "start_time": datetime.datetime.fromisoformat("2023-06-14T14:06:40.429048"),
-        "end_time": datetime.datetime.fromisoformat("2023-06-14T14:07:56.123123"),
+        "start_time": datetime.fromisoformat("2023-06-14T14:06:40.429048"),
+        "end_time": datetime.fromisoformat("2023-06-14T14:07:56.123123"),
         "proton_charge": 1000.0,
         "BL3:Chop:Skf1:WavelengthUserReq": [detectorState.wav],
         "det_arc1": [detectorState.arc[0]],
@@ -2631,14 +2631,14 @@ def test_readDetectorState():
 
 @mock.patch(ThisService + "MantidSnapper")
 def test__readLiveData(mockSnapper):
-    now_ = datetime.datetime.utcnow()
+    now_ = datetime.utcnow()
     duration = 42
     # 42 seconds ago
-    now_minus_42 = now_ + datetime.timedelta(seconds=-duration)
+    now_minus_42 = now_ + timedelta(seconds=-duration)
     expectedStartTime = now_minus_42.isoformat()
     testWs = "testWs"
 
-    with mock.patch(ThisService + "datetime.datetime", wraps=datetime.datetime) as mockDatetime:
+    with mock.patch(ThisService + "datetime", wraps=datetime) as mockDatetime:
         mockDatetime.utcnow.return_value = now_
 
         instance = LocalDataService()

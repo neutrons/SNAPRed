@@ -306,7 +306,7 @@ class TestGroceryService(unittest.TestCase):
     def test_nexus_filename(self):
         """Test the creation of the nexus filename"""
         for useLiteMode in (False, True):
-            self.instance._createNeutronFilePath(self.runNumber, useLiteMode)
+            self.instance.createNeutronFilePath(self.runNumber, useLiteMode)
             self.instance.dataService.createNeutronFilePath.assert_called_once_with(self.runNumber, useLiteMode)
             self.instance.dataService.createNeutronFilePath.reset_mock()
 
@@ -904,10 +904,10 @@ class TestGroceryService(unittest.TestCase):
         )
         self.instance.mantidSnapper.mtd = mtd
 
-        # mock out _createNeutronFilePath so that only a native version exists on disk
+        # mock out createNeutronFilePath so that only a native version exists on disk
         nonExistentPath = Path("does/not/exist.nxs")
         assert not nonExistentPath.exists()
-        self.instance._createNeutronFilePath = mock.Mock(
+        self.instance.createNeutronFilePath = mock.Mock(
             side_effect=lambda _runNumber, useLiteMode: Path(self.sampleWSFilePath)
             if not useLiteMode
             else nonExistentPath
@@ -1006,7 +1006,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_fetch_cached_native(self):
         """Test the correct behavior when fetching nexus data"""
-        self.instance._createNeutronFilePath = mock.Mock()
+        self.instance.createNeutronFilePath = mock.Mock()
         self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
         self.instance.mantidSnapper = mock.MagicMock()
         self.instance.mantidSnapper.CloneWorkspace = mock.MagicMock(
@@ -1052,8 +1052,8 @@ class TestGroceryService(unittest.TestCase):
         assert len(self.instance._loadedRuns) == 0
 
         # run with nothing in cache and bad filename -- it will fail
-        self.instance._createNeutronFilePath = mock.Mock(return_value=Path("not/a/real/file.txt"))
-        assert not self.instance._createNeutronFilePath.return_value.exists()
+        self.instance.createNeutronFilePath = mock.Mock(return_value=Path("not/a/real/file.txt"))
+        assert not self.instance.createNeutronFilePath.return_value.exists()
         with pytest.raises(
             RuntimeError, match=r".*is not present on disk, and no live-data connection is available.*"
         ) as e:
@@ -1061,7 +1061,7 @@ class TestGroceryService(unittest.TestCase):
         assert self.runNumber in str(e.value)
 
         # mock filename to point at test file
-        self.instance._createNeutronFilePath.return_value = Path(self.sampleWSFilePath)
+        self.instance.createNeutronFilePath.return_value = Path(self.sampleWSFilePath)
 
         # run with nothing loaded -- it will find the file and load it
         res = self.instance.fetchNeutronDataCached(testItem)
@@ -1106,7 +1106,7 @@ class TestGroceryService(unittest.TestCase):
         This tests cases of using native-resolution data and auto-reducing.
         """
         self.instance.convertToLiteMode = mock.Mock()
-        self.instance._createNeutronFilePath = mock.Mock()
+        self.instance.createNeutronFilePath = mock.Mock()
         self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
         self.instance.mantidSnapper = mock.MagicMock()
         self.instance.mantidSnapper.CloneWorkspace = mock.MagicMock(
@@ -1176,8 +1176,8 @@ class TestGroceryService(unittest.TestCase):
         # test that trying to load data from a fake file fails
         # will reach the final "else" statement
         fakeFilePath = Path("not/a/real/file.txt")
-        self.instance._createNeutronFilePath.return_value = fakeFilePath
-        assert not self.instance._createNeutronFilePath.return_value.exists()
+        self.instance.createNeutronFilePath.return_value = fakeFilePath
+        assert not self.instance.createNeutronFilePath.return_value.exists()
         with pytest.raises(
             RuntimeError, match=r".*is not present on disk, and no live-data connection is available.*"
         ) as e:
@@ -1185,12 +1185,12 @@ class TestGroceryService(unittest.TestCase):
         assert self.runNumber in str(e.value)
 
         # mock filename -- create situation where Lite file does not exist, native does
-        self.instance._createNeutronFilePath.side_effect = [
+        self.instance.createNeutronFilePath.side_effect = [
             fakeFilePath,  # called in the assert below
             fakeFilePath,  # called when testing for Lite on disk
             Path(self.sampleWSFilePath),  # called when testing for native on disk
         ]
-        assert not self.instance._createNeutronFilePath(testItem.runNumber, testItem.useLiteMode).exists()
+        assert not self.instance.createNeutronFilePath(testItem.runNumber, testItem.useLiteMode).exists()
 
         # there is no lite file and nothing cached
         # load native resolution from file, then clone/reduce the native data
@@ -1207,7 +1207,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance.convertToLiteMode.reset_mock()
 
         # clear out the Lite workspaces from ADS and the cache
-        self.instance._createNeutronFilePath.side_effect = [fakeFilePath, Path(self.sampleWSFilePath)]
+        self.instance.createNeutronFilePath.side_effect = [fakeFilePath, Path(self.sampleWSFilePath)]
         for ws in [workspaceNameLiteRaw, workspaceNameLiteCopy1]:
             DeleteWorkspace(ws)
             assert not mtd.doesExist(ws)
@@ -1268,7 +1268,7 @@ class TestGroceryService(unittest.TestCase):
                     with (
                         mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
                         mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,
-                        mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                        mock.patch.object(instance, "createNeutronFilePath") as mockCreateNeutronFilePath,
                         mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
                         mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
                         mock.patch.object(
@@ -1450,7 +1450,7 @@ class TestGroceryService(unittest.TestCase):
             with (
                 mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
                 mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
-                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "createNeutronFilePath") as mockCreateNeutronFilePath,
                 mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
                 mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
                 mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
@@ -1581,7 +1581,7 @@ class TestGroceryService(unittest.TestCase):
             with (
                 mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
                 mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
-                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "createNeutronFilePath") as mockCreateNeutronFilePath,
                 mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
                 mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
                 mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
@@ -1705,7 +1705,7 @@ class TestGroceryService(unittest.TestCase):
             with (
                 mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
                 mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
-                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "createNeutronFilePath") as mockCreateNeutronFilePath,
                 mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
                 mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
                 mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
@@ -1824,7 +1824,7 @@ class TestGroceryService(unittest.TestCase):
             with (
                 mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
                 mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
-                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "createNeutronFilePath") as mockCreateNeutronFilePath,
                 mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
                 mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
                 mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
@@ -1953,7 +1953,7 @@ class TestGroceryService(unittest.TestCase):
                     with (
                         mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
                         mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,
-                        mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                        mock.patch.object(instance, "createNeutronFilePath") as mockCreateNeutronFilePath,
                         mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
                         mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
                         mock.patch.object(
@@ -2140,7 +2140,7 @@ class TestGroceryService(unittest.TestCase):
             with (
                 mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
                 mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
-                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "createNeutronFilePath") as mockCreateNeutronFilePath,
                 mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
                 mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
                 mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
@@ -2277,7 +2277,7 @@ class TestGroceryService(unittest.TestCase):
             with (
                 mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
                 mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
-                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "createNeutronFilePath") as mockCreateNeutronFilePath,
                 mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
                 mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
                 mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
@@ -2401,7 +2401,7 @@ class TestGroceryService(unittest.TestCase):
             with (
                 mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
                 mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
-                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "createNeutronFilePath") as mockCreateNeutronFilePath,
                 mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
                 mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
                 mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
@@ -2529,7 +2529,7 @@ class TestGroceryService(unittest.TestCase):
             with (
                 mock.patch.object(instance, "_updateNeutronCacheFromADS") as mockUpdateNeutronCache,
                 mock.patch.dict(instance._loadedRuns, clear=True) as mockRunsCache,  # noqa: F841
-                mock.patch.object(instance, "_createNeutronFilePath") as mockCreateNeutronFilePath,
+                mock.patch.object(instance, "createNeutronFilePath") as mockCreateNeutronFilePath,
                 mock.patch.object(instance, "grocer") as mockFetchGroceriesRecipe,
                 mock.patch.object(instance, "_createNeutronWorkspaceName") as mockCreateNeutronWorkspaceName,
                 mock.patch.object(instance, "_createRawNeutronWorkspaceName") as mockCreateRawNeutronWorkspaceName,
@@ -3885,10 +3885,10 @@ class TestGroceryService(unittest.TestCase):
         instance.dataService.generateInstrumentState = mock.Mock(
             return_value=DAOFactory.calibrationParameters().instrumentState
         )
-        instance._createNeutronFilePath = mock.Mock(return_value="neutron")
+        instance.createNeutronFilePath = mock.Mock(return_value="neutron")
         with (
             mock.patch.object(instance, "_createMonitorWorkspaceName", wraps=instance._createMonitorWorkspaceName) as _,
-            mock.patch.object(instance, "_createNeutronFilePath", wraps=instance._createNeutronFilePath) as _,
+            mock.patch.object(instance, "createNeutronFilePath", wraps=instance.createNeutronFilePath) as _,
             mock.patch.object(instance, "grocer") as _,
         ):
             name = instance.fetchMonitorWorkspace(item)
@@ -3897,11 +3897,11 @@ class TestGroceryService(unittest.TestCase):
             assert instance._createMonitorWorkspaceName.call_count == 1
             assert instance._createMonitorWorkspaceName.call_args[0][0] == item.runNumber
 
-            assert instance._createNeutronFilePath.call_count == 1
-            assert instance._createNeutronFilePath.call_args[0][0] == item.runNumber
-            assert not instance._createNeutronFilePath.call_args[0][1]
+            assert instance.createNeutronFilePath.call_count == 1
+            assert instance.createNeutronFilePath.call_args[0][0] == item.runNumber
+            assert not instance.createNeutronFilePath.call_args[0][1]
 
             assert instance.grocer.executeRecipe.call_count == 1
             assert instance.grocer.executeRecipe.call_args[0][0] == str(
-                self.instance._createNeutronFilePath(item.runNumber, False)
+                self.instance.createNeutronFilePath(item.runNumber, False)
             )
