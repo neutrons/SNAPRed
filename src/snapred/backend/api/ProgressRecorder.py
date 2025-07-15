@@ -11,6 +11,7 @@ from pydantic import BaseModel, field_validator, field_serializer
 import re
 from scipy.interpolate import BSpline, make_splrep
 import sys
+from threading import Timer
 from types import FrameType, FunctionType, MethodType
 from typing import Any, Callable, ClassVar, Dict, List, Self, Tuple
 
@@ -304,7 +305,8 @@ class ProgressStep(BaseModel):
         super().__init__(*args, **kwargs)
         self._startTime: datetime = None
         self._loggingEnabled = False
-        
+        self._timer = None
+                
     def setDetails(
         self, *,
         N_ref: Callable[..., Any] = None,
@@ -327,12 +329,23 @@ class ProgressStep(BaseModel):
         if _time is None:
             raise RuntimeError(f"Usage error: attempt to `stop` unstarted step {self.name}.")
         self._startTime = None
+        if self._timer is not None:
+            self._timer.cancel()
+            self._timer = None
         return _time
                  
     @property
     def name(self) -> str:
         # A human-readable name for the step.
-        return ".".join(filter(lambda s: bool(s), self.details.key))
+        return self.humanReadableName(self.details.key)
+
+    @classmethod
+    def humanReadableName(cls, key: Tuple[str, ...]) -> str:
+        return ".".join(filter(lambda s: bool(s), key))
+
+    @property
+    def isActive(self) -> bool:
+        return bool(self._startTime)
         
     @property
     def startTime(self) -> datetime:
@@ -546,8 +559,11 @@ class _ProgressRecorder(BaseModel):
         stopTime = datetime.now(timezone.utc)
         startTime = step.stop()
         
-        # Do not record the measurement if any exception has been raised.
+        # Do not output anything to the log, or record the measurement,
+        #   if any exception has been raised.
         if sys.exc_info()[0] is None:
+            self._logCompletion(key)
+            
             elapsed = float((stopTime - startTime).total_seconds())
             
             N_ref = step.details.N_ref()
@@ -573,26 +589,51 @@ class _ProgressRecorder(BaseModel):
 
     def logTimeRemaining(self, key: Tuple[str | None, ...]):
         step = self.getStep(key)
-        self._logTimeRemaining(step)
+        continueToLog = self._logTimeRemaining(step)
+        if continueToLog and Config["workflows_data.timing.logging.log_update_interval"] > 0:
+            # Automatically log again after a delay.
+            step._timer  = Timer(Config["workflows_data.timing.logging.log_update_interval"], self.logTimeRemaining, key)
+        else:
+            step._timer = None
+        
+    def _logTimeRemaining(self, step: ProgressStep) -> bool:
+        # Log the time remaining for an in-progress step.
+        # -- returns a flag indicating whether any further logging should occur for this step.
+        if step.isActive:
+            continueToLog = True
+            key = step.details.key
+            loggableName = self._loggableStepName(key)
+            remainder = self._stepTimeRemaining(step)
+            if remainder is not None:
+                if remainder > 0.0:
+                    logger.log(Config["workflows_data.timing.logging.loglevel"], f"{loggableName} -- estimated completion in {remainder} seconds.")
+                else:
+                    logger.warning(f"{loggableName} -- is taking longer than expected.")
+                    # Log this message only once.
+                    continueToLog = False                
+            else:
+                logger.log(Config["workflows_data.timing.logging.loglevel"], f"{loggableName} -- <no timing data is available>.")
+                # Log this message only once.
+                continueToLog = False
+            return continueToLog
+        return False
+
+    def _logCompletion(self, key):
+        loggableName = self._loggableStepName(key)
+        logger.log(Config["workflows_data.timing.logging.loglevel"], f"{loggableName} -- complete.")
     
-    def _logTimeRemaining(self, step: ProgressStep):
-        key = step.details.key
-        loggableStepName = step.name
+    def _loggableStepName(self, key: Tuple[str, ...]) -> str:
+        # Remove prefix information from the logged step name when this step is a sub-step
+        #   of another in-progress step.
+        loggableName = ProgressStep.humanReadableName(key)
         if bool(key[-1]):
             # For explicitly-named steps, only include the full name
             #   when there is no step for the _parent_ scope.
             parentKey = key[:-1] + (None,)
             if parentKey in self.steps:
-                loggableStepName = f"  ..  {key[-1]}"
-        remainder = self._stepTimeRemaining(step)
-        if remainder is not None:
-            if remainder > 0.0:
-                logger.log(Config["workflows_data.timing.logging.loglevel"], f"{loggableStepName} -- estimated completion in {remainder} seconds.")
-            else:
-                logger.warning(f"{loggableStepName} -- completion is taking longer than expected.")                
-        else:
-            logger.log(Config["workflows_data.timing.logging.loglevel"], f"{loggableStepName} -- <no timing data is available>.")
-    
+                loggableName = f"  ..  {key[-1]}"
+        return loggableName
+
     def stepTimeRemaining(self, key: Tuple[str | None, ...]) -> float | None:
         # Estimate the time remaining for the specified step,
         # or return `None` if not enough data is available yet to create an estimate,

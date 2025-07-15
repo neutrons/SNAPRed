@@ -357,7 +357,9 @@ workflows_data:
     logging:
       #fully-qualified name of profiled method must match this regex:
       qualname_regex: "(.*Service.*)|(.*Recipe.*)"
+      
       loglevel: 20 # logging.INFO
+      log_update_interval: 0 # in seconds, 0 => explicit logging only
     
 ui:
   default:

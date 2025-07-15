@@ -344,6 +344,7 @@ workflows_data:
       qualname_regex: "(.*Service.*)|(.*Recipe.*)"
       
       loglevel: 20 # logging.INFO
+      log_update_interval: 30 # in seconds, 0 => explicit logging only
 
 ui:
   default:
