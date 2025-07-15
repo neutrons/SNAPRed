@@ -656,7 +656,11 @@ class WallClockTime():
         #      at time of execution, a constant-time estimate will be used.
 
         self.callerOverride = callerOverride
-        self._callingFrame: FrameType = inspect.currentframe().f_back if callerOverride is None else None
+        self._callingFrame: FrameType = None
+        if not self.callerOverride:
+            # Usage as either a decorator or a context manager requires either a specified caller,
+            #   or a stack frame to examine in order to obtain the local scope.
+            self._callingFrame = inspect.currentframe().f_back
         
         self.stepName = stepName
         self.N_ref = N_ref
@@ -668,7 +672,7 @@ class WallClockTime():
     def __call__(self, decoratee: type | FunctionType ) -> type | FunctionType:
         # Apply as a decorator       
         
-        # Important: whether or not this decorator is applied should not depend on `_ProgressRecorder.enabled`,
+        # Important: the behavior of this decorator should not depend on `_ProgressRecorder.enabled`,
         #   otherwise it unnecessarily complicates any `Config` reload!
         
         if bool(self.stepName):
