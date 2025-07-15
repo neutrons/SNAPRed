@@ -76,7 +76,7 @@ class _Step(BaseModel):
     #   `N_ref`-callable persistent.
     N_ref_hash: str
     """
-      == In case of change, don't delete the measurements!  Just re-initialize the `_Estimate`!
+      == In case of change, don't delete the measurements!  Just re-initialize the `_Estimate`! ==
     """
     
     # Standard computational-order is used to normalize `N_ref`, from the as-saved measurement,
@@ -147,7 +147,7 @@ class _Step(BaseModel):
             raise RuntimeError(f"Usage error: expecting `FunctionType` not {type(func)}.")
         sha = sha256()
         sha.update(func.__code__.co_code)
-        return sha.hexdigest()
+        return sha.hexdigest()[0:16]
      
 class _Measurement(BaseModel):
     # Contains post-execution timing data from a specific workflow step.
@@ -383,11 +383,12 @@ class _ProgressRecorder(BaseModel):
     def _getCallerFullyQualifiedName(cls, callerObjectOrStackFrame) -> Tuple[str | None, ...]:
         # Caller key based on its (<module>, <fully-qualified name>).
         # args:
-        #   'callerObjectOrStackFrame': this will be either a suitable unique reference for the caller itself
+        #   'callerObjectOrStackFrame': this will be either a reference to the caller itself
         #      as a `class`, `<class instance>`, `method`, or `function,
-        #      or it will be the stack frame to look at to obtain the caller's information.
-        # Note that the only requirement here is that the information determined about the caller be
-        # suitably unique, when combined with any [optional] explicit <step name>
+        #      OR it will be the stack frame to look at to examine and obtain the caller's information.
+        # Note that the only requirement here for progress-step scoping,
+        # is that the information determined about the caller be
+        # suitably unique, when combined with the [optional] explicit <step name>.
         
         module_name = None
         qualified_name = None
@@ -434,7 +435,11 @@ class _ProgressRecorder(BaseModel):
         return bool(_pattern.match(qualifiedName))
 
     @classmethod
-    def getStepKey(cls, *, callerOverride: MethodType | FunctionType=None, stepName=None) -> Tuple[str | None, ...]:
+    def getStepKey(
+            cls, *,
+            callerOrStackFrameOverride: MethodType | FunctionType | FrameType=None,
+            stepName=None
+        ) -> Tuple[str | None, ...]:
         # Compute a unique key for the current process step.
         
         # Notes:
@@ -442,12 +447,17 @@ class _ProgressRecorder(BaseModel):
         #   * `None` is a valid entry for any tuple component;
         #   * Caller's frame is actually two-frames up from the current frame.
         
-        if bool(callerOverride) and not isinstance(callerOverride, (MethodType, FunctionType)):
-            # Profiling of class types is supported,
-            #   but the target-method to be profiled should have been filled in prior to calling this method.
-            raise RuntimeError("Usage error: when `callerOverride` is set, it must either be a method or a function.")            
+        if bool(callerOrStackFrameOverride)\
+               and not isinstance(callerOrStackFrameOverride, (MethodType, FunctionType, FrameType)):
+            raise RuntimeError(
+                "Usage error: when `callerOrStackFrameOverride` is set, it must be either "
+                + "a method, function, or the local stack-frame of the same."
+            )            
         
-        callerObjectOrStackFrame = callerOverride if callerOverride is not None else inspect.currentframe().f_back.f_back
+        # The choice of stack frame in the fallback allows `record` to be called directly in a function of interest.
+        # Any other usage should supply the <caller function> or <local stack-frame of caller function> directly.
+        callerObjectOrStackFrame = callerOrStackFrameOverride if callerOrStackFrameOverride is not None\
+                                       else inspect.currentframe().f_back.f_back
         key = cls._getCallerFullyQualifiedName(callerObjectOrStackFrame) + (stepName,)
         return key
 
@@ -473,7 +483,7 @@ class _ProgressRecorder(BaseModel):
     def record(
             self,
             *,
-            callerOverride: FunctionType = None, 
+            callerOrStackFrameOverride: MethodType | FunctionType | FrameType = None, 
             stepName: str = None,
             N_ref: Callable[..., float] = None,
             N_ref_args: Tuple[Tuple[Any, ...], Dict[str, Any]] = None,
@@ -511,7 +521,7 @@ class _ProgressRecorder(BaseModel):
         if not _ProgressRecorder.enabled:
             return None
            
-        key = self.getStepKey(callerOverride=callerOverride, stepName=stepName)
+        key = self.getStepKey(callerOrStackFrameOverride=callerOrStackFrameOverride, stepName=stepName)        
         step = self.getStep(key, create=True)
         
         # Logging is either enabled by explicit request,
@@ -646,6 +656,8 @@ class WallClockTime():
         #      at time of execution, a constant-time estimate will be used.
 
         self.callerOverride = callerOverride
+        self._callingFrame: FrameType = inspect.currentframe().f_back if callerOverride is None else None
+        
         self.stepName = stepName
         self.N_ref = N_ref
         self.N_ref_args = N_ref_args
@@ -686,7 +698,7 @@ class WallClockTime():
                               "Usage error: `WallClockTime` as decorator cannot be nested."
                           )
                 self._stepKey = ProgressRecorder.record(
-                    callerOverride=func,
+                    callerOrStackFrameOverride=func,
                     N_ref=self.N_ref,
                     N_ref_args=(args, kwargs),
                     order=self.order,
@@ -724,6 +736,7 @@ class WallClockTime():
         
         self._stepKey = ProgressRecorder.record(
             stepName=self.stepName,
+            callerOrStackFrameOverride=self._callingFrame,
             N_ref=self.N_ref,
             N_ref_args=self.N_ref_args,
             order=self.order,

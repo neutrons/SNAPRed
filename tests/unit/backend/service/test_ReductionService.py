@@ -362,7 +362,14 @@ class TestReductionService(unittest.TestCase):
             #  (see the additional comment about this below at `test_saveReduction_profiling`). 
             Config_override("workflows_data.timing.enabled", True),
             # Wrap the `ProgressRecorder` singleton so we can track its calls:
-            self.progressRecorderWrapperMock as mockProgressRecorder
+            self.progressRecorderWrapperMock as mockProgressRecorder,
+            
+            mock.patch.object(
+                self.instance.reduction.__func__.__closure__[1].cell_contents, "N_ref",
+                spec=FunctionType,
+            ) as mock_N_ref
+
+
         ):
             # Notes:
             #  `ReductionService._reduction_N_ref` will be called by the `ProgressRecorder` methods.
@@ -376,8 +383,8 @@ class TestReductionService(unittest.TestCase):
             ## ) as mock_N_ref
             #
             #  .. and then, at the start of the with-statement's body:
-            ## mock_N_ref.__code__.co_code = "SOMETHING_TO_HASH".encode("utf8")
-            ## mock_N_ref.return_value = 4096.0
+            mock_N_ref.__code__.co_code = "SOMETHING_TO_HASH".encode("utf8")
+            mock_N_ref.return_value = 4096.0
             #
             # This seemed quite fragile to me, and for that reason I decided to take it out.
             
@@ -411,18 +418,15 @@ class TestReductionService(unittest.TestCase):
             
             # Context-manager call:
             stepName = "load-and-prepare-data"
-            # Unfortunately, the `ProgressRecorder` mock wrapper messes
-            #   with the caller-scope, so the test's `explicitStepKey` gets
-            #   an incorrect <module name> and <fully-qualified name>.
-            explicitStepKey = (mock.ANY, mock.ANY, stepName)
+            explicitStepKey = implicitStepKey[:-1] + (stepName,)
             
             # As discussed above: if `_reduction_N_ref` were mocked,
             #   the following assertion is successful.
-            ## assert mock_N_ref.call_count == <the call count>
-            ## mock_N_ref.assert_called_with(
-            ##     self.instance,
-            ##     self.request
-            ## )
+            assert mock_N_ref.call_count == 2 # <the call count>
+            mock_N_ref.assert_called_with(
+                self.instance,
+                self.request
+            )
 
             assert mockProgressRecorder.record.call_count == 6
             
@@ -430,17 +434,24 @@ class TestReductionService(unittest.TestCase):
             mockProgressRecorder.record.assert_any_call(
                 # The decorator wrapper function calls `record` with the unwrapped
                 #   `Reduction.reduction`.
-                callerOverride=ReductionService.reduction.__wrapped__,
-                N_ref=ReductionService._reduction_N_ref,
+                callerOrStackFrameOverride=ReductionService.reduction.__wrapped__,
+                N_ref=mock_N_ref, # ReductionService._reduction_N_ref,
                 N_ref_args=((self.instance, self.request), {}),
                 order=ComputationalOrder.O_N,
                 enableLogging=False
             )
             
+            # It's difficult to obtain the actual stack frame that will be passed in.
+            #   However, it's important that the `callerOrStackFrameOverride` arg is set.
+            class NotNone:
+                def __eq__(self, other):
+                    return other is not None            
+            
             # Context-manager call for `ReductionService.reduce`:
             #   `stepName="load-and-prepare-data"`.
             mockProgressRecorder.record.assert_any_call(
                 stepName=stepName,
+                callerOrStackFrameOverride=NotNone(),
                 N_ref=ReductionService._reduction_N_ref,
                 N_ref_args=((self.instance, self.request), {}),
                 order=ComputationalOrder.O_N,
@@ -583,7 +594,7 @@ class TestReductionService(unittest.TestCase):
                 mockProgressRecorder.record.assert_called_once_with(
                     # The decorator wrapper function calls `record` with the unwrapped
                     #   `Reduction.saveReduction`.
-                    callerOverride=ReductionService.saveReduction.__wrapped__,
+                    callerOrStackFrameOverride=ReductionService.saveReduction.__wrapped__,
                     N_ref=ReductionService._saveReduction_N_ref,
                     N_ref_args=((self.instance, request), {}),
                     order=ComputationalOrder.O_N,
