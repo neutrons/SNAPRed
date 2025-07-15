@@ -90,15 +90,22 @@ class TestReductionService(unittest.TestCase):
         
         ## `ProgressRecorder` mocks: ##
         #      Notes:
-        #        -- At this time, almost certainly the `ProgressRecorder` module has already been imported.
+        #        -- At the start of tests, almost certainly the `ProgressRecorder` module has already been imported.
         #           The fact that it is _disabled_ for the test environment means that any persistent data will not
-        #           have been loaded, and it will be "empty".
-        #        -- Any mock that changes the state of `ProgressRecorder.enabled` needs to be applied correctly --
-        #           it is _very_ important during testing, that at the time of application exit, the `ProgressRecorder`
-        #           in the _disabled_ state -- otherwise, it will attempt to automatically unload its persistent data.
+        #           have been loaded, and tests start it will be "empty".
+        #        -- Any mock that changes the state of `ProgressRecorder.enabled` needs to be applied correctly.
+        #           It is important during testing, that at the time of application exit, the `ProgressRecorder`
+        #           is in the _disabled_ state -- otherwise it will attempt to automatically unload its persistent data.
+        #        -- In order to ensure consistent behavior for the unit tests, the `ProgressRecorder` singleton is
+        #           re-initialized here, at the start of each test.
+        #        -- The singleton should not be re-instantiated, as references to it exist in the closures of the
+        #           `WallClockTime` decorator, which have already been applied at the import of the `ReductionService` module.
+        ProgressRecorder.steps.clear()
+        
         progressRecorderModule = inspect.getmodule(ProgressRecorder)
         # .. this mock entirely bypasses the `ProgressRecorder` function:
         self.progressRecorderMock = mock.patch.object(progressRecorderModule, "ProgressRecorder")
+        
         # .. this mock allows the `ProgressRecorder` to function normally, while tracking all of its calls:
         self.progressRecorderWrapperMock = mock.patch.object(progressRecorderModule, "ProgressRecorder", wraps=progressRecorderModule.ProgressRecorder)
         

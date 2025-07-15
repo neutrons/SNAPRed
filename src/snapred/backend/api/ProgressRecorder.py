@@ -621,8 +621,9 @@ class _ProgressRecorder(BaseModel):
     def _serialize_steps(self, steps: Dict[Tuple[str, ...], ProgressStep], _info) -> List[ProgressStep]:
         # By default `Tuple[str, ...]` keys don't serialize correctly to JSON.
         return list(self.steps.values())
+
     
-# The singleton of `_ProgressRecorder`.
+# The `ProgressRecorder` singleton.
 ProgressRecorder = _ProgressRecorder.instance()
 
 
@@ -668,7 +669,13 @@ class WallClockTime():
         self.order = order
         self._stepKey = None
         self._enableLogging = enableLogging
-        
+
+    @classmethod
+    def _progressRecorder(cls):
+        # Returning the module-scope variable here makes
+        #   initialization of mocks much easier! 
+        return ProgressRecorder
+            
     def __call__(self, decoratee: type | FunctionType ) -> type | FunctionType:
         # Apply as a decorator       
         
@@ -701,7 +708,7 @@ class WallClockTime():
                     raise RuntimeError(
                               "Usage error: `WallClockTime` as decorator cannot be nested."
                           )
-                self._stepKey = ProgressRecorder.record(
+                self._stepKey = self._progressRecorder().record(
                     callerOrStackFrameOverride=func,
                     N_ref=self.N_ref,
                     N_ref_args=(args, kwargs),
@@ -714,7 +721,7 @@ class WallClockTime():
                     # We need to call `stop` regardless of `sys.exc_info()`.
                     # TODO: I'm concerned here about what happens if an additional exception
                     #   is raised in `stop` -- I really only want the first one!
-                    ProgressRecorder.stop(self._stepKey)
+                    self._progressRecorder().stop(self._stepKey)
                     self._stepKey = None
             return result
 
@@ -738,7 +745,7 @@ class WallClockTime():
                       "Usage error: `WallClockTime` as context manager cannot be nested or re-used."
                   )
         
-        self._stepKey = ProgressRecorder.record(
+        self._stepKey = self._progressRecorder().record(
             stepName=self.stepName,
             callerOrStackFrameOverride=self._callingFrame,
             N_ref=self.N_ref,
@@ -756,5 +763,5 @@ class WallClockTime():
             # We need to call `stop` regardless of `sys.exc_info()`.
             # TODO: I'm concerned here about what happens if an additional exception
             #   is raised in `stop` -- I really only want the first one!
-            ProgressRecorder.stop(self._stepKey)
+            self._progressRecorder().stop(self._stepKey)
          
