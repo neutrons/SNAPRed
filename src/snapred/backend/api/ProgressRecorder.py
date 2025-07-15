@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from enum import StrEnum
 import functools
 from hashlib import sha256
+import inspect
 import json
 import numpy as np
 from pathlib import Path
@@ -619,9 +620,10 @@ class WallClockTime():
     # A decorator or context manager to register a process-recording step for any method, function, or class.
         
     def __init__(
-            self, *,
-            callerOverride: str = None, 
+            self,
             stepName: str = None,
+            *,
+            callerOverride: str = None, 
             N_ref: Callable[..., float] = None,
             N_ref_args: Tuple[Tuple[Any, ...], Dict[str, Any]] = None,
             order: ComputationalOrder = None,

@@ -188,6 +188,7 @@ class ReductionService(Service):
         if N_groups >= 1 and not request.liveDataMode:
             inputFilePath = self.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
             if inputFilePath.exists():
+                # As the workspaces aren't actually loaded yet, we will estimate based on the file size.
                 dataSize = float(inputFilePath.stat().st_size())
                 N_ref = float(N_groups * dataSize)
         # return None if `N_ref` cannot be calculated!
@@ -205,13 +206,19 @@ class ReductionService(Service):
         """
         startTime = datetime.utcnow()
 
-        groupingResults = self.fetchReductionGroupings(request)
-        request.focusGroups = groupingResults["focusGroups"]
+        with WallClockTime(
+            "load-and-prepare-data",
+            N_ref=ReductionService._reduction_N_ref,
+            N_ref_args=((self, request), {}),
+            order=ComputationalOrder.O_N
+        ):
+            groupingResults = self.fetchReductionGroupings(request)
+            request.focusGroups = groupingResults["focusGroups"]
 
-        # Fetch groceries first: `prepReductionIngredients` will need the combined mask.
-        groceries = self.fetchReductionGroceries(request)
+            # Fetch groceries first: `prepReductionIngredients` will need the combined mask.
+            groceries = self.fetchReductionGroceries(request)
 
-        ingredients = self.prepReductionIngredients(request, groceries.get("combinedPixelMask"))
+            ingredients = self.prepReductionIngredients(request, groceries.get("combinedPixelMask"))
 
         # attach the list of grouping workspaces to the grocery dictionary
         groceries["groupingWorkspaces"] = groupingResults["groupingWorkspaces"]

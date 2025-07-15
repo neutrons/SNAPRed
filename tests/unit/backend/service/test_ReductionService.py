@@ -362,26 +362,24 @@ class TestReductionService(unittest.TestCase):
             #  (see the additional comment about this below at `test_saveReduction_profiling`). 
             Config_override("workflows_data.timing.enabled", True),
             # Wrap the `ProgressRecorder` singleton so we can track its calls:
-            self.progressRecorderWrapperMock as mockProgressRecorder,
-            # The `WallClockTime`-decorator for `ReductionService.reduction` applied a reference to the 
-            #   _original_ version of `ReductionService._reduction_N_ref`, so we need to replace that
-            #   reference with a mock.  The following directly accesses the decorator's closure.
-            # TODO: Please come up with a more straightforward way to do this!
-            mock.patch.object(
-                self.instance.reduction.__func__.__closure__[1].cell_contents, "N_ref",
-                spec=FunctionType,
-                wraps=lambda *_args, **_kwargs: 4096.0) as mock_N_ref
+            self.progressRecorderWrapperMock as mockProgressRecorder
         ):
             # Notes:
-            #  `ReductionService._reduction_N_ref` will be called by the `ProgressRecorder` methods:
-            #    as the `WallClockTime` decorator was applied at the time `ReductionService` was
-            #    originally imported, the step used by the `ProgressRecorder` contains a reference
+            #  `ReductionService._reduction_N_ref` will be called by the `ProgressRecorder` methods.
+            #   However, as the `WallClockTime` decorator was applied at the time `ReductionService` was
+            #    originally imported, the `step` used by the `ProgressRecorder` contains a reference
             #    to the original version of that method.
-            #  -- Mocking it out on `ReductionService` won't work, as its a reference to the original.
-            #  -- Mocking out the `WallClockTime` decorator itself, and then forcing an `importlib.reload(<reduction service module>)`
-            #     is another, seemingly more complicated alternative.
-            mock_N_ref.__code__.co_code = "N_REF_SOMETHING_TO_HASH".encode("utf8")
-            mock_N_ref.return_value = 4096.0
+            #  In case mocking the method is actually required, it could be mocked as follows:
+            ## mock.patch.object(
+            ##     self.instance.reduction.__func__.__closure__[1].cell_contents, "N_ref",
+            ##     spec=FunctionType,
+            ## ) as mock_N_ref
+            #
+            #  .. and then, at the start of the with-statement's body:
+            ## mock_N_ref.__code__.co_code = "SOMETHING_TO_HASH".encode("utf8")
+            ## mock_N_ref.return_value = 4096.0
+            #
+            # This seemed quite fragile to me, and for that reason I decided to take it out.
             
             mockReductionRecipe.return_value = mock.Mock()
             mockResult = {
@@ -408,13 +406,49 @@ class TestReductionService(unittest.TestCase):
             mockReductionRecipe.return_value.cook.assert_called_once_with(ingredients, groceries)
             assert result.record.workspaceNames == mockReductionRecipe.return_value.cook.return_value["outputs"]
             
-            assert mock_N_ref.call_count == 2
-            mock_N_ref.assert_called_with(
-                self.instance,
-                self.request
+            # Decorated call:
+            implicitStepKey = ("snapred.backend.service.ReductionService", "ReductionService.reduction", None)
+            
+            # Context-manager call:
+            stepName = "load-and-prepare-data"
+            # Unfortunately, the `ProgressRecorder` mock wrapper messes
+            #   with the caller-scope, so the test's `explicitStepKey` gets
+            #   an incorrect <module name> and <fully-qualified name>.
+            explicitStepKey = (mock.ANY, mock.ANY, stepName)
+            
+            # As discussed above: if `_reduction_N_ref` were mocked,
+            #   the following assertion is successful.
+            ## assert mock_N_ref.call_count == <the call count>
+            ## mock_N_ref.assert_called_with(
+            ##     self.instance,
+            ##     self.request
+            ## )
+
+            assert mockProgressRecorder.record.call_count == 6
+            
+            # Decorated call for `ReductionService.reduce()`:
+            mockProgressRecorder.record.assert_any_call(
+                # The decorator wrapper function calls `record` with the unwrapped
+                #   `Reduction.reduction`.
+                callerOverride=ReductionService.reduction.__wrapped__,
+                N_ref=ReductionService._reduction_N_ref,
+                N_ref_args=((self.instance, self.request), {}),
+                order=ComputationalOrder.O_N,
+                enableLogging=False
             )
-            assert mockProgressRecorder.record.call_count == 5
-            assert mockProgressRecorder.stop.call_count == 5
+            
+            # Context-manager call for `ReductionService.reduce`:
+            #   `stepName="load-and-prepare-data"`.
+            mockProgressRecorder.record.assert_any_call(
+                stepName=stepName,
+                N_ref=ReductionService._reduction_N_ref,
+                N_ref_args=((self.instance, self.request), {}),
+                order=ComputationalOrder.O_N,
+                enableLogging=False
+            )
+            assert mockProgressRecorder.stop.call_count == 6
+            mockProgressRecorder.stop.assert_any_call(implicitStepKey)
+            mockProgressRecorder.stop.assert_any_call(explicitStepKey)
             
     def test_reduction_noState_withWritePerms(self):
         mockRequest = mock.Mock()
