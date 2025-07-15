@@ -362,29 +362,24 @@ class TestReductionService(unittest.TestCase):
             #  (see the additional comment about this below at `test_saveReduction_profiling`). 
             Config_override("workflows_data.timing.enabled", True),
             # Wrap the `ProgressRecorder` singleton so we can track its calls:
-            self.progressRecorderWrapperMock as mockProgressRecorder,
-            
-            mock.patch.object(
-                self.instance.reduction.__func__.__closure__[1].cell_contents, "N_ref",
-                spec=FunctionType,
-            ) as mock_N_ref
-
-
+            self.progressRecorderWrapperMock as mockProgressRecorder
         ):
             # Notes:
-            #  `ReductionService._reduction_N_ref` will be called by the `ProgressRecorder` methods.
-            #   However, as the `WallClockTime` decorator was applied at the time `ReductionService` was
-            #    originally imported, the `step` used by the `ProgressRecorder` contains a reference
-            #    to the original version of that method.
-            #  In case mocking the method is actually required, it could be mocked as follows:
+            #  -- `ReductionService._reduction_N_ref` will be called by the `ProgressRecorder` methods.
+            #     However, as the `WallClockTime` decorator was applied at the time `ReductionService` was
+            #     originally imported, the `step` used by the `ProgressRecorder` contains a reference
+            #     to the original version of that method.
+            #  -- In case mocking the method is actually required, the following approach works.
+            #     Here we obtain the correct reference by directly examining the closure object
+            #     produced by the decorator.
             ## mock.patch.object(
             ##     self.instance.reduction.__func__.__closure__[1].cell_contents, "N_ref",
             ##     spec=FunctionType,
             ## ) as mock_N_ref
             #
             #  .. and then, at the start of the with-statement's body:
-            mock_N_ref.__code__.co_code = "SOMETHING_TO_HASH".encode("utf8")
-            mock_N_ref.return_value = 4096.0
+            ## mock_N_ref.__code__.co_code = "SOMETHING_TO_HASH".encode("utf8")
+            ## mock_N_ref.return_value = 4096.0
             #
             # This seemed quite fragile to me, and for that reason I decided to take it out.
             
@@ -422,11 +417,11 @@ class TestReductionService(unittest.TestCase):
             
             # As discussed above: if `_reduction_N_ref` were mocked,
             #   the following assertion is successful.
-            assert mock_N_ref.call_count == 2 # <the call count>
-            mock_N_ref.assert_called_with(
-                self.instance,
-                self.request
-            )
+            ## assert mock_N_ref.call_count == 2
+            ## mock_N_ref.assert_called_with(
+            ##     self.instance,
+            ##     self.request
+            ## )
 
             assert mockProgressRecorder.record.call_count == 6
             
@@ -435,7 +430,7 @@ class TestReductionService(unittest.TestCase):
                 # The decorator wrapper function calls `record` with the unwrapped
                 #   `Reduction.reduction`.
                 callerOrStackFrameOverride=ReductionService.reduction.__wrapped__,
-                N_ref=mock_N_ref, # ReductionService._reduction_N_ref,
+                N_ref=ReductionService._reduction_N_ref,
                 N_ref_args=((self.instance, self.request), {}),
                 order=ComputationalOrder.O_N,
                 enableLogging=False
