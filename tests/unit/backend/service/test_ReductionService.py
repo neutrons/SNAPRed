@@ -367,7 +367,7 @@ class TestReductionService(unittest.TestCase):
         with (
             # Enable the `ProgressRecorder`:
             #  (see the additional comment about this below at `test_saveReduction_profiling`). 
-            Config_override("workflows_data.timing.enabled", True),
+            Config_override("application.workflows_data.timing.enabled", True),
             # Wrap the `ProgressRecorder` singleton so we can track its calls:
             self.progressRecorderWrapperMock as mockProgressRecorder
         ):
@@ -561,7 +561,7 @@ class TestReductionService(unittest.TestCase):
             # Enable the `ProgressRecorder`: this changes the state of the <classproperty> `enabled`, but
             #   should not regenerate the instance.  This is what we want, because we do not want to read
             #   the persistent data from whatever's in "~/.snapred/workflows_data/timing/...".
-            Config_override("workflows_data.timing.enabled", True),
+            Config_override("application.workflows_data.timing.enabled", True),
             #
             # Wrap the `ProgressRecorder` singleton so we can track its calls:
             self.progressRecorderWrapperMock as mockProgressRecorder,

@@ -1617,5 +1617,5 @@ class LocalDataService:
         
         # Limit the number of saved records files.
         earliestRecordsFilePath, _, count = self._progressRecordsFilesInfo()
-        if count > Config["workflows_data.timing.max_files"]:
+        if count > Config["application.workflows_data.timing.max_files"]:
             earliestRecordsFilePath.unlink()

@@ -170,7 +170,7 @@ class _Estimate(BaseModel):
 
     # Spline-fit args from most recent "update" calculation.
     #   Possible spline orders can be anything from constant (k == 0),
-    #   up to a maximum order  of `Config["workflows_data.timing.spline_order"]`,
+    #   up to a maximum order  of `Config["application.workflows_data.timing.spline_order"]`,
     #   which is typically cubic (k == 3).  The order used by the fit is determined
     #   by the number of distinct measurement points available.
     tck: Tuple[List[float], List[float], int] = None
@@ -189,16 +189,18 @@ class _Estimate(BaseModel):
 
     @classproperty
     def SPLINE_ORDER(cls):
-        return Config["workflows_data.timing.spline_order"]
+        return Config["application.workflows_data.timing.spline_order"]
     
-    # To be used during pydantic initialization of other `BaseModel`-derived objects,
+    # A factory method to produce a default instance of the `_Estimate`.
+    #   To be used during pydantic initialization of other `BaseModel`-derived objects,
     #   for some reason `@classproperty` did not work with the following.
     @classmethod
     def default(cls) -> Self:
-        # Due to optimization, and the fact that this method may eventually depend on arguments.
-        # default args should not be used to implement this value.
+        # A factory method to produce default instances of `_Estimate`.
         
         # Implementation notes:
+        # * As this method may eventually depend on arguments,
+        #   default args should not be used to implement this value.
         # * This caches the `_default` value of `_Estimate` as a class attribute.
         # * TODO: an attempt at creating a `cached_classproperty` implementation had some 
         #   issues that need to be resolved.  For the moment, the caching is done explicitly.
@@ -376,7 +378,7 @@ class _ProgressRecorder(BaseModel):
     
     @classproperty
     def enabled(cls):
-        return Config["workflows_data.timing.enabled"]
+        return Config["application.workflows_data.timing.enabled"]
         
     @classmethod
     @functools.lru_cache(maxsize=None)
@@ -441,7 +443,7 @@ class _ProgressRecorder(BaseModel):
     @classmethod
     def isLoggingEnabledForStep(cls, key: Tuple[str, ...]) -> bool:
         # Determine whether or not to log a step, based on the qualified name of its scope.
-        _pattern = re.compile(Config["workflows_data.timing.logging.qualname_regex"])
+        _pattern = re.compile(Config["application.workflows_data.timing.logging.qualname_regex"])
         
         # key components: (<module name>, <fully-qualified scope name>, <explicit step name>)
         qualifiedName = key[-2]
@@ -574,25 +576,25 @@ class _ProgressRecorder(BaseModel):
                 ) 
         
                 # Restrict the maximum length of the measurements list.
-                max_measurements = Config["workflows_data.timing.max_measurements"]
+                max_measurements = Config["application.workflows_data.timing.max_measurements"]
                 if len(step.measurements) > max_measurements:
                     # Forget the oldest
                     self.currentStep.measurements = self.currentStep.measurements[-max_measurements:]
 
                 # If necessary, update the estimate for the step.
-                if len(step.measurements) >= Config["workflows_data.timing.update_minimum_count"]:
+                if len(step.measurements) >= Config["application.workflows_data.timing.update_minimum_count"]:
                     # Enough data points are available to perform an update.
                     estimated_dt = step.estimate.dt(step.details.order(N_ref))
-                    if abs(estimated_dt - elapsed) / elapsed > Config["workflows_data.timing.update_threshold"]:
+                    if abs(estimated_dt - elapsed) / elapsed > Config["application.workflows_data.timing.update_threshold"]:
                         # The relative error from the current estimate is greater than the threshold.
                         step.estimate.update(step.measurements, step.details.order)
 
     def logTimeRemaining(self, key: Tuple[str | None, ...]):
         step = self.getStep(key)
         continueToLog = self._logTimeRemaining(step)
-        if continueToLog and Config["workflows_data.timing.logging.log_update_interval"] > 0:
+        if continueToLog and Config["application.workflows_data.timing.logging.log_update_interval"] > 0:
             # Automatically log again after a delay.
-            step._timer  = Timer(Config["workflows_data.timing.logging.log_update_interval"], self.logTimeRemaining, key)
+            step._timer  = Timer(Config["application.workflows_data.timing.logging.log_update_interval"], self.logTimeRemaining, key)
         else:
             step._timer = None
         
@@ -606,13 +608,13 @@ class _ProgressRecorder(BaseModel):
             remainder = self._stepTimeRemaining(step)
             if remainder is not None:
                 if remainder > 0.0:
-                    logger.log(Config["workflows_data.timing.logging.loglevel"], f"{loggableName} -- estimated completion in {remainder} seconds.")
+                    logger.log(Config["application.workflows_data.timing.logging.loglevel"], f"{loggableName} -- estimated completion in {remainder} seconds.")
                 else:
                     logger.warning(f"{loggableName} -- is taking longer than expected.")
                     # Log this message only once.
                     continueToLog = False                
             else:
-                logger.log(Config["workflows_data.timing.logging.loglevel"], f"{loggableName} -- <no timing data is available>.")
+                logger.log(Config["application.workflows_data.timing.logging.loglevel"], f"{loggableName} -- <no timing data is available>.")
                 # Log this message only once.
                 continueToLog = False
             return continueToLog
@@ -620,7 +622,7 @@ class _ProgressRecorder(BaseModel):
 
     def _logCompletion(self, key):
         loggableName = self._loggableStepName(key)
-        logger.log(Config["workflows_data.timing.logging.loglevel"], f"{loggableName} -- complete.")
+        logger.log(Config["application.workflows_data.timing.logging.loglevel"], f"{loggableName} -- complete.")
     
     def _loggableStepName(self, key: Tuple[str, ...]) -> str:
         # Remove prefix information from the logged step name when this step is a sub-step
