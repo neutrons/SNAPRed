@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import numpy as np
-from mantid.api import FileLoaderRegistry
+from mantid.api import FileLoaderRegistry, MatrixWorkspace
 from mantid.dataobjects import MaskWorkspace
 from pydantic import validate_call
 
@@ -857,7 +857,6 @@ class GroceryService:
                 if loader == "LoadEventNexus":
                     loaderArgs = '{"NumberOfBins": 1}'
             data = self.grocer.executeRecipe(str(filePath), workspaceName, loader, loaderArgs=loaderArgs)
-            self._validateWorkspaceInstrument(item, workspaceName)
         else:
             data = missingDataHandler()
             workspaceName = data["workspace"]
@@ -1169,6 +1168,10 @@ class GroceryService:
         ws = self.mantidSnapper.mtd[workspaceName]
         numHistos = ws.getNumberHistograms()
         instrumentName = ws.getInstrument().getName().lower()
+        # remove file extensions that may or may not exist
+        instrumentName = instrumentName.split(".")[0]
+        # remove any path that may or may not exist
+        instrumentName = instrumentName.split("/")[-1]
         if numHistos != targetPixelCount:
             raise RuntimeError(
                 f"Workspace '{workspaceName}' has {numHistos} histograms"
@@ -1222,9 +1225,6 @@ class GroceryService:
             )
             data["workspace"] = tableWorkspaceName
             self._validateCalibrationTable(item, tableWorkspaceName)
-
-            if bool(maskWorkspaceName):
-                self._validateWorkspaceInstrument(item, maskWorkspaceName)
 
         return data
 
@@ -1288,7 +1288,6 @@ class GroceryService:
 
             # Note: 'LoadNexusProcessed' neither requires nor makes use of an instrument donor.
             data = self.grocer.executeRecipe(filename=filePath, workspace=workspaceName, loader=loader)
-            self._validateWorkspaceInstrument(item, workspaceName)
             self._processNeutronDataCopy(item, workspaceName)
             self.normalizationCache.add(workspaceName)
         return data
@@ -1513,6 +1512,11 @@ class GroceryService:
                     result = self.fetchReductionPixelMask(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
+            ws = self.getWorkspaceForName(result["workspace"])
+            if isinstance(ws, MatrixWorkspace):
+                # If the workspace is a MatrixWorkspace, we can safely assume it is a neutron workspace.
+                # Validate the instrument and pixel count.
+                self._validateWorkspaceInstrument(item, result["workspace"])
             # check that the fetch operation succeeded and if so append the workspace
             if result["result"] is True:
                 groceries.append(result["workspace"])

@@ -16,6 +16,7 @@ from random import randint
 from unittest import mock
 
 import pytest
+from mantid.api import MatrixWorkspace
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
@@ -1251,7 +1252,6 @@ class TestGroceryService(unittest.TestCase):
                 runNumber = self.runNumber
 
                 for flags in itertools.product((False, True), repeat=4):
-                    self.instance._validateWorkspaceInstrument = mock.Mock()
                     useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
 
                     instance = GroceryService()
@@ -1351,7 +1351,6 @@ class TestGroceryService(unittest.TestCase):
 
                             case (True, _, True, _):
                                 # lite mode and lite-mode exists on disk
-                                self.instance._validateWorkspaceInstrument.assert_called_once()
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                                     str(liteModeFilePath), workspaceName, loader, loaderArgs=loaderArgs
@@ -1383,7 +1382,6 @@ class TestGroceryService(unittest.TestCase):
 
                             case (True, _, _, True):
                                 # lite mode and native exists on disk
-                                self.instance._validateWorkspaceInstrument.assert_called_once()
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                                     str(nativeModeFilePath),
@@ -1398,7 +1396,6 @@ class TestGroceryService(unittest.TestCase):
 
                             case (False, _, _, True):
                                 # native mode and native exists on disk
-                                self.instance._validateWorkspaceInstrument.assert_called_once()
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                                     str(nativeModeFilePath), workspaceName, loader, loaderArgs=loaderArgs
@@ -1937,7 +1934,6 @@ class TestGroceryService(unittest.TestCase):
                 runNumber = self.runNumber
 
                 for flags in itertools.product((False, True), repeat=4):
-                    self.instance._validateWorkspaceInstrument = mock.Mock()
                     useLiteMode, nativeInCache, liteOnDisk, nativeOnDisk = flags
 
                     instance = GroceryService()
@@ -2049,7 +2045,6 @@ class TestGroceryService(unittest.TestCase):
 
                             case (True, _, True, _):
                                 # lite mode and lite-mode exists on disk
-                                self.instance._validateWorkspaceInstrument.assert_called_once()
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
                                 liteWorkspaceName = mockCreateNeutronWorkspaceName(runNumber, True)
@@ -2073,7 +2068,6 @@ class TestGroceryService(unittest.TestCase):
 
                             case (True, _, _, True):
                                 # lite mode and native exists on disk
-                                self.instance._validateWorkspaceInstrument.assert_called_once()
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 assert instance._loadedRuns[(runNumber, False)] == 0
                                 assert instance._loadedRuns[(runNumber, useLiteMode)] == 1
@@ -2091,7 +2085,6 @@ class TestGroceryService(unittest.TestCase):
 
                             case (False, _, _, True):
                                 # native mode and native exists on disk
-                                self.instance._validateWorkspaceInstrument.assert_called_once()
                                 assert result == mockFetchGroceriesRecipe.executeRecipe.return_value
                                 assert instance._loadedRuns[(runNumber, useLiteMode)] == (1 if not useLiteMode else 0)
                                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
@@ -2694,6 +2687,8 @@ class TestGroceryService(unittest.TestCase):
         self.instance.fetchNeutronDataCached = mock.Mock(return_value={"result": True, "workspace": cleanWorkspace})
         self.instance.fetchNeutronDataSingleUse = mock.Mock(return_value={"result": True, "workspace": dirtyWorkspace})
         self.instance.fetchGroupingDefinition = mock.Mock(return_value={"result": True, "workspace": groupWorkspace})
+        self.instance._validateWorkspaceInstrument = mock.Mock()
+        self.instance.getWorkspaceForName = mock.Mock(return_value=mock.Mock(spec=MatrixWorkspace))
 
         clerk = GroceryListItem.builder()
         clerk.native().neutron(self.runNumber).add()
@@ -2709,6 +2704,7 @@ class TestGroceryService(unittest.TestCase):
         ):
             fetchMethod.assert_called_once_with(groceryList[i])
         self.instance.fetchGroupingDefinition.assert_called_once_with(groceryList[2])
+        self.instance._validateWorkspaceInstrument.assert_called()
 
     def test_fetch_grocery_list_fails(self):
         self.instance.fetchNeutronDataSingleUse = mock.Mock(return_value={"result": False, "workspace": "unimportant"})
@@ -2728,6 +2724,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_grocery_list_diffcal_output(self):
         # Test of workspace type "diffcal_output" as `Input` argument in the `GroceryList`
         with state_root_redirect(self.instance.dataService) as tmpRoot:
+            self.instance._validateWorkspaceInstrument = mock.Mock()
             self.instance.dataService.calibrationIndexer = self.mockIndexer(tmpRoot.path(), "diffraction")
             groceryList = (
                 GroceryListItem.builder()
@@ -2751,6 +2748,7 @@ class TestGroceryService(unittest.TestCase):
             items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == self.diffCalOutputName
             assert mtd.doesExist(self.diffCalOutputName)
+            self.instance._validateWorkspaceInstrument.assert_called()
 
     def test_fetch_grocery_list_diffcal_output_cached(self):
         # Test of workspace type "diffcal_output" as `Input` argument in the `GroceryList`:
@@ -2776,6 +2774,8 @@ class TestGroceryService(unittest.TestCase):
             OutputWorkspace=diffCalOutputName,
         )
 
+        self.instance._validateWorkspaceInstrument = mock.Mock()
+
         self.instance.dataService.calibrationIndexer = self.mockIndexer("root", "diffraction")
 
         assert mtd.doesExist(diffCalOutputName)
@@ -2785,6 +2785,7 @@ class TestGroceryService(unittest.TestCase):
         assert items[0] == diffCalOutputName
         assert mtd.doesExist(diffCalOutputName)
         assert mtd[diffCalOutputName].getTitle() == testTitle
+        self.instance._validateWorkspaceInstrument.assert_called()
 
     def test_fetch_grocery_list_diffcal_table(self):
         # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`
@@ -3021,6 +3022,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_grocery_list_diffcal_mask_cached(self):
         # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`:
         #   workspace already in ADS
+        self.instance._validateWorkspaceInstrument = mock.Mock()
         groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1, self.version).buildList()
         diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
         diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
@@ -3046,6 +3048,7 @@ class TestGroceryService(unittest.TestCase):
         assert items[0] == diffCalMaskName
         assert mtd.doesExist(diffCalMaskName)
         assert mtd[diffCalMaskName].getTitle() == testTitle
+        self.instance._validateWorkspaceInstrument.assert_called()
 
     def test_fetch_grocery_list_diffcal_mask_loads_table(self):
         # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`:
@@ -3190,6 +3193,7 @@ class TestGroceryService(unittest.TestCase):
         # Test of workspace type "normalization" as `Input` argument in the `GroceryList`:
         #   workspace already in ADS
         self.instance.grocer = mock.Mock()
+        self.instance._validateWorkspaceInstrument = mock.Mock()
         self.instance.dataService.normalizationIndexer = self.mockIndexer()
         self.instance._processNeutronDataCopy = mock.Mock()
         groceryList = (
@@ -3212,6 +3216,7 @@ class TestGroceryService(unittest.TestCase):
         assert mtd[normalizationWorkspaceName].getTitle() == testTitle
         assert self.instance.grocer.executeRecipe.call_count == 0
         self.instance._processNeutronDataCopy.assert_not_called()
+        self.instance._validateWorkspaceInstrument.assert_called()
 
     def test_fetch_grocery_list_normalization_not_found_unreachable_code(self):
         # Test of workspace type "normalization": no normalization exists
@@ -3231,7 +3236,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_grocery_list_reductionPixelMask(self):
         # Test of workspace type "reduction_pixel_mask" as `Input` argument in the `GroceryList`
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-
+        self.instance._validateWorkspaceInstrument = mock.Mock()
         stateId = "ab8704b0bc2a2342"
         with reduction_root_redirect(self.instance.dataService, stateId=stateId):
             groceryList = (
@@ -3257,6 +3262,7 @@ class TestGroceryService(unittest.TestCase):
             assert items[0] == maskWorkspaceName
             assert mtd.doesExist(maskWorkspaceName)
             assert isinstance(mtd[maskWorkspaceName], MaskWorkspace)
+            self.instance._validateWorkspaceInstrument.assert_called()
 
     def test_fetch_grocery_list_unknown_type(self):
         groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber, self.version).buildList()
@@ -3271,6 +3277,7 @@ class TestGroceryService(unittest.TestCase):
         # expected workspaces
         cleanWorkspace = "unimportant"
         groupWorkspace = mock.Mock()
+        self.instance.getWorkspaceForName = mock.Mock()
 
         self.instance.fetchNeutronDataCached = mock.Mock(return_value={"result": True, "workspace": cleanWorkspace})
         self.instance.fetchGroupingDefinition = mock.Mock(return_value={"result": True, "workspace": groupWorkspace})
@@ -3288,6 +3295,7 @@ class TestGroceryService(unittest.TestCase):
         assert res == [cleanWorkspace, groupWorkspace]
         self.instance.fetchGroupingDefinition.assert_called_with(groupingItemWithSource)
         self.instance.fetchNeutronDataCached.assert_called_with(inputItem)
+        self.instance.getWorkspaceForName.assert_called()
 
     def test_updateInstrumentParameters(self):
         wsName = mtd.unique_hidden_name()

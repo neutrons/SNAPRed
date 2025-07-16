@@ -20,6 +20,7 @@ from mantid.simpleapi import (
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
+from util.Config_helpers import Config_override
 from util.helpers import arrayFromMask, createCompatibleMask, maskFromArray
 from util.InstaEats import InstaEats
 from util.SculleryBoy import SculleryBoy
@@ -943,10 +944,14 @@ class TestReductionServiceMasks:
         )
 
         # call code and check result
-        with mock.patch.object(
-            self.service.dataFactoryService,
-            "getLatestApplicableCalibrationVersion",
-            return_value=None,
+        with (
+            mock.patch.object(
+                self.service.dataFactoryService,
+                "getLatestApplicableCalibrationVersion",
+                return_value=None,
+            ),
+            Config_override("instrument.lite.pixelResolution", 4),
+            Config_override("instrument.lite.name", "fakesnaplite"),
         ):
             combinedMask = self.service.prepCombinedMask(request)
         actual = arrayFromMask(combinedMask)
