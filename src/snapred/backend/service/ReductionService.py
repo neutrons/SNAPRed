@@ -3,7 +3,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Self
 
-from snapred.backend.api.ProgressRecorder import ComputationalOrder, WallClockTime
 from snapred.backend.dao import RunMetadata
 from snapred.backend.dao.indexing.Versioning import VersionState
 from snapred.backend.dao.ingredients import (
@@ -27,6 +26,7 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.profiling.ProgressRecorder import ComputationalOrder, WallClockTime
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe, ConvertUnitsRecipe
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe

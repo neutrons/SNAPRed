@@ -17,7 +17,6 @@ from mantid.simpleapi import (
 )
 
 ## SNAPRed imports
-from snapred.backend.api.ProgressRecorder import ComputationalOrder, ProgressRecorder
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import WorkspaceMetadata
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
@@ -38,6 +37,7 @@ from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
+from snapred.backend.profiling.ProgressRecorder import ComputationalOrder, ProgressRecorder
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
