@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, TypeVar
 
 import yaml
+from ruamel.yaml import YAML as rYaml
 
 from snapred import __version__ as snapredVersion
 from snapred.meta.decorators.Singleton import Singleton
@@ -159,9 +160,27 @@ class _Config:
         """
         self._logger.debug(f"Merging/exporting configuration with environment: {envName}")
         self.refresh(envName, False)
+
+        ryaml = rYaml()
+        ryaml.default_flow_style = False
+        ryaml.indent(mapping=2, sequence=4, offset=2)
+
+        with Resource.open(self._defaultEnv, "r") as file:
+            config = ryaml.load(file)
+
+        # update config with self._config, deep_update does not work with ruamel.yaml
+        def merge_dicts(d1, d2):
+            for key, value in d2.items():
+                if isinstance(value, dict) and key in d1:
+                    merge_dicts(d1[key], value)
+                else:
+                    d1[key] = value
+
+        merge_dicts(config, self._config)
+
         # Export the merged configuration to application.yml
-        with Resource.open("application.yml", "w") as file:
-            yaml.dump(self._config, file, default_flow_style=False)
+        with Resource.open(self._defaultEnv, "w") as file:
+            ryaml.dump(config, file)
 
     def reload(self, env_name=None) -> None:
         # use refresh to do initial load, clearing shouldn't matter

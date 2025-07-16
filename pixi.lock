@@ -379,6 +379,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rpds-py-0.25.1-py311hdae7d1d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ruamel.yaml-0.18.14-py311h9ecbd09_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ruamel.yaml.clib-0.2.8-py311h9ecbd09_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/ruamel_yaml-0.15.80-py311h459d7ec_1009.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ruff-0.12.0-py311h82b16fd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scipy-1.15.2-py311h8f841c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/secretstorage-3.3.3-py311h38be061_3.conda
@@ -5211,7 +5212,8 @@ packages:
   - python
   license: BSD-3-Clause
   license_family: BSD
-  purls: []
+  purls:
+  - pkg:pypi/pycparser?source=hash-mapping
   size: 110100
   timestamp: 1733195786147
 - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-2.11.7-pyh3cfb1c2_0.conda
@@ -6140,6 +6142,20 @@ packages:
   - pkg:pypi/ruamel-yaml-clib?source=hash-mapping
   size: 147191
   timestamp: 1728724593073
+- conda: https://conda.anaconda.org/conda-forge/linux-64/ruamel_yaml-0.15.80-py311h459d7ec_1009.conda
+  sha256: 3bc1ee8e536710a4c4cb38dee98923ade62def7dc92fb646de6df01b913c1ae8
+  md5: 799197f6c21be0b366d1a593d1015a5c
+  depends:
+  - libgcc-ng >=12
+  - python >=3.11,<3.12.0a0
+  - python_abi 3.11.* *_cp311
+  - yaml >=0.2.5,<0.3.0a0
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/ruamel-yaml-conda?source=hash-mapping
+  size: 325700
+  timestamp: 1695546344673
 - conda: https://conda.anaconda.org/conda-forge/linux-64/ruff-0.12.0-py311h82b16fd_0.conda
   sha256: 673ea864ba83d883d97399cf75e8f03a38515c572c26649513c78be1b250eabd
   md5: d9554723b9ab00657d2de0eee98b0f92
@@ -6284,8 +6300,8 @@ packages:
   timestamp: 1733381032766
 - pypi: ./
   name: snapred
-  version: 1.4.0.dev20+d202507032027
-  sha256: 6c0792d18fab7045eb56e253aaee9a9dd71c521714c08d6d2dd119b9bec376d2
+  version: 1.4.0.dev18+d202507161742
+  sha256: 519806d968346d570a1d3e98dfe6e57884c41a31c6eca7b77ecc26f74dddec83
   requires_dist:
   - pyoncat~=1.6
   requires_python: '>=3.10'
