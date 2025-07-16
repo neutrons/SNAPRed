@@ -156,10 +156,7 @@ class _Config:
         # Automatically set the path to "${user.application.data.home}":
         self._config["user"]["application"] = {}
         self._config["user"]["application"]["data"] = {}
-        if not isTestEnv():
-            self._config["user"]["application"]["data"]["home"] = str(Path.home() / ".snapred")
-        else:
-            self._config["user"]["application"]["data"]["home"] = Resource.getPath("inputs/user_application_data_home")
+        self._config["user"]["application"]["data"]["home"] = str(Path.home() / ".snapred")
         # ---------- end: internal values: -----------------------------
 
         watchedProperties = {}

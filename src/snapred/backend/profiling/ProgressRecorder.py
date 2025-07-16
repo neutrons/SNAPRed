@@ -75,40 +75,48 @@ class _Step(BaseModel):
     #   this allows accounting for changes in how `N_ref` is computed,
     #   but doesn't have the problems associated with making an
     #   `N_ref`-callable persistent.
-    N_ref_hash: str
-    """
-      == In case of change, don't delete the measurements!  Just re-initialize the `_Estimate`! ==
-    """
+    N_ref_hash: str | None
     
     # Standard computational-order is used to normalize `N_ref`, from the as-saved measurement,
     #   to `N`, as used by the estimate's spline fit.
-    order: ComputationalOrder = ComputationalOrder.O_0
+    order: ComputationalOrder | None
     
     def __init__(
-            self, *,
-            key: Tuple[str | None, ...],
+            self,
+            key: Tuple[str | None, ...], *,
             N_ref_hash: str | None = None,
-            # Default values compute constant-time estimate.
-            N_ref: Callable[..., float] = lambda *_args, **_kwargs: 1.0,
+            N_ref: Callable[..., float] | None = None,
             N_ref_args: Tuple[Tuple[Any,...], Dict[str, Any]] = ((), {}),
-            order: ComputationalOrder=ComputationalOrder.O_0
+            order: ComputationalOrder = None
         ):
-        # The persistent part of the `Step`, as the Pydantic model,
-        #   retains the hash digest of the `N_ref`-callable, but not the callable itself.
-        N_ref_hash_ = _Step._callable_hash(N_ref)
-        if N_ref_hash is not None and N_ref_hash_ != N_ref_hash:
-            logger.warning(
-                f"`N_ref` for step {key} has been modified from that used in previously-saved data.\n"
-                + "  In this case, usually the previous timing measurements for the step should be discarded."
-            )
+        # The persistent part of the `Step` retains the hash digest of the `N_ref`-callable,
+        #   but not the callable itself.
+        
+        # In expected usage: during `__init__` only ONE of these would be specified.
+        if N_ref is not None:
+            if N_ref_hash is not None:
+                raise RuntimeError(
+                    f"Usage error: step {key} initialization should specify "
+                    + "either `N_ref` or `N_ref_hash`, but not both."
+                )
+            N_ref_hash = _Step._callable_hash(N_ref)
         
         super().__init__(
             key=key,
-            N_ref_hash=N_ref_hash_,
+            N_ref_hash=N_ref_hash,
             order=order
         )
         self._N_ref = N_ref
         self._N_ref_args = N_ref_args
+    
+    # A factory method to produce default instances of `_Step`.
+    @classmethod
+    def default(cls, key: Tuple[str, ...]) -> Self:
+        return _Step(
+            key=key
+            # Default values for `N_ref` and `order` are set
+            #   at `WallClockTime`.  They should not be set here.
+        )
 
     def setDetails(
             self, *,
@@ -126,7 +134,14 @@ class _Step(BaseModel):
         # 
         if N_ref is not None:
             self._N_ref = N_ref
+            previousHash = self.N_ref_hash
             self.N_ref_hash = _Step._callable_hash(N_ref)
+            if previousHash is not None and self.N_ref_hash != previousHash:
+                logger.warning(
+                    f"`N_ref` for step {self.key} has been modified from that used in previously-saved data.\n"
+                    + "  In this case, usually the previous timing measurements for the step should be discarded."
+                )
+            
         if N_ref_args is not None:
             self._N_ref_args = N_ref_args
         if order is not None:
@@ -180,6 +195,7 @@ class _Estimate(BaseModel):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._spl = None
         if self.tck is not None:
             # Note that this _does_ allow degree `k == 0`: 
             #   but any construction of the actual `BSpline` not using `construct_fast` will
@@ -188,12 +204,10 @@ class _Estimate(BaseModel):
             self._spl = BSpline.construct_fast(*_tck, extrapolate=True)
 
     @classproperty
-    def SPLINE_ORDER(cls):
+    def SPLINE_DEGREE(cls):
         return Config["application.workflows_data.timing.spline_order"]
     
     # A factory method to produce a default instance of the `_Estimate`.
-    #   To be used during pydantic initialization of other `BaseModel`-derived objects,
-    #   for some reason `@classproperty` did not work with the following.
     @classmethod
     def default(cls) -> Self:
         # A factory method to produce default instances of `_Estimate`.
@@ -202,8 +216,6 @@ class _Estimate(BaseModel):
         # * As this method may eventually depend on arguments,
         #   default args should not be used to implement this value.
         # * This caches the `_default` value of `_Estimate` as a class attribute.
-        # * TODO: an attempt at creating a `cached_classproperty` implementation had some 
-        #   issues that need to be resolved.  For the moment, the caching is done explicitly.
         
         if cls._default is None:
             # A linear estimator:
@@ -236,7 +248,7 @@ class _Estimate(BaseModel):
     def _update(self, Ns: np.ndarray, dts: np.ndarray, dataCount: int):
         # Until there are enough distinct measurement points to generate the full spline order,
         #   construct lower-order splines.
-        splineOrder = min(len(Ns) - 1, self.SPLINE_ORDER)
+        splineOrder = min(len(Ns) - 1, self.SPLINE_DEGREE)
         if splineOrder >= 0:
             # retain counts contributing to the estimate: (|<distinct points>|, |<all points>|)
             self.count = (len(Ns), dataCount)
@@ -251,12 +263,20 @@ class _Estimate(BaseModel):
             self._spl = make_splrep(Ns if not Ns[0] is None else np.array([0.0]), dts, k=splineOrder)
             self.tck = (list(self._spl.tck[0]), list(self._spl.tck[1]), self._spl.tck[2])
 
-    def _prepareData(self, measurements: List[_Measurement], order: Callable[[float], float]) -> Tuple[List[float], List[float]]:        
+    def _prepareData(self, measurements: List[_Measurement], order: Callable[[float], float]) -> Tuple[np.ndarray, np.ndarray]:        
         # Sort and accumulate the measurement data.
         
         ts = [(order(measurement.N_ref) if measurement.N_ref is not None else None, measurement.dt)\
                  for measurement in measurements]
+        
+        # *** DEBUG ***
+        print([t[0] for t in ts])
+        print(measurements)
+        
         # Either all of the `N_ref` will be `float`, or all will be `None`.
+        if any(t[0] is None for t in ts) and not all(t[0] is None for t in ts):
+            raise RuntimeError("Either all of the `N_ref` values should be `float`, or all should be `None`.")
+        
         if ts[0][0] is not None:
             ts = sorted(ts, key=lambda t: t[0])
             if ts[0][0] != 0.0:
@@ -292,6 +312,13 @@ class _Estimate(BaseModel):
             p_prev = p
         return Ns_, dts_
 
+    @field_validator("tck", mode="before")
+    @classmethod
+    def _validate_tck(cls, v: Any) -> Tuple[List[float], List[float], int]:
+        if v is not None:
+            if v[2] > cls.SPLINE_DEGREE:
+                raise ValueError(f"In `tck`, specified spline degree `k` must be <= {_Estimate.SPLINE_DEGREE}.")
+        return v
     
 class ProgressStep(BaseModel):
     # Information about how to calculate the execution-time estimate
@@ -678,9 +705,9 @@ class WallClockTime():
             stepName: str = None,
             *,
             callerOverride: str = None, 
-            N_ref: Callable[..., float] = None,
-            N_ref_args: Tuple[Tuple[Any, ...], Dict[str, Any]] = None,
-            order: ComputationalOrder = None,
+            N_ref: Callable[..., float] = lambda *_args, **_kwargs: 1.0,
+            N_ref_args: Tuple[Tuple[Any, ...], Dict[str, Any]] = ((), {}),
+            order: ComputationalOrder = ComputationalOrder.O_0,
             enableLogging: bool = False
         ):
         # When used as a decorator:
