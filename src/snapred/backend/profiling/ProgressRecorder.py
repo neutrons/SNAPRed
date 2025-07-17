@@ -269,10 +269,6 @@ class _Estimate(BaseModel):
         ts = [(order(measurement.N_ref) if measurement.N_ref is not None else None, measurement.dt)\
                  for measurement in measurements]
         
-        # *** DEBUG ***
-        print([t[0] for t in ts])
-        print(measurements)
-        
         # Either all of the `N_ref` will be `float`, or all will be `None`.
         if any(t[0] is None for t in ts) and not all(t[0] is None for t in ts):
             raise RuntimeError("Either all of the `N_ref` values should be `float`, or all should be `None`.")
@@ -286,30 +282,36 @@ class _Estimate(BaseModel):
         return np.array(Ns), np.array(dts)
             
     def _accumulateDuplicates(self, ps: List[Tuple[float, float]]) -> Tuple[List[float], List[float]]:
-        # Accumulate adjacent measurements with the same N values;
+        # Accumulate adjacent measurements with the same N values:
         #   as part of the fitting process, this is applied _after_ the computational-order normalization.
+        
         Ns_, dts_ = [], []
-        p_prev = None
         count = 0
         for p in ps:
             n, dt = p
-            if p_prev is not None:
-                if count == 0:
-                    n_prev, dt_prev = p_prev
+            if count > 0:
+                n_prev = Ns_[-1]
                 if (n is None and n_prev is None) or np.isclose(n, n_prev):
                     # accumulate
-                    dt_prev += dt
+                    dts_[-1] += dt
                     count += 1
                     continue
-                elif count > 1:
-                    # take the mean value
-                    dt_prev /= count
-                    Ns_.append(n_prev)
-                    dts_.append(dt_prev)
+                else:
+                    if count > 1:                    
+                        # finalize the accumulation
+                        dts_[-1] /= count
                     count = 0
-            Ns_.append(n)
-            dts_.append(dt)
-            p_prev = p
+            if count == 0:
+                # start a new accumulation
+                Ns_.append(n)
+                dts_.append(dt)
+                count = 1
+                
+        if count > 1:
+            # finalize the last accumulation
+            dts_[-1] /= count
+            count = 0
+                        
         return Ns_, dts_
 
     @field_validator("tck", mode="before")

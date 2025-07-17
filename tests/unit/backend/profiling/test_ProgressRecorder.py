@@ -407,6 +407,7 @@ class Test_Estimate:
         ps = [(None, dt) for dt in dts]
         e = _Estimate.default()
         Ns_, dts_ = e._accumulateDuplicates(ps)
+        assert len(Ns_) == len(dts_)
         assert Ns_ == [None]
         assert len(dts_) == 1
         # `N_ref is None` => constant-time estimate, so `_accumulateDuplicates` will return the mean. 
@@ -418,31 +419,37 @@ class Test_Estimate:
         ps = [(N, dt) for N, dt in zip(Ns, dts)]
         e = _Estimate.default()
         Ns_, dts_ = e._accumulateDuplicates(ps)
-        assert Ns == list(Ns_)
+        assert len(Ns_) == len(dts_)
+        assert Ns.tolist() == list(Ns_)
         # values should be unmodified: use exact comparison
         assert dts_ == list(dts_)
         
         # accumulates duplicates as expected
         Ns = np.array([1.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0])
-        dts = Ns**2.5 + 0.1 * np.random.random(shape=Ns.shape)
+        dts = Ns**2.5 + 0.1 * np.random.random(size=Ns.shape)
         ps = [(N, dt) for N, dt in zip(Ns, dts)]
         e = _Estimate.default()
         Ns_, dts_ = e._accumulateDuplicates(ps)
+        assert len(Ns_) == len(dts_)
         assert [1.0, 2.0, 3.0] == list(Ns_)
         assert [dts[0:3].mean(), dts[3:5].mean(), dts[5:].mean()] == pytest.approx(list(dts_), rel=1.0e-6)
 
         # works with mixtures of duplicated and non-duplicated values
         Ns = np.array([1.0, 1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 5.0, 5.0])
-        dts = Ns**0.8 + 0.5 * np.random.random(shape=Ns.shape)
+        dts = Ns**0.8 + 0.5 * np.random.random(size=Ns.shape)
+        ps = [(N, dt) for N, dt in zip(Ns, dts)]
         e = _Estimate.default()
         Ns_, dts_ = e._accumulateDuplicates(ps)
+        assert len(Ns_) == len(dts_)
         assert [1.0, 2.0, 3.0, 4.0, 5.0] == list(Ns_)
         assert [dts[0:3].mean(), dts[3], dts[4], dts[5], dts[6:].mean()] == pytest.approx(list(dts_), rel=1.0e-6)
         
         Ns = np.array([1.0, 2.0, 3.0, 4.0, 4.0, 4.0, 5.0, 6.0, 7.0])
-        dts = Ns**3.1 + 0.01 * np.random.random(shape=Ns.shape)
+        dts = Ns**3.1 + 0.01 * np.random.random(size=Ns.shape)
+        ps = [(N, dt) for N, dt in zip(Ns, dts)]
         e = _Estimate.default()
         Ns_, dts_ = e._accumulateDuplicates(ps)
+        assert len(Ns_) == len(dts_)
         assert [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0] == list(Ns_)
         assert [dts[0], dts[1], dts[2], dts[3:6].mean(), dts[6], dts[7], dts[8]] == pytest.approx(list(dts_), rel=1.0e-6)
 
