@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import numpy as np
-from mantid.api import FileLoaderRegistry, MatrixWorkspace
+from mantid.api import FileLoaderRegistry
 from mantid.dataobjects import MaskWorkspace
 from pydantic import validate_call
 
@@ -1512,9 +1512,12 @@ class GroceryService:
                     result = self.fetchReductionPixelMask(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
-            ws = self.getWorkspaceForName(result["workspace"])
-            if isinstance(ws, MatrixWorkspace):
-                # If the workspace is a MatrixWorkspace, we can safely assume it is a neutron workspace.
+
+            if item.workspaceType in ["neutron", "normalization"] and result["loader"] in [
+                "LoadEventNexus",
+                "LoadNexusProcessed",
+            ]:
+                # The loader is not always set but *should* be at least for neutron/norm data.
                 # Validate the instrument and pixel count.
                 self._validateWorkspaceInstrument(item, result["workspace"])
             # check that the fetch operation succeeded and if so append the workspace
