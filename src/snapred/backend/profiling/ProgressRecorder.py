@@ -483,7 +483,7 @@ class _ProgressRecorder(BaseModel):
     @classmethod
     def getStepKey(
             cls, *,
-            callerOrStackFrameOverride: MethodType | FunctionType | FrameType=None,
+            callerOrStackFrameOverride: FunctionType | FrameType=None,
             stepName=None
         ) -> Tuple[str | None, ...]:
         # Compute a unique key for the current process step.
@@ -494,14 +494,16 @@ class _ProgressRecorder(BaseModel):
         #   * Caller's frame is actually two-frames up from the current frame.
         
         if bool(callerOrStackFrameOverride)\
-               and not isinstance(callerOrStackFrameOverride, (MethodType, FunctionType, FrameType)):
+               and not isinstance(callerOrStackFrameOverride, (FunctionType, FrameType)):
             raise RuntimeError(
                 "Usage error: when `callerOrStackFrameOverride` is set, it must be either "
-                + "a method, function, or the local stack-frame of the same."
+                + "a function, or the local stack-frame of a function."
             )            
         
-        # The choice of stack frame in the fallback allows `record` to be called directly in a function of interest.
-        # Any other usage should supply the <caller function> or <local stack-frame of caller function> directly.
+        # The choice of stack frame in the fallback here allows `ProgressRecorder.record` to be called directly
+        # in the scope of a function of interest.  Any other usage should supply the <caller function>
+        # or <local stack-frame of caller function> directly.
+        # TODO: maybe there shouldn't be any fallback?
         callerObjectOrStackFrame = callerOrStackFrameOverride if callerOrStackFrameOverride is not None\
                                        else inspect.currentframe().f_back.f_back
         key = cls._getCallerFullyQualifiedName(callerObjectOrStackFrame) + (stepName,)
@@ -578,7 +580,7 @@ class _ProgressRecorder(BaseModel):
         step.start()
         
         if step.loggingEnabled:
-            self._logTimeRemaining(step)
+            self._chainLogTimeRemaining(step)
         
         # Return the key
         return key
@@ -621,13 +623,20 @@ class _ProgressRecorder(BaseModel):
                         step.estimate.update(step.measurements, step.details.order)
 
     def logTimeRemaining(self, key: Tuple[str | None, ...]):
+        # user-facing method to log the step time remaining
         step = self.getStep(key)
+        self._logTimeRemaining(step)
+        
+    def _chainLogTimeRemaining(self, step: ProgressStep):
+        # log the step time remaining repeatedly, with a specified time delay
         continueToLog = self._logTimeRemaining(step)
         if continueToLog and Config["application.workflows_data.timing.logging.log_update_interval"] > 0:
             # Automatically log again after a delay.
-            step._timer  = Timer(Config["application.workflows_data.timing.logging.log_update_interval"], self.logTimeRemaining, key)
+            step._timer  = Timer(Config["application.workflows_data.timing.logging.log_update_interval"], self._chainLogTimeRemaining, step)
         else:
-            step._timer = None
+            if step._timer is not None:
+                step._timer.cancel()
+                step._timer = None
         
     def _logTimeRemaining(self, step: ProgressStep) -> bool:
         # Log the time remaining for an in-progress step.
