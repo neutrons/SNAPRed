@@ -323,13 +323,15 @@ class _Estimate(BaseModel):
         return v
     
 class ProgressStep(BaseModel):
+    # Progress-recording information for a single process step.
+    
     # Information about how to calculate the execution-time estimate
     details: _Step
     
-    # Post-execution elapsed wall-clock time measurements for this step.
+    # Elapsed wall-clock time measurements for previous executions of this step.
     measurements: List[_Measurement] = []
     
-    # The time estimator for the step.
+    # An execution-time estimator for this step.
     estimate: _Estimate = _Estimate.default()
     
     def __init__(self, *args, **kwargs):

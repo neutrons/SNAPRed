@@ -1,8 +1,10 @@
+from datetime import datetime, timezone
 import inspect
 import logging
 import numpy as np
 from pathlib import Path
 from scipy.interpolate import BSpline, make_splrep
+import threading
 
 from snapred.backend.profiling.ProgressRecorder import (
     ComputationalOrder,
@@ -453,7 +455,190 @@ class Test_Estimate:
         assert [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0] == list(Ns_)
         assert [dts[0], dts[1], dts[2], dts[3:6].mean(), dts[6], dts[7], dts[8]] == pytest.approx(list(dts_), rel=1.0e-6)
 
+class TestProgressStep:
+    @pytest.fixture(autouse=True)
+    def _setUpTest(self):
+        # setup:
         
+        self.key = ("module.name", "qualified.function.name", "step-name")
+        Ns = [1.0, 2.0, 3.0]
+        dts = [45.0, 75.0, 85.2]
+        measurements = [_Measurement(dt=dts[n], N_ref=Ns[n]) for n in range(len(Ns))]
+        self.s = ProgressStep(
+                     details=_Step(self.key),
+                     measurements=measurements,
+                     estimate=_Estimate.default()
+                 )
+        yield
+        
+        # teardown
+        pass
+        
+    def test_init(self):    
+        # verify that private attributes have been initialized correctly
+        assert self.s._startTime is None
+        assert self.s._loggingEnabled == False
+        assert self.s._timer == None
+
+    def test_setDetails(self):
+        # verify that `setDetails` works correctly
+        N_ref = lambda *args, **kwargs: args[0] * args[1] * len(kwargs)
+        N_ref_args = ((1, 2), {"three": 3})
+        order = ComputationalOrder.O_N_3
+        enableLogging = True
+
+        with mock.patch.object(self.s, "details") as mockDetails:
+            # sets `_loggingEnabled`
+            assert not self.s._loggingEnabled
+            self.s.setDetails(
+                N_ref=N_ref,
+                N_ref_args=N_ref_args,
+                order=order,
+                enableLogging=enableLogging
+            )
+            assert self.s._loggingEnabled == enableLogging
+            
+            # calls `self.details.setDetails`
+            mockDetails.setDetails.assert_called_once_with(
+                N_ref=N_ref,
+                N_ref_args=N_ref_args,
+                order=order
+            )           
+
+    def test_setDetails_defaults(self):
+        # verify that `setDetails` works correctly RE default args
+        assert not self.s._loggingEnabled
+        with mock.patch.object(self.s, "details") as mockDetails:
+            self.s.setDetails()
+            mockDetails.setDetails.assert_called_once_with(
+                N_ref=None,
+                N_ref_args=None,
+                order=None
+            )
+            assert not self.s._loggingEnabled
+
+    def test_setDetails_enable_logging(self):
+        # verify that `setDetails(enableLogging=<flag>)` works correctly
+        assert not self.s._loggingEnabled
+        with mock.patch.object(self.s, "details") as mockDetails:
+            self.s.setDetails(enableLogging=True)
+            mockDetails.setDetails.assert_called_once_with(
+                N_ref=None,
+                N_ref_args=None,
+                order=None,
+            )
+            assert self.s._loggingEnabled
+
+            self.s.setDetails(enableLogging=False)
+            assert not self.s._loggingEnabled
+            
+    def test_start(self):
+        _now = datetime.now(timezone.utc)
+        with mock.patch.object(inspect.getmodule(ProgressRecorder), "datetime") as mock_datetime:
+            mock_datetime.now = mock.Mock(return_value=_now)
+            
+            assert not self.s._loggingEnabled
+            self.s.start()
+
+            # verify that the utc-timezone is used
+            mock_datetime.now.assert_called_once_with(timezone.utc)
+
+            # verify that _startTime is set
+            assert self.s._startTime == _now
+
+            # verify that other args aren't affected
+            assert self.s._timer is None
+            assert not self.s._loggingEnabled
+
+    def test_stop(self):
+        expected = datetime.now(timezone.utc)
+        self.s._startTime = expected
+        mockTimer = mock.Mock(spec=threading.Timer)
+        self.s._timer = mockTimer
+
+        actual = self.s.stop()
+
+        # clears `_startTime` and `_timer`:
+        assert self.s._startTime is None
+        assert self.s._timer is None
+
+        # cancels the `_timer`
+        mockTimer.cancel.assert_called_once()
+
+        # returns the `_startTime`
+        assert expected == actual
+
+    def test_stop_no_timer(self):
+        expected = datetime.now(timezone.utc)
+        self.s._startTime = expected
+        assert self.s._timer is None
+
+        actual = self.s.stop()
+
+        # clears `_startTime`:
+        assert self.s._startTime is None
+        assert self.s._timer is None
+
+        # returns the `_startTime`
+        assert expected == actual
+
+    def test_stop_not_started(self):
+        # checks that the step has been started
+        assert self.s._startTime is None
+        with pytest.raises(RuntimeError, match="Usage error: attempt to `stop` unstarted step.*"):
+            self.s.stop()
+
+    def test_name(self):
+        # calls `humanReadableName`
+        with mock.patch.object(ProgressStep, "humanReadableName") as mockHumanReadableName:
+            name = self.s.name
+            mockHumanReadableName.assert_called_once_with(self.key)
+
+    def test_humanReadableName(self):            
+        # excludes `None` fields
+        key = (None, "lah.dee.dah", None)
+        assert ProgressStep.humanReadableName(key) == key[1]
+        
+        key = ("fiddle", None, "dee.dee")
+        assert ProgressStep.humanReadableName(key) == ".".join((key[0], key[2]))
+
+        # includes all non-trivial fields
+        key = ("one.two.three", "four.five", "six")
+        assert ProgressStep.humanReadableName(key) == ".".join(key)
+
+    def test_startTime(self):
+        _now = datetime.now(timezone.utc)
+
+        # exception if the step hasn't been started
+        with pytest.raises(RuntimeError, match="Usage error: attempt to read `startTime` for unstarted step.*"):
+            _time = self.s.startTime
+
+        # returns `_startTime`     
+        self.s._startTime = _now
+        assert self.s.startTime == _now
+
+    def test_isActive(self):
+        _now = datetime.now(timezone.utc)
+
+        # returns False if step hasn't been started
+        assert self.s._startTime is None
+        assert not self.s.isActive
+
+        # returns True if step has been started
+        self.s._startTime = _now
+        assert self.s.isActive
+
+    def test_loggingEnabled(self):
+        _now = datetime.now(timezone.utc)
+
+        # returns _loggingEnabled
+        assert not self.s._loggingEnabled
+        assert not self.s.loggingEnabled
+
+        self.s._loggingEnabled = True
+        assert self.s.loggingEnabled
+
+
 class TestProgressRecorder:
     # pytest-style: uses fixtures
 
