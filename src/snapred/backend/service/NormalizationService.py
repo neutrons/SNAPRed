@@ -97,7 +97,6 @@ class NormalizationService(Service):
             crystalDBounds=request.crystalDBounds,
             state=state,
         )
-        detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh, purgePeaks=False)
 
         # prepare and check focus group workspaces -- see if grouping already calculated
         correctedVanadium = wng.rawVanadium().runNumber(request.runNumber).build()
@@ -119,6 +118,7 @@ class NormalizationService(Service):
                 self.groceryClerk.buildDict(),
             )
             maskWorkspace = groceries["maskWorkspace"]
+            # NOTE: It needs to be checked with Malcolm if peaks should be purged
             detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh, purgePeaks=False, pixelMask=maskWorkspace)
             return NormalizationResponse(
                 correctedVanadium=correctedVanadium,

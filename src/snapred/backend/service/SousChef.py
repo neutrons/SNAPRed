@@ -331,6 +331,7 @@ class SousChef(Service):
         return NormalizationIngredients(
             pixelGroup=self.prepPixelGroup(ingredients, pixelMask=combinedPixelMask),
             calibrantSample=self.prepCalibrantSample(ingredients.calibrantSamplePath),
+            # NOTE: It needs to be checked with Malcolm if peaks should be purged
             detectorPeaks=self.prepDetectorPeaks(ingredients, purgePeaks=False, pixelMask=combinedPixelMask),
         )
 
