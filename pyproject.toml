@@ -245,16 +245,24 @@ python-build = "*"
 
 # Environment variables for local Mantid build
 [tool.pixi.feature.local-mantid.activation.env]
-MANTID_BUILD_DIR = "/SNS/users/wqp/git/mantid/build"
-MANTID_BUILD_SRC = "/SNS/users/wqp/git/mantid/"
+MANTID_BUILD_DIR = "/path/to/mantid/build"
+MANTID_BUILD_SRC = "/path/to/mantid/source"
 PYTHONPATH = "${MANTID_BUILD_SRC}/Framework/PythonInterface:${MANTID_BUILD_DIR}/bin:${PYTHONPATH}"
 LD_LIBRARY_PATH = "${MANTID_BUILD_DIR}/lib:${MANTID_BUILD_DIR}/bin:${LD_LIBRARY_PATH}"
 MANTIDPATH = "${MANTID_BUILD_DIR}"
+MANTID_DATA_PATH = "${MANTID_BUILD_DIR}/share/mantid"
+MANTID_FRAMEWORK_PATH = "${MANTID_BUILD_DIR}/lib"
 
 [tool.pixi.feature.local-mantid.tasks]
 # Test that local Mantid can be imported
 test-local-mantid = { cmd = "python -c \"import sys; print('Python paths:'); [print(f'  {p}') for p in sys.path[:5]]; print('\\nTesting Mantid import...'); import mantid; print(f'✅ Mantid imported from: {mantid.__file__}'); print(f'✅ Mantid version: {mantid.__version__}')\"", description = "Test that local Mantid build can be imported" }
+# More comprehensive test including workbench components
+test-local-mantid-full = { cmd = "python -c \"import sys; print('=== Python Environment ==='); print(f'Python executable: {sys.executable}'); print('\\nPython paths (first 10):'); [print(f'  {i+1}: {p}') for i, p in enumerate(sys.path[:10])]; print('\\n=== Mantid Import Test ==='); import mantid; print(f'✅ Mantid imported from: {mantid.__file__}'); print(f'✅ Mantid version: {mantid.__version__}'); print('\\n=== Workbench Components ==='); try: import mantidqt; print(f'✅ mantidqt imported from: {mantidqt.__file__}'); except Exception as e: print(f'❌ mantidqt import failed: {e}'); try: from mantidqt.utils.qt import import_qt; print('✅ Qt import successful'); except Exception as e: print(f'❌ Qt import failed: {e}')\"", description = "Comprehensive test of local Mantid build including workbench components" }
 # Start SNAPRed with local Mantid build
 snapred-local = { cmd = "python -c \"import sys; sys.path.insert(0, '${MANTID_BUILD_DIR}/bin'); exec(open('src/snapred/__main__.py').read())\"", description = "Start SNAPRed with local Mantid build" }
 # Alternative launch method using module
 snapred-local-module = { cmd = "python -m snapred", description = "Start SNAPRed with local Mantid (using module import)" }
+# Debug environment variables
+debug-local-mantid-env = { cmd = "python -c \"import os; print('=== Environment Variables ==='); vars_to_check = ['MANTID_BUILD_DIR', 'MANTID_BUILD_SRC', 'PYTHONPATH', 'LD_LIBRARY_PATH', 'MANTIDPATH', 'MANTID_DATA_PATH', 'MANTID_FRAMEWORK_PATH']; [print(f'{var}: {os.environ.get(var, \\\"NOT SET\\\")}') for var in vars_to_check]\"", description = "Debug environment variables for local Mantid setup" }
+# Comprehensive environment test
+test-local-mantid-comprehensive = { cmd = "python test_local_mantid_setup.py", description = "Comprehensive test of local Mantid environment setup" }
