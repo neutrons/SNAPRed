@@ -3,6 +3,7 @@ from typing import Any, Dict, Generic, List, Set, Tuple, TypeVar, get_args
 
 from pydantic import BaseModel, ValidationError
 
+from snapred.backend.api.HookManager import HookManager
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -27,6 +28,7 @@ class Recipe(ABC, Generic[Ingredients]):
             self.utensils = Utensils()
             self.utensils.PyInit()
         self.mantidSnapper = self.utensils.mantidSnapper
+        self.hookManager = HookManager()
 
     def __init_subclass__(cls) -> None:
         cls._Ingredients = get_args(cls.__orig_bases__[0])[0]  # type: ignore
@@ -160,8 +162,12 @@ class Recipe(ABC, Generic[Ingredients]):
         Main interface method for the recipe.
         Given the ingredients and groceries, it prepares, executes and returns the final workspace.
         """
+        recipeName = self.__class__.__name__
         self.prep(ingredients, groceries)
-        return self.execute()
+        self.hookManager.execute(f"Pre{recipeName}", self)
+        result = self.execute()
+        self.hookManager.execute(f"Post{recipeName}", self)
+        return result
 
     def cater(self, shipment: List[Pallet]) -> bool:
         """

@@ -22,6 +22,7 @@ with mock.patch.dict(
         """Mock InterfaceController"""
         interfaceController = InterfaceController()
         interfaceController.serviceFactory = mock.Mock()
+        interfaceController.hookManager = mock.Mock()
         interfaceController.getWarnings = mock.Mock()
         interfaceController.getWarnings.return_value = None
 
@@ -50,6 +51,8 @@ with mock.patch.dict(
         assert response.code == ResponseCode.OK
         assert response.message is None
         assert response.data["result"] == "Success!"
+        assert interfaceController.hookManager.validateAllHooksExecuted.called
+        assert interfaceController.hookManager.register.called
 
     def test_executeRequest_recoverable():
         """Test executeRequest with a recoverable service"""
