@@ -41,6 +41,119 @@ to the project's ``.vscode/settings.json`` file:
         "python.defaultInterpreterPath": ".pixi/envs/default/bin/python"
     }
 
+Local Mantid development (optional)
+-----------------------------------
+
+SNAPRed supports development with a local Mantid build instead of the conda-distributed packages.
+This is useful for developers who need to make simultaneous changes to both SNAPRed and Mantid.
+
+Prerequisites
+^^^^^^^^^^^^^
+
+- A local Mantid build directory (e.g., from building Mantid from source)
+- Access to the Mantid source directory
+
+Note: The Python interface files are automatically accessed from the source directory, eliminating the need to manually copy them to the build directory.
+
+Setup
+^^^^^
+
+1. **Configure the build and source paths** in ``pyproject.toml``:
+
+   .. code-block:: toml
+
+       [tool.pixi.feature.local-mantid.activation.env]
+       MANTID_BUILD_DIR = "/path/to/your/mantid/build"
+       MANTID_BUILD_SRC = "/path/to/your/mantid/source"
+
+   **Examples:**
+
+   - Build: ``/home/username/mantid/build``, Source: ``/home/username/mantid/source``
+   - Build: ``/usr/local/mantid/build``, Source: ``/usr/local/mantid/source``
+   - Build: ``/opt/mantid/build``, Source: ``/opt/mantid/source``
+
+2. **Install the local-mantid environment**:
+
+   .. code-block:: sh
+
+       pixi install --environment local-mantid
+
+Usage
+^^^^^
+
+**Test the local Mantid configuration:**
+
+.. code-block:: sh
+
+    pixi run --environment local-mantid test-local-mantid
+
+**Comprehensive test (including workbench components):**
+
+.. code-block:: sh
+
+    pixi run --environment local-mantid test-local-mantid-full
+
+**Debug environment variables:**
+
+.. code-block:: sh
+
+    pixi run --environment local-mantid debug-local-mantid-env
+
+**Comprehensive test suite (recommended for troubleshooting):**
+
+.. code-block:: sh
+
+    pixi run --environment local-mantid test-local-mantid-comprehensive
+
+**Start SNAPRed with local Mantid:**
+
+.. code-block:: sh
+
+    pixi run --environment local-mantid snapred-local-module
+
+**Enter development shell:**
+
+.. code-block:: sh
+
+    pixi shell --environment local-mantid
+
+How it works
+^^^^^^^^^^^^
+
+The ``local-mantid`` environment:
+
+- **Uses the** ``mantid-developer`` **package directly** - This automatically includes all the same build tools, libraries, and dependencies that Mantid developers use, ensuring perfect compatibility and automatic updates when the mantid-developer environment changes
+- **Automatically accesses Python interface from source** - The ``MANTID_BUILD_SRC`` variable points directly to the source directory, eliminating the need to manually copy Python interface files
+- **Handles package conflicts via environment variables** - While ``mantid-developer`` installs conda versions of ``mantid``, ``mantidworkbench``, and ``mantidqt``, our environment variables ensure your local build takes precedence:
+
+  - ``PYTHONPATH``: Points to local Python interface from source directory first, then build directory
+  - ``LD_LIBRARY_PATH``: Points to local shared libraries first
+  - ``MANTIDPATH``: Points to local build directory
+  - ``MANTID_DATA_PATH``: Points to local data directory
+  - ``MANTID_FRAMEWORK_PATH``: Points to local framework libraries
+
+This approach exactly mirrors the typical developer workflow of using the ``mantid-developer`` environment, but automatically stays in sync with any dependency changes made by the Mantid team.
+
+Troubleshooting
+^^^^^^^^^^^^^^^
+
+**Import errors:**
+
+- Ensure the source directory path is correct and contains ``Framework/PythonInterface/mantid/``
+- Run ``pixi run --environment local-mantid debug-local-mantid-env`` to verify environment variables
+
+**Library errors:**
+
+- Check that ``${MANTID_BUILD_DIR}/lib`` contains the required shared libraries
+- Verify the build completed successfully
+
+**Path conflicts (workbench still using site-packages):**
+
+- Run ``pixi run --environment local-mantid test-local-mantid-comprehensive`` for a complete diagnosis
+- Run ``pixi run --environment local-mantid test-local-mantid-full`` to verify all components are using local build
+- Check that both ``MANTID_BUILD_DIR`` and ``MANTID_BUILD_SRC`` are set correctly
+- Ensure the environment variables are taking precedence by checking the output of ``debug-local-mantid-env``
+
 Starting the gui
 ----------------
 
