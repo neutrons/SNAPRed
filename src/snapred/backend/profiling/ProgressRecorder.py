@@ -400,13 +400,15 @@ class _ProgressRecorder(BaseModel):
     #   * Additional information is associated with the order of the steps in the list.  However
     #     this is also not presently used.
     steps: Dict[Tuple[str | None, ...], ProgressStep] = {}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        # Automatically persist the progress data at application exit.
-        atexit.register(_ProgressRecorder._unloadResident)
     
+    def __new__(cls, *args, **kwargs):
+        # This is declared as a pass-through method, to be used during testing.
+        return super().__new__(cls, *args, **kwargs)
+        
+    def __init__(self, *args, **kwargs):
+        # This is declared as a pass-through method, to be used during testing.
+        super().__init__(*args, **kwargs)
+            
     @classproperty
     def enabled(cls):
         return Config["application.workflows_data.timing.enabled"]
@@ -415,7 +417,11 @@ class _ProgressRecorder(BaseModel):
     @functools.lru_cache(maxsize=None)
     def instance(cls) -> Self:
         if cls.enabled:
+            # Automatically persist the progress data at application exit.
+            atexit.register(_ProgressRecorder._unloadResident)
+            
             return cls.model_validate_json(LocalDataService().readProgressRecords())
+        
         # When not enabled, we still need to return an "empty" instance.
         return cls()
 
@@ -478,7 +484,9 @@ class _ProgressRecorder(BaseModel):
         
         # key components: (<module name>, <fully-qualified scope name>, <explicit step name>)
         qualifiedName = key[-2]
-        return bool(_pattern.match(qualifiedName))
+        if bool(qualifiedName):
+            return bool(_pattern.match(qualifiedName))
+        return False
 
     @classmethod
     def getStepKey(

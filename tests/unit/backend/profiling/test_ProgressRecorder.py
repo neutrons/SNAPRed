@@ -4,6 +4,7 @@ import logging
 import numpy as np
 from pathlib import Path
 from scipy.interpolate import BSpline, make_splrep
+import tempfile
 import threading
 
 from snapred.backend.profiling.ProgressRecorder import (
@@ -17,7 +18,7 @@ from snapred.backend.profiling.ProgressRecorder import (
     # The corresponding class:
     _ProgressRecorder
 )
-from snapred.meta.Config import Config
+from snapred.meta.Config import Config, Resource
 
 from unittest import mock
 import pytest
@@ -639,29 +640,32 @@ class TestProgressStep:
         assert self.s.loggingEnabled
 
 
-class TestProgressRecorder:
+class Test_ProgressRecorder:
     # pytest-style: uses fixtures
-
+    
+    
     @pytest.fixture(autouse=True, scope="class")
     @classmethod
-    def _setup_test_class(cls, Config_override_fixture):
+    def _setup_test_class(cls):
         # setup
-        
-        # The `ProgressRecorder` singleton has been created at import of its module.
-        #   Since it is by-default _disabled_ in the test environment, it contains
-        #   no persistent data; however, for all of these tests it now needs to be enabled:
-        Config_override_fixture("application.workflows_data.timing.enable", True)
         yield
         
         # teardown
         pass
         
     @pytest.fixture(autouse=True)
-    def _setup_test(self):
+    def _setup_test(self, Config_override_fixture):
         # setup
         
+        """
+        # The `ProgressRecorder` singleton has been created at import of its module.
+        #   Since it is by-default _disabled_ in the test environment, it contains
+        #   no persistent data; however, for all of these tests it now needs to be enabled:
+        Config_override_fixture("application.workflows_data.timing.enable", True)
+        """
+        
         # Use a temporary directory for "user.application.data.home":
-        Config_override("user.application.data.home", tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/user.application.data.home_")))
+        Config_override_fixture("user.application.data.home", tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/user.application.data.home_")))
         yield
         
         # teardown
@@ -686,3 +690,200 @@ class TestProgressRecorder:
             mockSingleton.stop()
         
         return _init()
+
+    @pytest.fixture(autouse=True)
+    def _clear_instance_cache(self):
+        # This fixture re-initializes `_ProgressRecorder.instance` `lru_cache` before and after each test.
+        
+        # setup
+        _ProgressRecorder.instance.cache_clear()
+        yield
+        
+        # teardown:
+        _ProgressRecorder.instance.cache_clear()
+        
+    def test_init(self):
+        # default init:
+        recorder = _ProgressRecorder()
+        assert recorder.steps == {}
+    
+    def test_enabled(self):
+        # `enabled` classproperty tracks `Config`
+        for flag in (False, True):
+            with Config_override("application.workflows_data.timing.enabled", flag):
+                assert _ProgressRecorder.enabled == flag
+    
+    def test_instance(self):
+        # `_ProgressRecorder.instance()` uses `lru_cache`:
+        #   for each of these subtests, we need to re-initialize it.
+        
+        # enabled => load persistent data
+        with (
+            Config_override("application.workflows_data.timing.enabled", True),
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "LocalDataService") as mockLocalDataService,
+            mock.patch.object(_ProgressRecorder, "model_validate_json") as mockModelValidate,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "atexit") as mock_atexit
+        ):
+            _ProgressRecorder.instance.cache_clear()
+            mockLocalDataService.return_value.readProgressRecords.return_value = mock.sentinel.json_data
+            mockModelValidate.return_value = mock.sentinel.instance1
+            actual = _ProgressRecorder.instance()
+            assert actual == mock.sentinel.instance1
+            mockModelValidate.assert_called_once_with(mock.sentinel.json_data)
+            mockLocalDataService.return_value.readProgressRecords.assert_called_once()
+            mock_atexit.register.assert_called_once_with(
+                _ProgressRecorder._unloadResident
+            )
+            
+            # call it again => returns the cached value
+            mockLocalDataService.reset_mock()            
+            mockModelValidate.reset_mock()
+            mock_atexit.reset_mock()
+            mockModelValidate.return_value = mock.sentinel.instance2
+            actual = _ProgressRecorder.instance()
+            assert actual == mock.sentinel.instance1
+            mockModelValidate.assert_not_called()
+            mockLocalDataService.return_value.readProgressRecords.assert_not_called()
+            mock_atexit.register.assert_not_called()
+            
+        # disabled => do not load persistent data
+        with (
+            Config_override("application.workflows_data.timing.enabled", False),
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "LocalDataService") as mockLocalDataService,
+            mock.patch.object(_ProgressRecorder, "model_validate_json") as mockModelValidate,
+            mock.patch.object(_ProgressRecorder, "__new__") as mock_new,
+            mock.patch.object(_ProgressRecorder, "__init__") as mock_init,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "atexit") as mock_atexit
+        ):
+            _ProgressRecorder.instance.cache_clear()
+            mockLocalDataService.return_value.readProgressRecords.side_effect =\
+                RuntimeError("this method should not be called")                
+            mockModelValidate.side_effect =\
+                RuntimeError("this method should not be called")
+            mock_atexit.register.side_effect =\
+                RuntimeError("this function should not be called")
+            mock_new.return_value = mock.sentinel.instance3
+            actual = _ProgressRecorder.instance()
+            assert actual == mock.sentinel.instance3
+            mock_new.assert_called_once_with(_ProgressRecorder)
+            
+            # call it again => returns the cached value
+            mockLocalDataService.reset_mock()          
+            mockModelValidate.reset_mock()
+            mock_atexit.reset_mock()
+            mock_init.reset_mock()
+            mock_new.reset_mock()
+            mock_new.return_value = mock.sentinel.instance4            
+            actual = _ProgressRecorder.instance()
+            assert actual == mock.sentinel.instance3
+            mock_new.assert_not_called()
+            
+    def test__unloadResident(self):
+        # `_ProgressRecorder.instance()` uses `lru_cache`:
+        #   for each of these subtests, we need to re-initialize it.
+        
+        # enabled: saves persistent data
+        with (
+            Config_override("application.workflows_data.timing.enabled", True),
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "LocalDataService") as mockLocalDataService,
+            mock.patch.object(_ProgressRecorder, "instance") as mockInstance,
+        ):  
+            _ProgressRecorder.instance.cache_clear()
+            mockInstance.return_value.model_dump_json.return_value = mock.sentinel.json_data
+            _ProgressRecorder._unloadResident()
+            mockInstance.assert_called_once()
+            mockLocalDataService.return_value.writeProgressRecords.assert_called_once_with(
+                mock.sentinel.json_data
+            )
+       
+        # disabled: does not save any data
+        with (
+            Config_override("application.workflows_data.timing.enabled", False),
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "LocalDataService") as mockLocalDataService,
+            mock.patch.object(_ProgressRecorder, "instance") as mockInstance
+        ):
+            _ProgressRecorder.instance.cache_clear()
+            mockInstance.return_value.model_dump_json.return_value = mock.sentinel.json_data
+            _ProgressRecorder._unloadResident()
+            mockInstance.return_value.model_dump_json.assert_not_called()
+            mockLocalDataService.return_value.writeProgressRecords.assert_not_called()
+    
+    def test__getCallerFullyQualifiedName(self):
+        pass
+    
+    def test_isLoggingEnabledForStep(self):
+        test_regex = ".*(joe).*(sam).*(sally).*"
+        with Config_override("application.workflows_data.timing.logging.qualname_regex", test_regex):
+            # key ::= (<module name> | None, <fully-qualified function name> | None, <step name> | None)             
+            
+            # trivial key returns False
+            assert not _ProgressRecorder.isLoggingEnabledForStep((None, None, None))
+            
+            # key with matching <qualified name> returns True
+            assert _ProgressRecorder.isLoggingEnabledForStep(("module", "blah_blah_joe_blah_sam_and_then_sally", "step-name"))
+            
+            # key with non-matching <qualified name> returns False
+            assert not _ProgressRecorder.isLoggingEnabledForStep(("module", "blah_blah_ted_blah_fred_and_then_sue", "step-name"))
+            
+            # key with None elements and match returns True
+            assert _ProgressRecorder.isLoggingEnabledForStep((None, "blah_blah_joe_blah_sam_and_then_sally", None))
+            
+            # key with None elements and non-matching <qualified name> returns False
+            assert not _ProgressRecorder.isLoggingEnabledForStep((None, "blah_blah_ted_blah_fred_and_then_sue", None))
+            
+    def test_getStepKey(self):
+        # object of type `type`
+        class _Class:
+            pass
+        
+        # object of type `FunctionType`
+        def _function():
+            pass
+        
+        # Our caller's stack frame:
+        #   object of type `FrameType.
+        default_frame = inspect.currentframe().f_back
+        
+        # returns result from `_getCallerFullyQualifiedName` + (<step name>,)
+        with mock.patch.object(_ProgressRecorder, "_getCallerFullyQualifiedName") as mock_getFullyQualifiedName:
+            stepName = "the-step"
+            qualified_name = ("module.name", "qualified.function.name")
+            mock_getFullyQualifiedName.return_value = qualified_name
+            expected = qualified_name + (stepName,)
+            
+            # works with `FunctionType`
+            actual = _ProgressRecorder.getStepKey(callerOrStackFrameOverride=_function, stepName=stepName)
+            assert actual == expected
+            mock_getFullyQualifiedName.assert_called_once_with(_function)
+            
+            # works with `FrameType`
+            mock_getFullyQualifiedName.reset_mock()
+            actual = _ProgressRecorder.getStepKey(callerOrStackFrameOverride=default_frame, stepName=stepName)
+            assert actual == expected
+            mock_getFullyQualifiedName.assert_called_once_with(default_frame)
+                       
+            # no <step name> adds `None` in the <step name> position
+            mock_getFullyQualifiedName.reset_mock()
+            expected = qualified_name + (None,)
+            actual = _ProgressRecorder.getStepKey(callerOrStackFrameOverride=_function)
+            assert actual == expected
+            mock_getFullyQualifiedName.assert_called_once_with(_function)
+        
+        # only allows `FunctionType` or `FrameType`
+        with mock.patch.object(_ProgressRecorder, "_getCallerFullyQualifiedName") as mock_getFullyQualifiedName:
+            with pytest.raises(RuntimeError, match=".*a function, or the local stack-frame of a function.*"):
+                _ProgressRecorder.getStepKey(callerOrStackFrameOverride=_Class)
+        
+        # By default `_getStepKey` uses the stack frame _one_ frame up from the current frame:
+        #   this allows `_ProgressRecorder.record` to use `_getStepKey` and obtain the step for
+        #     the scope of its _caller_.
+        with mock.patch.object(_ProgressRecorder, "_getCallerFullyQualifiedName") as mock_getFullyQualifiedName:
+            stepName = "the-step"
+            qualified_name = ("module.name", "qualified.function.name")
+            mock_getFullyQualifiedName.return_value = qualified_name
+            expected = qualified_name + (stepName,)
+            actual = _ProgressRecorder.getStepKey(stepName=stepName)
+            assert actual == expected
+            mock_getFullyQualifiedName.assert_called_once_with(default_frame)
+
+                
