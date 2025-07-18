@@ -492,8 +492,8 @@ class TestSousChef(unittest.TestCase):
         res = self.instance.prepNormalizationIngredients(self.ingredients)
 
         self.instance.prepCalibrantSample.assert_called_once_with(self.ingredients.calibrantSamplePath)
-        self.instance.prepPixelGroup.assert_called_once_with(self.ingredients)
-        self.instance.prepDetectorPeaks.assert_called_once_with(self.ingredients, purgePeaks=False)
+        self.instance.prepPixelGroup.assert_called_once_with(self.ingredients, pixelMask=None)
+        self.instance.prepDetectorPeaks.assert_called_once_with(self.ingredients, purgePeaks=False, pixelMask=None)
         NormalizationIngredients.assert_called_once_with(
             pixelGroup=self.instance.prepPixelGroup.return_value,
             calibrantSample=self.instance.prepCalibrantSample.return_value,

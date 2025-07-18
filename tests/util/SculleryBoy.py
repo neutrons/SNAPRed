@@ -64,7 +64,7 @@ class SculleryBoy:
     def prepFocusGroup(self, ingredients: FarmFreshIngredients) -> FocusGroup:  # noqa ARG002
         return DAOFactory.focus_group_SNAP_column_lite.copy()
 
-    def prepPixelGroup(self, ingredients: FarmFreshIngredients = None):  # noqa ARG002
+    def prepPixelGroup(self, ingredients: FarmFreshIngredients = None, pixelMask=None):  # noqa ARG002
         params = PixelGroupingParameters(
             groupID=1,
             isMasked=False,
@@ -92,7 +92,12 @@ class SculleryBoy:
         else:
             return DAOFactory.fake_peak_ingredients.copy()
 
-    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]:  # noqa: ARG002
+    def prepDetectorPeaks(
+        self,
+        ingredients: FarmFreshIngredients,
+        purgePeaks=False,  # noqa: ARG002
+        pixelMask=None,  # noqa: ARG002
+    ) -> List[GroupPeakList]:
         try:
             peakList = DetectorPeakPredictorRecipe().executeRecipe(
                 Ingredients=self.prepPeakIngredients(ingredients),
@@ -108,7 +113,11 @@ class SculleryBoy:
         path = Resource.getPath("/inputs/calibration/ReductionIngredients.json")
         return parse_file_as(ReductionIngredients, path)
 
-    def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
+    def prepNormalizationIngredients(
+        self,
+        ingredients: FarmFreshIngredients,
+        pixelMask=None,  # noqa: ARG002
+    ) -> NormalizationIngredients:
         return NormalizationIngredients(
             pixelGroup=self.prepPixelGroup(ingredients),
             calibrantSample=self.prepCalibrantSample("123"),

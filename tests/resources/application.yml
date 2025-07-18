@@ -40,11 +40,13 @@ instrument:
   parameters:
     home: ${instrument.calibration.home}/SNAPInstPrm
   native:
+    name: SNAP
     pixelResolution: 1179648
     # "instrument.native.definition" is overridden in "test.yml":
     definition:
       file: ${module.root}/resources/inputs/pixel_grouping/SNAP_Definition.xml
   lite:
+    name: SNAPLite
     pixelResolution: 18432
     # "instrument.lite.definition" is overridden in "test.yml":
     definition:

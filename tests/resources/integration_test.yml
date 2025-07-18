@@ -25,10 +25,12 @@ constants:
 
 instrument:
   native:
+    name: crackle
     pixelResolution: 72
     definition:
       file: ${module.root}/resources/ultralite/CRACKLE_Definition.xml
   lite:
+    name: pop
     pixelResolution: 18
     definition:
       file: ${module.root}/resources/ultralite/CRACKLELite_Definition.xml

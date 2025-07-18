@@ -36,6 +36,7 @@ from mantid.simpleapi import (
     LoadEmptyInstrument,
     mtd,
 )
+from util.Config_helpers import Config_override
 from util.dao import DAOFactory
 from util.diffraction_calibration_synthetic_data import SyntheticData
 
@@ -382,7 +383,11 @@ class TestVersioning(TestCase):
             "removeBackground": False,
         }
         request = SNAPRequest(path="calibration/diffraction", payload=json.dumps(payload))
-        response = self.api.executeRequest(request)
+        with (
+            Config_override("instrument.native.pixelResolution", 16),
+            Config_override("instrument.native.name", "fakesnap"),
+        ):
+            response = self.api.executeRequest(request)
         assert response.code <= ResponseCode.MAX_OK
         return response.data
 
