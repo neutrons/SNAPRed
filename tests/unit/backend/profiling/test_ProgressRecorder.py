@@ -1,8 +1,9 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import inspect
 import logging
 import numpy as np
 from pathlib import Path
+import re
 from scipy.interpolate import BSpline, make_splrep
 import tempfile
 import threading
@@ -639,7 +640,10 @@ class TestProgressStep:
         self.s._loggingEnabled = True
         assert self.s.loggingEnabled
 
-
+# a function in module scope
+def _function_in_module_scope():
+    pass
+    
 class Test_ProgressRecorder:
     # pytest-style: uses fixtures
     
@@ -809,7 +813,69 @@ class Test_ProgressRecorder:
             mockLocalDataService.return_value.writeProgressRecords.assert_not_called()
     
     def test__getCallerFullyQualifiedName(self):
-        pass
+        # function in local scope
+        def _function():
+            pass
+        
+        # object of type `type`
+        class _Class:
+            def method(self):
+                pass
+        
+        # object of type `_Class`
+        instanceType = _Class()
+        
+        # `FunctionType` <- `LambdaType` in local scope
+        lambdaType = lambda *_args, **_kwargs: None
+        
+        # function in local scope
+        expected = (__name__, "Test_ProgressRecorder.test__getCallerFullyQualifiedName.<locals>._function")
+        actual = _ProgressRecorder._getCallerFullyQualifiedName(_function)
+        assert actual == expected
+                
+        # function in module scope
+        expected = (__name__, "_function_in_module_scope")
+        actual = _ProgressRecorder._getCallerFullyQualifiedName(_function_in_module_scope)
+        assert actual == expected
+                
+        # unbound class method
+        expected = (__name__, "Test_ProgressRecorder.test__getCallerFullyQualifiedName")
+        actual = _ProgressRecorder._getCallerFullyQualifiedName(Test_ProgressRecorder.test__getCallerFullyQualifiedName)
+        assert actual == expected
+                
+        # lambda function
+        #   (Note: generally this would not be used, but it _is_ allowed.)
+        expected = (__name__, "Test_ProgressRecorder.test__getCallerFullyQualifiedName.<locals>.<lambda>")
+        actual = _ProgressRecorder._getCallerFullyQualifiedName(lambda *_args, **_kwargs: None)
+        assert actual == expected
+                
+        # reference to a lambda function
+        expected = (__name__, "Test_ProgressRecorder.test__getCallerFullyQualifiedName.<locals>.<lambda>")
+        actual = _ProgressRecorder._getCallerFullyQualifiedName(lambdaType)
+        assert actual == expected
+                
+        # a class
+        expected = (__name__, "Test_ProgressRecorder.test__getCallerFullyQualifiedName.<locals>._Class")
+        actual = _ProgressRecorder._getCallerFullyQualifiedName(_Class)
+        assert actual == expected
+                
+        # the current stack frame
+        expected = (__name__, "Test_ProgressRecorder.test__getCallerFullyQualifiedName")
+        actual = _ProgressRecorder._getCallerFullyQualifiedName(inspect.currentframe())
+        assert actual == expected
+                 
+        # one stack frame up from the current frame
+        expected = ("_pytest.python", "pytest_pyfunc_call")
+        actual = _ProgressRecorder._getCallerFullyQualifiedName(inspect.currentframe().f_back)
+        assert actual == expected
+       
+        # anything else should raise an exception
+        for caller in (instanceType, instanceType.method, "string", None):
+            with pytest.raises(
+                     RuntimeError,
+                     match=".*Expecting object of type `FrameType`, `FunctionType`, or `type` only.*"
+            ):
+                _ProgressRecorder._getCallerFullyQualifiedName(caller)
     
     def test_isLoggingEnabledForStep(self):
         test_regex = ".*(joe).*(sam).*(sally).*"
@@ -840,8 +906,8 @@ class Test_ProgressRecorder:
         def _function():
             pass
         
-        # Our caller's stack frame:
-        #   object of type `FrameType.
+        # object of type `FrameType`:
+        #   the caller of this test method's stack frame
         default_frame = inspect.currentframe().f_back
         
         # returns result from `_getCallerFullyQualifiedName` + (<step name>,)
@@ -886,4 +952,515 @@ class Test_ProgressRecorder:
             assert actual == expected
             mock_getFullyQualifiedName.assert_called_once_with(default_frame)
 
-                
+    def test_getStep(self):
+        instance = _ProgressRecorder()
+        key = (__name__, "test_ProgressRecorder.test_getStep", None)
+        step = ProgressStep(
+            details=_Step(key)
+        )
+        
+        # step is in <instance>.steps
+        assert instance.steps == {}
+        with mock.patch.dict(instance.steps, {key: step}, clear=True):
+            assert key in instance.steps
+            assert instance.getStep(key, create=False) == step
+
+        # step not in <instance>.steps: create=False
+        with pytest.raises(RuntimeError, match=re.escape(f"Usage error: progress-recording step {key} does not exist.")):
+            assert key not in instance.steps
+            instance.getStep(key, create=False)
+ 
+        # step not in <instance>.steps, create=True =>
+        #   creates the step when it doesn't exist,
+        #   fills in its default values,
+        #   and enters it in `steps`
+        with mock.patch.dict(instance.steps, {}, clear=True):
+            assert key not in instance.steps
+            newStep = instance.getStep(key, create=True)
+            assert instance.steps[key] == newStep
+            # they have the same key, but they should be distinct objects
+            assert id(newStep) != id(step) 
+            # they should have the same attributes
+            assert newStep == step
+    
+    def test_logTimeRemaining(self):
+        key = (__name__, "test_ProgressRecorder.test_logTimeRemaining", None)
+        step = ProgressStep(
+            details=_Step(key)
+        )    
+        instance = _ProgressRecorder(steps={key: step})
+        
+        # calls `getStep`, `_logTimeRemaining`
+        with (
+            mock.patch.object(_ProgressRecorder, "getStep", return_value=step) as mockGetStep,
+            mock.patch.object(_ProgressRecorder, "_logTimeRemaining") as mock_logTimeRemaining
+        ):
+            instance.logTimeRemaining(key)
+            mockGetStep.assert_called_once_with(key)
+            mock_logTimeRemaining.assert_called_once_with(step)
+            
+    def test__chainLogTimeRemaining(self):
+        update_interval = 10.0
+        instance = _ProgressRecorder()
+        key = (__name__, "test_ProgressRecorder.test__chainLogTimeRemaining", None)
+        subStepKey = (__name__, "test_ProgressRecorder.test__chainLogTimeRemaining", "a-substep")
+        
+        # calls `_logTimeRemaining`
+        with mock.patch.object(_ProgressRecorder, "_logTimeRemaining") as mock_logTimeRemaining:
+            mock_logTimeRemaining.return_value = False
+            step = ProgressStep(
+                details=_Step(key)
+            )
+            subStep = ProgressStep(
+                details=_Step(subStepKey)
+            )            
+            instance = _ProgressRecorder(
+                          steps={key: step, subStepKey: subStep}
+                       )
+            
+            assert step._timer is None
+            assert not instance._logTimeRemaining()
+            instance._logTimeRemaining.reset_mock() 
+            instance._chainLogTimeRemaining(step)     
+            mock_logTimeRemaining.assert_called_once_with(step)
+
+        # `_logTimeRemaining` returns True:
+        #    'log_update_interval' > 0.0: set a `Timer`
+        with (
+            Config_override("application.workflows_data.timing.logging.log_update_interval", update_interval),
+            mock.patch.object(_ProgressRecorder, "_logTimeRemaining") as mock_logTimeRemaining,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "Timer") as mockTimer
+        ):
+            mock_logTimeRemaining.return_value = True
+            step = ProgressStep(
+                details=_Step(key)
+            )
+            subStep = ProgressStep(
+                details=_Step(subStepKey)
+            )            
+            instance = _ProgressRecorder(
+                          steps={key: step, subStepKey: subStep}
+                       )
+
+            assert step._timer is None
+            assert instance._logTimeRemaining()
+            instance._logTimeRemaining.reset_mock() 
+            instance._chainLogTimeRemaining(step)
+            assert step._timer is not None   
+            mockTimer.assert_called_once_with(
+                update_interval,
+                instance._chainLogTimeRemaining,
+                step
+            )
+
+        # `_logTimeRemaining` returns True:
+        #    'log_update_interval' == 0.0: do not set a `Timer`
+        with (
+            Config_override("application.workflows_data.timing.logging.log_update_interval", 0.0),
+            mock.patch.object(_ProgressRecorder, "_logTimeRemaining") as mock_logTimeRemaining,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "Timer") as mockTimer
+        ):
+            mock_logTimeRemaining.return_value = True
+            step = ProgressStep(
+                details=_Step(key)
+            )
+            subStep = ProgressStep(
+                details=_Step(subStepKey)
+            )            
+            instance = _ProgressRecorder(
+                          steps={key: step, subStepKey: subStep}
+                       )
+
+            assert step._timer is None
+            assert instance._logTimeRemaining()
+            instance._logTimeRemaining.reset_mock() 
+            instance._chainLogTimeRemaining(step)
+            assert step._timer is None   
+            mockTimer.assert_not_called()
+
+        # `_logTimeRemaining` returns True:
+        #    'log_update_interval' > 0.0: is a sub-step: do not set a `Timer`
+        with (
+            Config_override("application.workflows_data.timing.logging.log_update_interval", update_interval),
+            mock.patch.object(_ProgressRecorder, "_logTimeRemaining") as mock_logTimeRemaining,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "Timer") as mockTimer
+        ):
+            mock_logTimeRemaining.return_value = True
+            step = ProgressStep(
+                details=_Step(key)
+            )
+            subStep = ProgressStep(
+                details=_Step(subStepKey)
+            )            
+            instance = _ProgressRecorder(
+                          steps={key: step, subStepKey: subStep}
+                       )
+
+            assert subStep._timer is None
+            assert instance._logTimeRemaining()
+            instance._logTimeRemaining.reset_mock() 
+            instance._chainLogTimeRemaining(subStep)
+            assert subStep._timer is None   
+            mockTimer.assert_not_called()
+
+        # `_logTimeRemaining` returns False:
+        #    if `step._timer is not None`: `cancel` and set to `None`
+        with (
+            Config_override("application.workflows_data.timing.logging.log_update_interval", update_interval),
+            mock.patch.object(_ProgressRecorder, "_logTimeRemaining") as mock_logTimeRemaining,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "Timer") as mockTimer
+        ):
+            mock_logTimeRemaining.return_value = False
+            step = ProgressStep(
+                details=_Step(key)
+            )
+            subStep = ProgressStep(
+                details=_Step(subStepKey)
+            )            
+            instance = _ProgressRecorder(
+                          steps={key: step, subStepKey: subStep}
+                       )
+            mock_step__timer = mock.Mock()
+            step._timer = mock_step__timer
+
+            assert not instance._logTimeRemaining()
+            instance._logTimeRemaining.reset_mock() 
+            instance._chainLogTimeRemaining(step)
+            # the `step._timer` has been cancelled and set to `None`
+            assert step._timer is None
+            mock_step__timer.cancel.assert_called_once()   
+            mockTimer.assert_not_called()
+ 
+    def test__logTimeRemaining(self, caplog):
+        instance = _ProgressRecorder()
+        key = (__name__, "test_ProgressRecorder.test__logTimeRemaining", None)
+        subStepKey = (__name__, "test_ProgressRecorder.test__logTimeRemaining", "a-substep")
+        step = ProgressStep(
+            details=_Step(key)
+        )
+        subStep = ProgressStep(
+            details=_Step(subStepKey)
+        )
+        
+        # for active step:
+        #   calls `_loggableStepName`, `_stepTimeRemaining`
+        with (
+            mock.patch.object(step, "_isActive", return_value=True) as mock_isActive,
+            mock.patch.dict(instance.steps, {key: step, subStepKey: subStep}, clear=True),
+            mock.patch.object(_ProgressRecorder, "_loggableStepName") as mock_loggableStepName,
+            mock.patch.object(_ProgressRecorder, "_stepTimeRemaining") as mock_stepTimeRemaining
+        ):
+            remainder = 10.0
+            mock_loggableStepName.return_value = step.name
+            mock_stepTimeRemaining.return_value = remainder
+            
+            assert step.isActive
+            mock_isActive.reset_mock()
+            assert instance._stepTimeRemaining(step) == remainder
+            instance._stepTimeRemaining.reset_mock()
+            
+            instance._logTimeRemaining(step)
+            mock_loggableStepName.assert_called_once_with(key)
+            mock_stepTimeRemaining.assert_called_once_with(step)
+                               
+        # for inactive step: does nothing: returns False
+        with (
+            mock.patch.object(step, "_isActive", return_value=False) as mock_isActive,
+            mock.patch.dict(instance.steps, {key: step, subStepKey: subStep}, clear=True),
+            mock.patch.object(_ProgressRecorder, "_loggableStepName") as mock_loggableStepName,
+            mock.patch.object(_ProgressRecorder, "_stepTimeRemaining") as mock_stepTimeRemaining
+        ):
+            remainer = 10.0
+            mock_loggableStepName.return_value = step.name
+            mock_stepTimeRemaining.return_value = remainder
+            
+            assert not step.isActive
+            mock_isActive.reset_mock()
+            continueToLog = instance._logTimeRemaining(step)
+            mock_loggableStepName.assert_not_called()
+            mock_stepTimeRemaining.assert_not_called()
+            assert not continueToLog
+        
+        # for active step:
+        #   remainder is `None`: log "<no timing data available>": returns False 
+        with (
+            mock.patch.object(step, "_isActive", return_value=True) as mock_isActive,
+            mock.patch.dict(instance.steps, {key: step, subStepKey: subStep}, clear=True),
+            mock.patch.object(_ProgressRecorder, "_loggableStepName") as mock_loggableStepName,
+            mock.patch.object(_ProgressRecorder, "_stepTimeRemaining") as mock_stepTimeRemaining
+        ):
+            remainder = None
+            mock_loggableStepName.return_value = step.name
+            mock_stepTimeRemaining.return_value = remainder
+            
+            assert step.isActive
+            mock_isActive.reset_mock()
+            assert instance._stepTimeRemaining(step) == remainder
+            mock_stepTimeRemaining.reset_mock()
+            with caplog.at_level(
+                Config["application.workflows_data.timing.logging.loglevel"],
+                logger=inspect.getmodule(ProgressRecorder).__name__
+            ):
+                continueToLog = instance._logTimeRemaining(step)
+                assert not continueToLog
+            assert "<no timing data is available>" in caplog.text
+            assert step.name in caplog.text
+        caplog.clear()
+        
+        # for active step:
+        #   remainder > 0.0: log time-remaning message: returns True 
+        with (
+            mock.patch.object(step, "_isActive", return_value=True) as mock_isActive,
+            mock.patch.dict(instance.steps, {key: step, subStepKey: subStep}, clear=True),
+            mock.patch.object(_ProgressRecorder, "_loggableStepName") as mock_loggableStepName,
+            mock.patch.object(_ProgressRecorder, "_stepTimeRemaining") as mock_stepTimeRemaining
+        ):
+            remainder = 10.0
+            mock_loggableStepName.return_value = step.name
+            mock_stepTimeRemaining.return_value = remainder
+                        
+            assert step.isActive
+            mock_isActive.reset_mock()
+            assert instance._stepTimeRemaining(step) == remainder
+            mock_stepTimeRemaining.reset_mock()
+            with caplog.at_level(
+                Config["application.workflows_data.timing.logging.loglevel"],
+                logger=inspect.getmodule(ProgressRecorder).__name__
+            ):
+                continueToLog = instance._logTimeRemaining(step)
+                assert continueToLog
+            assert f"estimated completion in {remainder} seconds" in caplog.text
+            assert step.name in caplog.text
+        caplog.clear()
+
+        # for active step:
+        #   remainder == 0.0: log "is taking longer than expected" message: returns False 
+        with (
+            mock.patch.object(step, "_isActive", return_value=True) as mock_isActive,
+            mock.patch.dict(instance.steps, {key: step, subStepKey: subStep}, clear=True),
+            mock.patch.object(instance, "_loggableStepName") as mock_loggableStepName,
+            mock.patch.object(instance, "_stepTimeRemaining") as mock_stepTimeRemaining
+        ):
+            remainder = 0.0
+            mock_loggableStepName.return_value = step.name
+            mock_stepTimeRemaining.return_value = remainder
+
+            assert step.isActive
+            mock_isActive.reset_mock()
+            assert instance._stepTimeRemaining(step) == remainder
+            mock_stepTimeRemaining.reset_mock()
+            with caplog.at_level(
+                Config["application.workflows_data.timing.logging.loglevel"],
+                logger=inspect.getmodule(ProgressRecorder).__name__
+            ):
+                continueToLog = instance._logTimeRemaining(step)
+                assert not continueToLog
+            assert "taking longer than expected" in caplog.text
+            assert step.name in caplog.text
+        caplog.clear()
+     
+    def test__logCompletion(self, caplog):
+        instance = _ProgressRecorder()
+        key = (__name__, "test_ProgressRecorder.test__logCompletion", None)
+        subStepKey = (__name__, "test_ProgressRecorder.test__logCompletion", "a-substep")
+        step = ProgressStep(
+            details=_Step(key)
+        )
+        subStep = ProgressStep(
+            details=_Step(subStepKey)
+        )
+        with (
+            mock.patch.dict(instance.steps, {key: step, subStepKey: subStep}, clear=True),
+            mock.patch.object(instance, "_loggableStepName", wraps=instance._loggableStepName) as mock_loggableStepName
+        ):
+            # calls `_loggableStepName`
+            instance._logCompletion(key)
+            mock_loggableStepName.assert_called_once_with(key)
+        
+        with (
+            mock.patch.dict(instance.steps, {key: step, subStepKey: subStep}, clear=True)
+        ):
+            # logs at the level of `Config["application.workflows_data.timing.logging.loglevel"]`
+            expectedName = instance._loggableStepName(key)
+            with caplog.at_level(
+                Config["application.workflows_data.timing.logging.loglevel"],
+                logger=inspect.getmodule(ProgressRecorder).__name__
+            ):
+                expectedName = instance._loggableStepName(key)
+                instance._logCompletion(key)
+            # logs a completion message
+            assert "complete" in caplog.text.lower()
+            # includes the step name
+            assert expectedName in caplog.text
+            
+            caplog.clear()
+            expectedName = instance._loggableStepName(subStepKey)
+            with caplog.at_level(
+                Config["application.workflows_data.timing.logging.loglevel"],
+                logger=inspect.getmodule(ProgressRecorder).__name__
+            ):
+                expectedName = instance._loggableStepName(key)
+                instance._logCompletion(key)
+            assert "complete" in caplog.text.lower()
+            # or includes the <short name>, as appropriate.
+            assert expectedName in caplog.text
+
+    def test__loggableStepName(self):
+        instance = _ProgressRecorder()
+        key = (__name__, "test_ProgressRecorder.test__loggableStepName", None)
+        subStepKey = (__name__, "test_ProgressRecorder.test__loggableStepName", "a-substep")
+        step = ProgressStep(
+            details=_Step(key)
+        )
+        subStep = ProgressStep(
+            details=_Step(subStepKey)
+        )
+        
+        with mock.patch.dict(instance.steps, {key: step, subStepKey: subStep}, clear=True):
+            # the step is not a sub-step => use its full name
+            assert instance._loggableStepName(key) == step.name
+            
+            # the step is a sub-step => use a shorter name
+            shortName = instance._loggableStepName(subStepKey)
+            #   the <short name> is actually shorter
+            assert len(shortName) < len(step.name)
+            #   the sub-step's name is in the <short name>
+            assert subStepKey[-1] in shortName
+            
+    def test__isSubStep(self):
+        instance = _ProgressRecorder()
+        key = (__name__, "test_ProgressRecorder.test__isSubStep", None)
+        subStepKey = (__name__, "test_ProgressRecorder.test__isSubStep", "a-substep")
+        step = ProgressStep(
+            details=_Step(key)
+        )
+        
+        # parent step in `steps`
+        with mock.patch.dict(instance.steps, {key: step}, clear=True):
+            assert key in instance.steps
+            assert instance._isSubStep(subStepKey)
+            
+            # must also have a non-trivial <step name>
+            assert not instance._isSubStep(key)
+            
+        # parent step not in `steps`
+        with mock.patch.dict(instance.steps, {}, clear=True):
+            assert key not in instance.steps
+            assert not instance._isSubStep(subStepKey)
+            assert not instance._isSubStep(key)
+            
+    def test_stepTimeRemaining(self):
+        key = (__name__, "test_ProgressRecorder.test_stepTimeRemaining", None)
+        step = ProgressStep(
+            details=_Step(key)
+        )    
+        instance = _ProgressRecorder(steps={key: step})
+        
+        # calls `getStep`, `_stepTimeRemaining`: returns `_stepTimeRemaining`
+        with (
+            mock.patch.object(_ProgressRecorder, "getStep", return_value=step) as mockGetStep,
+            mock.patch.object(_ProgressRecorder, "_stepTimeRemaining", return_value=mock.sentinel.remainder) as mock_stepTimeRemaining
+        ):
+            assert instance.stepTimeRemaining(key) == mock.sentinel.remainder
+            mockGetStep.assert_called_once_with(key)
+            mock_stepTimeRemaining.assert_called_once_with(step)
+   
+    def test__stepTimeRemaining(self):
+        _now = datetime.now(timezone.utc)
+        _start = _now - timedelta(seconds=120.0)
+        _elapsed = (_now - _start).total_seconds()
+        # estimated dt > elapsed time:
+        _dt_continues = 180.0
+        # estimated dt < elapsed time:
+        _dt_finished = 60.0
+        key = (__name__, "test_ProgressRecorder.test__stepTimeRemaining", None)
+        
+        # calls `step.N_ref`, `step.order`, `step.estimate.dt`: returns remaining time
+        with (
+            mock.patch.object(_Step, "N_ref", return_value=mock.sentinel.N_ref) as mock_N_ref,
+            mock.patch.object(_Estimate, "dt", return_value=_dt_continues) as mock_dt,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "datetime") as mock_datetime
+        ):
+            mock_datetime.now = mock.Mock(return_value=_now)
+            step = ProgressStep(
+                details=_Step(key)
+            )
+            step._startTime = _start   
+            mock_order = mock.Mock(return_value=mock.sentinel.N)
+            step.details.order = mock_order
+            instance = _ProgressRecorder(steps={key: step})
+            
+            expected = _dt_continues - _elapsed
+            actual = _ProgressRecorder._stepTimeRemaining(step)
+            assert actual == pytest.approx(expected, rel=1.0e-3)
+            mock_N_ref.assert_called_once()
+            mock_order.assert_called_once_with(mock.sentinel.N_ref)
+            mock_dt.assert_called_once_with(mock.sentinel.N)
+        
+        # remaining time < 0.0: returns 0.0
+        with (
+            mock.patch.object(_Step, "N_ref", return_value=mock.sentinel.N_ref) as mock_N_ref,
+            mock.patch.object(_Estimate, "dt", return_value=_dt_finished) as mock_dt,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "datetime") as mock_datetime
+        ):
+            mock_datetime.now = mock.Mock(return_value=_now)
+            step = ProgressStep(
+                details=_Step(key)
+            )
+            step._startTime = _start   
+            mock_order = mock.Mock(return_value=mock.sentinel.N)
+            step.details.order = mock_order
+            instance = _ProgressRecorder(steps={key: step})
+              
+            expected = 0.0
+            actual = _ProgressRecorder._stepTimeRemaining(step)
+            assert actual == expected
+            mock_N_ref.assert_called_once()
+            mock_order.assert_called_once_with(mock.sentinel.N_ref)
+            mock_dt.assert_called_once_with(mock.sentinel.N)
+        
+        # `step.details.N_ref() is None`: returns `None`
+        with (
+            mock.patch.object(_Step, "N_ref", return_value=None) as mock_N_ref,
+            mock.patch.object(_Estimate, "dt") as mock_dt,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "datetime") as mock_datetime
+        ):
+            mock_datetime.now = mock.Mock(return_value=_now)
+            step = ProgressStep(
+                details=_Step(key)
+            )
+            step._startTime = _start   
+            mock_order = mock.Mock(return_value=mock.sentinel.N)
+            step.details.order = mock_order
+            instance = _ProgressRecorder(steps={key: step})
+            
+            expected = None
+            actual = _ProgressRecorder._stepTimeRemaining(step)
+            assert actual == expected
+            mock_N_ref.assert_called_once()
+            mock_order.assert_not_called()
+            mock_dt.assert_not_called()
+
+    def test__validate_steps(self):
+        
+        stepsList = [ProgressStep(details=_Step(key=(__name__, f"function_{n}", None))) for n in range(20)]
+        stepsDict = {s.details.key: s for s in stepsList}
+        
+        # `Dict[Tuple[str, ...], ProgressStep]` <- `List[ProgressStep]`
+        assert _ProgressRecorder._validate_steps(stepsList) == stepsDict
+        
+        # `Dict[Tuple[str, ...], ProgressStep]` remains unchanged
+        assert _ProgressRecorder._validate_steps(stepsDict) == stepsDict
+
+        # anything unexpected is passed through
+        assert _ProgressRecorder._validate_steps(mock.sentinel.something_else) == mock.sentinel.something_else
+        
+    def test__serialize_steps(self):
+        
+        stepsList = [ProgressStep(details=_Step(key=(__name__, f"function_{n}", None))) for n in range(20)]
+        stepsDict = {s.details.key: s for s in stepsList}
+        instance = _ProgressRecorder(steps=stepsDict)
+        
+        # `List[ProgressStep]` <- `Dict[Tuple[str, ...], ProgressStep]`
+        assert instance._serialize_steps(instance.steps, mock.sentinel._info) == stepsList
+         

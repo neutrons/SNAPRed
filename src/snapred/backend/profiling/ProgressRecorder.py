@@ -378,6 +378,10 @@ class ProgressStep(BaseModel):
 
     @property
     def isActive(self) -> bool:
+        return self._isActive()
+        
+    def _isActive(self) -> bool:
+        # separate method for testing
         return bool(self._startTime)
         
     @property
@@ -403,7 +407,7 @@ class _ProgressRecorder(BaseModel):
     
     def __new__(cls, *args, **kwargs):
         # This is declared as a pass-through method, to be used during testing.
-        return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls)
         
     def __init__(self, *args, **kwargs):
         # This is declared as a pass-through method, to be used during testing.
@@ -446,16 +450,16 @@ class _ProgressRecorder(BaseModel):
         qualified_name = None
         if not isinstance(callerObjectOrStackFrame, FrameType):
             caller = callerObjectOrStackFrame
-            module_name = caller.__module__
             if isinstance(caller, FunctionType):
                 qualified_name = caller.__qualname__
             elif isinstance(caller, type):
-                qualified_name = caller.__class__.__qualname__
+                qualified_name = caller.__qualname__
             else:
                 raise RuntimeError(
                     f"Not implemented: fully-qualified name for object of type {type(caller)}.\n"
-                    + "  Expecting `type` or `FunctionType` only."            
+                    + "  Expecting object of type `FrameType`, `FunctionType`, or `type` only."            
                 )       
+            module_name = caller.__module__
         else:
             frame = callerObjectOrStackFrame
             module = inspect.getmodule(frame.f_code)
@@ -636,16 +640,23 @@ class _ProgressRecorder(BaseModel):
         self._logTimeRemaining(step)
         
     def _chainLogTimeRemaining(self, step: ProgressStep):
-        # log the step time remaining repeatedly, with a specified time delay
+        # Log the time remaining for the step, continue to log at regular intervals
         continueToLog = self._logTimeRemaining(step)
-        if continueToLog and Config["application.workflows_data.timing.logging.log_update_interval"] > 0:
-            # Automatically log again after a delay.
-            step._timer  = Timer(Config["application.workflows_data.timing.logging.log_update_interval"], self._chainLogTimeRemaining, step)
-        else:
-            if step._timer is not None:
-                step._timer.cancel()
-                step._timer = None
         
+        if continueToLog:
+            updateInterval = Config["application.workflows_data.timing.logging.log_update_interval"]
+            if updateInterval > 0.0:
+                # if it isn't a substep, log again at regular time intervals
+                if not self._isSubStep(step.details.key):
+                    step._timer  = Timer(
+                                       updateInterval,
+                                       self._chainLogTimeRemaining,
+                                       step
+                                   )
+        elif step._timer is not None:
+            step._timer.cancel()
+            step._timer = None
+                
     def _logTimeRemaining(self, step: ProgressStep) -> bool:
         # Log the time remaining for an in-progress step.
         # -- returns a flag indicating whether any further logging should occur for this step.
@@ -656,13 +667,19 @@ class _ProgressRecorder(BaseModel):
             remainder = self._stepTimeRemaining(step)
             if remainder is not None:
                 if remainder > 0.0:
-                    logger.log(Config["application.workflows_data.timing.logging.loglevel"], f"{loggableName} -- estimated completion in {remainder} seconds.")
+                    logger.log(
+                        Config["application.workflows_data.timing.logging.loglevel"],
+                        f"{loggableName} -- estimated completion in {remainder} seconds."
+                    )
                 else:
                     logger.warning(f"{loggableName} -- is taking longer than expected.")
                     # Log this message only once.
                     continueToLog = False                
             else:
-                logger.log(Config["application.workflows_data.timing.logging.loglevel"], f"{loggableName} -- <no timing data is available>.")
+                logger.log(
+                    Config["application.workflows_data.timing.logging.loglevel"],
+                    f"{loggableName} -- <no timing data is available>."
+                )
                 # Log this message only once.
                 continueToLog = False
             return continueToLog
@@ -675,15 +692,18 @@ class _ProgressRecorder(BaseModel):
     def _loggableStepName(self, key: Tuple[str, ...]) -> str:
         # Remove prefix information from the logged step name when this step is a sub-step
         #   of another in-progress step.
-        loggableName = ProgressStep.humanReadableName(key)
-        if bool(key[-1]):
-            # For explicitly-named steps, only include the full name
-            #   when there is no step for the _parent_ scope.
-            parentKey = key[:-1] + (None,)
-            if parentKey in self.steps:
-                loggableName = f"  ..  {key[-1]}"
+        loggableName = ProgressStep.humanReadableName(key)\
+            if not self._isSubStep(key) else f"  ..  {key[-1]}"
         return loggableName
-
+    
+    def _isSubStep(self, key) -> bool:
+        # Test if a step has a parent step
+        parentKey = key[:-1] + (None,)
+        if bool(key[-1]) and parentKey in self.steps:
+            # Step has a non-trivial <step name>, and its parent exists in `steps`
+            return True
+        return False
+                
     def stepTimeRemaining(self, key: Tuple[str | None, ...]) -> float | None:
         # Estimate the time remaining for the specified step,
         # or return `None` if not enough data is available yet to create an estimate,
@@ -706,7 +726,7 @@ class _ProgressRecorder(BaseModel):
     def _validate_steps(cls, value: Any):
         if isinstance(value, list):
             return {step.details.key: step for step in value}
-        return v
+        return value
         
     @field_serializer("steps")
     def _serialize_steps(self, steps: Dict[Tuple[str, ...], ProgressStep], _info) -> List[ProgressStep]:
