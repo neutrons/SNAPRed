@@ -412,6 +412,7 @@ class Indexer:
         return {entry.version: entry for entry in indexList}
 
     def writeIndex(self):
+        # TODO: why is this bypassing `LocalDataService`!
         path = self.indexPath()
         path.parent.mkdir(parents=True, exist_ok=True)
         write_model_list_pretty(self.index.values(), path)
