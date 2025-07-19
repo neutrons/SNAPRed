@@ -1464,3 +1464,361 @@ class Test_ProgressRecorder:
         # `List[ProgressStep]` <- `Dict[Tuple[str, ...], ProgressStep]`
         assert instance._serialize_steps(instance.steps, mock.sentinel._info) == stepsList
          
+    def test_record(self):
+        caller = mock.sentinel.caller
+        N_ref = mock.sentinel.N_ref
+        N_ref_args = mock.sentinel.N_ref_args,
+        order = mock.sentinel.order
+        stepName = mock.sentinel.stepName
+        key = mock.sentinel.key
+        step = mock.Mock(spec=ProgressStep, details=mock.Mock(spec=_Step, key=key))
+        
+        # enabled: gets (or creates) the step, sets its details, calls step start,
+        #   starts the logging chain: returns the step key
+        with(
+            Config_override("application.workflows_data.timing.enabled", True),
+            mock.patch.object(_ProgressRecorder, "getStepKey") as mockGetStepKey,
+            mock.patch.object(_ProgressRecorder, "getStep") as mockGetStep,
+            mock.patch.object(_ProgressRecorder, "isLoggingEnabledForStep") as mockIsLoggingEnabledForStep,
+            mock.patch.object(_ProgressRecorder, "_chainLogTimeRemaining") as mock_chainLogTimeRemaining
+        ):
+            mockGetStepKey.return_value = key
+            step = mock.Mock(spec=ProgressStep, details=mock.Mock(spec=_Step, key=key))
+            mockGetStep.return_value = step
+            mockIsLoggingEnabledForStep.return_value = True
+            
+            instance = _ProgressRecorder.model_construct(steps={key: step})
+            returnValue = instance.record(
+                callerOrStackFrameOverride=caller,
+                stepName=stepName,
+                N_ref=N_ref,
+                N_ref_args=N_ref_args,
+                order=order
+            )
+            assert returnValue == key
+            
+            mockGetStepKey.assert_called_once_with(
+                callerOrStackFrameOverride=caller,
+                stepName=stepName
+            )
+            mockGetStep.assert_called_once_with(key, create=True)
+            mockIsLoggingEnabledForStep.assert_called_once_with(key)
+            step.setDetails.assert_called_once_with(
+                N_ref=N_ref,
+                N_ref_args=N_ref_args,
+                order=order,
+                enableLogging=True
+            )
+            step.start.assert_called_once()
+            mock_chainLogTimeRemaining.assert_called_once_with(step)
+        
+        # disabled: returns None
+        with(
+            Config_override("application.workflows_data.timing.enabled", False),
+            mock.patch.object(_ProgressRecorder, "getStepKey") as mockGetStepKey,
+            mock.patch.object(_ProgressRecorder, "getStep") as mockGetStep,
+            mock.patch.object(_ProgressRecorder, "isLoggingEnabledForStep") as mockIsLoggingEnabledForStep,
+            mock.patch.object(_ProgressRecorder, "_chainLogTimeRemaining") as mock_chainLogTimeRemaining
+        ):
+            mockGetStepKey.return_value = key
+            step = mock.Mock(spec=ProgressStep, details=mock.Mock(spec=_Step, key=key))
+            mockGetStep.return_value = step
+            mockIsLoggingEnabledForStep.return_value = True
+            
+            instance = _ProgressRecorder.model_construct(steps={key: step})
+            returnValue = instance.record(
+                callerOrStackFrameOverride=caller,
+                stepName=stepName,
+                N_ref=N_ref,
+                N_ref_args=N_ref_args,
+                order=order
+            )
+            assert returnValue == None
+            
+            mockGetStepKey.assert_not_called()
+            mockGetStep.assert_not_called()
+            mockIsLoggingEnabledForStep.assert_not_called()
+            mock_chainLogTimeRemaining.assert_not_called()
+            
+    def test_stop(self):
+        _now = datetime.now(timezone.utc)
+        _start = _now - timedelta(seconds=120.0)
+        _elapsed = (_now - _start).total_seconds()
+        key = mock.sentinel.key
+        N_ref = 4096.0
+        N = N_ref**2
+
+        # enabled: gets the step, checks the stop time, calls `step.stop`,
+        #   logs the completion
+        with(
+            Config_override("application.workflows_data.timing.enabled", True),
+            Config_override("application.workflows_data.timing.max_measurements", 50),
+            Config_override("application.workflows_data.timing.update_minimum_count", 10),
+            Config_override("application.workflows_data.timing.update_threshold", 0.2),
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "datetime") as mock_datetime,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder).sys, "exc_info") as mock_exc_info,
+            mock.patch.object(_ProgressRecorder, "getStep") as mockGetStep,
+            mock.patch.object(_ProgressRecorder, "_logCompletion") as mock_logCompletion
+        ):
+            mock_datetime.now.return_value = _now
+            mock_exc_info.return_value = (None, None, None)
+            step = mock.Mock(
+                       spec=ProgressStep,
+                       details=mock.Mock(
+                           spec=_Step,
+                           key=key,
+                           N_ref=mock.Mock(return_value=N_ref)
+                       ),
+                       measurements=[],
+                       estimate=mock.Mock(spec=_Estimate),
+                       loggingEnabled=mock.PropertyMock(return_value=True),
+                       stop=mock.Mock(return_value=_start)
+                   )
+            mockGetStep.return_value = step
+            
+            instance = _ProgressRecorder.model_construct(steps={key: step})
+            instance.stop(key)
+            
+            mockGetStep.assert_called_once_with(key)
+            step.stop.assert_called_once()
+            mock_exc_info.assert_called_once()
+            mock_logCompletion.assert_called_once_with(key)
+            mock_datetime.now.assert_called_once()
+            step.details.N_ref.assert_called_once()
+            assert step.measurements == [_Measurement(dt=_elapsed, N_ref=N_ref),]
+            step.estimate.dt.assert_not_called()
+            step.estimate.update.assert_not_called()
+
+        # not enabled: does nothing
+        with(
+            Config_override("application.workflows_data.timing.enabled", False),
+            Config_override("application.workflows_data.timing.max_measurements", 50),
+            Config_override("application.workflows_data.timing.update_minimum_count", 10),
+            Config_override("application.workflows_data.timing.update_threshold", 0.2),
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "datetime") as mock_datetime,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder).sys, "exc_info") as mock_exc_info,
+            mock.patch.object(_ProgressRecorder, "getStep") as mockGetStep,
+            mock.patch.object(_ProgressRecorder, "_logCompletion") as mock_logCompletion
+        ):
+            mock_datetime.now.return_value = _now
+            mock_exc_info.return_value = (None, None, None)
+            step = mock.Mock(
+                       spec=ProgressStep,
+                       details=mock.Mock(
+                           spec=_Step,
+                           key=key,
+                           N_ref=mock.Mock(return_value=N_ref)
+                       ),
+                       measurements=[],
+                       estimate=mock.Mock(spec=_Estimate),
+                       loggingEnabled=mock.PropertyMock(return_value=True),
+                       stop=mock.Mock(return_value=_start)
+                   )
+            mockGetStep.return_value = step
+            
+            instance = _ProgressRecorder.model_construct(steps={key: step})
+            instance.stop(key)
+            
+            mockGetStep.assert_not_called()
+            step.stop.assert_not_called()
+            mock_exc_info.assert_not_called()
+            mock_logCompletion.assert_not_called()
+            mock_datetime.now.assert_not_called()
+            step.details.N_ref.assert_not_called()
+            assert step.measurements == []
+            step.estimate.dt.assert_not_called()
+            step.estimate.update.assert_not_called()
+
+        # does not record a measurement if `N_ref` could not be calculated
+        with(
+            Config_override("application.workflows_data.timing.enabled", True),
+            Config_override("application.workflows_data.timing.max_measurements", 50),
+            Config_override("application.workflows_data.timing.update_minimum_count", 5),
+            Config_override("application.workflows_data.timing.update_threshold", 0.2),
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "datetime") as mock_datetime,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder).sys, "exc_info") as mock_exc_info,
+            mock.patch.object(_ProgressRecorder, "getStep") as mockGetStep,
+            mock.patch.object(_ProgressRecorder, "_logCompletion") as mock_logCompletion
+        ):
+            mock_datetime.now.return_value = _now
+            mock_exc_info.return_value = (None, None, None)
+            step = mock.Mock(
+                       spec=ProgressStep,
+                       details=mock.Mock(
+                           spec=_Step,
+                           key=key,
+                           # When `N_ref` cannot be calculated `N_ref()` returns `None`
+                           N_ref=mock.Mock(return_value=None)
+                       ),
+                       measurements=[],
+                       estimate=mock.Mock(spec=_Estimate),
+                       loggingEnabled=mock.PropertyMock(return_value=True),
+                       stop=mock.Mock(return_value=_start)
+                   )
+            mockGetStep.return_value = step
+            
+            instance = _ProgressRecorder.model_construct(steps={key: step})
+            instance.stop(key)
+            
+            mockGetStep.assert_called_once_with(key)
+            step.stop.assert_called_once()
+            mock_exc_info.assert_called_once()
+            mock_logCompletion.assert_called_once_with(key)
+            mock_datetime.now.assert_called_once()
+            step.details.N_ref.assert_called_once()
+            assert step.measurements == []
+            step.estimate.dt.assert_not_called()
+            step.estimate.update.assert_not_called()
+
+        # exception in progress: gets the step, calls `step.stop`
+        with(
+            Config_override("application.workflows_data.timing.enabled", True),
+            Config_override("application.workflows_data.timing.max_measurements", 50),
+            Config_override("application.workflows_data.timing.update_minimum_count", 100),
+            Config_override("application.workflows_data.timing.update_threshold", 0.2),
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "datetime") as mock_datetime,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder).sys, "exc_info") as mock_exc_info,
+            mock.patch.object(_ProgressRecorder, "getStep") as mockGetStep,
+            mock.patch.object(_ProgressRecorder, "_logCompletion") as mock_logCompletion
+        ):
+            mock_datetime.now.return_value = _now
+            mock_exc_info.return_value = (RuntimeError, None, None)
+            step = mock.Mock(
+                       spec=ProgressStep,
+                       details=mock.Mock(
+                           spec=_Step,
+                           key=key,
+                           N_ref=mock.Mock(return_value=N_ref),
+                           order=mock.Mock(return_value=N)
+                       ),
+                       measurements=[],
+                       estimate=mock.Mock(spec=_Estimate),
+                       loggingEnabled=mock.PropertyMock(return_value=True),
+                       stop=mock.Mock(return_value=_start)
+                   )
+            mockGetStep.return_value = step
+            
+            instance = _ProgressRecorder.model_construct(steps={key: step})
+            instance.stop(key)
+            
+            mockGetStep.assert_called_once_with(key)
+            step.stop.assert_called_once()
+            mock_exc_info.assert_called_once()
+            mock_logCompletion.assert_not_called()
+            mock_datetime.now.assert_not_called()
+            step.details.N_ref.assert_not_called()
+            assert step.measurements == []
+            step.estimate.dt.assert_not_called()
+            step.estimate.update.assert_not_called()
+
+        # updates the estimate when enough measurements are available
+        with(
+            Config_override("application.workflows_data.timing.enabled", True),
+            Config_override("application.workflows_data.timing.max_measurements", 500),
+            Config_override("application.workflows_data.timing.update_minimum_count", 5),
+            Config_override("application.workflows_data.timing.update_threshold", 0.2),
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "datetime") as mock_datetime,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder).sys, "exc_info") as mock_exc_info,
+            mock.patch.object(_ProgressRecorder, "getStep") as mockGetStep,
+            mock.patch.object(_ProgressRecorder, "_logCompletion") as mock_logCompletion
+        ):
+            mock_datetime.now.return_value = _now
+            mock_exc_info.return_value = (None, None, None)
+            step = mock.Mock(
+                       spec=ProgressStep,
+                       details=mock.Mock(
+                           spec=_Step,
+                           key=key,
+                           N_ref=mock.Mock(return_value=N_ref),
+                           order=mock.Mock(return_value=N)
+                       ),
+                       measurements=[_Measurement(dt=_elapsed, N_ref=N_ref) for n in range(50)],
+                       # estimate is bad: `dt` is 2x too high
+                       estimate=mock.Mock(spec=_Estimate, dt=mock.Mock(return_value=_elapsed * 2.0)),
+                       loggingEnabled=mock.PropertyMock(return_value=True),
+                       stop=mock.Mock(return_value=_start)
+                   )
+            mockGetStep.return_value = step
+            assert len(step.measurements) > Config["application.workflows_data.timing.update_minimum_count"]
+                        
+            instance = _ProgressRecorder.model_construct(steps={key: step})
+            instance.stop(key)
+            
+            assert len(step.measurements) == 51
+            step.details.N_ref.assert_called_once()
+            step.details.order.assert_called_once_with(N_ref)
+            step.estimate.dt.assert_called_once_with(N)
+            step.estimate.update.assert_called_once_with(step.measurements, step.details.order)
+
+        # only updates the estimate when the current estimate is bad
+        with(
+            Config_override("application.workflows_data.timing.enabled", True),
+            Config_override("application.workflows_data.timing.max_measurements", 500),
+            Config_override("application.workflows_data.timing.update_minimum_count", 5),
+            Config_override("application.workflows_data.timing.update_threshold", 0.2),
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "datetime") as mock_datetime,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder).sys, "exc_info") as mock_exc_info,
+            mock.patch.object(_ProgressRecorder, "getStep") as mockGetStep,
+            mock.patch.object(_ProgressRecorder, "_logCompletion") as mock_logCompletion
+        ):
+            mock_datetime.now.return_value = _now
+            mock_exc_info.return_value = (None, None, None)
+            step = mock.Mock(
+                       spec=ProgressStep,
+                       details=mock.Mock(
+                           spec=_Step,
+                           key=key,
+                           N_ref=mock.Mock(return_value=N_ref),
+                           order=mock.Mock(return_value=N)
+                       ),
+                       measurements=[_Measurement(dt=_elapsed, N_ref=N_ref) for n in range(50)],
+                       # estimate is good
+                       estimate=mock.Mock(spec=_Estimate, dt=mock.Mock(return_value=_elapsed)),
+                       loggingEnabled=mock.PropertyMock(return_value=True),
+                       stop=mock.Mock(return_value=_start)
+                   )
+            mockGetStep.return_value = step
+                        
+            instance = _ProgressRecorder.model_construct(steps={key: step})
+            instance.stop(key)
+            
+            assert len(step.measurements) == 51
+            step.details.order.assert_called_once_with(N_ref)
+            step.estimate.dt.assert_called_once_with(N)
+            step.estimate.update.assert_not_called()
+
+        # restricts maximum length of the `measurements` list
+        with(
+            Config_override("application.workflows_data.timing.enabled", True),
+            Config_override("application.workflows_data.timing.max_measurements", 25),
+            Config_override("application.workflows_data.timing.update_minimum_count", 500),
+            Config_override("application.workflows_data.timing.update_threshold", 0.2),
+            mock.patch.object(inspect.getmodule(_ProgressRecorder), "datetime") as mock_datetime,
+            mock.patch.object(inspect.getmodule(_ProgressRecorder).sys, "exc_info") as mock_exc_info,
+            mock.patch.object(_ProgressRecorder, "getStep") as mockGetStep,
+            mock.patch.object(_ProgressRecorder, "_logCompletion") as mock_logCompletion
+        ):
+            mock_datetime.now.return_value = _now
+            mock_exc_info.return_value = (None, None, None)
+            step = mock.Mock(
+                       spec=ProgressStep,
+                       details=mock.Mock(
+                           spec=_Step,
+                           key=key,
+                           N_ref=mock.Mock(return_value=N_ref),
+                           order=mock.Mock(return_value=N)
+                       ),
+                       measurements=[_Measurement(dt=_elapsed, N_ref=N_ref) for n in range(50)],
+                       estimate=mock.Mock(spec=_Estimate),
+                       loggingEnabled=mock.PropertyMock(return_value=True),
+                       stop=mock.Mock(return_value=_start)
+                   )
+            mockGetStep.return_value = step
+            
+            instance = _ProgressRecorder.model_construct(steps={key: step})
+            instance.stop(key)
+            
+            assert len(step.measurements) ==\
+                Config["application.workflows_data.timing.max_measurements"]
+            step.estimate.dt.assert_not_called()
+            step.estimate.update.assert_not_called()

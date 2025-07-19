@@ -601,18 +601,16 @@ class _ProgressRecorder(BaseModel):
         if not _ProgressRecorder.enabled:
             return
             
-        step = self.getStep(key)
-        
-        stopTime = datetime.now(timezone.utc)
+        step = self.getStep(key)        
         startTime = step.stop()
         
         # Do not output anything to the log, or record the measurement,
         #   if any exception has been raised.
-        if sys.exc_info()[0] is None:
+        if sys.exc_info()[0] is None and step.loggingEnabled:            
             self._logCompletion(key)
             
+            stopTime = datetime.now(timezone.utc)
             elapsed = float((stopTime - startTime).total_seconds())
-            
             N_ref = step.details.N_ref()
             # Do not record the measurement if `N_ref` cannot be calculated.
             if N_ref is not None:
@@ -624,7 +622,7 @@ class _ProgressRecorder(BaseModel):
                 max_measurements = Config["application.workflows_data.timing.max_measurements"]
                 if len(step.measurements) > max_measurements:
                     # Forget the oldest
-                    self.currentStep.measurements = self.currentStep.measurements[-max_measurements:]
+                    step.measurements = step.measurements[-max_measurements:]
 
                 # If necessary, update the estimate for the step.
                 if len(step.measurements) >= Config["application.workflows_data.timing.update_minimum_count"]:
