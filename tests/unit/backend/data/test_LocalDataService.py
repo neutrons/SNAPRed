@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import functools
 import importlib
 import logging
@@ -3711,3 +3711,110 @@ class TestReductionPixelMasks:
             assert self.service.copyCalibrationRootSkeleton.called
             assert self.service.copyCalibrationRootSkeleton.call_count == 1
             assert mockConfig.__getitem__.called
+
+
+### GENERALIZED PROGRESS REPORTING:
+
+class TestProgressRecordingMethods:
+
+    @pytest.fixture(autouse=True)
+    def _setup_tests(self):
+        # setup
+        self.instance = LocalDataService()
+        yield
+        
+        # teardown
+        pass
+    
+    def test__progressRecordsFilenameStem(self):
+        stem = self.instance._progressRecordsFilenameStem()
+        allowedCharacters=re.compile(r"\w.*") # "[A-Za-z0-9_]"
+        assert isinstance(stem, str)
+        assert allowedCharacters.match(stem)
+
+    def test_progressRecordsPath(self):
+        userApplicationDataHome = Path("<user_home>/.snapred")
+        with Config_override("user.application.data.home", str(userApplicationDataHome)):
+            recordsPath = self.instance.progressRecordsPath()
+            assert recordsPath == userApplicationDataHome / "workflows_data" / "timing"
+
+    def test__progressRecordsFilePath(self):
+        naiveTime = datetime.now()
+        timeWithTimeZone = naiveTime.astimezone(timezone.utc)
+
+        # provides expected path with non-naive timestamp        
+        with (
+            mock.patch.object(LocalDataService, "progressRecordsPath") as mock_progressRecordsPath,
+            mock.patch.object(LocalDataService, "_progressRecordsFilenameStem") as mock_progressRecordsFilenameStem,
+        ):
+            recordsPath = Path("<user_home>/.snapred/workflows_data/timing")
+            filenameStem = "execution_timing"
+            mock_progressRecordsPath.return_value = recordsPath        
+            mock_progressRecordsFilenameStem.return_value = filenameStem
+            
+            filePath = self.instance._progressRecordsFilePath(timeWithTimeZone)
+            assert filePath == recordsPath / (filenameStem + "_" + timeWithTimeZone.isoformat() + ".json")
+            mock_progressRecordsPath.assert_called_once()
+            mock_progressRecordsFilenameStem.assert_called_once()
+            
+        # converts naive to non-naive timestamp using `timezone.utc`
+        with (
+            mock.patch.object(LocalDataService, "progressRecordsPath") as mock_progressRecordsPath,
+            mock.patch.object(LocalDataService, "_progressRecordsFilenameStem") as mock_progressRecordsFilenameStem,
+        ):
+            recordsPath = Path("<user_home>/.snapred/workflows_data/timing")
+            filenameStem = "execution_timing"
+            mock_progressRecordsPath.return_value = recordsPath        
+            mock_progressRecordsFilenameStem.return_value = filenameStem
+            
+            filePath = self.instance._progressRecordsFilePath(naiveTime)
+            assert filePath == recordsPath / (filenameStem + "_" + timeWithTimeZone.isoformat() + ".json")
+
+    def test__progressRecordsFilesInfo(self):
+        # Initialize a progress-records directory containing 
+        #   files using the expected naming scheme.
+        latest = datetime.now(timezone.utc)
+        middle = latest - timedelta(seconds=120.0)
+        earliest = latest - timedelta(seconds=2 * 120.0)
+        filenames = [
+            f"execution_timing_{earliest.isoformat()}.json",
+            f"execution_timing_{middle.isoformat()}.json",
+            f"execution_timing_{latest.isoformat()}.json"
+        ]
+        
+        # `_progressRecordsFilesInfo` returns (<earliest file path>, <latest file path>, <total files count>)
+        with (
+            tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempDir,
+            Config_override("user.application.data.home", str(tempDir))
+        ):
+            # create the test files
+            recordsPath = Path(tempDir) / "workflows_data" / "timing"
+            recordsPath.mkdir(parents=True)
+            for name in filenames:
+                (recordsPath / name).touch()
+            earliestFound, latestFound, count = self.instance._progressRecordsFilesInfo()
+            assert earliestFound == recordsPath / filenames[0]   
+            assert latestFound == recordsPath / filenames[-1]   
+            assert count == len(filenames)   
+                
+        # `_progressRecordsFilesInfo` ignores other files in the same directory
+        with (
+            tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempDir,
+            Config_override("user.application.data.home", str(tempDir))
+        ):
+            # create the test files
+            recordsPath = Path(tempDir) / "workflows_data" / "timing"
+            recordsPath.mkdir(parents=True)
+            for n, name in enumerate(filenames):
+                (recordsPath / name).touch()
+                (recordsPath / (name + "junk")).touch()
+                (recordsPath / ("junk" + name)).touch()
+                (recordsPath / f"junk_{n}.json").touch()
+                
+            earliestFound, latestFound, count = self.instance._progressRecordsFilesInfo()
+            
+            assert earliestFound == recordsPath / filenames[0]   
+            assert latestFound == recordsPath / filenames[-1]   
+            assert count == len(filenames)   
+        
+                         

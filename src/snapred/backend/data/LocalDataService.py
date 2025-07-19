@@ -1549,10 +1549,11 @@ class LocalDataService:
         return self._readLiveData(ws, duration)
 
     ### GENERALIZED PROGRESS REPORTING:
-    _progressRecordsFilenameStem = "execution_timing"
+    def _progressRecordsFilenameStem(self) -> str:
+        return "execution_timing"
     
     def progressRecordsPath(self) -> Path:
-        return Config.userApplicationDataHome / "workflows-data" / "timing"
+        return Config.userApplicationDataHome / "workflows_data" / "timing"
     
     def _progressRecordsFilePath(self, timestamp: datetime):
         _timestamp = timestamp
@@ -1560,13 +1561,18 @@ class LocalDataService:
         if timestamp.tzinfo is None:
             # By default: use the utc timezone (as in Mantid).
             _timestamp = timestamp.astimezone(timezone.utc)
-        return self.progressRecordsPath() / (self._progressRecordsFilenameStem + "_" + _timestamp.isoformat() + ".json")
+        return self.progressRecordsPath() / (self._progressRecordsFilenameStem() + "_" + _timestamp.isoformat() + ".json")
 
     def _progressRecordsFilesInfo(self) -> Tuple[Path, Path, int]:
         # Find progress-records files:
         #   as: (<earliest filePath>, <latest filePath>, <total number of files>).
         filename = None
-        fileRegex = re.compile(f"({self._progressRecordsFilenameStem})_(.*)\\.json")
+        
+        # sub-regex for non-naive `datetime` in ISO-8601 format
+        isoFormatRegex = "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?([+-]\\d{2}:\\d{2}|Z)"
+        # regex to match the expected progress-records data filenames
+        fileRegex = re.compile(f"^({self._progressRecordsFilenameStem()})_({isoFormatRegex})\\.json$")
+
         latestTime = self._MIN_DATETIME
         earliestTime = datetime.now(timezone.utc)
         
@@ -1583,15 +1589,17 @@ class LocalDataService:
                     match = fileRegex.match(entry.name)
                     if not match:
                         continue
-                        
+                      
                     timestamp = datetime.fromisoformat(match.group(2))
+                    
                     if timestamp < earliestTime:
                         earliestTime = timestamp
                         earliestFilePath = self._progressRecordsFilePath(timestamp)
-                    elif timestamp > latestTime:
+                    if timestamp > latestTime:
                         latestTime = timestamp
                         latestFilePath = self._progressRecordsFilePath(timestamp)
                     count += 1
+            
         return earliestFilePath, latestFilePath, count
     
     def _progressRecordsSaveFilePath(self):
