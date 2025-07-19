@@ -107,9 +107,13 @@ class Indexer:
 
     def __del__(self):
         # define the index to automatically write itself whenever the program closes
-        if self.rootDirectory.exists():
-            self.reconcileIndexToFiles()
-            self.writeIndex()
+        # TODO: this really should be done via `atexit.register`!
+        try:
+            if self.rootDirectory.exists():
+                self.reconcileIndexToFiles()
+                self.writeIndex()
+        except BaseException: # `__del__` should not raise any exception
+            pass
 
     def readDirectoryList(self):
         # create the directory version list from the directory structure
