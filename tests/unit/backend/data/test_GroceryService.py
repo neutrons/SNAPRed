@@ -16,6 +16,7 @@ from random import randint
 from unittest import mock
 
 import pytest
+from mantid.api import MatrixWorkspace
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
@@ -886,7 +887,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_fetch_dirty_nexus_native(self):
         """Test the correct behavior when fetching raw nexus data"""
-
+        self.instance._validateWorkspaceInstrument = mock.Mock()
         self.instance.convertToLiteMode = mock.Mock()
         self.instance.mantidSnapper = mock.MagicMock()
         self.instance.mantidSnapper.CloneWorkspace = mock.MagicMock(
@@ -1007,6 +1008,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_cached_native(self):
         """Test the correct behavior when fetching nexus data"""
         self.instance._createNeutronFilePath = mock.Mock()
+        self.instance._validateWorkspaceInstrument = mock.Mock()
         self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
         self.instance.mantidSnapper = mock.MagicMock()
         self.instance.mantidSnapper.CloneWorkspace = mock.MagicMock(
@@ -1105,6 +1107,7 @@ class TestGroceryService(unittest.TestCase):
         The cases where the data is cached or the file exists are tested above.
         This tests cases of using native-resolution data and auto-reducing.
         """
+        self.instance._validateWorkspaceInstrument = mock.Mock()
         self.instance.convertToLiteMode = mock.Mock()
         self.instance._createNeutronFilePath = mock.Mock()
         self.instance.dataService.hasLiveDataConnection = mock.Mock(return_value=False)
@@ -1915,7 +1918,6 @@ class TestGroceryService(unittest.TestCase):
     def test_fetchNeutronDataCached(self, mockFileLoaderRegistry):
         # Test all 16, non-live-data cases (including each setting of the `Config["nexus.dataFormat.event"]` flag).
         # Note: this test does not test "in cache" cases: those are treated elsewhere
-
         def mockIAlgorithm(name: str) -> mock.Mock:
             mock_ = mock.Mock()
             mock_.name.return_value = name
@@ -2682,9 +2684,17 @@ class TestGroceryService(unittest.TestCase):
         dirtyWorkspace = mock.Mock()
         groupWorkspace = mock.Mock()
 
-        self.instance.fetchNeutronDataCached = mock.Mock(return_value={"result": True, "workspace": cleanWorkspace})
-        self.instance.fetchNeutronDataSingleUse = mock.Mock(return_value={"result": True, "workspace": dirtyWorkspace})
-        self.instance.fetchGroupingDefinition = mock.Mock(return_value={"result": True, "workspace": groupWorkspace})
+        self.instance.fetchNeutronDataCached = mock.Mock(
+            return_value={"result": True, "workspace": cleanWorkspace, "loader": "LoadEventNexus"}
+        )
+        self.instance.fetchNeutronDataSingleUse = mock.Mock(
+            return_value={"result": True, "workspace": dirtyWorkspace, "loader": "LoadEventNexus"}
+        )
+        self.instance.fetchGroupingDefinition = mock.Mock(
+            return_value={"result": True, "workspace": groupWorkspace, "loader": "LoadGroupingDefinition"}
+        )
+        self.instance._validateWorkspaceInstrument = mock.Mock()
+        self.instance.getWorkspaceForName = mock.Mock(return_value=mock.Mock(spec=MatrixWorkspace))
 
         clerk = GroceryListItem.builder()
         clerk.native().neutron(self.runNumber).add()
@@ -2700,9 +2710,12 @@ class TestGroceryService(unittest.TestCase):
         ):
             fetchMethod.assert_called_once_with(groceryList[i])
         self.instance.fetchGroupingDefinition.assert_called_once_with(groceryList[2])
+        self.instance._validateWorkspaceInstrument.assert_called()
 
     def test_fetch_grocery_list_fails(self):
-        self.instance.fetchNeutronDataSingleUse = mock.Mock(return_value={"result": False, "workspace": "unimportant"})
+        self.instance.fetchNeutronDataSingleUse = mock.Mock(
+            return_value={"result": False, "workspace": "unimportant", "loader": ""}
+        )
         groceryList = GroceryListItem.builder().native().neutron(self.runNumber).dirty().buildList()
         with pytest.raises(RuntimeError) as e:
             self.instance.fetchGroceryList(groceryList)
@@ -2800,7 +2813,10 @@ class TestGroceryService(unittest.TestCase):
             # fetch the workspace
             assert not mtd.doesExist(diffCalTableName)
 
-            with Config_override("instrument.native.pixelResolution", 16):
+            with (
+                Config_override("instrument.native.pixelResolution", 16),
+                Config_override("instrument.native.name", "fakesnap"),
+            ):
                 items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalTableName
             assert mtd.doesExist(diffCalTableName)
@@ -2815,13 +2831,14 @@ class TestGroceryService(unittest.TestCase):
             mockWs = mock.Mock()
             mockWs.getNumberHistograms.return_value = 16
             mockSnapper.mtd.__getitem__.return_value = mockWs
-            self.instance._validateCalibrationMask(item, "someMask")
+            mockWs.getInstrument().getName.return_value = "snap"
+            self.instance._validateWorkspaceInstrument(item, "someMask")
             mockWs.getNumberHistograms.return_value = 1337
             with pytest.raises(
                 RuntimeError,
-                match="Expected 16 histograms for the native resolution.",
+                match="Expected 16 spectra for the native resolution.",
             ):
-                self.instance._validateCalibrationMask(item, "someMask")
+                self.instance._validateWorkspaceInstrument(item, "someMask")
 
     def test_validateCalibrationTable(self):
         # load a diffcal table and validate it
@@ -2919,7 +2936,10 @@ class TestGroceryService(unittest.TestCase):
             )
             assert mtd.doesExist(diffCalTableName)
             assert not mtd.doesExist(diffCalMaskName)
-            with Config_override("instrument.native.pixelResolution", 16):
+            with (
+                Config_override("instrument.native.pixelResolution", 16),
+                Config_override("instrument.native.name", "fakesnap"),
+            ):
                 wss = self.instance.fetchGroceryList(groceryList)  # noqa: F841
             assert mtd.doesExist(diffCalTableName)
             assert mtd.doesExist(diffCalMaskName)
@@ -2947,7 +2967,10 @@ class TestGroceryService(unittest.TestCase):
 
             assert not mtd.doesExist(diffCalTableName)
             assert not mtd.doesExist(diffCalMaskName)
-            with Config_override("instrument.native.pixelResolution", 16):
+            with (
+                Config_override("instrument.native.pixelResolution", 16),
+                Config_override("instrument.native.name", "fakesnap"),
+            ):
                 items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalTableName
             assert mtd.doesExist(diffCalTableName)
@@ -2976,7 +2999,10 @@ class TestGroceryService(unittest.TestCase):
 
             assert not mtd.doesExist(diffCalMaskName)
             self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-            with Config_override("instrument.native.pixelResolution", 16):
+            with (
+                Config_override("instrument.native.pixelResolution", 16),
+                Config_override("instrument.native.name", "fakesnap"),
+            ):
                 items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
@@ -3052,7 +3078,10 @@ class TestGroceryService(unittest.TestCase):
 
             assert not mtd.doesExist(diffCalMaskName)
             assert not mtd.doesExist(diffCalTableName)
-            with Config_override("instrument.native.pixelResolution", 16):
+            with (
+                Config_override("instrument.native.pixelResolution", 16),
+                Config_override("instrument.native.name", "fakesnap"),
+            ):
                 items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
@@ -3065,9 +3094,10 @@ class TestGroceryService(unittest.TestCase):
         with state_root_redirect(self.instance.dataService) as tmpRoot:
             self.instance.dataService.normalizationIndexer = self.mockIndexer(tmpRoot.path(), "normalization")
             groceryList = (
-                GroceryListItem.builder().native().normalization(self.runNumber1, "statId", self.version).buildList()
+                GroceryListItem.builder().lite().normalization(self.runNumber1, "statId", self.version).buildList()
             )
             self.instance._processNeutronDataCopy = mock.Mock()
+            self.instance._validateWorkspaceInstrument = mock.Mock()
             self.instance.dataService.generateInstrumentState = mock.Mock(
                 return_value=DAOFactory.default_instrument_state
             )
@@ -3089,6 +3119,9 @@ class TestGroceryService(unittest.TestCase):
             assert items[0] == normalizationWorkspaceName
             assert mtd.doesExist(normalizationWorkspaceName)
             self.instance._processNeutronDataCopy.assert_called_once_with(groceryList[0], normalizationWorkspaceName)
+            self.instance._validateWorkspaceInstrument.assert_called_once_with(
+                groceryList[0], normalizationWorkspaceName
+            )
 
             mockLogger.info.assert_any_call(
                 f"Fetching normalization workspace for run {self.runNumber1}, version {self.version}"
@@ -3099,6 +3132,7 @@ class TestGroceryService(unittest.TestCase):
         # Test of workspace type "normalization" as `Input` argument in the `GroceryList`
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
         self.instance._processNeutronDataCopy = mock.Mock()
+        self.instance._validateWorkspaceInstrument = mock.Mock()
         with state_root_redirect(self.instance.dataService) as tmpRoot:
             self.instance.dataService.normalizationIndexer = self.mockIndexer(tmpRoot.path(), "normalization")
             self.instance.dataService.generateInstrumentState = mock.Mock(
@@ -3201,7 +3235,6 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_grocery_list_reductionPixelMask(self):
         # Test of workspace type "reduction_pixel_mask" as `Input` argument in the `GroceryList`
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-
         stateId = "ab8704b0bc2a2342"
         with reduction_root_redirect(self.instance.dataService, stateId=stateId):
             groceryList = (
@@ -3241,9 +3274,14 @@ class TestGroceryService(unittest.TestCase):
         # expected workspaces
         cleanWorkspace = "unimportant"
         groupWorkspace = mock.Mock()
+        self.instance.getWorkspaceForName = mock.Mock()
 
-        self.instance.fetchNeutronDataCached = mock.Mock(return_value={"result": True, "workspace": cleanWorkspace})
-        self.instance.fetchGroupingDefinition = mock.Mock(return_value={"result": True, "workspace": groupWorkspace})
+        self.instance.fetchNeutronDataCached = mock.Mock(
+            return_value={"result": True, "workspace": cleanWorkspace, "loader": "cached"}
+        )
+        self.instance.fetchGroupingDefinition = mock.Mock(
+            return_value={"result": True, "workspace": groupWorkspace, "loader": "LoadGroupingDefinition"}
+        )
 
         clerk = GroceryListItem.builder()
         clerk.native().neutron(self.runNumber).add()
@@ -3258,6 +3296,7 @@ class TestGroceryService(unittest.TestCase):
         assert res == [cleanWorkspace, groupWorkspace]
         self.instance.fetchGroupingDefinition.assert_called_with(groupingItemWithSource)
         self.instance.fetchNeutronDataCached.assert_called_with(inputItem)
+        assert not self.instance.getWorkspaceForName.called
 
     def test_updateInstrumentParameters(self):
         wsName = mtd.unique_hidden_name()
@@ -3905,3 +3944,40 @@ class TestGroceryService(unittest.TestCase):
             assert instance.grocer.executeRecipe.call_args[0][0] == str(
                 self.instance._createNeutronFilePath(item.runNumber, False)
             )
+
+    def test_validateWorkspaceInstrument(self):
+        with mock.patch.object(self.instance, "mantidSnapper") as mockSnapper:
+            mockWorkspace = mock.Mock()
+            mockWorkspace.getInstrument = mock.Mock(return_value=mock.Mock())
+            mockWorkspace.getInstrument().getName = mock.Mock(return_value="SNAP")
+            mockWorkspace.getNumberHistograms = mock.Mock(return_value=Config["instrument.native.pixelResolution"])
+            mockSnapper.mtd.__getitem__ = mock.Mock(return_value=mockWorkspace)
+
+            item = GroceryListItem(workspaceType="neutron", runNumber="123", useLiteMode=False, loader="")
+            self.instance._validateWorkspaceInstrument(item, "wsName")
+
+            mockWorkspace.getNumberHistograms.return_value = Config["instrument.lite.pixelResolution"]
+            with pytest.raises(RuntimeError, match=f"Expected {Config['instrument.native.pixelResolution']} spectra."):
+                self.instance._validateWorkspaceInstrument(item, "wsName")
+
+            mockWorkspace.getNumberHistograms.return_value = Config["instrument.native.pixelResolution"]
+            item = GroceryListItem(workspaceType="neutron", runNumber="123", useLiteMode=True, loader="")
+
+            with pytest.raises(
+                RuntimeError,
+                match=f"Expected {Config['instrument.lite.pixelResolution']} spectra for the lite resolution.",
+            ):
+                self.instance._validateWorkspaceInstrument(item, "wsName")
+
+            item = GroceryListItem(workspaceType="neutron", runNumber="123", useLiteMode=False, loader="")
+            mockWorkspace.getInstrument().getName.return_value = "SNAPlite"
+
+            with pytest.raises(RuntimeError, match="Expected instrument to be snap for the native resolution."):
+                self.instance._validateWorkspaceInstrument(item, "wsName")
+
+            item = GroceryListItem(workspaceType="neutron", runNumber="123", useLiteMode=True, loader="")
+            mockWorkspace.getInstrument().getName.return_value = "SNAP"
+            mockWorkspace.getNumberHistograms.return_value = Config["instrument.lite.pixelResolution"]
+
+            with pytest.raises(RuntimeError, match="Expected instrument to be snaplite for the lite resolution."):
+                self.instance._validateWorkspaceInstrument(item, "wsName")

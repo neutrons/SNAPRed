@@ -552,7 +552,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 checkExistent=False,
             )
             self.instance.groceryService._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-            self.instance.groceryService._validateCalibrationMask = mock.Mock(return_value=True)
+            self.instance.groceryService._validateWorkspaceInstrument = mock.Mock(return_value=True)
 
             with Config_override("instrument.lite.pixelResolution", 16):
                 # Load the assessment workspaces:
@@ -595,7 +595,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 checkExistent=False,
             )
             self.instance.groceryService._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-            self.instance.groceryService._validateCalibrationMask = mock.Mock(return_value=True)
+            self.instance.groceryService._validateWorkspaceInstrument = mock.Mock(return_value=True)
 
             with Config_override("instrument.lite.pixelResolution", 16):
                 self.instance.loadQualityAssessment(mockRequest)
