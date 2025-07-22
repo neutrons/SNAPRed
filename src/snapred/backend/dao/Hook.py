@@ -5,7 +5,7 @@ from pydantic.json_schema import SkipJsonSchema
 
 
 class Hook(BaseModel, arbitrary_types_allowed=True):
-    func: SkipJsonSchema[Callable]
+    func: SkipJsonSchema[Callable | str]
     kwargs: dict[str, Any] = {}
 
     def __init__(self, func: Callable, **kwargs) -> None:
@@ -13,8 +13,10 @@ class Hook(BaseModel, arbitrary_types_allowed=True):
 
     # convert func to method name when serialized with json
     @field_serializer("func")
-    def serialize_func(self, value: Callable) -> str:
+    def serialize_func(self, value: Callable | str) -> str:
         """
         Serializes the function to its method name.
         """
-        return value.__name__ if hasattr(value, "__name__") else str(value)
+        if isinstance(value, str):
+            return value
+        return value.__qualname__ if hasattr(value, "__qualname__") else str(value)

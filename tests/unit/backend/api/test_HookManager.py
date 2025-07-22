@@ -7,6 +7,19 @@ from snapred.backend.dao.Hook import Hook
 
 
 class TestHookManager(unittest.TestCase):
+    def test_readHook(self):
+        hookDict = {"func": "test_hook_function", "kwargs": {"arg1": "value1", "arg2": "value2"}}
+        hook = Hook(**hookDict)
+        assert hook.func == "test_hook_function"
+
+        def test_hook_function(arg1, arg2):
+            return f"Hook executed with {arg1} and {arg2}"
+
+        hook = Hook(func=test_hook_function, **hookDict["kwargs"])
+        assert hook.func == test_hook_function
+        outHookDict = hook.model_dump()
+        assert outHookDict["func"] == test_hook_function.__qualname__
+
     def test_register(self):
         """Test registering a hook"""
         hookManager = HookManager()

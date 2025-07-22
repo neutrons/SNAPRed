@@ -10,7 +10,7 @@ logger = snapredLogger.getLogger(__name__)
 @Singleton
 class HookManager:
     """
-    Registers, manages, and executes Callables though a given request.
+    Registers, manages, and executes Callables through a given request.
     """
 
     def __init__(self):
