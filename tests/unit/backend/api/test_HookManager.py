@@ -10,7 +10,7 @@ class TestHookManager(unittest.TestCase):
     def test_readHook(self):
         hookDict = {"func": "test_hook_function", "kwargs": {"arg1": "value1", "arg2": "value2"}}
         hook = Hook(**hookDict)
-        assert hook.func == "test_hook_function"
+        assert hook.funcStr == "test_hook_function"
 
         def test_hook_function(arg1, arg2):
             return f"Hook executed with {arg1} and {arg2}"
@@ -18,7 +18,13 @@ class TestHookManager(unittest.TestCase):
         hook = Hook(func=test_hook_function, **hookDict["kwargs"])
         assert hook.func == test_hook_function
         outHookDict = hook.model_dump()
+        assert "func" in outHookDict, f"{outHookDict}"
         assert outHookDict["func"] == test_hook_function.__qualname__
+
+        hook = Hook.model_validate(hookDict)
+
+        with pytest.raises(TypeError, match="func no longer available"):
+            _ = hook.func
 
     def test_register(self):
         """Test registering a hook"""
