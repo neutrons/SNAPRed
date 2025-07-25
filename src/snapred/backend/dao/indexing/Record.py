@@ -1,8 +1,9 @@
-from typing import Any
+from typing import Any, Dict, List
 
 import numpy
 from pydantic import ConfigDict, field_validator
 
+from snapred.backend.dao.Hook import Hook
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexedObject import IndexedObject
 
@@ -29,6 +30,8 @@ class Record(IndexedObject, extra="allow"):
     #   the version on the calculation parameters MUST match the version on this record.
     # TODO (complicated): add a validator to enforce this.
     calculationParameters: CalculationParameters
+
+    hooks: Dict[str, List[Hook]] | None = None
 
     @field_validator("runNumber", mode="before")
     @classmethod
