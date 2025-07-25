@@ -1,7 +1,15 @@
 from types import FunctionType
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializationInfo,
+    SerializerFunctionWrapHandler,
+    field_serializer,
+    model_serializer,
+)
 from pydantic.json_schema import SkipJsonSchema
 
 
@@ -39,11 +47,14 @@ class Hook(BaseModel, arbitrary_types_allowed=True):
             return value
         return value.__qualname__ if hasattr(value, "__qualname__") else str(value)
 
-    def model_dump(
+    @model_serializer(when_used="always", mode="wrap")
+    def serialize(
         self,
-        by_alias: bool = True,
-        **kwargs: Any,
+        serializer: SerializerFunctionWrapHandler,
+        info: SerializationInfo,  # noqa: ARG002
     ) -> dict[str, Any]:
-        return super().model_dump(by_alias=by_alias, **kwargs)
+        data = serializer(self)
+        data["func"] = data.pop("p_func")
+        return data
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
