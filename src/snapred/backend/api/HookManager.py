@@ -61,7 +61,7 @@ class HookManager:
                     raise TypeError(
                         f"Hook '{hookName}' must be a callable with one argument"
                         + " (the instance in which the callable is executed) plus"
-                        + " additional arguments from HookArgs."
+                        + " additional keyword arguments from HookArgs."
                     )
             self.hooks[hookName] = hookList
 

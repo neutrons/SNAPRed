@@ -1,7 +1,7 @@
 from types import FunctionType
 from typing import Any
 
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from pydantic.json_schema import SkipJsonSchema
 
 
@@ -33,7 +33,7 @@ class Hook(BaseModel, arbitrary_types_allowed=True):
     @field_serializer("p_func")
     def serialize_func(self, value: FunctionType | str) -> str:
         """
-        Serializes the function to its method name.
+        Serializes the function to its qualified name.
         """
         if isinstance(value, str):
             return value
@@ -45,3 +45,5 @@ class Hook(BaseModel, arbitrary_types_allowed=True):
         **kwargs: Any,
     ) -> dict[str, Any]:
         return super().model_dump(by_alias=by_alias, **kwargs)
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
