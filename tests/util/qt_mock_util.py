@@ -24,7 +24,13 @@ class MockQMessageBox(QWidget):
             return (
                 QMessageBox.Ok
                 if (msg in self_.detailedText())
-                else (MockQMessageBox().fail(f"Expected warning not found:  {msg}:\n    actual message: {self_.detailedText()}")),
+                else (
+                    MockQMessageBox().fail(
+                        f"Expected warning not found:  {msg}:\n"
+                        + f"  actual message: {self_.text()};\n"
+                        + f"  actual details: {self_.detailedText()}"
+                    )
+                ),
             )
 
         return mock.patch(moduleRoot + ".QMessageBox.exec", _mockExec), myCounterMock
@@ -68,8 +74,12 @@ class MockQMessageBox(QWidget):
             elif "No valid FocusGroups were specified for mode: 'lite'" in self_.detailedText():
                 # TODO: Please fix the input data.  Doing this is really hacky!
                 return QMessageBox.Yes
-            MockQMessageBox().fail(f"Expected warning not found:\n  msg: '{msg}',\n  does not match actual message:\n  msg: '{self_.text()}':\n  details: '{self._detailedText}'")
-
+            MockQMessageBox().fail(
+                f"Expected warning not found:  {msg}:\n"
+                + f"  actual message: {self_.text()};\n"
+                + f"  actual details: {self_.detailedText()}"
+            )
+            
         return mock.patch(moduleRoot + ".QMessageBox.exec", _mockExec), myCounterMock
 
     @staticmethod
