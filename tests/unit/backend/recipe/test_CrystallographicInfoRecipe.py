@@ -34,5 +34,5 @@ with mock.patch.dict(
         assert not Path(fakeCIF).exists()
         
         xtalRecipe = Recipe()
-        with pytest.raises(BaseException): # noqa: BLE001
+        with pytest.raises(BaseException): # noqa: PT011
             xtalRecipe.executeRecipe(fakeCIF)
