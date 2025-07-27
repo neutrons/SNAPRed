@@ -1,6 +1,6 @@
+import unittest.mock as mock
 from pathlib import Path
 
-import unittest.mock as mock
 import pytest
 
 with mock.patch.dict(
@@ -18,7 +18,7 @@ with mock.patch.dict(
         """Test success of crystal ingestion recipe with a good path name"""
         goodCIF = Resource.getPath("/inputs/crystalInfo/example.cif")
         assert Path(goodCIF).exists()
-        
+
         xtalRecipe = Recipe()
         data = xtalRecipe.executeRecipe(goodCIF, 1.0, 10.0)
         xtal = data["crystalInfo"]
@@ -32,7 +32,7 @@ with mock.patch.dict(
         """Test failure of crystal ingestion recipe with a bad path name"""
         fakeCIF = "blank_file.cif"
         assert not Path(fakeCIF).exists()
-        
+
         xtalRecipe = Recipe()
-        with pytest.raises(BaseException): # noqa: PT011
+        with pytest.raises(BaseException):  # noqa: PT011
             xtalRecipe.executeRecipe(fakeCIF)

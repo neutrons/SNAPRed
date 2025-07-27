@@ -8,7 +8,6 @@ from contextlib import ExitStack, suppress
 from unittest import mock
 
 import pytest
-
 from mantid.kernel import amend_config
 from qtpy import QtCore
 from qtpy.QtCore import Qt

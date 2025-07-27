@@ -472,7 +472,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         # Get the calibration and normalization versions for all runs to be processed
         matchRequest = MatchRunsRequest(runNumbers=list(self.runNumbers), useLiteMode=self.useLiteMode)
-        # TODO: Remove this orchestration, this should be handled in the backend        
+        # TODO: Remove this orchestration, this should be handled in the backend
         loadedNormalizations, normVersions = self.request(path="normalization/fetchMatches", payload=matchRequest).data
 
         # Add loaded calibrations, calibration-masks, and normalizations to the list of workspaces to retain.

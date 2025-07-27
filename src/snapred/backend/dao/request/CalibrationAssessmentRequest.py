@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Dict, List
+from typing import Any, Dict, List
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -51,5 +51,5 @@ class CalibrationAssessmentRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         # required in order to use 'WorkspaceName'
-        arbitrary_types_allowed=True
+        arbitrary_types_allowed=True,
     )

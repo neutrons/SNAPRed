@@ -20,4 +20,3 @@ class VersionState(StrEnum):
 VERSION_DEFAULT = VersionState.DEFAULT
 
 Version = int | VersionState
-

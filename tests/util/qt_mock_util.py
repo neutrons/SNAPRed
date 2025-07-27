@@ -79,7 +79,7 @@ class MockQMessageBox(QWidget):
                 + f"  actual message: {self_.text()};\n"
                 + f"  actual details: {self_.detailedText()}"
             )
-            
+
         return mock.patch(moduleRoot + ".QMessageBox.exec", _mockExec), myCounterMock
 
     @staticmethod

@@ -35,5 +35,5 @@ class CreateCalibrationRecordRequest(BaseModel):
         strict=False,
         extra="forbid",
         # required in order to use 'WorkspaceName'
-        arbitrary_types_allowed=True
+        arbitrary_types_allowed=True,
     )
