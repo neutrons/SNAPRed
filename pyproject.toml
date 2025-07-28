@@ -247,9 +247,9 @@ python-build = "*"
 
 # Environment variables for local Mantid build
 [tool.pixi.feature.local-mantid.activation.env]
-MANTID_BUILD_DIR = "/path/to/mantid/build"
-MANTID_BUILD_SRC = "/path/to/mantid/source"
-PYTHONPATH = "${MANTID_BUILD_SRC}/Framework/PythonInterface:${MANTID_BUILD_DIR}/bin:${PYTHONPATH}:src"
+MANTID_BUILD_DIR = "/home/dzj/mantid/build"
+MANTID_BUILD_SRC = "/home/dzj/mantid"
+PYTHONPATH = "src:${MANTID_BUILD_SRC}/Framework/PythonInterface:${MANTID_BUILD_DIR}/bin:${MANTID_BUILD_DIR}/qt/applications/workbench:${MANTID_BUILD_SRC}/qt/applications/workbench:${MANTID_BUILD_SRC}/qt/python/mantidqt:${MANTID_BUILD_SRC}/qt/python/mantidqtinterfaces:${PYTHONPATH}"
 LD_LIBRARY_PATH = "${MANTID_BUILD_DIR}/lib:${MANTID_BUILD_DIR}/bin:${LD_LIBRARY_PATH}"
 MANTIDPATH = "${MANTID_BUILD_DIR}"
 MANTID_DATA_PATH = "${MANTID_BUILD_DIR}/share/mantid"
@@ -257,9 +257,9 @@ MANTID_FRAMEWORK_PATH = "${MANTID_BUILD_DIR}/lib"
 
 [tool.pixi.feature.local-mantid.tasks]
 # Test that local Mantid can be imported
-test-local-mantid = { cmd = "python -c \"import sys; print('Python paths:'); [print(f'  {p}') for p in sys.path[:5]]; print('\\nTesting Mantid import...'); import mantid; print(f'✅ Mantid imported from: {mantid.__file__}'); print(f'✅ Mantid version: {mantid.__version__}')\"", description = "Test that local Mantid build can be imported" }
+test-local-mantid = { cmd = "python -c \"import sys; print('Python paths:'); [print(f'  {p}') for p in sys.path[:5]]; print('\\\\nTesting Mantid import...'); import mantid; print(f'✅ Mantid imported from: {mantid.__file__}'); print(f'✅ Mantid version: {mantid.__version__}')\"", description = "Test that local Mantid build can be imported" }
 # More comprehensive test including workbench components
-test-local-mantid-full = { cmd = "python -c \"import sys; print('=== Python Environment ==='); print(f'Python executable: {sys.executable}'); print('\\nPython paths (first 10):'); [print(f'  {i+1}: {p}') for i, p in enumerate(sys.path[:10])]; print('\\n=== Mantid Import Test ==='); import mantid; print(f'✅ Mantid imported from: {mantid.__file__}'); print(f'✅ Mantid version: {mantid.__version__}'); print('\\n=== Workbench Components ==='); try: import mantidqt; print(f'✅ mantidqt imported from: {mantidqt.__file__}'); except Exception as e: print(f'❌ mantidqt import failed: {e}'); try: from mantidqt.utils.qt import import_qt; print('✅ Qt import successful'); except Exception as e: print(f'❌ Qt import failed: {e}')\"", description = "Comprehensive test of local Mantid build including workbench components" }
+test-local-mantid-full = { cmd = "python -c \"import sys; print('=== Python Environment ==='); print(f'Python executable: {sys.executable}'); print('\\\nPython paths (first 10):'); [print(f'  {i+1}: {p}') for i, p in enumerate(sys.path[:10])]; print('\\\n=== Mantid Import Test ==='); import mantid; print(f'✅ Mantid imported from: {mantid.__file__}'); print(f'✅ Mantid version: {mantid.__version__}'); print('\\\n=== Workbench Components ==='); try: import mantidqt; print(f'✅ mantidqt imported from: {mantidqt.__file__}'); except Exception as e: print(f'❌ mantidqt import failed: {e}'); try: from mantidqt.utils.qt import import_qt; print('✅ Qt import successful'); except Exception as e: print(f'❌ Qt import failed: {e}')\"", description = "Comprehensive test of local Mantid build including workbench components" }
 # Start SNAPRed with local Mantid build
 snapred-local = { cmd = "cd $MANTID_BUILD_DIR/bin; snapred;", description = "Start SNAPRed with local Mantid build" }
 # Alternative launch method using module
@@ -269,4 +269,4 @@ debug-local-mantid-env = { cmd = "python -c \"import os; print('=== Environment 
 # Comprehensive environment test
 test-local-mantid-comprehensive = { cmd = "python tests/cis_tests/test_local_mantid_setup.py", description = "Comprehensive test of local Mantid environment setup" }
 # Launch local Mantid Workbench with SNAPRed
-launch-local-workbench = { cmd = "mantidworkbench", description = "Launch local Mantid Workbench with SNAPRed available" }
+launch-local-workbench = { cmd = "cd $MANTID_BUILD_DIR/bin; ./launch_mantidworkbench.sh", description = "Launch local workbench with SNAPRed available"}
