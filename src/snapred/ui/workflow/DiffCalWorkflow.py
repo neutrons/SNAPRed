@@ -197,7 +197,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             return
         self.workflow.presenter.handleAction(
             self.handleRunMetadata,
-            args=(runNumber,),
+            args=runNumber,
             onSuccess=lambda: self.__setInteraction(False, "populateRunMetadata"),
         )
 
@@ -210,7 +210,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.__setInteraction(False, "lookForOverrides")
         self.workflow.presenter.handleAction(
             self.handleOverride,
-            args=(sampleFile),
+            args=sampleFile,
             onSuccess=lambda: self.__setInteraction(True, "lookForOverrides"),
         )
 
@@ -220,7 +220,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             runId=runNumber,
             useLiteMode=useLiteMode,
         )
-        hasState = self.request(path="calibration/hasState", payload=payload.json()).data
+        hasState = self.request(path="calibration/hasState", payload=payload.model_dump_json()).data
         if hasState:
             self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
         else:
@@ -233,13 +233,13 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def handleRunMetadata(self, runNumber):
         payload = RunMetadataRequest(runId=runNumber)
-        metadata = self.request(path="calibration/runMetadata", payload=payload.json()).data
+        metadata = self.request(path="calibration/runMetadata", payload=payload.model_dump_json()).data
         self._requestView.updateRunMetadata(metadata)
         return SNAPResponse(code=ResponseCode.OK)
 
     def handleOverride(self, sampleFile):
         payload = OverrideRequest(calibrantSamplePath=sampleFile)
-        overrides = self.request(path="calibration/override", payload=payload.json()).data
+        overrides = self.request(path="calibration/override", payload=payload.model_dump_json()).data
 
         if not overrides:
             self._requestView.enablePeakFunction()
@@ -694,6 +694,6 @@ class DiffCalWorkflow(WorkflowImplementer):
             createRecordRequest=createRecordRequest,
         )
 
-        response = self.request(path="calibration/save", payload=payload.json())
+        response = self.request(path="calibration/save", payload=payload.model_dump_json())
         lock.release()
         return response
