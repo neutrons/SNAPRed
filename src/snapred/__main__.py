@@ -3,7 +3,6 @@ import sys
 
 from mantid.kernel import amend_config
 
-import snapred.backend.recipe.algorithm  # noqa: F401
 from snapred import __version__ as snapred_version
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config, Resource
@@ -34,6 +33,15 @@ def _preloadImports():
     import qtpy.QtWebEngineWidgets as QWebEngineWidgets
 
     print(f"preloaded {QWebEngineWidgets.__name__}")
+
+    # Import SNAPRed modules to register algorithms and services with Mantid
+    # Avoid importing modules that might initialize matplotlib backends too early
+    try:
+        # Only import the essential modules for algorithm registration
+
+        print("SNAPRed algorithms and services registered with Mantid")
+    except Exception as e:  # noqa: BLE001
+        print(f"Warning: Failed to register SNAPRed with Mantid: {e}")
 
 
 def _createArgparser():

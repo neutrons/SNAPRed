@@ -229,33 +229,47 @@ versioningit = "*"
 # Local Mantid Development Feature #
 # ------------------------------- #
 [tool.pixi.feature.local-mantid.dependencies]
-# Use mantid-developer package to automatically get all required dependencies
-# This ensures we stay in sync with any changes to the mantid development environment
-mantid-developer = ">=6.12.20250630.858,<7"
+# Minimal dependencies for local Mantid development - NO mantid packages at all
+python = "3.11.*"
+numpy = "*"
+scipy = "*"
+matplotlib = "*"
+h5py = "*"
+psutil = "*"
+qtpy = "*"
+lxml = "*"
+requests = "*"
+toml = "*"
+pyyaml = "*"
+"ruamel.yaml" = "*"
 
-# Additional development dependencies for SNAPRed that may not be in mantid-developer
-git-lfs = "*"
+# Development tools
 pytest = "*"
 pytest-qt = "*"
 pytest-cov = "*"
 ruff = "*"
-python-build = "*"
 
-# Note: mantid-developer will install mantid, mantidworkbench, mantidqt packages
-# However, our environment variables (PYTHONPATH, LD_LIBRARY_PATH) will ensure
-# the local Mantid build takes precedence over these conda packages
+# Note: We deliberately exclude ALL mantid-related packages to avoid conflicts
+# The local Mantid build provides all Mantid functionality via environment variables
 
 # Environment variables for local Mantid build
 [tool.pixi.feature.local-mantid.activation.env]
 MANTID_BUILD_DIR = "/path/to/mantid/build"
 MANTID_BUILD_SRC = "/path/to/mantid/source"
-PYTHONPATH = "src:${MANTID_BUILD_SRC}/Framework/PythonInterface:${MANTID_BUILD_DIR}/bin:${MANTID_BUILD_DIR}/qt/applications/workbench:${MANTID_BUILD_SRC}/qt/applications/workbench:${MANTID_BUILD_SRC}/qt/python/mantidqt:${MANTID_BUILD_SRC}/qt/python/mantidqtinterfaces:${PYTHONPATH}"
-LD_LIBRARY_PATH = "${MANTID_BUILD_DIR}/lib:${MANTID_BUILD_DIR}/bin:${LD_LIBRARY_PATH}"
+# Use ONLY local Mantid build - no conda packages
+PYTHONPATH = "src:${MANTID_BUILD_DIR}/bin:${MANTID_BUILD_SRC}/Framework/PythonInterface:${MANTID_BUILD_DIR}/qt/applications/workbench:${MANTID_BUILD_SRC}/qt/applications/workbench:${MANTID_BUILD_SRC}/qt/python/mantidqt:${MANTID_BUILD_SRC}/qt/python/mantidqtinterfaces"
+LD_LIBRARY_PATH = "${MANTID_BUILD_DIR}/lib:${MANTID_BUILD_DIR}/bin"
 MANTIDPATH = "${MANTID_BUILD_DIR}"
 MANTID_DATA_PATH = "${MANTID_BUILD_DIR}/share/mantid"
 MANTID_FRAMEWORK_PATH = "${MANTID_BUILD_DIR}/lib"
+# Force Mantid to use ONLY local plugins, not conda ones
+MANTID_PLUGIN_PATH = "${MANTID_BUILD_DIR}/lib"
+# Prevent conda from providing any Mantid paths
+CONDA_DEFAULT_ENV = ""
 
 [tool.pixi.feature.local-mantid.tasks]
+# Install SNAPRed in editable mode
+install-snapred-local = { cmd = "python -m pip install -e .", description = "Install SNAPRed in editable mode into the local Mantid environment" }
 # Test that local Mantid can be imported
 test-local-mantid = { cmd = "python -c \"import sys; print('Python paths:'); [print(f'  {p}') for p in sys.path[:5]]; print('\\\\nTesting Mantid import...'); import mantid; print(f'✅ Mantid imported from: {mantid.__file__}'); print(f'✅ Mantid version: {mantid.__version__}')\"", description = "Test that local Mantid build can be imported" }
 # More comprehensive test including workbench components
@@ -269,4 +283,4 @@ debug-local-mantid-env = { cmd = "python -c \"import os; print('=== Environment 
 # Comprehensive environment test
 test-local-mantid-comprehensive = { cmd = "python tests/cis_tests/test_local_mantid_setup.py", description = "Comprehensive test of local Mantid environment setup" }
 # Launch local Mantid Workbench with SNAPRed
-launch-local-workbench = { cmd = "cd $MANTID_BUILD_DIR/bin; ./launch_mantidworkbench.sh", description = "Launch local workbench with SNAPRed available"}
+launch-local-workbench = { cmd = "cd $MANTID_BUILD_DIR/bin && ./launch_mantidworkbench.sh", description = "Launch local Mantid Workbench with SNAPRed available" }
