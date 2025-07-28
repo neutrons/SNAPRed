@@ -66,10 +66,7 @@ class TestGUIPanels:
             lambda self, *args, **kwargs: QMessageBox.Ok
             if (
                 "The backend has encountered warning(s)" in self.text()
-                and (
-                    "InstrumentDonor will only be used if GroupingFilename is in XML format." in self.detailedText()
-                    or "No valid FocusGroups were specified for mode: 'lite'" in self.detailedText()
-                )
+                and "InstrumentDonor will only be used if GroupingFilename is in XML format." in self.detailedText()
             )
             else pytest.fail(
                 "unexpected QMessageBox.exec:"
@@ -113,7 +110,7 @@ class TestGUIPanels:
         # teardown...
         self._warningMessageBox.stop()
         self._criticalMessageBox.stop()
-        # self._logWarningsMessageBox.stop()
+        self._logWarningsMessageBox.stop()
         self._actionPrompt.stop()
         self.exitStack.close()
 
@@ -236,8 +233,8 @@ class TestGUIPanels:
 
             # # Test case of using non numeric
             msg = (
-                "Reduction run numbers were incorrectly formatted: please read mantid docs"
-                + " for `IntArrayProperty` on how to format input"
+                ".*Reduction run numbers were incorrectly formatted: please read mantid docs"
+                " for `IntArrayProperty` on how to format input.*"
             )
             mp = MockQMessageBox().warning(msg)
             with mp[0]:
@@ -248,11 +245,12 @@ class TestGUIPanels:
                 assert mp[1].call_count == 1
 
             # # Test case of using low run number
-            msg = (
-                "Value error, Run number -1 is below the minimum value or data does not exist."
-                + "Please enter a valid run number"
+            msg = r".*There are issues with some run\(s\).*"
+            details = (
+                r".*Value error, Run number -1 is below the minimum value or data does not exist\."
+                r".*Please enter a valid run number.*"
             )
-            mp = MockQMessageBox().exec(msg)
+            mp = MockQMessageBox().exec(msg, detailedText_regex=details)
             with mp[0]:
                 requestView._requestView.runNumberInput.setText("-1")
                 qtbot.mouseClick(requestView._requestView.enterRunNumberButton, Qt.MouseButton.LeftButton)
@@ -367,9 +365,10 @@ class TestGUIPanels:
                 handleStateInit(waitForStateInit, reductionStateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
 
                 msg = (
-                    "Warning: Reduction is missing normalization data."
-                    + " Artificial normalization will be created in place of actual normalization."
-                    + " Would you like to continue?"
+                    r"<p><b>Both normalization and diffraction calibrations are missing\.</b></p>"
+                    r"<p>Default calibration will be used in place of actual calibration\.</p>"
+                    r"<p>Artificial normalization will be created in place of actual normalization\.</p>"
+                    r"<p>Would you like to continue anyway\?</p>"
                 )
                 mp = MockQMessageBox().continueWarning(msg, moduleRoot="snapred.ui.handler.SNAPResponseHandler")
                 mb = MockQMessageBox().continueButton("Yes")
@@ -385,7 +384,7 @@ class TestGUIPanels:
                 )
                 artNormView = workflowNodeTabs.currentWidget().view
 
-                msg = "Smoothing or peak window clipping size is invalid: could not convert string to float: 'a'"
+                msg = r".*Smoothing or peak window clipping size is invalid: could not convert string to float: 'a'.*"
                 mp = MockQMessageBox().warning(msg)
                 with mp[0]:
                     artNormView.smoothingSlider.field.setText("a")
@@ -395,7 +394,10 @@ class TestGUIPanels:
                     assert mp[1].call_count == 1
                 artNormView.smoothingSlider.field.setText("5")
 
-                msg = "Smoothing or peak window clipping size is invalid: invalid literal for int() with base 10: 'a'"
+                msg = (
+                    r".*Smoothing or peak window clipping size is invalid: "
+                    r"invalid literal for int\(\) with base 10: 'a'.*"
+                )
                 mp = MockQMessageBox().warning(msg)
                 with mp[0]:
                     artNormView.peakWindowClippingSize.field.setText("a")
@@ -435,9 +437,10 @@ class TestGUIPanels:
                 handleStateInit(waitForStateInit, reductionStateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
 
                 msg = (
-                    "Warning: Reduction is missing normalization data."
-                    + " Artificial normalization will be created in place of actual normalization."
-                    + " Would you like to continue?"
+                    r"<p><b>Both normalization and diffraction calibrations are missing\.</b></p>"
+                    r"<p>Default calibration will be used in place of actual calibration\.</p>"
+                    r"<p>Artificial normalization will be created in place of actual normalization\.</p>"
+                    r"<p>Would you like to continue anyway\?</p>"
                 )
                 mp = MockQMessageBox().continueWarning(msg)
                 mb = MockQMessageBox().continueButton("Continue without Normalization")
@@ -482,7 +485,7 @@ class TestGUIPanels:
                     return False
 
                 with patch.object(ReductionService, "checkReductionWritePermissions", denyPerm):
-                    msg2 = "<p>It looks like you don't have permissions to write to <br><b>"
+                    msg2 = ".*<p>It looks like you don't have permissions to write to <br><b>.*"
                     mp2 = MockQMessageBox().continueWarning(msg2)
                     mb = MockQMessageBox().continueButton("Yes")
                     with mp2[0], mb[0]:
@@ -566,13 +569,14 @@ class TestGUIPanels:
                 qtbot.wait(1000)
 
                 msg = (
-                    "Warning: Reduction is missing normalization data."
-                    + " Artificial normalization will be created in place of actual normalization."
-                    + " Would you like to continue?"
+                    r"<p><b>Both normalization and diffraction calibrations are missing\.</b></p>"
+                    r"<p>Default calibration will be used in place of actual calibration\.</p>"
+                    r"<p>Artificial normalization will be created in place of actual normalization\.</p>"
+                    r"<p>Would you like to continue anyway\?</p>"
                 )
                 critMsg = (
-                    "Error 500: Currently, Artificial Normalization can only be performed"
-                    + " on a single run at a time.  Please clear your run list and try again."
+                    r".*Error 500: Currently, Artificial Normalization can only be performed"
+                    r" on a single run at a time\.  Please clear your run list and try again.*"
                 )
                 mp = MockQMessageBox().continueWarning(msg)
                 mc = MockQMessageBox().critical(critMsg)

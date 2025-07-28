@@ -3,6 +3,7 @@ from typing import Any, Dict
 
 from snapred.backend.dao import Limit
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.Versioning import VERSION_START
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
@@ -235,11 +236,10 @@ class NormalizationService(Service):
         ).dict()
 
     def _markWorkspaceMetadata(self, request: NormalizationRequest, workspace: WorkspaceName):
-        calibrationState = (
-            DiffcalStateMetadata.DEFAULT
-            if ContinueWarning.Type.DEFAULT_DIFFRACTION_CALIBRATION in request.continueFlags
-            else DiffcalStateMetadata.EXISTS
-        )
+        if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION in request.continueFlags:
+            calibrationState = DiffcalStateMetadata.NONE
+        else:
+            calibrationState = DiffcalStateMetadata.EXISTS
         metadata = WorkspaceMetadata(diffcalState=calibrationState, normalizationState=NormalizationStateMetadata.UNSET)
         self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
 
@@ -265,22 +265,34 @@ class NormalizationService(Service):
 
         self.sousChef.verifyCalibrationExists(request.runNumber, request.useLiteMode)
         state, _ = self.dataFactoryService.constructStateId(request.runNumber)
+
+        # Notes:
+        #   * At this point, the state will be initialized.
+        #   * In an initialized state, `calVersion` will never be `None`.
+        #   * `MISSING_DIFFRACTION_CALIBRATION` is now the same as the former `DEFAULT_DIFFRACTION_CALIBRATION`.
+        #   * The default calibration uses `VERSION_START`.
         calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
             request.runNumber, request.useLiteMode, state
         )
         if calVersion is None:
-            continueFlags = continueFlags | ContinueWarning.Type.DEFAULT_DIFFRACTION_CALIBRATION
+            raise RuntimeError(
+                "Usage error: for an initialized state, "
+                "diffraction-calibration version should always be at least the default version (VERSION_START)."
+            )
+        if calVersion == VERSION_START():
+            continueFlags |= ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
 
+        # remove any continue flags that were already present in the request
         if request.continueFlags:
-            continueFlags = continueFlags ^ (request.continueFlags & continueFlags)
+            continueFlags ^= request.continueFlags & continueFlags
 
         if continueFlags:
-            raise ContinueWarning(
-                "Only the default Diffraction Calibration data is available for this run.\n"
-                "Normalizations may not be accurate to true state of the instrument, and will be marked as such.\n"
-                "Continue anyway?",
-                continueFlags,
+            message = (
+                "<p><b>Diffraction calibration is missing.</b></p>"
+                "<p>Default calibration will be used in place of actual calibration.</p>"
+                "<p>Would you like to continue anyway?</p>"
             )
+            raise ContinueWarning(message, continueFlags)
 
     @Register("validateWritePermissions")
     def validateWritePermissions(self, request: CalibrationWritePermissionsRequest):

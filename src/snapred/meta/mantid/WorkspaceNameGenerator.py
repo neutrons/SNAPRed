@@ -9,7 +9,6 @@ from pydantic import WithJsonSchema
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated, Self
 
-# *** DEBUG *** : CIRCULAR IMPORT?!
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
@@ -223,9 +222,6 @@ class ValueFormatter:
     def formatVersion(cls, version: Optional[int], fmt=ValueFormat.versionFormat.WORKSPACE):
         # handle two special cases of unassigned or default version
         # in those cases, format will be a user-specified string
-
-        # *** DEBUG *** : CIRCULAR IMPORT?!
-        from snapred.backend.dao.indexing.Versioning import VersionState
 
         formattedVersion = ""
         if version == VersionState.DEFAULT:

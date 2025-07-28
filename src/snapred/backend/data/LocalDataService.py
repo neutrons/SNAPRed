@@ -1090,6 +1090,8 @@ class LocalDataService:
         grocer.deleteWorkspaceUnconditional(outWS)
 
     def generateInstrumentState(self, runId: str):
+        # Generate a default instrument state.
+
         # Read the detector state from the PV data file,
         #   and generate the stateID SHA.
         stateId, detectorState = self.generateStateId(runId)

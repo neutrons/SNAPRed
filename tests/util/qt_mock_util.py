@@ -1,3 +1,4 @@
+import re
 from unittest import mock
 
 from qtpy.QtCore import Slot
@@ -16,83 +17,90 @@ class MockQMessageBox(QWidget):
         raise Exception(msg)
 
     @staticmethod
-    def exec(msg, moduleRoot=_moduleRoot):
-        myCounterMock = mock.Mock()
+    def exec(text_regex: str, detailedText_regex: str | None = None, moduleRoot: str = _moduleRoot):
+        _counterMock = mock.Mock()
+        _textPattern = re.compile(text_regex)
+        _detailedTextPattern = re.compile(detailedText_regex) if bool(detailedText_regex) else None
 
         def _mockExec(self_):
-            myCounterMock(self_)
+            _counterMock(self_)
+            match = _textPattern.match(self_.text()) and (
+                not bool(_detailedTextPattern) or _detailedTextPattern.match(self_.detailedText())
+            )
             return (
                 QMessageBox.Ok
-                if (msg in self_.detailedText())
+                if match
                 else (
                     MockQMessageBox().fail(
-                        f"Expected warning not found:  {msg}:\n"
-                        + f"  actual message: {self_.text()};\n"
-                        + f"  actual details: {self_.detailedText()}"
+                        f"Expected warning not found:\n"
+                        f"    expected text (regex): '{_textPattern.pattern}'\n"
+                        f"    expected details: "
+                        f"'{_detailedTextPattern.pattern if bool(_detailedTextPattern) else None}'\n"
+                        f"    actual text: '{self_.text()}'\n"
+                        f"    actual details: '{self_.detailedText()}'."
                     )
                 ),
             )
 
-        return mock.patch(moduleRoot + ".QMessageBox.exec", _mockExec), myCounterMock
+        return mock.patch(moduleRoot + ".QMessageBox.exec", _mockExec), _counterMock
 
     @staticmethod
-    def critical(msg: str, moduleRoot=_moduleRoot):  # noqa: ARG004
-        myCounterMock = mock.Mock()
+    def critical(msg_regex: str, moduleRoot: str = _moduleRoot):  # noqa: ARG004
+        _counterMock = mock.Mock()
+        _msgPattern = re.compile(msg_regex)
 
         def _mockCritical(*args):
-            myCounterMock(*args)
+            _counterMock(*args)
             return (
                 QMessageBox.Ok
-                if msg in args[2]
-                else (MockQMessageBox().fail(f"Expected error does not match: {args[2]}")),
+                if _msgPattern.match(args[2])
+                else (
+                    MockQMessageBox().fail(
+                        f"Expected warning not found:\n"
+                        f"    expected text (regex): '{_msgPattern.pattern}'\n"
+                        f"    actual text: '{args[2]}'."
+                    )
+                ),
             )
 
-        return mock.patch(moduleRoot + ".QMessageBox.critical", _mockCritical), myCounterMock
+        return mock.patch(moduleRoot + ".QMessageBox.critical", _mockCritical), _counterMock
 
     @staticmethod
-    def warning(msg: str, moduleRoot=_moduleRoot):  # noqa: ARG004
-        myCounterMock = mock.Mock()
+    def warning(msg_regex: str, moduleRoot: str = _moduleRoot):  # noqa: ARG004
+        _counterMock = mock.Mock()
+        _msgPattern = re.compile(msg_regex)
 
         def _mockWarning(*args, **kwargs):
-            myCounterMock(*args, **kwargs)
+            _counterMock(*args, **kwargs)
             return (
                 QMessageBox.Ok
-                if msg in args[2]
-                else (MockQMessageBox().fail(f"Expected error does not match: {args[2]}")),
+                if _msgPattern.match(args[2])
+                else (
+                    MockQMessageBox().fail(
+                        f"Expected warning not found:\n"
+                        f"    expected text (regex): '{_msgPattern.pattern}'\n"
+                        f"    actual text: '{args[2]}'."
+                    )
+                ),
             )
 
-        return mock.patch(moduleRoot + ".QMessageBox.warning", _mockWarning), myCounterMock
+        return mock.patch(moduleRoot + ".QMessageBox.warning", _mockWarning), _counterMock
 
     @staticmethod
-    def continueWarning(msg, moduleRoot=_moduleRoot):
-        myCounterMock = mock.Mock()
-
-        def _mockExec(self_):
-            if msg in self_.text():
-                myCounterMock(self_)
-                return QMessageBox.Yes
-            elif "No valid FocusGroups were specified for mode: 'lite'" in self_.detailedText():
-                # TODO: Please fix the input data.  Doing this is really hacky!
-                return QMessageBox.Yes
-            MockQMessageBox().fail(
-                f"Expected warning not found:  {msg}:\n"
-                + f"  actual message: {self_.text()};\n"
-                + f"  actual details: {self_.detailedText()}"
-            )
-
-        return mock.patch(moduleRoot + ".QMessageBox.exec", _mockExec), myCounterMock
+    def continueWarning(msg_regex: str, moduleRoot: str = _moduleRoot):
+        return MockQMessageBox.exec(text_regex=msg_regex, moduleRoot=moduleRoot)
 
     @staticmethod
-    def continueButton(buttonText, moduleRoot=_moduleRoot):
-        myCounterMock = mock.Mock()
+    def continueButton(buttonText: str, moduleRoot: str = _moduleRoot):
+        _counterMock = mock.Mock()
 
         def _mockButton(self_):
-            myCounterMock(self_)
+            _counterMock(self_)
 
-            def text(self):  # noqa: ARG001
+            def text(self_):  # noqa: ARG001
                 return buttonText
 
-            myCounterMock.side_effect = text
-            return myCounterMock
+            _counterMock.side_effect = text
+            return _counterMock
 
-        return mock.patch(moduleRoot + ".QMessageBox.clickedButton", _mockButton), myCounterMock
+        return mock.patch(moduleRoot + ".QMessageBox.clickedButton", _mockButton), _counterMock

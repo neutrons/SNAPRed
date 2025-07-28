@@ -209,10 +209,6 @@ class TestRunMetadata(unittest.TestCase):
         self._test_get_item(map_)
 
     def test_get_item_fromNeXusLogs(self):
-        # *** DEBUG ***
-        h5 = mockH5File(self.DASlogs, **self.specialValues)
-        print(f"++++++++++++>>> root: {h5['entry'].keys()}, logs: {h5['entry/DASlogs'].keys()}")
-
         map_ = RunMetadata.fromNeXusLogs(mockH5File(self.DASlogs, **self.specialValues))
         self._test_get_item(map_)
 

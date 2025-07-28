@@ -70,10 +70,7 @@ class TestGUIPanels:
             lambda self, *args, **kwargs: QMessageBox.Ok
             if (
                 "The backend has encountered warning(s)" in self.text()
-                and (
-                    "InstrumentDonor will only be used if GroupingFilename is in XML format." in self.detailedText()
-                    or "No valid FocusGroups were specified for mode: 'lite'" in self.detailedText()
-                )
+                and "InstrumentDonor will only be used if GroupingFilename is in XML format." in self.detailedText()
             )
             else pytest.fail(
                 "unexpected QMessageBox.exec:"
@@ -130,6 +127,27 @@ class TestGUIPanels:
                 f"unexpected: QMessageBox.information('{title}', '{message}'...)\n"
                 + f"    expecting:  QMessageBox.information(...'{message}'...)"
             )
+
+    @staticmethod
+    def _patchContinueAnywayMessageBox(match=r".*Would you like to continue anyway?"):
+        def _mock_exec(self_, *args, **kwargs):
+            _pattern = re.compile(match)
+
+            result = None
+            if _pattern.match(self_.text()):
+                result = QMessageBox.Yes
+            else:
+                pytest.fail(
+                    "unexpected `ContinueWarning` message box (exec):"
+                    + f"    args: {args}"
+                    + f"    kwargs: {kwargs}"
+                    + f"    text: '{self_.text()}'"
+                    + f"    detailed text: '{self_.detailedText()}'",
+                    pytrace=False,
+                )
+            return result
+
+        return mock.patch("qtpy.QtWidgets.QMessageBox.exec", _mock_exec)
 
     ##
     ## This test exists primarily for use during development, where combining the workflows into one test sequence
@@ -838,11 +856,17 @@ class TestGUIPanels:
             # Why was this error box being swallowed?
             requestView.groupingFileDropdown.setCurrentIndex(0)
 
+            """
             warningMessageBox = mock.patch(  # noqa: PT008
                 "qtpy.QtWidgets.QMessageBox.warning",
                 lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
             )
             warningMessageBox.start()
+            """
+            continueAnywayMessageBox = self._patchContinueAnywayMessageBox(
+                match=r".*Diffraction calibration is missing.*Would you like to continue anyway?.*"
+            )
+            continueAnywayMessageBox.start()
 
             #    (2) execute the normalization workflow
             with qtbot.waitSignal(actionCompleted, timeout=60000):
@@ -850,7 +874,9 @@ class TestGUIPanels:
             qtbot.waitUntil(
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationTweakPeakView), timeout=60000
             )
-            warningMessageBox.stop()
+
+            # warningMessageBox.stop()
+            continueAnywayMessageBox.stop()
 
             self.testSummary.SUCCESS()
             tweakPeakView = workflowNodeTabs.currentWidget().view

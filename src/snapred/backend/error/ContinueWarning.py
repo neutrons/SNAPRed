@@ -13,9 +13,9 @@ class ContinueWarning(Exception):
 
     class Type(Flag):
         UNSET = 0
+        # Note: `MISSING_DIFFRACTION_CALIBRATION` is now the same as the former `DEFAULT_DIFFRACTION_CALIBRATION`.
         MISSING_DIFFRACTION_CALIBRATION = auto()
         ALTERNATE_DIFFRACTION_CALIBRATION = auto()
-        DEFAULT_DIFFRACTION_CALIBRATION = auto()
         MISSING_NORMALIZATION = auto()
         LOW_PEAK_COUNT = auto()
         NO_WRITE_PERMISSIONS = auto()
