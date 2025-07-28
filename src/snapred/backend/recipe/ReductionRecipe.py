@@ -10,7 +10,6 @@ from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReduction
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.meta.Config import Config
-from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 _logger = snapredLogger.getLogger(__name__)
@@ -75,7 +74,6 @@ class ReductionRecipe(Recipe[Ingredients]):
         #    and should be unbagged _here_.
 
         self.sampleWs = groceries["inputWorkspace"]
-        self.diffcalWs = groceries.get("diffcalWorkspace", "")
         self.normalizationWs = groceries.get("normalizationWorkspace", "")
         self.maskWs = groceries.get("combinedPixelMask", "")
         self.groupingWorkspaces = groceries["groupingWorkspaces"]
@@ -203,7 +201,23 @@ class ReductionRecipe(Recipe[Ingredients]):
         recipe().cook(ingredients_, groceries=kwargs)
 
     def _getNormalizationWorkspaceName(self, groupingIndex: int):
-        return f"reduced_normalization_{groupingIndex}_{wnvf.formatTimestamp(self.ingredients.timestamp)}"
+        if self._isDiagnosticReduction():
+            return (
+                wng.reductionDiagnosticArtificialNormalization()
+                .groupIndex(groupingIndex)
+                .timestamp(self.ingredients.timestamp)
+                .build()
+            )
+        else:
+            return (
+                wng.reductionAritificalNormalization()
+                .groupIndex(groupingIndex)
+                .timestamp(self.ingredients.timestamp)
+                .build()
+            )
+
+    def _isDiagnosticReduction(self) -> bool:
+        return self.ingredients.isDiagnostic
 
     def _generateWorkspaceNamesForGroup(self, groupingIndex: int):
         # TODO:  We need the wng to be able to deconstruct the workspace name
@@ -218,9 +232,15 @@ class ReductionRecipe(Recipe[Ingredients]):
         #   at the _end_ of the reduction process.  This allows plotting output workspaces in real time.
         # We temporarily prefix the output workspace with the double underscore (i.e. the "hidden" attribute),
         #   which will then be removed during the add-or-replace step (i.e. rename) during finalization.
-        reducedOutputWs = (
-            wng.reductionOutput().runNumber(runNumber).group(groupingName).timestamp(timestamp).hidden(True).build()
-        )
+
+        builder = None
+        if self._isDiagnosticReduction():
+            builder = wng.reductionDiagnosticOutput()
+        else:
+            builder = wng.reductionOutput()
+
+        # TODO: This needs to be a diagnostic version if neither calibration or normalization are not present.
+        reducedOutputWs = builder.runNumber(runNumber).group(groupingName).timestamp(timestamp).hidden(True).build()
 
         sampleClone = reducedOutputWs
         normalizationClone = None

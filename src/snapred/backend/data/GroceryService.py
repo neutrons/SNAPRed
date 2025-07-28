@@ -551,6 +551,12 @@ class GroceryService:
             if metadata[logname] != UNSET:
                 self.setWorkspaceTag(workspaceName, logname, metadata[logname])
 
+    def getSNAPRedWorkspaceMetadata(self, workspaceName: WorkspaceName) -> WorkspaceMetadata:
+        if self.workspaceDoesExist(workspaceName):
+            return self.workspaceMetadataService.readWorkspaceMetadata(workspaceName)
+        else:
+            raise RuntimeError(f"Workspace {workspaceName} does not exist")
+
     def getWorkspaceTag(self, workspaceName: str, logname: str):
         """
         Simple wrapper to get a workspace metadata tag, for the service layer.

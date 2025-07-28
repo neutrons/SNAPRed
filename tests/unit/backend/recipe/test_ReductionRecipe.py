@@ -82,14 +82,12 @@ class ReductionRecipeTest(TestCase):
 
         groceries = {
             "inputWorkspace": "sample",
-            "diffcalWorkspace": "diffcal_table",
             "normalizationWorkspace": "norm",
             "combinedPixelMask": "mask",
             "groupingWorkspaces": ["group1", "group2"],
         }
         recipe.unbagGroceries(groceries)
         assert recipe.sampleWs == groceries["inputWorkspace"]
-        assert recipe.diffcalWs == groceries["diffcalWorkspace"]
         assert recipe.normalizationWs == groceries["normalizationWorkspace"]
         assert recipe.maskWs == groceries["combinedPixelMask"]
         assert recipe.groupingWorkspaces == groceries["groupingWorkspaces"]
@@ -354,6 +352,7 @@ class ReductionRecipeTest(TestCase):
             runNumber="12345",
             useLiteMode=True,
             timestamp=time.time(),
+            isDiagnostic=False,
             pixelGroups=[
                 mock.Mock(
                     spec=PixelGroup, focusGroup=FocusGroup(name="first_grouping_name", definition="first_grouping_path")
@@ -380,6 +379,7 @@ class ReductionRecipeTest(TestCase):
 
         recipe.sampleWs = "sample"
         recipe._cloneWorkspace = mock.Mock(side_effect=lambda inputWs, outputWs: outputWs)  # noqa: ARG005
+        recipe.diffcalWs = "diffcal_table"
 
         sampleClone, normClone = recipe._generateWorkspaceNamesForGroup(0)
         assert sampleClone == preReducedOutputWsName
@@ -395,6 +395,7 @@ class ReductionRecipeTest(TestCase):
             runNumber="12345",
             useLiteMode=True,
             timestamp=time.time(),
+            isDiagnostic=True,
             pixelGroups=[
                 mock.Mock(
                     spec=PixelGroup, focusGroup=FocusGroup(name="first_grouping_name", definition="first_grouping_path")
@@ -418,7 +419,7 @@ class ReductionRecipeTest(TestCase):
 
         # Output workspace name must actually be a `WorkspaceName` instance.
         preReducedOutputWsName = (
-            wng.reductionOutput()
+            wng.reductionDiagnosticOutput()
             .runNumber(recipe.ingredients.runNumber)
             .group(recipe.ingredients.pixelGroups[0].focusGroup.name.lower())
             .timestamp(recipe.ingredients.timestamp)
@@ -428,6 +429,7 @@ class ReductionRecipeTest(TestCase):
 
         recipe.sampleWs = "sample"
         recipe._cloneWorkspace = mock.Mock(side_effect=lambda inputWs, outputWs: outputWs)  # noqa: ARG005
+        recipe.diffcalWs = "diffcal_table"
 
         sampleClone, normClone = recipe._generateWorkspaceNamesForGroup(0)
         assert sampleClone == preReducedOutputWsName

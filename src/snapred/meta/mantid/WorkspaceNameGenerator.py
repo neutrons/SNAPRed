@@ -42,6 +42,7 @@ class WorkspaceType(str, Enum):
 
     # <reduction tag>_<runNumber>_<timestamp>
     REDUCTION_OUTPUT = "reductionOutput"
+    REDUCTION_DIAGNOSTIC_OUTPUT = "reductionDiagnosticOutput"
     # <reduction tag>_<stateSHA>_<timestamp>
     REDUCTION_OUTPUT_GROUP = "reductionOutputGroup"
     # <reduction tag>_pixelmask_<runNumber>_<timestamp>
@@ -551,6 +552,32 @@ class _WorkspaceNameGenerator:
             self._delimiter,
             unit=self.Units.DSP,
             timestamp=None,
+        )
+
+    def reductionDiagnosticOutput(self):
+        return NameBuilder(
+            WorkspaceType.REDUCTION_DIAGNOSTIC_OUTPUT,
+            self._reductionDiagnosticOutputTemplate,
+            self._reductionDiagnosticOutputTemplateKeys,
+            self._delimiter,
+            unit=self.Units.DSP,
+            timestamp=None,
+        )
+
+    def reductionAritificalNormalization(self):
+        return NameBuilder(
+            WorkspaceType.REDUCTION_OUTPUT,
+            self._reductionArtificialNormalizationTemplate,
+            self._reductionArtificialNormalizationTemplateKeys,
+            self._delimiter,
+        )
+
+    def reductionDiagnosticArtificialNormalization(self):
+        return NameBuilder(
+            WorkspaceType.REDUCTION_DIAGNOSTIC_OUTPUT,
+            self._reductionDiagnosticArtificialNormalizationTemplate,
+            self._reductionDiagnosticArtificialNormalizationTemplateKeys,
+            self._delimiter,
         )
 
     def reductionOutputGroup(self):

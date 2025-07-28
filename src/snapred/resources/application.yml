@@ -207,7 +207,12 @@ mantid:
           artificialNormalizationPreview: "artificial_norm,{unit},{group},{runNumber},{type}"
           residual: "{unit},{runNumber},residual"
         reduction:
-          output: "reduced,{unit},{group},{runNumber},{timestamp}"
+          outputTemplate: "{unit},{group},{runNumber},{timestamp}"
+          output: "reduced,${mantid.workspace.nameTemplate.template.reduction.outputTemplate}"
+          diagnosticOutput: "diagnostic,${mantid.workspace.nameTemplate.template.reduction.outputTemplate}"
+          artificialNormalizationTemplate: "{groupIndex}, {timestamp}"
+          artificialNormalization: "__reduced_art_norm,{groupIndex},{timestamp}"
+          diagnosticArtificialNormalization: "__diagnostic_art_norm,{groupIndex},{timestamp}"
           outputGroup: "reduced,{runNumber},{timestamp}"
           pixelMask: "pixelmask,{runNumber},{timestamp}"
           # the user pixel mask name token is case sensitive

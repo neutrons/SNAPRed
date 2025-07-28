@@ -439,6 +439,10 @@ class _Config:
         val = self._find(key)
         if val is None:
             raise KeyError(f"Key '{key}' not found in configuration")
+        if isinstance(val, dict):
+            # we need to solve the keys present in dict members
+            # we can accomplish this by recursively calling __getitem__
+            return {k: self[f"{key}.{k}"] for k in val}
         return val
 
     def validate(self):

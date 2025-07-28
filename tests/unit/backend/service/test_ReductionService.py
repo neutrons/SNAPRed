@@ -28,7 +28,6 @@ from util.state_helpers import reduction_root_redirect
 
 ## SNAPRed imports
 from snapred.backend.api.RequestScheduler import RequestScheduler
-from snapred.backend.dao import WorkspaceMetadata
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -42,6 +41,7 @@ from snapred.backend.dao.request.ReductionRequest import Versions
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.FocusGroup import FocusGroup
+from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
@@ -242,11 +242,18 @@ class TestReductionService(unittest.TestCase):
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
         self.instance.groceryService._validateWorkspaceInstrument = mock.Mock()
         self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
+        self.instance.groceryService.getSNAPRedWorkspaceMetadata = mock.Mock(
+            return_value=WorkspaceMetadata(
+                diffcalState=DiffcalStateMetadata.EXISTS,
+                normalizationState=NormalizationStateMetadata.EXISTS,
+            )
+        )
         self.instance._markWorkspaceMetadata = mock.Mock()
 
         result = self.instance.reduction(self.request)
         groupings = self.instance.fetchReductionGroupings(self.request)
         ingredients = self.instance.prepReductionIngredients(self.request)
+        ingredients.isDiagnostic = False
         groceries = self.instance.fetchReductionGroceries(self.request)
         groceries["groupingWorkspaces"] = groupings["groupingWorkspaces"]
         mockReductionRecipe.assert_called()
@@ -276,11 +283,20 @@ class TestReductionService(unittest.TestCase):
         self.instance.fetchReductionGroupings = mock.Mock(
             return_value={"focusGroups": mock.Mock(), "groupingWorkspaces": mock.Mock()}
         )
-        self.instance.fetchReductionGroceries = mock.Mock(return_value={"combinedPixelMask": mock.Mock()})
+        self.instance.fetchReductionGroceries = mock.Mock(
+            return_value={"combinedPixelMask": mock.Mock(), "inputWorkspace": mock.Mock()}
+        )
+        self.instance.groceryService.getSNAPRedWorkspaceMetadata = mock.Mock(
+            return_value=WorkspaceMetadata(
+                diffcalState=DiffcalStateMetadata.EXISTS,
+                normalizationState=NormalizationStateMetadata.EXISTS,
+            )
+        )
         self.instance.prepReductionIngredients = mock.Mock(return_value=mock.Mock())
         self.instance._createReductionRecord = mock.Mock(return_value=mock.Mock())
 
         request_ = self.request.model_copy()
+
         self.instance.reduction(request_)
 
         self.instance.fetchReductionGroupings.assert_called_once_with(request_)
