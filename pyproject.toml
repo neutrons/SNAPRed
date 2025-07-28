@@ -247,8 +247,8 @@ python-build = "*"
 
 # Environment variables for local Mantid build
 [tool.pixi.feature.local-mantid.activation.env]
-MANTID_BUILD_DIR = "/home/dzj/mantid/build"
-MANTID_BUILD_SRC = "/home/dzj/mantid"
+MANTID_BUILD_DIR = "/path/to/mantid/build"
+MANTID_BUILD_SRC = "/path/to/mantid/source"
 PYTHONPATH = "src:${MANTID_BUILD_SRC}/Framework/PythonInterface:${MANTID_BUILD_DIR}/bin:${MANTID_BUILD_DIR}/qt/applications/workbench:${MANTID_BUILD_SRC}/qt/applications/workbench:${MANTID_BUILD_SRC}/qt/python/mantidqt:${MANTID_BUILD_SRC}/qt/python/mantidqtinterfaces:${PYTHONPATH}"
 LD_LIBRARY_PATH = "${MANTID_BUILD_DIR}/lib:${MANTID_BUILD_DIR}/bin:${LD_LIBRARY_PATH}"
 MANTIDPATH = "${MANTID_BUILD_DIR}"
