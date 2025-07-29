@@ -85,37 +85,37 @@ Usage
 
 .. code-block:: sh
 
-    pixi run --environment local-mantid test-local-mantid
+    pixi run test-local-mantid
 
 **Comprehensive test (including workbench components):**
 
 .. code-block:: sh
 
-    pixi run --environment local-mantid test-local-mantid-full
+    pixi run test-local-mantid-full
 
 **Debug environment variables:**
 
 .. code-block:: sh
 
-    pixi run --environment local-mantid debug-local-mantid-env
+    pixi run debug-local-mantid-env
 
 **Comprehensive test suite (recommended for troubleshooting):**
 
 .. code-block:: sh
 
-    pixi run --environment local-mantid test-local-mantid-comprehensive
+    pixi run test-local-mantid-comprehensive
 
 **Start SNAPRed with local Mantid:**
 
 .. code-block:: sh
 
-    pixi run --environment local-mantid snapred-local-module
+    pixi run snapred-local-module
 
 **Enter development shell:**
 
 .. code-block:: sh
 
-    pixi shell --environment local-mantid
+    pixi shell
 
 How it works
 ^^^^^^^^^^^^
@@ -140,7 +140,7 @@ Troubleshooting
 **Import errors:**
 
 - Ensure the source directory path is correct and contains ``Framework/PythonInterface/mantid/``
-- Run ``pixi run --environment local-mantid debug-local-mantid-env`` to verify environment variables
+- Run ``pixi run debug-local-mantid-env`` to verify environment variables
 
 **Library errors:**
 
@@ -149,8 +149,8 @@ Troubleshooting
 
 **Path conflicts (workbench still using site-packages):**
 
-- Run ``pixi run --environment local-mantid test-local-mantid-comprehensive`` for a complete diagnosis
-- Run ``pixi run --environment local-mantid test-local-mantid-full`` to verify all components are using local build
+- Run ``pixi run test-local-mantid-comprehensive`` for a complete diagnosis
+- Run ``pixi run test-local-mantid-full`` to verify all components are using local build
 - Check that both ``MANTID_BUILD_DIR`` and ``MANTID_BUILD_SRC`` are set correctly
 - Ensure the environment variables are taking precedence by checking the output of ``debug-local-mantid-env``
 
@@ -229,19 +229,19 @@ GUI tests can be run to test the graphical user interface:
    env=tests/resources/headcheck.yml pixi run snapred --headcheck
 
 Building documentation
-^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
 
 The documentation can be built using
 
 .. code-block:: sh
 
-   pixi run --environment docs build-docs
+   pixi run build-docs
 
 For development, you can use auto-rebuilding documentation that updates on file changes:
 
 .. code-block:: sh
 
-   pixi run --environment docs docs-autobuild
+   pixi run docs-autobuild
 
 Then visit http://localhost:8000 to view the documentation.
 
@@ -249,7 +249,7 @@ You can also serve the built documentation locally:
 
 .. code-block:: sh
 
-   pixi run --environment docs docs-serve
+   pixi run docs-serve
 
 `Sphinx <https://www.sphinx-doc.org/en/master/>`_ has been configured to turn warnings into errors to make it more clear that there are issues with the documentation.
 
