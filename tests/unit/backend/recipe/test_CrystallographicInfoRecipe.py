@@ -1,4 +1,5 @@
 import unittest.mock as mock
+from pathlib import Path
 
 import pytest
 
@@ -16,22 +17,22 @@ with mock.patch.dict(
     def test_good_path():
         """Test success of crystal ingestion recipe with a good path name"""
         goodCIF = Resource.getPath("/inputs/crystalInfo/example.cif")
-        try:
-            xtalRecipe = Recipe()
-            data = xtalRecipe.executeRecipe(goodCIF, 1.0, 10.0)
-            xtal = data["crystalInfo"]
-        except:  # noqa: BLE011 E722
-            pytest.fail("valid file failed to open")
-        else:
-            assert isinstance(xtal, CrystallographicInfo)
-            assert xtal.hkl[0] == (1, 1, 1)
-            assert xtal.hkl[5] == (4, 0, 0)
-            assert xtal.dSpacing[0] == 3.13592994862768
-            assert xtal.dSpacing[4] == 1.0453099828758932
+        assert Path(goodCIF).exists()
+
+        xtalRecipe = Recipe()
+        data = xtalRecipe.executeRecipe(goodCIF, 1.0, 10.0)
+        xtal = data["crystalInfo"]
+        assert isinstance(xtal, CrystallographicInfo)
+        assert xtal.hkl[0] == (1, 1, 1)
+        assert xtal.hkl[5] == (4, 0, 0)
+        assert xtal.dSpacing[0] == 3.13592994862768
+        assert xtal.dSpacing[4] == 1.0453099828758932
 
     def test_failed_path():
         """Test failure of crystal ingestion recipe with a bad path name"""
         fakeCIF = "blank_file.cif"
+        assert not Path(fakeCIF).exists()
+
         xtalRecipe = Recipe()
-        with pytest.raises(Exception):  # noqa: PT011
+        with pytest.raises(BaseException):  # noqa: PT011
             xtalRecipe.executeRecipe(fakeCIF)

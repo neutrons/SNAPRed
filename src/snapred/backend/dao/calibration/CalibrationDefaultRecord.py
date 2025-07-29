@@ -1,13 +1,13 @@
 from typing import Annotated, Dict, List
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.indexing.Record import Record
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CalibrationDefaultRecord(Record, extra="ignore", strict=False):
+class CalibrationDefaultRecord(Record):
     """
 
     The refer to the CalibrationRecord class for a more in-depth explanation of Calibration Records.
@@ -26,3 +26,5 @@ class CalibrationDefaultRecord(Record, extra="ignore", strict=False):
 
     # specific to calibration records
     workspaces: Dict[Annotated[WorkspaceType, Field(use_enum_values=True)], List[WorkspaceName]]
+
+    model_config = ConfigDict(extra="ignore", strict=False, arbitrary_types_allowed=True)

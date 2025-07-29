@@ -371,7 +371,7 @@ class TestGUIPanels:
                     + " Artificial normalization will be created in place of actual normalization."
                     + " Would you like to continue?"
                 )
-                mp = MockQMessageBox().continueWarning(msg)
+                mp = MockQMessageBox().continueWarning(msg, moduleRoot="snapred.ui.handler.SNAPResponseHandler")
                 mb = MockQMessageBox().continueButton("Yes")
                 with mp[0], mb[0]:
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)

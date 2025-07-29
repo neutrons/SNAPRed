@@ -10,7 +10,7 @@ from snapred.meta.mantid.AllowedPeakTypes import PeakFunctionEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CalibrationAssessmentRequest(BaseModel, extra="forbid"):
+class CalibrationAssessmentRequest(BaseModel):
     """
 
     The CalibrationAssessmentRequest class is crafted to streamline the process of initiating
