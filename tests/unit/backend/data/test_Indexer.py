@@ -2,6 +2,8 @@
 
 import importlib
 import logging
+import os
+import socket
 import tempfile
 
 # Place test-specific imports after other required imports, in order to retain the import order
@@ -24,7 +26,7 @@ from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.data.Indexer import DEFAULT_RECORD_TYPE, Indexer, IndexerType
-from snapred.meta.Config import Resource
+from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
 
@@ -871,11 +873,22 @@ class TestIndexer(unittest.TestCase):
         assert lock is not None
         lock.release()
 
+    def validateLockfile(self, lock):
+        # ensure the lockfile is valid
+        assert lock is not None
+        assert lock.lockFilePath.exists()
+        assert str(lock.lockFilePath).endswith(".lock")
+        assert str(lock.lockFilePath).startswith(Config["lockfile.root"])
+        assert str(os.getpid()) in str(lock.lockFilePath)
+        assert socket.gethostname().split(".")[0] in str(lock.lockFilePath)
+
     def test_lockContext(self):
         # ensure the indexer can use a context manager to obtain a lock
         indexer = self.initIndexer()
         with indexer._lockContext() as lock:
-            assert lock is not None
+            self.validateLockfile(lock)
+            lockfileContents = lock.lockFilePath.read_text()
+            assert str(indexer.rootDirectory) in lockfileContents
 
     def test_writeRecord_with_version(self):
         # this test ensures a record can be written to the indicated version

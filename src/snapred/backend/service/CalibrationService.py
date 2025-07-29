@@ -315,7 +315,7 @@ class CalibrationService(Service):
     @FromString
     @Register("lock")
     def obtainLock(self, request: CalibrationLockRequest):
-        return self.dataExportService.obtainNormalizationLock(
+        return self.dataExportService.obtainCalibrationLock(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
         )

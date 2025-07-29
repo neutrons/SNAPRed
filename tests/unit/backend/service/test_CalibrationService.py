@@ -1341,8 +1341,11 @@ class TestDiffractionCalibration(unittest.TestCase):
             useLiteMode=useLiteMode,
         )
         with mock.patch.object(self.service.dataExportService.dataService, "generateStateId") as mockGenerateStateId:
-            mockGenerateStateId.return_value = ("1a2b3c4d5e6f7a8b", None)
+            stateHash = "1a2b3c4d5e6f7a8b"
+            mockGenerateStateId.return_value = (stateHash, None)
             lock = self.service.obtainLock(request)
+            lockfileContents = lock.lockFilePath.read_text()
+            assert f"/{stateHash}/lite/diffraction" in lockfileContents
             assert mockGenerateStateId.called
             assert lock is not None
         lock.release()

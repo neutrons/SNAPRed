@@ -1488,16 +1488,26 @@ def test_readNormalizationIndex():
 def test_obtainNormalizationLock():
     # verify that the lock is obtained and released correctly
     localDataService = LocalDataService()
+    normalizationIndexer = localDataService.normalizationIndexer(True, "stateId")
+
     lock = localDataService.obtainNormalizationLock(True, "stateId")
+    lockfileContents = lock.lockFilePath.read_text()
+
     assert lock is not None
+    assert str(normalizationIndexer.rootDirectory) in lockfileContents
     lock.release()
 
 
 def test_obtainCalibrationLock():
     # verify that the lock is obtained and released correctly
     localDataService = LocalDataService()
+    calibrationIndexer = localDataService.calibrationIndexer(True, "stateId")
+
     lock = localDataService.obtainCalibrationLock(True, "stateId")
+    lockfileContents = lock.lockFilePath.read_text()
+
     assert lock is not None
+    assert str(calibrationIndexer.rootDirectory) in lockfileContents
     lock.release()
 
 

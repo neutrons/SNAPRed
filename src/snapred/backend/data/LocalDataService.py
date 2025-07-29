@@ -580,7 +580,7 @@ class LocalDataService:
     def obtainNormalizationLock(self, useListeMode: bool, state: str) -> LockFile:
         return self.normalizationIndexer(useListeMode, state).obtainLock()
 
-    def instrumentParameterIndexer(self):
+    def instrumentParameterIndexer(self) -> Indexer:
         return Indexer(
             indexerType=IndexerType.INSTRUMENT_PARAMETER, directory=Path(Config["instrument.parameters.home"])
         )

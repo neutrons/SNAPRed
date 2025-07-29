@@ -1,4 +1,5 @@
-# generate lockfile name
+import os
+import socket
 import time
 from contextlib import contextmanager
 from datetime import datetime
@@ -10,6 +11,11 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 
 logger = snapredLogger.getLogger(__name__)
+
+
+def hostName():
+    """Get the hostname of the current machine."""
+    return socket.gethostname().split(".")[0]
 
 
 def _reapOldLockfiles(lockfilePath: Path, maxAgeSeconds: int, lockedPath: Path):
@@ -32,9 +38,10 @@ def _reapOldLockfiles(lockfilePath: Path, maxAgeSeconds: int, lockedPath: Path):
                 raise RuntimeError("Multiple lockfiles found, cannot proceed.")
             remainingLockFile = remaining_lockfiles[0]
             remainingPid = remainingLockFile.name.split("_")[0]
+            remainingHost = remainingLockFile.name.split("_")[1]
             # NOTE: This will not support the application doing many writes in parallel
             #       if necessary, the old lockfile contents should be copied.
-            if remainingPid == str(Path("/proc/self").resolve().name):
+            if remainingPid == str(os.getpid()) and remainingHost == hostName():
                 remainingLockFile.unlink()
             else:
                 return False
@@ -43,9 +50,9 @@ def _reapOldLockfiles(lockfilePath: Path, maxAgeSeconds: int, lockedPath: Path):
 
 def _generateLockfile(lockedPath: Path):
     # get pid
-    pid = str(Path("/proc/self").resolve().name)
+    pid = str(os.getpid())
     lockFileRoot = Config["lockfile.root"]
-    lockFilePath = Path(f"{lockFileRoot}/{pid}_{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}.lock")
+    lockFilePath = Path(f"{lockFileRoot}/{pid}_{hostName()}_{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}.lock")
     if not lockFilePath.parent.exists():
         lockFilePath.parent.mkdir(parents=True, exist_ok=True)
     # check if any lockfile exists
