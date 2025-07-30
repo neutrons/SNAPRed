@@ -42,7 +42,7 @@ def _reapOldLockfiles(lockfilePath: Path, maxAgeSeconds: int, lockedPath: Path):
             # NOTE: This will not support the application doing many writes in parallel
             #       if necessary, the old lockfile contents should be copied.
             if remainingPid == str(os.getpid()) and remainingHost == hostName():
-                remainingLockFile.unlink()
+                remainingLockFile.unlink(missing_ok=True)
             else:
                 return False
     return True
@@ -101,7 +101,7 @@ class LockFile(BaseModel):
 
     def release(self):
         if self.lockFilePath and self.lockFilePath.exists():
-            self.lockFilePath.unlink()
+            self.lockFilePath.unlink(missing_ok=True)
             self.lockFilePath = None
         else:
             logger.warning("Attempted to release a lock file that does not exist or has already been released.")
