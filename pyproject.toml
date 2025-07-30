@@ -171,6 +171,7 @@ build-pypi = { cmd = "hatch build", description = "Build the package for PyPI" }
 publish-pypi = { cmd = "twine upload dist/*", description = "Publish the package to PyPI", depends-on = ["build-pypi"] }
 publish-pypi-test = { cmd = "twine upload --repository testpypi dist/*", description = "Publish the package to TestPyPI", depends-on = ["build-pypi"] }
 clean-pypi = { cmd = "rm -rf dist", description = "Clean the PyPI build artifacts" }
+build-configure-app = { cmd = "python -m snapred --configure", description = "Configure the application for building" }
 build-conda-command = { cmd = "pixi build", description = "Build the conda package command" }
 build-conda = { description = "Build the conda package", depends-on = ["sync-version", "build-configure-app", "build-conda-command", "reset-version"] }
 publish-conda = { cmd = "anaconda upload *.conda", description = "Publish the .conda package to anaconda.org", depends-on = ["build-conda"] }
