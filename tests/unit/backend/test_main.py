@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from snapred.__main__ import main
+from snapred.__main__ import _preloadImports, main
 
 
 @pytest.mark.parametrize("option", ["-h", "--help", "-v", "--version"])
@@ -35,3 +35,31 @@ def test_configure():
     ):
         main(["--configure"])
         mockConfigure.assert_called_once()
+
+
+def test_preloadImports_success(capsys):
+    """Test _preloadImports function executes successfully and prints success message."""
+    _preloadImports()
+    captured = capsys.readouterr()
+    assert "preloaded qtpy.QtWebEngineWidgets" in captured.out
+    assert "SNAPRed algorithms and services registered with Mantid" in captured.out
+
+
+def test_preloadImports_exception_handling(capsys):  # noqa: ARG001
+    """Test _preloadImports function handles exceptions properly and prints warning."""
+    # Mock an import that will raise an exception during the try block
+    with mock.patch("snapred.__main__.print") as mock_print:
+        # Make the first print call succeed (for the qtpy import message)
+        # But make the second print call (success message) raise an exception
+        # Add a third None for the warning message call
+        mock_print.side_effect = [None, Exception("Test exception"), None]
+
+        _preloadImports()
+
+        # Verify the exception handling code was called
+        expected_calls = [
+            mock.call("preloaded qtpy.QtWebEngineWidgets"),
+            mock.call("SNAPRed algorithms and services registered with Mantid"),
+            mock.call("Warning: Failed to register SNAPRed with Mantid: Test exception"),
+        ]
+        mock_print.assert_has_calls(expected_calls)
