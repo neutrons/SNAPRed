@@ -586,6 +586,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         for grocery in self.groceries.values():
             localKeeps.append(grocery)
 
+        localKeeps.extend(self.collectedOutputs)
         self._clearWorkspaces(exclude=set(localKeeps), clearCachedWorkspaces=False)
 
         # perform the group calibration
