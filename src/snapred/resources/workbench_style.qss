@@ -2,6 +2,10 @@
  * ANYTHING ADDED here must NOT interfere with the global mantid-workbench stylesheet settings.
  */
 
+DisabledFieldLabel {
+    color:#868482 ;
+}
+
 .Toggle {
     /* fixed height and width */
     min-height: 30px; max-height: 30px;

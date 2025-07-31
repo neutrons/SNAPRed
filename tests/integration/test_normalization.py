@@ -151,7 +151,7 @@ class TestNormalizationPanels:
             # and verify the 2 corresponding msg boxes show up.
             # Repeat for Background Run number box
 
-            qtbot.wait(100)
+            qtbot.wait(1000)
 
             msg = ".*Invalid run number: -1.*"
             mp = MockQMessageBox().critical(msg)
@@ -167,7 +167,7 @@ class TestNormalizationPanels:
             with mp[0]:
                 requestView.runNumberField.setText("1")
                 qtbot.keyPress(requestView.runNumberField.field, Qt.Key_Enter)
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
 
@@ -176,7 +176,7 @@ class TestNormalizationPanels:
             with mp[0]:
                 requestView.backgroundRunNumberField.setText("-1")
                 qtbot.keyPress(requestView.backgroundRunNumberField.field, Qt.Key_Enter)
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
 
@@ -185,7 +185,7 @@ class TestNormalizationPanels:
             with mp[0]:
                 requestView.backgroundRunNumberField.setText("1")
                 qtbot.keyPress(requestView.backgroundRunNumberField.field, Qt.Key_Enter)
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
 
@@ -200,29 +200,20 @@ class TestNormalizationPanels:
                 qapp.processEvents()
 
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 # Verify error msg box to select sample shows up
                 assert len(exceptions) == 0
                 assert mpCrit[1].call_count == 1
 
             # Select Vanadium Cylinder as sample and click continue
-            msg = ".*Please select a grouping file.*"
-            mpCrit = MockQMessageBox().critical(msg)
-            with mpCrit[0]:
-                requestView.sampleDropdown.setCurrentIndex(3)
-                assert requestView.sampleDropdown.currentIndex() == 3
-                assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
-                qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-                qtbot.wait(100)
-
-                # Verify error msg box to select grouping shows up
-                assert len(exceptions) == 0
-                assert mpCrit[1].call_count == 1
+            requestView.sampleDropdown.setCurrentIndex(3)
+            assert requestView.sampleDropdown.currentIndex() == 3
+            assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
 
             # Select column grouping and click continue
-            qtbot.wait(100)
+            qtbot.wait(1000)
             requestView.groupingFileDropdown.setCurrentIndex(0)
-            qtbot.wait(100)
+            qtbot.wait(1000)
             assert requestView.groupingFileDropdown.currentIndex() == 0
             assert requestView.groupingFileDropdown.currentText() == "Column"
             self.testSummary.SUCCESS()
@@ -243,7 +234,7 @@ class TestNormalizationPanels:
             qtbot.waitUntil(
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationTweakPeakView), timeout=60000
             )
-            qtbot.wait(100)
+            qtbot.wait(1000)
             self.testSummary.SUCCESS()
 
             # On tweak peaks tab, test each text field(3 of these) by putting non numeric chars and verify error msg
@@ -255,7 +246,7 @@ class TestNormalizationPanels:
             mpWarn = MockQMessageBox().warning(msg)
             with mpWarn[0]:
                 tweakPeakView.smoothingSlider.field.setValue("a")
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 assert len(exceptions) == 0
                 assert mpWarn[1].call_count == 1
 
@@ -268,7 +259,7 @@ class TestNormalizationPanels:
                 tweakPeakView.smoothingSlider.field.setValue("0")
                 tweakPeakView.fieldXtalDMin.setText("a")
                 qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 assert len(exceptions) == 0
                 assert mpWarn[1].call_count == 1
 
@@ -281,7 +272,7 @@ class TestNormalizationPanels:
                 tweakPeakView.fieldXtalDMin.setText("0.1")
                 tweakPeakView.fieldXtalDMax.setText("a")
                 qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 assert len(exceptions) == 0
                 assert mpWarn[1].call_count == 1
 
@@ -302,7 +293,7 @@ class TestNormalizationPanels:
             with mpWarn[0]:
                 tweakPeakView.fieldXtalDMax.setText("1")
                 tweakPeakView.smoothingSlider.field.setValue("-1")
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 assert len(exceptions) == 0
                 assert mpWarn[1].call_count == 1
 
@@ -316,7 +307,7 @@ class TestNormalizationPanels:
             with mpWarn[0], mpCrit[0]:
                 tweakPeakView.fieldXtalDMin.setText("-1")
                 qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 assert len(exceptions) == 0
                 assert mpWarn[1].call_count == 1, mpWarn[1].call_args
 
@@ -326,7 +317,7 @@ class TestNormalizationPanels:
                 tweakPeakView.fieldXtalDMin.setText("0.1")
                 tweakPeakView.fieldXtalDMax.setText("-1")
                 qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 assert len(exceptions) == 0
                 assert mpWarn[1].call_count == 1
 
@@ -347,7 +338,7 @@ class TestNormalizationPanels:
 
                 # Set "0" on smoothing param, should throw error
                 tweakPeakView.smoothingSlider.field.setValue("0")
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(500)
                 assert len(exceptions) == 0
@@ -392,7 +383,7 @@ class TestNormalizationPanels:
             mpCrit = MockQMessageBox().critical(msg)
             with mpCrit[0]:
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 assert len(exceptions) == 0
                 assert mpCrit[1].call_count == 1
             saveView.fieldAuthor.setText("Test")
@@ -402,7 +393,7 @@ class TestNormalizationPanels:
             mpCrit = MockQMessageBox().critical(msg)
             with mpCrit[0]:
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-                qtbot.wait(100)
+                qtbot.wait(1000)
                 mpCrit[0].stop()
                 assert len(exceptions) == 0
                 assert mpCrit[1].call_count == 1

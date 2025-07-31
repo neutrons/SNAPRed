@@ -235,9 +235,6 @@ class TestGUIPanels:
             requestView.runNumberField.setText(reductionRunNumber)
             qtbot.keyClick(requestView.runNumberField._field, Qt.Key_Return)
 
-            requestView.fieldConvergenceThreshold.setText("0.1")
-            requestView.fieldNBinsAcrossPeakWidth.setText("10")
-
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
             requestView.sampleDropdown.setCurrentIndex(0)
             assert requestView.sampleDropdown.currentIndex() == 0

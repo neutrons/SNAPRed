@@ -4,6 +4,7 @@ from qtpy.QtWidgets import QComboBox, QLabel
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.VersionedObject import VersionedObject
 from snapred.backend.dao.indexing.Versioning import VersionState
+from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 
@@ -33,9 +34,11 @@ class DiffCalSaveView(BackendRequestView):
         self.fieldRunNumber.setEnabled(False)
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
 
-        self.fieldVersion = self._labeledField("Version :")
-        # add tooltip to leave blank for new version
-        self.fieldVersion.setToolTip("Leave blank for new version!")
+        self.fieldVersion = None
+        if Config["cis_mode.enabled"] and Config["cis_mode.versionField"]:
+            self.fieldVersion = self._labeledField("Version :")
+            # add tooltip to leave blank for new version
+            self.fieldVersion.setToolTip("Leave blank for new version!")
 
         self.fieldAppliesTo = self._labeledField("Applies To :")
         self.fieldAppliesTo.setToolTip(
@@ -56,14 +59,20 @@ class DiffCalSaveView(BackendRequestView):
         _layout = self.layout()
         _layout.addWidget(self.interactionText)
         _layout.addWidget(self.fieldRunNumber)
-        _layout.addWidget(self.fieldVersion)
+        if bool(self.fieldVersion):
+            _layout.addWidget(self.fieldVersion)
         _layout.addWidget(self.fieldAppliesTo)
         _layout.addWidget(self.fieldComments)
         _layout.addWidget(self.fieldAuthor)
 
+    def getVersion(self):
+        if self.fieldVersion is not None:
+            return self.fieldVersion.get(VersionState.NEXT)
+        return VersionState.NEXT
+
     def validateAndReadForm(self):
         runNumber = self.fieldRunNumber.get()
-        version = self.fieldVersion.get(VersionState.NEXT)
+        version = self.getVersion()
         appliesTo = self.fieldAppliesTo.get(f">={runNumber}")
         # validate the version number
         version = VersionedObject.validate_version(version)

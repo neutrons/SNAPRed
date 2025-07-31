@@ -35,33 +35,49 @@ class NormalizationRequestView(BackendRequestView):
         self.sampleDropdown = self._sampleDropDown("Select Sample", samplePaths)
         self.sampleDropdown.setToolTip("Samples available for this run number.")
         self.groupingFileDropdown = self._sampleDropDown("Select Grouping File", groups)
+        self.setDefaultGrouping(groups)
         self.groupingFileDropdown.setToolTip("Grouping schemas available for this sample run number.")
 
         # set field properties
         self.liteModeToggle.setEnabled(False)
 
         # run number metadata fields
-        self.runMetadataStateId = self._labeledField("State ID")
+        stateIdLabel = "State ID:"
+        self.runMetadataStateId = self._labeledField(stateIdLabel)
         self.runMetadataStateId.setToolTip("State ID of the run number.")
+        # set max width to 16 characters (stateid length)
+        charWidth = self.runMetadataStateId.fontMetrics().averageCharWidth()
+        fieldWidth = charWidth * (16 + len(stateIdLabel)) + 20  # +20 for padding
+        self.runMetadataStateId.setFixedWidth(fieldWidth)
         self.runMetadataRunTitle = self._labeledField("Run Title")
         self.runMetadataRunTitle.setToolTip("Title of the run from PV file.")
 
         # run metadata fields are read only
         self.runMetadataStateId.field.setReadOnly(True)
+        self.runMetadataStateId.setEnabled(False)
         self.runMetadataRunTitle.field.setReadOnly(True)
+        self.runMetadataRunTitle.setEnabled(False)
 
         # add all widgets to layout
         _layout = self.layout()
         _layout.addWidget(self.runNumberField, 0, 0)
         _layout.addWidget(self.backgroundRunNumberField, 0, 1)
         _layout.addWidget(self.liteModeToggle, 0, 2)
-        _layout.addWidget(self.runMetadataStateId, 1, 0)
-        _layout.addWidget(self.runMetadataRunTitle, 1, 1)
+        _layout.addWidget(self.runMetadataStateId, 1, 1)
+        _layout.addWidget(self.runMetadataRunTitle, 1, 0)
         _layout.addWidget(self.sampleDropdown, 2, 0)
         _layout.addWidget(self.groupingFileDropdown, 2, 1)
 
+    def setDefaultGrouping(self, groups):
+        # find the first group where case insensitive match "column" is found
+        for i, group in enumerate(groups):
+            if "column" in group.lower():
+                self.groupingFileDropdown.setCurrentIndex(i)
+                break
+
     def populateGroupingDropdown(self, groups):
         self.groupingFileDropdown.setItems(groups)
+        self.setDefaultGrouping(groups)
 
     def verify(self):
         if not self.runNumberField.text().isdigit():

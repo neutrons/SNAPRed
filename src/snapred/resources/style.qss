@@ -5,10 +5,6 @@ QWidget {
     color: #0B0014;
 }
 
-QWidget:disabled {
-    background-color: #f6dbde;
-    color: #ddc5c7;
-}
 
 QMainWindow {
     background: transparent;
@@ -25,6 +21,9 @@ QStatusBar {
     border-bottom-left-radius: 10px;
 }
 
+DisabledFieldLabel {
+    color:#868482 ;
+}
 
 QListWidget::item {
     height: 50px;
