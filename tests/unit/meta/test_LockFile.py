@@ -60,11 +60,12 @@ class TestLockFile:
             lockFile1 = LockFile(lockedPath)
             lockFile2 = LockFile(lockedPath)
             # new lockfile should be created
-            assert lockFile1.lockFilePath != lockFile2.lockFilePath
-            assert not lockFile1.exists()
+            assert lockFile1.lockFilePath == lockFile2.lockFilePath
+            assert lockFile1.exists()
             assert lockFile2.exists()
 
             lockFile2.release()
+            assert lockFile1.exists()  # lockFile1 should still exist
             assert not lockFile2.exists()  # Both should be released
 
     def test_lockFileInDifferentProcesses(self):
@@ -112,7 +113,7 @@ class TestLockFile:
             lockFile1 = LockFile(lockedPath1)
             lockFile2 = LockFile(lockedPath2)
 
-            assert lockFile1.lockFilePath != lockFile2.lockFilePath
+            assert lockFile1.lockFilePath == lockFile2.lockFilePath
             assert lockFile1.exists()
             assert lockFile2.exists()
 
@@ -130,12 +131,18 @@ class TestLockFile:
                 assert lockFile.exists()
 
             with Config_override("lockfile.ttl", 0):
-                assert len(list(lockFile.lockFilePath.parent.glob("*.lock"))) == 3, (
+                assert len(list(lockFile.lockFilePath.parent.glob("*.lock"))) == 1, (
                     f"contents of dir: {list(lockFile.lockFilePath.parent.glob('*'))}"
                 )
+                assert len(lockFile.lockFilePath.read_text().splitlines()) == 3, (
+                    f"contents of lock file: {lockFile.lockFilePath.read_text()}"
+                )
                 # Reap old lockfiles
-                LockFile(lockedPath)
+                lock = LockFile(lockedPath)
                 assert len(list(lockFile.lockFilePath.parent.glob("*.lock"))) == 1
+                assert len(lock.lockFilePath.read_text().splitlines()) == 1, (
+                    f"contents of lock file: {lock.lockFilePath.read_text()}"
+                )
 
     def test_doubleRelease(self):
         with TemporaryDirectory() as temp_dir:
