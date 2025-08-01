@@ -2,7 +2,6 @@ import os
 import socket
 import time
 from contextlib import contextmanager
-from datetime import datetime
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -18,41 +17,66 @@ def hostName():
     return socket.gethostname().split(".")[0]
 
 
+def _removePath(lockFilePath: Path, lockedPath: Path):
+    lockedPath = lockedPath.expanduser().resolve()
+    if lockFilePath.exists():
+        # remove the lockedPath from the lockfile
+        with lockFilePath.open("r") as lockFile:
+            lines = lockFile.readlines()
+        # remove first appearance of lockedPath
+        lines.pop(next((i for i, line in enumerate(lines) if str(lockedPath) == line.strip()), None))
+        with lockFilePath.open("w") as lockFile:
+            lockFile.writelines(lines)
+
+
+def _getApplicableLockfilePaths(lockfilePath: Path, lockedPath: Path) -> Path:
+    existingLockfiles = list(lockfilePath.parent.glob("*.lock"))
+    lockedPath = lockedPath.expanduser().resolve()
+    applicableLockfiles = []
+    if existingLockfiles:
+        # filter for lockfiles that contain the lockedPath
+        applicableLockfiles = [f for f in existingLockfiles if str(lockedPath) in f.read_text().splitlines()]
+    return applicableLockfiles
+
+
+def _generateLockfileName() -> str:
+    """Generate a lockfile name based on the locked path."""
+    pid = str(os.getpid())
+    host = hostName()
+    return f"{pid}_{host}.lock"
+
+
 def _reapOldLockfiles(lockfilePath: Path, maxAgeSeconds: int, lockedPath: Path):
     # check if any lockfile exists
-    existing_lockfiles = list(lockfilePath.parent.glob("*.lock"))
-    if existing_lockfiles:
+    existingLockfiles = list(lockfilePath.parent.glob("*.lock"))
+    lockedPath = lockedPath.expanduser().resolve()
+    if existingLockfiles:
         # sort by creation time and remove ones older than 10 seconds
-        existing_lockfiles = [f for f in existing_lockfiles if time.time() - f.stat().st_ctime > maxAgeSeconds]
-        for lockfile in existing_lockfiles:
+        existingLockfiles = [f for f in existingLockfiles if time.time() - f.stat().st_ctime > maxAgeSeconds]
+        for lockfile in existingLockfiles:
             lockfile.unlink()
 
-        # if still exists, raise error
-        remaining_lockfiles = list(lockfilePath.parent.glob("*.lock"))
+        remainingLockfiles = _getApplicableLockfilePaths(lockfilePath, lockedPath)
 
-        # filter for lockfiles that contain the lockedPath
-        remaining_lockfiles = [f for f in remaining_lockfiles if str(lockedPath) in f.read_text().splitlines()]
-
-        if remaining_lockfiles:
-            if len(remaining_lockfiles) > 1:
+        if remainingLockfiles:
+            if len(remainingLockfiles) > 1:
                 raise RuntimeError("Multiple lockfiles found, cannot proceed.")
-            remainingLockFile = remaining_lockfiles[0]
-            remainingPid = remainingLockFile.name.split("_")[0]
-            remainingHost = remainingLockFile.name.split("_")[1]
+            remainingLockFile = remainingLockfiles[0]
+            remainingPid = remainingLockFile.stem.split("_")[0]
+            remainingHost = remainingLockFile.stem.split("_")[1]
             # NOTE: This will not support the application doing many writes in parallel
             #       if necessary, the old lockfile contents should be copied.
-            if remainingPid == str(os.getpid()) and remainingHost == hostName():
-                remainingLockFile.unlink(missing_ok=True)
-            else:
+            if not (remainingPid == str(os.getpid()) and remainingHost == hostName()):
                 return False
+
     return True
 
 
 def _generateLockfile(lockedPath: Path):
     # get pid
-    pid = str(os.getpid())
+    lockFileName = _generateLockfileName()
     lockFileRoot = Config["lockfile.root"]
-    lockFilePath = Path(f"{lockFileRoot}/{pid}_{hostName()}_{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}.lock")
+    lockFilePath = Path(f"{lockFileRoot}/{lockFileName}")
     if not lockFilePath.parent.exists():
         lockFilePath.parent.mkdir(parents=True, exist_ok=True)
     # check if any lockfile exists
@@ -65,6 +89,13 @@ def _generateLockfile(lockedPath: Path):
         if timeout <= 0:
             raise RuntimeError(f"Timeout waiting for lockfile {lockFilePath} to be removed.")
     # create new lockfile
+
+    # Adopt the existing lockfile if it exists
+    existingLockfiles = _getApplicableLockfilePaths(lockFilePath, lockedPath)
+    if len(existingLockfiles) > 0:
+        # if there is an existing lockfile, use that instead
+        lockFilePath = existingLockfiles[0]
+
     lockFilePath.touch(exist_ok=True)
     # append lockedPath to the lockfile
     with lockFilePath.open("a") as lockFile:
@@ -91,9 +122,11 @@ def LockManager(lockedPath: Path):
 
 class LockFile(BaseModel):
     lockFilePath: Path
+    lockedPath: Path = None
 
     def __init__(self, lockedPath: Path):
         super().__init__(lockFilePath=_generateLockfile(lockedPath))
+        self.lockedPath = lockedPath.expanduser().resolve()
 
     def exists(self) -> bool:
         """Check if the lock file exists."""
@@ -101,7 +134,11 @@ class LockFile(BaseModel):
 
     def release(self):
         if self.lockFilePath and self.lockFilePath.exists():
-            self.lockFilePath.unlink(missing_ok=True)
+            _removePath(self.lockFilePath, self.lockedPath)
+            if not self.lockFilePath.read_text().strip():
+                # if the lockfile is empty, remove it
+                self.lockFilePath.unlink()
             self.lockFilePath = None
+            self.lockedPath = None
         else:
             logger.warning("Attempted to release a lock file that does not exist or has already been released.")
