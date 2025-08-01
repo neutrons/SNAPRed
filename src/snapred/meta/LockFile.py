@@ -140,7 +140,7 @@ class LockFile(BaseModel):
         return self.lockFilePath is not None and self.lockFilePath.exists()
 
     def release(self):
-        if self.lockFilePath and self.lockFilePath.exists():
+        if self.exists():
             # Pop the lockedPath from the lock file
             _removePath(self.lockFilePath, self.lockedPath)
             if not self.lockFilePath.read_text().strip():
