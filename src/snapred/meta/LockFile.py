@@ -60,7 +60,7 @@ def _reapOldLockfiles(lockfilePath: Path, maxAgeSeconds: int, lockedPath: Path):
 
         if remainingLockfiles:
             if len(remainingLockfiles) > 1:
-                raise RuntimeError("Multiple lockfiles found, cannot proceed.")
+                raise RuntimeError("Multiple lockfiles found for the same path, cannot proceed.")
             remainingLockFile = remainingLockfiles[0]
             remainingPid = remainingLockFile.stem.split("_")[0]
             remainingHost = remainingLockFile.stem.split("_")[1]
