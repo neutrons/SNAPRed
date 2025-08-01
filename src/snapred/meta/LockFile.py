@@ -18,9 +18,9 @@ def hostName():
 
 
 def _removePath(lockFilePath: Path, lockedPath: Path):
+    """Remove the lockedPath from the lock file."""
     lockedPath = lockedPath.expanduser().resolve()
     if lockFilePath.exists():
-        # remove the lockedPath from the lockfile
         with lockFilePath.open("r") as lockFile:
             lines = lockFile.readlines()
         # remove first appearance of lockedPath
@@ -30,6 +30,7 @@ def _removePath(lockFilePath: Path, lockedPath: Path):
 
 
 def _getApplicableLockfilePaths(lockfilePath: Path, lockedPath: Path) -> Path:
+    """Get the lockfiles that contain lockedPath."""
     existingLockfiles = list(lockfilePath.parent.glob("*.lock"))
     lockedPath = lockedPath.expanduser().resolve()
     applicableLockfiles = []
@@ -40,18 +41,22 @@ def _getApplicableLockfilePaths(lockfilePath: Path, lockedPath: Path) -> Path:
 
 
 def _generateLockfileName() -> str:
-    """Generate a lockfile name based on the locked path."""
+    """Generate a lockfile name based on the pid and host."""
     pid = str(os.getpid())
     host = hostName()
     return f"{pid}_{host}.lock"
 
 
 def _reapOldLockfiles(lockfilePath: Path, maxAgeSeconds: int, lockedPath: Path):
+    """
+    Reap lockfiles that are older than maxAgeSeconds.
+    Returns True if process can initiate lock, False if it cannot.
+    """
     # check if any lockfile exists
     existingLockfiles = list(lockfilePath.parent.glob("*.lock"))
     lockedPath = lockedPath.expanduser().resolve()
     if existingLockfiles:
-        # sort by creation time and remove ones older than 10 seconds
+        # reap files older than 10 seconds
         existingLockfiles = [f for f in existingLockfiles if time.time() - f.stat().st_ctime > maxAgeSeconds]
         for lockfile in existingLockfiles:
             lockfile.unlink()
@@ -65,7 +70,6 @@ def _reapOldLockfiles(lockfilePath: Path, maxAgeSeconds: int, lockedPath: Path):
             remainingPid = remainingLockFile.stem.split("_")[0]
             remainingHost = remainingLockFile.stem.split("_")[1]
             # NOTE: This will not support the application doing many writes in parallel
-            #       if necessary, the old lockfile contents should be copied.
             if not (remainingPid == str(os.getpid()) and remainingHost == hostName()):
                 return False
 
@@ -73,13 +77,16 @@ def _reapOldLockfiles(lockfilePath: Path, maxAgeSeconds: int, lockedPath: Path):
 
 
 def _generateLockfile(lockedPath: Path):
+    """Generates or adopts a lockfile for the given lockedPath."""
     # get pid
     lockFileName = _generateLockfileName()
     lockFileRoot = Config["lockfile.root"]
     lockFilePath = Path(f"{lockFileRoot}/{lockFileName}")
+
+    # Ensure the directory exists
     if not lockFilePath.parent.exists():
         lockFilePath.parent.mkdir(parents=True, exist_ok=True)
-    # check if any lockfile exists
+
     maxAgeSeconds = Config["lockfile.ttl"]  # seconds
     timeout = Config["lockfile.timeout"]  # seconds
     while not _reapOldLockfiles(lockFilePath, maxAgeSeconds, lockedPath):
@@ -88,7 +95,6 @@ def _generateLockfile(lockedPath: Path):
         timeout -= maxAgeSeconds
         if timeout <= 0:
             raise RuntimeError(f"Timeout waiting for lockfile {lockFilePath} to be removed.")
-    # create new lockfile
 
     # Adopt the existing lockfile if it exists
     existingLockfiles = _getApplicableLockfilePaths(lockFilePath, lockedPath)
@@ -96,6 +102,7 @@ def _generateLockfile(lockedPath: Path):
         # if there is an existing lockfile, use that instead
         lockFilePath = existingLockfiles[0]
 
+    # Ensure lockfile is created
     lockFilePath.touch(exist_ok=True)
     # append lockedPath to the lockfile
     with lockFilePath.open("a") as lockFile:
@@ -134,6 +141,7 @@ class LockFile(BaseModel):
 
     def release(self):
         if self.lockFilePath and self.lockFilePath.exists():
+            # Pop the lockedPath from the lock file
             _removePath(self.lockFilePath, self.lockedPath)
             if not self.lockFilePath.read_text().strip():
                 # if the lockfile is empty, remove it
