@@ -8,8 +8,10 @@ from mantid.api import (
     FileProperty,
     PropertyMode,
     PythonAlgorithm,
+    WorkspaceGroup,
     WorkspaceProperty,
 )
+from mantid.dataobjects import TableWorkspace
 from mantid.kernel import (
     Direction,
     StringListValidator,
@@ -206,7 +208,17 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             #   on files written prior to the merge of the
             #   `SaveNexus` 'instrument_parameter_map' write-precision fix.
             # It probably should not be removed, even after that fix is merged.
-            self.mantidSnapper.mtd[outWS].populateInstrumentParameters()
+            names = (
+                # `outWS` may be a workspace group
+                [
+                    outWS,
+                ]
+                if not isinstance(self.mantidSnapper.mtd[outWS], WorkspaceGroup)
+                else self.mantidSnapper.mtd[outWS].getNames()
+            )
+            for name in names:
+                if not isinstance(self.mantidSnapper.mtd[name], TableWorkspace):
+                    self.mantidSnapper.mtd[name].populateInstrumentParameters()
 
         self.setPropertyValue("OutputWorkspace", outWS)
         self.setPropertyValue("LoaderType", str(loaderType))
