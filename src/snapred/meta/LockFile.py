@@ -59,7 +59,7 @@ def _reapOldLockfiles(lockfilePath: Path, maxAgeSeconds: int, lockedPath: Path):
         # reap files older than 10 seconds
         existingLockfiles = [f for f in existingLockfiles if time.time() - f.stat().st_ctime > maxAgeSeconds]
         for lockfile in existingLockfiles:
-            lockfile.unlink()
+            lockfile.unlink(missing_ok=True)
 
         remainingLockfiles = _getApplicableLockfilePaths(lockfilePath, lockedPath)
 
@@ -88,11 +88,13 @@ def _generateLockfile(lockedPath: Path):
         lockFilePath.parent.mkdir(parents=True, exist_ok=True)
 
     maxAgeSeconds = Config["lockfile.ttl"]  # seconds
+    checkFrequency = maxAgeSeconds // 4  # seconds
     timeout = Config["lockfile.timeout"]  # seconds
     while not _reapOldLockfiles(lockFilePath, maxAgeSeconds, lockedPath):
         # if the lockfile still exists, wait for it to be removed
-        time.sleep(maxAgeSeconds)
-        timeout -= maxAgeSeconds
+        time.sleep(checkFrequency)
+        timeout -= checkFrequency
+        checkFrequency += maxAgeSeconds // 4
         if timeout <= 0:
             raise RuntimeError(f"Timeout waiting for lockfile {lockFilePath} to be removed.")
 
@@ -145,7 +147,7 @@ class LockFile(BaseModel):
             _removePath(self.lockFilePath, self.lockedPath)
             if not self.lockFilePath.read_text().strip():
                 # if the lockfile is empty, remove it
-                self.lockFilePath.unlink()
+                self.lockFilePath.unlink(missing_ok=True)
             self.lockFilePath = None
             self.lockedPath = None
         else:

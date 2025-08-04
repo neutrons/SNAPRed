@@ -103,7 +103,6 @@ class Indexer:
         self.rootDirectory = Path(directory)
         # no index on disk is valid until we attempt to read an indexed object.
         self.index = self.readIndex(init=True)
-        self.dirVersions = self.readDirectoryList()
         self.reconcileIndexToFiles()
 
     def __del__(self):
@@ -111,6 +110,10 @@ class Indexer:
         if self.rootDirectory.exists():
             self.reconcileIndexToFiles()
             self.writeIndex()
+
+    @property
+    def dirVersions(self):
+        return self.readDirectoryList()
 
     def obtainLock(self):
         """
@@ -141,12 +144,15 @@ class Indexer:
         return versions
 
     def reconcileIndexToFiles(self):
-        self.dirVersions = self.readDirectoryList()
         indexVersions = set(self.index.keys())
         # if a directory has no entry in the index, warn
         missingEntries = self.dirVersions.difference(indexVersions)
         if len(missingEntries) > 0:
-            logger.warn(f"The following versions are expected, but missing from the index: {missingEntries}")
+            logger.warn(
+                f"The following versions are expected, but missing from the index: {missingEntries}\n"
+                + "The index directory may have been modified by another process."
+                + f"{self.rootDirectory}"
+            )
 
         # if an entry in the index has no directory, throw an error
         missingRecords = indexVersions.difference(self.dirVersions)
@@ -168,7 +174,6 @@ class Indexer:
 
         # take the set of versions common to both
         commonVersions = self.dirVersions & indexVersions
-        self.dirVersions = commonVersions
         self.index = {version: self.index[version] for version in commonVersions}
 
     ## VERSION GETTERS ##
@@ -429,9 +434,12 @@ class Indexer:
         Will save at the version on the index entry.
         If the version is invalid, will throw an error and refuse to save.
         """
-        entry.version = self._flattenVersion(entry.version)
-        self.index[entry.version] = entry
-        self.writeIndex()
+        with self._lockContext():
+            if set(self.index.keys()) != self.dirVersions:
+                self.reconcileIndexToFiles()
+            entry.version = self._flattenVersion(entry.version)
+            self.index[entry.version] = entry
+            self.writeIndex()
 
     ## RECORD READ / WRITE METHODS ##
 
@@ -522,8 +530,6 @@ class Indexer:
             filePath.parent.mkdir(parents=True, exist_ok=True)
 
             write_model_pretty(obj, filePath)
-
-            self.dirVersions.add(obj.version)
 
     def readIndexedObject(self, type_: Type[T], version: Version) -> IndexedObject:
         """
