@@ -390,7 +390,10 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("OutputWorkspace", test_ws)
         with (
             mock.patch.object(algo, "mantidSnapper", mockSnapper_) as mockSnapper,
-            mock.patch.object(TestFetchGroceriesAlgorithm._MockMtd, "populateInstrumentParameters") as populateInstrumentParameters
+            mock.patch.object(
+                TestFetchGroceriesAlgorithm._MockMtd,
+                "populateInstrumentParameters"
+            ) as populateInstrumentParameters
         ):
             assert algo.execute()
             
@@ -422,10 +425,14 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("OutputWorkspace", "")
         with (
             mock.patch.object(algo, "mantidSnapper", mockSnapper_) as mockSnapper,
-            mock.patch.object(TestFetchGroceriesAlgorithm._MockMtd, "populateInstrumentParameters") as populateInstrumentParameters
+            mock.patch.object(
+                TestFetchGroceriesAlgorithm._MockMtd,
+                "populateInstrumentParameters"
+            ) as populateInstrumentParameters
         ):
             assert algo.execute()            
             populateInstrumentParameters.assert_not_called()
+            mockSnapper.executeQueue.assert_called_once()
     
     def test_populateInstrumentParameters_single_mask_workspace(self):
         # Test that `populateInstrumentParameters` is NOT called by `FetchGroceriesAlgorithm`
@@ -457,17 +464,23 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("OutputWorkspace", test_mask_ws)
         with (
             mock.patch.object(algo, "mantidSnapper", mockSnapper_) as mockSnapper,
-            mock.patch.object(TestFetchGroceriesAlgorithm._MockMtd, "populateInstrumentParameters") as populateInstrumentParameters
+            mock.patch.object(
+                TestFetchGroceriesAlgorithm._MockMtd,
+                "populateInstrumentParameters"
+            ) as populateInstrumentParameters
         ):
             assert algo.execute()            
             populateInstrumentParameters.assert_not_called()
+            mockSnapper.executeQueue.assert_called_once()
 
     def test_populateInstrumentParameters_group_workspace(self):
         # Test that `populateInstrumentParameters` is called for each workspace when a `WorkspaceGroup` is loaded.
         test_ws = "test_PIP_group"
         mockSnapper_ = mock.Mock()
         mockSnapper_.Load=mock.Mock(return_value=(None, "LoadNexusProcessed", None))
-        mockSnapper_.mtd = TestFetchGroceriesAlgorithm._MockMtd(wsNames=["ws1", "ws2", "ws3", "ws4", "ws5"])
+        mockSnapper_.mtd = TestFetchGroceriesAlgorithm._MockMtd(
+                               wsNames=["ws1", "ws2", "ws3", "ws4", "ws5"]
+                           )
         mockSnapper_.mtd.doesExist = mock.Mock(return_value=False)
         assert isinstance(mockSnapper_.mtd[test_ws], WorkspaceGroup)
         N_wss = len(mockSnapper_.mtd[test_ws].getNames())
@@ -479,7 +492,10 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("OutputWorkspace", test_ws)
         with (
             mock.patch.object(algo, "mantidSnapper", mockSnapper_) as mockSnapper,
-            mock.patch.object(TestFetchGroceriesAlgorithm._MockMtd, "populateInstrumentParameters") as populateInstrumentParameters
+            mock.patch.object(
+                TestFetchGroceriesAlgorithm._MockMtd,
+                "populateInstrumentParameters"
+            ) as populateInstrumentParameters
         ):
             assert algo.execute()
             assert populateInstrumentParameters.call_count == N_wss
@@ -488,11 +504,13 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
 
     def test_populateInstrumentParameters_group_workspace_with_table(self):
         # Test that `populateInstrumentParameters` is called for any `TableWorkspace` within a `WorkspaceGroup`.        
-        #   * Question: can `LoadNexusProcessed` actually deal with this type of workspace group?
+        #   * Question: can `LoadNexusProcessed` actually ever load a workspace group like this?
         test_ws = "test_PIP_group_with_table"
         mockSnapper_ = mock.Mock()
         mockSnapper_.Load=mock.Mock(return_value=(None, "LoadNexusProcessed", None))
-        mockSnapper_.mtd = TestFetchGroceriesAlgorithm._MockMtd(wsNames=["ws1", "ws2", "table_ws3", "ws4", "ws5"])
+        mockSnapper_.mtd = TestFetchGroceriesAlgorithm._MockMtd(
+                               wsNames=["ws1", "ws2", "table_ws3", "ws4", "ws5"]
+                           )
         mockSnapper_.mtd.doesExist = mock.Mock(return_value=False)
         assert isinstance(mockSnapper_.mtd[test_ws], WorkspaceGroup)
         N_wss = len(mockSnapper_.mtd[test_ws].getNames())
@@ -503,19 +521,25 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("OutputWorkspace", test_ws)
         with (
             mock.patch.object(algo, "mantidSnapper", mockSnapper_) as mockSnapper,
-            mock.patch.object(TestFetchGroceriesAlgorithm._MockMtd, "populateInstrumentParameters") as populateInstrumentParameters
+            mock.patch.object(
+                TestFetchGroceriesAlgorithm._MockMtd,
+                "populateInstrumentParameters"
+            ) as populateInstrumentParameters
         ):
             assert algo.execute()
             assert populateInstrumentParameters.call_count == N_wss - 1
             mockSnapper.executeQueue.assert_called_once()
 
     def test_populateInstrumentParameters_group_workspace_all_tables(self):
-        # Test that `populateInstrumentParameters` is NOT called for a `WorkspaceGroup` consisting entirely of `TableWorkspace`s.
-        #   * Question: can `LoadNexusProcessed` actually deal with this type of workspace group?
+        # Test that `populateInstrumentParameters` is NOT called for a `WorkspaceGroup`
+        # consisting entirely of `TableWorkspace`s.
+        #   * Question: can `LoadNexusProcessed` ever actually load a workspace group like this?
         test_ws = "test_PIP_group_all_tables"
         mockSnapper_ = mock.Mock()
         mockSnapper_.Load=mock.Mock(return_value=(None, "LoadNexusProcessed", None))
-        mockSnapper_.mtd = TestFetchGroceriesAlgorithm._MockMtd(wsNames=["table_ws1", "table_ws2", "table_ws3", "table_ws4", "table_ws5"])
+        mockSnapper_.mtd = TestFetchGroceriesAlgorithm._MockMtd(
+                               wsNames=["table_ws1", "table_ws2", "table_ws3", "table_ws4", "table_ws5"]
+                           )
         mockSnapper_.mtd.doesExist = mock.Mock(return_value=False)
         assert isinstance(mockSnapper_.mtd[test_ws], WorkspaceGroup)
         
@@ -525,7 +549,10 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("OutputWorkspace", test_ws)
         with (
             mock.patch.object(algo, "mantidSnapper", mockSnapper_) as mockSnapper,
-            mock.patch.object(TestFetchGroceriesAlgorithm._MockMtd, "populateInstrumentParameters") as populateInstrumentParameters
+            mock.patch.object(
+                TestFetchGroceriesAlgorithm._MockMtd,
+                "populateInstrumentParameters"
+            ) as populateInstrumentParameters
         ):
             assert algo.execute()
             populateInstrumentParameters.assert_not_called()
