@@ -615,9 +615,9 @@ class GroceryService:
 
     def _fetchInstrumentDonor(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:
         """
-        The grouping workspaces require an instrument definition, and do not have their own instrument definition
-        saved with them.  Therefore, when loading groupings, it is necessary to match them to
-        the proper instrument definition *with the proper instrument state params*.
+        Grouping and mask workspaces require an instrument definition, and do not have their own instrument definition
+        saved with them.  Therefore, for these workspace types, it is necessary to match them to
+        the proper instrument definition *with the proper instrument state parameters*.
         This uses the run number (and lite mode) to locate the proper state, and from that the proper instrument
         definition with instrument params for that state.
 
