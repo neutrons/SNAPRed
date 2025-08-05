@@ -149,8 +149,8 @@ class Indexer:
         missingEntries = self.dirVersions.difference(indexVersions)
         if len(missingEntries) > 0:
             logger.warn(
-                f"The following versions are expected, but missing from the index: {missingEntries}\n"
-                + "The index directory may have been modified by another process."
+                "Another user may be calibrating/updating the same directory.\n"
+                + "New versions found on disk.\n"
                 + f"{self.rootDirectory}"
             )
 
