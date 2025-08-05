@@ -172,9 +172,7 @@ class Indexer:
                     )
                 )
 
-        # take the set of versions common to both
-        commonVersions = self.dirVersions & indexVersions
-        self.index = {version: self.index[version] for version in commonVersions}
+        self.index = {version: self.index[version] for version in self.dirVersions}
 
     ## VERSION GETTERS ##
 

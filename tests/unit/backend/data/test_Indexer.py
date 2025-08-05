@@ -364,7 +364,7 @@ class TestIndexer(unittest.TestCase):
         with self.assertLogs(logger=IndexerModule.logger, level=logging.WARNING) as cm:
             indexer = self.initIndexer()
         assert str(missingVersion) in cm.output[0]
-        assert indexer.currentVersion() == max(indexVersions)
+        assert indexer.currentVersion() == len(recordVersions)
 
     def test_currentVersion_indexhigher(self):
         # if there is an index entry not represented in the directory: throw error
