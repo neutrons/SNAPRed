@@ -172,7 +172,7 @@ class Indexer:
                     )
                 )
 
-        self.index = {version: self.index[version] for version in self.dirVersions}
+        self.index = {version: self.indexEntryForVersion(version) for version in self.dirVersions}
 
     ## VERSION GETTERS ##
 
@@ -372,16 +372,32 @@ class Indexer:
 
         return True
 
+    def indexEntryForVersion(self, version: Version) -> IndexEntry:
+        """
+        Returns the index entry for a given version.
+        If the version does not exist, it will return None.
+        """
+        flattenedVersion = self._flattenVersion(version)
+        entry = None
+        if flattenedVersion in self.index:
+            entry = self.index[flattenedVersion]
+        elif self.versionPath(flattenedVersion).exists():
+            if self.isValidVersionFolder(flattenedVersion):
+                entry = self.readRecord(flattenedVersion).indexEntry
+            else:
+                logger.error(f"Version folder {self.versionPath(flattenedVersion)} is not valid.")
+
+        return entry
+
     def recoverIndex(self, dryrun=True) -> Dict[int, IndexEntry]:
         # iterate through the directory structure and create an index from the files
         indexPath: Path = self.indexPath()
         entries = []
         versions = self.readDirectoryList()
         for version in versions:
-            if self.isValidVersionFolder(version):
-                # read the record file
-                record = self.readRecord(version)
-                entries.append(record.indexEntry)
+            entry = self.indexEntryForVersion(version)
+            if entry is not None:
+                entries.append(entry)
             else:
                 logger.error(f"Version folder {self.versionPath(version)} is not valid. Skipping version {version}.")
 

@@ -88,13 +88,12 @@ def _generateLockfile(lockedPath: Path):
         lockFilePath.parent.mkdir(parents=True, exist_ok=True)
 
     maxAgeSeconds = Config["lockfile.ttl"]  # seconds
-    checkFrequency = maxAgeSeconds // 4  # seconds
+    checkFrequency = Config["lockfile.checkFrequency"]  # seconds
     timeout = Config["lockfile.timeout"]  # seconds
     while not _reapOldLockfiles(lockFilePath, maxAgeSeconds, lockedPath):
         # if the lockfile still exists, wait for it to be removed
         time.sleep(checkFrequency)
         timeout -= checkFrequency
-        checkFrequency += maxAgeSeconds // 4
         if timeout <= 0:
             raise RuntimeError(f"Timeout waiting for lockfile {lockFilePath} to be removed.")
 
