@@ -107,7 +107,7 @@ class ReductionWorkflow(WorkflowImplementer):
         #   using the current settings from `ReductionRequestView`.
 
         self._keeps: Set[WorkspaceName] = set()
-        self.runNumbers: List[str] = []
+        self.runNumbers: Set[str] = set()
         self.useLiteMode: bool = True
 
         self.liveDataMode: bool = False
@@ -329,7 +329,7 @@ class ReductionWorkflow(WorkflowImplementer):
         # Submit an action to this workflow's presenter's thread pool.
         self.workflow.presenter.handleAction(action, args, onSuccess, isWorkflow=isWorkflow)
 
-    def _getCompatibleMasks(self, runNumbers: List[str], useLiteMode: bool) -> List[str]:
+    def _getCompatibleMasks(self, runNumbers: Set[str], useLiteMode: bool) -> List[str]:
         # Get compatible masks for the current reduction state.
         masks = []
 
@@ -337,8 +337,8 @@ class ReductionWorkflow(WorkflowImplementer):
             compatibleMasks = self.request(
                 path="reduction/getCompatibleMasks",
                 payload=ReductionRequest(
-                    # All runNumbers are from the same state => any one can be used here
-                    runNumber=runNumbers[0],
+                    # All runNumbers are from the same state => any one of them can be used here
+                    runNumber=next(iter(runNumbers)),
                     useLiteMode=useLiteMode,
                 ),
             ).data
@@ -456,8 +456,8 @@ class ReductionWorkflow(WorkflowImplementer):
         # Use one timestamp for the entire set of runNumbers:
         self.timestamp = self.request(path="reduction/getUniqueTimestamp").data
 
-        # All runs are from the same state, use the first run to load groupings.
-        request_ = self._createReductionRequest(self.runNumbers[0])
+        # All runs are from the same state, use any run to load groupings.
+        request_ = self._createReductionRequest(next(iter(self.runNumbers)))
         response = self.request(path="reduction/groupings", payload=request_)
 
         # Set of workspaces to retain is INITIALIZED here: after this point, we add to the set.
@@ -471,7 +471,7 @@ class ReductionWorkflow(WorkflowImplementer):
         response = self.request(path="reduction/validate", payload=request_)
 
         # Get the calibration and normalization versions for all runs to be processed
-        matchRequest = MatchRunsRequest(runNumbers=self.runNumbers, useLiteMode=self.useLiteMode)
+        matchRequest = MatchRunsRequest(runNumbers=list(self.runNumbers), useLiteMode=self.useLiteMode)
         # TODO: Remove this orchestration, this should be handled in the backend
         loadedNormalizations, normVersions = self.request(path="normalization/fetchMatches", payload=matchRequest).data
 
@@ -518,7 +518,7 @@ class ReductionWorkflow(WorkflowImplementer):
                 if response.code == ResponseCode.OK:
                     self._finalizeReduction(response.data.record, response.data.unfocusedData)
 
-                # after each run, clean workspaces except groupings, calibrations, and outputs
+                # after each run, clean workspaces except groupings, calibrations, normalizations, and outputs
                 self._keeps.update(self.outputs)
                 self._clearWorkspaces(exclude=self._keeps, clearCachedWorkspaces=True)
 

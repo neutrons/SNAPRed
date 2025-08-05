@@ -1,9 +1,10 @@
 import datetime
 from pathlib import Path
-from typing import List, NamedTuple, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from snapred.backend.dao.Hook import Hook
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -37,6 +38,8 @@ class ReductionRequest(BaseModel):
 
     alternativeState: Optional[str] = None
     alternativeCalibrationFilePath: Optional[Path] = None
+
+    hooks: Optional[Dict[str, List[Hook]]] = None
 
     @field_validator("versions")
     @classmethod

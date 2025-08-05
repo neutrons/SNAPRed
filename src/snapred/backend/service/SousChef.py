@@ -320,14 +320,17 @@ class SousChef(Service):
                 data=recoveryData,
             )
 
-    def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
+    def prepNormalizationIngredients(
+        self, ingredients: FarmFreshIngredients, combinedPixelMask: Optional[WorkspaceName] = None
+    ) -> NormalizationIngredients:
         # The calibration folder at the very least should be initialized with a default calibration
         self.verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
 
         return NormalizationIngredients(
-            pixelGroup=self.prepPixelGroup(ingredients),
+            pixelGroup=self.prepPixelGroup(ingredients, pixelMask=combinedPixelMask),
             calibrantSample=self.prepCalibrantSample(ingredients.calibrantSamplePath),
-            detectorPeaks=self.prepDetectorPeaks(ingredients, purgePeaks=False),
+            # NOTE: It needs to be checked with Malcolm if peaks should be purged
+            detectorPeaks=self.prepDetectorPeaks(ingredients, purgePeaks=False, pixelMask=combinedPixelMask),
         )
 
     def prepDiffractionCalibrationIngredients(

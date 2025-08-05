@@ -11,9 +11,17 @@ from pathlib import Path
 from typing import Any, Dict, List, TypeVar
 
 import yaml
+from ruamel.yaml import YAML as rYaml
 
 from snapred import __version__ as snapredVersion
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.Enum import StrEnum
+
+
+class DeployEnvEnum(StrEnum):
+    NEXT = "snapred_next"
+    QA = "snapred_qa"
+    PROD = "snapred_prod"
 
 
 def isTestEnv() -> bool:
@@ -135,6 +143,44 @@ class _Config:
             self._config["instrument"]["home"] = expandhome(self._config["instrument"]["home"])
         if "samples" in self._config and "home" in self._config["samples"]:
             self._config["samples"]["home"] = expandhome(self._config["samples"]["home"])
+
+    def configureForDeploy(self) -> None:
+        version = self.snapredVersion()
+        if "dev" in version:
+            self.mergeAndExport(DeployEnvEnum.NEXT)
+        elif "rc" in version:
+            self.mergeAndExport(DeployEnvEnum.QA)
+        else:
+            self.mergeAndExport(DeployEnvEnum.PROD)
+
+    def mergeAndExport(self, envName: str) -> None:
+        """
+        Merge the current configuration with the specified environment configuration
+        and export it to the application.yml file.
+        """
+        self._logger.debug(f"Merging/exporting configuration with environment: {envName}")
+        self.refresh(envName, False)
+
+        ryaml = rYaml()
+        ryaml.default_flow_style = False
+        ryaml.indent(mapping=2, sequence=4, offset=2)
+
+        with Resource.open(self._defaultEnv, "r") as file:
+            config = ryaml.load(file)
+
+        # update config with self._config, deep_update does not work with ruamel.yaml
+        def merge_dicts(d1, d2):
+            for key, value in d2.items():
+                if isinstance(value, dict) and key in d1:
+                    merge_dicts(d1[key], value)
+                else:
+                    d1[key] = value
+
+        merge_dicts(config, self._config)
+
+        # Export the merged configuration to application.yml
+        with Resource.open(self._defaultEnv, "w") as file:
+            ryaml.dump(config, file)
 
     def reload(self, env_name=None) -> None:
         # use refresh to do initial load, clearing shouldn't matter

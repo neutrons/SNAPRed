@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from datetime import datetime, timedelta
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Set
 
 from qtpy.QtCore import Qt, QTimer, Signal, Slot
 from qtpy.QtGui import QColor
@@ -48,7 +48,7 @@ class _RequestViewBase(BackendRequestView):
 
         self.runMetadataCallback: Optional[Callable[[str], RunMetadata]] = None
 
-        self.runNumbers = []
+        self.runNumbers = set()
         self.pixelMaskDropdown = self._multiSelectDropDown("Select Pixel Mask(s)", [])
 
         # Lite mode toggle, pixel masks dropdown, and retain unfocused data checkbox
@@ -145,7 +145,7 @@ class _RequestViewBase(BackendRequestView):
         # default value: two minute update time
         return timedelta(seconds=120)
 
-    def getRunNumbers(self):
+    def getRunNumbers(self) -> Set[str]:
         return self.runNumbers
 
 
@@ -205,15 +205,12 @@ class _RequestView(_RequestViewBase):
         try:
             runNumberList = self.parseInputRunNumbers()
             if runNumberList is not None:
-                # remove duplicates
-                noDuplicates = set(self.runNumbers)
-                noDuplicates.update(runNumberList)
-                noDuplicates = list(noDuplicates)
+                newRuns = set(runNumberList).difference(self.runNumbers)
                 if self.validateRunNumbers is not None:
-                    self.validateRunNumbers(noDuplicates)
-                self.runNumbers = noDuplicates
+                    self.validateRunNumbers(newRuns)
+                self.runNumbers.update(newRuns)
                 if self.runMetadataCallback:
-                    for runNumber in runNumberList:
+                    for runNumber in newRuns:
                         metadata = self.runMetadataCallback(runNumber)
                         lineText = self._runPreviewText(metadata)
                         self.runNumberDisplay.addItem(lineText)
@@ -269,13 +266,8 @@ class _RequestView(_RequestViewBase):
 
     def verify(self):
         runNumbers = self.runNumbers
-        if not runNumbers:
+        if not bool(runNumbers):
             raise ValueError("Please enter at least one run number.")
-        if runNumbers != self.runNumbers:
-            raise ValueError("Unexpected issue verifying run numbers. Please clear and re-enter.")
-        for runNumber in runNumbers:
-            if not runNumber.isdigit():
-                pass
         if self.keepUnfocused():
             if self.convertUnitsDropdown.currentIndex() < 0:
                 raise ValueError("Please select units to convert to")
@@ -421,7 +413,7 @@ class _LiveDataView(_RequestViewBase):
 
         match status:
             case ReductionStatus.CONNECTING:
-                self.runNumbers = []
+                self.runNumbers.clear()
                 self.liveDataStatus.setText(f"<font size = 4><b>Live data:</b> {status}...</font>")
 
                 # WARNING (i.e. NOT READY) flash
@@ -430,7 +422,7 @@ class _LiveDataView(_RequestViewBase):
                     self.liveDataIndicator.setFlash(True)
 
             case ReductionStatus.NO_ACTIVE_RUN:
-                self.runNumbers = []
+                self.runNumbers.clear()
                 self.liveDataStatus.setText(f"<font size = 4><b>Live data:</b> {status}</font>")
 
                 # WARNING (i.e. NOT READY) flash
@@ -439,7 +431,7 @@ class _LiveDataView(_RequestViewBase):
                     self.liveDataIndicator.setFlash(True)
 
             case ReductionStatus.ZERO_PROTON_CHARGE:
-                self.runNumbers = []
+                self.runNumbers.clear()
                 self.liveDataStatus.setText(
                     "<p><font size = 4><b>Live data:</b></font>"
                     + "<font size = 4>"
@@ -456,9 +448,10 @@ class _LiveDataView(_RequestViewBase):
                     self.liveDataIndicator.setFlash(True)
 
             case ReductionStatus.READY:
-                liveStateChange = not self.runNumbers or (self.runNumbers[0] != data.runNumber)
+                liveStateChange = not bool(self.runNumbers) or (data.runNumber not in self.runNumbers)
                 if liveStateChange:
-                    self.runNumbers = [data.runNumber]
+                    self.runNumbers.clear()
+                    self.runNumbers.add(data.runNumber)
                     self._populatePixelMaskDropdown(self.useLiteMode())
 
                 # TODO: convert to the local time zone!!

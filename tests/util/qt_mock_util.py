@@ -8,13 +8,15 @@ from qtpy.QtWidgets import (
 
 
 class MockQMessageBox(QWidget):
+    _moduleRoot = "qtpy.QtWidgets"
+
     @Slot(str)
     def fail(self, msg: str):
         print(msg)
         raise Exception(msg)
 
     @staticmethod
-    def exec(msg):
+    def exec(msg, moduleRoot=_moduleRoot):
         myCounterMock = mock.Mock()
 
         def _mockExec(self_):
@@ -22,13 +24,19 @@ class MockQMessageBox(QWidget):
             return (
                 QMessageBox.Ok
                 if (msg in self_.detailedText())
-                else (MockQMessageBox().fail(f"Expected warning not found:  {msg}")),
+                else (
+                    MockQMessageBox().fail(
+                        f"Expected warning not found:  {msg}:\n"
+                        + f"  actual message: {self_.text()};\n"
+                        + f"  actual details: {self_.detailedText()}"
+                    )
+                ),
             )
 
-        return mock.patch("qtpy.QtWidgets.QMessageBox.exec", _mockExec), myCounterMock
+        return mock.patch(moduleRoot + ".QMessageBox.exec", _mockExec), myCounterMock
 
     @staticmethod
-    def critical(msg: str):  # noqa: ARG004
+    def critical(msg: str, moduleRoot=_moduleRoot):  # noqa: ARG004
         myCounterMock = mock.Mock()
 
         def _mockCritical(*args):
@@ -39,10 +47,10 @@ class MockQMessageBox(QWidget):
                 else (MockQMessageBox().fail(f"Expected error does not match: {args[2]}")),
             )
 
-        return mock.patch("qtpy.QtWidgets.QMessageBox.critical", _mockCritical), myCounterMock
+        return mock.patch(moduleRoot + ".QMessageBox.critical", _mockCritical), myCounterMock
 
     @staticmethod
-    def warning(msg: str):  # noqa: ARG004
+    def warning(msg: str, moduleRoot=_moduleRoot):  # noqa: ARG004
         myCounterMock = mock.Mock()
 
         def _mockWarning(*args, **kwargs):
@@ -53,33 +61,29 @@ class MockQMessageBox(QWidget):
                 else (MockQMessageBox().fail(f"Expected error does not match: {args[2]}")),
             )
 
-        return mock.patch("qtpy.QtWidgets.QMessageBox.warning", _mockWarning), myCounterMock
+        return mock.patch(moduleRoot + ".QMessageBox.warning", _mockWarning), myCounterMock
 
     @staticmethod
-    def continueWarning(msg):
+    def continueWarning(msg, moduleRoot=_moduleRoot):
         myCounterMock = mock.Mock()
 
         def _mockExec(self_):
-            # This is a total hack, but the 'ultralite' data has no 'lite' mode!
-            if "No valid FocusGroups were specified for mode: 'lite'" not in self_.detailedText():
-                # Do not count this as a "call".
+            if msg in self_.text():
                 myCounterMock(self_)
-
-            return (
-                QMessageBox.Yes
-                if (
-                    msg in self_.text()
-                    or "No valid FocusGroups were specified for mode: 'lite'" in self_.detailedText()
-                )
-                else (
-                    MockQMessageBox().fail(f"Expected warning not found:  {msg}, nor match to {self_.detailedText()}")
-                ),
+                return QMessageBox.Yes
+            elif "No valid FocusGroups were specified for mode: 'lite'" in self_.detailedText():
+                # TODO: Please fix the input data.  Doing this is really hacky!
+                return QMessageBox.Yes
+            MockQMessageBox().fail(
+                f"Expected warning not found:  {msg}:\n"
+                + f"  actual message: {self_.text()};\n"
+                + f"  actual details: {self_.detailedText()}"
             )
 
-        return mock.patch("qtpy.QtWidgets.QMessageBox.exec", _mockExec), myCounterMock
+        return mock.patch(moduleRoot + ".QMessageBox.exec", _mockExec), myCounterMock
 
     @staticmethod
-    def continueButton(buttonText):
+    def continueButton(buttonText, moduleRoot=_moduleRoot):
         myCounterMock = mock.Mock()
 
         def _mockButton(self_):
@@ -91,4 +95,4 @@ class MockQMessageBox(QWidget):
             myCounterMock.side_effect = text
             return myCounterMock
 
-        return mock.patch("qtpy.QtWidgets.QMessageBox.clickedButton", _mockButton), myCounterMock
+        return mock.patch(moduleRoot + ".QMessageBox.clickedButton", _mockButton), myCounterMock

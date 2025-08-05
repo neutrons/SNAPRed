@@ -615,9 +615,9 @@ class GroceryService:
 
     def _fetchInstrumentDonor(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:
         """
-        The grouping workspaces require an instrument definition, and do not have their own instrument definition
-        saved with them.  Therefore, when loading groupings, it is necessary to match them to
-        the proper instrument definition *with the proper instrument state params*.
+        Grouping and mask workspaces require an instrument definition, and do not have their own instrument definition
+        saved with them.  Therefore, for these workspace types, it is necessary to match them to
+        the proper instrument definition *with the proper instrument state parameters*.
         This uses the run number (and lite mode) to locate the proper state, and from that the proper instrument
         definition with instrument params for that state.
 
@@ -1155,19 +1155,35 @@ class GroceryService:
                 "All 'difc' values must be positive floats."
             )
 
-    def _validateCalibrationMask(self, item: GroceryListItem, maskWorkspaceName: str):
+    def _validateWorkspaceInstrument(self, item: GroceryListItem, workspaceName: str):
         targetPixelCount = (
             Config["instrument.lite.pixelResolution"]
             if item.useLiteMode
             else Config["instrument.native.pixelResolution"]
         )
-        numHistos = self.mantidSnapper.mtd[maskWorkspaceName].getNumberHistograms()
+        targetInstrumentName = (
+            Config["instrument.lite.name"].lower() if item.useLiteMode else Config["instrument.native.name"].lower()
+        )
+        resolutionName = "lite" if item.useLiteMode else "native"
+        ws = self.mantidSnapper.mtd[workspaceName]
+        numHistos = ws.getNumberHistograms()
+        instrumentName = ws.getInstrument().getName().lower()
+        # remove file extensions that may or may not exist
+        instrumentName = instrumentName.split(".")[0]
+        # remove any path that may or may not exist
+        instrumentName = instrumentName.split("/")[-1]
         if numHistos != targetPixelCount:
-            liteStr = "lite" if item.useLiteMode else "native"
             raise RuntimeError(
-                f"Mask workspace '{maskWorkspaceName}' has {numHistos} histograms"
-                f"\nExpected {targetPixelCount} histograms for the {liteStr} resolution."
+                f"Workspace '{workspaceName}' has {numHistos} histograms"
+                f"\nExpected {targetPixelCount} spectra for the {resolutionName} resolution."
                 f"\ni.e. one histogram per pixel of the instrument."
+                f"\nPlease contact your IS or CIS for assistance."
+            )
+        if targetInstrumentName != instrumentName:
+            raise RuntimeError(
+                f"Workspace '{workspaceName}' has an instrument with name '{instrumentName}'"
+                f"\nExpected instrument to be {targetInstrumentName} for the {resolutionName} resolution."
+                f"\nPlease contact your IS or CIS for assistance."
             )
 
     def _loadCalibrationFile(
@@ -1209,9 +1225,6 @@ class GroceryService:
             )
             data["workspace"] = tableWorkspaceName
             self._validateCalibrationTable(item, tableWorkspaceName)
-
-            if bool(maskWorkspaceName):
-                self._validateCalibrationMask(item, maskWorkspaceName)
 
         return data
 
@@ -1499,6 +1512,14 @@ class GroceryService:
                     result = self.fetchReductionPixelMask(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
+
+            if item.workspaceType in ["neutron", "normalization"] and result["loader"] in [
+                "LoadEventNexus",
+                "LoadNexusProcessed",
+            ]:
+                # The loader is not always set but *should* be at least for neutron/norm data.
+                # Validate the instrument and pixel count.
+                self._validateWorkspaceInstrument(item, result["workspace"])
             # check that the fetch operation succeeded and if so append the workspace
             if result["result"] is True:
                 groceries.append(result["workspace"])

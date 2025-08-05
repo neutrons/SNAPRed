@@ -97,7 +97,6 @@ class NormalizationService(Service):
             crystalDBounds=request.crystalDBounds,
             state=state,
         )
-        ingredients = self.sousChef.prepNormalizationIngredients(farmFresh)
 
         # prepare and check focus group workspaces -- see if grouping already calculated
         correctedVanadium = wng.rawVanadium().runNumber(request.runNumber).build()
@@ -109,11 +108,23 @@ class NormalizationService(Service):
             and self.groceryService.workspaceDoesExist(focusedVanadium)
             and self.groceryService.workspaceDoesExist(smoothedVanadium)
         ):
+            calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
+                request.runNumber, request.useLiteMode, state
+            )
+            self.groceryClerk.name("maskWorkspace").diffcal_mask(state, calVersion, request.runNumber).useLiteMode(
+                request.useLiteMode
+            ).add()
+            groceries = self.groceryService.fetchGroceryDict(
+                self.groceryClerk.buildDict(),
+            )
+            maskWorkspace = groceries["maskWorkspace"]
+            # NOTE: It needs to be checked with Malcolm if peaks should be purged
+            detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh, purgePeaks=False, pixelMask=maskWorkspace)
             return NormalizationResponse(
                 correctedVanadium=correctedVanadium,
                 focusedVanadium=focusedVanadium,
                 smoothedVanadium=smoothedVanadium,
-                detectorPeaks=ingredients.detectorPeaks,
+                detectorPeaks=detectorPeaks,
             ).dict()
         calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
             request.runNumber, request.useLiteMode, state
@@ -153,7 +164,7 @@ class NormalizationService(Service):
         groceries = self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
         )
-
+        ingredients = self.sousChef.prepNormalizationIngredients(farmFresh, groceries["maskWorkspace"])
         if request.correctedVanadiumWs is None:
             self._markWorkspaceMetadata(request, groceries["inputWorkspace"])
             # NOTE: This used to point at other methods in this service to accomplish the same thing
