@@ -382,11 +382,22 @@ class Indexer:
         if flattenedVersion in self.index:
             entry = self.index[flattenedVersion]
         elif self.versionPath(flattenedVersion).exists():
+            entry = self.indexEntryFromDisk(flattenedVersion)
+
+        return entry
+
+    def indexEntryFromDisk(self, version: Version) -> IndexEntry:
+        """
+        Returns the index entry for a given version from disk.
+        If the version does not exist, it will return None.
+        """
+        flattenedVersion = self._flattenVersion(version)
+        entry = None
+        if self.versionPath(flattenedVersion).exists():
             if self.isValidVersionFolder(flattenedVersion):
                 entry = self.readRecord(flattenedVersion).indexEntry
             else:
                 logger.error(f"Version folder {self.versionPath(flattenedVersion)} is not valid.")
-
         return entry
 
     def recoverIndex(self, dryrun=True) -> Dict[int, IndexEntry]:
@@ -395,7 +406,7 @@ class Indexer:
         entries = []
         versions = self.readDirectoryList()
         for version in versions:
-            entry = self.indexEntryForVersion(version)
+            entry = self.indexEntryFromDisk(version)
             if entry is not None:
                 entries.append(entry)
             else:

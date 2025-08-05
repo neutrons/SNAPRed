@@ -204,9 +204,9 @@ class TestIndexer(unittest.TestCase):
 
         with self.assertLogs(logger=IndexerModule.logger, level=logging.WARNING) as cm:
             indexer = self.initIndexer()
-        assert str(missingVersion) in cm.output[0]
+        assert "Another user may be calibrating/updating the same directory." in cm.output[0]
 
-        assert list(indexer.index.keys()) == indexVersions
+        assert list(indexer.index.keys()) == recordVersions
 
     def test_init_versions_missing_directory(self):
         # create a situation where the index has a value not reflected in directory tree
@@ -363,7 +363,7 @@ class TestIndexer(unittest.TestCase):
 
         with self.assertLogs(logger=IndexerModule.logger, level=logging.WARNING) as cm:
             indexer = self.initIndexer()
-        assert str(missingVersion) in cm.output[0]
+        assert "Another user may be calibrating/updating the same directory." in cm.output[0]
         assert indexer.currentVersion() == len(recordVersions)
 
     def test_currentVersion_indexhigher(self):
@@ -1043,19 +1043,25 @@ class TestIndexer(unittest.TestCase):
         # recover the index
         self.prepareVersions([1, 2, 3, 4, 5])
 
+        # simulate a corrupted folder by removing some records and parameters
         indexer.recordPath(1).unlink()
         indexer.parametersPath(2).unlink()
 
+        # simulate a record with incorrect version
         record = indexer.readRecord(4)
         record.version = 5
         indexer.recordPath(4).write_text(record.model_dump_json())
 
+        # simulate a parameters file with incorrect version
         parameters = indexer.readParameters(5)
         parameters.version = 6
         indexer.parametersPath(5).write_text(parameters.model_dump_json())
 
+        # remove the index
         indexer.indexPath().unlink()
 
+        # recover the index
+        # we expect only the valid records and parameters to be recovered
         indexer.recoveryMode = True
         indexer.recoverIndex(dryrun=False)
         assert len(indexer.readIndex()) == 1

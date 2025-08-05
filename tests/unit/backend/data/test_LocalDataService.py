@@ -342,6 +342,7 @@ def do_test_read_state_no_version(workflow: Literal["Calibration", "Normalizatio
             indexer.index = {
                 currentVersion: mock.MagicMock(appliesTo="123", version=currentVersion)
             }  # NOTE manually update indexer
+            indexer = mock.MagicMock(wraps=indexer)
             indexer.dirVersions = [currentVersion]  # NOTE manually update indexer
             with mock.patch.object(localDataService, f"{workflow.lower()}Indexer", mock.Mock(return_value=indexer)):
                 actualParameters = getattr(localDataService, f"read{workflow}State")(
