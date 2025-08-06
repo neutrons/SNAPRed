@@ -18,6 +18,7 @@ from snapred.backend.dao.normalization.NormalizationRecord import NormalizationR
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Enum import StrEnum
+from snapred.meta.LockFile import LockFile, LockManager
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
 
@@ -102,7 +103,6 @@ class Indexer:
         self.rootDirectory = Path(directory)
         # no index on disk is valid until we attempt to read an indexed object.
         self.index = self.readIndex(init=True)
-        self.dirVersions = self.readDirectoryList()
         self.reconcileIndexToFiles()
 
     def __del__(self):
@@ -110,6 +110,20 @@ class Indexer:
         if self.rootDirectory.exists():
             self.reconcileIndexToFiles()
             self.writeIndex()
+
+    @property
+    def dirVersions(self):
+        return self.readDirectoryList()
+
+    def obtainLock(self):
+        """
+        Obtain a lock on the indexer directory.
+        This is used to prevent concurrent writes to the indexer.
+        """
+        return LockFile(self.rootDirectory)
+
+    def _lockContext(self):
+        return LockManager(self.rootDirectory)
 
     def readDirectoryList(self):
         # create the directory version list from the directory structure
@@ -130,12 +144,15 @@ class Indexer:
         return versions
 
     def reconcileIndexToFiles(self):
-        self.dirVersions = self.readDirectoryList()
         indexVersions = set(self.index.keys())
         # if a directory has no entry in the index, warn
         missingEntries = self.dirVersions.difference(indexVersions)
         if len(missingEntries) > 0:
-            logger.warn(f"The following versions are expected, but missing from the index: {missingEntries}")
+            logger.warn(
+                "Another user may be calibrating/updating the same directory.\n"
+                + "New versions found on disk.\n"
+                + f"{self.rootDirectory}"
+            )
 
         # if an entry in the index has no directory, throw an error
         missingRecords = indexVersions.difference(self.dirVersions)
@@ -155,10 +172,7 @@ class Indexer:
                     )
                 )
 
-        # take the set of versions common to both
-        commonVersions = self.dirVersions & indexVersions
-        self.dirVersions = commonVersions
-        self.index = {version: self.index[version] for version in commonVersions}
+        self.index = {version: self.indexEntryForVersion(version) for version in self.dirVersions}
 
     ## VERSION GETTERS ##
 
@@ -358,16 +372,43 @@ class Indexer:
 
         return True
 
+    def indexEntryForVersion(self, version: Version) -> IndexEntry:
+        """
+        Returns the index entry for a given version.
+        If the version does not exist, it will return None.
+        """
+        flattenedVersion = self._flattenVersion(version)
+        entry = None
+        if flattenedVersion in self.index:
+            entry = self.index[flattenedVersion]
+        elif self.versionPath(flattenedVersion).exists():
+            entry = self.indexEntryFromDisk(flattenedVersion)
+
+        return entry
+
+    def indexEntryFromDisk(self, version: Version) -> IndexEntry:
+        """
+        Returns the index entry for a given version from disk.
+        If the version does not exist, it will return None.
+        """
+        flattenedVersion = self._flattenVersion(version)
+        entry = None
+        if self.versionPath(flattenedVersion).exists():
+            if self.isValidVersionFolder(flattenedVersion):
+                entry = self.readRecord(flattenedVersion).indexEntry
+            else:
+                logger.error(f"Version folder {self.versionPath(flattenedVersion)} is not valid.")
+        return entry
+
     def recoverIndex(self, dryrun=True) -> Dict[int, IndexEntry]:
         # iterate through the directory structure and create an index from the files
         indexPath: Path = self.indexPath()
         entries = []
         versions = self.readDirectoryList()
         for version in versions:
-            if self.isValidVersionFolder(version):
-                # read the record file
-                record = self.readRecord(version)
-                entries.append(record.indexEntry)
+            entry = self.indexEntryFromDisk(version)
+            if entry is not None:
+                entries.append(entry)
             else:
                 logger.error(f"Version folder {self.versionPath(version)} is not valid. Skipping version {version}.")
 
@@ -408,18 +449,22 @@ class Indexer:
         return {entry.version: entry for entry in indexList}
 
     def writeIndex(self):
-        path = self.indexPath()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        write_model_list_pretty(self.index.values(), path)
+        with self._lockContext():
+            path = self.indexPath()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            write_model_list_pretty(self.index.values(), path)
 
     def addIndexEntry(self, entry: IndexEntry):
         """
         Will save at the version on the index entry.
         If the version is invalid, will throw an error and refuse to save.
         """
-        entry.version = self._flattenVersion(entry.version)
-        self.index[entry.version] = entry
-        self.writeIndex()
+        with self._lockContext():
+            if set(self.index.keys()) != self.dirVersions:
+                self.reconcileIndexToFiles()
+            entry.version = self._flattenVersion(entry.version)
+            self.index[entry.version] = entry
+            self.writeIndex()
 
     ## RECORD READ / WRITE METHODS ##
 
@@ -490,27 +535,26 @@ class Indexer:
         Will save at the version on the object.
         If the version is invalid, will throw an error and refuse to save.
         """
-        obj.version = self._flattenVersion(obj.version)
-        obj.indexEntry.version = obj.version
-        filePath = self.indexedObjectFilePath(type(obj), obj.version)
-        if not overwrite and filePath.exists():
-            objTypeName = type(obj).__name__
-            raise ValueError(
-                f"{objTypeName} with version {obj.version} already exists. "
-                f"\nA version collision has occurred. No {objTypeName} was saved."
-            )
+        with self._lockContext():
+            obj.version = self._flattenVersion(obj.version)
+            obj.indexEntry.version = obj.version
+            filePath = self.indexedObjectFilePath(type(obj), obj.version)
+            if not overwrite and filePath.exists():
+                objTypeName = type(obj).__name__
+                raise ValueError(
+                    f"{objTypeName} with version {obj.version} already exists. "
+                    f"\nA version collision has occurred. No {objTypeName} was saved."
+                )
 
-        if obj.indexEntry.appliesTo is None:
-            obj.indexEntry.appliesTo = ">=" + obj.runNumber
+            if obj.indexEntry.appliesTo is None:
+                obj.indexEntry.appliesTo = ">=" + obj.runNumber
 
-        self.addIndexEntry(obj.indexEntry)
-        obj.version = obj.indexEntry.version
+            self.addIndexEntry(obj.indexEntry)
+            obj.version = obj.indexEntry.version
 
-        filePath.parent.mkdir(parents=True, exist_ok=True)
+            filePath.parent.mkdir(parents=True, exist_ok=True)
 
-        write_model_pretty(obj, filePath)
-
-        self.dirVersions.add(obj.version)
+            write_model_pretty(obj, filePath)
 
     def readIndexedObject(self, type_: Type[T], version: Version) -> IndexedObject:
         """

@@ -48,6 +48,24 @@ class TestDataExportService(unittest.TestCase):
         self.instance.getUniqueTimestamp()
         assert self.instance.dataService.getUniqueTimestamp.called
 
+    def test_obtainNormalizationLock(self):
+        runNumber = "123456"
+        useLiteMode = True
+        with mock.patch.object(self.instance.dataService, "generateStateId") as mockGenerateStateId:
+            mockGenerateStateId.return_value = ("1a2b3c4d5e6f7a8b", None)
+            self.instance.obtainNormalizationLock(runNumber, useLiteMode)
+            assert mockGenerateStateId.called
+        assert self.instance.dataService.obtainNormalizationLock.called
+
+    def test_obtainCalibrationLock(self):
+        runNumber = "123456"
+        useLiteMode = True
+        with mock.patch.object(self.instance.dataService, "generateStateId") as mockGenerateStateId:
+            mockGenerateStateId.return_value = ("1a2b3c4d5e6f7a8b", None)
+            self.instance.obtainCalibrationLock(runNumber, useLiteMode)
+            assert mockGenerateStateId.called
+        assert self.instance.dataService.obtainCalibrationLock.called
+
     ##### TEST CALIBRATION METHODS #####
 
     def test_exportCalibrationIndexEntry(self):

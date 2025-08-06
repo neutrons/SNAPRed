@@ -17,6 +17,7 @@ from snapred.backend.dao.request import (
     RunMetadataRequest,
     SimpleDiffCalRequest,
 )
+from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
 from snapred.backend.dao.request.RenameWorkspaceRequest import RenameWorkspaceRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
@@ -26,6 +27,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
+from snapred.meta.LockFile import LockFile
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
@@ -659,6 +661,11 @@ class DiffCalWorkflow(WorkflowImplementer):
     def _saveCalibration(self, workflowPresenter):
         view: DiffCalSaveView = workflowPresenter.widget.tabView
         runNumber, version, appliesTo, comments, author = view.validateAndReadForm()
+        lockPayload = CalibrationLockRequest(
+            runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
+        )
+        lock: LockFile = self.request(path="calibration/lock", payload=lockPayload.model_dump_json()).data
 
         # if this is not the first iteration, account for choice.
         if workflowPresenter.iteration > 1:
@@ -688,4 +695,5 @@ class DiffCalWorkflow(WorkflowImplementer):
         )
 
         response = self.request(path="calibration/save", payload=payload.json())
+        lock.release()
         return response
