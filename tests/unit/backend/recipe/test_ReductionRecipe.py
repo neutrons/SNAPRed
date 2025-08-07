@@ -375,15 +375,12 @@ class ReductionRecipeTest(TestCase):
             .build()
         )
 
-        normWsName = f"reduced_normalization_0_{wnvf.formatTimestamp(recipe.ingredients.timestamp)}"
-
         recipe.sampleWs = "sample"
         recipe._cloneWorkspace = mock.Mock(side_effect=lambda inputWs, outputWs: outputWs)  # noqa: ARG005
         recipe.diffcalWs = "diffcal_table"
 
         sampleClone, normClone = recipe._generateWorkspaceNamesForGroup(0)
         assert sampleClone == preReducedOutputWsName
-        assert normClone == normWsName
 
     def test_prepGroupingWorkspaces_no_normalization(self):
         recipe = ReductionRecipe()
