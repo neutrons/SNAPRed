@@ -1,0 +1,41 @@
+name: Regenerate Lockfile
+
+env:
+  BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  regenerate-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ env.BRANCH_NAME }}
+      - name: Check if bot already committed
+        id: check
+        run: |
+          if git log --pretty=format:"%s" | grep -q "BOT: regenerate pixi.lock"; then
+            echo "Already modified. Skipping..."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+      - uses: prefix-dev/setup-pixi@v0.8.8
+        if: steps.check.outputs.skip == 'false'
+        with:
+          pixi-version: v0.41.4
+          manifest-path: pyproject.toml
+      - name: regenerate lockfile
+        run: |
+          rm pixi.lock
+          pixi install
+      - uses: EndBug/add-and-commit@v9
+        if: steps.check.outputs.skip == 'false'
+        with:
+          default_author: github_actions
+          message: "BOT: regenerate pixi.lock"
+          add: "pixi.lock"
