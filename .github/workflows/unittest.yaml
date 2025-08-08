@@ -14,6 +14,8 @@ on:
 jobs:
   lockfile-check:
     runs-on: ubuntu-latest
+    outputs:
+      lockfile_approved: ${{ steps.check.outputs.lockfile_approved }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,14 +26,13 @@ jobs:
         run: |
           if git log --pretty=format:"%s" | grep -q "BOT: regenerate pixi.lock"; then
             echo "Already modified. Skipping..."
-            echo "LOCKFILE_APPROVED=true" >> $GITHUB_ENV
+            echo "lockfile_approved=true" >> $GITHUB_OUTPUT
           else
-            echo "LOCKFILE_APPROVED=false" >> $GITHUB_ENV
-          fi
-
+            echo "lockfile_approved=false" >> $GITHUB_OUTPUT
   linux:
     runs-on: ubuntu-latest
-    if: ${{ env.LOCKFILE_APPROVED }} == 'true' || github.event_name != 'pull_request'
+    needs: lockfile-check
+    if: ${{ needs.lockfile-check.outputs.lockfile_approved == 'true' || github.event_name != 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -66,12 +67,10 @@ jobs:
           files: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
-          fail_ci_if_error: false
-          verbose: true
-
   integration-tests:
     runs-on: ubuntu-latest
-    if: env.LOCKFILE_APPROVED == 'true' || github.event_name != 'pull_request'
+    needs: lockfile-check
+    if: ${{ needs.lockfile-check.outputs.lockfile_approved == 'true' || github.event_name != 'pull_request' }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -98,13 +97,10 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.xml
         flags: integration
-        name: codecov-integration
-        fail_ci_if_error: false
-        verbose: true
-
   gui-tests:
     runs-on: ubuntu-latest
-    if: env.LOCKFILE_APPROVED == 'true' || github.event_name != 'pull_request'
+    needs: lockfile-check
+    if: ${{ needs.lockfile-check.outputs.lockfile_approved == 'true' || github.event_name != 'pull_request' }}
     steps:
     - uses: actions/checkout@v4
     - uses: prefix-dev/setup-pixi@v0.8.8
