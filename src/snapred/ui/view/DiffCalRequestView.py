@@ -21,11 +21,14 @@ class DiffCalRequestView(BackendRequestView):
 
     """
 
+    signalUpdatePeakFunctionIndex = Signal(int)
     signalUpdateRunMetadata = Signal(object)  # `Signal(RunMetadata | None)` as `Signal(object)`
 
     def __init__(self, samples=[], groups=[], parent=None):
         super().__init__(parent=parent)
-
+        
+        # connect internal signals
+        self.signalUpdatePeakFunctionIndex.connect(self._setPeakFunctionIndex)
         self.signalUpdateRunMetadata.connect(self._setRunMetadata)
 
         # input fields
@@ -123,6 +126,13 @@ class DiffCalRequestView(BackendRequestView):
 
     def enablePeakFunction(self):
         self.peakFunctionDropdown.setEnabled(True)
+
+    def updatePeakFunctionIndex(self, index):
+        self.signalUpdatePeakFunctionIndex.emit(index)
+        
+    @Slot(int)
+    def _setPeakFunctionIndex(self, index):
+        self.peakFunctionDropdown.dropDown.setCurrentIndex(index)
 
     def updateRunMetadata(self, metadata: RunMetadata | None):
         self.signalUpdateRunMetadata.emit(metadata)

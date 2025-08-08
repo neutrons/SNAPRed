@@ -46,6 +46,7 @@ class DiffCalTweakPeakView(BackendRequestView):
     signalPurgeBadPeaks = Signal(float)
     signalUpdateXTAL_DMIN = Signal(float)
     signalUpdateXTAL_DMAX = Signal(float)
+    signalUpdatePeakFunctionIndex = Signal(int)
 
     def __init__(self, samples=[], groups=[], parent=None):
         super().__init__(parent=parent)
@@ -63,10 +64,13 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.runNumberField = self._labeledField("Run Number")
         self.liteModeToggle = self._labeledToggle("Lite Mode", True)
         self.maxChiSqField = self._labeledField("Max Chi Sq", text=str(self.MAX_CHI_SQ))
+        
+        # connect internal signals
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
         self.signalMaxChiSqUpdate.connect(self._updateMaxChiSq)
         self.signalUpdateXTAL_DMIN.connect(self._setXtalDMin)
         self.signalUpdateXTAL_DMAX.connect(self._setXtalDMax)
+        self.signalUpdatePeakFunctionIndex.connect(self._setPeakFunctionIndex)
 
         # skip pixel calibration toggle
         self.skipPixelCalToggle = self._labeledToggle("Skip Pixel Calibration", False)
@@ -400,3 +404,10 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     def enablePeakFunction(self):
         self.peakFunctionDropdown.setEnabled(True)
+
+    def updatePeakFunctionIndex(self, index):
+        self.signalUpdatePeakFunctionIndex.emit(index)
+        
+    @Slot(int)
+    def _setPeakFunctionIndex(self, index):
+        self.peakFunctionDropdown.dropDown.setCurrentIndex(index)
