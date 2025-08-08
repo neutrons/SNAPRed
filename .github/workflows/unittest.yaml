@@ -31,7 +31,7 @@ jobs:
 
   linux:
     runs-on: ubuntu-latest
-    if: env.LOCKFILE_APPROVED == 'true' || github.event_name != 'pull_request'
+    if: ${{ env.LOCKFILE_APPROVED }} == 'true' || github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
