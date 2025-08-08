@@ -42,4 +42,4 @@ jobs:
       - name: Invoke Tests
         uses: benc-uk/workflow-dispatch@v1
         with:
-          workflow: unit-test
+          workflow: .github/workflows/unittest.yaml
