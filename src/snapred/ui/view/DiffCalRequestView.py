@@ -132,7 +132,7 @@ class DiffCalRequestView(BackendRequestView):
         
     @Slot(int)
     def _setPeakFunctionIndex(self, index):
-        self.peakFunctionDropdown.dropDown.setCurrentIndex(index)
+        self.peakFunctionDropdown.setCurrentIndex(index)
 
     def updateRunMetadata(self, metadata: RunMetadata | None):
         self.signalUpdateRunMetadata.emit(metadata)

@@ -410,4 +410,4 @@ class DiffCalTweakPeakView(BackendRequestView):
         
     @Slot(int)
     def _setPeakFunctionIndex(self, index):
-        self.peakFunctionDropdown.dropDown.setCurrentIndex(index)
+        self.peakFunctionDropdown.setCurrentIndex(index)
