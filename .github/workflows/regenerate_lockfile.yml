@@ -43,3 +43,4 @@ jobs:
         uses: benc-uk/workflow-dispatch@v1
         with:
           workflow: .github/workflows/unittest.yaml
+          ref: ${{ env.BRANCH_NAME }}
