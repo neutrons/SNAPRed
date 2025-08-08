@@ -39,3 +39,7 @@ jobs:
           default_author: github_actions
           message: "BOT: regenerate pixi.lock"
           add: "pixi.lock"
+      - name: Invoke Tests
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: unittest.yaml
