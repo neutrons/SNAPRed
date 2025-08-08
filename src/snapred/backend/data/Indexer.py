@@ -111,7 +111,7 @@ class Indexer:
             if self.rootDirectory.exists():
                 self.reconcileIndexToFiles()
                 self.writeIndex()
-        except BaseException:  # noqa: PT011
+        except BaseException:  # noqa: BLE001
             # Don't care about any exceptions thrown during `__del__`.
             pass
 
