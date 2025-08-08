@@ -220,6 +220,13 @@ class ReductionService(Service):
         # attach the list of grouping workspaces to the grocery dictionary
         groceries["groupingWorkspaces"] = groupingResults["groupingWorkspaces"]
 
+        workspaceMetadata: WorkspaceMetadata = self.groceryService.getSNAPRedWorkspaceMetadata(
+            groceries["inputWorkspace"]
+        )
+        isDiagnostic = workspaceMetadata.diffcalState != DiffcalStateMetadata.EXISTS
+        isDiagnostic = isDiagnostic or workspaceMetadata.normalizationState != NormalizationStateMetadata.EXISTS
+        ingredients.isDiagnostic = isDiagnostic
+
         data = ReductionRecipe().cook(ingredients, groceries)
         record = self._createReductionRecord(request, ingredients, data["outputs"])
 

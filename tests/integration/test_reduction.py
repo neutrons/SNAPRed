@@ -322,8 +322,8 @@ class TestGUIPanels:
 
                 adsList = gui.workspaceWidget._ads.getObjectNames()
                 assert len(adsList) > 1
-                expectedWorksapce = "_reduced_dsp_column_0" + reductionRunNumber + "_" + timeStamp
-                assert expectedWorksapce in adsList
+                expectedWorkspace = "_reduced_dsp_column_0" + reductionRunNumber + "_" + timeStamp
+                assert expectedWorkspace in adsList
                 import shutil
 
                 shutil.rmtree(fullPath)
@@ -416,6 +416,9 @@ class TestGUIPanels:
                     qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
                 qtbot.wait(1000)
 
+                expectedWorkspace = "_diagnostic_dsp_column_0" + "58810" + "_"
+                workspaces = gui.workspaceWidget._ads.getObjectNames()
+                assert any(expectedWorkspace in item for item in workspaces), workspaces
                 gui.workspaceWidget._ads.clear()
                 requestView._requestView.clearRunNumbers()
 

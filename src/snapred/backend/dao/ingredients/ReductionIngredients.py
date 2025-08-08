@@ -35,6 +35,7 @@ class ReductionIngredients(BaseModel):
     peakIntensityThreshold: Optional[float]
 
     keepUnfocused: bool
+    isDiagnostic: bool = True
     convertUnitsTo: str
     artificialNormalizationIngredients: Optional[ArtificialNormalizationIngredients] = None
 

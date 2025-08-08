@@ -811,6 +811,22 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance.setWorkspaceTag.call_count == 2  # one for each metadata field set
         self.instance.setWorkspaceTag.assert_called_with(wsName, "liteDataCompressionTolerance", 0.1)
 
+    def test_getSNAPRedWorkspaceMetadata(self):
+        """Test the correct behavior of the getSNAPRedWorkspaceMetadata method"""
+        wsName = "testWsName"
+        metadata = WorkspaceMetadata(diffcalState=DiffcalStateMetadata.ALTERNATE, liteDataCompressionTolerance=0.1)
+        with (
+            mock.patch.object(self.instance, "workspaceDoesExist", return_value=True),
+            mock.patch.object(self.instance, "workspaceMetadataService") as mockMetadataService,
+        ):
+            mockMetadataService.readWorkspaceMetadata = mock.Mock(return_value=metadata)
+            result = self.instance.getSNAPRedWorkspaceMetadata(wsName)
+            mockMetadataService.readWorkspaceMetadata.assert_called_once_with(wsName)
+            assert result == metadata
+
+        with pytest.raises(RuntimeError, match="Workspace nonExistentWs does not exist"):
+            self.instance.getSNAPRedWorkspaceMetadata("nonExistentWs")
+
     ## TEST CLEANUP METHODS
 
     def test_deleteWorkspace(self):
