@@ -64,7 +64,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.runNumberField = self._labeledField("Run Number")
         self.liteModeToggle = self._labeledToggle("Lite Mode", True)
         self.maxChiSqField = self._labeledField("Max Chi Sq", text=str(self.MAX_CHI_SQ))
-        
+
         # connect internal signals
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
         self.signalMaxChiSqUpdate.connect(self._updateMaxChiSq)
@@ -407,7 +407,7 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     def updatePeakFunctionIndex(self, index):
         self.signalUpdatePeakFunctionIndex.emit(index)
-        
+
     @Slot(int)
     def _setPeakFunctionIndex(self, index):
         self.peakFunctionDropdown.setCurrentIndex(index)

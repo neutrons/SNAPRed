@@ -26,7 +26,7 @@ class DiffCalRequestView(BackendRequestView):
 
     def __init__(self, samples=[], groups=[], parent=None):
         super().__init__(parent=parent)
-        
+
         # connect internal signals
         self.signalUpdatePeakFunctionIndex.connect(self._setPeakFunctionIndex)
         self.signalUpdateRunMetadata.connect(self._setRunMetadata)
@@ -129,7 +129,7 @@ class DiffCalRequestView(BackendRequestView):
 
     def updatePeakFunctionIndex(self, index):
         self.signalUpdatePeakFunctionIndex.emit(index)
-        
+
     @Slot(int)
     def _setPeakFunctionIndex(self, index):
         self.peakFunctionDropdown.setCurrentIndex(index)
