@@ -72,9 +72,17 @@ class TestLockFile:
         with TemporaryDirectory() as temp_dir:
             lockedPath = Path(temp_dir)
             lockedPath_str = str(lockedPath)
+            lockFilePaths = []
+            with (
+                Config_override("lockfile.ttl", 0),
+                Config_override("lockfile.checkFrequency", 0.1),
+                Config_override("lockfile.timeout", 1),
+            ):
+                with multiprocessing.Pool(processes=1) as pool:
+                    lockFilePaths.extend(pool.map(create_lock_file, [lockedPath_str]))
 
-            with multiprocessing.Pool(processes=2) as pool:
-                lockFilePaths = pool.map(create_lock_file, [lockedPath_str, lockedPath_str])
+                with multiprocessing.Pool(processes=1) as pool:
+                    lockFilePaths.extend(pool.map(create_lock_file, [lockedPath_str]))
 
             assert len(lockFilePaths) == 2
             assert lockFilePaths[0] != lockFilePaths[1]

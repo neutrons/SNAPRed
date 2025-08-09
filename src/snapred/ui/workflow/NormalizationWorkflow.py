@@ -9,6 +9,7 @@ from snapred.backend.dao.request import (
     HasStateRequest,
     NormalizationExportRequest,
     NormalizationRequest,
+    OverrideRequest,
     RunMetadataRequest,
 )
 from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
@@ -70,7 +71,11 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._requestView.liteModeToggle.stateChanged.connect(self._switchLiteNativeGroups)
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
         self._requestView.backgroundRunNumberField.editingFinished.connect(self._verifyBackgroundRunNumber)
+        self._requestView.sampleDropdown.dropDown.currentIndexChanged.connect(self._checkForOverrides)
         self._tweakPeakView.signalValueChanged.connect(self.onNormalizationValueChange)
+
+        self.prevXtalDMin = NormalizationTweakPeakView.XTAL_DMIN_DEFAULT
+        self.prevXtalDMax = NormalizationTweakPeakView.XTAL_DMAX_DEFAULT
 
         self.workflow = (
             WorkflowBuilder(
@@ -121,8 +126,19 @@ class NormalizationWorkflow(WorkflowImplementer):
             return
         self.workflow.presenter.handleAction(
             self.handleRunMetadata,
-            args=(runNumber,),
+            args=runNumber,
             onSuccess=lambda: self._setInteractive(True),
+        )
+
+    @ExceptionToErrLog
+    @Slot()
+    def _checkForOverrides(self):
+        sampleFile = self._requestView.sampleDropdown.currentText()
+        if not bool(sampleFile):
+            return
+        self._requestView.sampleDropdown.setEnabled(False)
+        self.workflow.presenter.handleAction(
+            self._handleOverrides, args=sampleFile, onSuccess=lambda: self._requestView.sampleDropdown.setEnabled(True)
         )
 
     def handleDropdown(self, runNumber, useLiteMode):
@@ -148,6 +164,38 @@ class NormalizationWorkflow(WorkflowImplementer):
         payload = RunMetadataRequest(runId=runNumber)
         metadata = self.request(path="calibration/runMetadata", payload=payload.model_dump_json()).data
         self._requestView.updateRunMetadata(metadata)
+        return SNAPResponse(code=ResponseCode.OK)
+
+    def _handleOverrides(self, sampleFile):
+        payload = OverrideRequest(calibrantSamplePath=sampleFile)
+        overrides = self.request(path="calibration/override", payload=payload.model_dump_json()).data
+
+        if not overrides:
+            self._tweakPeakView.updateXtalDMin(NormalizationTweakPeakView.XTAL_DMIN_DEFAULT)
+            self._tweakPeakView.enableXtalDMin()
+            self._tweakPeakView.updateXtalDMax(NormalizationTweakPeakView.XTAL_DMAX_DEFAULT)
+            self._tweakPeakView.enableXtalDMax()
+
+            return SNAPResponse(code=ResponseCode.OK)
+
+        if "crystalDMin" in overrides:
+            newDMin = overrides["crystalDMin"]
+            self._tweakPeakView.updateXtalDMin(newDMin)
+            self._tweakPeakView.disableXtalDMin()
+            self.prevXtalDMin = newDMin
+        else:
+            self._tweakPeakView.updateXtalDMin(NormalizationTweakPeakView.XTAL_DMIN_DEFAULT)
+            self._tweakPeakView.enableXtalDMin()
+
+        if "crystalDMax" in overrides:
+            newDMax = overrides["crystalDMax"]
+            self._tweakPeakView.updateXtalDMax(newDMax)
+            self._tweakPeakView.disableXtalDMax()
+            self.prevXtalDMax = newDMax
+        else:
+            self._tweakPeakView.updateXtalDMax(NormalizationTweakPeakView.XTAL_DMAX_DEFAULT)
+            self._tweakPeakView.enableXtalDMax()
+
         return SNAPResponse(code=ResponseCode.OK)
 
     @EntryExitLogger(logger=logger)

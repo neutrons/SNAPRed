@@ -44,6 +44,8 @@ class NormalizationTweakPeakView(BackendRequestView):
     signalUpdateRecalculationButton = Signal(bool)
     signalUpdateFields = Signal(int, int, float)
     signalPopulateGroupingDropdown = Signal(list)
+    signalUpdateXtalDMin = Signal(float)
+    signalUpdateXtalDMax = Signal(float)
 
     def __init__(self, samples=[], groups=[], parent=None):
         super().__init__(parent=parent)
@@ -72,8 +74,8 @@ class NormalizationTweakPeakView(BackendRequestView):
 
         # create the adjustment controls
         self.smoothingSlider = self._labeledField("Smoothing", SmoothingSlider())
-        self.fieldXtalDMin = self._labeledField("xtal dMin", text=str(self.XTAL_DMIN))
-        self.fieldXtalDMax = self._labeledField("xtal dMax", text=str(self.XTAL_DMAX))
+        self.fieldXtalDMin = self._labeledField("xtal dMin", text=str(self.XTAL_DMIN_DEFAULT))
+        self.fieldXtalDMax = self._labeledField("xtal dMax", text=str(self.XTAL_DMAX_DEFAULT))
         peakControlLayout = QHBoxLayout()
         peakControlLayout.addWidget(self.smoothingSlider, 2)
         peakControlLayout.addWidget(self.fieldXtalDMin)
@@ -102,13 +104,15 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
         self.signalUpdateFields.connect(self._updateFields)
         self.signalPopulateGroupingDropdown.connect(self._populateGroupingDropdown)
+        self.signalUpdateXtalDMin.connect(self._setXtalDMin)
+        self.signalUpdateXtalDMax.connect(self._setXtalDMax)
 
     @classproperty
-    def XTAL_DMIN(cls):
+    def XTAL_DMIN_DEFAULT(cls):
         return Config["constants.CrystallographicInfo.crystalDMin"]
 
     @classproperty
-    def XTAL_DMAX(cls):
+    def XTAL_DMAX_DEFAULT(cls):
         return Config["constants.CrystallographicInfo.crystalDMax"]
 
     @Slot(str)
@@ -133,6 +137,32 @@ class NormalizationTweakPeakView(BackendRequestView):
 
     def updateFields(self, sampleIndex, groupingIndex, smoothingParameter):
         self.signalUpdateFields.emit(sampleIndex, groupingIndex, smoothingParameter)
+
+    @Slot(float)
+    def _setXtalDMin(self, value):
+        self.fieldXtalDMin.setText(str(value))
+
+    def updateXtalDMin(self, value):
+        self.signalUpdateXtalDMin.emit(value)
+
+    def disableXtalDMin(self):
+        self.fieldXtalDMin.setEnabled(False)
+
+    def enableXtalDMin(self):
+        self.fieldXtalDMin.setEnabled(True)
+
+    @Slot(float)
+    def _setXtalDMax(self, value):
+        self.fieldXtalDMax.setText(str(value))
+
+    def updateXtalDMax(self, value):
+        self.signalUpdateXtalDMax.emit(value)
+
+    def disableXtalDMax(self):
+        self.fieldXtalDMax.setEnabled(False)
+
+    def enableXtalDMax(self):
+        self.fieldXtalDMax.setEnabled(True)
 
     def validateAndReadForm(self):
         # verify the fields before recalculation

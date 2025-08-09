@@ -107,9 +107,13 @@ class Indexer:
 
     def __del__(self):
         # define the index to automatically write itself whenever the program closes
-        if self.rootDirectory.exists():
-            self.reconcileIndexToFiles()
-            self.writeIndex()
+        try:
+            if self.rootDirectory.exists():
+                self.reconcileIndexToFiles()
+                self.writeIndex()
+        except BaseException:  # noqa: BLE001
+            # Don't care about any exceptions thrown during `__del__`.
+            pass
 
     @property
     def dirVersions(self):
