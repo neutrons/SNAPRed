@@ -28,6 +28,7 @@ from util.state_helpers import reduction_root_redirect
 
 ## SNAPRed imports
 from snapred.backend.api.RequestScheduler import RequestScheduler
+from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -526,7 +527,7 @@ class TestReductionService(unittest.TestCase):
 
     def test_validateReduction(self):
         fakeDataService = mock.Mock()
-        fakeDataService.calibrationExists.return_value = True
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = mock.sentinel.version
         fakeDataService.normalizationExists.return_value = True
         fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
@@ -539,11 +540,8 @@ class TestReductionService(unittest.TestCase):
 
     def test_validateReduction_noCalibration(self):
         # assert ContinueWarning is raised
-
-        # copilot come on, we have tested for exceptions before, please pick up on this
-        # its even in the same file
         fakeDataService = mock.Mock()
-        fakeDataService.calibrationExists.return_value = False
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = VERSION_START()
         fakeDataService.normalizationExists.return_value = True
         fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
@@ -551,10 +549,24 @@ class TestReductionService(unittest.TestCase):
             self.instance.validateReduction(self.request)
         assert excInfo.value.model.flags == ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
 
+    def test_validateReduction_noCalibration_error(self):
+        # assert ContinueWarning is raised:
+        #   when the state is uninitialized, `getLatestApplicableCalibrationVersion` will return `None`.
+        fakeDataService = mock.Mock()
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = None
+        fakeDataService.normalizationExists.return_value = True
+        fakeDataService.constructStateId.return_value = ("state", None)
+        self.instance.dataFactoryService = fakeDataService
+        with pytest.raises(
+            RuntimeError,
+            match="Usage error.*diffraction-calibration version should always be at least the default version.*",
+        ):
+            self.instance.validateReduction(self.request)
+
     def test_validateReduction_noNormalization(self):
         # assert ContinueWarning is raised
         fakeDataService = mock.Mock()
-        fakeDataService.calibrationExists.return_value = True
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = mock.sentinel.version
         fakeDataService.normalizationExists.return_value = False
         fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
@@ -565,7 +577,7 @@ class TestReductionService(unittest.TestCase):
     def test_validateReduction_reentry(self):
         # assert ContinueWarning is NOT raised multiple times
         fakeDataService = mock.Mock()
-        fakeDataService.calibrationExists.return_value = False
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = VERSION_START()
         fakeDataService.normalizationExists.return_value = False
         fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
@@ -577,7 +589,7 @@ class TestReductionService(unittest.TestCase):
     def test_validateReduction_no_permissions(self):
         # assert ContinueWarning is raised
         fakeDataService = mock.Mock()
-        fakeDataService.calibrationExists.return_value = True
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = mock.sentinel.version
         fakeDataService.normalizationExists.return_value = True
         fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
@@ -591,7 +603,7 @@ class TestReductionService(unittest.TestCase):
     def test_validateReduction_no_permissions_with_path(self):
         # assert ContinueWarning is raised, and a path actually exists
         fakeDataService = mock.Mock()
-        fakeDataService.calibrationExists.return_value = True
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = mock.sentinel.version
         fakeDataService.normalizationExists.return_value = True
         fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
@@ -605,7 +617,7 @@ class TestReductionService(unittest.TestCase):
     def test_validateReduction_no_permissions_no_IPTS(self):
         # assert ContinueWarning is raised, and there's no IPTS
         fakeDataService = mock.Mock()
-        fakeDataService.calibrationExists.return_value = True
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = mock.sentinel.version
         fakeDataService.normalizationExists.return_value = True
         fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
@@ -619,7 +631,7 @@ class TestReductionService(unittest.TestCase):
     def test_validateReduction_no_permissions_reentry(self):
         # assert ContinueWarning is NOT raised multiple times
         fakeDataService = mock.Mock()
-        fakeDataService.calibrationExists.return_value = True
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = mock.sentinel.version
         fakeDataService.normalizationExists.return_value = True
         fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
@@ -630,9 +642,9 @@ class TestReductionService(unittest.TestCase):
         self.instance.validateReduction(self.request)
 
     def test_validateReduction_no_permissions_and_no_calibrations(self):
-        # assert ContinueWarning is raised
+        # assert that the correct ContinueWarning is raised
         fakeDataService = mock.Mock()
-        fakeDataService.calibrationExists.return_value = False
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = VERSION_START()
         fakeDataService.normalizationExists.return_value = False
         fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
@@ -661,15 +673,15 @@ class TestReductionService(unittest.TestCase):
         self.request.continueFlags = (
             ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
         )
+
         with pytest.raises(ContinueWarning) as excInfo:
             self.instance.validateReduction(self.request)
-
         assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
 
     def test_validateReduction_no_permissions_and_no_calibrations_second_reentry(self):
         # assert ContinueWarning is raised
         fakeDataService = mock.Mock()
-        fakeDataService.calibrationExists.return_value = False
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = VERSION_START()
         fakeDataService.normalizationExists.return_value = False
         fakeDataService.constructStateId.return_value = ("fake", None)
         self.instance.dataFactoryService = fakeDataService
@@ -964,7 +976,13 @@ class TestReductionServiceMasks:
             mock.patch.object(
                 self.service.dataFactoryService,
                 "getLatestApplicableCalibrationVersion",
-                return_value=None,
+                return_value=VERSION_START(),
+            ),
+            mock.patch.object(
+                self.service.groceryService,
+                "fetchDiffCalForSample",
+                # return a table, but "" => there's no corresponding mask
+                return_value=(mock.sentinel.table, ""),
             ),
             Config_override("instrument.lite.pixelResolution", 4),
             Config_override("instrument.lite.name", "fakesnaplite"),
@@ -1143,6 +1161,36 @@ class TestReductionServiceMasks:
             res = self.service.prepCombinedMask(request)
             assert_wksp_almost_equal(exp["diffcalMaskWorkspace"], res, atol=0.0)
 
+    def test_prepCombinedMask_diffcal_error(self):
+        """
+        Check that prepCombinedMask raises an exception if diffraction-calibration version
+        (either the specified version or the latest) ends up being `None`.
+        """
+        with mock.patch.object(
+            self.service.dataFactoryService,
+            "getLatestApplicableCalibrationVersion",
+            return_value=None,
+        ):
+            # timestamp must be unique: see comment at `test_prepCombinedMask`.
+            timestamp = self.service.getUniqueTimestamp()
+            request = ReductionRequest(
+                runNumber=self.runNumber1,
+                useLiteMode=self.useLiteMode,
+                timestamp=timestamp,
+                versions=Versions(VersionState.LATEST, VersionState.LATEST),
+                pixelMasks=[],
+                alternativeState=None,
+            )
+
+            with pytest.raises(
+                RuntimeError,
+                match=(
+                    r"Usage error: for an initialized state"
+                    r".*diffraction-calibration version should always be at least the default version \(VERSION_START\)"
+                ),
+            ):
+                self.service.prepCombinedMask(request)
+
     def test_fetchReductionGroceries_load(self):
         """
         Check that fetchReductionGroceries constructs the correct grocery dictionary
@@ -1218,6 +1266,36 @@ class TestReductionServiceMasks:
                 loadableOtherGroceryItems,
             )
 
+    def test_fetchReductionGroceries_diffcal_error(self):
+        """
+        Check that fetchReductionGroceries raises an exception if diffraction-calibration version
+        (either the specified version or the latest) ends up being `None`.
+        """
+        # timestamp must be unique: see comment at `test_prepCombinedMask`.
+        timestamp = self.service.getUniqueTimestamp()
+        request = ReductionRequest(
+            runNumber=self.runNumber1,
+            useLiteMode=False,
+            timestamp=timestamp,
+            versions=Versions(VersionState.LATEST, VersionState.LATEST),
+        )
+
+        with (
+            mock.patch.object(
+                self.service.dataFactoryService,
+                "getLatestApplicableCalibrationVersion",
+                return_value=None,
+            ),
+        ):
+            with pytest.raises(
+                RuntimeError,
+                match=(
+                    r"Usage error: for an initialized state"
+                    r".*diffraction-calibration version should always be at least the default version \(VERSION_START\)"
+                ),
+            ):
+                self.service.fetchReductionGroceries(request)
+
     def test_prepCombinedMask_not_a_mask(self):
         not_a_mask = (
             wng.reductionOutput()
@@ -1241,7 +1319,7 @@ class TestReductionServiceMasks:
             mock.patch.object(
                 self.service.dataFactoryService,
                 "getLatestApplicableCalibrationVersion",
-                return_value=None,
+                return_value=VERSION_START(),
             ),
             pytest.raises(RuntimeError, match=r".*unexpected workspace-type.*"),
         ):

@@ -8,9 +8,7 @@ import pytest
 from mantid.kernel import amend_config
 from qtpy import QtCore
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import (
-    QTabWidget,
-)
+from qtpy.QtWidgets import QTabWidget
 from util.pytest_helpers import calibration_home_from_mirror, handleStateInit  # noqa: F401
 from util.qt_mock_util import MockQMessageBox
 from util.TestSummary import TestSummary
@@ -31,12 +29,6 @@ class InterruptWithBlock(BaseException):
 class TestNormalizationPanels:
     @pytest.fixture(scope="function", autouse=True)  # noqa: PT003
     def _setup_gui(self, qapp):
-        testMock = MockQMessageBox()
-        msg = "No valid FocusGroups were specified for mode: 'lite'"
-        print(self)
-        self._logWarningsMessageBox = testMock.exec(msg)
-        self._logWarningsMessageBox[0].start()
-
         # Automatically continue at the end of each workflow.
         self._actionPrompt = mock.patch(
             "qtpy.QtWidgets.QMessageBox.information",
@@ -62,8 +54,8 @@ class TestNormalizationPanels:
                 self.testSummary.FAILURE()
             if self.testSummary.isFailure():
                 pytest.fail(f"Test Summary (-vv for full table): {self.testSummary}")
+
         # # teardown...
-        # self._logWarningsMessageBox.stop()
         self._actionPrompt.stop()
         self.exitStack.close()
 
@@ -159,10 +151,9 @@ class TestNormalizationPanels:
             # and verify the 2 corresponding msg boxes show up.
             # Repeat for Background Run number box
 
-            self._logWarningsMessageBox[0].stop()
             qtbot.wait(100)
 
-            msg = "Invalid run number: -1"
+            msg = ".*Invalid run number: -1.*"
             mp = MockQMessageBox().critical(msg)
             with mp[0]:
                 requestView.runNumberField.setText("-1")
@@ -171,7 +162,7 @@ class TestNormalizationPanels:
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
 
-            msg = "Invalid run number: 1"
+            msg = ".*Invalid run number: 1.*"
             mp = MockQMessageBox().critical(msg)
             with mp[0]:
                 requestView.runNumberField.setText("1")
@@ -180,7 +171,7 @@ class TestNormalizationPanels:
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
 
-            msg = "Invalid run number: -1"
+            msg = ".*Invalid run number: -1.*"
             mp = MockQMessageBox().critical(msg)
             with mp[0]:
                 requestView.backgroundRunNumberField.setText("-1")
@@ -189,7 +180,7 @@ class TestNormalizationPanels:
                 assert len(exceptions) == 0
                 assert mp[1].call_count == 1
 
-            msg = "Invalid run number: 1"
+            msg = ".*Invalid run number: 1.*"
             mp = MockQMessageBox().critical(msg)
             with mp[0]:
                 requestView.backgroundRunNumberField.setText("1")
@@ -199,7 +190,7 @@ class TestNormalizationPanels:
                 assert mp[1].call_count == 1
 
             # Enter 58810 for run number and 58813 for background and click continue
-            msg = "Please select a sample"
+            msg = ".*Please select a sample.*"
             mpCrit = MockQMessageBox().critical(msg)
             with mpCrit[0]:
                 requestView.runNumberField.setText("58810")
@@ -215,7 +206,7 @@ class TestNormalizationPanels:
                 assert mpCrit[1].call_count == 1
 
             # Select Vanadium Cylinder as sample and click continue
-            msg = "Please select a grouping file"
+            msg = ".*Please select a grouping file.*"
             mpCrit = MockQMessageBox().critical(msg)
             with mpCrit[0]:
                 requestView.sampleDropdown.setCurrentIndex(3)
@@ -243,12 +234,12 @@ class TestNormalizationPanels:
 
             handleStateInit(waitForStateInit, stateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
 
-            msg = "No valid FocusGroups were specified for mode: 'lite'"
-            mp = MockQMessageBox().exec(msg, moduleRoot="snapred.ui.handler.SNAPResponseHandler")
+            msg = r".*Diffraction calibration is missing.*Would you like to continue anyway?.*"
+            mp = MockQMessageBox().exec(msg)
             mp[0].start()
+
             with qtbot.waitSignal(actionCompleted, timeout=60000):
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-
             qtbot.waitUntil(
                 lambda: isinstance(workflowNodeTabs.currentWidget().view, NormalizationTweakPeakView), timeout=60000
             )
@@ -257,9 +248,10 @@ class TestNormalizationPanels:
 
             # On tweak peaks tab, test each text field(3 of these) by putting non numeric chars and verify error msg
             tweakPeakView = workflowNodeTabs.currentWidget().view
+
             mp[0].stop()
 
-            msg = "Smoothing parameter must be a numerical value"
+            msg = ".*Smoothing parameter must be a numerical value.*"
             mpWarn = MockQMessageBox().warning(msg)
             with mpWarn[0]:
                 tweakPeakView.smoothingSlider.field.setValue("a")
@@ -268,8 +260,8 @@ class TestNormalizationPanels:
                 assert mpWarn[1].call_count == 1
 
             msg = (
-                "One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid: "
-                + "could not convert string to float: 'a'"
+                r".*One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid\: "
+                r"could not convert string to float: \'a\'.*"
             )
             mpWarn = MockQMessageBox().warning(msg)
             with mpWarn[0]:
@@ -281,8 +273,8 @@ class TestNormalizationPanels:
                 assert mpWarn[1].call_count == 1
 
             msg = (
-                "One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid: "
-                + "could not convert string to float: 'a'"
+                r".*One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid\: "
+                r"could not convert string to float: \'a\'.*"
             )
             mpWarn = MockQMessageBox().warning(msg)
             with mpWarn[0]:
@@ -294,8 +286,8 @@ class TestNormalizationPanels:
                 assert mpWarn[1].call_count == 1
 
             msg = (
-                "One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid: "
-                + "could not convert string to float: 'a'"
+                r".*One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid\: "
+                r"could not convert string to float: \'a\'.*"
             )
             mpWarn = MockQMessageBox().warning(msg)
             with mpWarn[0]:
@@ -305,7 +297,7 @@ class TestNormalizationPanels:
                 assert mpWarn[1].call_count == 1
 
             # Then set negative values and verify errors on recalculate
-            msg = "Smoothing parameter must be a nonnegative number"
+            msg = ".*Smoothing parameter must be a nonnegative number.*"
             mpWarn = MockQMessageBox().warning(msg)
             with mpWarn[0]:
                 tweakPeakView.fieldXtalDMax.setText("1")
@@ -315,11 +307,11 @@ class TestNormalizationPanels:
                 assert mpWarn[1].call_count == 1
 
             msg = (
-                "Are you sure you want to do this?"
-                + " This may cause memory overflow or may take a long time to compute."
+                r".*Are you sure you want to do this\?"
+                " This may cause memory overflow or may take a long time to compute.*"
             )
             mpWarn = MockQMessageBox().warning(msg)
-            msgCrit = "CrystallographicInfoAlgorithm  -- has failed -- dMin cannot be <= 0."
+            msgCrit = ".*CrystallographicInfoAlgorithm  -- has failed -- dMin cannot be <= 0.*"
             mpCrit = MockQMessageBox().critical(msgCrit)
             with mpWarn[0], mpCrit[0]:
                 tweakPeakView.fieldXtalDMin.setText("-1")
@@ -328,7 +320,7 @@ class TestNormalizationPanels:
                 assert len(exceptions) == 0
                 assert mpWarn[1].call_count == 1, mpWarn[1].call_args
 
-            msg = "The minimum crystal d-spacing exceeds the maximum (-1.0). Please enter a smaller value"
+            msg = r".*The minimum crystal d-spacing exceeds the maximum \(-1\.0\)\. Please enter a smaller value.*"
             mpWarn = MockQMessageBox().warning(msg)
             with mpWarn[0]:
                 tweakPeakView.fieldXtalDMin.setText("0.1")
@@ -339,10 +331,11 @@ class TestNormalizationPanels:
                 assert mpWarn[1].call_count == 1
 
             msgWarn = (
-                "Are you sure you want to do this? This may cause memory overflow or may take a long time to compute."
+                r".*Are you sure you want to do this\? "
+                r"This may cause memory overflow or may take a long time to compute.*"
             )
             mpWarn = MockQMessageBox().warning(msgWarn)
-            msgCrit = "CrystallographicInfoAlgorithm  -- has failed -- dMin cannot be <= 0."
+            msgCrit = ".*CrystallographicInfoAlgorithm  -- has failed -- dMin cannot be <= 0.*"
             mpCrit = MockQMessageBox().critical(msgCrit)
             with mpWarn[0], mpCrit[0]:
                 tweakPeakView.fieldXtalDMin.setText("-1")
@@ -394,8 +387,8 @@ class TestNormalizationPanels:
 
             # Do error checking on all text fields
 
-            # Set author to "Test"You must specify the author
-            msg = "You must specify the author"
+            # Set author to "Test" You must specify the author
+            msg = ".*You must specify the author.*"
             mpCrit = MockQMessageBox().critical(msg)
             with mpCrit[0]:
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
@@ -405,7 +398,7 @@ class TestNormalizationPanels:
             saveView.fieldAuthor.setText("Test")
 
             # Set Comments to "This is a test"You must add comments
-            msg = "You must add comments"
+            msg = ".*You must add comments.*"
             mpCrit = MockQMessageBox().critical(msg)
             with mpCrit[0]:
                 qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)

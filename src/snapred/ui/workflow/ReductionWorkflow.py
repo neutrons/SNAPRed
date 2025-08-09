@@ -499,6 +499,7 @@ class ReductionWorkflow(WorkflowImplementer):
                     "Currently, Artificial Normalization can only be performed on a "
                     "single run at a time.  Please clear your run list and try again."
                 )
+
             for runNumber in self.runNumbers:
                 # Set status to indicate that the artificial normalization is being calculated.
                 self.setStatus(ReductionStatus.CALCULATING_NORM)

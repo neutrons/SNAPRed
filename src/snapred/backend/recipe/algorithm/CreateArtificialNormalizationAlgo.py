@@ -149,11 +149,9 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
             )
 
         self.mantidSnapper.executeQueue()
-        self.outputWorkspace = self.mantidSnapper.mtd[self.outputWorkspaceName]
 
-        # Apply peak clipping to each histogram in the workspace
-        for i in range(self.outputWorkspace.getNumberHistograms()):
-            dataY = self.outputWorkspace.readY(i)
+        for i in range(self.mantidSnapper.mtd[self.outputWorkspaceName].getNumberHistograms()):
+            dataY = self.mantidSnapper.mtd[self.outputWorkspaceName].readY(i)
             clippedData = self.peakClip(
                 data=dataY,
                 winSize=self.peakWindowClippingSize,
@@ -161,7 +159,7 @@ class CreateArtificialNormalizationAlgo(PythonAlgorithm):
                 LLS=self.LSS,
                 smoothing=self.smoothingParameter,
             )
-            self.outputWorkspace.setY(i, clippedData)
+            self.mantidSnapper.mtd[self.outputWorkspaceName].setY(i, clippedData)
 
         # Set the output workspace property
         self.setProperty("OutputWorkspace", self.outputWorkspaceName)

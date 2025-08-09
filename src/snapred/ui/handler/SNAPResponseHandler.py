@@ -1,5 +1,6 @@
 import logging
 import threading
+import traceback
 
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import QMessageBox, QWidget
@@ -88,9 +89,8 @@ class SNAPResponseHandler(QWidget):
             userCancellationInfo = UserCancellation.Model.model_validate_json(message)
             self.userCancellation.emit(userCancellationInfo)
         elif code == ResponseCode.CONTINUE_WARNING:
-            continueInfo = ContinueWarning.Model.model_validate_json(message)
-            result = self._handleContinueWarning(continueInfo)
-            if result != "&No":
+            continueInfo = self._handleContinueWarning(ContinueWarning.Model.model_validate_json(message))
+            if bool(continueInfo):
                 self.continueAnyway.emit(continueInfo)
         elif message:
             self._handleWarning(message)
@@ -103,11 +103,11 @@ class SNAPResponseHandler(QWidget):
         messageBox.setDetailedText(f"{message}")
         messageBox.exec()
 
-    def _handleContinueWarning(self, continueInfo: ContinueWarning.Model):
+    def _handleContinueWarning(self, continueInfo: ContinueWarning.Model) -> ContinueWarning.Model | None:
+        # If the user elects to continue: return an updated copy of the continue model, otherwise return `None`.
+        resultInfo = continueInfo.model_copy(deep=True)
         if logger.isEnabledFor(logging.DEBUG):
             # print stacktrace
-            import traceback
-
             logger.debug(f"`_handleContinueWarning`: `continueInfo`: {continueInfo}")
             traceback.print_stack()
 
@@ -119,13 +119,17 @@ class SNAPResponseHandler(QWidget):
             parent=self,
         )
         continueAnyway.setDefaultButton(QMessageBox.No)
-        if continueInfo.flags == ContinueWarning.Type.MISSING_NORMALIZATION:
-            continueAnyway.addButton("Continue without Normalization", QMessageBox.YesRole)
-        continueAnyway.exec()
-        clickedButton = continueAnyway.clickedButton().text()
-        if clickedButton == "Continue without Normalization":
-            continueInfo.flags |= ContinueWarning.Type.CONTINUE_WITHOUT_NORMALIZATION
-        return continueAnyway.clickedButton().text()
+
+        missingNormContinueButton = None
+        if ContinueWarning.Type.MISSING_NORMALIZATION in continueInfo.flags:
+            missingNormContinueButton = continueAnyway.addButton("Continue without Normalization", QMessageBox.YesRole)
+
+        userResponse = continueAnyway.exec()
+        clickedButton = continueAnyway.clickedButton()
+
+        if bool(missingNormContinueButton) and clickedButton == missingNormContinueButton:
+            resultInfo.flags |= ContinueWarning.Type.CONTINUE_WITHOUT_NORMALIZATION
+        return resultInfo if (userResponse != QMessageBox.No) else None
 
     def handleStateMessage(self, recoverableException):
         """

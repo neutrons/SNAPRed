@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from snapred.backend.dao import RunMetadata
-from snapred.backend.dao.indexing.Versioning import VersionState
+from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
     ReductionIngredients,
@@ -129,38 +129,53 @@ class ReductionService(Service):
 
         # Check if a normalization is present
         normalizationExists = self.dataFactoryService.normalizationExists(request.runNumber, request.useLiteMode, state)
+        if not normalizationExists:
+            continueFlags |= ContinueWarning.Type.MISSING_NORMALIZATION
 
-        calibrationExists = (
-            self.dataFactoryService.calibrationExists(request.runNumber, request.useLiteMode, state)
-            or request.alternativeCalibrationFilePath is not None
-        )
+        # Notes:
+        #  * At this point, the state will be initialized.
+        #  * In an initialized state, `calVersion` will never be `None`.
+        #  * `MISSING_DIFFRACTION_CALIBRATION` is now the same as the former `DEFAULT_DIFFRACTION_CALIBRATION`.
+        #  * The default calibration uses `VERSION_START`.
+        calibrationExists = True
+        if request.alternativeCalibrationFilePath is None:
+            calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
+                request.runNumber, request.useLiteMode, state
+            )
+            if calVersion is None:
+                raise RuntimeError(
+                    "Usage error: for an initialized state, "
+                    "diffraction-calibration version should always be at least the default version (VERSION_START)."
+                )
+            if calVersion == VERSION_START():
+                calibrationExists = False
+                continueFlags |= ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
 
         # Determine the action based on missing components
         if not calibrationExists and normalizationExists:
             # Case: No calibration but normalization exists
-            continueFlags |= ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
             message = (
-                "Warning: diffraction calibration is missing.If you continue, default instrument geometry will be used."
+                "<p><b>Diffraction calibration is missing.</b></p>"
+                "<p>Default calibration will be used in place of actual calibration.</p>"
+                "<p>Would you like to continue anyway?</p>"
             )
         elif calibrationExists and not normalizationExists:
             # Case: Calibration exists but normalization is missing
-            continueFlags |= ContinueWarning.Type.MISSING_NORMALIZATION
             message = (
-                "Warning: Reduction is missing normalization data. "
-                "Artificial normalization will be created in place of actual normalization. "
-                "Would you like to continue?"
+                "<p><b>Normalization calibration is missing.</b></p>"
+                "<p>Artificial normalization will be created in place of actual normalization.</p>"
+                "<p>Would you like to continue anyway?</p>"
             )
         elif not calibrationExists and not normalizationExists:
             # Case: No calibration and no normalization
-            continueFlags |= (
-                ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION | ContinueWarning.Type.MISSING_NORMALIZATION
-            )
             message = (
-                "Warning: Reduction is missing both normalization and calibration data. "
-                "If you continue, default instrument geometry will be used and data will be artificially normalized. "
+                "<p><b>Both normalization and diffraction calibrations are missing.</b></p>"
+                "<p>Default calibration will be used in place of actual calibration.</p>"
+                "<p>Artificial normalization will be created in place of actual normalization.</p>"
+                "<p>Would you like to continue anyway?</p>"
             )
 
-        # Remove any continue flags that are present in the request by XOR-ing with the flags
+        # Remove any continue flags that are also present in the request by XOR-ing with the request flags
         if request.continueFlags:
             continueFlags ^= request.continueFlags & continueFlags
 
@@ -168,7 +183,7 @@ class ReductionService(Service):
         if continueFlags and message:
             raise ContinueWarning(message, continueFlags)
 
-        # Ensure separate continue warnings for permission check
+        # Reinitialized continue flags for the upcoming permissions check
         continueFlags = ContinueWarning.Type.UNSET
 
         # Check that the user has write permissions to the save directory
@@ -248,12 +263,14 @@ class ReductionService(Service):
             state, _ = self.dataFactoryService.constructStateId(request.runNumber)
 
         if request.continueFlags is not None:
-            if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
-                # If a diffraction calibration exists,
-                #   its version will have been filled in by `fetchReductionGroceries`.
-                calibration = self.dataFactoryService.getCalibrationRecord(
-                    request.runNumber, request.useLiteMode, request.versions.calibration, state
-                )
+            # Notes:
+            #   * If a diffraction calibration exists,
+            #     its version will have been filled in by `fetchReductionGroceries`.
+            #   * `MISSING_DIFFRACTION_CALIBRATION` now means that the default diffraction calibration
+            #     with `VERSION_START` is being applied.
+            calibration = self.dataFactoryService.getCalibrationRecord(
+                request.runNumber, request.useLiteMode, request.versions.calibration, state
+            )
             if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
                 normalization = self.dataFactoryService.getNormalizationRecord(
                     request.runNumber, request.useLiteMode, state, request.versions.normalization
@@ -355,21 +372,23 @@ class ReductionService(Service):
 
         # if there is a mask associated with the diffcal file, load it here
         calVersion = request.versions.calibration
-        if (
-            ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags
-            and calVersion is VersionState.LATEST
-        ):
+        if calVersion is VersionState.LATEST:
             calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
                 runNumber, useLiteMode, state=state
             )
 
-        if calVersion is not None:
-            self.groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(state, calVersion, runNumber).useLiteMode(
-                useLiteMode
+        if calVersion is None:
+            raise RuntimeError(
+                "Usage error: for an initialized state, "
+                "diffraction-calibration version should always be at least the default version (VERSION_START)."
             )
-            if request.alternativeCalibrationFilePath is not None:
-                self.groceryClerk.diffCalFilePath(request.alternativeCalibrationFilePath)
-            self.groceryClerk.add()
+
+        self.groceryClerk.name("diffcalMaskWorkspace").diffcal_mask(state, calVersion, runNumber).useLiteMode(
+            useLiteMode
+        )
+        if request.alternativeCalibrationFilePath is not None:
+            self.groceryClerk.diffCalFilePath(request.alternativeCalibrationFilePath)
+        self.groceryClerk.add()
 
         # if the user specified masks to use, also pull those
         residentMasks = {}
@@ -476,10 +495,15 @@ class ReductionService(Service):
             # If no alternativeState state is provided, use the sample's state.
             state, _ = self.dataFactoryService.constructStateId(request.runNumber)
 
-        if ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION not in request.continueFlags:
-            calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
-                request.runNumber, request.useLiteMode, state
+        calVersion = self.dataFactoryService.getLatestApplicableCalibrationVersion(
+            request.runNumber, request.useLiteMode, state
+        )
+        if calVersion is None:
+            raise RuntimeError(
+                "Usage error: for an initialized state, "
+                "diffraction-calibration version should always be at least the default version (VERSION_START)."
             )
+
         if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
             normVersion = self.dataFactoryService.getLatestApplicableNormalizationVersion(
                 request.runNumber, request.useLiteMode, state
@@ -551,7 +575,8 @@ class ReductionService(Service):
             altDiffCalFilePath = str(request.alternativeCalibrationFilePath)
         else:
             calibrationState = DiffcalStateMetadata.EXISTS
-        # The reduction workflow will automatically create a "fake" vanadium, so it shouldnt ever be None?
+
+        # The reduction workflow will automatically create a "fake" vanadium, so it shouldn't ever be None?
         normalizationState = (
             NormalizationStateMetadata.FAKE
             if ContinueWarning.Type.MISSING_NORMALIZATION in request.continueFlags

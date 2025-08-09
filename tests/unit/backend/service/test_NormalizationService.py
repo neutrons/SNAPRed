@@ -1,4 +1,5 @@
 # ruff: noqa: E402, ARG002
+import inspect
 import unittest
 import unittest.mock as mock
 from pathlib import Path
@@ -13,12 +14,13 @@ from mantid.simpleapi import (
 )
 from util.Pydantic_util import assertEqualModel
 
-from snapred.backend.dao.indexing.Versioning import VersionState
+from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationAssessmentResponse import NormalizationAssessmentResponse
-from snapred.backend.dao.request import CalibrationWritePermissionsRequest
+from snapred.backend.dao.request import CalibrationWritePermissionsRequest, NormalizationRequest
 from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
+from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.meta.redantic import parse_obj_as
 
@@ -350,6 +352,42 @@ class TestNormalizationService(unittest.TestCase):
         with pytest.raises(RuntimeError, match="Corrected vanadium of unexpected name provided."):
             self.instance.normalization(self.request)
 
+    def test__markWorkspaceMetadata(self):
+        workspace = mock.sentinel.workspace
+        metadata = mock.sentinel.metadata
+
+        # UNSET continue flags: writes `DiffcalStateMetadata.EXISTS`
+        with (
+            mock.patch.object(
+                inspect.getmodule(self.instance), "WorkspaceMetadata", return_value=metadata
+            ) as mockMetadata,
+            mock.patch.object(self.instance.groceryService, "writeWorkspaceMetadataAsTags") as mockWriteMetadata,
+        ):
+            request = mock.Mock(spec=NormalizationRequest, continueFlags=ContinueWarning.Type.UNSET)
+
+            self.instance._markWorkspaceMetadata(request, workspace)
+            mockMetadata.assert_called_once_with(
+                diffcalState=DiffcalStateMetadata.EXISTS, normalizationState=NormalizationStateMetadata.UNSET
+            )
+            mockWriteMetadata.assert_called_once_with(workspace, metadata)
+
+        # `ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION`: writes `DiffcalStateMetadata.NONE`
+        with (
+            mock.patch.object(
+                inspect.getmodule(self.instance), "WorkspaceMetadata", return_value=metadata
+            ) as mockMetadata,
+            mock.patch.object(self.instance.groceryService, "writeWorkspaceMetadataAsTags") as mockWriteMetadata,
+        ):
+            request = mock.Mock(
+                spec=NormalizationRequest, continueFlags=ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION
+            )
+
+            self.instance._markWorkspaceMetadata(request, workspace)
+            mockMetadata.assert_called_once_with(
+                diffcalState=DiffcalStateMetadata.NONE, normalizationState=NormalizationStateMetadata.UNSET
+            )
+            mockWriteMetadata.assert_called_once_with(workspace, metadata)
+
     def test_validateRequest(self):
         # test `validateRequest` internal calls
         self.instance._sameStates = mock.Mock(return_value=True)
@@ -367,25 +405,37 @@ class TestNormalizationService(unittest.TestCase):
     def test_validateDiffractionCalibrationExists_failure(self):
         request = mock.Mock(runNumber="12345", backgroundRunNumber="67890", continueFlags=ContinueWarning.Type.UNSET)
         self.instance.sousChef = SculleryBoy()
+        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=VERSION_START())
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
+
+        with pytest.raises(
+            ContinueWarning, match=r".*Diffraction calibration is missing.*Would you like to continue anyway.*"
+        ):
+            self.instance._validateDiffractionCalibrationExists(request)
+
+    def test_validateDiffractionCalibrationExists_success_continueAnyway(self):
+        request = mock.Mock(
+            runNumber="12345",
+            backgroundRunNumber="67890",
+            continueFlags=ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION,
+        )
+        self.instance.sousChef = SculleryBoy()
+        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=VERSION_START())
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
+        self.instance._validateDiffractionCalibrationExists(request)
+
+    def test_validateDiffractionCalibrationExists_error(self):
+        # For an initialized state: `getLatestApplicableCalibrationVersion` should never return `None`.
+        request = mock.Mock(runNumber="12345", backgroundRunNumber="67890", continueFlags=ContinueWarning.Type.UNSET)
+        self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=None)
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
 
         with pytest.raises(
-            ContinueWarning,
-            match=r".*Continue anyway*",
+            RuntimeError,
+            match="Usage error.*diffraction-calibration version should always be at least the default version.*",
         ):
             self.instance._validateDiffractionCalibrationExists(request)
-
-    def test_validateDiffractionCalibrationExists_success_contineuAnyway(self):
-        request = mock.Mock(
-            runNumber="12345",
-            backgroundRunNumber="67890",
-            continueFlags=ContinueWarning.Type.DEFAULT_DIFFRACTION_CALIBRATION,
-        )
-        self.instance.sousChef = SculleryBoy()
-        self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=None)
-        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
-        self.instance._validateDiffractionCalibrationExists(request)
 
     def test_validateRequest_different_states(self):
         # test `validateRequest` raises `ValueError`
@@ -461,7 +511,7 @@ class TestNormalizationService(unittest.TestCase):
             ).dict()
         )
 
-    def test_nomaliztionStatesDontMatch(self):
+    def test_normalizationStatesDontMatch(self):
         self.instance = NormalizationService()
         self.instance._sameStates = MagicMock(return_value=False)
         with pytest.raises(ValueError, match="must be of the same Instrument State."):
