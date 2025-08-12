@@ -326,8 +326,6 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.skipPixelCal = view.getSkipPixelCalibration()
         self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
 
-        self.removeBackground = view.getRemoveBackground()
-
         # Validate that the user has write permissions as early as possible in the workflow.
         permissionsRequest = CalibrationWritePermissionsRequest(
             runNumber=self.runNumber, continueFlags=self.continueAnywayFlags
@@ -338,8 +336,8 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._saveView.updateRunNumber(self.runNumber)
 
         # fields with defaults
-        self.convergenceThreshold = view.fieldConvergenceThreshold.get(self.DEFAULT_CONV)
-        self.nBinsAcrossPeakWidth = view.fieldNBinsAcrossPeakWidth.get(self.DEFAULT_NBINS)
+        self.convergenceThreshold = self.DEFAULT_CONV
+        self.nBinsAcrossPeakWidth = self.DEFAULT_NBINS
 
         self._tweakPeakView.populateGroupingDropdown(list(self.groupingMap.getMap(self.useLiteMode).keys()))
         self._tweakPeakView.updateFields(

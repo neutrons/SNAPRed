@@ -1,27 +1,28 @@
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
+from qtpy.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QSizePolicy, QVBoxLayout
+
+from snapred.ui.widget.SNAPWidget import SNAPWidget
 
 
-class LabeledField(QWidget):
-    def __init__(self, label, field=None, text=None, parent=None, orientation=Qt.Horizontal, sizeHint=None):  # noqa: ARG002
+class LabeledField(SNAPWidget):
+    def __init__(self, label: str, field=None, text=None, parent=None, orientation=Qt.Horizontal, sizeHint=None):  # noqa: ARG002
         super(LabeledField, self).__init__(parent)
-
-        # TODO: Set this from the application style sheet.
-        #    Otherwise, this OVERRIDES the application style sheet!
-        self.setStyleSheet("background-color: #F5E9E2;")
 
         if field is not None:
             # bubble up the size policy from the field
             self.setSizePolicy(field.sizePolicy())
 
-        _layout = None
+        self._layout = None
         match orientation:
             case Qt.Horizontal:
-                _layout = QHBoxLayout()
+                self._layout = QHBoxLayout(self)
             case Qt.Vertical:
-                _layout = QVBoxLayout()
+                self._layout = QVBoxLayout(self)
             case _:
                 raise RuntimeError(f"unexpected orientation for `LabeledField`: {orientation}")
+
+        if not label.endswith(":"):
+            label += ":"
 
         self._label = QLabel(label)
         if field is not None:
@@ -29,13 +30,14 @@ class LabeledField(QWidget):
         else:
             self._field = QLineEdit(parent=self)
             self._field.setText(text if text is not None else "")
+            self._disabledField.setText(text if text is not None else "")
 
-        _layout.addWidget(self._label)
-        _layout.addWidget(self._field)
-        # adjust layout size such that label has no whitespace
-        _layout.setContentsMargins(0, 0, 0, 0)
-        _layout.setSpacing(0)
-        self.setLayout(_layout)
+        self._layout.addWidget(self._label, stretch=0)
+        self._layout.addWidget(self._field, stretch=1)
+
+        if orientation == Qt.Horizontal:
+            self._field.sizePolicy().setHorizontalPolicy(QSizePolicy.Policy.Expanding)
+            self._label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
 
         self._label.adjustSize()
         self._field.adjustSize()
@@ -54,6 +56,26 @@ class LabeledField(QWidget):
         # signal sent when the text field is no longer selected
         return self._field.editingFinished
 
+    def _addWidget(self, widget):
+        if isinstance(self._layout, QHBoxLayout):
+            self._layout.addWidget(widget, stretch=1)
+            self._layout.setAlignment(widget, Qt.AlignRight)
+
+    def setEnabled(self, enabled: bool):
+        if enabled:
+            self._layout.removeWidget(self._disabledField)
+            self._field.setText(self._disabledField.text())
+            self._addWidget(self._field)
+            self._field.setVisible(True)
+            self._disabledField.setVisible(False)
+        else:
+            self._layout.removeWidget(self._field)
+            self._addWidget(self._disabledField)
+            self._disabledField.setText(self._field.text())
+            self._field.setVisible(False)
+            self._disabledField.setVisible(True)
+        super(LabeledField, self).setEnabled(enabled)
+
     def get(self, default=None):
         if "" == self._field.text():
             return default
@@ -62,11 +84,15 @@ class LabeledField(QWidget):
     def convertCommaSeparatedToList(self):
         return self.text().split(",")
 
+    def fontMetrics(self):
+        return self._field.fontMetrics()
+
     def text(self):
         return self._field.text()
 
     def setText(self, text):
         self._field.setText(text)
+        self._disabledField.setText(text)
 
     def labelText(self):
         return self._label.text()

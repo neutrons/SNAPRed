@@ -1,4 +1,5 @@
 import logging
+import signal
 import sys
 import traceback
 from pathlib import Path
@@ -131,12 +132,6 @@ class SNAPRedGUI(QMainWindow):
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
 
-        if UserDocsButton:
-            self.userDocButton = UserDocsButton(self)
-            splitter.addWidget(self.userDocButton)
-        else:
-            print("UserDocsButton is not available. Skipping its initialization.")
-
         # Check for incompatible `Config` settings.
         Config.validate()
 
@@ -157,6 +152,8 @@ class SNAPRedGUI(QMainWindow):
         try:
             self.calibrationPanel = TestPanel(self)
             self.calibrationPanel.widget.setWindowTitle("Calibration Panel")
+            # set monitor to the same montior as the main window
+            self.calibrationPanel.widget.move(self.geometry().x(), self.geometry().y())
             self.calibrationPanel.widget.show()
         except Exception as e:  # noqa: BLE001
             # Print traceback
@@ -300,6 +297,7 @@ def _within_mantid():
 
 def start(options=None):
     logger = snapredLogger.getLogger(__name__)
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     app = _qapp()
     with Resource.open("style.qss", "r") as styleSheet:

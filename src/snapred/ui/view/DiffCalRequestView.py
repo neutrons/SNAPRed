@@ -35,54 +35,61 @@ class DiffCalRequestView(BackendRequestView):
         self.runNumberField = self._labeledField("Run Number")
         self.runNumberField.setToolTip("Run number to be calibrated.")
         self.liteModeToggle = self._labeledToggle("Lite Mode", True)
-        self.fieldConvergenceThreshold = self._labeledField("Convergence Threshold")
-        self.fieldNBinsAcrossPeakWidth = self._labeledField("Bins Across Peak Width")
 
         # drop downs
         self.sampleDropdown = self._sampleDropDown("Sample", samples)
         self.sampleDropdown.setToolTip("Samples available for this run number.")
         self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
         self.groupingFileDropdown.setToolTip("Grouping schemas available for this sample run number.")
+        self.setDefaultGrouping(groups)
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
         self.peakFunctionDropdown.setToolTip("Peak function to be used for calibration.")
 
-        # checkbox for removing background
-        self.removeBackgroundToggle = self._labeledToggle("RemoveBackground", False)
-        self.removeBackgroundToggle.setEnabled(True)
-
         # set field properties
         self.liteModeToggle.setEnabled(True)
+        # Default to Gaussian peak function
         self.peakFunctionDropdown.setCurrentIndex(0)
 
         # skip pixel calibration toggle
         self.skipPixelCalToggle = self._labeledToggle("Skip Pixel Calibration", False)
 
         # run number metadata fields
-        self.runMetadataStateId = self._labeledField("State ID")
+        stateIdLabel = "State ID:"
+        self.runMetadataStateId = self._labeledField(stateIdLabel)
         self.runMetadataStateId.setToolTip("State ID of the run number.")
+        # set max width to 16 characters (stateid length)
+        charWidth = self.runMetadataStateId.fontMetrics().averageCharWidth()
+        fieldWidth = charWidth * (16 + len(stateIdLabel)) + 20  # +20 for padding
+        self.runMetadataStateId.setFixedWidth(fieldWidth)
         self.runMetadataRunTitle = self._labeledField("Run Title")
         self.runMetadataRunTitle.setToolTip("Title of the run from PV file.")
 
         # run metadata fields are read only
-        self.runMetadataStateId.field.setReadOnly(True)
-        self.runMetadataRunTitle.field.setReadOnly(True)
+        self.runMetadataStateId.setEnabled(False)
+        self.runMetadataRunTitle.setEnabled(False)
 
         # add all widgets to layout
         layout_ = self.layout()
+
         layout_.addWidget(self.runNumberField, 0, 0)
         layout_.addWidget(self.liteModeToggle, 0, 2)
-        layout_.addWidget(self.runMetadataStateId, 1, 0)
-        layout_.addWidget(self.runMetadataRunTitle, 1, 1)
+        layout_.addWidget(self.runMetadataStateId, 1, 1)
+        layout_.addWidget(self.runMetadataRunTitle, 1, 0)
         layout_.addWidget(self.skipPixelCalToggle, 1, 2)
-        layout_.addWidget(self.fieldConvergenceThreshold, 2, 0)
-        layout_.addWidget(self.fieldNBinsAcrossPeakWidth, 2, 1)
-        layout_.addWidget(self.removeBackgroundToggle, 2, 2)
         layout_.addWidget(self.sampleDropdown, 3, 0)
         layout_.addWidget(self.groupingFileDropdown, 3, 1)
         layout_.addWidget(self.peakFunctionDropdown, 3, 2)
 
+    def setDefaultGrouping(self, groups):
+        # find the first group where case insensitive match "column" is found
+        for i, group in enumerate(groups):
+            if "column" in group.lower():
+                self.groupingFileDropdown.setCurrentIndex(i)
+                break
+
     def populateGroupingDropdown(self, groups):
         self.groupingFileDropdown.setItems(groups)
+        self.setDefaultGrouping(groups)
 
     def verify(self):
         if not self.runNumberField.text().isdigit():
@@ -99,14 +106,11 @@ class DiffCalRequestView(BackendRequestView):
     def setInteractive(self, flag: bool):
         # TODO: put widgets here to allow them to be enabled or disabled by the presenter.
         self.runNumberField.setEnabled(flag)
-        self.fieldConvergenceThreshold.setEnabled(flag)
-        self.fieldNBinsAcrossPeakWidth.setEnabled(flag)
         self.sampleDropdown.setEnabled(flag)
         self.groupingFileDropdown.setEnabled(flag)
         self.peakFunctionDropdown.setEnabled(flag)
 
         self.liteModeToggle.setEnabled(flag)
-        self.removeBackgroundToggle.setEnabled(flag)
         self.skipPixelCalToggle.setEnabled(flag)
 
     def getRunNumber(self):
@@ -114,9 +118,6 @@ class DiffCalRequestView(BackendRequestView):
 
     def getLiteMode(self):
         return self.liteModeToggle.getState()
-
-    def getRemoveBackground(self):
-        return self.removeBackgroundToggle.getState()
 
     def getSkipPixelCalibration(self):
         return self.skipPixelCalToggle.getState()

@@ -4,6 +4,7 @@ from qtpy.QtWidgets import QLabel
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.VersionedObject import VersionedObject
 from snapred.backend.dao.indexing.Versioning import VersionState
+from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 
@@ -35,9 +36,11 @@ class NormalizationSaveView(BackendRequestView):
         self.fieldBackgroundRunNumber.setEnabled(False)
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
-        self.fieldVersion = self._labeledLineEdit("Version :")
-        # add tooltip to leave blank for new version
-        self.fieldVersion.setToolTip("Leave blank for new version!")
+        self.fieldVersion = None
+        if Config["cis_mode.enabled"] and Config["cis_mode.versionField"]:
+            self.fieldVersion = self._labeledField("Version :")
+            # add tooltip to leave blank for new version
+            self.fieldVersion.setToolTip("Leave blank for new version!")
 
         self.fieldAppliesTo = self._labeledLineEdit("Applies To :")
         self.fieldAppliesTo.setToolTip(
@@ -55,15 +58,21 @@ class NormalizationSaveView(BackendRequestView):
         _layout.addWidget(self.interactionText)
         _layout.addWidget(self.fieldRunNumber)
         _layout.addWidget(self.fieldBackgroundRunNumber)
-        _layout.addWidget(self.fieldVersion)
+        if bool(self.fieldVersion):
+            _layout.addWidget(self.fieldVersion)
         _layout.addWidget(self.fieldAppliesTo)
         _layout.addWidget(self.fieldComments)
         _layout.addWidget(self.fieldAuthor)
 
+    def getVersion(self):
+        if self.fieldVersion is not None:
+            return self.fieldVersion.get(VersionState.NEXT)
+        return VersionState.NEXT
+
     def validateAndReadForm(self):
         runNumber = self.fieldRunNumber.text()
         backgroundRunNumber = self.fieldBackgroundRunNumber.text()
-        version = self.fieldVersion.text() or VersionState.NEXT
+        version = self.getVersion()
         appliesTo = self.fieldAppliesTo.text() or f">={runNumber}"
         # validate the version number
         version = VersionedObject.validate_version(version)

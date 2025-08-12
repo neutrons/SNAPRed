@@ -7,17 +7,15 @@ class LabeledCheckBox(QWidget):
 
     def __init__(self, label, parent=None):
         super(LabeledCheckBox, self).__init__(parent)
-        self.setStyleSheet("background-color: #F5E9E2;")
 
         self._label = QLabel(label + ":", self)
         self._checkBox = QCheckBox(self)
 
-        layout = QHBoxLayout()
+        layout = QHBoxLayout(self)
         layout.addWidget(self._label)
         layout.addWidget(self._checkBox)
         layout.addStretch(1)
         layout.setContentsMargins(5, 5, 5, 5)
-        self.setLayout(layout)
 
         self._checkBox.stateChanged.connect(self.emitCheckedState)
 
