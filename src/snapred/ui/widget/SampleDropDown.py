@@ -12,6 +12,7 @@ class SampleDropDown(SNAPWidget):
         self.dropDown = QComboBox()
         self._initItems()
         self._disabledField.setText(self.dropDown.currentText())
+        self._disabledField.setWordWrap(False)
 
         self._layout = QVBoxLayout(self)
         self._layout.addWidget(self.dropDown)
