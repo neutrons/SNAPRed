@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.ref_name == 'staging' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Merge staging into next
         uses: devmasx/merge-branch@1.4.0
         with:
