@@ -287,15 +287,15 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._saveView.updateBackgroundRunNumber(self.backgroundRunNumber)
 
         self.normalizationResponse = self.request(path="normalization", payload=payload.model_dump_json())
-        focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
-        smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
+        self.focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
+        self.smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
         self.correctedVanadiumWorkspace = self.normalizationResponse.data["correctedVanadium"]
-        peaks = self.normalizationResponse.data["detectorPeaks"]
+        self.peaks = self.normalizationResponse.data["detectorPeaks"]
         self.calibrationRunNumber = self.normalizationResponse.data["calibrationRunNumber"]
         # calculate residual
-        residualWorkspace = self._calcResidual(focusWorkspace, smoothWorkspace)
+        residualWorkspace = self._calcResidual(self.focusWorkspace, self.smoothWorkspace)
 
-        self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks, residualWorkspace)
+        self._tweakPeakView.updateWorkspaces(self.focusWorkspace, self.smoothWorkspace, self.peaks, residualWorkspace)
         self.initializationComplete = True
         return self.normalizationResponse
 
@@ -387,24 +387,24 @@ class NormalizationWorkflow(WorkflowImplementer):
         )
         self.normalizationResponse = self.request(path="normalization", payload=payload.model_dump_json())
 
-        focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
-        smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
+        self.focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
+        self.smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
         self.correctedVanadiumWorkspace = self.normalizationResponse.data["correctedVanadium"]
-        peaks = self.normalizationResponse.data["detectorPeaks"]
+        self.peaks = self.normalizationResponse.data["detectorPeaks"]
 
-        residualWorkspace = self._calcResidual(focusWorkspace, smoothWorkspace)
+        residualWorkspace = self._calcResidual(self.focusWorkspace, self.smoothWorkspace)
 
-        self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks, residualWorkspace)
+        self._tweakPeakView.updateWorkspaces(self.focusWorkspace, self.smoothWorkspace, self.peaks, residualWorkspace)
 
     @EntryExitLogger(logger=logger)
     def applySmoothingUpdate(self, index, smoothingValue, xtalDMin, xtalDMax):
-        focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
-        smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
+        self.focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
+        self.smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
 
         payload = SmoothDataExcludingPeaksRequest(
-            inputWorkspace=focusWorkspace,
+            inputWorkspace=self.focusWorkspace,
             useLiteMode=self.useLiteMode,
-            outputWorkspace=smoothWorkspace,
+            outputWorkspace=self.smoothWorkspace,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=list(self.focusGroups.items())[index][1],
             runNumber=self.runNumber,
@@ -414,10 +414,10 @@ class NormalizationWorkflow(WorkflowImplementer):
         )
         response = self.request(path="normalization/smooth", payload=payload.model_dump_json())
 
-        peaks = response.data["detectorPeaks"]
-        residualWorkspace = self._calcResidual(focusWorkspace, smoothWorkspace)
+        self.peaks = response.data["detectorPeaks"]
+        residualWorkspace = self._calcResidual(self.focusWorkspace, self.smoothWorkspace)
 
-        self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks, residualWorkspace)
+        self._tweakPeakView.updateWorkspaces(self.focusWorkspace, self.smoothWorkspace, self.peaks, residualWorkspace)
 
     @EntryExitLogger(logger=logger)
     @ExceptionToErrLog
@@ -441,6 +441,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         xtalDMinValueChanged = xtalDMin != self.prevXtalDMin
         xtalDMaxValueChanged = xtalDMax != self.prevXtalDMax
         peakListWillChange = smoothingValueChanged or xtalDMinValueChanged or xtalDMaxValueChanged
+        nothingChanged = not groupingFileChanged and not peakListWillChange
         # check the case, apply correct update
         if groupingFileChanged:
             self.callNormalization(
@@ -448,14 +449,13 @@ class NormalizationWorkflow(WorkflowImplementer):
             )
         elif peakListWillChange:
             self.applySmoothingUpdate(index, smoothingValue, xtalDMin, xtalDMax)
-        elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
+        elif nothingChanged:
             # if nothing changed but this function was called anyway... just replot stuff with old values
-            focusWorkspace = self.responses[-1].data["focusedVanadium"]
-            smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
-            peaks = self.responses[-1].data["detectorPeaks"]
-            residualWorkspace = self._calcResidual(focusWorkspace, smoothWorkspace)
+            residualWorkspace = self._calcResidual(self.focusWorkspace, self.smoothWorkspace)
 
-            self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks, residualWorkspace)
+            self._tweakPeakView.updateWorkspaces(
+                self.focusWorkspace, self.smoothWorkspace, self.peaks, residualWorkspace
+            )
         else:
             raise Exception("Expected data not found in the last response")
 
