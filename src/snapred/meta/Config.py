@@ -126,9 +126,14 @@ class _Config:
 
         self.reload()
         # if snapred-user.yml exists, then load it by default
-        if (self._userHome() / "snapred-user.yml").exists() and not isTestEnv():
+        if self.shouldSwapToUserYml():
             self._logger.info("Found user configuration file, swapping to it")
             self.swapToUserYml()
+
+    def shouldSwapToUserYml(self) -> bool:
+        isExplicitEnv = "env" in os.environ
+        isUserYmlExists = (self._userHome() / "snapred-user.yml").exists()
+        return isUserYmlExists and not isExplicitEnv and not isTestEnv()
 
     def _fix_directory_properties(self):
         """Some developers set instrument.home to use ~/ and this fixes that"""
