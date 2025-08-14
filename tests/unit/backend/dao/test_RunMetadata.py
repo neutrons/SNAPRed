@@ -15,7 +15,6 @@ from util.h5py_helpers import mockH5File
 
 from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state import DetectorState
-from snapred.backend.dao.StateId import StateId
 from snapred.backend.data.util.PV_logs_util import *
 from snapred.meta.Config import Config
 
@@ -71,8 +70,8 @@ class TestRunMetadata(unittest.TestCase):
             title="title for 12345",
         )
 
-        self.detectorState: DetectorState = DetectorState.fromLogs(self.DASlogs)
-        self.stateId: ObjectSHA = StateId.fromDetectorState(self.detectorState).SHA()
+        self.detectorState: DetectorState = DetectorState.fromPVLogs(self.DASlogs, DetectorState.LEGACY_SCHEMA)
+        self.stateId: ObjectSHA = self.detectorState.stateId
 
     def tearDown(self):
         pass
@@ -180,11 +179,11 @@ class TestRunMetadata(unittest.TestCase):
         return mock.Mock(wraps=run)
 
     def test_init_fromRun(self):
-        RunMetadata.fromRun(self._mockRun(self.DASlogs, **self.specialValues))
+        RunMetadata.fromRun(self._mockRun(self.DASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA)
 
     def test_init_fromNeXusLogs(self):
         logs = mockH5File(self.DASlogs, **self.specialValues)
-        RunMetadata.fromNeXusLogs(logs)
+        RunMetadata.fromNeXusLogs(logs, DetectorState.LEGACY_SCHEMA)
 
     def _test_get_item(self, map_: RunMetadata):
         # Verify that special values have been initialized:
@@ -205,11 +204,11 @@ class TestRunMetadata(unittest.TestCase):
             assert map_[k] == self.DASlogs[k]
 
     def test_get_item_fromRun(self):
-        map_ = RunMetadata.fromRun(self._mockRun(self.DASlogs, **self.specialValues))
+        map_ = RunMetadata.fromRun(self._mockRun(self.DASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA)
         self._test_get_item(map_)
 
     def test_get_item_fromNeXusLogs(self):
-        map_ = RunMetadata.fromNeXusLogs(mockH5File(self.DASlogs, **self.specialValues))
+        map_ = RunMetadata.fromNeXusLogs(mockH5File(self.DASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA)
         self._test_get_item(map_)
 
     def _test_iter(self, map_):
@@ -219,11 +218,11 @@ class TestRunMetadata(unittest.TestCase):
             assert k in expectedKeys
 
     def test_iter_fromRun(self):
-        map_ = RunMetadata.fromRun(self._mockRun(self.DASlogs, **self.specialValues))
+        map_ = RunMetadata.fromRun(self._mockRun(self.DASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA)
         self._test_iter(map_)
 
     def test_iter_fromNeXusLogs(self):
-        map_ = RunMetadata.fromNeXusLogs(mockH5File(self.DASlogs, **self.specialValues))
+        map_ = RunMetadata.fromNeXusLogs(mockH5File(self.DASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA)
         self._test_iter(map_)
 
     def _test_len(self, map_):
@@ -232,17 +231,17 @@ class TestRunMetadata(unittest.TestCase):
         assert len(map_) == len(expectedKeys)
 
     def test_len_fromRun(self):
-        map_ = RunMetadata.fromRun(self._mockRun(self.DASlogs, **self.specialValues))
+        map_ = RunMetadata.fromRun(self._mockRun(self.DASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA)
         self._test_len(map_)
 
     def test_len_fromNeXusLogs(self):
-        map_ = RunMetadata.fromNeXusLogs(mockH5File(self.DASlogs, **self.specialValues))
+        map_ = RunMetadata.fromNeXusLogs(mockH5File(self.DASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA)
         self._test_len(map_)
 
     def test_proton_charge_units_default_fromNeXusLogs(self):
         logs = mockH5File(self.DASlogs, **self.specialValues)
 
-        map_ = RunMetadata.fromNeXusLogs(logs)
+        map_ = RunMetadata.fromNeXusLogs(logs, DetectorState.LEGACY_SCHEMA)
 
         # Default charge units are "uAh" => no conversion is required
         assert pytest.approx(map_.protonCharge, 1.0e-9) == logs["entry"]["proton_charge"][0]
@@ -250,14 +249,14 @@ class TestRunMetadata(unittest.TestCase):
     def test_proton_charge_units_uAh_fromNeXusLogs(self):
         logs = mockH5File(self.DASlogs, **dict(**self.specialValues, charge_units="uAh".encode("utf8")))
 
-        map_ = RunMetadata.fromNeXusLogs(logs)
+        map_ = RunMetadata.fromNeXusLogs(logs, DetectorState.LEGACY_SCHEMA)
         # Default charge units are "uAh" => no conversion is required
         assert pytest.approx(map_.protonCharge, 1.0e-9) == logs["entry"]["proton_charge"][0]
 
     def test_proton_charge_units_picoCoulomb_fromNeXusLogs(self):
         logs = mockH5File(self.DASlogs, **dict(**self.specialValues, charge_units="picoCoulomb".encode("utf8")))
 
-        map_ = RunMetadata.fromNeXusLogs(logs)
+        map_ = RunMetadata.fromNeXusLogs(logs, DetectorState.LEGACY_SCHEMA)
 
         # Conversion factor between picoColumbs and microAmp*hours
         chargeFactor = 1.0e-6 / 3600.0
@@ -295,11 +294,11 @@ class TestRunMetadata(unittest.TestCase):
                     assert k not in map_
 
     def test_contains_primary_fromRun(self):
-        map_ = RunMetadata.fromRun(self._mockRun(self.DASlogs, **self.specialValues))
+        map_ = RunMetadata.fromRun(self._mockRun(self.DASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA)
         self._test_contains_primary(map_)
 
     def test_contains_primary_fromNeXusLogs(self):
-        map_ = RunMetadata.fromNeXusLogs(mockH5File(self.DASlogs, **self.specialValues))
+        map_ = RunMetadata.fromNeXusLogs(mockH5File(self.DASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA)
         self._test_contains_primary(map_)
 
     def _test_contains_alternatives(self, map_):
@@ -335,11 +334,15 @@ class TestRunMetadata(unittest.TestCase):
                 assert ks[1] in map_
 
     def test_contains_alternatives_fromRun(self):
-        map_ = RunMetadata.fromRun(self._mockRun(self.alternateDASlogs, **self.specialValues))
+        map_ = RunMetadata.fromRun(
+            self._mockRun(self.alternateDASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA
+        )
         self._test_contains_alternatives(map_)
 
     def test_contains_alternatives_fromNeXusLogs(self):
-        map_ = RunMetadata.fromNeXusLogs(mockH5File(self.alternateDASlogs, **self.specialValues))
+        map_ = RunMetadata.fromNeXusLogs(
+            mockH5File(self.alternateDASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA
+        )
         self._test_contains_alternatives(map_)
 
     def _test_keys_alternatives(self, map_):
@@ -375,11 +378,15 @@ class TestRunMetadata(unittest.TestCase):
                 assert ks[1] in keys_
 
     def test_keys_alternatives_fromRun(self):
-        map_ = RunMetadata.fromRun(self._mockRun(self.alternateDASlogs, **self.specialValues))
+        map_ = RunMetadata.fromRun(
+            self._mockRun(self.alternateDASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA
+        )
         self._test_keys_alternatives(map_)
 
     def test_keys_alternatives_fromNeXusLogs(self):
-        map_ = RunMetadata.fromNeXusLogs(mockH5File(self.alternateDASlogs, **self.specialValues))
+        map_ = RunMetadata.fromNeXusLogs(
+            mockH5File(self.alternateDASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA
+        )
         self._test_keys_alternatives(map_)
 
     def _test_get_alternatives(self, map_):
@@ -410,11 +417,15 @@ class TestRunMetadata(unittest.TestCase):
                 assert map_[ks[1]] == logs[ks[1]]
 
     def test_get_alternatives_fromRun(self):
-        map_ = RunMetadata.fromRun(self._mockRun(self.alternateDASlogs, **self.specialValues))
+        map_ = RunMetadata.fromRun(
+            self._mockRun(self.alternateDASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA
+        )
         self._test_get_alternatives(map_)
 
     def test_get_alternatives_fromNeXusLogs(self):
-        map_ = RunMetadata.fromNeXusLogs(mockH5File(self.alternateDASlogs, **self.specialValues))
+        map_ = RunMetadata.fromNeXusLogs(
+            mockH5File(self.alternateDASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA
+        )
         self._test_get_alternatives(map_)
 
     def _test_default_start_and_end_times(self, mapFunc, mockLogs):
@@ -431,7 +442,8 @@ class TestRunMetadata(unittest.TestCase):
                     proton_charge=1000.0,
                     run_number=self.specialValues["run_number"],
                     title=self.specialValues["title"],
-                )
+                ),
+                DetectorState.LEGACY_SCHEMA,
             )
             assert map_.startTime == now_
             assert map_.endTime == now_
@@ -455,7 +467,8 @@ class TestRunMetadata(unittest.TestCase):
                 end_time="2010-01-01T01:00:00",
                 run_number=self.specialValues["run_number"],
                 run_title=self.specialValues["title"],
-            )
+            ),
+            DetectorState.LEGACY_SCHEMA,
         )
         assert map_.protonCharge == 0.0
 
@@ -478,7 +491,8 @@ class TestRunMetadata(unittest.TestCase):
                 end_time="2010-01-01T01:00:00",
                 proton_charge=1000.0,
                 run_title=self.specialValues["title"],
-            )
+            ),
+            DetectorState.LEGACY_SCHEMA,
         )
         assert map_.runNumber == 0
 
@@ -500,7 +514,7 @@ class TestRunMetadata(unittest.TestCase):
         # Note that the "entry/run_number" dataset must always be present in a NeXus-format HDF5 file.
         logs = mockLogs(self.DASlogs, **({} if not neXusFormat else {"run_number": "12345"}))
         with mock.patch.object(inspect.getmodule(RunMetadata), "logger") as mockLogger:
-            map_ = mapFunc(logs)  # noqa: F841
+            map_ = mapFunc(logs, DetectorState.LEGACY_SCHEMA)  # noqa: F841
             assert mockLogger.isEnabledFor.call_count == 2
             mockLogger.isEnabledFor.assert_any_call(logging.DEBUG)
             assert mockLogger.debug.call_count == len(defaultKeys)

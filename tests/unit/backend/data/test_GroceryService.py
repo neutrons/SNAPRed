@@ -16,7 +16,7 @@ from random import randint
 from unittest import mock
 
 import pytest
-from mantid.api import MatrixWorkspace
+from mantid.api import MatrixWorkspace, Run
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
@@ -48,10 +48,8 @@ from util.WhateversInTheFridge import WhateversInTheFridge
 
 import snapred.backend.recipe.algorithm  # noqa: F401
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem, LiveDataArgs
-from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.RunMetadata import RunMetadata
-from snapred.backend.dao.state import DetectorState
-from snapred.backend.dao.StateId import StateId
+from snapred.backend.dao.state import DetectorState, InstrumentConfig
 from snapred.backend.dao.WorkspaceMetadata import UNSET, DiffcalStateMetadata, WorkspaceMetadata
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.AlgorithmException import AlgorithmException
@@ -127,9 +125,9 @@ class TestGroceryService(unittest.TestCase):
         assert os.path.exists(cls.sampleWSFilePath)
 
         cls.detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
-        cls.stateId1 = ObjectSHA.fromObject(StateId.fromDetectorState(cls.detectorState1)).hex
+        cls.stateId1 = DetectorState.fromPVLogs(cls.detectorState1.toPVLogs(), DetectorState.LEGACY_SCHEMA).stateId.hex
         cls.detectorState2 = DetectorState(arc=(7.0, 8.0), wav=9.0, freq=10.0, guideStat=2, lin=(11.0, 12.0))
-        cls.stateId2 = ObjectSHA.fromObject(StateId.fromDetectorState(cls.detectorState2)).hex
+        cls.stateId2 = DetectorState.fromPVLogs(cls.detectorState2.toPVLogs(), DetectorState.LEGACY_SCHEMA).stateId.hex
 
         cls.difc_name = "diffract_consts"
         cls.sampleDiffCalFilePath = Resource.getPath(f"inputs/test_diffcal_{cls.runNumber}_groceryservice.h5")
@@ -206,6 +204,14 @@ class TestGroceryService(unittest.TestCase):
             runNumber=runNumber,
             detectorState=detectorState,
             # other fields...
+        )
+
+    def mockRun(self, runNumber: str) -> mock.Mock:
+        # `mantid.api.Run with a valid 'run_number' property
+        return mock.Mock(
+            spec=Run,
+            hasProperty=mock.Mock(side_effect=lambda s: s == "run_number"),
+            getProperty=mock.Mock(side_effect=lambda s: mock.Mock(value=runNumber) if s == "run_number" else None)
         )
 
     def clearoutWorkspaces(self) -> None:
@@ -1478,7 +1484,6 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,  # noqa: F841
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
                 mock.patch(ThisService + "datetime", wraps=datetime.datetime) as mockDatetime,
-                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 mockDatetime.utcnow.return_value = now_
@@ -1510,18 +1515,14 @@ class TestGroceryService(unittest.TestCase):
                 # Initial output ws from livedata will always be native before it gets converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `RunMetadata.fromRun` to return `RunMetadata` that has the correct run number.
-                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(runNumber))
-                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
-                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
-
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
+                # Mock `<workspace>.getRun` to return `Run` that has the correct run number.
                 mockWs = mock.Mock()
-                mockWs.getRun.return_value = mock.sentinel.run
+                mockWs.getRun.return_value = self.mockRun(runNumber)
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -1553,6 +1554,7 @@ class TestGroceryService(unittest.TestCase):
                 assert exceptionRaised is None
                 mockUpdateNeutronCache.assert_called_with(runNumber, False)
                 mockHasLiveDataConnection.assert_called_once()
+                mockWs.getRun.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
                     loader="LoadLiveDataInterval",
@@ -1609,7 +1611,6 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
                 mock.patch(ThisService + "datetime", wraps=datetime.datetime) as mockDatetime,
-                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 mockDatetime.utcnow.return_value = now_
@@ -1641,17 +1642,13 @@ class TestGroceryService(unittest.TestCase):
                 # Initial output ws from livedata will always be native before it gets converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `RunMetadata.fromRun` to return `RunMetadata` that DOES NOT HAVE the correct run number.
-                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(str(int(runNumber) + 1)))
-                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
-                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
-
                 def _valid_key(key: str, validKey: str):
                     assert key == validKey, f"key '{key}', expecting '{validKey}'"
                     return True
 
+                # Mock `<workspace>.getRun` to return `Run` that DOES NOT HAVE the correct run number.
                 mockWs = mock.Mock()
-                mockWs.getRun.return_value = mock.sentinel.run
+                mockWs.getRun.return_value = self.mockRun(str(int(runNumber) + 1))
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -1684,6 +1681,7 @@ class TestGroceryService(unittest.TestCase):
                 )
                 mockUpdateNeutronCache.assert_called_with(runNumber, False)
                 mockHasLiveDataConnection.assert_called_once()
+                mockWs.getRun.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
                     loader="LoadLiveDataInterval",
@@ -1732,7 +1730,6 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,  # noqa: F841
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
-                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 # Mocks for flow-control branching:
@@ -1762,18 +1759,14 @@ class TestGroceryService(unittest.TestCase):
                 # Live data is always initially native until it is converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `RunMetadata.fromRun` to return `RunMetadata` that has the correct run number.
-                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(runNumber))
-                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
-                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
-
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
+                # Mock `<workspace>.getRun` to return `Run` that has the correct run number.
                 mockWs = mock.Mock()
-                mockWs.getRun.return_value = mock.sentinel.run
+                mockWs.getRun.return_value = self.mockRun(runNumber)
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -1800,6 +1793,7 @@ class TestGroceryService(unittest.TestCase):
                 assert exceptionRaised is None
                 mockUpdateNeutronCache.assert_called_with(runNumber, False)
                 mockHasLiveDataConnection.assert_called_once()
+                mockWs.getRun.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
                     loader="LoadLiveDataInterval",
@@ -1851,7 +1845,6 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
-                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 # Mocks for flow-control branching:
@@ -1881,18 +1874,14 @@ class TestGroceryService(unittest.TestCase):
                 # Live data is always initially native until it is converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `RunMetadata.fromRun` to return `RunMetadata` that DOES NOT HAVE the correct run number.
-                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(str(int(runNumber) + 1)))
-                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
-                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
-
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
+                # Mock `<workspace>.getRun` to return `Run` that DOES NOT HAVE the correct run number.
                 mockWs = mock.Mock()
-                mockWs.getRun.return_value = mock.sentinel.run
+                mockWs.getRun.return_value = self.mockRun(str(int(runNumber) + 1))
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -1922,6 +1911,7 @@ class TestGroceryService(unittest.TestCase):
 
                 mockUpdateNeutronCache.assert_called_with(runNumber, False)
                 mockHasLiveDataConnection.assert_called_once()
+                mockWs.getRun.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
                     loader="LoadLiveDataInterval",
@@ -2167,7 +2157,6 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,  # noqa: F841
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
                 mock.patch(ThisService + "datetime", wraps=datetime.datetime) as mockDatetime,
-                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 mockDatetime.utcnow.return_value = now_
@@ -2199,18 +2188,14 @@ class TestGroceryService(unittest.TestCase):
                 # Initial output ws from livedata will always be native before it gets converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `RunMetadata.fromRun` to return `RunMetadata` that has the correct run number.
-                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(runNumber))
-                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
-                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
-
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
+                # Mock `<workspace>.getRun` to return `Run` that has the correct run number.
                 mockWs = mock.Mock()
-                mockWs.getRun.return_value = mock.sentinel.run
+                mockWs.getRun.return_value = self.mockRun(runNumber)
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -2254,7 +2239,7 @@ class TestGroceryService(unittest.TestCase):
                     loader="LoadLiveDataInterval",
                     loaderArgs=json.dumps(expectedLoaderArgs),
                 )
-                mockRunMetadata.fromRun.assert_called_once_with(mock.sentinel.run)
+                mockWs.getRun.assert_called_once()
 
                 if useLiteMode:
                     assert instance._loadedRuns[(runNumber, False)] == 0
@@ -2304,7 +2289,6 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
                 mock.patch(ThisService + "datetime", wraps=datetime.datetime) as mockDatetime,
-                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 mockDatetime.utcnow.return_value = now_
@@ -2336,18 +2320,14 @@ class TestGroceryService(unittest.TestCase):
                 # Live data is always initially native until it is converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `RunMetadata.fromRun` to return `RunMetadata` that DOES NOT HAVE the correct run number.
-                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(str(int(runNumber) + 1)))
-                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
-                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
-
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
+                # Mock `<workspace>.getRun` to return `Run` that DOES NOT HAVE the correct run number.
                 mockWs = mock.Mock()
-                mockWs.getRun.return_value = mock.sentinel.run
+                mockWs.getRun.return_value = self.mockRun(str(int(runNumber) + 1))
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -2383,6 +2363,7 @@ class TestGroceryService(unittest.TestCase):
                 else:
                     mockUpdateNeutronCache.assert_has_calls([mock.call(runNumber, True), mock.call(runNumber, False)])
                 mockHasLiveDataConnection.assert_called_once()
+                mockWs.getRun.assert_called_once()
                 # it gets loaded into the native workspace first, then cache renames it to raw
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
@@ -2428,7 +2409,6 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,  # noqa: F841
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
                 mock.patch.object(instance, "_processNeutronDataCopy") as mockProcessNeutronDataCopy,  # noqa: F841
-                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 # Mocks for flow-control branching:
@@ -2458,18 +2438,14 @@ class TestGroceryService(unittest.TestCase):
                 # Live data is always initially native until it is converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `RunMetadata.fromRun` to return `RunMetadata` that has the correct run number.
-                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(runNumber))
-                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
-                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
-
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
+                # Mock `<workspace>.getRun` to return `Run` that has the correct run number.
                 mockWs = mock.Mock()
-                mockWs.getRun.return_value = mock.sentinel.run
+                mockWs.getRun.return_value = self.mockRun(runNumber)
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -2506,6 +2482,7 @@ class TestGroceryService(unittest.TestCase):
                     mockUpdateNeutronCache.assert_has_calls([mock.call(runNumber, True), mock.call(runNumber, False)])
 
                 mockHasLiveDataConnection.assert_called_once()
+                mockWs.getRun.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
                     loader="LoadLiveDataInterval",
@@ -2555,7 +2532,6 @@ class TestGroceryService(unittest.TestCase):
                 mock.patch.object(instance, "getCloneOfWorkspace") as mockGetCloneOfWorkspace,
                 mock.patch.object(instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
                 mock.patch.object(instance, "convertToLiteMode") as mockConvertToLiteMode,
-                mock.patch(ThisService + "RunMetadata") as mockRunMetadata,
                 mock.patch.object(instance, "mantidSnapper") as mockSnapper,
             ):
                 # Mocks for flow-control branching:
@@ -2585,18 +2561,14 @@ class TestGroceryService(unittest.TestCase):
                 # Live data is always initially native until it is converted to lite mode.
                 workspaceName = mockCreateNeutronWorkspaceName(runNumber, False)
 
-                # Mock `RunMetadata.fromRun` to return `RunMetadata` that DOES NOT HAVE the correct run number.
-                mockRunMetadata.fromRun = mock.Mock(return_value=self.mockRunMetadata(str(int(runNumber) + 1)))
-                mockRunMetadata.FROM_NOW_ISO8601 = RunMetadata.FROM_NOW_ISO8601
-                mockRunMetadata.FROM_START_ISO8601 = RunMetadata.FROM_START_ISO8601
-
                 def _valid_key(key: str, validKey: str):
                     if key != validKey:
                         raise KeyError(f"key '{key}', expecting '{validKey}'")
                     return True
 
+                # Mock `<workspace>.getRun` to return `Run` that DOES NOT HAVE the correct run number.
                 mockWs = mock.Mock()
-                mockWs.getRun.return_value = mock.sentinel.run
+                mockWs.getRun.return_value = self.mockRun(str(int(runNumber) + 1))
                 mockSnapper.mtd.__getitem__.side_effect = (
                     lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
                 )
@@ -2628,6 +2600,7 @@ class TestGroceryService(unittest.TestCase):
                 else:
                     mockUpdateNeutronCache.assert_has_calls([mock.call(runNumber, True), mock.call(runNumber, False)])
                 mockHasLiveDataConnection.assert_called_once()
+                mockWs.getRun.assert_called_once()
                 mockFetchGroceriesRecipe.executeRecipe.assert_called_once_with(
                     workspace=workspaceName,
                     loader="LoadLiveDataInterval",
@@ -3345,14 +3318,13 @@ class TestGroceryService(unittest.TestCase):
         sampleLogs = mapFromSampleLogs(wsName, requiredLogs)
 
         # Exact float comparison is intended: these should match
-        # Exact float comparison is intended: these should match
-        assert sampleLogs["det_arc1"] == self.detectorState1.arc[0]
-        assert sampleLogs["det_arc2"] == self.detectorState1.arc[1]
-        assert sampleLogs["BL3:Chop:Skf1:WavelengthUserReq"] == self.detectorState1.wav
-        assert sampleLogs["BL3:Det:TH:BL:Frequency"] == self.detectorState1.freq
-        assert sampleLogs["BL3:Mot:OpticsPos:Pos"] == self.detectorState1.guideStat
-        assert sampleLogs["det_lin1"] == self.detectorState1.lin[0]
-        assert sampleLogs["det_lin2"] == self.detectorState1.lin[1]
+        assert sampleLogs["det_arc1"] == self.detectorState1["det_arc1"]
+        assert sampleLogs["det_arc2"] == self.detectorState1["det_arc2"]
+        assert sampleLogs["BL3:Chop:Skf1:WavelengthUserReq"] == self.detectorState1["BL3:Chop:Skf1:WavelengthUserReq"]
+        assert sampleLogs["BL3:Det:TH:BL:Frequency"] == self.detectorState1["BL3:Det:TH:BL:Frequency"]
+        assert sampleLogs["BL3:Mot:OpticsPos:Pos"] == self.detectorState1["BL3:Mot:OpticsPos:Pos"]
+        assert sampleLogs["det_lin1"] == self.detectorState1["det_lin1"]
+        assert sampleLogs["det_lin2"] == self.detectorState1["det_lin2"]
 
         # Verify that the relative location changes correctly after updating the instrument location parameters
         assert pytest.approx(tupleFromQuat(ws.getInstrument().getComponentByName("West").getRelativeRot()), 1.0e-6) == (
@@ -3427,13 +3399,13 @@ class TestGroceryService(unittest.TestCase):
         sampleLogs = mapFromSampleLogs(testWS, requiredLogs)
 
         # Exact float comparison is intended: these should match
-        assert sampleLogs["det_arc1"] == self.detectorState2.arc[0]
-        assert sampleLogs["det_arc2"] == self.detectorState2.arc[1]
-        assert sampleLogs["BL3:Chop:Skf1:WavelengthUserReq"] == self.detectorState2.wav
-        assert sampleLogs["BL3:Det:TH:BL:Frequency"] == self.detectorState2.freq
-        assert sampleLogs["BL3:Mot:OpticsPos:Pos"] == self.detectorState2.guideStat
-        assert sampleLogs["det_lin1"] == self.detectorState2.lin[0]
-        assert sampleLogs["det_lin2"] == self.detectorState2.lin[1]
+        assert sampleLogs["det_arc1"] == self.detectorState2["det_arc1"]
+        assert sampleLogs["det_arc2"] == self.detectorState2["det_arc2"]
+        assert sampleLogs["BL3:Chop:Skf1:WavelengthUserReq"] == self.detectorState2["BL3:Chop:Skf1:WavelengthUserReq"]
+        assert sampleLogs["BL3:Det:TH:BL:Frequency"] == self.detectorState2["BL3:Det:TH:BL:Frequency"]
+        assert sampleLogs["BL3:Mot:OpticsPos:Pos"] == self.detectorState2["BL3:Mot:OpticsPos:Pos"]
+        assert sampleLogs["det_lin1"] == self.detectorState2["det_lin1"]
+        assert sampleLogs["det_lin2"] == self.detectorState2["det_lin2"]
 
     def test_fetch_instrument_donor_empty_instrument_is_cached(self):
         self.instance.dataService.generateStateId = mock.Mock(return_value=(self.stateId2, self.detectorState2))

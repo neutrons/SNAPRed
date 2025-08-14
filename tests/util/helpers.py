@@ -89,7 +89,7 @@ def createNPixelWorkspace(wsname, numberOfPixels, detectorState: DetectorState =
             freq=60.0,
             guideStat=1,
         )
-    logs = detectorState.toLogs()
+    logs = detectorState.toPVLogs()
     lognames = list(logs.keys())
     logvalues = [str(v[0]) for v in logs.values()]
     logtypes = ["Number Series"] * len(lognames)

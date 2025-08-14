@@ -5,7 +5,6 @@ from typing import Dict, List, Type, TypeVar
 
 from pydantic import validate_call
 
-from snapred.backend.dao import InstrumentConfig
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
@@ -16,6 +15,7 @@ from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, Vers
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
+from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Enum import StrEnum
 from snapred.meta.LockFile import LockFile, LockManager

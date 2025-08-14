@@ -20,7 +20,7 @@ import h5py
 import numpy as np
 import pydantic
 import pytest
-from mantid.api import ITableWorkspace, MatrixWorkspace
+from mantid.api import ITableWorkspace, MatrixWorkspace, Run
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import amend_config
 from mantid.simpleapi import (
@@ -50,7 +50,6 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import ReductionIngredients
-from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
@@ -63,10 +62,9 @@ from snapred.backend.dao.request import (
     CreateNormalizationRecordRequest,
 )
 from snapred.backend.dao.RunMetadata import RunMetadata
-from snapred.backend.dao.state import DetectorState, InstrumentState
+from snapred.backend.dao.state import DetectorState, InstrumentConfig, InstrumentState
 from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
 from snapred.backend.dao.state.GroupingMap import GroupingMap
-from snapred.backend.dao.StateId import StateId
 from snapred.backend.data.Indexer import IndexerType
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
@@ -116,7 +114,7 @@ def mockGenerateStateId(runId: str) -> Tuple[ObjectSHA | None, DetectorState | N
     detectorState = mockDetectorState(runId)
     if detectorState is None:
         return None, None
-    return ObjectSHA.fromObject(StateId.fromDetectorState(detectorState)), detectorState
+    return DetectorState.fromPVLogs(detectorState.toPVLogs(), DetectorState.LEGACY_SCHEMA).stateId, detectorState
 
 
 def mockH5Dataset(value):
@@ -132,16 +130,17 @@ def mockPVFile(detectorState: DetectorState, **kwargs) -> mock.Mock:
     #   so this `dict` mocks the HDF5 group, not the PV-file itself.
 
     # For the HDF5-file, any "/value" suffix is _not_ part of the dataset's key!
+    # Here we need the pre-type-normalized values (i.e. the time-series arrays).
     dict_ = {
         "start_time": np.array(["2023-06-14T14:06:40.429048667"]),
         "end_time": np.array(["2023-06-14T14:07:56.123123123"]),
-        "BL3:Chop:Skf1:WavelengthUserReq": mockH5Dataset(np.array([detectorState.wav])),
-        "det_arc1": np.array([detectorState.arc[0]]),
-        "det_arc2": np.array([detectorState.arc[1]]),
-        "BL3:Det:TH:BL:Frequency": np.array([detectorState.freq]),
-        "BL3:Mot:OpticsPos:Pos": np.array([detectorState.guideStat]),
-        "det_lin1": np.array([detectorState.lin[0]]),
-        "det_lin2": np.array([detectorState.lin[1]]),
+        "BL3:Chop:Skf1:WavelengthUserReq": mockH5Dataset(np.array([detectorState["BL3:Chop:Skf1:WavelengthUserReq"]])),
+        "det_arc1": np.array([detectorState["det_arc1"]]),
+        "det_arc2": np.array([detectorState["det_arc2"]]),
+        "BL3:Det:TH:BL:Frequency": np.array([detectorState["BL3:Det:TH:BL:Frequency"]]),
+        "BL3:Mot:OpticsPos:Pos": np.array([detectorState["BL3:Mot:OpticsPos:Pos"]]),
+        "det_lin1": np.array([detectorState["det_lin1"]]),
+        "det_lin2": np.array([detectorState["det_lin2"]]),
     }
     dict_.update(kwargs)
 
@@ -165,12 +164,12 @@ def mockNeXusLogsMapping(detectorState: DetectorState) -> mock.Mock:
         "end_time": datetime.datetime.fromisoformat("2023-06-14T14:07:56.123123"),
         "proton_charge": 1000.0,
         "BL3:Chop:Skf1:WavelengthUserReq": [detectorState.wav],
-        "det_arc1": [detectorState.arc[0]],
-        "det_arc2": [detectorState.arc[1]],
-        "BL3:Det:TH:BL:Frequency": [detectorState.freq],
-        "BL3:Mot:OpticsPos:Pos": [detectorState.guideStat],
-        "det_lin1": [detectorState.lin[0]],
-        "det_lin2": [detectorState.lin[1]],
+        "det_arc1": [detectorState["det_arc1"]],
+        "det_arc2": [detectorState["det_arc2"]],
+        "BL3:Det:TH:BL:Frequency": [detectorState["BL3:Det:TH:BL:Frequency"]],
+        "BL3:Mot:OpticsPos:Pos": [detectorState["BL3:Mot:OpticsPos:Pos"]],
+        "det_lin1": [detectorState["det_lin1"]],
+        "det_lin2": [detectorState["det_lin2"]],
     }
     return mockNeXusLogsMappingFromDict(dict_)
 
@@ -543,12 +542,14 @@ def test_readRunMetadata(mockRunMetadata):
     runNumber = "12345"
     mockMetadata = mock.Mock(spec=RunMetadata, runNumber=runNumber)
     mockRunMetadata.fromNeXusLogs.return_value = mockMetadata
+    mockInstrumentConfig = mock.Mock(spec=InstrumentConfig, stateIdSchema=mock.sentinel.stateIdSchema)
     instance = LocalDataService()
     instance._readPVFile = mock.Mock(spec=h5py.File, return_value=mock.sentinel.h5)
+    instance.readInstrumentConfig = mock.Mock(return_value=mockInstrumentConfig)
 
     actual = instance.readRunMetadata(runNumber)
     assert actual == mockMetadata
-    mockRunMetadata.fromNeXusLogs.assert_called_once_with(mock.sentinel.h5)
+    mockRunMetadata.fromNeXusLogs.assert_called_once_with(mock.sentinel.h5, mock.sentinel.stateIdSchema)
 
 
 @mock.patch(ThisService + "RunMetadata")
@@ -557,8 +558,10 @@ def test_readRunMetadata_runNumber_mismatch(mockRunMetadata):
     runNumber2 = "67890"
     mockMetadata = mock.Mock(spec=RunMetadata, runNumber=runNumber2)
     mockRunMetadata.fromNeXusLogs.return_value = mockMetadata
+    mockInstrumentConfig = mock.Mock(spec=InstrumentConfig, stateIdSchema=mock.sentinel.stateIdSchema)
     instance = LocalDataService()
     instance._readPVFile = mock.Mock(spec=h5py.File, return_value=mock.sentinel.h5)
+    instance.readInstrumentConfig = mock.Mock(return_value=mockInstrumentConfig)
 
     with pytest.raises(RuntimeError, match=f"Expected run-number '{runNumber1}' from the filename does not match.*"):
         actual = instance.readRunMetadata(runNumber1)  # noqa: F841
@@ -571,11 +574,13 @@ def test_readRunMetadata_live_data_fallback(mockRunMetadata):
     mockRunMetadata.fromRun.return_value = mockMetadata
     instance = LocalDataService()
     instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists"))
+    instance.readInstrumentConfig = mock.Mock()
     instance.hasLiveDataConnection = mock.Mock(return_value=True)
     instance.readLiveMetadata = mock.Mock(return_value=mockMetadata)
 
     actual = instance.readRunMetadata(runNumber)
     assert actual == mockMetadata
+    instance.readInstrumentConfig.assert_not_called()
     instance.hasLiveDataConnection.assert_called_once()
 
 
@@ -644,10 +649,19 @@ def test_hasLiveDataConnection_config_disabled(mockGetHostByAddr):
 def test__liveMetadataFromRun(mockRunMetadata):
     mockMetadata = mock.Mock(spec=RunMetadata)
     mockRunMetadata.fromRun.return_value = mockMetadata
+    mockRun = mock.Mock(
+        spec=Run,
+        hasProperty=mock.Mock(return_value=True),
+        getProperty=mock.Mock(return_value=mock.Mock(value=mock.sentinel.runNumber)),
+    )
+    mockInstrumentConfig = mock.Mock(spec=InstrumentConfig, stateIdSchema=mock.sentinel.stateIdSchema)
+
     instance = LocalDataService()
-    actual = instance._liveMetadataFromRun(mock.sentinel.run)
+    instance.readInstrumentParameters = mock.Mock(return_value=mockInstrumentConfig)
+
+    actual = instance._liveMetadataFromRun(mockRun)
     assert actual == mockMetadata
-    mockRunMetadata.fromRun.assert_called_once_with(mock.sentinel.run, liveData=True)
+    mockRunMetadata.fromRun.assert_called_once_with(mockRun, mock.sentinel.stateIdSchema, liveData=True)
 
 
 @mock.patch(ThisService + "RunMetadata")
@@ -663,9 +677,18 @@ def test__liveMetadataFromRun_exception_routing(mockRunMetadata):
         ValueError("some other validation error"),
     ):
         mockRunMetadata.fromRun.side_effect = fromRunException
+        mockRun = mock.Mock(
+            spec=Run,
+            hasProperty=mock.Mock(return_value=True),
+            getProperty=mock.Mock(return_value=mock.Mock(value=mock.sentinel.runNumber)),
+        )
+        mockInstrumentConfig = mock.Mock(spec=InstrumentConfig, stateIdSchema=mock.sentinel.stateIdSchema)
+
         instance = LocalDataService()
+        instance.readInstrumentParameters = mock.Mock(return_value=mockInstrumentConfig)
+
         with pytest.raises(RuntimeError, match="Unable to extract RunMetadata from Run"):
-            actual = instance._liveMetadataFromRun(mock.sentinel.run)  # noqa: F841
+            actual = instance._liveMetadataFromRun(mockRun)  # noqa: F841
         mockMetadata.reset_mock()
         mockRunMetadata.reset_mock()
 
@@ -679,7 +702,7 @@ def test__liveMetadataFromRun_exception_routing(mockRunMetadata):
 
     mockRunMetadata.fromRun.side_effect = SomeOtherException("any other exception")
     with pytest.raises(SomeOtherException, match="any other exception"):
-        actual = instance._liveMetadataFromRun(mock.sentinel.run)  # noqa: F841
+        actual = instance._liveMetadataFromRun(mockRun)  # noqa: F841
 
 
 def test_prepareStateRoot_creates_state_root_directory():
@@ -1152,22 +1175,22 @@ def test_generateStateId(mockRunMetadata):
         runNumber=runNumber, detectorState=detectorState, stateId=stateId
     )
 
-    localDataService = LocalDataService()
-    localDataService._readPVFile = mock.Mock(return_value=mockPVFile(detectorState))
+    service = LocalDataService()
+    service._readPVFile = mock.Mock(return_value=mockPVFile(detectorState))
+    mockInstrumentConfig = mock.Mock(spec=InstrumentConfig, stateIdSchema=DetectorState.LEGACY_SCHEMA)
+    service.readInstrumentConfig = mock.Mock(return_value=mockInstrumentConfig)
 
-    actual = localDataService.generateStateId("12345")
+    actual = service.generateStateId("12345")
     assert actual == (stateId.hex, detectorState)
 
 
 @mock.patch(ThisService + "RunMetadata")
 def test_generateStateId_cache(mockRunMetadata):
-    localDataService = LocalDataService()
-    localDataService.generateStateId.cache_clear()
-    assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
-        hits=0, misses=0, maxsize=128, currsize=0
-    )
+    service = LocalDataService()
+    service.generateStateId.cache_clear()
+    assert service.generateStateId.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
 
-    localDataService._readPVFile = mock.Mock(
+    service._readPVFile = mock.Mock(
         side_effect=lambda runNumber: mockPVFile(
             mockDetectorState(runNumber),
             run_number=np.array(
@@ -1177,6 +1200,8 @@ def test_generateStateId_cache(mockRunMetadata):
             ),
         )
     )
+    mockInstrumentConfig = mock.Mock(spec=InstrumentConfig, stateIdSchema=DetectorState.LEGACY_SCHEMA)
+    service.readInstrumentConfig = mock.Mock(return_value=mockInstrumentConfig)
 
     runNumber1 = "12345"
     stateSHA1, detectorState1 = mockGenerateStateId(runNumber1)
@@ -1186,7 +1211,7 @@ def test_generateStateId_cache(mockRunMetadata):
     stateSHA2, detectorState2 = mockGenerateStateId(runNumber2)
     metadata2 = RunMetadata.model_construct(runNumber=runNumber2, detectorState=detectorState2, stateId=stateSHA2)
 
-    def selectMetadata(logs) -> RunMetadata:
+    def selectMetadata(logs, _stateIdSchema) -> RunMetadata:
         runNumber = str(logs["run_number"][0], encoding="utf8")
         match runNumber:
             case "12345":
@@ -1198,31 +1223,23 @@ def test_generateStateId_cache(mockRunMetadata):
 
     mockRunMetadata.fromNeXusLogs.side_effect = selectMetadata
 
-    actual = localDataService.generateStateId(runNumber1)
+    actual = service.generateStateId(runNumber1)
     assert actual == (stateSHA1.hex, detectorState1)
-    assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
-        hits=0, misses=1, maxsize=128, currsize=1
-    )
+    assert service.generateStateId.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
 
     # check cached value
-    actual = localDataService.generateStateId(runNumber1)
+    actual = service.generateStateId(runNumber1)
     assert actual == (stateSHA1.hex, detectorState1)
-    assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
-        hits=1, misses=1, maxsize=128, currsize=1
-    )
+    assert service.generateStateId.cache_info() == functools._CacheInfo(hits=1, misses=1, maxsize=128, currsize=1)
 
     # check a different value
-    actual = localDataService.generateStateId(runNumber2)
+    actual = service.generateStateId(runNumber2)
     assert actual == (stateSHA2.hex, detectorState2)
-    assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
-        hits=1, misses=2, maxsize=128, currsize=2
-    )
+    assert service.generateStateId.cache_info() == functools._CacheInfo(hits=1, misses=2, maxsize=128, currsize=2)
     # ... and its cached value
-    actual = localDataService.generateStateId(runNumber2)
+    actual = service.generateStateId(runNumber2)
     assert actual == (stateSHA2.hex, detectorState2)
-    assert localDataService.generateStateId.cache_info() == functools._CacheInfo(
-        hits=2, misses=2, maxsize=128, currsize=2
-    )
+    assert service.generateStateId.cache_info() == functools._CacheInfo(hits=2, misses=2, maxsize=128, currsize=2)
 
 
 def test_generateStateId_reserved_runNumbers():
@@ -2714,7 +2731,13 @@ def test__readLiveData_from_now(mockSnapper):
 def test_readLiveMetadata(mockSnapper, mockRunMetadata):
     testWs = "testWs"
     mockWs = mock.Mock()
-    mockWs.getRun.return_value = mock.sentinel.run
+    mockRun = mock.Mock(
+        spec=Run,
+        hasProperty=mock.Mock(return_value=True),
+        getProperty=mock.Mock(return_value=mock.Mock(value=mock.sentinel.runNumber)),
+    )
+    mockWs.getRun.return_value = mockRun
+    mockInstrumentConfig = mock.Mock(spec=InstrumentConfig, stateIdSchema=mock.sentinel.stateIdSchema)
 
     mockSnapper.return_value.mtd.unique_hidden_name.return_value = testWs
     mockSnapper.return_value.mtd.__getitem__.return_value = mockWs
@@ -2722,11 +2745,18 @@ def test_readLiveMetadata(mockSnapper, mockRunMetadata):
     mockRunMetadata.fromRun = mock.Mock(return_value=mock.sentinel.metadata)
 
     instance = LocalDataService()
-    with mock.patch.object(instance, "_readLiveData") as mock__readLiveData:
+    with (
+        mock.patch.object(instance, "_readLiveData") as mock__readLiveData,
+        mock.patch.object(instance, "readInstrumentConfig") as mock_readInstrumentConfig,
+    ):
         mock__readLiveData.return_value = testWs
+        mock_readInstrumentConfig.return_value = mockInstrumentConfig
+
         actual = instance.readLiveMetadata()
+
         mock__readLiveData.assert_called_once_with(testWs, duration=0)
-        mockRunMetadata.fromRun.assert_called_once_with(mock.sentinel.run, liveData=True)
+        mock_readInstrumentConfig.assert_called_once_with(mock.sentinel.runNumber)
+        mockRunMetadata.fromRun.assert_called_once_with(mockRun, mock.sentinel.stateIdSchema, liveData=True)
         mockSnapper.return_value.DeleteWorkspace.assert_called_once_with("delete temporary workspace", Workspace=testWs)
         mockSnapper.return_value.executeQueue.call_count == 2
         assert actual == mock.sentinel.metadata
@@ -2761,87 +2791,6 @@ def instrumentWorkspace(cleanup_workspace_at_exit):
     pass
 
 
-def test_detectorStateFromWorkspace(instrumentWorkspace):
-    service = LocalDataService()
-    runNumber = "12345"
-    detectorState1 = mockDetectorState(runNumber)
-    wsName = instrumentWorkspace
-
-    # --- duplicates `groceryService.updateInstrumentParameters`: -----
-    logsInfo = getInstrumentLogDescriptors(detectorState1)
-    addInstrumentLogs(wsName, **logsInfo)
-    #  For good measure, we also add the 'run_number' and 'run_title' logs:
-    logs = mtd[wsName].mutableRun()
-    logs.addProperty("run_number", runNumber, True)
-    logs.addProperty("run_title", f"ws for {runNumber}", True)
-    # ------------------------------------------------------
-
-    actual = service.detectorStateFromWorkspace(wsName)
-    assert actual == detectorState1
-
-
-def test_detectorStateFromWorkspaceWithDiffWavKey(instrumentWorkspace):
-    service = LocalDataService()
-    runNumber = "67890"
-    detectorState2 = mockDetectorState(runNumber)
-    wsName = instrumentWorkspace
-
-    # --- duplicates `groceryService.updateInstrumentParameters`: -----
-    logsInfo = getInstrumentLogDescriptors(detectorState2)
-    idx = logsInfo["logNames"].index("BL3:Chop:Skf1:WavelengthUserReq")
-    logsInfo["logNames"][idx] = "BL3:Chop:Gbl:WavelengthReq"
-    addInstrumentLogs(wsName, **logsInfo)
-    #  For good measure, we also add the 'run_number' and 'run_title' logs:
-    logs = mtd[wsName].mutableRun()
-    logs.addProperty("run_number", runNumber, True)
-    logs.addProperty("run_title", f"ws for {runNumber}", True)
-    # ------------------------------------------------------
-
-    actual = service.detectorStateFromWorkspace(wsName)
-    assert actual == detectorState2
-
-
-def test_detectorStateFromWorkspace_bad_logs(instrumentWorkspace):
-    service = LocalDataService()
-    runNumber = "12345"
-    detectorState1 = mockDetectorState(runNumber)
-    wsName = instrumentWorkspace
-
-    # --- duplicates `groceryService.updateInstrumentParameters`: but skips a few log entries: -----
-    logsInfo = {
-        "logNames": [
-            "det_arc1",
-            "det_arc2",
-            "BL3:Mot:OpticsPos:Pos",
-            "det_lin1",
-            "det_lin2",
-        ],
-        "logTypes": [
-            "Number Series",
-            "Number Series",
-            "Number Series",
-            "Number Series",
-            "Number Series",
-        ],
-        "logValues": [
-            str(detectorState1.arc[0]),
-            str(detectorState1.arc[1]),
-            str(detectorState1.guideStat),
-            str(detectorState1.lin[0]),
-            str(detectorState1.lin[1]),
-        ],
-    }
-    addInstrumentLogs(wsName, **logsInfo)
-    #  For good measure, we also add the 'run_number' and 'run_title' logs:
-    logs = mtd[wsName].mutableRun()
-    logs.addProperty("run_number", runNumber, True)
-    logs.addProperty("run_title", f"ws for {runNumber}", True)
-    # ------------------------------------------------------
-
-    with pytest.raises(RuntimeError, match=r"Some required logs \'.*\' are not present.*"):
-        service.detectorStateFromWorkspace(wsName)
-
-
 def test_stateIdFromWorkspace(instrumentWorkspace):
     service = LocalDataService()
     runNumber = "12345"
@@ -2857,10 +2806,15 @@ def test_stateIdFromWorkspace(instrumentWorkspace):
     logs.addProperty("run_title", f"ws for {runNumber}", True)
     # ------------------------------------------------------
 
-    SHA = service._stateIdFromDetectorState(detectorState1)
+    SHA = DetectorState.fromPVLogs(detectorState1.toPVLogs(), DetectorState.LEGACY_SCHEMA).stateId
     expected = SHA.hex, detectorState1
-    actual = service.stateIdFromWorkspace(wsName)
-    assert actual == expected
+
+    with mock.patch.object(service, "readInstrumentParameters") as mockReadInstrumentParameters:
+        mockReadInstrumentParameters.return_value = mock.Mock(
+            spec=InstrumentConfig, stateIdSchema=DetectorState.LEGACY_SCHEMA
+        )
+        actual = service.stateIdFromWorkspace(wsName)
+        assert actual == expected
 
 
 @mock.patch(ThisService + "RunMetadata")
@@ -3334,9 +3288,9 @@ class TestReductionPixelMasks:
         cls.detectorState3 = DetectorState(arc=(7.0, 9.0), wav=9.0, freq=11.0, guideStat=2, lin=(11.0, 13.0))
 
         # The corresponding stateId:
-        cls.stateId1 = cls.service._stateIdFromDetectorState(cls.detectorState1).hex
-        cls.stateId2 = cls.service._stateIdFromDetectorState(cls.detectorState2).hex
-        cls.stateId3 = cls.service._stateIdFromDetectorState(cls.detectorState3).hex
+        cls.stateId1 = DetectorState.fromPVLogs(cls.detectorState1.toPVLogs(), DetectorState.LEGACY_SCHEMA).stateId.hex
+        cls.stateId2 = DetectorState.fromPVLogs(cls.detectorState2.toPVLogs(), DetectorState.LEGACY_SCHEMA).stateId.hex
+        cls.stateId3 = DetectorState.fromPVLogs(cls.detectorState3.toPVLogs(), DetectorState.LEGACY_SCHEMA).stateId.hex
 
         cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.instrumentLiteFilePath = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
@@ -3347,8 +3301,13 @@ class TestReductionPixelMasks:
         create_sample_workspace(cls.sampleWS1, cls.detectorState1, instrumentFilePath, cls.runNumber1)
         cls.sampleWS2 = mtd.unique_hidden_name()
         create_sample_workspace(cls.sampleWS2, cls.detectorState2, instrumentFilePath, cls.runNumber2)
-        assert cls.service.stateIdFromWorkspace(cls.sampleWS1)[0] == cls.stateId1
-        assert cls.service.stateIdFromWorkspace(cls.sampleWS2)[0] == cls.stateId2
+
+        with mock.patch.object(cls.service, "readInstrumentParameters") as mockReadInstrumentParameters:
+            mockReadInstrumentParameters.return_value = mock.Mock(
+                spec=InstrumentConfig, stateIdSchema=DetectorState.LEGACY_SCHEMA
+            )
+            assert cls.service.stateIdFromWorkspace(cls.sampleWS1)[0] == cls.stateId1
+            assert cls.service.stateIdFromWorkspace(cls.sampleWS2)[0] == cls.stateId2
 
         # random fraction used for mask initialization
         cls.randomFraction = 0.2
@@ -3362,10 +3321,15 @@ class TestReductionPixelMasks:
         create_sample_pixel_mask(cls.maskWS2, cls.detectorState2, instrumentFilePath, cls.randomFraction)
         create_sample_pixel_mask(cls.maskWS3, cls.detectorState1, instrumentFilePath, cls.randomFraction)
         create_sample_pixel_mask(cls.maskWS4, cls.detectorState2, instrumentFilePath, cls.randomFraction)
-        assert cls.service.stateIdFromWorkspace(cls.maskWS1)[0] == cls.stateId1
-        assert cls.service.stateIdFromWorkspace(cls.maskWS2)[0] == cls.stateId2
-        assert cls.service.stateIdFromWorkspace(cls.maskWS3)[0] == cls.stateId1
-        assert cls.service.stateIdFromWorkspace(cls.maskWS4)[0] == cls.stateId2
+
+        with mock.patch.object(cls.service, "readInstrumentParameters") as mockReadInstrumentParameters:
+            mockReadInstrumentParameters.return_value = mock.Mock(
+                spec=InstrumentConfig, stateIdSchema=DetectorState.LEGACY_SCHEMA
+            )
+            assert cls.service.stateIdFromWorkspace(cls.maskWS1)[0] == cls.stateId1
+            assert cls.service.stateIdFromWorkspace(cls.maskWS2)[0] == cls.stateId2
+            assert cls.service.stateIdFromWorkspace(cls.maskWS3)[0] == cls.stateId1
+            assert cls.service.stateIdFromWorkspace(cls.maskWS4)[0] == cls.stateId2
         yield
 
         # teardown...
@@ -3629,10 +3593,10 @@ class TestReductionPixelMasks:
     def test_findCompatibleStates(self, mockPath):
         compatibleDetectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
         compatibleDetectorState2 = DetectorState(
-            arc=compatibleDetectorState1.arc,
+            arc=[compatibleDetectorState1["det_arc1"], compatibleDetectorState1["det_arc2"]],
             wav=9.0,
             freq=10.0,
-            guideStat=compatibleDetectorState1.guideStat,
+            guideStat=compatibleDetectorState1["BL3:Mot:OpticsPos:Pos"],
             lin=(11.0, 12.0),
         )
         incompatibleDetectorState = DetectorState(arc=(7.0, 8.0), wav=9.0, freq=10.0, guideStat=2, lin=(11.0, 12.0))
@@ -3645,19 +3609,33 @@ class TestReductionPixelMasks:
             pathTuple(name="123458(incomp)", is_dir=lambda: True),
         ]
 
-        mockIndexer = mock.MagicMock()
+        mockInstrumentConfig = mock.Mock(spec=InstrumentConfig, stateIdSchema=DetectorState.LEGACY_SCHEMA)
+
+        mockIndexer = mock.Mock()
         self.service.calibrationIndexer = mock.Mock(return_value=mockIndexer)
         mockIndexer.defaultVersion.return_value = "-1"
         mockIndexer.currentVersion.return_value = "0"
         mockIndexer.latestApplicableVersion.return_value = "0"
         mockIndexer.readParameters.side_effect = [
-            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=compatibleDetectorState1)),
-            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=compatibleDetectorState2)),
-            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=incompatibleDetectorState)),
+            mock.Mock(
+                instrumentState=mock.Mock(
+                    spec=InstrumentState, instrumentConfig=mockInstrumentConfig, detectorState=compatibleDetectorState1
+                )
+            ),
+            mock.Mock(
+                instrumentState=mock.Mock(
+                    spec=InstrumentState, instrumentConfig=mockInstrumentConfig, detectorState=compatibleDetectorState2
+                )
+            ),
+            mock.Mock(
+                instrumentState=mock.Mock(
+                    spec=InstrumentState, instrumentConfig=mockInstrumentConfig, detectorState=incompatibleDetectorState
+                )
+            ),
         ]
 
-        self.service.readDetectorState = mock.Mock()
-        self.service.readDetectorState.return_value = compatibleDetectorState1
+        self.service.readInstrumentConfig = mock.Mock(return_value=mockInstrumentConfig)
+        self.service.readDetectorState = mock.Mock(return_value=compatibleDetectorState1)
 
         result = self.service.findCompatibleStates("123", True)
         assert len(result) == 2
@@ -3678,18 +3656,28 @@ class TestReductionPixelMasks:
             pathTuple(name="123458(incomp)", is_dir=lambda: True),
         ]
 
-        mockIndexer = mock.MagicMock()
+        mockInstrumentConfig = mock.Mock(spec=InstrumentConfig, stateIdSchema=DetectorState.LEGACY_SCHEMA)
+
+        mockIndexer = mock.Mock()
         self.service.calibrationIndexer = mock.Mock(return_value=mockIndexer)
         mockIndexer.defaultVersion.return_value = "-1"
         mockIndexer.currentVersion.side_effect = ["0", "-1", "0"]
         mockIndexer.latestApplicableVersion.return_value = "0"
         mockIndexer.readParameters.side_effect = [
-            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=compatibleDetectorState1)),
-            mock.MagicMock(instrumentState=mock.MagicMock(detectorState=incompatibleDetectorState)),
+            mock.Mock(
+                instrumentState=mock.Mock(
+                    spec=InstrumentState, instrumentConfig=mockInstrumentConfig, detectorState=compatibleDetectorState1
+                )
+            ),
+            mock.Mock(
+                instrumentState=mock.Mock(
+                    spec=InstrumentState, instrumentConfig=mockInstrumentConfig, detectorState=incompatibleDetectorState
+                )
+            ),
         ]
 
-        self.service.readDetectorState = mock.Mock()
-        self.service.readDetectorState.return_value = compatibleDetectorState1
+        self.service.readInstrumentConfig = mock.Mock(return_value=mockInstrumentConfig)
+        self.service.readDetectorState = mock.Mock(return_value=compatibleDetectorState1)
 
         result = self.service.findCompatibleStates("123", True)
         assert len(result) == 1

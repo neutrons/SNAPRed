@@ -323,7 +323,7 @@ class PixelGroupCalculation(unittest.TestCase):
         algo = ThisAlgo()
         algo.initialize()
         algo.chopIngredients(self.localIngredients)
-        notNones = ["tofMin", "tofMax", "delL", "deltaTOverT", "delTheta"]
+        notNones = ["tofMin", "tofMax", "delL", "deltaTOverT", "deltaTheta"]
         for notNone in notNones:
             assert getattr(algo, notNone) is not None
         assert algo.tofMin == self.localInstrumentState.particleBounds.tof.minimum
@@ -332,7 +332,7 @@ class PixelGroupCalculation(unittest.TestCase):
         assert algo.delLOverL == self.localInstrumentState.instrumentConfig.delLOverL
         assert algo.L == self.localInstrumentState.instrumentConfig.L1 + self.localInstrumentState.instrumentConfig.L2
         assert algo.delL == algo.L * algo.delLOverL
-        assert algo.delTheta == self.localInstrumentState.instrumentConfig.delThWithGuide
+        assert algo.deltaTheta == self.localInstrumentState.deltaTheta
 
     def run_test(self, instrumentState, groupingWorkspace, maskWorkspace, referenceParametersFile):
         pixelGroupingParams_calc = self.createPixelGroupingParameters(instrumentState, groupingWorkspace, maskWorkspace)

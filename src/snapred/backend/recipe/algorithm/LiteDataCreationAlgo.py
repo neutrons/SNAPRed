@@ -132,7 +132,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         self.delLOverL = instrumentState.instrumentConfig.delLOverL
         self.L = instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
         self.delL = self.delLOverL * self.L
-        self.delTheta = instrumentState.delTh
+        self.deltaTheta = instrumentState.deltaTheta
 
     def PyExec(self):
         ingredients = LiteDataCreationIngredients.model_validate_json(self.getProperty("Ingredients").value)
@@ -178,7 +178,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
                 PartialResolutionWorkspaces=partialResolutionWorkspaceName,
                 DeltaTOFOverTOF=self.deltaTOverT,
                 SourceDeltaL=self.delL,
-                SourceDeltaTheta=self.delTheta,
+                SourceDeltaTheta=self.deltaTheta,
             )
 
             self.mantidSnapper.WashDishes(

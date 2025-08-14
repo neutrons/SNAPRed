@@ -699,33 +699,12 @@ class GroceryService:
         #   This is done with a call to `ws->populateInstrumentParameters()` from within mantid.
         #   This call only needs to happen with the last log
 
-        logNames = [
-            "det_arc1",
-            "det_arc2",
-            "BL3:Chop:Skf1:WavelengthUserReq",
-            "BL3:Det:TH:BL:Frequency",
-            "BL3:Mot:OpticsPos:Pos",
-            "det_lin1",
-            "det_lin2",
-        ]
-        logTypes = [
-            "Number Series",
-            "Number Series",
-            "Number Series",
-            "Number Series",
-            "Number Series",
-            "Number Series",
-            "Number Series",
-        ]
-        logValues = [
-            str(detectorState.arc[0]),
-            str(detectorState.arc[1]),
-            str(detectorState.wav),
-            str(detectorState.freq),
-            str(detectorState.guideStat),
-            str(detectorState.lin[0]),
-            str(detectorState.lin[1]),
-        ]
+        # It's important here to add the ACTUAL PVs that are used by the `DetectorState`:
+        #   these may change depending on the current `InstrumentConfig.stateIdSchema`.
+        logNames = [k for k in detectorState.PVs.keys()]
+        logTypes = ["Number Series" for _ in logNames]
+        logValues = [f"{detectorState[k]:.16f}" for k in logNames]
+
         self.mantidSnapper.AddSampleLogMultiple(
             f"Updating instrument parameters for {wsName}",
             Workspace=wsName,
@@ -899,8 +878,8 @@ class GroceryService:
             data = self.grocer.executeRecipe(workspace=workspaceName, loader=loader, loaderArgs=json.dumps(loaderArgs))
             data["fromLiveData"] = True
             if data["result"]:
-                metadata = RunMetadata.fromRun(self.mantidSnapper.mtd[workspaceName].getRun())
-                liveRunNumber = str(metadata.runNumber)
+                run = self.mantidSnapper.mtd[workspaceName].getRun()
+                liveRunNumber = run.getProperty("run_number").value if run.hasProperty("run_number") else 0
 
                 if int(runNumber) != int(liveRunNumber):
                     # Live run number is unexpected => there has been a live-data run-state change.

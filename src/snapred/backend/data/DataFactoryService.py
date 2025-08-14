@@ -7,7 +7,6 @@ from pydantic import validate_call
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
-from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.ReductionState import ReductionState
@@ -17,6 +16,7 @@ from snapred.backend.dao.request.NormalizationExportRequest import Normalization
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state.DetectorState import DetectorState
+from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -46,13 +46,13 @@ class DataFactoryService:
     def fileExists(self, filepath: str) -> bool:
         return self.lookupService.fileExists(filepath)
 
-    def getRunConfig(self, runId: str) -> RunConfig:  # noqa: ARG002
+    def getRunConfig(self, runId: str) -> RunConfig:
         return self.lookupService.readRunConfig(runId)
 
-    def getInstrumentConfig(self, runId: str) -> InstrumentConfig:  # noqa: ARG002
+    def getInstrumentConfig(self, runId: str) -> InstrumentConfig:
         return self.lookupService.readInstrumentConfig(runId)
 
-    def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:  # noqa: ARG002
+    def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
         return self.lookupService.readStateConfig(runId, useLiteMode)
 
     def constructStateId(self, runId: str) -> Tuple[str, DetectorState]:
