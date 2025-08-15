@@ -439,8 +439,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             "createRecordRequest": record.model_dump(),
         }
         """
+        recordDump = record.model_dump()
+        del recordDump["snapredVersion"]
+        del recordDump["snapwrapVersion"]
         request = CalibrationExportRequest(
-            createRecordRequest=CreateCalibrationRecordRequest(**record.model_dump()),
+            createRecordRequest=CreateCalibrationRecordRequest(**recordDump),
         )
 
         with state_root_redirect(self.localDataService) as tmpRoot:

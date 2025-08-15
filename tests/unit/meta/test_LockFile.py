@@ -107,7 +107,7 @@ class TestLockFile:
                     # but should fail due to the existing lock file
                     pool.apply(
                         create_lock_file,
-                        (lockedPath_str, 0, 0.1),
+                        (lockedPath_str, 0, 10),
                     )
 
             # Clean up the lock file

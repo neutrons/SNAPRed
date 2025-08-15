@@ -1,5 +1,4 @@
 import copy
-import datetime
 import importlib.resources as resources
 import logging
 import os
@@ -16,6 +15,7 @@ from ruamel.yaml import YAML as rYaml
 from snapred import __version__ as snapredVersion
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.Enum import StrEnum
+from snapred.meta.Time import isoFromTimestamp, timestamp
 
 
 class DeployEnvEnum(StrEnum):
@@ -233,7 +233,7 @@ class _Config:
 
     @staticmethod
     def _timestamp():
-        return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
+        return isoFromTimestamp(timestamp())
 
     def archiveUserYml(self):
         # check if snapred-user.yml exists
@@ -254,6 +254,14 @@ class _Config:
 
     def snapredVersion(self):
         return snapredVersion
+
+    def snapwrapVersion(self):
+        try:
+            import snapwrap
+
+            return snapwrap.__version__
+        except ImportError:
+            return None
 
     def getUserYmlVersionDisk(self):
         # check if snapred-user.yml exists

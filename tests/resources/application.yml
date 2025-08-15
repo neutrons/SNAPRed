@@ -357,7 +357,7 @@ system:
 
 lockfile:
   ttl: 10 # seconds
-  checkFrequency: 10 # seconds
+  checkFrequency: 0.1 # seconds
   timeout: 60 # seconds
   # Shared scratch directory across analysis nodes.
   root: /tmp/snapred

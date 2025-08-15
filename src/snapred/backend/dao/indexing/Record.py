@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 
 import numpy
-from pydantic import ConfigDict, field_validator
+from pydantic import ConfigDict, field_serializer, field_validator
 
 from snapred.backend.dao.Hook import Hook
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
@@ -33,6 +33,9 @@ class Record(IndexedObject, extra="allow"):
 
     hooks: Dict[str, List[Hook]] | None = None
 
+    snapredVersion: str = "unknown"
+    snapwrapVersion: str | None = "unknown"
+
     @field_validator("runNumber", mode="before")
     @classmethod
     def validate_runNumber(cls, v: Any) -> Any:
@@ -47,6 +50,15 @@ class Record(IndexedObject, extra="allow"):
         if isinstance(v, numpy.bool_):
             # Conversion from HDF5 metadata.
             v = bool(v)
+        return v
+
+    @field_serializer("snapredVersion")
+    @classmethod
+    def serialize_snapredVersion(cls, v: str) -> str:
+        if v is None or v == "" or v == "unknown":
+            raise ValueError(
+                "snapredVersion is required for Record serialization.",
+            )
         return v
 
     model_config = ConfigDict(

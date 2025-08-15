@@ -12,6 +12,37 @@ testData = {
     "timestamp": 1234.1234,
 }
 
+testDataWithIsoTimestamp = {
+    "runNumber": "1234",
+    "useLiteMode": False,
+    "version": 1,
+    "appliesTo": "1234",
+    "comments": "test",
+    "author": "test",
+    "timestamp": "1969-12-31T19:20:34.123400-05:00",
+}
+
+
+def test_persistTimestampAsIsoFormat():
+    """
+    Test that the timestamp is persisted as an ISO format string.
+    """
+    # Arrange
+    entry = IndexEntry(**testData)
+    entryDict = entry.model_dump()
+    assert isinstance(entryDict["timestamp"], str)
+    assert entryDict["timestamp"] == "1969-12-31T19:20:34.123400-05:00"
+
+
+def test_parseTimestampAsFloat():
+    """
+    Test that the timestamp is parsed as a float.
+    """
+    # Arrange
+    entry = IndexEntry(**testDataWithIsoTimestamp)
+    assert isinstance(entry.timestamp, float)
+    assert entry.timestamp == 1234.1234
+
 
 def test_correctData():
     """

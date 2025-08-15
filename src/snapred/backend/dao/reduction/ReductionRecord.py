@@ -1,8 +1,9 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from snapred.backend.dao.calibration import CalibrationDefaultRecord
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
@@ -10,6 +11,7 @@ from snapred.backend.dao.Hook import Hook
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.Time import isoFromTimestamp
 
 
 class ReductionRecord(BaseModel):
@@ -36,6 +38,9 @@ class ReductionRecord(BaseModel):
 
     alternativeCalibrationFilePath: Optional[Path] = None
     hooks: Dict[str, List[Hook]] | None = None
+
+    snapredVersion: str = "unknown"
+    snapwrapVersion: Optional[str] = "unknown"
 
     """
     *Other details to include above*:
@@ -64,6 +69,35 @@ class ReductionRecord(BaseModel):
         if isinstance(v, numpy.bool_):
             v = bool(v)
         return v
+
+    @field_serializer("snapredVersion")
+    @classmethod
+    def serialize_snapredVersion(cls, v: str) -> str:
+        if v is None or v == "" or v == "unknown":
+            raise ValueError(
+                "snapredVersion is required for ReductionRecord serialization.",
+            )
+        return v
+
+    @field_validator("timestamp", mode="before")
+    @classmethod
+    def validate_timestamp(cls, v):
+        if isinstance(v, datetime):
+            # Convert datetime to timestamp
+            v = v.timestamp()
+        if isinstance(v, str):
+            v = datetime.fromisoformat(v).timestamp()
+        if isinstance(v, int):
+            # support legacy integer encoding
+            return float(v) / 1000.0
+        if not isinstance(v, float):
+            raise ValueError("timestamp must be a float, int, or ISO format string")
+        return float(v)
+
+    @field_serializer("timestamp")
+    @classmethod
+    def serialize_timestamp(cls, v):
+        return isoFromTimestamp(v)
 
     model_config = ConfigDict(
         # required in order to use 'WorkspaceName'

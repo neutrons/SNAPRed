@@ -1,7 +1,9 @@
 {
+    "snapredVersion": "test",
     "useLiteMode": true,
     "runNumber": "57514",
     "calibration": {
+        "snapredVersion": "test",
         "runNumber": "57514",
         "crystalInfo": {
             "peaks": [
@@ -703,6 +705,7 @@
         "version": 1
     },
     "normalization": {
+        "snapredVersion": "test",
         "runNumber": "57514",
         "useLiteMode": true,
         "backgroundRunNumber": "58813",

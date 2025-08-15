@@ -16,6 +16,7 @@ from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRe
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.Config import Config
 from snapred.meta.decorators.EntryExitLogger import EntryExitLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.LockFile import LockFile
@@ -362,6 +363,8 @@ class NormalizationWorkflow(WorkflowImplementer):
             crystalDBounds=assessmentResponse.crystalDBounds,
             normalizationCalibrantSamplePath=assessmentResponse.normalizationCalibrantSamplePath,
             indexEntry=createIndexEntryRequest,
+            snapredVersion=Config.snapredVersion(),
+            snapwrapVersion=Config.snapwrapVersion(),
         )
 
         payload = NormalizationExportRequest(

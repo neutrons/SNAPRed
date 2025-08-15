@@ -100,6 +100,7 @@ class TestIndexer(unittest.TestCase):
             version=version,
             calculationParameters=calculationParameters,
             indexEntry=indexEntry,
+            snapredVersion="test",
         )
 
     def calculationParameters(self, version):
@@ -133,6 +134,7 @@ class TestIndexer(unittest.TestCase):
             version=entry.version,
             calculationParameters=self.calculationParameters(entry.version),
             indexEntry=entry,
+            snapredVersion="test",
         )
 
     def indexPath(self):

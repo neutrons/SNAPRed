@@ -1581,7 +1581,10 @@ def test_createCalibrationIndexEntry():
 
 def test_createCalibrationRecord():
     record = DAOFactory.calibrationRecord("57514", True, 1)
-    request = CreateCalibrationRecordRequest(**record.model_dump())
+    recordDump = record.model_dump()
+    del recordDump["snapredVersion"]
+    del recordDump["snapwrapVersion"]
+    request = CreateCalibrationRecordRequest(**recordDump)
     localDataService = LocalDataService()
     with state_root_redirect(localDataService):
         ans = localDataService.createCalibrationRecord(request)

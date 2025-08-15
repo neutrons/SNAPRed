@@ -75,6 +75,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
 from snapred.meta.redantic import parse_file_as, write_model_pretty
+from snapred.meta.Time import timestamp
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -1168,7 +1169,7 @@ class LocalDataService:
                 name=name,
                 seedRun=runId,
                 useLiteMode=liteMode,
-                creationDate=datetime.datetime.now(),
+                creationDate=timestamp(),
                 version=version,
                 indexEntry=entry,
             )
@@ -1186,6 +1187,8 @@ class LocalDataService:
                 calculationParameters=calibration,
                 workspaces=workspaces,
                 indexEntry=entry,
+                snapredVersion=Config.snapredVersion(),
+                snapwrapVersion=Config.snapwrapVersion(),
             )
             # write the calibration state
             indexer.writeRecord(record)

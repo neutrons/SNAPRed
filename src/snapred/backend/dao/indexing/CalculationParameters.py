@@ -1,10 +1,11 @@
 from datetime import datetime
 
 import numpy
-from pydantic import ConfigDict, field_validator
+from pydantic import ConfigDict, Field, field_serializer, field_validator
 
 from snapred.backend.dao.indexing.IndexedObject import IndexedObject
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.meta.Time import isoFromTimestamp, timestamp
 
 # NOTE: the request __init__ loads CalibrationExportRequest, which imports Calibration,
 #       which imports this module, which causes a circular import situation.
@@ -31,7 +32,7 @@ class CalculationParameters(IndexedObject, extra="allow"):
     instrumentState: InstrumentState
     seedRun: str
     useLiteMode: bool | numpy.bool_
-    creationDate: datetime | str
+    creationDate: float = Field(default_factory=lambda: timestamp())
     name: str
 
     @field_validator("seedRun", mode="before")
@@ -44,9 +45,22 @@ class CalculationParameters(IndexedObject, extra="allow"):
     @field_validator("creationDate", mode="before")
     @classmethod
     def validate_creationDate(cls, v):
+        if isinstance(v, datetime):
+            # Convert datetime to timestamp
+            v = v.timestamp()
         if isinstance(v, str):
-            v = datetime.fromisoformat(v)
-        return v
+            v = datetime.fromisoformat(v).timestamp()
+        if isinstance(v, int):
+            # support legacy integer encoding
+            return float(v) / 1000.0
+        if not isinstance(v, float):
+            raise ValueError("creationDate must be a float, int, or ISO format string")
+        return float(v)
+
+    @field_serializer("creationDate")
+    @classmethod
+    def serialize_creationDate(cls, v: datetime):
+        return isoFromTimestamp(v)
 
     @field_validator("useLiteMode", mode="before")
     @classmethod

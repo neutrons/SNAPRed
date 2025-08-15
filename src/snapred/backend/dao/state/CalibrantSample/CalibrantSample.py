@@ -1,4 +1,3 @@
-import datetime
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -7,6 +6,7 @@ from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallog
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.meta.Config import Config
+from snapred.meta.Time import timestamp
 
 
 class CalibrantSample(BaseModel):
@@ -31,7 +31,7 @@ class CalibrantSample(BaseModel):
     @field_validator("date", mode="before")
     @classmethod
     def set_datetime(cls, v: str) -> str:
-        return v or str(datetime.datetime.now())
+        return v or str(timestamp())
 
     @field_validator("peakIntensityFractionThreshold", mode="before")
     @classmethod

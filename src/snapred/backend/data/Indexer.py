@@ -17,6 +17,7 @@ from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.Config import Config
 from snapred.meta.Enum import StrEnum
 from snapred.meta.LockFile import LockFile, LockManager
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -105,15 +106,15 @@ class Indexer:
         self.index = self.readIndex(init=True)
         self.reconcileIndexToFiles()
 
-    def __del__(self):
-        # define the index to automatically write itself whenever the program closes
-        try:
-            if self.rootDirectory.exists():
-                self.reconcileIndexToFiles()
-                self.writeIndex()
-        except BaseException:  # noqa: BLE001
-            # Don't care about any exceptions thrown during `__del__`.
-            pass
+    # def __del__(self):
+    #     # define the index to automatically write itself whenever the program closes
+    #     try:
+    #         if self.rootDirectory.exists():
+    #             self.reconcileIndexToFiles()
+    #             self.writeIndex()
+    #     except BaseException:  # noqa: BLE001
+    #         # Don't care about any exceptions thrown during `__del__`.
+    #         pass
 
     @property
     def dirVersions(self):
@@ -481,6 +482,7 @@ class Indexer:
             **other_arguments,
         )
         record.calculationParameters.version = record.version
+        record.snapredVersion = Config.snapredVersion()
         return record
 
     def _determineRecordType(self, version: int):

@@ -4,6 +4,7 @@ from random import randint
 from snapred.backend.dao import CrystallographicInfo, CrystallographicPeak
 from snapred.backend.dao.calibration import Calibration, CalibrationMetric, CalibrationRecord, FocusGroupMetric
 from snapred.backend.dao.GSASParameters import GSASParameters
+from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.ingredients import PeakIngredients
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
@@ -496,6 +497,32 @@ class DAOFactory:
     )
 
     ## CALIBRATION PARAMETERS
+    @classmethod
+    def calculationParameters(
+        cls,
+        runNumber: str = str(randint(5000, 10000)),
+        useLiteMode: bool = True,
+        version: int = randint(2, 120),
+        *,
+        creationDate="2024-04-03",
+        name="test",
+        instrumentState=default_instrument_state.model_copy(),
+    ) -> Calibration:
+        indexEntry = IndexEntry(**DAOFactory.indexEntryBoilerplate)
+        indexEntry.runNumber = runNumber
+        indexEntry.useLiteMode = useLiteMode
+        indexEntry.version = version
+        indexEntry.appliesTo = f">={runNumber}"
+
+        return CalculationParameters(
+            seedRun=runNumber,
+            useLiteMode=useLiteMode,
+            version=version,
+            creationDate=creationDate,
+            name=name,
+            instrumentState=instrumentState,
+            indexEntry=indexEntry,
+        )
 
     @classmethod
     def calibrationParameters(
@@ -560,6 +587,7 @@ class DAOFactory:
             runNumber=runNumber,
             useLiteMode=useLiteMode,
             version=version,
+            snapredVersion="test",
             **other_properties,
         )
 
@@ -626,6 +654,7 @@ class DAOFactory:
             useLiteMode=useLiteMode,
             version=version,
             indexEntry=IndexEntry(**DAOFactory.indexEntryBoilerplate),
+            snapredVersion="test",
             **other_properties,
         )
 
