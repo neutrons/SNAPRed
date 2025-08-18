@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 from glob import glob
 from pathlib import Path
@@ -253,6 +254,10 @@ class _Config:
         return Path.home() / ".snapred"
 
     def snapredVersion(self):
+        if snapredVersion is None or snapredVersion == "unknown":
+            label = subprocess.check_output(["git", "describe"]).strip()
+            if label:
+                return label.decode("utf-8")
         return snapredVersion
 
     def snapwrapVersion(self):
