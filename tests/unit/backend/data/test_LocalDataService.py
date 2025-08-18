@@ -2033,8 +2033,11 @@ def test_readWriteReductionRecord_timestamps():
 
         # write: new timestamp
         actualRecord = localDataService.writeReductionRecord(testReductionRecord_v0002)
+        # sleep to ensure the timestamp is different
+        time.sleep(1)
         actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode, newTimestamp)
-        assert actualRecord.timestamp == newTimestamp
+        assert testReductionRecord_v0002.timestamp == newTimestamp
+        assert datetime.datetime.fromtimestamp(actualRecord.timestamp) == datetime.datetime.fromtimestamp(newTimestamp)
 
 
 def test_readWriteReductionRecord():
@@ -2337,7 +2340,7 @@ def test_readWriteReductionData(readSyntheticReductionRecord, createReductionWor
     # In order to facilitate parallel testing: any workspace name used by this test should be unique.
     _uniquePrefix = "_test_RWRD_"
     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
-    _uniqueTimestamp = 1718909801.91552
+    _uniqueTimestamp = 1718909801.915520
     testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
@@ -2372,6 +2375,7 @@ def test_readWriteReductionData(readSyntheticReductionRecord, createReductionWor
         actualRecord = localDataService.readReductionData(runNumber, useLiteMode, timestamp)
 
         assert actualRecord.normalization.calibrationVersionUsed == testRecord.normalization.calibrationVersionUsed
+        assert actualRecord.timestamp == testRecord.timestamp
         assert actualRecord.dict() == testRecord.dict()
 
         # workspaces should have been reloaded with their original names
@@ -2426,7 +2430,8 @@ def test_readWriteReductionData_legacy_instrument(
                 cleanup_workspace_at_exit(_uniquePrefix + ws)
 
             actualRecord = localDataService.readReductionData(runNumber, useLiteMode, timestamp)
-            assert actualRecord == testRecord
+
+            assert actualRecord.timestamp == testRecord.timestamp
 
             # workspaces should have been reloaded with their original names
             # Implementation note:

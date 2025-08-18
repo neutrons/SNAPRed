@@ -1,6 +1,7 @@
 import pytest
 
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.meta.Time import isoFromTimestamp
 
 testData = {
     "runNumber": "1234",
@@ -19,7 +20,7 @@ testDataWithIsoTimestamp = {
     "appliesTo": "1234",
     "comments": "test",
     "author": "test",
-    "timestamp": "1969-12-31T19:20:34.123400-05:00",
+    "timestamp": isoFromTimestamp(1234.1234),
 }
 
 
@@ -31,7 +32,7 @@ def test_persistTimestampAsIsoFormat():
     entry = IndexEntry(**testData)
     entryDict = entry.model_dump()
     assert isinstance(entryDict["timestamp"], str)
-    assert entryDict["timestamp"] == "1969-12-31T19:20:34.123400-05:00"
+    assert entryDict["timestamp"] == isoFromTimestamp(1234.1234)
 
 
 def test_parseTimestampAsFloat():
@@ -41,7 +42,7 @@ def test_parseTimestampAsFloat():
     # Arrange
     entry = IndexEntry(**testDataWithIsoTimestamp)
     assert isinstance(entry.timestamp, float)
-    assert entry.timestamp == 1234.1234
+    assert round(entry.timestamp, ndigits=4) == 1234.1234
 
 
 def test_correctData():

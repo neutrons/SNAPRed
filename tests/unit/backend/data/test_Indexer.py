@@ -81,6 +81,7 @@ class TestIndexer(unittest.TestCase):
             useLiteMode=bool(randint(0, 1)),
             version=version,
             appliesTo=f">={runNumber}",
+            timestamp=1234.1234,
         )
 
     def record(self, version=None, *, runNumber=None):

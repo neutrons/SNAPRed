@@ -86,7 +86,10 @@ class ReductionRecord(BaseModel):
             # Convert datetime to timestamp
             v = v.timestamp()
         if isinstance(v, str):
-            v = datetime.fromisoformat(v).timestamp()
+            import numpy as np
+
+            # Convert ISO format string to timestamp
+            v = np.datetime64(v).astype(int) / 1e9  # convert to seconds
         if isinstance(v, int):
             # support legacy integer encoding
             return float(v) / 1000.0
