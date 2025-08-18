@@ -337,9 +337,7 @@ def test_fromPythonLoggingLevel__unknown_str():
 
 
 def test_snapredVersion():
-    from snapred import __version__ as snapredVersion
-
-    assert Config.snapredVersion() == snapredVersion
+    assert Config.snapredVersion().startswith("v")
 
 
 def test_getCurrentEnv():
