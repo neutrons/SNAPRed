@@ -17,7 +17,6 @@ from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.log.logger import snapredLogger
-from snapred.meta.Config import Config
 from snapred.meta.Enum import StrEnum
 from snapred.meta.LockFile import LockFile, LockManager
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -481,8 +480,6 @@ class Indexer:
             version=self._flattenVersion(version),
             **other_arguments,
         )
-        record.calculationParameters.version = record.version
-        record.snapredVersion = Config.snapredVersion()
         return record
 
     def _determineRecordType(self, version: int):

@@ -6,6 +6,7 @@ from pydantic import ConfigDict, field_serializer, field_validator
 from snapred.backend.dao.Hook import Hook
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexedObject import IndexedObject
+from snapred.meta.Config import Config
 
 
 class Record(IndexedObject, extra="allow"):
@@ -33,8 +34,8 @@ class Record(IndexedObject, extra="allow"):
 
     hooks: Dict[str, List[Hook]] | None = None
 
-    snapredVersion: str = "unknown"
-    snapwrapVersion: str | None = "unknown"
+    snapredVersion: str = Config.snapwrapVersion()
+    snapwrapVersion: str | None = Config.snapwrapVersion()
 
     @field_validator("runNumber", mode="before")
     @classmethod
@@ -57,7 +58,7 @@ class Record(IndexedObject, extra="allow"):
     def serialize_snapredVersion(cls, v: str) -> str:
         if v is None or v == "" or v == "unknown":
             raise ValueError(
-                "snapredVersion is required for Record serialization.",
+                f"snapredVersion is required for Record serialization. current value: {v}",
             )
         return v
 

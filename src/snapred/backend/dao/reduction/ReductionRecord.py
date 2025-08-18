@@ -10,6 +10,7 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.Hook import Hook
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
+from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.Time import isoFromTimestamp
 
@@ -39,8 +40,8 @@ class ReductionRecord(BaseModel):
     alternativeCalibrationFilePath: Optional[Path] = None
     hooks: Dict[str, List[Hook]] | None = None
 
-    snapredVersion: str = "unknown"
-    snapwrapVersion: Optional[str] = "unknown"
+    snapredVersion: str = Config.snapredVersion()
+    snapwrapVersion: Optional[str] = Config.snapwrapVersion()
 
     """
     *Other details to include above*:

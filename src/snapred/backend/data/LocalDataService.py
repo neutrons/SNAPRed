@@ -1187,8 +1187,6 @@ class LocalDataService:
                 calculationParameters=calibration,
                 workspaces=workspaces,
                 indexEntry=entry,
-                snapredVersion=Config.snapredVersion(),
-                snapwrapVersion=Config.snapwrapVersion(),
             )
             # write the calibration state
             indexer.writeRecord(record)

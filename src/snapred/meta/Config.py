@@ -256,8 +256,12 @@ class _Config:
     def snapredVersion(self):
         if snapredVersion is None or snapredVersion == "unknown":
             label = subprocess.check_output(["git", "describe"]).strip()
-            if label:
+            if bool(label):
                 return label.decode("utf-8")
+            raise ValueError(
+                "The snapredVersion is not set correctly. "
+                "Please ensure that the snapred package is installed correctly."
+            )
         return snapredVersion
 
     def snapwrapVersion(self):

@@ -33,7 +33,6 @@ from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
-from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -289,8 +288,6 @@ class ReductionService(Service):
             workspaceNames=workspaceNames,
             alternativeCalibrationFilePath=request.alternativeCalibrationFilePath,
             hooks=request.hooks,
-            snapredVersion=Config.snapredVersion(),
-            snapwrapVersion=Config.snapwrapVersion(),  # type: ignore[call-arg]
         )
 
     @FromString
