@@ -255,7 +255,7 @@ class _Config:
 
     def snapredVersion(self):
         if snapredVersion is None or snapredVersion == "unknown":
-            label = subprocess.check_output(["git", "describe"]).strip()
+            label = subprocess.check_output(["git", "rev-parse", "HEAD"]).strip()
             if bool(label):
                 return label.decode("utf-8")
             raise ValueError(
