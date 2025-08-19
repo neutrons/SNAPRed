@@ -254,9 +254,9 @@ class _Config:
         return Path.home() / ".snapred"
 
     def snapredVersion(self):
-        if snapredVersion is None or snapredVersion == "unknown":
+        if snapredVersion is None or snapredVersion == "unknown" or snapredVersion == "":
             label = subprocess.check_output(["git", "rev-parse", "HEAD"]).strip()
-            if bool(label):
+            if bool(label) and not label == b"":
                 return label.decode("utf-8")
             raise ValueError(
                 "The snapredVersion is not set correctly. "
@@ -266,9 +266,9 @@ class _Config:
 
     def snapwrapVersion(self):
         try:
-            import snapwrap
+            from snapwrap import __version__ as snapwrapVersion
 
-            return snapwrap.__version__
+            return snapwrapVersion
         except ImportError:
             return None
 

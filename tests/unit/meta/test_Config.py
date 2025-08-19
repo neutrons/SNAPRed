@@ -340,6 +340,22 @@ def test_snapredVersion():
     assert len(Config.snapredVersion()) == len("b2e9c58bd94d0c95cdfa81cb845deb7c636047db")
 
 
+def test_snapredVersion_empty():
+    with (
+        mock.patch.dict("sys.modules", {"snapred": mock.Mock(__version__="unknown")}),
+        mock.patch.object(Config_module, "subprocess") as mockSubprocess,
+    ):
+        mockSubprocess.check_output.return_value = b""
+        with pytest.raises(ValueError, match="The snapredVersion is not set correctly."):
+            Config.snapredVersion()
+
+
+def test_snapwrapVersion():
+    assert Config.snapwrapVersion() is None
+    with mock.patch.dict("sys.modules", {"snapwrap": mock.Mock(__version__="1.2.3")}):
+        assert Config.snapwrapVersion() == "1.2.3"
+
+
 def test_getCurrentEnv():
     # Test that the current environment is returned correctly
     assert Config.getCurrentEnv() == "test"
