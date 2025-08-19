@@ -58,8 +58,8 @@ class DiffCalRequestView(BackendRequestView):
         self.runMetadataStateId = self._labeledField(stateIdLabel)
         self.runMetadataStateId.setToolTip("State ID of the run number.")
         # set max width to 16 characters (stateid length)
-        charWidth = self.runMetadataStateId.fontMetrics().averageCharWidth()
-        fieldWidth = charWidth * (16 + len(stateIdLabel)) + 20  # +20 for padding
+        charWidth = self.runMetadataStateId.fontMetrics().averageCharWidth() + 2
+        fieldWidth = charWidth * (16 + len(stateIdLabel)) + 32  # +32 for padding
         self.runMetadataStateId.setFixedWidth(fieldWidth)
         self.runMetadataRunTitle = self._labeledField("Run Title")
         self.runMetadataRunTitle.setToolTip("Title of the run from PV file.")
