@@ -581,6 +581,7 @@ class DAOFactory:
         other_properties.setdefault("calculationParameters", cls.calibrationParameters(runNumber, useLiteMode, version))
         other_properties.setdefault("focusGroupCalibrationMetrics", cls.focusGroupCalibrationMetric_Column.model_copy())
         indexEntry = IndexEntry(**DAOFactory.indexEntryBoilerplate)
+        indexEntry.version = version
         other_properties["calculationParameters"].indexEntry = indexEntry
         other_properties["indexEntry"] = indexEntry
         return CalibrationRecord(
