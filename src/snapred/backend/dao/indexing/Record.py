@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 
 import numpy
-from pydantic import ConfigDict, field_serializer, field_validator
+from pydantic import ConfigDict, Field, field_serializer, field_validator
 
 from snapred.backend.dao.Hook import Hook
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
@@ -34,8 +34,8 @@ class Record(IndexedObject, extra="allow"):
 
     hooks: Dict[str, List[Hook]] | None = None
 
-    snapredVersion: str = Config.snapwrapVersion()
-    snapwrapVersion: str | None = Config.snapwrapVersion()
+    snapredVersion: str = Field(default_factory=lambda: Config.snapredVersion())
+    snapwrapVersion: str | None = Field(default_factory=lambda: Config.snapwrapVersion())
 
     @field_validator("runNumber", mode="before")
     @classmethod

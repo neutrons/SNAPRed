@@ -40,8 +40,8 @@ class ReductionRecord(BaseModel):
     alternativeCalibrationFilePath: Optional[Path] = None
     hooks: Dict[str, List[Hook]] | None = None
 
-    snapredVersion: str = Config.snapredVersion()
-    snapwrapVersion: Optional[str] = Config.snapwrapVersion()
+    snapredVersion: str = Field(default_factory=lambda: Config.snapredVersion())
+    snapwrapVersion: str | None = Field(default_factory=lambda: Config.snapwrapVersion())
 
     """
     *Other details to include above*:
