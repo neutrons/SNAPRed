@@ -539,8 +539,7 @@ class Indexer:
         If the version is invalid, will throw an error and refuse to save.
         """
         with self._lockContext():
-            obj.version = self._flattenVersion(obj.version)
-            obj.indexEntry.version = obj.version
+            obj.version = obj.indexEntry.version
             filePath = self.indexedObjectFilePath(type(obj), obj.version)
             if not overwrite and filePath.exists():
                 objTypeName = type(obj).__name__
@@ -553,7 +552,6 @@ class Indexer:
                 obj.indexEntry.appliesTo = ">=" + obj.runNumber
 
             self.addIndexEntry(obj.indexEntry)
-            obj.version = obj.indexEntry.version
 
             filePath.parent.mkdir(parents=True, exist_ok=True)
 

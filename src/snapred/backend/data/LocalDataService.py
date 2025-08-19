@@ -673,6 +673,7 @@ class LocalDataService:
         state, _ = self.generateStateId(record.runNumber)
         indexer = self.normalizationIndexer(record.useLiteMode, state)
         record.calculationParameters.indexEntry = record.indexEntry.model_copy()
+        record.calculationParameters.version = record.version
         # write the record to file
         indexer.writeRecord(record)
         # separately write the normalization state
@@ -761,6 +762,7 @@ class LocalDataService:
         stateId, _ = self.generateStateId(record.runNumber)
         indexer = self.calibrationIndexer(record.useLiteMode, stateId)
         record.calculationParameters.indexEntry = record.indexEntry.model_copy()
+        record.calculationParameters.version = record.version
         # write record to file
         indexer.writeRecord(record)
         # separately write the calibration state

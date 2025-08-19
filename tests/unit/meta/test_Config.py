@@ -337,7 +337,7 @@ def test_fromPythonLoggingLevel__unknown_str():
 
 
 def test_snapredVersion():
-    assert Config.snapredVersion().startswith("v")
+    assert len(Config.snapredVersion()) == len("b2e9c58bd94d0c95cdfa81cb845deb7c636047db")
 
 
 def test_getCurrentEnv():
