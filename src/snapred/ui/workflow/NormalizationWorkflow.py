@@ -49,6 +49,9 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         self.initializationComplete = False
         self.normalizationResponse = None
+        self.focusWorkspace = None
+        self.smoothWorkspace = None
+        self.peaks = None
 
         self.samplePaths = self.request(path="config/samplePaths").data
         self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
@@ -398,8 +401,8 @@ class NormalizationWorkflow(WorkflowImplementer):
 
     @EntryExitLogger(logger=logger)
     def applySmoothingUpdate(self, index, smoothingValue, xtalDMin, xtalDMax):
-        self.focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
-        self.smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
+        if bool(self.focusWorkspace) is False or bool(self.smoothWorkspace) is False:
+            raise RuntimeError("Normalization workflow has not been initialized. Cannot apply smoothing update.")
 
         payload = SmoothDataExcludingPeaksRequest(
             inputWorkspace=self.focusWorkspace,
@@ -441,7 +444,6 @@ class NormalizationWorkflow(WorkflowImplementer):
         xtalDMinValueChanged = xtalDMin != self.prevXtalDMin
         xtalDMaxValueChanged = xtalDMax != self.prevXtalDMax
         peakListWillChange = smoothingValueChanged or xtalDMinValueChanged or xtalDMaxValueChanged
-        nothingChanged = not groupingFileChanged and not peakListWillChange
         # check the case, apply correct update
         if groupingFileChanged:
             self.callNormalization(
@@ -449,15 +451,13 @@ class NormalizationWorkflow(WorkflowImplementer):
             )
         elif peakListWillChange:
             self.applySmoothingUpdate(index, smoothingValue, xtalDMin, xtalDMax)
-        elif nothingChanged:
+        else:
             # if nothing changed but this function was called anyway... just replot stuff with old values
             residualWorkspace = self._calcResidual(self.focusWorkspace, self.smoothWorkspace)
 
             self._tweakPeakView.updateWorkspaces(
                 self.focusWorkspace, self.smoothWorkspace, self.peaks, residualWorkspace
             )
-        else:
-            raise Exception("Expected data not found in the last response")
 
         # update the values for next call to this method
         self.prevGroupingIndex = index
