@@ -539,6 +539,7 @@ class Indexer:
         If the version is invalid, will throw an error and refuse to save.
         """
         with self._lockContext():
+            obj.indexEntry.version = self._flattenVersion(obj.indexEntry.version)
             obj.version = obj.indexEntry.version
             filePath = self.indexedObjectFilePath(type(obj), obj.version)
             if not overwrite and filePath.exists():

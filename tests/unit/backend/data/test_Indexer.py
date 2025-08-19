@@ -935,6 +935,7 @@ class TestIndexer(unittest.TestCase):
         # prepare the record
         record = DAOFactory.calibrationRecord()
         record.version = randint(2, 100)
+        record.indexEntry.version = record.version
         # write then read in the record
         indexer = self.initIndexer(IndexerType.CALIBRATION)
         indexer.writeRecord(record)
