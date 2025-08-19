@@ -437,6 +437,8 @@ class NormalizationWorkflow(WorkflowImplementer):
         )
 
     def renewWhenRecalculate(self, index, smoothingValue, xtalDMin, xtalDMax):
+        if bool(self.focusWorkspace) is False or bool(self.smoothWorkspace) is False or bool(self.peaks) is False:
+            raise RuntimeError("Normalization workflow has not been initialized. Cannot recalculate normalization.")
         # if the grouping file change, redo whole calculation
         groupingFileChanged = index != self.prevGroupingIndex
         # if peaks will change, redo only the smoothing
