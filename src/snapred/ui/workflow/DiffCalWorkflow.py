@@ -258,7 +258,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             peakFunction = overrides["peakFunction"]
 
             reqComboBox = self._requestView.peakFunctionDropdown.dropDown
-            idxRQ = reqComboBox.findText(peakFunction)
+            idxRQ = reqComboBox.findText(peakFunction) - 1
             if idxRQ >= 0:
                 self._requestView.updatePeakFunctionIndex(idxRQ)
             self._requestView.enablePeakFunction(True)
