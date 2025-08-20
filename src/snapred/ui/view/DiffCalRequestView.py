@@ -23,6 +23,7 @@ class DiffCalRequestView(BackendRequestView):
 
     signalUpdatePeakFunctionIndex = Signal(int)
     signalUpdateRunMetadata = Signal(object)  # `Signal(RunMetadata | None)` as `Signal(object)`
+    signalEnablePeakFunction = Signal(bool)
 
     def __init__(self, samples=[], groups=[], parent=None):
         super().__init__(parent=parent)
@@ -30,6 +31,7 @@ class DiffCalRequestView(BackendRequestView):
         # connect internal signals
         self.signalUpdatePeakFunctionIndex.connect(self._setPeakFunctionIndex)
         self.signalUpdateRunMetadata.connect(self._setRunMetadata)
+        self.signalEnablePeakFunction.connect(self._enablePeakFunction)
 
         # input fields
         self.runNumberField = self._labeledField("Run Number")
@@ -122,11 +124,12 @@ class DiffCalRequestView(BackendRequestView):
     def getSkipPixelCalibration(self):
         return self.skipPixelCalToggle.getState()
 
-    def disablePeakFunction(self):
-        self.peakFunctionDropdown.setEnabled(False)
+    @Slot(bool)
+    def _enablePeakFunction(self, enable: bool):
+        self.peakFunctionDropdown.setEnabled(enable)
 
-    def enablePeakFunction(self):
-        self.peakFunctionDropdown.setEnabled(True)
+    def enablePeakFunction(self, enable: bool):
+        self.signalEnablePeakFunction.emit(enable)
 
     def updatePeakFunctionIndex(self, index):
         self.signalUpdatePeakFunctionIndex.emit(index)

@@ -175,29 +175,29 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         if not overrides:
             self._tweakPeakView.updateXtalDMin(NormalizationTweakPeakView.XTAL_DMIN_DEFAULT)
-            self._tweakPeakView.enableXtalDMin()
+            self._tweakPeakView.enableXtalDMin(True)
             self._tweakPeakView.updateXtalDMax(NormalizationTweakPeakView.XTAL_DMAX_DEFAULT)
-            self._tweakPeakView.enableXtalDMax()
+            self._tweakPeakView.enableXtalDMax(True)
 
             return SNAPResponse(code=ResponseCode.OK)
 
         if "crystalDMin" in overrides:
             newDMin = overrides["crystalDMin"]
             self._tweakPeakView.updateXtalDMin(newDMin)
-            self._tweakPeakView.disableXtalDMin()
+            self._tweakPeakView.enableXtalDMin(False)
             self.prevXtalDMin = newDMin
         else:
             self._tweakPeakView.updateXtalDMin(NormalizationTweakPeakView.XTAL_DMIN_DEFAULT)
-            self._tweakPeakView.enableXtalDMin()
+            self._tweakPeakView.enableXtalDMin(True)
 
         if "crystalDMax" in overrides:
             newDMax = overrides["crystalDMax"]
             self._tweakPeakView.updateXtalDMax(newDMax)
-            self._tweakPeakView.disableXtalDMax()
+            self._tweakPeakView.enableXtalDMax(False)
             self.prevXtalDMax = newDMax
         else:
             self._tweakPeakView.updateXtalDMax(NormalizationTweakPeakView.XTAL_DMAX_DEFAULT)
-            self._tweakPeakView.enableXtalDMax()
+            self._tweakPeakView.enableXtalDMax(True)
 
         return SNAPResponse(code=ResponseCode.OK)
 

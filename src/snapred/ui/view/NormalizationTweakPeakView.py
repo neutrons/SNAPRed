@@ -44,7 +44,9 @@ class NormalizationTweakPeakView(BackendRequestView):
     signalUpdateRecalculationButton = Signal(bool)
     signalUpdateFields = Signal(int, int, float)
     signalPopulateGroupingDropdown = Signal(list)
+    signalEnableXtalDMin = Signal(bool)
     signalUpdateXtalDMin = Signal(float)
+    signalEnableXtalDMax = Signal(bool)
     signalUpdateXtalDMax = Signal(float)
 
     def __init__(self, samples=[], groups=[], parent=None):
@@ -104,7 +106,9 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
         self.signalUpdateFields.connect(self._updateFields)
         self.signalPopulateGroupingDropdown.connect(self._populateGroupingDropdown)
+        self.signalEnableXtalDMin.connect(self._enableXtalDMin)
         self.signalUpdateXtalDMin.connect(self._setXtalDMin)
+        self.signalEnableXtalDMax.connect(self._enableXtalDMax)
         self.signalUpdateXtalDMax.connect(self._setXtalDMax)
 
     @classproperty
@@ -145,11 +149,12 @@ class NormalizationTweakPeakView(BackendRequestView):
     def updateXtalDMin(self, value):
         self.signalUpdateXtalDMin.emit(value)
 
-    def disableXtalDMin(self):
-        self.fieldXtalDMin.setEnabled(False)
+    def enableXtalDMin(self, enable: bool):
+        self.signalEnableXtalDMin.emit(enable)
 
-    def enableXtalDMin(self):
-        self.fieldXtalDMin.setEnabled(True)
+    @Slot(bool)
+    def _enableXtalDMin(self, enable: bool):
+        self.fieldXtalDMin.setEnabled(enable)
 
     @Slot(float)
     def _setXtalDMax(self, value):
@@ -158,11 +163,12 @@ class NormalizationTweakPeakView(BackendRequestView):
     def updateXtalDMax(self, value):
         self.signalUpdateXtalDMax.emit(value)
 
-    def disableXtalDMax(self):
-        self.fieldXtalDMax.setEnabled(False)
+    def enableXtalDMax(self, enable: bool):
+        self.signalEnableXtalDMax.emit(enable)
 
-    def enableXtalDMax(self):
-        self.fieldXtalDMax.setEnabled(True)
+    @Slot(bool)
+    def _enableXtalDMax(self, enable: bool):
+        self.fieldXtalDMax.setEnabled(enable)
 
     def validateAndReadForm(self):
         # verify the fields before recalculation
