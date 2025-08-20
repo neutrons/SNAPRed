@@ -141,7 +141,7 @@ snapred = { path = ".", editable = true }
 python = ">=3.10"
 pip = "*"
 pydantic = ">=2.7.3,<3"
-mantidworkbench = "==6.13.1.1rc1"
+mantidworkbench = ">=6.13.1.1rc1"
 mantid = ">=6.13.1.1rc1"
 mslice = "*"
 mantidqt = ">=6.13.1.1rc1"
