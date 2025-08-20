@@ -235,6 +235,10 @@ class TestGUIPanels:
             requestView.runNumberField.setText(reductionRunNumber)
             qtbot.keyClick(requestView.runNumberField._field, Qt.Key_Return)
 
+            # assert default is gaussian:
+            assert requestView.peakFunctionDropdown.currentIndex() == 0
+            assert requestView.peakFunctionDropdown.currentText() == "Gaussian"
+
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
             requestView.sampleDropdown.setCurrentIndex(0)
             assert requestView.sampleDropdown.currentIndex() == 0
