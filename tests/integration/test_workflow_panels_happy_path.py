@@ -244,6 +244,9 @@ class TestGUIPanels:
             assert requestView.groupingFileDropdown.currentIndex() == 1
             assert requestView.groupingFileDropdown.currentText() == "Bank"
 
+            # ensure overrides from the sample JSON are applied:
+            assert requestView.peakFunctionDropdown.currentIndex() == "Lorentzian"
+
             requestView.peakFunctionDropdown.setCurrentIndex(0)
             assert requestView.peakFunctionDropdown.currentIndex() == 0
             assert requestView.peakFunctionDropdown.currentText() == "Gaussian"
