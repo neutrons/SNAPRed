@@ -235,10 +235,6 @@ class TestGUIPanels:
             requestView.runNumberField.setText(reductionRunNumber)
             qtbot.keyClick(requestView.runNumberField._field, Qt.Key_Return)
 
-            # assert default is gaussian:
-            assert requestView.peakFunctionDropdown.currentIndex() == 0
-            assert requestView.peakFunctionDropdown.currentText() == "Gaussian"
-
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
             requestView.sampleDropdown.setCurrentIndex(0)
             assert requestView.sampleDropdown.currentIndex() == 0
@@ -247,9 +243,6 @@ class TestGUIPanels:
             requestView.groupingFileDropdown.setCurrentIndex(1)
             assert requestView.groupingFileDropdown.currentIndex() == 1
             assert requestView.groupingFileDropdown.currentText() == "Bank"
-
-            # ensure overrides from the sample JSON are applied:
-            assert requestView.peakFunctionDropdown.currentIndex() == "Lorentzian"
 
             requestView.peakFunctionDropdown.setCurrentIndex(0)
             assert requestView.peakFunctionDropdown.currentIndex() == 0
@@ -615,6 +608,17 @@ class TestGUIPanels:
             qtbot.keyClick(requestView.runNumberField._field, Qt.Key_Return)
             qapp.processEvents()
             qtbot.wait(1000)
+
+            # assert default is gaussian:
+            assert requestView.peakFunctionDropdown.currentIndex() == 0
+            assert requestView.peakFunctionDropdown.currentText() == "Gaussian"
+
+            # ensure overrides from the sample JSON are applied:
+            requestView.sampleDropdown.setCurrentIndex(0)
+            assert requestView.sampleDropdown.currentIndex() == 0
+            assert requestView.sampleDropdown.currentText().endswith("Diamond_001.json")
+            qtbot.wait(1000)
+            assert requestView.peakFunctionDropdown.currentText() == "Lorentzian"
 
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
             requestView.sampleDropdown.setCurrentIndex(3)
