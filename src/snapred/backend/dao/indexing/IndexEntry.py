@@ -1,11 +1,10 @@
-from datetime import datetime
 from typing import Optional
 
 import numpy as np
 from pydantic import Field, field_serializer, field_validator
 
 from snapred.backend.dao.indexing.VersionedObject import VersionedObject
-from snapred.meta.Time import isoFromTimestamp, timestamp
+from snapred.meta.Time import isoFromTimestamp, parseTimestamp, timestamp
 
 
 class IndexEntry(VersionedObject, extra="ignore"):
@@ -25,25 +24,12 @@ class IndexEntry(VersionedObject, extra="ignore"):
     appliesTo: Optional[str] = None
     comments: Optional[str] = None
     author: Optional[str] = None
-    timestamp: float = Field(default_factory=lambda: timestamp())
+    timestamp: float = Field(default_factory=lambda: timestamp(ensureUnique=True))
 
     @field_validator("timestamp", mode="before")
     @classmethod
     def validate_timestamp(cls, v):
-        if isinstance(v, datetime):
-            raise ValueError("timestamp must be a float, int, or ISO format string, not datetime")
-        if isinstance(v, str):
-            # Convert ISO format string to timestamp using datetime
-            import numpy as np
-
-            # Convert ISO format string to timestamp
-            v = np.datetime64(v).astype(int) / 1e9  # convert to seconds
-        if isinstance(v, int):
-            # support legacy integer encoding
-            return float(v) / 1000.0
-        if not isinstance(v, float):
-            raise ValueError("timestamp must be a float, int, or ISO format string")
-        return float(v)
+        return parseTimestamp(v)
 
     @field_serializer("timestamp")
     @classmethod

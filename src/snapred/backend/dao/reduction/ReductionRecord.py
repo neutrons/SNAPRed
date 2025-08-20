@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -12,7 +11,7 @@ from snapred.backend.dao.normalization.NormalizationRecord import NormalizationR
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
-from snapred.meta.Time import isoFromTimestamp
+from snapred.meta.Time import isoFromTimestamp, parseTimestamp
 
 
 class ReductionRecord(BaseModel):
@@ -83,20 +82,7 @@ class ReductionRecord(BaseModel):
     @field_validator("timestamp", mode="before")
     @classmethod
     def validate_timestamp(cls, v):
-        if isinstance(v, datetime):
-            # Convert datetime to timestamp
-            v = v.timestamp()
-        if isinstance(v, str):
-            import numpy as np
-
-            # Convert ISO format string to timestamp
-            v = np.datetime64(v).astype(int) / 1e9  # convert to seconds
-        if isinstance(v, int):
-            # support legacy integer encoding
-            return float(v) / 1000.0
-        if not isinstance(v, float):
-            raise ValueError("timestamp must be a float, int, or ISO format string")
-        return float(v)
+        return parseTimestamp(v)
 
     @field_serializer("timestamp")
     @classmethod

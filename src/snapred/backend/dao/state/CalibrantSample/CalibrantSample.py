@@ -1,12 +1,12 @@
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator
 
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.meta.Config import Config
-from snapred.meta.Time import timestamp
+from snapred.meta.Time import isoFromTimestamp, parseTimestamp, timestamp
 
 
 class CalibrantSample(BaseModel):
@@ -14,7 +14,7 @@ class CalibrantSample(BaseModel):
 
     name: str
     unique_id: str
-    date: Optional[str] = None
+    date: float = Field(default_factory=lambda: timestamp(ensureUnique=True))
     geometry: Geometry
     material: Material
     crystallography: Optional[Crystallography] = None
@@ -30,8 +30,13 @@ class CalibrantSample(BaseModel):
 
     @field_validator("date", mode="before")
     @classmethod
-    def set_datetime(cls, v: str) -> str:
-        return v or str(timestamp())
+    def validate_date(cls, v):
+        return parseTimestamp(v)
+
+    @field_serializer("date")
+    @classmethod
+    def serialize_date(cls, v: float) -> str:
+        return isoFromTimestamp(v)
 
     @field_validator("peakIntensityFractionThreshold", mode="before")
     @classmethod
