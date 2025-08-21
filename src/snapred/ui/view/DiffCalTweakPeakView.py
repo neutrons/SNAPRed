@@ -44,8 +44,11 @@ class DiffCalTweakPeakView(BackendRequestView):
     signalMaxChiSqUpdate = Signal(float)
     signalContinueAnyway = Signal(bool)
     signalPurgeBadPeaks = Signal(float)
+    signalEnableXTAL_DMIN = Signal(bool)
     signalUpdateXTAL_DMIN = Signal(float)
+    signalEnableXTAL_DMAX = Signal(bool)
     signalUpdateXTAL_DMAX = Signal(float)
+    signalEnablePeakFunction = Signal(bool)
     signalUpdatePeakFunctionIndex = Signal(int)
 
     def __init__(self, samples=[], groups=[], parent=None):
@@ -68,8 +71,11 @@ class DiffCalTweakPeakView(BackendRequestView):
         # connect internal signals
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
         self.signalMaxChiSqUpdate.connect(self._updateMaxChiSq)
+        self.signalEnableXTAL_DMIN.connect(self._enableXtalDMin)
         self.signalUpdateXTAL_DMIN.connect(self._setXtalDMin)
+        self.signalEnableXTAL_DMAX.connect(self._enableXtalDMax)
         self.signalUpdateXTAL_DMAX.connect(self._setXtalDMax)
+        self.signalEnablePeakFunction.connect(self._enablePeakFunction)
         self.signalUpdatePeakFunctionIndex.connect(self._setPeakFunctionIndex)
 
         # skip pixel calibration toggle
@@ -380,11 +386,12 @@ class DiffCalTweakPeakView(BackendRequestView):
     def _setXtalDMin(self, value):
         self.fieldXtalDMin.setText(str(value))
 
-    def disableXtalDMin(self):
-        self.fieldXtalDMin.setEnabled(False)
+    @Slot(bool)
+    def _enableXtalDMin(self, enable: bool):
+        self.fieldXtalDMin.setEnabled(enable)
 
-    def enableXtalDMin(self):
-        self.fieldXtalDMin.setEnabled(True)
+    def enableXtalDMax(self, enable: bool):
+        self.signalEnableXTAL_DMAX.emit(enable)
 
     def updateXtalDmax(self, value):
         self.signalUpdateXTAL_DMAX.emit(value)
@@ -393,17 +400,19 @@ class DiffCalTweakPeakView(BackendRequestView):
     def _setXtalDMax(self, value):
         self.fieldXtalDMax.setText(str(value))
 
-    def disableXtalDMax(self):
-        self.fieldXtalDMax.setEnabled(False)
+    @Slot(bool)
+    def _enableXtalDMax(self, enable: bool):
+        self.fieldXtalDMax.setEnabled(enable)
 
-    def enableXtalDMax(self):
-        self.fieldXtalDMax.setEnabled(True)
+    def enableXtalDMin(self, enable: bool):
+        self.signalEnableXTAL_DMIN.emit(enable)
 
-    def disablePeakFunction(self):
-        self.peakFunctionDropdown.setEnabled(False)
+    @Slot(bool)
+    def _enablePeakFunction(self, enable: bool):
+        self.peakFunctionDropdown.setEnabled(enable)
 
-    def enablePeakFunction(self):
-        self.peakFunctionDropdown.setEnabled(True)
+    def enablePeakFunction(self, enable: bool):
+        self.signalEnablePeakFunction.emit(enable)
 
     def updatePeakFunctionIndex(self, index):
         self.signalUpdatePeakFunctionIndex.emit(index)

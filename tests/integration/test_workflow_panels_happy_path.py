@@ -609,6 +609,17 @@ class TestGUIPanels:
             qapp.processEvents()
             qtbot.wait(1000)
 
+            # assert default is gaussian:
+            assert requestView.peakFunctionDropdown.currentIndex() == 0
+            assert requestView.peakFunctionDropdown.currentText() == "Gaussian"
+
+            # ensure overrides from the sample JSON are applied:
+            requestView.sampleDropdown.setCurrentIndex(0)
+            assert requestView.sampleDropdown.currentIndex() == 0
+            assert requestView.sampleDropdown.currentText().endswith("Diamond_001.json")
+            qtbot.wait(1000)
+            assert requestView.peakFunctionDropdown.currentText() == "Lorentzian"
+
             #    set all dropdown selections, but make sure that the dropdown contents are as expected
             requestView.sampleDropdown.setCurrentIndex(3)
             assert requestView.sampleDropdown.currentIndex() == 3

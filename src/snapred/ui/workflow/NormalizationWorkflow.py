@@ -49,6 +49,9 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         self.initializationComplete = False
         self.normalizationResponse = None
+        self.focusWorkspace = None
+        self.smoothWorkspace = None
+        self.peaks = None
 
         self.samplePaths = self.request(path="config/samplePaths").data
         self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
@@ -172,29 +175,29 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         if not overrides:
             self._tweakPeakView.updateXtalDMin(NormalizationTweakPeakView.XTAL_DMIN_DEFAULT)
-            self._tweakPeakView.enableXtalDMin()
+            self._tweakPeakView.enableXtalDMin(True)
             self._tweakPeakView.updateXtalDMax(NormalizationTweakPeakView.XTAL_DMAX_DEFAULT)
-            self._tweakPeakView.enableXtalDMax()
+            self._tweakPeakView.enableXtalDMax(True)
 
             return SNAPResponse(code=ResponseCode.OK)
 
         if "crystalDMin" in overrides:
             newDMin = overrides["crystalDMin"]
             self._tweakPeakView.updateXtalDMin(newDMin)
-            self._tweakPeakView.disableXtalDMin()
+            self._tweakPeakView.enableXtalDMin(False)
             self.prevXtalDMin = newDMin
         else:
             self._tweakPeakView.updateXtalDMin(NormalizationTweakPeakView.XTAL_DMIN_DEFAULT)
-            self._tweakPeakView.enableXtalDMin()
+            self._tweakPeakView.enableXtalDMin(True)
 
         if "crystalDMax" in overrides:
             newDMax = overrides["crystalDMax"]
             self._tweakPeakView.updateXtalDMax(newDMax)
-            self._tweakPeakView.disableXtalDMax()
+            self._tweakPeakView.enableXtalDMax(False)
             self.prevXtalDMax = newDMax
         else:
             self._tweakPeakView.updateXtalDMax(NormalizationTweakPeakView.XTAL_DMAX_DEFAULT)
-            self._tweakPeakView.enableXtalDMax()
+            self._tweakPeakView.enableXtalDMax(True)
 
         return SNAPResponse(code=ResponseCode.OK)
 
@@ -287,15 +290,15 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._saveView.updateBackgroundRunNumber(self.backgroundRunNumber)
 
         self.normalizationResponse = self.request(path="normalization", payload=payload.model_dump_json())
-        focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
-        smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
+        self.focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
+        self.smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
         self.correctedVanadiumWorkspace = self.normalizationResponse.data["correctedVanadium"]
-        peaks = self.normalizationResponse.data["detectorPeaks"]
+        self.peaks = self.normalizationResponse.data["detectorPeaks"]
         self.calibrationRunNumber = self.normalizationResponse.data["calibrationRunNumber"]
         # calculate residual
-        residualWorkspace = self._calcResidual(focusWorkspace, smoothWorkspace)
+        residualWorkspace = self._calcResidual(self.focusWorkspace, self.smoothWorkspace)
 
-        self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks, residualWorkspace)
+        self._tweakPeakView.updateWorkspaces(self.focusWorkspace, self.smoothWorkspace, self.peaks, residualWorkspace)
         self.initializationComplete = True
         return self.normalizationResponse
 
@@ -387,24 +390,24 @@ class NormalizationWorkflow(WorkflowImplementer):
         )
         self.normalizationResponse = self.request(path="normalization", payload=payload.model_dump_json())
 
-        focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
-        smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
+        self.focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
+        self.smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
         self.correctedVanadiumWorkspace = self.normalizationResponse.data["correctedVanadium"]
-        peaks = self.normalizationResponse.data["detectorPeaks"]
+        self.peaks = self.normalizationResponse.data["detectorPeaks"]
 
-        residualWorkspace = self._calcResidual(focusWorkspace, smoothWorkspace)
+        residualWorkspace = self._calcResidual(self.focusWorkspace, self.smoothWorkspace)
 
-        self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks, residualWorkspace)
+        self._tweakPeakView.updateWorkspaces(self.focusWorkspace, self.smoothWorkspace, self.peaks, residualWorkspace)
 
     @EntryExitLogger(logger=logger)
     def applySmoothingUpdate(self, index, smoothingValue, xtalDMin, xtalDMax):
-        focusWorkspace = self.normalizationResponse.data["focusedVanadium"]
-        smoothWorkspace = self.normalizationResponse.data["smoothedVanadium"]
+        if bool(self.focusWorkspace) is False or bool(self.smoothWorkspace) is False:
+            raise RuntimeError("Normalization workflow has not been initialized. Cannot apply smoothing update.")
 
         payload = SmoothDataExcludingPeaksRequest(
-            inputWorkspace=focusWorkspace,
+            inputWorkspace=self.focusWorkspace,
             useLiteMode=self.useLiteMode,
-            outputWorkspace=smoothWorkspace,
+            outputWorkspace=self.smoothWorkspace,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=list(self.focusGroups.items())[index][1],
             runNumber=self.runNumber,
@@ -414,10 +417,10 @@ class NormalizationWorkflow(WorkflowImplementer):
         )
         response = self.request(path="normalization/smooth", payload=payload.model_dump_json())
 
-        peaks = response.data["detectorPeaks"]
-        residualWorkspace = self._calcResidual(focusWorkspace, smoothWorkspace)
+        self.peaks = response.data["detectorPeaks"]
+        residualWorkspace = self._calcResidual(self.focusWorkspace, self.smoothWorkspace)
 
-        self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks, residualWorkspace)
+        self._tweakPeakView.updateWorkspaces(self.focusWorkspace, self.smoothWorkspace, self.peaks, residualWorkspace)
 
     @EntryExitLogger(logger=logger)
     @ExceptionToErrLog
@@ -434,6 +437,8 @@ class NormalizationWorkflow(WorkflowImplementer):
         )
 
     def renewWhenRecalculate(self, index, smoothingValue, xtalDMin, xtalDMax):
+        if bool(self.focusWorkspace) is False or bool(self.smoothWorkspace) is False or bool(self.peaks) is False:
+            raise RuntimeError("Normalization workflow has not been initialized. Cannot recalculate normalization.")
         # if the grouping file change, redo whole calculation
         groupingFileChanged = index != self.prevGroupingIndex
         # if peaks will change, redo only the smoothing
@@ -448,16 +453,13 @@ class NormalizationWorkflow(WorkflowImplementer):
             )
         elif peakListWillChange:
             self.applySmoothingUpdate(index, smoothingValue, xtalDMin, xtalDMax)
-        elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
-            # if nothing changed but this function was called anyway... just replot stuff with old values
-            focusWorkspace = self.responses[-1].data["focusedVanadium"]
-            smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
-            peaks = self.responses[-1].data["detectorPeaks"]
-            residualWorkspace = self._calcResidual(focusWorkspace, smoothWorkspace)
-
-            self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks, residualWorkspace)
         else:
-            raise Exception("Expected data not found in the last response")
+            # if nothing changed but this function was called anyway... just replot stuff with old values
+            residualWorkspace = self._calcResidual(self.focusWorkspace, self.smoothWorkspace)
+
+            self._tweakPeakView.updateWorkspaces(
+                self.focusWorkspace, self.smoothWorkspace, self.peaks, residualWorkspace
+            )
 
         # update the values for next call to this method
         self.prevGroupingIndex = index

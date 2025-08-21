@@ -384,6 +384,27 @@ def test_swapToUserYml():
                 assert yml["instrument"]["calibration"]["home"] is not None
 
 
+def test_shouldSwapToUserYml():
+    # Test that the method returns True when the user configuration file exists and is not in a test environment
+    with mock.patch.object(Config, "_userHome") as mockHome, mock.patch.dict(os.environ, values={}, clear=True):
+        mockHome.return_value = Path("/tmp/snapred")
+        (mockHome.return_value / "snapred-user.yml").touch()
+        assert "env" not in os.environ
+        assert Config.shouldSwapToUserYml()
+
+    # Test that the method returns False when the user configuration file does not exist
+    with mock.patch.object(Config, "_userHome") as mockHome:
+        mockHome.return_value = Path("/tmp/snapred")
+        assert not Config.shouldSwapToUserYml()
+
+    # Test that the method returns False when the environment variable 'env' is set
+    with mock.patch.object(Config, "_userHome") as mockHome, mock.patch.dict(os.environ, {"env": "test"}):
+        mockHome.return_value = Path("/tmp/snapred")
+        (mockHome.return_value / "snapred-user.yml").touch()
+
+        assert not Config.shouldSwapToUserYml()
+
+
 def test_swapToUserYml_error():
     # setup temp dir
     with mock.patch.object(Config, "_userHome") as mockHome:
