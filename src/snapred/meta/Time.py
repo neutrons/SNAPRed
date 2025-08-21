@@ -1,12 +1,11 @@
 import time
-from datetime import datetime, timezone
 
 import numpy as np
 
 
 def timestamp(ensureUnique: bool = False) -> float:
     # no args in astimezone() means local timezone
-    nextTimestamp = datetime.now(timezone.utc).astimezone().timestamp()
+    nextTimestamp = time.time_ns() / 1e9  # convert to seconds
     if ensureUnique:
         _previousTimestamp = getattr(timestamp, "_previousTimestamp", None)
         if _previousTimestamp is not None:
