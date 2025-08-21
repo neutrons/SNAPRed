@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timezone
 
 import numpy as np
@@ -10,9 +11,7 @@ def timestamp(ensureUnique: bool = False) -> float:
         _previousTimestamp = getattr(timestamp, "_previousTimestamp", None)
         if _previousTimestamp is not None:
             # compare as `time.struct_time` to ensure uniqueness after formatting
-            if nextTimestamp < _previousTimestamp or isoFromTimestamp(nextTimestamp) == isoFromTimestamp(
-                _previousTimestamp
-            ):
+            if nextTimestamp < _previousTimestamp or time.gmtime(nextTimestamp) == time.gmtime(_previousTimestamp):
                 nextTimestamp = _previousTimestamp + 1.0
         timestamp._previousTimestamp = nextTimestamp
     return nextTimestamp

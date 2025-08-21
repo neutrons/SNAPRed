@@ -3372,6 +3372,7 @@ class TestReductionPixelMasks:
         pass
 
     def _createReductionFileSystem(self):
+        assert self.timestamp1 != self.timestamp2
         tss = (self.timestamp1, self.timestamp2)
         masks_ = {
             self.runNumber1: {tss[0]: self.maskWS1, tss[1]: self.maskWS3},
