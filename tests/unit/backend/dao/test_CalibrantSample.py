@@ -1,11 +1,11 @@
 # note: this runs the same checks as the calibrant_samples_script CIS test
-import datetime
 import unittest
 
 from mantid.simpleapi import CreateWorkspace, DeleteWorkspace, SetSample
 from util.dao import DAOFactory
 
 from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
+from snapred.meta.Time import timestamp
 
 
 class TestCalibrantSample(unittest.TestCase):
@@ -22,7 +22,7 @@ class TestCalibrantSample(unittest.TestCase):
         return super().tearDown()
 
     def test_isShapedLikeItself(self):
-        self.sample.date = str(datetime.datetime.now())
+        self.sample.date = timestamp()
         sampleFromDict = CalibrantSample(**self.sample.dict())
         sampleFromJSON = CalibrantSample.model_validate_json(self.sample.model_dump_json())
         assert self.sample == sampleFromDict

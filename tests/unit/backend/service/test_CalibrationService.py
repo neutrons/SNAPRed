@@ -4,7 +4,6 @@ import tempfile
 import time
 import unittest
 from copy import deepcopy
-from datetime import datetime
 from pathlib import Path
 from random import randint
 from typing import Dict, List
@@ -412,7 +411,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_save_respects_version(self):
         version = 1
         record = DAOFactory.calibrationRecord(version=1)
-        record.calculationParameters.creationDate = datetime.today()
         record.workspaces = {
             wngt.DIFFCAL_OUTPUT: ["_dsp_diffoc_057514"],
             wngt.DIFFCAL_DIAG: ["_diagnostic_diffoc_057514"],
@@ -439,8 +437,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             "createRecordRequest": record.model_dump(),
         }
         """
+        recordDump = record.model_dump()
+        del recordDump["snapredVersion"]
+        del recordDump["snapwrapVersion"]
         request = CalibrationExportRequest(
-            createRecordRequest=CreateCalibrationRecordRequest(**record.model_dump()),
+            createRecordRequest=CreateCalibrationRecordRequest(**recordDump),
         )
 
         with state_root_redirect(self.localDataService) as tmpRoot:

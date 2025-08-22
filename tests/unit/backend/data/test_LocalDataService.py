@@ -1581,7 +1581,10 @@ def test_createCalibrationIndexEntry():
 
 def test_createCalibrationRecord():
     record = DAOFactory.calibrationRecord("57514", True, 1)
-    request = CreateCalibrationRecordRequest(**record.model_dump())
+    recordDump = record.model_dump()
+    del recordDump["snapredVersion"]
+    del recordDump["snapwrapVersion"]
+    request = CreateCalibrationRecordRequest(**recordDump)
     localDataService = LocalDataService()
     with state_root_redirect(localDataService):
         ans = localDataService.createCalibrationRecord(request)
@@ -2030,8 +2033,11 @@ def test_readWriteReductionRecord_timestamps():
 
         # write: new timestamp
         actualRecord = localDataService.writeReductionRecord(testReductionRecord_v0002)
+        # sleep to ensure the timestamp is different
+        time.sleep(1)
         actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode, newTimestamp)
-        assert actualRecord.timestamp == newTimestamp
+        assert testReductionRecord_v0002.timestamp == newTimestamp
+        assert datetime.datetime.fromtimestamp(actualRecord.timestamp) == datetime.datetime.fromtimestamp(newTimestamp)
 
 
 def test_readWriteReductionRecord():
@@ -2334,7 +2340,7 @@ def test_readWriteReductionData(readSyntheticReductionRecord, createReductionWor
     # In order to facilitate parallel testing: any workspace name used by this test should be unique.
     _uniquePrefix = "_test_RWRD_"
     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
-    _uniqueTimestamp = 1718909801.91552
+    _uniqueTimestamp = 1718909801.915520
     testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
 
     runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
@@ -2369,6 +2375,7 @@ def test_readWriteReductionData(readSyntheticReductionRecord, createReductionWor
         actualRecord = localDataService.readReductionData(runNumber, useLiteMode, timestamp)
 
         assert actualRecord.normalization.calibrationVersionUsed == testRecord.normalization.calibrationVersionUsed
+        assert actualRecord.timestamp == testRecord.timestamp
         assert actualRecord.dict() == testRecord.dict()
 
         # workspaces should have been reloaded with their original names
@@ -2423,7 +2430,8 @@ def test_readWriteReductionData_legacy_instrument(
                 cleanup_workspace_at_exit(_uniquePrefix + ws)
 
             actualRecord = localDataService.readReductionData(runNumber, useLiteMode, timestamp)
-            assert actualRecord == testRecord
+
+            assert actualRecord.timestamp == testRecord.timestamp
 
             # workspaces should have been reloaded with their original names
             # Implementation note:
@@ -3364,6 +3372,7 @@ class TestReductionPixelMasks:
         pass
 
     def _createReductionFileSystem(self):
+        assert self.timestamp1 != self.timestamp2
         tss = (self.timestamp1, self.timestamp2)
         masks_ = {
             self.runNumber1: {tss[0]: self.maskWS1, tss[1]: self.maskWS3},

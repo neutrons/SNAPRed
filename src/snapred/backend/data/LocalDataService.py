@@ -7,7 +7,6 @@ import re
 import shutil
 import socket
 import tempfile
-import time
 from errno import ENOENT as NOT_FOUND
 from functools import lru_cache
 from pathlib import Path
@@ -75,6 +74,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import (
     WorkspaceType as wngt,
 )
 from snapred.meta.redantic import parse_file_as, write_model_pretty
+from snapred.meta.Time import timestamp
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -226,14 +226,7 @@ class LocalDataService:
           in order to allow arbitrary formatting.
 
         """
-        _previousTimestamp = getattr(LocalDataService.getUniqueTimestamp, "_previousTimestamp", None)
-        nextTimestamp = time.time()
-        if _previousTimestamp is not None:
-            # compare as `time.struct_time` to ensure uniqueness after formatting
-            if nextTimestamp < _previousTimestamp or time.gmtime(nextTimestamp) == time.gmtime(_previousTimestamp):
-                nextTimestamp = _previousTimestamp + 1.0
-        LocalDataService.getUniqueTimestamp._previousTimestamp = nextTimestamp
-        return nextTimestamp
+        return timestamp(ensureUnique=True)
 
     @lru_cache
     @ConfigDefault
@@ -671,7 +664,9 @@ class LocalDataService:
         """
         state, _ = self.generateStateId(record.runNumber)
         indexer = self.normalizationIndexer(record.useLiteMode, state)
+        record.version = record.indexEntry.version
         record.calculationParameters.indexEntry = record.indexEntry.model_copy()
+        record.calculationParameters.version = record.version
         # write the record to file
         indexer.writeRecord(record)
         # separately write the normalization state
@@ -759,7 +754,9 @@ class LocalDataService:
         """
         stateId, _ = self.generateStateId(record.runNumber)
         indexer = self.calibrationIndexer(record.useLiteMode, stateId)
+        record.version = record.indexEntry.version
         record.calculationParameters.indexEntry = record.indexEntry.model_copy()
+        record.calculationParameters.version = record.version
         # write record to file
         indexer.writeRecord(record)
         # separately write the calibration state
@@ -1168,7 +1165,6 @@ class LocalDataService:
                 name=name,
                 seedRun=runId,
                 useLiteMode=liteMode,
-                creationDate=datetime.datetime.now(),
                 version=version,
                 indexEntry=entry,
             )

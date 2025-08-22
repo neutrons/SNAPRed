@@ -105,16 +105,6 @@ class Indexer:
         self.index = self.readIndex(init=True)
         self.reconcileIndexToFiles()
 
-    def __del__(self):
-        # define the index to automatically write itself whenever the program closes
-        try:
-            if self.rootDirectory.exists():
-                self.reconcileIndexToFiles()
-                self.writeIndex()
-        except BaseException:  # noqa: BLE001
-            # Don't care about any exceptions thrown during `__del__`.
-            pass
-
     @property
     def dirVersions(self):
         return self.readDirectoryList()
@@ -480,7 +470,6 @@ class Indexer:
             version=self._flattenVersion(version),
             **other_arguments,
         )
-        record.calculationParameters.version = record.version
         return record
 
     def _determineRecordType(self, version: int):
@@ -540,8 +529,8 @@ class Indexer:
         If the version is invalid, will throw an error and refuse to save.
         """
         with self._lockContext():
-            obj.version = self._flattenVersion(obj.version)
-            obj.indexEntry.version = obj.version
+            obj.indexEntry.version = self._flattenVersion(obj.indexEntry.version)
+            obj.version = obj.indexEntry.version
             filePath = self.indexedObjectFilePath(type(obj), obj.version)
             if not overwrite and filePath.exists():
                 objTypeName = type(obj).__name__
@@ -554,7 +543,6 @@ class Indexer:
                 obj.indexEntry.appliesTo = ">=" + obj.runNumber
 
             self.addIndexEntry(obj.indexEntry)
-            obj.version = obj.indexEntry.version
 
             filePath.parent.mkdir(parents=True, exist_ok=True)
 

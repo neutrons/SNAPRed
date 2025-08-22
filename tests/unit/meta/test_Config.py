@@ -337,9 +337,25 @@ def test_fromPythonLoggingLevel__unknown_str():
 
 
 def test_snapredVersion():
-    from snapred import __version__ as snapredVersion
+    with mock.patch.object(Config_module, "snapredVersion", ""):
+        assert len(Config.snapredVersion()) == len("b2e9c58bd94d0c95cdfa81cb845deb7c636047db")
 
-    assert Config.snapredVersion() == snapredVersion
+
+def test_snapredVersion_empty():
+    with (
+        mock.patch.dict("sys.modules", {"snapred": mock.Mock(__version__="unknown")}),
+        mock.patch.object(Config_module, "subprocess") as mockSubprocess,
+        mock.patch.object(Config_module, "snapredVersion", ""),
+    ):
+        mockSubprocess.check_output.return_value = b""
+        with pytest.raises(ValueError, match="The snapredVersion is not set correctly."):
+            Config.snapredVersion()
+
+
+def test_snapwrapVersion():
+    assert Config.snapwrapVersion() is None
+    with mock.patch.dict("sys.modules", {"snapwrap": mock.Mock(__version__="1.2.3")}):
+        assert Config.snapwrapVersion() == "1.2.3"
 
 
 def test_getCurrentEnv():

@@ -2,14 +2,16 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from snapred.backend.dao.calibration import CalibrationDefaultRecord
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.Hook import Hook
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
+from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.Time import isoFromTimestamp, parseTimestamp
 
 
 class ReductionRecord(BaseModel):
@@ -36,6 +38,9 @@ class ReductionRecord(BaseModel):
 
     alternativeCalibrationFilePath: Optional[Path] = None
     hooks: Dict[str, List[Hook]] | None = None
+
+    snapredVersion: str = Field(default_factory=lambda: Config.snapredVersion())
+    snapwrapVersion: str | None = Field(default_factory=lambda: Config.snapwrapVersion())
 
     """
     *Other details to include above*:
@@ -64,6 +69,25 @@ class ReductionRecord(BaseModel):
         if isinstance(v, numpy.bool_):
             v = bool(v)
         return v
+
+    @field_serializer("snapredVersion")
+    @classmethod
+    def serialize_snapredVersion(cls, v: str) -> str:
+        if v is None or v == "" or v == "unknown":
+            raise ValueError(
+                "snapredVersion is required for ReductionRecord serialization.",
+            )
+        return v
+
+    @field_validator("timestamp", mode="before")
+    @classmethod
+    def validate_timestamp(cls, v):
+        return parseTimestamp(v)
+
+    @field_serializer("timestamp")
+    @classmethod
+    def serialize_timestamp(cls, v):
+        return isoFromTimestamp(v)
 
     model_config = ConfigDict(
         # required in order to use 'WorkspaceName'

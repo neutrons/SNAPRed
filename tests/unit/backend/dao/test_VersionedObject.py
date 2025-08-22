@@ -214,6 +214,7 @@ def recordWithVersion(version):
         useLiteMode=True,
         calculationParameters=CalculationParameters.model_construct(),
         indexEntry=DAOFactory.indexEntry(),
+        snapredVersion="test",
     )
 
 
@@ -238,6 +239,15 @@ def test_init_record():
     assert vo.version == VersionState.DEFAULT
     vo = recordWithVersion(VersionState.DEFAULT)
     assert vo.version == VersionState.DEFAULT
+
+
+def test_init_record_no_snapred_version():
+    record = recordWithVersion(1)
+    record.snapredVersion = "unknown"
+    with pytest.raises(ValueError, match="snapredVersion is required for Record serialization."):
+        record.model_dump_json()
+    record.snapredVersion = "test"
+    record.model_dump_json()  # Should not raise an error now
 
 
 def test_set_record():

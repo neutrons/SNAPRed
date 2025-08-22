@@ -1,10 +1,10 @@
-import time
-from typing import Any, Optional
+from typing import Optional
 
 import numpy as np
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_serializer, field_validator
 
 from snapred.backend.dao.indexing.VersionedObject import VersionedObject
+from snapred.meta.Time import isoFromTimestamp, parseTimestamp, timestamp
 
 
 class IndexEntry(VersionedObject, extra="ignore"):
@@ -24,7 +24,17 @@ class IndexEntry(VersionedObject, extra="ignore"):
     appliesTo: Optional[str] = None
     comments: Optional[str] = None
     author: Optional[str] = None
-    timestamp: float = Field(default_factory=lambda: time.time())
+    timestamp: float = Field(default_factory=lambda: timestamp(ensureUnique=True))
+
+    @field_validator("timestamp", mode="before")
+    @classmethod
+    def validate_timestamp(cls, v):
+        return parseTimestamp(v)
+
+    @field_serializer("timestamp")
+    @classmethod
+    def serialize_timestamp(cls, v):
+        return isoFromTimestamp(v)
 
     @classmethod
     def parseConditional(cls, conditional: str):
@@ -66,15 +76,3 @@ class IndexEntry(VersionedObject, extra="ignore"):
         if isinstance(value, np.bool_):
             return bool(value)
         return value
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_timestamp(cls, v: Any):
-        if isinstance(v, dict):
-            if "timestamp" in v:
-                timestamp = v["timestamp"]
-                # support reading the _legacy_ timestamp integer encoding
-                if isinstance(timestamp, int):
-                    v["timestamp"] = float(timestamp) / 1000.0
-
-        return v

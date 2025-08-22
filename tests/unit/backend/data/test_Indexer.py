@@ -81,6 +81,7 @@ class TestIndexer(unittest.TestCase):
             useLiteMode=bool(randint(0, 1)),
             version=version,
             appliesTo=f">={runNumber}",
+            timestamp=1234.1234,
         )
 
     def record(self, version=None, *, runNumber=None):
@@ -100,6 +101,7 @@ class TestIndexer(unittest.TestCase):
             version=version,
             calculationParameters=calculationParameters,
             indexEntry=indexEntry,
+            snapredVersion="test",
         )
 
     def calculationParameters(self, version):
@@ -133,6 +135,7 @@ class TestIndexer(unittest.TestCase):
             version=entry.version,
             calculationParameters=self.calculationParameters(entry.version),
             indexEntry=entry,
+            snapredVersion="test",
         )
 
     def indexPath(self):
@@ -932,6 +935,7 @@ class TestIndexer(unittest.TestCase):
         # prepare the record
         record = DAOFactory.calibrationRecord()
         record.version = randint(2, 100)
+        record.indexEntry.version = record.version
         # write then read in the record
         indexer = self.initIndexer(IndexerType.CALIBRATION)
         indexer.writeRecord(record)

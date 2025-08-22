@@ -1,7 +1,11 @@
 {
+    "snapredVersion": "test",
+    "snapwrapVersion":"unknown",
     "useLiteMode": true,
     "runNumber": "57514",
     "calibration": {
+        "snapredVersion": "test",
+        "snapwrapVersion":"unknown",
         "runNumber": "57514",
         "crystalInfo": {
             "peaks": [
@@ -703,6 +707,8 @@
         "version": 1
     },
     "normalization": {
+        "snapredVersion": "test",
+        "snapwrapVersion":"unknown",
         "runNumber": "57514",
         "useLiteMode": true,
         "backgroundRunNumber": "58813",
