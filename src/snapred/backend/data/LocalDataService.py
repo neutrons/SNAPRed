@@ -20,16 +20,7 @@ from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import ConfigService, PhysicalConstants
 from pydantic import validate_call
 
-from snapred.backend.dao import (
-    GSASParameters,
-    InstrumentConfig,
-    ObjectSHA,
-    ParticleBounds,
-    RunConfig,
-    RunMetadata,
-    StateConfig,
-    StateId,
-)
+from snapred.backend.dao import GSASParameters, ObjectSHA, ParticleBounds, RunConfig, RunMetadata, StateConfig
 from snapred.backend.dao.calibration import Calibration, CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
@@ -44,6 +35,7 @@ from snapred.backend.dao.request import (
 from snapred.backend.dao.state import (
     DetectorState,
     GroupingMap,
+    InstrumentConfig,
     InstrumentState,
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
@@ -91,8 +83,8 @@ def _createFileNotFoundError(msg, filename):
 
 @Singleton
 class LocalDataService:
-    # conversion factor from microsecond/Angstrom to meters
-    # (TODO: FIX THIS COMMENT! Obviously `m2cm` doesn't convert from 1.0 / Angstrom to 1.0 / meters.)
+    # conversion factor in units of cm**2 / s:
+    # -- in its use below, this is used to convert 1.0e-10 * m^2 to <time in microsecond>.
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
     def __init__(self) -> None:
@@ -107,6 +99,7 @@ class LocalDataService:
     def fileExists(self, path):
         return os.path.isfile(path)
 
+    @lru_cache
     def readInstrumentConfig(self, runNumber: str) -> InstrumentConfig:
         instrumentConfig = self.readInstrumentParameters(runNumber)
         instrumentConfig.calibrationDirectory = Config["instrument.calibration.home"]
@@ -324,15 +317,26 @@ class LocalDataService:
                 stateCalibMap.append((stateId, indexer.readParameters(defaultVersion)))
 
         # 2. pull instrumentState.detectorState from each
+        currentStateSchema = self.readInstrumentConfig(runId).stateIdSchema
         currentDetectorState = self.readDetectorState(runId)
-        referenceArc = currentDetectorState.arc
-        referenceGuideStat = currentDetectorState.guideStat
+        referenceArc = (
+            # values as used by the state-hash computation are rounded to remove encoder jitter:
+            #   we need to compare the rounded values.
+            currentDetectorState.roundedPVForState("det_arc1", currentStateSchema),
+            currentDetectorState.roundedPVForState("det_arc2", currentStateSchema),
+        )
+        referenceGuideStat = currentDetectorState.roundedPVForState("BL3:Mot:OpticsPos:Pos", currentStateSchema)
+
         # 3. compare to current runId, if they match add to list
         compatibleStates = []
         for state, params in stateCalibMap:
+            stateSchema = params.instrumentState.instrumentConfig.stateIdSchema
             detectorState = params.instrumentState.detectorState
-            arc = detectorState.arc
-            guideStat = detectorState.guideStat
+            arc = (
+                detectorState.roundedPVForState("det_arc1", stateSchema),
+                detectorState.roundedPVForState("det_arc2", stateSchema),
+            )
+            guideStat = detectorState.roundedPVForState("BL3:Mot:OpticsPos:Pos", stateSchema)
             # in the comparison we only care about the arc position and guidestat
             if arc == referenceArc and guideStat == referenceGuideStat:
                 compatibleStates.append(state)
@@ -400,13 +404,16 @@ class LocalDataService:
                 targetWorkspacePath = targetVersionPath / f"{workspaceName}{ext}"
                 targetWorkspacePath.write_bytes(sourceWorkspacePath.read_bytes())
 
-    def _stateIdFromDetectorState(self, detectorState: DetectorState) -> ObjectSHA:
-        return StateId.fromDetectorState(detectorState).SHA()
-
     def stateIdFromWorkspace(self, wsName: WorkspaceName) -> Tuple[str, DetectorState]:
-        detectorState = self.detectorStateFromWorkspace(wsName)
-        SHA = self._stateIdFromDetectorState(detectorState)
-        return SHA.hex, detectorState
+        run = self.mantidSnapper.mtd[wsName].getRun()
+        runNumber = run.getProperty("run_number").value if run.hasProperty("run_number") else None
+        stateIdSchema = (
+            # A run number of `None` or 0 indicates either an inactive, or an incompletely initialized run:
+            #   in that case, the rest of the metadata may still be valid, so we fallback to using the LEGACY_SCHEMA.
+            self.readInstrumentConfig(runNumber).stateIdSchema if bool(runNumber) else DetectorState.LEGACY_SCHEMA
+        )
+        metadata = RunMetadata.fromRun(run, stateIdSchema)
+        return metadata.stateId.hex, metadata.detectorState
 
     def _findMatchingFileList(self, pattern, throws=True) -> List[str]:
         """
@@ -1064,10 +1071,6 @@ class LocalDataService:
         #   method.
         return self.readRunMetadata(runNumber).detectorState
 
-    def detectorStateFromWorkspace(self, wsName: WorkspaceName) -> DetectorState:
-        # Assemble a detector state from the Workspace logs (i.e. `Mantid.api.Run`).
-        return RunMetadata.fromRun(self.mantidSnapper.mtd[wsName].getRun()).detectorState
-
     @validate_call
     def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool):
         from snapred.backend.data.GroceryService import GroceryService
@@ -1440,7 +1443,11 @@ class LocalDataService:
         success = False
         metadata = None
         try:
-            metadata = RunMetadata.fromNeXusLogs(self._readPVFile(runNumber))
+            # We can't assume that there's an InstrumentConfig for a (possibly live) run number,
+            #   so we try to open the NeXus file first, before doing anything else.
+            h5 = self._readPVFile(runNumber)
+            instrumentConfig = self.readInstrumentConfig(runNumber)
+            metadata = RunMetadata.fromNeXusLogs(h5, instrumentConfig.stateIdSchema)
             if metadata.runNumber != runNumber:
                 raise RuntimeError(
                     f"Expected run-number '{runNumber}' from the filename does not match "
@@ -1505,8 +1512,15 @@ class LocalDataService:
         """Construct a 'RunMetadata' instance from a 'mantid.api.Run' instance."""
 
         metadata = None
+        runNumber = run.getProperty("run_number").value if run.hasProperty("run_number") else None
         try:
-            metadata = RunMetadata.fromRun(run, liveData=True)
+            stateIdSchema = (
+                # A run number of `None` or 0 indicates either an inactive, or an incompletely initialized run:
+                #   in that case, the rest of the metadata may still be valid,
+                #   so we fallback to using the LEGACY_SCHEMA.
+                self.readInstrumentConfig(runNumber).stateIdSchema if bool(runNumber) else DetectorState.LEGACY_SCHEMA
+            )
+            metadata = RunMetadata.fromRun(run, stateIdSchema, liveData=True)
         except (KeyError, RuntimeError, ValueError) as e:
             raise RuntimeError(f"Unable to extract RunMetadata from Run:\n  {e}") from e
         return metadata

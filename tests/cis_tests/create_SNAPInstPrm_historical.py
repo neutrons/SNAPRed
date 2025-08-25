@@ -1,7 +1,7 @@
 
 
-from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.indexing.Versioning import VersionState
+from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
 from snapred.backend.data.LocalDataService import LocalDataService
 
 

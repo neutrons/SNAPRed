@@ -36,33 +36,9 @@ def mapFromSampleLogs(wsName: str, sampleLogKeys: Sequence[str]) -> Dict[str, fl
 def getInstrumentLogDescriptors(detectorState: DetectorState):
     # Standard logs used by `GroceryService.updateInstrumentParameters`
     return {
-        "logNames": [
-            "det_arc1",
-            "det_arc2",
-            "BL3:Chop:Skf1:WavelengthUserReq",
-            "BL3:Det:TH:BL:Frequency",
-            "BL3:Mot:OpticsPos:Pos",
-            "det_lin1",
-            "det_lin2",
-        ],
-        "logTypes": [
-            "Number Series",
-            "Number Series",
-            "Number Series",
-            "Number Series",
-            "Number Series",
-            "Number Series",
-            "Number Series",
-        ],
-        "logValues": [
-            f"{detectorState.arc[0]:.16f}",
-            f"{detectorState.arc[1]:.16f}",
-            f"{detectorState.wav:.16f}",
-            f"{detectorState.freq:.16f}",
-            f"{detectorState.guideStat:.16f}",
-            f"{detectorState.lin[0]:.16f}",
-            f"{detectorState.lin[1]:.16f}",
-        ],
+        "logNames": list(detectorState.PVs.keys()),
+        "logTypes": ["Number Series" for n in range(len(detectorState.PVs))],
+        "logValues": list(map(lambda v: f"{v:.16f}", detectorState.PVs.values())),
     }
 
 

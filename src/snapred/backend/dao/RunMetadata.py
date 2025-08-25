@@ -9,8 +9,7 @@ from mantid.kernel import DateAndTime
 from pydantic import BaseModel, ConfigDict
 
 from snapred.backend.dao.ObjectSHA import ObjectSHA
-from snapred.backend.dao.state import DetectorState
-from snapred.backend.dao.StateId import StateId
+from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.data.util.PV_logs_util import datetimeFromLogTime
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
@@ -214,7 +213,7 @@ class RunMetadata(BaseModel, Mapping):
     # ------ FACTORY methods: ----------------------------------------------------------------
 
     @classmethod
-    def fromNeXusLogs(cls, h5: h5py.File) -> "RunMetadata":
+    def fromNeXusLogs(cls, h5: h5py.File, stateIdSchema: Dict[str, Any]) -> "RunMetadata":
         # Usually these next are `DASlogsPath == "entry/DASlogs"` and `rootPath == "entry"` respectively.
         # However, for ultralite data these are "mantid_workspace1/logs" and "mantid_workspace1" instead.
         DASlogsPath = Config["instrument.PVLogs.rootGroup"]
@@ -288,14 +287,10 @@ class RunMetadata(BaseModel, Mapping):
         )
 
         # Now initialize `detectorState` and `stateId`.
-        detectorState = None
-        stateId = None
         runNumber = str(metadata.runNumber)
         try:
-            detectorState = DetectorState.fromLogs(metadata)
-            stateId = StateId.fromDetectorState(detectorState).SHA()
-            metadata.detectorState = detectorState
-            metadata.stateId = stateId
+            metadata.detectorState = DetectorState.fromPVLogs(metadata, stateIdSchema)
+            metadata.stateId = metadata.detectorState.stateId
         except RuntimeError:
             # If there is an active run number, this is an error.
             #   However, if a run is inactive, many required log values may not be present,
@@ -303,14 +298,14 @@ class RunMetadata(BaseModel, Mapping):
 
             # Note specifically in case of `MaskWorkspace` and `GroupingWorkspace`,
             #   run number will be `RunMetadata.INACTIVE_RUN`, but we should not trigger this clause,
-            #   because the `DetectorState` should be valid.
+            #   because the `DetectorState` should be valid and we don't get here.
             if runNumber != str(cls.INACTIVE_RUN):
                 raise
 
         return metadata
 
     @classmethod
-    def fromRun(cls, run: Run, liveData: bool = False) -> "RunMetadata":
+    def fromRun(cls, run: Run, stateIdSchema: Dict[str, Any], liveData: bool = False) -> "RunMetadata":
         def _optionalAccessor(run: Run, key: str):
             # If `mantid.api` had been written by Chimpanzees, we'd be better off!
             value = None
@@ -321,7 +316,7 @@ class RunMetadata(BaseModel, Mapping):
             return value
 
         # Notes:
-        #   In the live-data case, the 'run_number' property often does not exist: that's not an error.
+        #   In the live-data case, the 'run_number' property often does not exist: that is not an error.
         #   However, for 'tests/data/snapred-data' input files, the 'mantid_workspace_1/Daslogs/run_number' group
         #   and its 'value' dataset may need to be added to the 'mantid_workspace_1/Daslogs' group "by hand".
         #   For non-synthetic input data, this key-value pair would have been created automatically!
@@ -361,14 +356,10 @@ class RunMetadata(BaseModel, Mapping):
         )
 
         # Now initialize `detectorState` and `stateId`.
-        detectorState = None
-        stateId = None
         runNumber = str(metadata.runNumber)
         try:
-            detectorState = DetectorState.fromLogs(metadata)
-            stateId = StateId.fromDetectorState(detectorState).SHA()
-            metadata.detectorState = detectorState
-            metadata.stateId = stateId
+            metadata.detectorState = DetectorState.fromPVLogs(metadata, stateIdSchema)
+            metadata.stateId = metadata.detectorState.stateId
         except RuntimeError:
             # If there is an active run number, this is an error.
             #   However, if a run is inactive, many required log values may not be present,

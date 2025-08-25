@@ -1,5 +1,7 @@
+import copy
 import json
 from random import randint
+from typing import Any, Dict
 
 from snapred.backend.dao import CrystallographicInfo, CrystallographicPeak
 from snapred.backend.dao.calibration import Calibration, CalibrationMetric, CalibrationRecord, FocusGroupMetric
@@ -7,7 +9,6 @@ from snapred.backend.dao.GSASParameters import GSASParameters
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.ingredients import PeakIngredients
-from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.normalization import Normalization, NormalizationRecord
 from snapred.backend.dao.ObjectSHA import ObjectSHA
@@ -17,15 +18,23 @@ from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantS
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 from snapred.backend.dao.state.CalibrantSample.Material import Material
-from snapred.backend.dao.state.DetectorState import DetectorState
+from snapred.backend.dao.state.DetectorState import DetectorState, _LegacyGuideStatePos
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.GroupingMap import GroupingMap
+from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
+
+
+def _fromSchema(src: Dict[str, Any], substitutions: Dict[str, Any]) -> Dict[str, Any]:
+    # Safely substitute key-value pairs in a schema.
+    dest = copy.deepcopy(src)
+    dest.update(copy.deepcopy(substitutions))
+    return dest
 
 
 class DAOFactory:
@@ -100,9 +109,41 @@ class DAOFactory:
         "L1": 15.0,
         "L2": 0.5,
         "delTOverT": 0.002,
-        "delThWithGuide": 0.0032,
         "width": 1600.0,
         "frequency": 60.4,
+        # "deltaTheta" values are now in `InstrumentConfig.stateIdSchema`, in its `derivedPVs` sub-schema.
+        #   "delThWithGuide": 0.0032,
+        #   "delThNoGuide": 0.0006667,
+        "stateIdSchema": _fromSchema(
+            DetectorState.LEGACY_SCHEMA,
+            {
+                "derivedPVs": {
+                    "deltaTheta": {
+                        # the tuple of PVs used as the key:
+                        #   (`list`s should be used here to help with tests, as `tuple` won't convert through JSON)
+                        "keyPVs": [
+                            "BL3:Mot:OpticsPos:Pos",
+                        ],
+                        # a list of key-value pairs used to form the map:
+                        #   representation as key-value pairs prevents JSON from stringifying the keys
+                        "items": [
+                            [
+                                [
+                                    _LegacyGuideStatePos.IN,
+                                ],
+                                0.0032,
+                            ],
+                            [
+                                [
+                                    _LegacyGuideStatePos.OUT,
+                                ],
+                                0.0006667,
+                            ],
+                        ],
+                    }
+                }
+            },
+        ),
         "indexEntry": indexEntryBoilerplate,
     }
 
@@ -110,14 +151,12 @@ class DAOFactory:
         **instrument_config_boilerplate,
         maxBandwidth=3.2,
         delLOverL=6.452e-05,
-        delThNoGuide=0.0006667,
     )
 
     other_instrument_config = InstrumentConfig(
         **instrument_config_boilerplate,
         maxBandwidth=3.0,
         delLOverL=6.453e-05,
-        delThNoGuide=0.0032,
     )
 
     ## GSAS PARAMETERS

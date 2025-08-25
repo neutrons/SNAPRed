@@ -24,10 +24,10 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class PixelGroupingParametersCalculation(PythonAlgorithm):
-    # conversion factor from microsecond/Angstrom to meters
-
     @classproperty
     def CONVERSION_FACTOR(cls):
+        # conversion factor in units of cm**2 / s:
+        # -- in its use below, this is used to convert 1.0e-10 * m^2 to <time in microsecond>.
         return Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
     def category(self):
@@ -67,7 +67,7 @@ class PixelGroupingParametersCalculation(PythonAlgorithm):
         self.delLOverL = ingredients.instrumentState.instrumentConfig.delLOverL
         self.L = ingredients.instrumentState.instrumentConfig.L1 + ingredients.instrumentState.instrumentConfig.L2
         self.delL = self.delLOverL * self.L
-        self.delTheta = ingredients.instrumentState.delTh
+        self.deltaTheta = ingredients.instrumentState.deltaTheta
 
     def unbagGroceries(self, ingredients: PixelGroupingIngredients):  # noqa: ARG002
         self.groupingWorkspaceName: str = self.getPropertyValue("GroupingWorkspace")
@@ -128,7 +128,7 @@ class PixelGroupingParametersCalculation(PythonAlgorithm):
             PartialResolutionWorkspaces=self.partialResolutionWorkspaceName,
             DeltaTOFOverTOF=self.deltaTOverT,
             SourceDeltaL=self.delL,
-            SourceDeltaTheta=self.delTheta,
+            SourceDeltaTheta=self.deltaTheta,
         )
         self.mantidSnapper.WashDishes(
             "Remove the partial resolution workspace",

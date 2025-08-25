@@ -44,6 +44,14 @@ snapred.backend.dao.state.GroupingMap module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.dao.state.InstrumentConfig module
+-------------------------------------------------
+
+.. automodule:: snapred.backend.dao.state.InstrumentConfig
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.dao.state.InstrumentState module
 ------------------------------------------------
 

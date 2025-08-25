@@ -3,11 +3,11 @@ from typing import Any
 from pydantic import BaseModel, field_validator
 
 from snapred.backend.dao.GSASParameters import GSASParameters
-from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.ParticleBounds import ParticleBounds
-from snapred.backend.dao.state.DetectorState import DetectorState, GuideState
+from snapred.backend.dao.state.DetectorState import DetectorState
+from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
 
 
 class InstrumentState(BaseModel):
@@ -25,12 +25,8 @@ class InstrumentState(BaseModel):
     peakTailCoefficient: float
 
     @property
-    def delTh(self) -> float:
-        return (
-            self.instrumentConfig.delThWithGuide
-            if self.detectorState.guideStat == GuideState.IN
-            else self.instrumentConfig.delThNoGuide
-        )
+    def deltaTheta(self) -> float:
+        return self.instrumentConfig.derivedPV("deltaTheta", self.detectorState)
 
     @field_validator("fwhmMultipliers", mode="before")
     @classmethod

@@ -7,10 +7,9 @@ from random import randint
 from mantid.simpleapi import CreateSingleValuedWorkspace, DeleteWorkspace, mtd
 
 from snapred.backend.dao.calibration import Calibration
-from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state import InstrumentState
+from snapred.backend.dao.state import InstrumentConfig, InstrumentState
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService

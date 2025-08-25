@@ -20,7 +20,7 @@
 #         print(f"{module_name} : {imported_modules}")
 #         importlib.reload(sys.modules[module_name])
 
-from snapred.backend.dao import InstrumentConfig
+from snapred.backend.dao.state import InstrumentConfig
 from snapred.meta.Config import Config
 Config.reload()
 

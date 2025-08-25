@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from snapred.backend.dao.InstrumentConfig import InstrumentConfig
+from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.StateConfig import StateConfig
 
 

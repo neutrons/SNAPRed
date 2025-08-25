@@ -57,14 +57,6 @@ snapred.backend.dao.GSASParameters module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.dao.InstrumentConfig module
--------------------------------------------
-
-.. automodule:: snapred.backend.dao.InstrumentConfig
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.dao.Limit module
 --------------------------------
 
@@ -125,14 +117,6 @@ snapred.backend.dao.StateConfig module
 --------------------------------------
 
 .. automodule:: snapred.backend.dao.StateConfig
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-snapred.backend.dao.StateId module
-----------------------------------
-
-.. automodule:: snapred.backend.dao.StateId
    :members:
    :undoc-members:
    :show-inheritance:

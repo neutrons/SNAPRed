@@ -864,9 +864,9 @@ class TestReductionServiceMasks:
         cls.detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
         cls.detectorState2 = DetectorState(arc=(7.0, 8.0), wav=9.0, freq=10.0, guideStat=2, lin=(11.0, 12.0))
 
-        # The corresponding stateId:
-        cls.stateId1 = cls.localDataService._stateIdFromDetectorState(cls.detectorState1).hex
-        cls.stateId2 = cls.localDataService._stateIdFromDetectorState(cls.detectorState2).hex
+        # The corresponding stateIds:
+        cls.stateId1 = DetectorState.fromPVLogs(cls.detectorState1.toPVLogs(), DetectorState.LEGACY_SCHEMA).stateId.hex
+        cls.stateId2 = DetectorState.fromPVLogs(cls.detectorState2.toPVLogs(), DetectorState.LEGACY_SCHEMA).stateId.hex
 
         cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.instrumentLiteFilePath = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
