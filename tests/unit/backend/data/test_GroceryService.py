@@ -49,7 +49,7 @@ from util.WhateversInTheFridge import WhateversInTheFridge
 import snapred.backend.recipe.algorithm  # noqa: F401
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem, LiveDataArgs
 from snapred.backend.dao.RunMetadata import RunMetadata
-from snapred.backend.dao.state import DetectorState, InstrumentConfig
+from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, DiffcalStateMetadata, WorkspaceMetadata
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.AlgorithmException import AlgorithmException
@@ -211,7 +211,7 @@ class TestGroceryService(unittest.TestCase):
         return mock.Mock(
             spec=Run,
             hasProperty=mock.Mock(side_effect=lambda s: s == "run_number"),
-            getProperty=mock.Mock(side_effect=lambda s: mock.Mock(value=runNumber) if s == "run_number" else None)
+            getProperty=mock.Mock(side_effect=lambda s: mock.Mock(value=runNumber) if s == "run_number" else None),
         )
 
     def clearoutWorkspaces(self) -> None:
