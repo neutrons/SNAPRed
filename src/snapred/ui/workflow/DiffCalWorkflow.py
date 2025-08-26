@@ -240,7 +240,7 @@ class DiffCalWorkflow(WorkflowImplementer):
     def handleOverride(self, sampleFile):
         payload = OverrideRequest(calibrantSamplePath=sampleFile)
         overrides = self.request(path="calibration/override", payload=payload.model_dump_json()).data
-
+        response = SNAPResponse(code=ResponseCode.OK)
         if not overrides:
             self._requestView.updatePeakFunctionIndex(0)
             self._tweakPeakView.updatePeakFunctionIndex(0)
@@ -252,7 +252,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             self._tweakPeakView.updateXtalDmax(DiffCalTweakPeakView.default_XTAL_DMAX)
             self._tweakPeakView.enableXtalDMax(True)
 
-            return SNAPResponse(code=ResponseCode.OK)
+            return response
 
         if "peakFunction" in overrides:
             peakFunction = overrides["peakFunction"]
@@ -261,13 +261,15 @@ class DiffCalWorkflow(WorkflowImplementer):
             idxRQ = reqComboBox.findText(peakFunction) - 1
             if idxRQ >= 0:
                 self._requestView.updatePeakFunctionIndex(idxRQ)
-            self._requestView.enablePeakFunction(True)
+                self._requestView.enablePeakFunction(False)
+            else:
+                response.message = f"Peak function override {peakFunction} does not exist."
 
             twkComboBox = self._tweakPeakView.peakFunctionDropdown.dropDown
-            idxTW = twkComboBox.findText(peakFunction)
+            idxTW = twkComboBox.findText(peakFunction) - 1
             if idxTW >= 0:
                 self._tweakPeakView.updatePeakFunctionIndex(idxTW)
-            self._tweakPeakView.enablePeakFunction(False)
+                self._tweakPeakView.enablePeakFunction(False)
 
         if "crystalDMin" in overrides:
             newDMin = overrides["crystalDMin"]
@@ -287,7 +289,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             self._tweakPeakView.updateXtalDmax(DiffCalTweakPeakView.default_XTAL_DMAX)
             self._tweakPeakView.enableXtalDMax(True)
 
-        return SNAPResponse(code=ResponseCode.OK)
+        return response
 
     @ExceptionToErrLog
     @Slot()
