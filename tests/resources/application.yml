@@ -75,6 +75,7 @@ instrument:
       - "optics"
     - "det_lin1"
     - "det_lin2"
+    - "BL3:Mot:OpticsPos:ExitSlit"
 
   startingRunNumber: 10000
   minimumRunNumber: 46342
