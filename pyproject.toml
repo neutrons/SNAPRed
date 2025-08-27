@@ -20,8 +20,24 @@ issues = "https://github.com/neutrons/SNAPRed/issues"
 snapred = "snapred.__main__:main"
 
 [build-system]
-requires = ["setuptools", "toml", "versioningit"]
-build-backend = "setuptools.build_meta"
+build-backend = "hatchling.build"
+requires = ["hatchling", "versioningit"]
+
+[tool.hatch.version]
+source = "versioningit"
+
+[tool.hatch.build.hooks.versioningit-onbuild]
+source-file = "src/snapred/_version.py"
+build-file = "snapred/_version.py"
+
+[tool.hatch.build]
+artifacts = [
+  "src/snapred/_version.py",
+  "src/snapred/**/*.yml",
+  "src/snapred/**/*.yaml",
+  "src/snapred/**/*.ini",
+]
+
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -151,6 +167,16 @@ pycifrw = "*"
 pyqtwebengine = "*"
 git-lfs = "*"
 
+
+[tool.pixi.package.host-dependencies]
+python = ">=3.10"
+hatchling = "*"
+versioningit = "*"
+
+[tool.pixi.package.run-dependencies]
+mantidworkbench = ">=6.13.0,<6.14.0"
+pydantic = ">=2.7.3,<3"
+
 [tool.pixi.package]
 name = "snapred"
 version = "0.0.0"  # placeholder, overwritten by sync-version
@@ -173,7 +199,7 @@ publish-pypi-test = { cmd = "twine upload --repository testpypi dist/*", descrip
 clean-pypi = { cmd = "rm -rf dist", description = "Clean the PyPI build artifacts" }
 build-configure-app = { cmd = "python -m snapred --configure", description = "Configure the application for building" }
 build-conda-command = { cmd = "pixi build", description = "Build the conda package command" }
-build-conda = { description = "Build the conda package", depends-on = ["sync-version", "build-configure-app", "build-conda-command", "reset-version"] }
+build-conda = { description = "Build the conda package", depends-on = ["backup-toml", "sync-version", "build-configure-app", "build-conda-command", "reset-toml"] }
 publish-conda = { cmd = "anaconda upload *.conda", description = "Publish the .conda package to anaconda.org", depends-on = ["build-conda"] }
 clean-conda = { cmd = "rm -f *.conda", description = "Clean the local .conda build artifacts" }
 # Documentation tasks
@@ -187,8 +213,9 @@ test-integration = { cmd = "env=integration_test pytest -m integration --cov=src
 test-all = { cmd = "pytest -m 'not datarepo' --cov=src/snapred --cov-report=xml --cov-report=term", description = "Run all tests except datarepo tests" }
 # MISC
 clean-all = { description = "Clean all build artifacts", depends-on = ["clean-pypi", "clean-docs", "clean-conda"] }
-sync-version = { cmd = "version=$(python -m versioningit); python -c \"import toml; data=toml.load('pyproject.toml'); data['tool']['pixi']['package']['version']='$version'; open('pyproject.toml', 'w').write(toml.dumps(data))\"", description = "Sync pyproject.toml version with Git version" }
-reset-version = { cmd = "python -c \"import toml; data=toml.load('pyproject.toml'); data['tool']['pixi']['package']['version']='0.0.0'; open('pyproject.toml', 'w').write(toml.dumps(data))\"", description = "Reset the package version to 0.0.0" }
+sync-version = { cmd = 'version=$(python -m versioningit); toml set tool.pixi.package.version "$version" --toml-path pyproject.toml', description = "Sync pyproject.toml version with Git version" }
+backup-toml = { cmd = "cp pyproject.toml pyproject.toml.bak", description = "Backup the pyproject.toml file" }
+reset-toml = { cmd = "cp pyproject.toml.bak pyproject.toml; rm pyproject.toml.bak", description = "Reset the pyproject.toml file to the original state" }
 # Application tasks
 snapred = { cmd = "python -m snapred", description = "Start the SNAPRed application" }
 
@@ -211,6 +238,9 @@ versioningit = "*"
 hatch = "*"
 toml = "*"
 ruamel_yaml = "*"
+
+[tool.pixi.feature.package.pypi-dependencies]
+toml-cli = "*"
 
 [tool.pixi.feature.developer.dependencies]
 pre-commit = "*"
