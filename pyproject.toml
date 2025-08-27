@@ -179,7 +179,7 @@ pydantic = ">=2.7.3,<3"
 
 [tool.pixi.package]
 name = "snapred"
-version = "2.1.0.dev1+d202508271723"  # placeholder, overwritten by sync-version
+version = "0.0.0"  # placeholder, overwritten by sync-version
 
 [tool.pixi.package.build]
 backend = { name = "pixi-build-python", version = "0.1.*" }

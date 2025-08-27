@@ -6795,8 +6795,8 @@ packages:
   timestamp: 1753199211006
 - pypi: ./
   name: snapred
-  version: 2.1.0.dev2+d202508271739
-  sha256: 293c1ce95e518247aefed8ccefdc6508bbb9494a9490a720b429ec8cbf37492c
+  version: 2.1.0.dev3+d202508271742
+  sha256: b9019a8424e72255bae7f95a2b20d2271cfbe4e79dd1c4f5f3a42aaae94f37d9
   requires_dist:
   - pyoncat~=1.6
   requires_python: '>=3.10'
