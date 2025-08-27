@@ -151,6 +151,15 @@ pycifrw = "*"
 pyqtwebengine = "*"
 git-lfs = "*"
 
+
+[tool.pixi.package.host-dependencies]
+python = ">=3.10"
+versioningit = "*"
+
+[tool.pixi.package.run-dependencies]
+mantidworkbench = ">=6.13.0,<6.14.0"
+pydantic = ">=2.7.3,<3"
+
 [tool.pixi.package]
 name = "snapred"
 version = "0.0.0"  # placeholder, overwritten by sync-version
