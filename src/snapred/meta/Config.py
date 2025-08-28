@@ -282,7 +282,7 @@ class _Config:
         userHome = self._userHome()
         if (userHome / "snapred-user.yml").exists():
             with open(str(userHome / "snapred-user.yml"), "r") as f:
-                applicationYml = yaml.safe_load(f)
+                applicationYml = rYaml(typ="safe").load(f)
             version = applicationYml.get("application", {"version": None})["version"]
             return version
         else:
@@ -328,7 +328,7 @@ class _Config:
         # read the application.yml as a dict from resources
         applicationYml = None
         with Resource.open("application.yml", "r") as f:
-            applicationYml = yaml.safe_load(f)
+            applicationYml = rYaml(typ="safe").load(f)
 
         # overwrite the snapred-user.yml calibration home with the user specified one
         userCalibrationHome = str(userHome / "Calibration")
@@ -369,11 +369,11 @@ class _Config:
                 if filepath.exists():
                     self._logger.debug(f"Loading config from {filepath.absolute()}")
                     with open(filepath, "r") as file:
-                        envConfig = yaml.safe_load(file)
+                        envConfig = rYaml(typ="safe").load(file)
                 else:
                     # load from the resource
                     with Resource.open(env_name, "r") as file:
-                        envConfig = yaml.safe_load(file)
+                        envConfig = rYaml(typ="safe").load(file)
                     new_env_name = env_name.replace(".yml", "")
                 # update the configuration with the  new environment
                 self._config = deep_update(self._config, envConfig)

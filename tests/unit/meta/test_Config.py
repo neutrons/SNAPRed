@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from unittest import mock
 
 import pytest
-import yaml
+from ruamel.yaml import YAML as rYaml
 
 import snapred.meta.Config as Config_module
 from snapred.backend.log.logger import snapredLogger
@@ -379,7 +379,7 @@ def test_swapToUserYml():
             assert "snapred-user" in Config["environment"]
 
             with open(Path(tmpPath) / ".snapred" / "snapred-user.yml", "r") as file:
-                yml = yaml.safe_load(file)
+                yml = rYaml(typ="safe").load(file)
                 assert yml["application"]["version"] == "1.0.0"
                 assert yml["instrument"]["calibration"]["home"] is not None
 
@@ -435,7 +435,7 @@ def test_swapToUserYml_archive():
             Config.snapredVersion = lambda: "1.0.8"
             Config.swapToUserYml()
             with open(Path(tmpPath) / ".snapred" / "snapred-user.yml", "r") as file:
-                yml = yaml.safe_load(file)
+                yml = rYaml(typ="safe").load(file)
                 assert yml["application"]["version"] == "1.0.8"
                 assert yml["instrument"]["calibration"]["home"] is not None
             assert (Path(tmpPath) / ".snapred" / "snapred-user.yml").exists()
@@ -464,7 +464,7 @@ def test_configureForDeploy():
             assert (Path(tmpPath) / "application.yml").stat().st_size > 0
             # check that the file is a valid yaml file
             with open(Path(tmpPath) / "application.yml", "r") as file:
-                yml = yaml.safe_load(file)
+                yml = rYaml(typ="safe").load(file)
                 assert "CalibrationNext" in yml["instrument"]["calibration"]["home"]
 
 
