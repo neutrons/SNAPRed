@@ -254,6 +254,7 @@ sphinxcontrib-mermaid = "*"
 types-pyyaml = "*"
 erdantic = "*"
 versioningit = "*"
+ruamel_yaml = "*"
 
 # ------------------------------- #
 # Local Mantid Development Feature #
