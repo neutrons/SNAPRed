@@ -21,7 +21,7 @@ build:
       # Install the package in editable mode using pixi
       - $HOME/.pixi/bin/pixi run --environment docs pip install -e .
       # Install docs dependencies in the RTD Python environment too
-      - pip install erdantic versioningit sphinx_rtd_theme sphinxcontrib-mermaid types-pyyaml h5py numpy matplotlib
+      - pip install erdantic versioningit sphinx_rtd_theme sphinxcontrib-mermaid types-pyyaml h5py numpy matplotlib ruamel.yaml
 
 sphinx:
   builder: html

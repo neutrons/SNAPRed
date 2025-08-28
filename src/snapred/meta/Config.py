@@ -50,6 +50,19 @@ def _find_root_dir():
     return str(MODULE_ROOT)
 
 
+# update config with self._config, deep_update does not work with ruamel.yaml
+def merge_dicts(d1, d2):
+    """
+    d2 overwrites values in d1
+    """
+    for key, value in d2.items():
+        if isinstance(value, dict) and key in d1:
+            merge_dicts(d1[key], value)
+        else:
+            d1[key] = value
+    return d1
+
+
 @Singleton
 class _Resource:
     _packageMode: bool
@@ -174,14 +187,7 @@ class _Config:
         with Resource.open(self._defaultEnv, "r") as file:
             config = ryaml.load(file)
 
-        # update config with self._config, deep_update does not work with ruamel.yaml
-        def merge_dicts(d1, d2):
-            for key, value in d2.items():
-                if isinstance(value, dict) and key in d1:
-                    merge_dicts(d1[key], value)
-                else:
-                    d1[key] = value
-
+        # overwrite default env application.yml with exported config
         merge_dicts(config, self._config)
 
         # Export the merged configuration to application.yml
@@ -282,7 +288,7 @@ class _Config:
         userHome = self._userHome()
         if (userHome / "snapred-user.yml").exists():
             with open(str(userHome / "snapred-user.yml"), "r") as f:
-                applicationYml = yaml.safe_load(f)
+                applicationYml = rYaml(typ="safe").load(f)
             version = applicationYml.get("application", {"version": None})["version"]
             return version
         else:
@@ -328,7 +334,7 @@ class _Config:
         # read the application.yml as a dict from resources
         applicationYml = None
         with Resource.open("application.yml", "r") as f:
-            applicationYml = yaml.safe_load(f)
+            applicationYml = rYaml(typ="safe").load(f)
 
         # overwrite the snapred-user.yml calibration home with the user specified one
         userCalibrationHome = str(userHome / "Calibration")
@@ -369,14 +375,14 @@ class _Config:
                 if filepath.exists():
                     self._logger.debug(f"Loading config from {filepath.absolute()}")
                     with open(filepath, "r") as file:
-                        envConfig = yaml.safe_load(file)
+                        envConfig = rYaml(typ="safe").load(file)
                 else:
                     # load from the resource
                     with Resource.open(env_name, "r") as file:
-                        envConfig = yaml.safe_load(file)
+                        envConfig = rYaml(typ="safe").load(file)
                     new_env_name = env_name.replace(".yml", "")
                 # update the configuration with the  new environment
-                self._config = deep_update(self._config, envConfig)
+                self._config = merge_dicts(self._config, envConfig)
 
                 # add the name to the config object if it wasn't specified
                 if "environment" not in envConfig:
