@@ -50,6 +50,19 @@ def _find_root_dir():
     return str(MODULE_ROOT)
 
 
+# update config with self._config, deep_update does not work with ruamel.yaml
+def merge_dicts(d1, d2):
+    """
+    d2 overwrites values in d1
+    """
+    for key, value in d2.items():
+        if isinstance(value, dict) and key in d1:
+            merge_dicts(d1[key], value)
+        else:
+            d1[key] = value
+    return d1
+
+
 @Singleton
 class _Resource:
     _packageMode: bool
@@ -174,14 +187,7 @@ class _Config:
         with Resource.open(self._defaultEnv, "r") as file:
             config = ryaml.load(file)
 
-        # update config with self._config, deep_update does not work with ruamel.yaml
-        def merge_dicts(d1, d2):
-            for key, value in d2.items():
-                if isinstance(value, dict) and key in d1:
-                    merge_dicts(d1[key], value)
-                else:
-                    d1[key] = value
-
+        # overwrite default env application.yml with exported config
         merge_dicts(config, self._config)
 
         # Export the merged configuration to application.yml
@@ -376,7 +382,7 @@ class _Config:
                         envConfig = rYaml(typ="safe").load(file)
                     new_env_name = env_name.replace(".yml", "")
                 # update the configuration with the  new environment
-                self._config = deep_update(self._config, envConfig)
+                self._config = merge_dicts(self._config, envConfig)
 
                 # add the name to the config object if it wasn't specified
                 if "environment" not in envConfig:

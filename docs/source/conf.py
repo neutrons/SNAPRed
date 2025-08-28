@@ -101,6 +101,8 @@ def import_mock(name, *args, **kwargs):
         imports = orig_import(name, *args, **kwargs)
     except ImportError:
         # Create a mock module for missing imports with better type handling
+        if "ruamel.yaml" in name:
+            raise ImportError("Module 'ruamel.yaml' is not available")
         imports = mock.MagicMock()
         # Set common attributes to avoid warnings
         imports.__name__ = name

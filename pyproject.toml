@@ -237,7 +237,7 @@ twine = "*"
 versioningit = "*"
 hatch = "*"
 toml = "*"
-ruamel_yaml = "*"
+"ruamel.yaml" = "*"
 
 [tool.pixi.feature.package.pypi-dependencies]
 toml-cli = "*"
@@ -254,7 +254,7 @@ sphinxcontrib-mermaid = "*"
 types-pyyaml = "*"
 erdantic = "*"
 versioningit = "*"
-ruamel_yaml = "*"
+"ruamel.yaml" = "*"
 
 # ------------------------------- #
 # Local Mantid Development Feature #
