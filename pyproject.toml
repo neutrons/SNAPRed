@@ -158,6 +158,7 @@ python = ">=3.10"
 pip = "*"
 pydantic = ">=2.7.3,<3"
 mantidworkbench = ">=6.13.1.1rc1"
+"ruamel.yaml" = "*"
 mantid = ">=6.13.1.1rc1"
 mslice = "*"
 mantidqt = ">=6.13.1.1rc1"
@@ -176,6 +177,7 @@ versioningit = "*"
 [tool.pixi.package.run-dependencies]
 mantidworkbench = ">=6.13.0,<6.14.0"
 pydantic = ">=2.7.3,<3"
+"ruamel.yaml" = "*"
 
 [tool.pixi.package]
 name = "snapred"
