@@ -13,3 +13,4 @@ provide additional information that will be useful during SNAPRed development.
    :caption: Index
 
    grouping_workspaces.rst
+   profiling_and_progress_recording.rst

@@ -354,3 +354,33 @@ class TestPixelDiffCalRecipe(unittest.TestCase):
             dets = fakeRawData.getSpectrum(ns).getDetectorIDs()
             for det in dets:
                 assert maskWS.isMasked(det)
+
+    ## TESTS OF PROFILING N_REF
+
+    def test__pixelDiffCal_N_ref(self):
+        inputWorkspaceMemorySize = 409600
+        mockInputWs = mock.Mock(
+            spec=MatrixWorkspace,
+            getMemorySize=mock.Mock(return_value=inputWorkspaceMemorySize),
+        )
+        mockMtd = mock.MagicMock(
+            doesExist=mock.Mock(return_value=True), __getitem__=mock.Mock(return_value=mockInputWs)
+        )
+
+        rx = Recipe()
+        rx.mantidSnapper = mock.Mock(mtd=mockMtd)
+
+        expected = float(mockInputWs.getMemorySize.return_value)
+        assert rx._pixelDiffCal_N_ref(self.ingredients, self.groceries) == expected
+        mockMtd.doesExist.assert_called_once_with(self.groceries["inputWorkspace"])
+        mockMtd.__getitem__.assert_called_once_with(self.groceries["inputWorkspace"])
+        mockInputWs.getMemorySize.assert_called_once()
+
+        # input workspace doesn't exist: returns `None`
+        mockMtd.reset_mock()
+        mockInputWs.reset_mock()
+        mockMtd.doesExist.return_value = False
+        assert rx._pixelDiffCal_N_ref(self.ingredients, self.groceries) is None
+        mockMtd.doesExist.assert_called_once_with(self.groceries["inputWorkspace"])
+        mockMtd.__getitem__.assert_not_called()
+        mockInputWs.getMemorySize.assert_not_called()

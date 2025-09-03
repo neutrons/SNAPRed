@@ -1,4 +1,3 @@
-# ruff: noqa: E402, ARG002
 import inspect
 import unittest
 import unittest.mock as mock
@@ -12,45 +11,52 @@ from mantid.simpleapi import (
     CreateWorkspace,
     mtd,
 )
+from util.Config_helpers import Config_override
 from util.Pydantic_util import assertEqualModel
+from util.SculleryBoy import SculleryBoy
 
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationAssessmentResponse import NormalizationAssessmentResponse
-from snapred.backend.dao.request import CalibrationWritePermissionsRequest, NormalizationRequest
-from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
+from snapred.backend.dao.request import (
+    CalibrationLockRequest,
+    CalibrationWritePermissionsRequest,
+    FocusSpectraRequest,
+    NormalizationRequest,
+    SmoothDataExcludingPeaksRequest,
+    VanadiumCorrectionRequest,
+)
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
+from snapred.backend.dao.state import FocusGroup
 from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.service.NormalizationService import NormalizationService
 from snapred.meta.redantic import parse_obj_as
 
-thisService = "snapred.backend.service.NormalizationService"
-localMock = mock.Mock()
+thisService = "snapred.backend.service.NormalizationService."
 
-with mock.patch.dict(
-    "sys.modules",
-    {
-        "snapred.backend.data.DataExportService": mock.Mock(),
-        "snapred.backend.data.DataFactoryService": mock.Mock(),
-        "snapred.backend.log": mock.Mock(),
-        "snapred.backend.log.logger": mock.Mock(),
-    },
-):
-    from util.SculleryBoy import SculleryBoy
 
-    from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-    from snapred.backend.dao.request import (
-        FocusSpectraRequest,
-        NormalizationRequest,
-        SmoothDataExcludingPeaksRequest,
-        VanadiumCorrectionRequest,
-    )
-    from snapred.backend.dao.state import FocusGroup
-    from snapred.backend.service.NormalizationService import NormalizationService
+class TestNormalizationServiceExports:
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        # setup
+        modulesPatch = mock.patch.dict(
+            "sys.modules",
+            {
+                "snapred.backend.data.DataExportService": mock.Mock(),
+                "snapred.backend.data.DataFactoryService": mock.Mock(),
+                "snapred.backend.log": mock.Mock(),
+                "snapred.backend.log.logger": mock.Mock(),
+            },
+        )
+        modulesPatch.start()
+        yield
 
-    thisService = "snapred.backend.service.NormalizationService."
+        # teardown
+        modulesPatch.stop()
 
-    def test_saveNormalization():
+    def test_saveNormalization(self):
         normalizationService = NormalizationService()
         normalizationService.dataExportService.exportNormalizationRecord = mock.Mock()
         normalizationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version=1)
@@ -68,7 +74,7 @@ with mock.patch.dict(
         assert savedEntry.parameters is not None
         assert normalizationService.dataExportService.exportNormalizationWorkspaces.called
 
-    def test_exportNormalizationIndexEntry():
+    def test_exportNormalizationIndexEntry(self):
         normalizationService = NormalizationService()
         normalizationService.dataExportService.exportNormalizationIndexEntry = MagicMock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = "expected"
@@ -79,9 +85,6 @@ with mock.patch.dict(
         savedEntry = normalizationService.dataExportService.exportNormalizationIndexEntry.call_args.args[0]
         assert savedEntry.appliesTo == ">=1"
         assert savedEntry.timestamp is not None
-
-
-from snapred.backend.service.NormalizationService import NormalizationService  # noqa: F811
 
 
 class TestNormalizationService(unittest.TestCase):
@@ -276,6 +279,69 @@ class TestNormalizationService(unittest.TestCase):
             crystalDBounds=self.request.crystalDBounds,
         )
         assertEqualModel(result, expectedRespone)
+
+    def test__normalization_N_ref(self):
+        self.instance = NormalizationService()
+        self.instance._groupingAlreadyCalculated = mock.Mock(return_value=False)
+        self.request.correctedVanadiumWs = None
+        inputFileSize = 409600
+        mockInputPath = mock.Mock(
+            spec=Path,
+            exists=mock.Mock(return_value=True),
+            stat=mock.Mock(return_value=mock.Mock(st_size=inputFileSize)),
+        )
+        self.instance.groceryService.createNeutronFilePath = mock.Mock(return_value=mockInputPath)
+
+        numberOfSlices = 11
+        numberOfAnnuli = 12  # for test initialization, the two of these should be distinct
+        with (
+            Config_override("constants.RawVanadiumCorrection.numberOfSlices", numberOfSlices),
+            Config_override("constants.RawVanadiumCorrection.numberOfAnnuli", numberOfAnnuli),
+        ):
+            expected = float(numberOfSlices * numberOfAnnuli * float(mockInputPath.stat.return_value.st_size))
+            assert self.instance._normalization_N_ref(self.request) == expected
+            self.instance._groupingAlreadyCalculated.assert_called_once()
+            self.instance.groceryService.createNeutronFilePath.assert_called_once_with(
+                self.request.runNumber, self.request.useLiteMode
+            )
+            mockInputPath.exists.assert_called_once()
+            mockInputPath.stat.assert_called_once()
+
+            # input path doesn't exist: returns `None`
+            self.instance._groupingAlreadyCalculated.reset_mock()
+            self.instance.groceryService.createNeutronFilePath.reset_mock()
+            mockInputPath.reset_mock()
+            mockInputPath.exists.return_value = False
+            assert self.instance._normalization_N_ref(self.request) is None
+            self.instance._groupingAlreadyCalculated.assert_called_once()
+            self.instance.groceryService.createNeutronFilePath.assert_called_once()
+            mockInputPath.exists.assert_called_once()
+            mockInputPath.stat.assert_not_called()
+
+            # grouping already calculated: returns `None`
+            self.instance._groupingAlreadyCalculated.reset_mock()
+            self.instance._groupingAlreadyCalculated.return_value = True
+            self.instance.groceryService.createNeutronFilePath.reset_mock()
+            mockInputPath.reset_mock()
+            mockInputPath.exists.return_value = True
+            assert self.instance._normalization_N_ref(self.request) is None
+            self.instance._groupingAlreadyCalculated.assert_called_once()
+            self.instance.groceryService.createNeutronFilePath.assert_not_called()
+            mockInputPath.exists.assert_not_called()
+            mockInputPath.stat.assert_not_called()
+
+            # `request.correctedVanadiumWs is not None`: returns `None`
+            self.instance._groupingAlreadyCalculated.reset_mock()
+            self.instance._groupingAlreadyCalculated.return_value = False
+            self.instance.groceryService.createNeutronFilePath.reset_mock()
+            mockInputPath.reset_mock()
+            mockInputPath.exists.return_value = True
+            self.request.correctedVanadiumWs = "correctedVanadium"
+            assert self.instance._normalization_N_ref(self.request) is None
+            self.instance._groupingAlreadyCalculated.assert_called_once()
+            self.instance.groceryService.createNeutronFilePath.assert_not_called()
+            mockInputPath.exists.assert_not_called()
+            mockInputPath.stat.assert_not_called()
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "RawVanadiumCorrectionRecipe")

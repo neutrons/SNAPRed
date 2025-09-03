@@ -158,3 +158,13 @@ class WhateversInTheFridge(LocalDataService):
 
     def _readDefaultGroupingMap(self) -> GroupingMap:
         return DAOFactory.groupingMap_POP(stateId=DAOFactory.nonsense_state_id)
+
+    ### GENERALIZED PROGRESS REPORTING ###
+
+    def readProgressRecords(self) -> str:
+        # Returns the JSON representation of the current progress data.
+        return '{"steps": []}'
+
+    def writeProgressRecords(self, records: str):
+        # Writes the JSON representation of the current progress data.
+        pass

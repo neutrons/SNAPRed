@@ -18,6 +18,7 @@ from snapred.backend.dao.request import (
 )
 from snapred.backend.dao.response.ReductionResponse import ReductionResponse
 from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.dao.state import FocusGroup
 from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
@@ -26,11 +27,12 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.profiling.ProgressRecorder import ComputationalOrder, WallClockTime
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import ArtificialNormalizationRecipe, ConvertUnitsRecipe
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
-from snapred.backend.service.Service import Service
+from snapred.backend.service.Service import Register, Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.decorators.FromString import FromString
@@ -65,32 +67,12 @@ class ReductionService(Service):
         self.groceryClerk: GroceryListBuilder = GroceryListItem.builder()
         self.sousChef = SousChef()
         self.mantidSnapper = MantidSnapper(None, __name__)
-        self.registerPath("", self.reduction)
-        self.registerPath("ingredients", self.prepReductionIngredients)
-        self.registerPath("metadata", self.getRunMetadata)
-        self.registerPath("groceries", self.fetchReductionGroceries)
-        self.registerPath("groupings", self.fetchReductionGroupings)
-        self.registerPath("loadGroupings", self.loadAllGroupings)
-        self.registerPath("save", self.saveReduction)
-        self.registerPath("load", self.loadReduction)
-        self.registerPath("hasState", self.hasState)
-        self.registerPath("getCompatibleMasks", self.getCompatibleMasks)
-        self.registerPath("getUniqueTimestamp", self.getUniqueTimestamp)
-        self.registerPath("checkWritePermissions", self.checkReductionWritePermissions)
-        self.registerPath("getSavePath", self.getSavePath)
-        self.registerPath("getStateIds", self.getStateIds)
-        self.registerPath("validate", self.validateReduction)
-        self.registerPath("artificialNormalization", self.artificialNormalization)
-        self.registerPath("grabWorkspaceforArtificialNorm", self.grabWorkspaceforArtificialNorm)
-        self.registerPath("hasLiveDataConnection", self.hasLiveDataConnection)
-        self.registerPath("getLiveMetadata", self.getLiveMetadata)
-        self.registerPath("getRunMetadata", self.getRunMetadata)
-        return
 
     @staticmethod
     def name():
         return "reduction"
 
+    @Register("validate")
     def validateReduction(self, request: ReductionRequest):
         """
         Validate the reduction request, providing specific messages if normalization
@@ -183,7 +165,7 @@ class ReductionService(Service):
         if continueFlags and message:
             raise ContinueWarning(message, continueFlags)
 
-        # Reinitialized continue flags for the upcoming permissions check
+        # Re-initialize continue flags for the upcoming permissions check
         continueFlags = ContinueWarning.Type.UNSET
 
         # Check that the user has write permissions to the save directory
@@ -214,7 +196,27 @@ class ReductionService(Service):
 
             raise ContinueWarning(msg, continueFlags)
 
+    def _reduction_N_ref(self, request: ReductionRequest):
+        # Calculate the reference value to use during the estimation of execution time for the "reduction" method:
+
+        # -- Returning `None` means that the `N_ref` value cannot be calculated, or alternatively,
+        #    that it should not be used.
+        # -- Please see:
+        #    `snapred.readthedocs.io/en/latest/developer/implementation_notes/profiling_and_progress_recording.html`.
+
+        N_ref = None
+        N_groups = len(self._getGroupingMap(request.runNumber, request.useLiteMode))
+        if N_groups >= 1 and not request.liveDataMode:
+            inputFilePath = self.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
+            if inputFilePath.exists():
+                # As the workspaces aren't actually loaded yet, this estimate uses the file size in bytes.
+                dataSize = float(inputFilePath.stat().st_size)
+                N_ref = float(N_groups * dataSize)
+        return N_ref
+
+    @WallClockTime(N_ref=_reduction_N_ref, order=ComputationalOrder.O_N)
     @FromString
+    @Register("")
     def reduction(self, request: ReductionRequest):
         """
         Perform reduction on a single run number, once for each grouping in this state.
@@ -224,13 +226,20 @@ class ReductionService(Service):
         """
         startTime = datetime.utcnow()
 
-        groupingResults = self.fetchReductionGroupings(request)
-        request.focusGroups = groupingResults["focusGroups"]
+        # Profiling sub-step: "load-and-prepare-data".
+        with WallClockTime(
+            "load-and-prepare-data",
+            N_ref=ReductionService._reduction_N_ref,
+            N_ref_args=((self, request), {}),
+            order=ComputationalOrder.O_N,
+        ):
+            groupingResults = self.fetchReductionGroupings(request)
+            request.focusGroups = groupingResults["focusGroups"]
 
-        # Fetch groceries first: `prepReductionIngredients` will need the combined mask.
-        groceries = self.fetchReductionGroceries(request)
+            # Fetch groceries first: `prepReductionIngredients` will need the combined mask.
+            groceries = self.fetchReductionGroceries(request)
 
-        ingredients = self.prepReductionIngredients(request, groceries.get("combinedPixelMask"))
+            ingredients = self.prepReductionIngredients(request, groceries.get("combinedPixelMask"))
 
         # attach the list of grouping workspaces to the grocery dictionary
         groceries["groupingWorkspaces"] = groupingResults["groupingWorkspaces"]
@@ -242,15 +251,26 @@ class ReductionService(Service):
         isDiagnostic = isDiagnostic or workspaceMetadata.normalizationState != NormalizationStateMetadata.EXISTS
         ingredients.isDiagnostic = isDiagnostic
 
-        data = ReductionRecipe().cook(ingredients, groceries)
-        record = self._createReductionRecord(request, ingredients, data["outputs"])
+        # Profiling sub-step: "reduce-data":
+        #   * Alternatively, we could decorate the `ReductionRecipe` itself,
+        #     but the present approach keeps this profiling details in the same source-file location.
+        #   * A different `N_ref` could be used here, as now the workspaces have been
+        #     loaded, but unti that's required the file-size based version is probably good enough.
+        with WallClockTime(
+            "reduce-data",
+            N_ref=ReductionService._reduction_N_ref,
+            N_ref_args=((self, request), {}),
+            order=ComputationalOrder.O_N,
+        ):
+            data = ReductionRecipe().cook(ingredients, groceries)
+            record = self._createReductionRecord(request, ingredients, data["outputs"])
 
-        # Execution wallclock time is required by the live-data workflow loop.
-        executionTime = datetime.utcnow() - startTime
+            # Execution wallclock time is required by the live-data workflow loop.
+            executionTime = datetime.utcnow() - startTime
 
-        return ReductionResponse(
-            record=record, unfocusedData=data.get("unfocusedWS", None), executionTime=executionTime
-        )
+            return ReductionResponse(
+                record=record, unfocusedData=data.get("unfocusedWS", None), executionTime=executionTime
+            )
 
     def _createReductionRecord(
         self, request: ReductionRequest, ingredients: ReductionIngredients, workspaceNames: List[WorkspaceName]
@@ -291,6 +311,7 @@ class ReductionService(Service):
         )
 
     @FromString
+    @Register("groupings")
     def fetchReductionGroupings(self, request: ReductionRequest) -> Dict[str, Any]:
         """
         Load all groupings that are valid for a specific state using a ReductionRequest.
@@ -309,6 +330,7 @@ class ReductionService(Service):
         return result
 
     @FromString
+    @Register("loadGroupings")
     def loadAllGroupings(self, runNumber: str, useLiteMode: bool) -> Dict[str, Any]:
         """
         Load all groupings that are valid for a specific state, determined from the run number
@@ -326,15 +348,7 @@ class ReductionService(Service):
         :rtype: Dict[str, Any]
         """
 
-        # if grouping exists in state, use it
-        # else refer to root for default groups
-        # This branch is mostly relevent when a user proceeds without calibration.
-        try:
-            groupingMap = self.dataFactoryService.getGroupingMap(runNumber)
-        except StateValidationException:
-            groupingMap = self.dataFactoryService.getDefaultGroupingMap()
-
-        groupingMap = groupingMap.getMap(useLiteMode)
+        groupingMap = self._getGroupingMap(runNumber, useLiteMode)
         for focusGroup in groupingMap.values():
             self.groceryClerk.fromRun(runNumber).grouping(focusGroup.name).useLiteMode(useLiteMode).add()
         groupingWorkspaces = self.groceryService.fetchGroceryList(self.groceryClerk.buildList())
@@ -342,6 +356,15 @@ class ReductionService(Service):
             "focusGroups": list(groupingMap.values()),
             "groupingWorkspaces": groupingWorkspaces,
         }
+
+    def _getGroupingMap(self, runNumber: str, useLiteMode: bool) -> Dict[str, FocusGroup]:
+        # Return the GroupingMap associated with the specified run:
+        #   fallback to the root map if the run's state has not been initialized.
+        try:
+            groupingMap = self.dataFactoryService.getGroupingMap(runNumber)
+        except StateValidationException:
+            groupingMap = self.dataFactoryService.getDefaultGroupingMap()
+        return groupingMap.getMap(useLiteMode)
 
     # WARNING: `WorkspaceName` does not work with `@FromString`!
     def prepCombinedMask(self, request: ReductionRequest) -> WorkspaceName:
@@ -426,6 +449,7 @@ class ReductionService(Service):
         return combinedMask
 
     @FromString
+    @Register("ingredients")
     def prepReductionIngredients(
         self, request: ReductionRequest, combinedPixelMask: Optional[WorkspaceName] = None
     ) -> ReductionIngredients:
@@ -465,6 +489,7 @@ class ReductionService(Service):
         return ingredients
 
     @FromString
+    @Register("groceries")
     def fetchReductionGroceries(self, request: ReductionRequest) -> Dict[str, Any]:
         """
         Fetch the required groceries, including
@@ -588,25 +613,30 @@ class ReductionService(Service):
         )
         self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
 
+    @Register("save")
     def saveReduction(self, request: ReductionExportRequest):
         self.dataExportService.exportReductionRecord(request.record)
         self.dataExportService.exportReductionData(request.record)
 
+    @Register("load")
     def loadReduction(self, stateId: str, timestamp: float):
         # How to implement:
         # 1) Create the file path from the stateId and the timestamp;
         # 2) Load the reduction record and workspaces using `DataFactoryService.getReductionData`.
         raise NotImplementedError("not implemented: 'ReductionService.loadReduction")
 
+    @Register("hasState")
     def hasState(self, runNumber: str):
         if not RunNumberValidator.validateRunNumber(runNumber):
             logger.error(f"Invalid run number: {runNumber}")
             return False
         return self.dataFactoryService.checkCalibrationStateExists(runNumber)
 
+    @Register("getUniqueTimestamp")
     def getUniqueTimestamp(self):
         return self.dataExportService.getUniqueTimestamp()
 
+    @Register("checkWritePermissions")
     def checkReductionWritePermissions(self, runNumber: str) -> bool:
         try:
             path = self.dataExportService.getReductionStateRoot(runNumber)
@@ -621,6 +651,7 @@ class ReductionService(Service):
         path = self.dataExportService.getCalibrationStateRoot(runNumber)
         return self.dataExportService.checkWritePermissions(path)
 
+    @Register("getSavePath")
     def getSavePath(self, runNumber: str) -> Path | None:
         path = None
         try:
@@ -631,6 +662,7 @@ class ReductionService(Service):
                 raise
         return path
 
+    @Register("getStateIds")
     def getStateIds(self, runNumbers: List[str]) -> List[str]:
         stateIds = []
         for runNumber in runNumbers:
@@ -663,10 +695,12 @@ class ReductionService(Service):
             versions[version].append(request)
         return versions
 
+    @Register("getCompatibleMasks")
     def getCompatibleMasks(self, request: ReductionRequest) -> List[WorkspaceName]:
         runNumber, useLiteMode = request.runNumber, request.useLiteMode
         return self.dataFactoryService.getCompatibleReductionMasks(runNumber, useLiteMode)
 
+    @Register("artificialNormalization")
     def artificialNormalization(self, request: CreateArtificialNormalizationRequest):
         artificialNormWorkspace = ArtificialNormalizationRecipe().executeRecipe(
             InputWorkspace=request.diffractionWorkspace,
@@ -678,6 +712,7 @@ class ReductionService(Service):
         )
         return artificialNormWorkspace
 
+    @Register("grabWorkspaceforArtificialNorm")
     def grabWorkspaceforArtificialNorm(self, request: ReductionRequest):
         # TODO: REBASE NOTE:
         #   This method actually seems to be a reduction sub-recipe:
@@ -747,12 +782,15 @@ class ReductionService(Service):
         # 4. Return the result
         return artNormBasisWorkspace
 
+    @Register("hasLiveDataConnection")
     def hasLiveDataConnection(self) -> bool:
         """For 'live data' methods: verify that there is a listener connection to the instrument."""
         return self.dataFactoryService.hasLiveDataConnection()
 
+    @Register("getLiveMetadata")
     def getLiveMetadata(self) -> RunMetadata:
         return self.dataFactoryService.getLiveMetadata()
 
+    @Register("getRunMetadata")
     def getRunMetadata(self, runNumber: str) -> RunMetadata:
         return self.dataFactoryService.getRunMetadata(runNumber)

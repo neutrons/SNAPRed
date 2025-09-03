@@ -221,7 +221,7 @@ class GroceryService:
         """
         return self.dataService.getIPTS(runNumber, instrumentName)
 
-    def _createNeutronFilePath(self, runNumber: str, useLiteMode: bool) -> Path | None:
+    def createNeutronFilePath(self, runNumber: str, useLiteMode: bool) -> Path | None:
         return self.dataService.createNeutronFilePath(runNumber, useLiteMode)
 
     @validate_call
@@ -819,7 +819,7 @@ class GroceryService:
 
         # Warning: `filePath` will be `None` if no IPTS directory exists!
         #   This situation occurs during diagnostic runs in live-data mode.
-        filePath = self._createNeutronFilePath(runNumber, useLiteMode)
+        filePath = self.createNeutronFilePath(runNumber, useLiteMode)
 
         # This checks to make sure existing cache is valid
         self._updateNeutronCacheFromADS(runNumber, useLiteMode)
@@ -1378,7 +1378,7 @@ class GroceryService:
 
         # Warning: `filePath` will be `None` if no IPTS directory exists!
         #   This situation occurs during diagnostic runs in live-data mode.
-        filePath = self._createNeutronFilePath(runNumber, useLiteMode)
+        filePath = self.createNeutronFilePath(runNumber, useLiteMode)
         if not bool(filePath):
             raise RuntimeError(f"Cannot find IPTS directory for run '{runNumber}'")
 

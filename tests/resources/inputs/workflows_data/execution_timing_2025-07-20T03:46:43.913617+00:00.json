@@ -1,0 +1,103 @@
+{
+  "steps": [
+    {
+      "details": {
+        "key": [
+          "snapred.backend.service.ReductionService",
+          "ReductionService.fetchReductionGroupings",
+          null
+        ],
+        "N_ref_hash": "0e20bf8b3c169c8b",
+        "order": "O_N"
+      },
+      "measurements": [
+      ],
+      "estimate": {
+        "count": [
+          1,
+          20
+        ],
+        "tck": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.007214550000000002
+          ],
+          0
+        ]
+      }
+    },
+    {
+      "details": {
+        "key": [
+          "snapred.backend.service.ReductionService",
+          "ReductionService.reduction",
+          null
+        ],
+        "N_ref_hash": "32530ac37e38c4d5",
+        "order": "O_N"
+      },
+      "measurements": [
+      ],
+      "estimate": {
+        "count": [
+          3,
+          6
+        ],
+        "tck": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            22118475.0,
+            22118475.0,
+            22118475.0
+          ],
+          [
+            0.0,
+            4.225078881560582,
+            0.7177178
+          ],
+          2
+        ]
+      }
+    },
+    {
+      "details": {
+        "key": [
+          "snapred.backend.service.ReductionService",
+          "ReductionService.reduction",
+          "load-and-prepare-data"
+        ],
+        "N_ref_hash": "32530ac37e38c4d5",
+        "order": "O_N"
+      },
+      "measurements": [
+      ],
+      "estimate": {
+        "count": [
+          3,
+          6
+        ],
+        "tck": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            22118475.0,
+            22118475.0,
+            22118475.0
+          ],
+          [
+            0.0,
+            -2.66333201812769,
+            0.454993
+          ],
+          2
+        ]
+      }
+    }
+  ]
+}

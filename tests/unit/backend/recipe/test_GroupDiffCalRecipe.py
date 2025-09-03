@@ -302,3 +302,35 @@ class TestGroupDiffCalRecipe(unittest.TestCase):
 
         with pytest.raises(ValueError, match=r".*input groceries: \{'notInTheList'\}"):
             Recipe().validateInputs(self.fakeIngredients, groceries)
+
+    ## TESTS OF PROFILING N_REF
+
+    def test__groupDiffCal_N_ref(self):
+        inputWorkspaceMemorySize = 409600
+        mockInputWs = mock.Mock(
+            spec=MatrixWorkspace,
+            getMemorySize=mock.Mock(return_value=inputWorkspaceMemorySize),
+        )
+        mockMtd = mock.MagicMock(
+            doesExist=mock.Mock(return_value=True), __getitem__=mock.Mock(return_value=mockInputWs)
+        )
+
+        groceries = {"inputWorkspace": mock.sentinel.inputWs}
+
+        rx = Recipe()
+        rx.mantidSnapper = mock.Mock(mtd=mockMtd)
+
+        expected = float(mockInputWs.getMemorySize.return_value)
+        assert rx._groupDiffCal_N_ref(self.fakeIngredients, groceries) == expected
+        mockMtd.doesExist.assert_called_once_with(mock.sentinel.inputWs)
+        mockMtd.__getitem__.assert_called_once_with(mock.sentinel.inputWs)
+        mockInputWs.getMemorySize.assert_called_once()
+
+        # input workspace doesn't exist: returns `None`
+        mockMtd.reset_mock()
+        mockInputWs.reset_mock()
+        mockMtd.doesExist.return_value = False
+        assert rx._groupDiffCal_N_ref(self.fakeIngredients, groceries) is None
+        mockMtd.doesExist.assert_called_once_with(mock.sentinel.inputWs)
+        mockMtd.__getitem__.assert_not_called()
+        mockInputWs.getMemorySize.assert_not_called()

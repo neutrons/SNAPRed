@@ -21,6 +21,7 @@ from snapred.backend.dao.request import (
     CalibrationExportRequest,
     CalibrationIndexRequest,
     CalibrationLoadAssessmentRequest,
+    CalibrationLockRequest,
     CalibrationWritePermissionsRequest,
     DiffractionCalibrationRequest,
     FarmFreshIngredients,
@@ -34,7 +35,6 @@ from snapred.backend.dao.request import (
     RunMetadataRequest,
     SimpleDiffCalRequest,
 )
-from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
@@ -43,6 +43,8 @@ from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.profiling.ProgressRecorder import ComputationalOrder, WallClockTime
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.CalculateDiffCalResidualRecipe import CalculateDiffCalResidualRecipe
 from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
 from snapred.backend.recipe.GenericRecipe import (
@@ -84,7 +86,6 @@ class CalibrationService(Service):
 
     """
 
-    # register the service in ServiceFactory please!
     def __init__(self):
         super().__init__()
         self.dataFactoryService = DataFactoryService()
@@ -92,7 +93,7 @@ class CalibrationService(Service):
         self.groceryService = GroceryService()
         self.groceryClerk: GroceryListBuilder = GroceryListItem.builder()
         self.sousChef = SousChef()
-        return
+        self.mantidSnapper = MantidSnapper(None, __name__)
 
     @classproperty
     def MINIMUM_PEAKS_PER_GROUP(cls):
@@ -102,6 +103,26 @@ class CalibrationService(Service):
     def name():
         return "calibration"
 
+    def _calibration_N_ref(self, request: DiffractionCalibrationRequest) -> float | None:
+        # Calculate the reference value to use during the estimation of execution time for the
+        #   "prepDiffractionCalibrationIngredients", "fetchDiffractioncCalibrationGroceries", and
+        #   "diffractionCalibration" methods.
+
+        # -- Returning `None` means that the `N_ref` value cannot be calculated, or alternatively,
+        #    that it should not be used.
+        # -- Please see:
+        #    `snapred.readthedocs.io/en/latest/developer/implementation_notes/profiling_and_progress_recording.html`.
+
+        N_ref = None
+        inputFilePath = self.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
+        if inputFilePath.exists():
+            # As the workspaces aren't loaded yet, this estimate uses the file size.
+            # Note: `st_size` is in bytes.
+            dataSize = float(inputFilePath.stat().st_size)
+            N_ref = dataSize
+        return N_ref
+
+    @WallClockTime(N_ref=_calibration_N_ref, order=ComputationalOrder.O_N)
     @FromString
     @Register("ingredients")
     def prepDiffractionCalibrationIngredients(
@@ -168,10 +189,14 @@ class CalibrationService(Service):
             maskWorkspace=calibrationMaskName,
         )
 
+    @WallClockTime(N_ref=_calibration_N_ref, order=ComputationalOrder.O_N)
     @FromString
     @Register("diffraction")
     def diffractionCalibration(self, request: DiffractionCalibrationRequest) -> Dict[str, Any]:
         self.validateRequest(request)
+
+        # Profiling note: none of the following should be marked as sub-steps:
+        #   their service methods are decorated separately.
 
         payload = SimpleDiffCalRequest(
             ingredients=self.prepDiffractionCalibrationIngredients(request),
@@ -197,6 +222,31 @@ class CalibrationService(Service):
             "result": True,
         }
 
+    def _calibration_substep_N_ref(self, request: SimpleDiffCalRequest) -> float | None:
+        # Calculate the reference value to use during the estimation of execution time for the
+        # "pixelCalibration" and "groupCalibration" methods.
+
+        # -- This method must have the same calling signature as the decorated method.
+        # -- Returning `None` means that the `N_ref` value cannot be calculated, or alternatively,
+        #    that it should not be used.
+        # -- Please see:
+        #    `snapred.readthedocs.io/en/latest/developer/implementation_notes/profiling_and_progress_recording.html`.
+
+        groceries = request.groceries
+        inputWorkspace = groceries["inputWorkspace"]
+        N_ref = None
+        if self.mantidSnapper.mtd.doesExist(inputWorkspace):
+            # Notes:
+            #   -- Scaling actually has a sub-linear dependence on `N_subgroups`,
+            #      but that should be accounted for during the estimator's spline fit.
+            #   -- `getMemorySize()` output is in bytes, which contradicts its Mantid docs.
+            #      This is important, as it allows compatibility with the default estimator,
+            #      which is designed assuming its `N_ref` input will be in number of bytes.
+            dataSize = float(self.mantidSnapper.mtd[inputWorkspace].getMemorySize())
+            N_ref = dataSize
+        return N_ref
+
+    @WallClockTime(N_ref=_calibration_substep_N_ref, order=ComputationalOrder.O_N)
     @FromString
     @Register("pixel")
     def pixelCalibration(self, request: SimpleDiffCalRequest) -> PixelDiffCalServing:
@@ -217,6 +267,7 @@ class CalibrationService(Service):
             )
         return res
 
+    @WallClockTime(N_ref=_calibration_substep_N_ref, order=ComputationalOrder.O_N)
     @FromString
     @Register("group")
     def groupCalibration(self, request: SimpleDiffCalRequest) -> GroupDiffCalServing:

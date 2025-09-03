@@ -267,18 +267,34 @@ logging:
     stream:
       level: 40
       format: 'MANTID %(levelname)s - %(message)s'
+      datefmt: '%Y-%m-%d %H:%M:%S'
     file:
       level: 40
       format: 'MANTID FILE %(levelname)s - %(message)s'
+      datefmt: '%Y-%m-%d %H:%M:%S'
       output: '/dev/null'
   SNAP:
     stream:
+      handler:
+        name: 'SNAPRed_handler'
       level: 40
-      format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
+      format: '%(hostname)s - %(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
+      datefmt: '%Y-%m-%d %H:%M:%S'
+  IPC:
+    socket_path: '{XDG_RUNTIME_DIR}/sock-{name}-{PID}'
+    handlers:
+      # handler names
+      SNAPRed-progress:
+        level: "INFO"
+        # Abbreviated format for progress reporting:
+        format: '%(asctime)s - %(message)s'
+        datefmt: '%Y-%m-%d %H:%M:%S'
+        # attached loggers
+        loggers:
+        - 'snapred.backend.profiling.ProgressRecorder'
 
 samples:
   home: ${instrument.calibration.sample.home}
-
 
 test:
   config:
@@ -344,16 +360,49 @@ constants:
 metadata:
   tagPrefix: testSNAPfuntime_
 
+application:
+  workflows_data:
+    timing:
+      # Enable the `ProgressRecorder`.
+      # IMPORTANT: by default this must remain disabled for tests!
+      #   Otherwise the `ProgressRecorder` will still load and unload persistent data.
+      enabled: false
+
+      home: ${user.application.data.home}/workflows_data/timing
+
+      # save new timing data at application exit
+      persistent_data: false
+
+      max_files: 5
+      max_measurements: 50
+
+      # spline order for time estimates
+      spline_order: 3
+
+      # update estimates if off by 20%
+      update_threshold: 0.2
+      # update only when sufficient data points are available
+      update_minimum_count: 3
+
+      # logging of execution-time information:
+      logging:
+        # in order to enable logging:
+        #   the first part of the fully-qualified name of the progress-recording step must be in this list:
+        qualname_roots:
+          - "ReductionService"
+          - "CalibrationService"
+          - "NormalizationService"
+
+        loglevel: 20 # logging.INFO
+        log_update_interval: 0 # in seconds, 0 => no count-down logging: explicit logging only
+        indent: "  " # string to be used for indenting sub-levels
+
 ui:
   default:
     reduction:
       smoothing: 5
     workflow:
       completionMessage: "‧₊‧₊The workflow has been completed successfully!‧₊‧₊"
-
-system:
-  max_hdf5_descriptors: 5
-
 
 lockfile:
   ttl: 10 # seconds

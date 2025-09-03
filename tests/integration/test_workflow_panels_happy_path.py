@@ -735,6 +735,7 @@ class TestGUIPanels:
 
             calibrationPanel.widget.close()
             gui.close()
+
             self.testSummary.SUCCESS()
 
         #####################################################################

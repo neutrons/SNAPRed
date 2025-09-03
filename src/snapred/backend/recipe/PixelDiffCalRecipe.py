@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.profiling.ProgressRecorder import ComputationalOrder, WallClockTime
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.meta.Config import Config
@@ -22,6 +23,11 @@ class PixelDiffCalServing(BaseModel):
     outputWorkspace: str
 
 
+# Decorating with the `WallClockTime` profiler here somewhat duplicates the objective of the decoration
+#   at `CalibrationService.pixelCalibration`.  However, by default, there will be no logging output from this instance.
+#   This duplication allows both verification of this alternative decorator signature, and comparison of the
+#   profiling measurements and estimate initialization from the two instances.
+@WallClockTime(callerOverride="cook", N_ref="_pixelDiffCal_N_ref", order=ComputationalOrder.O_N)
 class PixelDiffCalRecipe(Recipe[Ingredients]):
     """
     Calculate the offset-corrected DIFC associated with a given workspace.
@@ -317,6 +323,35 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         self.mantidSnapper.executeQueue()
         # return
         return self.medianOffsets[-1] > self.threshold and newOffset <= self.medianOffsets[-1]
+
+    def _pixelDiffCal_N_ref(self, _ingredients: Ingredients, groceries: Dict[str, str]) -> float | None:
+        # Calculate the reference value to use during the estimation of execution time for the
+        # `pixelDiffCalRecipe.cook` method.
+
+        # -- This method must have the same calling signature as `cook`.
+        # -- Returning `None` means that the `N_ref` value cannot be calculated, or alternatively,
+        #    that it should not be used.
+        # -- Please see:
+        #    `snapred.readthedocs.io/en/latest/developer/implementation_notes/profiling_and_progress_recording.html`.
+
+        # This method is largely the same as `CalibrationService._calibration_substep_N_ref`.
+        # It is declared separately here so that it can be modified, depending on requirements
+        # when more profiling data becomes available.
+
+        inputWorkspace = groceries["inputWorkspace"]
+        N_ref = None
+        if self.mantidSnapper.mtd.doesExist(inputWorkspace):
+            # Notes:
+            #   -- Scaling will also probably have a sub-linear dependence on the number of subgroups in the grouping,
+            #      however, that should be accounted for during the estimator's spline fit.
+            #   -- `getMemorySize` appears to return bytes (, which contradicts what the Mantid docs say).
+            #      Note that the default estimator instance is designed assuming its `N_ref` input will be in bytes.
+            #      It's important that these match, so that the transition between the default estimator,
+            #      and the first updated estimator will be as transparent as possible.
+            dataSize = float(self.mantidSnapper.mtd[inputWorkspace].getMemorySize())
+            N_ref = dataSize
+
+        return N_ref
 
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         """

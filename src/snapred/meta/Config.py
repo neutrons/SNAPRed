@@ -206,6 +206,20 @@ class _Config:
 
         self._config["version"] = self._config.get("version", {})
         self._config["version"]["default"] = -1
+
+        # allow paths relative to user's home directory to be entered
+        #   using "${user.home}".
+        self._config["user"] = {"home": str(Path.home())}
+
+        # Automatically set the path to "${user.application.data.home}":
+        self._config["user"]["application"] = {}
+        self._config["user"]["application"]["data"] = {}
+        if not isTestEnv():
+            self._config["user"]["application"]["data"]["home"] = str(Path.home() / ".snapred")
+        else:
+            self._config["user"]["application"]["data"]["home"] = str(
+                Path(self._config["module"]["root"]) / "data" / "snapred-data" / "user.application.data.home"
+            )
         # ---------- end: internal values: -----------------------------
 
         watchedProperties = {}
@@ -229,8 +243,7 @@ class _Config:
 
     @property
     def userApplicationDataHome(self) -> Path:
-        userApplicationDataHome = Path.home() / ".snapred"
-        return userApplicationDataHome
+        return Path(self["user.application.data.home"])
 
     def persistBackup(self) -> None:
         self.userApplicationDataHome.mkdir(parents=True, exist_ok=True)

@@ -10,6 +10,7 @@ from typing import Dict, List
 from unittest import mock
 
 import pytest
+from mantid.api import MatrixWorkspace
 from mantid.simpleapi import (
     CloneWorkspace,
     CreateSingleValuedWorkspace,
@@ -21,9 +22,17 @@ from mantid.simpleapi import (
 )
 from util.Config_helpers import Config_override
 from util.dao import DAOFactory
+from util.helpers import (
+    createCompatibleDiffCalTable,
+    createCompatibleMask,
+)
 from util.Pydantic_util import assertEqualModel, assertEqualModelList
+from util.SculleryBoy import SculleryBoy
 from util.state_helpers import state_root_redirect
 
+from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.request import (
     CalculateResidualRequest,
     CalibrationAssessmentRequest,
@@ -32,64 +41,59 @@ from snapred.backend.dao.request import (
     CalibrationWritePermissionsRequest,
     CreateCalibrationRecordRequest,
     DiffractionCalibrationRequest,
+    FarmFreshIngredients,
     FocusSpectraRequest,
+    HasStateRequest,
     InitializeStateRequest,
     OverrideRequest,
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state import PixelGroup
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.StateConfig import StateConfig
+from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.recipe.CalculateDiffCalResidualRecipe import CalculateDiffCalServing
+from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe
+from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe, PixelDiffCalServing
+from snapred.backend.service.CalibrationService import CalibrationService
+from snapred.backend.service.SousChef import SousChef
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
-from snapred.meta.Config import Config
+from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName, WorkspaceType
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import parse_file_as
 
-# Mock out of scope modules before importing DataExportService
+thisService = "snapred.backend.service.CalibrationService."
 
-localMock = mock.Mock()
 
-with mock.patch.dict(
-    "sys.modules",
-    {
-        "snapred.backend.data.DataExportService": mock.Mock(),
-        "snapred.backend.data.DataFactoryService": mock.Mock(),
-        "snapred.backend.log": mock.Mock(),
-        "snapred.backend.log.logger": mock.Mock(),
-    },
-):
-    from util.helpers import (
-        createCompatibleDiffCalTable,
-        createCompatibleMask,
-    )
-    from util.SculleryBoy import SculleryBoy
+class TestCalibrationServiceExports:
+    @pytest.fixture
+    def setUp(self):
+        # setup
+        modulesPatch = mock.patch.dict(
+            "sys.modules",
+            {
+                "snapred.backend.data.DataExportService": mock.Mock(),
+                "snapred.backend.data.DataFactoryService": mock.Mock(),
+                "snapred.backend.log": mock.Mock(),
+                "snapred.backend.log.logger": mock.Mock(),
+            },
+        )
+        modulesPatch.start()
+        yield
 
-    from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
-    from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
-    from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-    from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
-    from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
-    from snapred.backend.dao.request.HasStateRequest import HasStateRequest
-    from snapred.backend.dao.state import PixelGroup
-    from snapred.backend.dao.state.FocusGroup import FocusGroup
-    from snapred.backend.recipe.CalculateDiffCalResidualRecipe import CalculateDiffCalServing
-    from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe
-    from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe, PixelDiffCalServing
-    from snapred.backend.service.CalibrationService import CalibrationService
-    from snapred.backend.service.SousChef import SousChef
-    from snapred.meta.Config import Resource
-
-    thisService = "snapred.backend.service.CalibrationService."
+        # teardown
+        modulesPatch.stop()
 
     # test export calibration
-    def test_exportCalibrationIndex():
+    def test_exportCalibrationIndex(self, setUp):
         calibrationService = CalibrationService()
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
@@ -101,7 +105,7 @@ with mock.patch.dict(
         assert savedEntry.appliesTo == ">=1"
         assert savedEntry.timestamp is not None
 
-    def test_save():
+    def test_save(self, setUp):
         workspace = mtd.unique_name(prefix="_dsp_")
         CreateSingleValuedWorkspace(OutputWorkspace=workspace)
         workspaces = {wngt.DIFFCAL_OUTPUT: [workspace]}
@@ -124,7 +128,7 @@ with mock.patch.dict(
         savedEntry = calibrationService.dataExportService.exportCalibrationRecord.call_args.args[0]
         assert savedEntry.parameters is not None
 
-    def test_save_unexpected_units():
+    def test_save_unexpected_units(self, setUp):
         workspace = mtd.unique_name(prefix="_tof_")
         CreateSingleValuedWorkspace(OutputWorkspace=workspace)
         workspaces = {wngt.DIFFCAL_OUTPUT: [workspace]}
@@ -145,7 +149,7 @@ with mock.patch.dict(
         with pytest.raises(RuntimeError, match=r".*without a units token in its name.*"):
             calibrationService.save(mock.Mock())
 
-    def test_save_unexpected_type():
+    def test_save_unexpected_type(self, setUp):
         workspace = mtd.unique_name(prefix="_dsp_")
         CreateSingleValuedWorkspace(OutputWorkspace=workspace)
         workspaces = {wngt.REDUCTION_OUTPUT: [workspace]}
@@ -166,14 +170,14 @@ with mock.patch.dict(
         with pytest.raises(RuntimeError, match=r".*Unexpected output type.*"):
             calibrationService.save(mock.Mock())
 
-    def test_load():
+    def test_load(self, setUp):
         calibrationService = CalibrationService()
         calibrationService.dataFactoryService.getCalibrationRecord = mock.Mock(return_value="passed")
         calibrationService.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         res = calibrationService.load(mock.Mock())
         assert res == calibrationService.dataFactoryService.getCalibrationRecord.return_value
 
-    def test_getCalibrationIndex():
+    def test_getCalibrationIndex(self, setUp):
         calibrationService = CalibrationService()
         calibrationService.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
         calibrationService.dataFactoryService.getCalibrationIndex = mock.Mock(
@@ -181,10 +185,6 @@ with mock.patch.dict(
         )
         calibrationService.getCalibrationIndex(mock.MagicMock(run=mock.MagicMock(runNumber="123")))
         assert calibrationService.dataFactoryService.getCalibrationIndex.called
-
-
-from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.backend.service.CalibrationService import CalibrationService  # noqa: F811
 
 
 class TestCalibrationServiceMethods(unittest.TestCase):
@@ -682,6 +682,43 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         with pytest.raises(RuntimeError, match=r".*not implemented: unable to load unexpected.*"):
             self.instance.loadQualityAssessment(mockRequest)
 
+    def test__calibration_N_ref(self):
+        inputFileSize = 409600
+        mockInputPath = mock.Mock(
+            spec=Path,
+            exists=mock.Mock(return_value=True),
+            stat=mock.Mock(return_value=mock.Mock(st_size=inputFileSize)),
+        )
+        self.instance.groceryService.createNeutronFilePath = mock.Mock(return_value=mockInputPath)
+
+        request = DiffractionCalibrationRequest(
+            runNumber="123",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+            removeBackground=False,
+            focusGroup=FocusGroup(name="all", definition="path/to/all"),
+            continueFlags=ContinueWarning.Type.UNSET,
+        )
+
+        expected = float(mockInputPath.stat.return_value.st_size)
+        assert self.instance._calibration_N_ref(request) == expected
+        self.instance.groceryService.createNeutronFilePath.assert_called_once_with(
+            request.runNumber, request.useLiteMode
+        )
+        mockInputPath.exists.assert_called_once()
+        mockInputPath.stat.assert_called_once()
+
+        # input path doesn't exist: returns `None`
+        self.instance.groceryService.createNeutronFilePath.reset_mock()
+        mockInputPath.reset_mock()
+        mockInputPath.exists.return_value = False
+        assert self.instance._calibration_N_ref(request) is None
+        self.instance.groceryService.createNeutronFilePath.assert_called_once_with(
+            request.runNumber, request.useLiteMode
+        )
+        mockInputPath.exists.assert_called_once()
+        mockInputPath.stat.assert_not_called()
+
     @mock.patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     def test_prepDiffractionCalibrationIngredients(self, FarmFreshIngredients):
         mockFF = mock.Mock()
@@ -849,6 +886,36 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         with pytest.raises(RuntimeError) as e:
             self.instance.diffractionCalibration(request)
         assert str(e.value) == "Group Calibration failed"
+
+    def test__calibration_substep_N_ref(self):
+        inputWorkspaceMemorySize = 409600
+        mockInputWs = mock.Mock(
+            spec=MatrixWorkspace,
+            getMemorySize=mock.Mock(return_value=inputWorkspaceMemorySize),
+        )
+        mockMtd = mock.MagicMock(
+            doesExist=mock.Mock(return_value=True), __getitem__=mock.Mock(return_value=mockInputWs)
+        )
+        self.instance.mantidSnapper = mock.Mock(mtd=mockMtd)
+
+        request = SimpleDiffCalRequest.model_construct(
+            ingredients=mock.sentinel.ingredients, groceries={"inputWorkspace": mock.sentinel.inputWs}
+        )
+
+        expected = float(mockInputWs.getMemorySize.return_value)
+        assert self.instance._calibration_substep_N_ref(request) == expected
+        mockMtd.doesExist.assert_called_once_with(mock.sentinel.inputWs)
+        mockMtd.__getitem__.assert_called_once_with(mock.sentinel.inputWs)
+        mockInputWs.getMemorySize.assert_called_once()
+
+        # input workspace doesn't exist: returns `None`
+        mockMtd.reset_mock()
+        mockInputWs.reset_mock()
+        mockMtd.doesExist.return_value = False
+        assert self.instance._calibration_substep_N_ref(request) is None
+        mockMtd.doesExist.assert_called_once_with(mock.sentinel.inputWs)
+        mockMtd.__getitem__.assert_not_called()
+        mockInputWs.getMemorySize.assert_not_called()
 
     @mock.patch(thisService + "PixelDiffCalRecipe", spec_set=PixelDiffCalRecipe)
     def test_pixelCalibration_success(self, PixelRx):
