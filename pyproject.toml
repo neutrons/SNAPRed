@@ -169,6 +169,7 @@ python = ">=3.10"
 pip = "*"
 pydantic = ">=2.7.3,<3"
 # Mantid packages moved to feature-specific dependencies with channel constraints
+"ruamel.yaml" = "*"
 mslice = "*"
 qtpy = "*"
 muparser = "=2.3.4"
@@ -186,6 +187,7 @@ versioningit = "*"
 [tool.pixi.package.run-dependencies]
 mantidworkbench = ">=6.13.0,<6.14.0"
 pydantic = ">=2.7.3,<3"
+"ruamel.yaml" = "*"
 
 [tool.pixi.package]
 name = "snapred"
