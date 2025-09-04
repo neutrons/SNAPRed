@@ -282,9 +282,9 @@ python = ">=3.10"
 pip = "*"
 pydantic = ">=2.7.3,<3"
 # Channel-specific dependencies: Dev uses nightly Mantid builds
-mantidworkbench = { version = "==6.13.20250818.2131", channel = "mantid/label/nightly" }
-mantid = { version = "==6.13.20250818.2131", channel = "mantid/label/nightly" }
-mantidqt = { version = "==6.13.20250818.2131", channel = "mantid/label/nightly" }
+mantidworkbench = { version = ">=6.13.20250818.2131", channel = "mantid/label/nightly" }
+mantid = { version = ">=6.13.20250818.2131", channel = "mantid/label/nightly" }
+mantidqt = { version = ">=6.13.20250818.2131", channel = "mantid/label/nightly" }
 mslice = "*"
 qtpy = "*"
 muparser = "=2.3.4"
@@ -300,9 +300,9 @@ python = ">=3.10"
 pip = "*"
 pydantic = ">=2.7.3,<3"
 # Channel-specific dependencies: QA uses RC Mantid builds
-mantidworkbench = { version = "==6.13.1.2rc1", channel = "mantid-ornl/label/rc" }
-mantid = { version = "==6.13.1.2rc1", channel = "mantid-ornl/label/rc" }
-mantidqt = { version = "==6.13.1.2rc1", channel = "mantid-ornl/label/rc" }
+mantidworkbench = { version = ">=6.13.1.2rc1", channel = "mantid-ornl/label/rc" }
+mantid = { version = ">=6.13.1.2rc1", channel = "mantid-ornl/label/rc" }
+mantidqt = { version = ">=6.13.1.2rc1", channel = "mantid-ornl/label/rc" }
 mslice = "*"
 qtpy = "*"
 muparser = "=2.3.4"
@@ -318,9 +318,9 @@ python = ">=3.10"
 pip = "*"
 pydantic = ">=2.7.3,<3"
 # Channel-specific dependencies: Prod uses stable Mantid builds
-mantidworkbench = { version = "==6.13.1.2", channel = "mantid-ornl/label/main" }
-mantid = { version = "==6.13.1.2", channel = "mantid-ornl/label/main" }
-mantidqt = { version = "==6.13.1.2", channel = "mantid-ornl/label/main" }
+mantidworkbench = { version = ">=6.13.1.2", channel = "mantid-ornl/label/main" }
+mantid = { version = ">=6.13.1.2", channel = "mantid-ornl/label/main" }
+mantidqt = { version = ">=6.13.1.2", channel = "mantid-ornl/label/main" }
 mslice = "*"
 qtpy = "*"
 muparser = "=2.3.4"
