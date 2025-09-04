@@ -150,14 +150,14 @@ channels = [
 platforms = ["linux-64"]  # add additional platforms as needed
 
 [tool.pixi.environments]
-default = {features = ["test", "package", "docs", "developer", "dev"], solve-group = "default"}
+default = {features = ["test", "package", "docs", "developer"], solve-group = "default"}
 docs = {features = ["docs"], solve-group = "docs"}
 # Environment for local Mantid development - excludes conda Mantid packages
 local-mantid = {features = ["local-mantid"], solve-group = "local-mantid"}
 # Production environment with stable Mantid versions
 prod = {features = ["test", "package", "docs", "prod"], solve-group = "prod"}
 # Development environment with nightly Mantid builds
-dev = {features = ["test", "package", "docs", "developer"], solve-group = "dev"}
+dev = {features = ["test", "package", "docs", "dev"], solve-group = "dev"}
 # QA environment with RC or prod packages
 qa = {features = ["test", "package", "docs", "qa"], solve-group = "qa"}
 
