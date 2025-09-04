@@ -4,6 +4,7 @@ from mantid.api import WorkspaceGroup
 from mantid.simpleapi import (
     CalculateDiffCalTable,
     ConjoinDiagnosticWorkspaces,
+    ConvertUnits,
     CreateTableWorkspace,
     CreateWorkspace,
     DiffractionFocussing,
@@ -280,6 +281,13 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
             BinWidth=dBin,
         )
 
+        # (required for Mantid v6.13+ compatibility)
+        ConvertUnits(
+            InputWorkspace=rawData,
+            OutputWorkspace=rawData,
+            Target="dSpacing",
+        )
+
         DiffractionFocussing(
             InputWorkspace=rawData,
             GroupingWorkspace=groupingWorkspace,
@@ -303,6 +311,12 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
             groupedPeaks[peakList.groupID] = allPeaks
             groupedPeakBoundaries[peakList.groupID] = allPeakBoundaries
 
+        # Calculate dSpacing binning parameters (required since data is now in dSpacing units)
+        dMin = min(ingredients.pixelGroup.dMin())
+        dMax = max(ingredients.pixelGroup.dMax())
+        dBin = abs(max(ingredients.pixelGroup.dBin(), key=abs))  # Use the largest bin size
+        dSpacingBinning = [dMin, dBin, dMax]  # Format: [min, binWidth, max]
+
         finalname = mtd.unique_name(prefix="final_diag_")
 
         ref_col_names_position = set()
@@ -323,7 +337,7 @@ class TestConjoinDiagnosticWorkspaces(unittest.TestCase):
                 HighBackground=True,
                 DiagnosticWorkspaces=diagnosticWSgroup,
                 # specific to PDCalibration
-                TofBinning=ingredients.pixelGroup.timeOfFlight.params,
+                TofBinning=dSpacingBinning,  # Use dSpacing binning for dSpacing data
                 MaxChiSq=ingredients.maxChiSq,
                 CalibrationParameters="DIFC",
                 OutputCalibrationTable=DIFCpd,
