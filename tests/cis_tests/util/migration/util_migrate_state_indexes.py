@@ -53,7 +53,19 @@ confirm = input("Migrate the above Directories? (y/n): ").strip().lower()
 if confirm != 'y':
     print("Exiting without making any changes.")
     exit(0)
+        
+
+def migrateCalcluationParameters(jDict: dict, indexEntry: IndexEntry):
+    jDict["indexEntry"] = indexEntry.model_dump()
+    jDict["instrumentState"]["instrumentConfig"]["indexEntry"] = indexEntry.model_dump()
+    # migrate detectorState
+    if "detectorState" in jDict["instrumentState"]:
+        _, detectorState = lds.generateStateId(indexEntry.runNumber)
+        if detectorState.stateId is None:
+            raise ValueError(f"Detector state id missing for {indexEntry.runNumber}")
+        jDict["instrumentState"]["detectorState"] = detectorState.model_dump()
     
+    return jDict
 
 def stageMigrationIndexDir(indexDir: Path):
     
@@ -93,10 +105,9 @@ def stageMigrationIndexDir(indexDir: Path):
             
             # if the file is a "record" we also need to update its "calculationParameters" to match the version of the indexEntry
             if "calculationParameters" in jDict:
-                jDict["calculationParameters"]["indexEntry"] = entry.model_dump()
-                jDict["calculationParameters"]["instrumentState"]["instrumentConfig"]["indexEntry"] = instParamIndexer.latestApplicableEntry(jDict["runNumber"]).model_dump()
+                jDict["calculationParameters"] = migrateCalcluationParameters(jDict["calculationParameters"], entry)
             if "instrumentState" in jDict:
-                jDict["instrumentState"]["instrumentConfig"]["indexEntry"] = instParamIndexer.latestApplicableEntry(jDict["seedRun"]).model_dump()
+                jDict = migrateCalcluationParameters(jDict, entry)
             
             # write the dict back to the json file
             # find common root of stageDir and jsonFile
