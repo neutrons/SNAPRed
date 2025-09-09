@@ -60,8 +60,6 @@ def migrateInstrumentState(jDict: dict, indexEntry: IndexEntry, runNumber):
     # migrate detectorState
     if "detectorState" in jDict["instrumentState"]:
         _, detectorState = lds.generateStateId(runNumber)
-        if detectorState.stateId is None:
-            raise ValueError(f"Detector state id missing for {runNumber}")
         jDict["instrumentState"]["detectorState"] = detectorState.model_dump()
     
     return jDict
