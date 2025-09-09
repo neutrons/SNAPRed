@@ -55,14 +55,13 @@ if confirm != 'y':
     exit(0)
         
 
-def migrateCalcluationParameters(jDict: dict, indexEntry: IndexEntry):
-    jDict["indexEntry"] = indexEntry.model_dump()
+def migrateInstrumentState(jDict: dict, indexEntry: IndexEntry, runNumber):
     jDict["instrumentState"]["instrumentConfig"]["indexEntry"] = indexEntry.model_dump()
     # migrate detectorState
     if "detectorState" in jDict["instrumentState"]:
-        _, detectorState = lds.generateStateId(indexEntry.runNumber)
+        _, detectorState = lds.generateStateId(runNumber)
         if detectorState.stateId is None:
-            raise ValueError(f"Detector state id missing for {indexEntry.runNumber}")
+            raise ValueError(f"Detector state id missing for {runNumber}")
         jDict["instrumentState"]["detectorState"] = detectorState.model_dump()
     
     return jDict
@@ -103,12 +102,18 @@ def stageMigrationIndexDir(indexDir: Path):
             # add the indexEntry to the dict
             jDict["indexEntry"] = entry.model_dump()
             
+            # Update NESTED indexedObjects
             # if the file is a "record" we also need to update its "calculationParameters" to match the version of the indexEntry
             if "calculationParameters" in jDict:
-                jDict["calculationParameters"] = migrateCalcluationParameters(jDict["calculationParameters"], entry)
+                # this is the historic snapinstprm for a given run, which is included in the calibration parameters
+                # as "instrumentState"
+                snapInstPrmEntry = instParamIndexer.latestApplicableEntry(jDict["runNumber"])
+                jDict["calculationParameters"]["indexEntry"] = entry.model_dump()
+                jDict["calculationParameters"] = migrateInstrumentState(jDict["calculationParameters"], snapInstPrmEntry, jDict["runNumber"])
             if "instrumentState" in jDict:
-                jDict = migrateCalcluationParameters(jDict, entry)
-            
+                snapInstPrmEntry = instParamIndexer.latestApplicableEntry(jDict["seedRun"])
+                jDict = migrateInstrumentState(jDict, snapInstPrmEntry, jDict["seedRun"])
+
             # write the dict back to the json file
             # find common root of stageDir and jsonFile
             stagedJsonFile = stageDir / jsonFile.relative_to(calibrationRoot)
