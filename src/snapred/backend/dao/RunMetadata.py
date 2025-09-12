@@ -338,7 +338,10 @@ class RunMetadata(BaseModel, Mapping):
         # Make a copy of the DASlogs.
         logs = {}
         for k in run.keys():
-            logs[k] = run.getProperty(k).value
+            try:
+                logs[k] = run.getProperty(k).value
+            except UnicodeDecodeError as e:
+                logger.info(f"RunMetadata.fromRun: ignoring malformed property '{k}': {e}")
 
         metadata = RunMetadata(
             logs,
