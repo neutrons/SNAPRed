@@ -54,5 +54,10 @@ with (
     
     ## Load the input data, and convert to lite mode: ##   
     clerk = GroceryListItem.builder()
-    clerk.neutron(runNumber).useLiteMode(isLite).add()
+    clerk.name("inputData").neutron(runNumber).useLiteMode(isLite).add()
+    breakpoint()
     groceries = GroceryService().fetchGroceryDict(clerk.buildDict())
+    logs = mtd[groceries['inputData']].getRun()
+    startTime = logs.startTime().to_datetime64()
+    endTime = logs.endTime().to_datetime64()
+    

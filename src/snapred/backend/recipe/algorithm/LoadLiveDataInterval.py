@@ -164,12 +164,15 @@ class LoadLiveDataInterval(PythonAlgorithm):
                 else DateAndTime((datetimeFromLogTime(runEndTime) - startTimeDelta).isoformat()).to_datetime64()
             )
             requiredEndTime = runEndTime
-
+        
+        # *** DEBUG *** : This next check doesn't work: if `run` is from a chunk, it's end time could be almost anything!
+        """
         if requiredStartTime < runStartTime:
             requiredStartTime = runStartTime
         if requiredEndTime > runEndTime:
             requiredEndTime = runEndTime
-
+        """
+        
         return requiredStartTime, requiredEndTime
 
     @classmethod
