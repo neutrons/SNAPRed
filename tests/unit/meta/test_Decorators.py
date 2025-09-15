@@ -5,12 +5,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import BaseModel
 from qtpy.QtWidgets import QWidget
+from snapred.meta.decorators._Resettable import Resettable
 
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
-from snapred.meta.decorators._Resettable import Resettable
 from snapred.meta.decorators.Builder import Builder
 from snapred.meta.decorators.EntryExitLogger import EntryExitLogger
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
