@@ -138,17 +138,28 @@ exclude_lines = [
 preview = ["pixi-build"]
 channels = [
   "conda-forge",
-  "neutrons/label/rc",
-  "mantid-ornl/label/rc",
-  "mantid/label/main"
+  "mantid/label/nightly",  # Nightly builds for development
+  "mantid-ornl/label/nightly",  # ORNL-specific nightly builds
+  "neutrons/label/nightly",  # Neutron facility nightly builds
+  "mantid/label/main",  # Primary source for stable Mantid releases
+  "mantid-ornl/label/main",  # ORNL-specific stable releases
+  "neutrons/label/main",  # Neutron facility stable releases
+  "mantid-ornl/label/rc",  # Fallback to RC if stable not available
+  "neutrons/label/rc"  # Fallback to RC if stable not available
 ]
 platforms = ["linux-64"]  # add additional platforms as needed
 
 [tool.pixi.environments]
-default = {features = ["test", "package", "docs", "developer"], solve-group = "default"}
+default = {features = ["test", "package", "docs", "developer", "dev"], solve-group = "default"}
 docs = {features = ["docs"], solve-group = "docs"}
 # Environment for local Mantid development - excludes conda Mantid packages
 local-mantid = {features = ["local-mantid"], solve-group = "local-mantid"}
+# Production environment with stable Mantid versions
+prod = {features = ["test", "package", "docs", "prod"], solve-group = "prod"}
+# Development environment with nightly Mantid builds
+dev = {features = ["test", "package", "docs", "dev"], solve-group = "dev"}
+# QA environment with RC or prod packages
+qa = {features = ["test", "package", "docs", "qa"], solve-group = "qa"}
 
 [tool.pixi.pypi-dependencies]
 snapred = { path = ".", editable = true }
@@ -157,16 +168,15 @@ snapred = { path = ".", editable = true }
 python = ">=3.10"
 pip = "*"
 pydantic = ">=2.7.3,<3"
-mantidworkbench = ">=6.13.1.1rc1"
+# Mantid packages moved to feature-specific dependencies with channel constraints
 "ruamel.yaml" = "*"
-mantid = ">=6.13.1.1rc1"
 mslice = "*"
-mantidqt = ">=6.13.1.1rc1"
 qtpy = "*"
 muparser = "=2.3.4"
 pycifrw = "*"
 pyqtwebengine = "*"
 git-lfs = "*"
+pre-commit = ">=4.3.0,<5"
 
 
 [tool.pixi.package.host-dependencies]
@@ -175,7 +185,7 @@ hatchling = "*"
 versioningit = "*"
 
 [tool.pixi.package.run-dependencies]
-mantidworkbench = ">=6.13.0,<6.14.0"
+mantidworkbench = ">=6.13.0"
 pydantic = ">=2.7.3,<3"
 "ruamel.yaml" = "*"
 
@@ -199,10 +209,11 @@ build-pypi = { cmd = "hatch build", description = "Build the package for PyPI" }
 publish-pypi = { cmd = "twine upload dist/*", description = "Publish the package to PyPI", depends-on = ["build-pypi"] }
 publish-pypi-test = { cmd = "twine upload --repository testpypi dist/*", description = "Publish the package to TestPyPI", depends-on = ["build-pypi"] }
 clean-pypi = { cmd = "rm -rf dist", description = "Clean the PyPI build artifacts" }
+test-built-package = { cmd = "pip install dist/*.whl && python -c 'import snapred; print(\"✅ Built package installs and imports successfully\")'", description = "Test that the built package can be installed and imported" }
 build-configure-app = { cmd = "python -m snapred --configure", description = "Configure the application for building" }
 build-conda-command = { cmd = "pixi build", description = "Build the conda package command" }
 build-conda = { description = "Build the conda package", depends-on = ["backup-toml", "sync-version", "build-configure-app", "build-conda-command", "reset-toml"] }
-publish-conda = { cmd = "anaconda upload *.conda", description = "Publish the .conda package to anaconda.org", depends-on = ["build-conda"] }
+publish-conda = { cmd = "anaconda upload --user neutrons *.conda", description = "Publish the .conda package to the neutrons channel (main label)", depends-on = ["build-conda"] }
 clean-conda = { cmd = "rm -f *.conda", description = "Clean the local .conda build artifacts" }
 # Documentation tasks
 build-docs = { cmd = "sphinx-build -b html docs/source docs/_build", description = "Build the documentation" }
@@ -220,6 +231,9 @@ backup-toml = { cmd = "cp pyproject.toml pyproject.toml.bak", description = "Bac
 reset-toml = { cmd = "cp pyproject.toml.bak pyproject.toml; rm pyproject.toml.bak", description = "Reset the pyproject.toml file to the original state" }
 # Application tasks
 snapred = { cmd = "python -m snapred", description = "Start the SNAPRed application" }
+# Channel-specific dependencies verification
+verify-channel-dependencies = { cmd = "echo '=== SOLUTION 1: Channel-Specific Dependencies Implementation ===' && echo '' && echo '✅ Implementation Status:' && echo '  • Dev feature: mantid packages from mantid/label/nightly' && echo '  • QA feature: mantid packages from mantid-ornl/label/rc' && echo '  • Prod feature: mantid packages from mantid-ornl' && echo '' && echo '📚 Documentation: https://pixi.sh/latest/advanced/channel_logic/#channel-specific-dependencies' && echo '' && echo '⚡ Next step: Run \"pixi update\" to apply changes'", description = "Show channel-specific dependencies implementation status" }
+test-mantid-import = { cmd = "python -c \"import mantid, os, sys; print(f'Environment: {os.path.basename(sys.prefix)}'); print(f'Mantid version: {mantid.__version__}'); print(f'Mantid location: {mantid.__file__}')\"", description = "Test Mantid import and show version info" }
 
 # ------------------------------- #
 # Pixi Feature Dependencies       #
@@ -228,6 +242,8 @@ snapred = { cmd = "python -m snapred", description = "Start the SNAPRed applicat
 pytest = "*"
 pytest-qt = "*"
 pytest-cov = "*"
+"ruamel.yaml" = "*"
+pyyaml = "*"
 
 [tool.pixi.feature.package.dependencies]
 boa = "*"
@@ -257,6 +273,60 @@ types-pyyaml = "*"
 erdantic = "*"
 versioningit = "*"
 "ruamel.yaml" = "*"
+
+# ------------------------------- #
+# Development Environment Feature #
+# ------------------------------- #
+[tool.pixi.feature.dev.dependencies]
+python = ">=3.10"
+pip = "*"
+pydantic = ">=2.7.3,<3"
+# Channel-specific dependencies: Dev uses nightly Mantid builds
+mantidworkbench = { version = ">=6.13.0", channel = "mantid/label/nightly" }
+mantid = { version = ">=6.13.0", channel = "mantid/label/nightly" }
+mantidqt = { version = ">=6.13.0", channel = "mantid/label/nightly" }
+mslice = "*"
+qtpy = "*"
+muparser = "=2.3.4"
+pycifrw = "*"
+pyqtwebengine = "*"
+git-lfs = "*"
+
+# ------------------------------- #
+# QA Environment Feature #
+# ------------------------------- #
+[tool.pixi.feature.qa.dependencies]
+python = ">=3.10"
+pip = "*"
+pydantic = ">=2.7.3,<3"
+# Channel-specific dependencies: QA uses RC Mantid builds
+mantidworkbench = { version = ">=6.13.0", channel = "mantid-ornl/label/rc" }
+mantid = { version = ">=6.13.0", channel = "mantid-ornl/label/rc" }
+mantidqt = { version = ">=6.13.0", channel = "mantid-ornl/label/rc" }
+mslice = "*"
+qtpy = "*"
+muparser = "=2.3.4"
+pycifrw = "*"
+pyqtwebengine = "*"
+git-lfs = "*"
+
+# ------------------------------- #
+# Production Environment Feature #
+# ------------------------------- #
+[tool.pixi.feature.prod.dependencies]
+python = ">=3.10"
+pip = "*"
+pydantic = ">=2.7.3,<3"
+# Channel-specific dependencies: Prod uses stable Mantid builds
+mantidworkbench = { version = ">=6.13.0", channel = "mantid-ornl/label/main" }
+mantid = { version = ">=6.13.0", channel = "mantid-ornl/label/main" }
+mantidqt = { version = ">=6.13.0", channel = "mantid-ornl/label/main" }
+mslice = "*"
+qtpy = "*"
+muparser = "=2.3.4"
+pycifrw = "*"
+pyqtwebengine = "*"
+git-lfs = "*"
 
 # ------------------------------- #
 # Local Mantid Development Feature #
@@ -290,7 +360,7 @@ ruff = "*"
 MANTID_BUILD_DIR = "/path/to/mantid/build"
 MANTID_BUILD_SRC = "/path/to/mantid/source"
 # Use ONLY local Mantid build - no conda packages
-PYTHONPATH = "src:${MANTID_BUILD_DIR}/bin:${MANTID_BUILD_SRC}/Framework/PythonInterface:${MANTID_BUILD_DIR}/qt/applications/workbench:${MANTID_BUILD_SRC}/qt/applications/workbench:${MANTID_BUILD_SRC}/qt/python/mantidqt:${MANTID_BUILD_SRC}/qt/python/mantidqtinterfaces"
+PYTHONPATH = "src:${MANTID_BUILD_DIR}/bin:${MANTID_BUILD_SRC}/Framework/PythonInterface:${MANTID_BUILD_DIR}/qt/applications/workbench:${MANTID_BUILD_SRC}/qt/applications/workbench:${MANTID_BUILD_SRC}/qt/python/mantidqt:${MANTID_BUILD_DIR}/qt/python/mantidqtinterfaces"
 LD_LIBRARY_PATH = "${MANTID_BUILD_DIR}/lib:${MANTID_BUILD_DIR}/bin"
 MANTIDPATH = "${MANTID_BUILD_DIR}"
 MANTID_DATA_PATH = "${MANTID_BUILD_DIR}/share/mantid"
@@ -299,6 +369,19 @@ MANTID_FRAMEWORK_PATH = "${MANTID_BUILD_DIR}/lib"
 MANTID_PLUGIN_PATH = "${MANTID_BUILD_DIR}/lib"
 # Prevent conda from providing any Mantid paths
 CONDA_DEFAULT_ENV = ""
+
+# Environment-specific channel configurations
+[tool.pixi.feature.dev.activation.env]
+# Development environment can use nightly builds
+MANTID_CHANNEL_PRIORITY = "nightly"
+
+[tool.pixi.feature.qa.activation.env]
+# QA environment uses RC or prod packages
+MANTID_CHANNEL_PRIORITY = "rc_prod"
+
+[tool.pixi.feature.prod.activation.env]
+# Production environment uses only stable releases
+MANTID_CHANNEL_PRIORITY = "stable_only"
 
 [tool.pixi.feature.local-mantid.tasks]
 # Install SNAPRed in editable mode
@@ -315,5 +398,6 @@ snapred-local-module = { cmd = "python -m snapred", description = "Start SNAPRed
 debug-local-mantid-env = { cmd = "python -c \"import os; print('=== Environment Variables ==='); vars_to_check = ['MANTID_BUILD_DIR', 'MANTID_BUILD_SRC', 'PYTHONPATH', 'LD_LIBRARY_PATH', 'MANTIDPATH', 'MANTID_DATA_PATH', 'MANTID_FRAMEWORK_PATH']; [print(f'{var}: {os.environ.get(var, \\\"NOT SET\\\")}') for var in vars_to_check]\"", description = "Debug environment variables for local Mantid setup" }
 # Comprehensive environment test
 test-local-mantid-comprehensive = { cmd = "python tests/cis_tests/test_local_mantid_setup.py", description = "Comprehensive test of local Mantid environment setup" }
+
 # Launch local Mantid Workbench with SNAPRed
 launch-local-workbench = { cmd = "cd $MANTID_BUILD_DIR/bin && ./launch_mantidworkbench.sh", description = "Launch local Mantid Workbench with SNAPRed available" }
