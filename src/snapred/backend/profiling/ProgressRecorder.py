@@ -13,6 +13,7 @@ import numpy as np
 from pydantic import BaseModel, field_serializer, field_validator
 from scipy.interpolate import BSpline, make_splrep
 
+from snapred.backend.api.PubSubManager import PubSubManager
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
@@ -354,6 +355,8 @@ class ProgressStep(BaseModel):
         self._N_ref = self.details.N_ref()
         if self._N_ref is not None:
             self._dt = self.estimate.dt(self.details.order(self._N_ref))
+        if not isSubstep:
+            PubSubManager().publish("progress", {"step": self.name, "dt_rem": self.dt, "dt_est": self.dt})
 
     def stop(self):
         if not self.isActive:
@@ -733,6 +736,10 @@ class _ProgressRecorder(BaseModel):
                         f"{indent}{loggableName} -- estimated completion in {remainder:.1f} seconds.",
                         extra={"key": step.details.key, "dt_est": step.dt, "dt_rem": remainder},
                     )
+                    if not step.isSubstep:
+                        PubSubManager().publish(
+                            "progress", {"step": loggableName, "dt_rem": remainder, "dt_est": step.dt}
+                        )
                 else:
                     logger.log(
                         Config["application.workflows_data.timing.logging.loglevel"],
@@ -756,6 +763,8 @@ class _ProgressRecorder(BaseModel):
         loggableName = self._loggableStepName(key, isSubstep)
         indent = Config["application.workflows_data.timing.logging.indent"] * len(self._activeSteps)
         logger.log(Config["application.workflows_data.timing.logging.loglevel"], f"{indent}{loggableName} -- complete.")
+        if not isSubstep:
+            PubSubManager().publish("progress", {"step": loggableName, "dt_rem": 0.0, "dt_est": 1.0})
 
     def _loggableStepName(self, key: Tuple[str, ...], isSubstep: bool) -> str:
         # Remove prefix information from the logged step name when this step is a substep

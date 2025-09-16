@@ -377,7 +377,7 @@ application:
           - "NormalizationService"
 
         loglevel: 20 # logging.INFO
-        log_update_interval: 10 # in seconds, 0 => no count-down logging: explicit logging only
+        log_update_interval: .25 # in seconds, 0 => no count-down logging: explicit logging only
         indent: "  " # string to be used for indenting sub-levels
 
 ui:

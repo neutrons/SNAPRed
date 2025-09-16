@@ -1,6 +1,7 @@
 from typing import List
 
 from snapred.backend.api.HookManager import HookManager
+from snapred.backend.api.PubSubManager import PubSubManager
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import SNAPRequest, SNAPResponse
 from snapred.backend.dao.SNAPResponse import ResponseCode
@@ -25,6 +26,7 @@ class InterfaceController:
 
     serviceFactory = ServiceFactory()
     hookManager = HookManager()
+    pubSubManager = PubSubManager()
 
     def __init__(self):
         # make a singleton instance if one doesnt exist
@@ -93,3 +95,6 @@ class InterfaceController:
             responses.append(self.executeRequest(request))
 
         return responses
+
+    def subscribe(self, eventType: str, callback):
+        self.pubSubManager.subscribe(eventType, callback)

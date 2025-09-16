@@ -25,6 +25,7 @@ from snapred.backend.log.logger import CustomFormatter, snapredLogger
 from snapred.meta.Config import Config, Resource, datasearch_directories, fromMantidLoggingLevel, fromPythonLoggingLevel
 from snapred.meta.decorators.classproperty import classproperty
 from snapred.ui.widget.LogTable import LogTable
+from snapred.ui.widget.ProgressWidget import ProgressWidget
 from snapred.ui.widget.TestPanel import TestPanel
 from snapred.ui.widget.ToolBar import ToolBar
 
@@ -87,6 +88,8 @@ class SNAPRedGUI(QMainWindow):
         splitter.addWidget(self.workspaceWidget)
 
         splitter.addWidget(AlgorithmProgressWidget())
+
+        splitter.addWidget(ProgressWidget().view)
 
         if Config["cis_mode.reloadConfigButton"]:
             self.reloadConfigButton = QPushButton("Reload Config")
