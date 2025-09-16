@@ -406,6 +406,7 @@ class ProgressStep(BaseModel):
             return key[-1]
         name = key[-1] if bool(key[-1]) else ""
         qualname = key[-2]
+
         # the <step name> appended to the last component of the `qualname`
         return ": ".join(filter(None, (qualname.split(".")[-1], name)))
 

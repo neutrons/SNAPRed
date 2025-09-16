@@ -18,10 +18,12 @@ from snapred.backend.dao.request import (
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
+from snapred.backend.dao.request.NeutronFileSizeRequest import NeutronFileSizeRequest
 from snapred.backend.dao.request.RenameWorkspaceRequest import RenameWorkspaceRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.profiling.ProgressRecorder import ComputationalOrder, WallClockTime
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
@@ -315,6 +317,14 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
         return SNAPResponse(code=ResponseCode.OK)
 
+    def _nref(self, workflowPresenter: WorkflowPresenter) -> float:
+        view = workflowPresenter.widget.tabView
+        runNumber = view.runNumberField.text()
+        useLiteMode = view.liteModeToggle.getState()
+        payload = NeutronFileSizeRequest(runNumber=runNumber, useLiteMode=useLiteMode)
+        return self.request(path="calibration/fileSize", payload=payload).data
+
+    @WallClockTime(N_ref=_nref, order=ComputationalOrder.O_N)
     @Slot(WorkflowPresenter, result=SNAPResponse)
     def _specifyRun(self, workflowPresenter):
         view = workflowPresenter.widget.tabView

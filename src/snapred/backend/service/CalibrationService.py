@@ -35,6 +35,7 @@ from snapred.backend.dao.request import (
     RunMetadataRequest,
     SimpleDiffCalRequest,
 )
+from snapred.backend.dao.request.NeutronFileSizeRequest import NeutronFileSizeRequest
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
@@ -102,6 +103,19 @@ class CalibrationService(Service):
     @staticmethod
     def name():
         return "calibration"
+
+    @FromString
+    @Register("fileSize")
+    def getCalibrationFileSize(self, request: NeutronFileSizeRequest) -> float:
+        filePath = self.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
+
+        if not filePath.exists() and request.useLiteMode:
+            filePath = self.groceryService.createNeutronFilePath(request.runNumber, False)
+
+        if not filePath.exists():
+            raise FileNotFoundError(f"File not found: {filePath}")
+        # Note: `st_size` is in bytes.
+        return float(filePath.stat().st_size)
 
     def _calibration_N_ref(self, request: DiffractionCalibrationRequest) -> float | None:
         # Calculate the reference value to use during the estimation of execution time for the

@@ -372,6 +372,7 @@ application:
         # in order to enable logging:
         #   the first part of the fully-qualified name of the progress-recording step must be in this list:
         qualname_roots:
+          - "DiffCalWorkflow"
           - "ReductionService"
           - "CalibrationService"
           - "NormalizationService"
