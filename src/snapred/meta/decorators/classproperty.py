@@ -1,4 +1,4 @@
-# https://stackoverflow.com/questions/1697501/staticmethod-with-property
+# (See: https://stackoverflow.com/questions/1697501/staticmethod-with-property)
 
 
 class classproperty(property):

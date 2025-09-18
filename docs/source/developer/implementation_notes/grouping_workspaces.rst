@@ -1,5 +1,5 @@
-Grouping Workspace Fine Points:
--------------------------------
+Grouping Workspace Fine Points
+------------------------------
 
 A `GroupingWorkspace` represents a one-to-many mapping between integer subgroup-IDs, and corresponding sets of pixel-IDs.  As implemented in the Mantid codebase, `GroupingWorkspace` s can be more complex than they initially seem.  Most of the subtlety relates to the fact that there are *multiple* ways to represent any specific subgroup-id to pixel-ids grouping.
 

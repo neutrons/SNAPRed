@@ -9,20 +9,6 @@ IPTS:
   # For the moment, each developer needs to set this individually to their local path.
   root: ${module.root}/data/snapred-data/SNS
 
-constants:
-  # For tests with '46680' this seems to be necessary.
-  maskedPixelThreshold: 1.0
-
-  DetectorPeakPredictor:
-    fwhm: 1.17741002252 # used to convert gaussian to fwhm (2 * log_e(2))
-  CropFactors:
-    lowWavelengthCrop: 0.05
-    lowdSpacingCrop: 0.1
-    highdSpacingCrop: 0.15
-  RawVanadiumCorrection:
-    numberOfSlices: 1
-    numberOfAnnuli: 1
-
 instrument:
   native:
     name: crackle
@@ -53,6 +39,21 @@ instrument:
     - "det_lin1"
     - "det_lin2"
 
+calibration:
+  parameters:
+    default:
+      alpha: 0.1
+      # alpha: 1.1
+      beta:
+        - 0.02
+        - 0.05
+      # beta:
+      #   - 1
+      #   - 2
+  fitting:
+    # minSignal2Noise: 0.0
+    minSignal2Noise: 10
+
 mantid:
   workspace:
     nameTemplate:
@@ -72,17 +73,53 @@ mantid:
           focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
           smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_corr,{version}"
 
-calibration:
-  parameters:
-    default:
-      alpha: 0.1
-      # alpha: 1.1
-      beta:
-        - 0.02
-        - 0.05
-      # beta:
-      #   - 1
-      #   - 2
-  fitting:
-    # minSignal2Noise: 0.0
-    minSignal2Noise: 10
+constants:
+  # For tests with '46680' this seems to be necessary.
+  maskedPixelThreshold: 1.0
+
+  DetectorPeakPredictor:
+    fwhm: 1.17741002252 # used to convert gaussian to fwhm (2 * log_e(2))
+  CropFactors:
+    lowWavelengthCrop: 0.05
+    lowdSpacingCrop: 0.1
+    highdSpacingCrop: 0.15
+  RawVanadiumCorrection:
+    numberOfSlices: 1
+    numberOfAnnuli: 1
+
+application:
+  workflows_data:
+    timing:
+      # Enable the `ProgressRecorder`.
+      # IMPORTANT: by default this must remain disabled for tests!
+      #   Otherwise the `ProgressRecorder` will still load and unload persistent data.
+      enabled: true
+
+      home: ${user.application.data.home}/workflows_data/timing
+
+      # save new timing data at application exit
+      persistent_data: true
+
+      max_files: 5
+      max_measurements: 50
+
+      # spline order for time estimates
+      spline_order: 3
+
+      # update estimates if off by 20%
+      update_threshold: 0.2
+      # update only when sufficient data points are available
+      update_minimum_count: 5
+
+      # logging of execution-time information:
+      logging:
+        # in order to enable logging:
+        #   the first part of the fully-qualified name of the progress-recording step must be in this list:
+        qualname_roots:
+          - "ReductionService"
+          - "CalibrationService"
+          - "NormalizationService"
+
+        loglevel: 20 # logging.INFO
+        log_update_interval: 0 # in seconds, 0 => explicit logging only
+        indent: "  " # string to be used for indenting sub-levels

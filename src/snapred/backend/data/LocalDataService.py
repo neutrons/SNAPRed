@@ -1,5 +1,4 @@
 import copy
-import datetime
 import glob
 import json
 import os
@@ -7,6 +6,7 @@ import re
 import shutil
 import socket
 import tempfile
+from datetime import datetime, timedelta, timezone
 from errno import ENOENT as NOT_FOUND
 from functools import lru_cache
 from pathlib import Path
@@ -532,7 +532,7 @@ class LocalDataService:
                         match_ = timestampPathTag.match(part)
                         if match_:
                             tss.append(
-                                datetime.datetime(
+                                datetime(
                                     year=int(match_.group(1)),
                                     month=int(match_.group(2)),
                                     day=int(match_.group(3)),
@@ -1530,7 +1530,7 @@ class LocalDataService:
         startTime = (
             RunMetadata.FROM_NOW_ISO8601
             if duration == 0
-            else (datetime.datetime.utcnow() + datetime.timedelta(seconds=-duration)).isoformat()
+            else (datetime.utcnow() + timedelta(seconds=-duration)).isoformat()
         )
 
         # TODO: this call is partially duplicated at `FetchGroceriesAlgorithm`.
@@ -1564,3 +1564,86 @@ class LocalDataService:
     def readLiveData(self, ws: WorkspaceName, duration: int) -> WorkspaceName:
         # A duration of zero => read all of the available data.
         return self._readLiveData(ws, duration)
+
+    ### GENERALIZED PROGRESS REPORTING:
+    def _progressRecordsFilenameStem(self) -> str:
+        return "execution_timing"
+
+    def _progressRecordsPath(self) -> Path:
+        return Path(Config["application.workflows_data.timing.home"])
+
+    def _progressRecordsFilePath(self, timestamp: datetime):
+        _timestamp = timestamp
+        # Prohibit naive timestamps
+        if timestamp.tzinfo is None:
+            # By default: use the utc timezone (as in Mantid).
+            _timestamp = timestamp.astimezone(timezone.utc)
+        return self._progressRecordsPath() / (
+            self._progressRecordsFilenameStem() + "_" + _timestamp.isoformat() + ".json"
+        )
+
+    def _progressRecordsFilePaths(self) -> List[Path]:
+        # Returns a timestamp-sorted list of the current progress-records file paths.
+
+        # sub-regex for non-naive `datetime` in ISO-8601 format: for example, this would match
+        #   '2025-08-24T11:32:47.123456-04:00' and '2025-08-24T11:32:47.123456Z'
+        #   using Eastern Daylight Time (EDT) and Coordinated Universal Time (UTC) timezones, respectively.
+        isoFormatRegex = "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?([+-]\\d{2}:\\d{2}|Z)"
+
+        # regex to match the expected progress-records data filenames
+        fileRegex = re.compile(f"^({self._progressRecordsFilenameStem()})_({isoFormatRegex})\\.json$")
+
+        recordsPath = self._progressRecordsPath()
+        filePaths = []
+        if recordsPath.exists():
+            with os.scandir(recordsPath) as entries:
+                for entry in entries:
+                    if not entry.is_file():
+                        continue
+
+                    match = fileRegex.match(entry.name)
+                    if not match:
+                        continue
+
+                    filePaths.append(recordsPath / entry.name)
+
+        def sortKey(filePath):
+            # sort in order of the timestamps
+            match = fileRegex.match(filePath.name)
+            return datetime.fromisoformat(match.group(2))
+
+        filePaths.sort(key=sortKey)
+
+        return filePaths
+
+    def _progressRecordsSaveFilePath(self):
+        now = datetime.fromtimestamp(self.getUniqueTimestamp(), tz=timezone.utc)
+        return self._progressRecordsFilePath(now)
+
+    def readProgressRecords(self) -> str:
+        # Returns the JSON representation of the current progress data.
+        recordsFilePaths = self._progressRecordsFilePaths()
+        latestRecordsFilePath = recordsFilePaths[-1] if bool(recordsFilePaths) else None
+
+        if latestRecordsFilePath is None:
+            # First start
+            return '{"steps": []}'
+        with open(latestRecordsFilePath) as data:
+            return data.read()
+
+    def writeProgressRecords(self, records: str):
+        # Writes the JSON representation of the current progress data to disk.
+        self._progressRecordsPath().mkdir(parents=True, exist_ok=True)
+
+        saveFilePath = self._progressRecordsSaveFilePath()
+        with open(saveFilePath, "w") as data:
+            data.write(records)
+
+        # limit the number of saved records files
+        recordsFilePaths = self._progressRecordsFilePaths()
+        maxFiles = abs(Config["application.workflows_data.timing.max_files"])
+        if len(recordsFilePaths) > maxFiles:
+            filesToKeep = recordsFilePaths[-maxFiles:]
+            for path in recordsFilePaths:
+                if path not in filesToKeep:
+                    path.unlink()

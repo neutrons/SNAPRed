@@ -1,6 +1,6 @@
-import datetime
 import functools
 import importlib
+import inspect
 import logging
 import os
 import re
@@ -12,6 +12,8 @@ import unittest.mock as mock
 from collections import namedtuple
 from collections.abc import Mapping
 from contextlib import ExitStack
+from datetime import datetime, timedelta, timezone
+from hashlib import sha256
 from pathlib import Path
 from random import randint, shuffle
 from typing import List, Literal, Set, Tuple
@@ -70,6 +72,7 @@ from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
+from snapred.backend.profiling.ProgressRecorder import _ProgressRecorder
 from snapred.meta.Config import Config, Resource
 from snapred.meta.InternalConstants import ReservedRunNumber, ReservedStateId
 from snapred.meta.mantid.WorkspaceNameGenerator import (
@@ -160,8 +163,8 @@ def mockNeXusLogsMapping(detectorState: DetectorState) -> mock.Mock:
 
     dict_ = {
         "run_number": "123456",
-        "start_time": datetime.datetime.fromisoformat("2023-06-14T14:06:40.429048"),
-        "end_time": datetime.datetime.fromisoformat("2023-06-14T14:07:56.123123"),
+        "start_time": datetime.fromisoformat("2023-06-14T14:06:40.429048"),
+        "end_time": datetime.fromisoformat("2023-06-14T14:07:56.123123"),
         "proton_charge": 1000.0,
         "BL3:Chop:Skf1:WavelengthUserReq": [detectorState.wav],
         "det_arc1": [detectorState["det_arc1"]],
@@ -2054,7 +2057,7 @@ def test_readWriteReductionRecord_timestamps():
         time.sleep(1)
         actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode, newTimestamp)
         assert testReductionRecord_v0002.timestamp == newTimestamp
-        assert datetime.datetime.fromtimestamp(actualRecord.timestamp) == datetime.datetime.fromtimestamp(newTimestamp)
+        assert datetime.fromtimestamp(actualRecord.timestamp) == datetime.fromtimestamp(newTimestamp)
 
 
 def test_readWriteReductionRecord():
@@ -2683,14 +2686,14 @@ def test_readDetectorState():
 
 @mock.patch(ThisService + "MantidSnapper")
 def test__readLiveData(mockSnapper):
-    now_ = datetime.datetime.utcnow()
+    now_ = datetime.utcnow()
     duration = 42
     # 42 seconds ago
-    now_minus_42 = now_ + datetime.timedelta(seconds=-duration)
+    now_minus_42 = now_ + timedelta(seconds=-duration)
     expectedStartTime = now_minus_42.isoformat()
     testWs = "testWs"
 
-    with mock.patch(ThisService + "datetime.datetime", wraps=datetime.datetime) as mockDatetime:
+    with mock.patch(ThisService + "datetime", wraps=datetime) as mockDatetime:
         mockDatetime.utcnow.return_value = now_
 
         instance = LocalDataService()
@@ -3735,3 +3738,271 @@ class TestReductionPixelMasks:
             assert self.service.copyCalibrationRootSkeleton.called
             assert self.service.copyCalibrationRootSkeleton.call_count == 1
             assert mockConfig.__getitem__.called
+
+
+### GENERALIZED PROGRESS REPORTING:
+
+
+class TestProgressRecordingMethods:
+    @pytest.fixture(autouse=True)
+    def _setup_tests(self):
+        # setup
+        self.instance = LocalDataService()
+        yield
+
+        # teardown
+        pass
+
+    def test__progressRecordsFilenameStem(self):
+        stem = self.instance._progressRecordsFilenameStem()
+        allowedCharacters = re.compile(r"\w.*")  # "[A-Za-z0-9_]"
+        assert isinstance(stem, str)
+        assert allowedCharacters.match(stem)
+
+    def test_progressRecordsPath(self):
+        userApplicationDataHome = Path("<user_home>/.snapred")
+        with Config_override("user.application.data.home", str(userApplicationDataHome)):
+            recordsPath = self.instance._progressRecordsPath()
+            assert recordsPath == userApplicationDataHome / "workflows_data" / "timing"
+
+    def test__progressRecordsFilePath(self):
+        naiveTime = datetime.now()
+        timeWithTimeZone = naiveTime.astimezone(timezone.utc)
+
+        # provides expected path with non-naive timestamp
+        with (
+            mock.patch.object(LocalDataService, "_progressRecordsPath") as mock_progressRecordsPath,
+            mock.patch.object(LocalDataService, "_progressRecordsFilenameStem") as mock_progressRecordsFilenameStem,
+        ):
+            recordsPath = Path("<user_home>/.snapred/workflows_data/timing")
+            filenameStem = "execution_timing"
+            mock_progressRecordsPath.return_value = recordsPath
+            mock_progressRecordsFilenameStem.return_value = filenameStem
+
+            filePath = self.instance._progressRecordsFilePath(timeWithTimeZone)
+            assert filePath == recordsPath / (filenameStem + "_" + timeWithTimeZone.isoformat() + ".json")
+            mock_progressRecordsPath.assert_called_once()
+            mock_progressRecordsFilenameStem.assert_called_once()
+
+        # converts naive to non-naive timestamp using `timezone.utc`
+        with (
+            mock.patch.object(LocalDataService, "_progressRecordsPath") as mock_progressRecordsPath,
+            mock.patch.object(LocalDataService, "_progressRecordsFilenameStem") as mock_progressRecordsFilenameStem,
+        ):
+            recordsPath = Path("<user_home>/.snapred/workflows_data/timing")
+            filenameStem = "execution_timing"
+            mock_progressRecordsPath.return_value = recordsPath
+            mock_progressRecordsFilenameStem.return_value = filenameStem
+
+            filePath = self.instance._progressRecordsFilePath(naiveTime)
+            assert filePath == recordsPath / (filenameStem + "_" + timeWithTimeZone.isoformat() + ".json")
+
+    def test__progressRecordsFilePaths(self):
+        # Initialize a progress-records directory containing
+        #   files using the expected naming scheme.
+        latest = datetime.now(timezone.utc)
+        middle = latest - timedelta(seconds=120.0)
+        earliest = latest - timedelta(seconds=2 * 120.0)
+        # paths in order of their timestamps
+        filenames = [
+            f"execution_timing_{earliest.isoformat()}.json",
+            f"execution_timing_{middle.isoformat()}.json",
+            f"execution_timing_{latest.isoformat()}.json",
+        ]
+
+        # `_progressRecordsFilePaths` returns a timestamp-sorted list of paths
+        with (
+            tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempDir,
+            Config_override("user.application.data.home", str(tempDir)),
+        ):
+            # create the test files
+            recordsPath = Path(tempDir) / "workflows_data" / "timing"
+            recordsPath.mkdir(parents=True)
+            for name in filenames:
+                (recordsPath / name).touch()
+
+            # the paths list should be in timestamp order
+            paths = self.instance._progressRecordsFilePaths()
+            for n, path in enumerate(paths):
+                assert path == recordsPath / filenames[n]
+
+        # `_progressRecordsFilePaths` ignores other files in the same directory
+        with (
+            tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempDir,
+            Config_override("user.application.data.home", str(tempDir)),
+        ):
+            # create the test files
+            recordsPath = Path(tempDir) / "workflows_data" / "timing"
+            recordsPath.mkdir(parents=True)
+            for n, name in enumerate(filenames):
+                (recordsPath / name).touch()
+                (recordsPath / (name + "junk")).touch()
+                (recordsPath / ("junk" + name)).touch()
+                (recordsPath / f"junk_{n}.json").touch()
+
+            # the paths list should be the same as before
+            paths = self.instance._progressRecordsFilePaths()
+            for n, path in enumerate(paths):
+                assert path == recordsPath / filenames[n]
+
+    def test_progressRecordsSaveFilePath(self):
+        # the path for the current progress-records file is generated using `getUniqueTimestamp`,
+        #   and its timestamp will use the UTC timezone
+        _now = datetime.now(timezone.utc)
+        with (
+            mock.patch.object(inspect.getmodule(LocalDataService), "datetime") as mock_datetime,
+            mock.patch.object(LocalDataService, "getUniqueTimestamp") as mock_getUniqueTimestamp,
+            mock.patch.object(LocalDataService, "_progressRecordsFilePath") as mock_progressRecordsFilePath,
+        ):
+            mock_datetime.fromtimestamp.return_value = _now
+            mock_progressRecordsFilePath.return_value = mock.sentinel.path
+            mock_getUniqueTimestamp.return_value = _now.timestamp()
+
+            path = self.instance._progressRecordsSaveFilePath()
+            assert path == mock.sentinel.path
+            mock_getUniqueTimestamp.assert_called_once()
+            mock_datetime.fromtimestamp.assert_called_once_with(mock_getUniqueTimestamp.return_value, tz=timezone.utc)
+            mock_progressRecordsFilePath.assert_called_once_with(_now)
+
+    def test_readProgressRecords(self):
+        # Initialize a progress-records directory containing
+        #   files using the expected naming scheme.
+        latest = datetime.now(timezone.utc)
+        middle = latest - timedelta(seconds=120.0)
+        earliest = latest - timedelta(seconds=2 * 120.0)
+        filenames = [
+            f"execution_timing_{earliest.isoformat()}.json",
+            f"execution_timing_{middle.isoformat()}.json",
+            f"execution_timing_{latest.isoformat()}.json",
+        ]
+
+        # returns the <json-format string> contents of the latest progress-records data file
+        with (
+            tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempDir,
+            Config_override("user.application.data.home", str(tempDir)),
+            mock.patch.object(LocalDataService, "_progressRecordsFilePaths") as mock_progressRecordsFilePaths,
+        ):
+            recordsPath = Path(tempDir) / "workflows_data" / "timing"
+            latestFilePath = recordsPath / filenames[-1]
+            mock_progressRecordsFilePaths.return_value = [recordsPath / name for name in filenames]
+
+            # create the test files
+            recordsPath.mkdir(parents=True)
+            for n, name in enumerate(filenames):
+                with open(recordsPath / name, "w") as dataFile:
+                    # write valid data, ensuring that it is unique
+                    dataFile.write(f"{{'steps': [{{'details': {{'key': [one_{n}, two_{n}, three_{n}]}}}}]}}")
+
+            expected = None
+            with open(latestFilePath, "r") as dataFile:
+                expected = dataFile.read()
+            actual = self.instance.readProgressRecords()
+            assert actual == expected
+            mock_progressRecordsFilePaths.assert_called_once()
+
+        # when no data exists: returns a valid initializer <json-format string> for the `_ProgressRecorder`
+        with (
+            tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempDir,
+            Config_override("user.application.data.home", str(tempDir)),
+            mock.patch.object(LocalDataService, "_progressRecordsFilePaths") as mock_progressRecordsFilePaths,
+        ):
+            mock_progressRecordsFilePaths.return_value = []
+
+            expected = '{"steps": []}'
+            actual = self.instance.readProgressRecords()
+            assert actual == expected
+            mock_progressRecordsFilePaths.assert_called_once()
+
+            # make sure it actually works as an initializer string
+            recorder = _ProgressRecorder.model_validate_json(actual)
+            assert recorder.steps == {}
+
+    def test_writeProgressRecords(self):
+        _now = datetime.now()
+
+        # a version of `_progressRecordsFilePath` to be used during this test
+        def _recordsFilePath(path: Path, timestamp: datetime) -> Path:
+            recordsPath = path / "workflows_data" / "timing"
+            return recordsPath / ("execution_timing" + "_" + timestamp.isoformat() + ".json")
+
+        def _fileCount(path: Path):
+            _, _, files = next(os.walk(path))
+            return len(files)
+
+        # creates the output directory if it doesn't exist and writes the records file
+        with (
+            Config_override("application.workflows_data.timing.max_files", 3),
+            tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempDir,
+            mock.patch.object(LocalDataService, "_progressRecordsPath") as mock_progressRecordsPath,
+            mock.patch.object(LocalDataService, "_progressRecordsSaveFilePath") as mock_progressRecordsSaveFilePath,
+            mock.patch.object(LocalDataService, "_progressRecordsFilePaths") as mock_progressRecordsFilePaths,
+        ):
+            filePath = _recordsFilePath(Path(tempDir), _now)
+            recordsPath = filePath.parent
+            mock_progressRecordsPath.return_value = recordsPath
+            mock_progressRecordsSaveFilePath.return_value = filePath
+            mock_progressRecordsFilePaths.return_value = []
+
+            sha = sha256()
+            sha.update("Some unique data to save.".encode("utf8"))
+            data = sha.hexdigest()
+
+            assert not recordsPath.exists()
+            self.instance.writeProgressRecords(data)
+
+            # output directory was created, and the file was written
+            assert filePath.exists()
+
+            # the read back data matches the written data
+            with open(filePath, "r") as inputData:
+                assert inputData.read() == data
+
+            mock_progressRecordsPath.assert_called_once()
+            mock_progressRecordsSaveFilePath.assert_called_once()
+            mock_progressRecordsFilePaths.assert_called_once()
+
+        # restricts the maximum number of saved records files to the 'max_files' value
+        with (
+            Config_override("application.workflows_data.timing.max_files", 3),
+            tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempDir,
+            mock.patch.object(LocalDataService, "_progressRecordsPath") as mock_progressRecordsPath,
+            mock.patch.object(LocalDataService, "_progressRecordsSaveFilePath") as mock_progressRecordsSaveFilePath,
+        ):
+            filePath = _recordsFilePath(Path(tempDir), _now)
+            recordsPath = filePath.parent
+            mock_progressRecordsPath.return_value = recordsPath
+            mock_progressRecordsSaveFilePath.return_value = filePath
+
+            # create more records files than the 'max_files' limit
+            recordsPath.mkdir(parents=True)
+            dt = timedelta(seconds=120.0)
+            startTime = _now - timedelta(minutes=60.0)
+            filePaths = []
+            for n in range(2 * Config["application.workflows_data.timing.max_files"]):
+                timestamp = startTime + n * dt
+                path = _recordsFilePath(Path(tempDir), timestamp)
+                path.touch()
+                filePaths.append(path)
+            assert _fileCount(recordsPath) == len(filePaths)
+
+            # filePaths are already in order, but we will also need to include the
+            #   to-be-written path
+            mock_progressRecordsFilePaths.return_value = filePaths + [
+                filePath,
+            ]
+
+            sha = sha256()
+            sha.update("Some unique data to save.".encode("utf8"))
+            data = sha.hexdigest()
+            self.instance.writeProgressRecords(data)
+
+            # output directory was created, and the file was written
+            assert filePath.exists()
+
+            # the number of saved files has been restricted as required
+            _fileCount(recordsPath) == Config["application.workflows_data.timing.max_files"]
+
+            # only the oldest files were deleted
+            latestFiles = filePaths[-Config["application.workflows_data.timing.max_files"] :]
+            for path in latestFiles:
+                assert path.exists()
