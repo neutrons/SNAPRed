@@ -69,7 +69,7 @@ class LiveDataState(Exception):
         return LiveDataState(**raw.dict())
 
     @staticmethod
-    def runStateTransition(endRunNumber: str, startRunNumber: str) -> "LiveDataState":
+    def runStateTransition(endRunNumber: str | int, startRunNumber: str | int) -> "LiveDataState":
         transition = LiveDataState.Type.UNSET
         message = "unknown state transition"
         if int(endRunNumber) > 0 and int(startRunNumber) == 0:
@@ -84,4 +84,6 @@ class LiveDataState(Exception):
         else:
             raise ValueError(f"unexpected run-state transition: {endRunNumber} <- {startRunNumber}")
 
-        return LiveDataState(message, transition=transition, endRunNumber=endRunNumber, startRunNumber=startRunNumber)
+        return LiveDataState(
+            message, transition=transition, endRunNumber=str(endRunNumber), startRunNumber=str(startRunNumber)
+        )

@@ -23,6 +23,7 @@ class TestRunMetadata(unittest.TestCase):
     def setUp(self):
         self.DASlogsGroup = Config["instrument.PVLogs.rootGroup"]
         self.DASlogs = {
+            "BL3:CS:ITEMS:MassUnits": "g",
             "BL3:Chop:Skf1:WavelengthUserReq": [24.0],
             "det_arc1": [1.25],
             "det_arc2": [2.26],
@@ -179,7 +180,28 @@ class TestRunMetadata(unittest.TestCase):
         return mock.Mock(wraps=run)
 
     def test_init_fromRun(self):
-        RunMetadata.fromRun(self._mockRun(self.DASlogs, **self.specialValues), DetectorState.LEGACY_SCHEMA)
+        run = self._mockRun(self.DASlogs, **self.specialValues)
+        RunMetadata.fromRun(run, DetectorState.LEGACY_SCHEMA)
+
+    def test_init_fromRun_UTF8(self):
+        # verify that UTF8-malformed PV are ignored
+        run = self._mockRun(self.DASlogs, **self.specialValues)
+        _getProperty_orig = run.getProperty
+
+        def _getProperty(key) -> Any:
+            if key == "BL3:CS:ITEMS:MassUnits":
+                raise UnicodeDecodeError("utf-8", b"\xb5", 0, 1, "invalid start byte")
+            return _getProperty_orig(key)
+
+        run.getProperty = _getProperty
+
+        with mock.patch.object(inspect.getmodule(RunMetadata), "logger") as mockLogger:
+            RunMetadata.fromRun(run, DetectorState.LEGACY_SCHEMA)
+            callFound = False
+            for call in mockLogger.info.mock_calls:
+                if "RunMetadata.fromRun: ignoring malformed property" in call.args[0]:
+                    callFound = True
+            assert callFound, "'ignoring malformed property' not logged"
 
     def test_init_fromNeXusLogs(self):
         logs = mockH5File(self.DASlogs, **self.specialValues)
@@ -519,7 +541,7 @@ class TestRunMetadata(unittest.TestCase):
             mockLogger.isEnabledFor.assert_any_call(logging.DEBUG)
             assert mockLogger.debug.call_count == len(defaultKeys)
             for k in defaultKeys:
-                callFound = True
+                callFound = False
                 for call in mockLogger.debug.mock_calls:
                     if k in call.args[0]:
                         callFound = True

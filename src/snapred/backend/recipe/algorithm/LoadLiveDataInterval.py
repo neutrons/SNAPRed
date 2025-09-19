@@ -41,10 +41,10 @@ class LoadLiveDataInterval(PythonAlgorithm):
     #
     # Implementation notes:
     #
-    #   * The use of `<Algorithm>.createChildAlgorithm` in key places ties the lifetime of the child algorithms
+    #   * The use of `<Algorithm>.createChildAlgorithm` in key places ties the lifetime of the child algorithm
     #     to the lifetime of the parent -- this is critical for the `LoadLiveData` algorithm, which instantiates
     #     an instance of `SNSLiveListener` internally.
-
+    #
     #   * Where fully-managed algorithm instances are appropriate: `MantidSnapper` will also be used.
     #
     #   * In regards to cancellation: the bulk of execution time for this algorithm occurs during the `LoadLiveData`
@@ -131,19 +131,20 @@ class LoadLiveDataInterval(PythonAlgorithm):
     @classmethod
     def _requiredLoadInterval(cls, wsName: str, startTime: str) -> Tuple[np.datetime64, np.datetime64]:
         # Calculate the required loaded-data interval given the run interval and the argument values.
+        # This interval will be used to check whether or not the data-loading is complete.
 
         # Implementation notes:
         #
-        # * This interval will be used to check whether or not the data-loading is complete.
+        #   * Note that the end-time returned does not necessarily correspond to the requested filter interval.
+        #     The current listener implementation does not filter by end-time, so we need to load
+        #     to the latest time-point possible.
         #
-        # * Note that the end-time returned does not necessarily correspond to the requested filter interval.
-        #   The current listener implementation does not filter by end-time, so we need to load
-        #   to the latest time-point possible.
-        #
+        #   * Here we assume that each chunk is marked with the correct run start-time, but in most cases
+        #     not the correct run end-time.  The end-time may not yet be known at the time the chunk is
+        #     transferred.
 
         run = mtd[wsName].getRun()
         runStartTime = run.startTime().to_datetime64()
-        runEndTime = run.endTime().to_datetime64()
 
         if not cls.USING_ADARA_FileReader:
             requiredStartTime = (
@@ -153,8 +154,10 @@ class LoadLiveDataInterval(PythonAlgorithm):
             )
             requiredEndTime = np.datetime64(datetime.datetime.now(datetime.timezone.utc).isoformat(), "ns")
         else:
-            # Make a correction for the limitations of the mock "ADARA_FileReader":
-            #   move the requested start-time to be relative to the end of the run.
+            # Make corrections for the limitations of the mock "ADARA_FileReader":
+            runEndTime = run.endTime().to_datetime64()
+
+            # 1) Move the requested start-time to be relative to the end of the run.
             startTimeDelta = datetime.datetime.now(datetime.timezone.utc) - datetimeFromLogTime(
                 DateAndTime(startTime).to_datetime64()
             )
@@ -163,12 +166,12 @@ class LoadLiveDataInterval(PythonAlgorithm):
                 if (startTime == RunMetadata.FROM_START_ISO8601)
                 else DateAndTime((datetimeFromLogTime(runEndTime) - startTimeDelta).isoformat()).to_datetime64()
             )
+
+            # 2) Use the actual run end-time.
             requiredEndTime = runEndTime
 
         if requiredStartTime < runStartTime:
             requiredStartTime = runStartTime
-        if requiredEndTime > runEndTime:
-            requiredEndTime = runEndTime
 
         return requiredStartTime, requiredEndTime
 
@@ -184,7 +187,7 @@ class LoadLiveDataInterval(PythonAlgorithm):
         intervalPulseTimeMin: np.datetime64,
         intervalPulseTimeMax: np.datetime64,
         *,
-        # `exact`: match the boundary points, otherwise cover, but don't necessarily match the inverval boundaries
+        # `exact` => match the boundary points; otherwise cover, but don't necessarily match the inverval boundaries
         exact,
         comparisonThreshold=ConfigValue("liveData.time_comparison_threshold"),
     ):
