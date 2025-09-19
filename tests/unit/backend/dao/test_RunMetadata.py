@@ -187,12 +187,14 @@ class TestRunMetadata(unittest.TestCase):
         # verify that UTF8-malformed PV are ignored
         run = self._mockRun(self.DASlogs, **self.specialValues)
         _getProperty_orig = run.getProperty
+
         def _getProperty(key) -> Any:
             if key == "BL3:CS:ITEMS:MassUnits":
                 raise UnicodeDecodeError("utf-8", b"\xb5", 0, 1, "invalid start byte")
             return _getProperty_orig(key)
+
         run.getProperty = _getProperty
-        
+
         with mock.patch.object(inspect.getmodule(RunMetadata), "logger") as mockLogger:
             RunMetadata.fromRun(run, DetectorState.LEGACY_SCHEMA)
             callFound = False
@@ -200,7 +202,7 @@ class TestRunMetadata(unittest.TestCase):
                 if "RunMetadata.fromRun: ignoring malformed property" in call.args[0]:
                     callFound = True
             assert callFound, "'ignoring malformed property' not logged"
-    
+
     def test_init_fromNeXusLogs(self):
         logs = mockH5File(self.DASlogs, **self.specialValues)
         RunMetadata.fromNeXusLogs(logs, DetectorState.LEGACY_SCHEMA)

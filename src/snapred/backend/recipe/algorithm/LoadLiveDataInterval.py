@@ -156,7 +156,7 @@ class LoadLiveDataInterval(PythonAlgorithm):
         else:
             # Make corrections for the limitations of the mock "ADARA_FileReader":
             runEndTime = run.endTime().to_datetime64()
-            
+
             # 1) Move the requested start-time to be relative to the end of the run.
             startTimeDelta = datetime.datetime.now(datetime.timezone.utc) - datetimeFromLogTime(
                 DateAndTime(startTime).to_datetime64()
@@ -166,7 +166,7 @@ class LoadLiveDataInterval(PythonAlgorithm):
                 if (startTime == RunMetadata.FROM_START_ISO8601)
                 else DateAndTime((datetimeFromLogTime(runEndTime) - startTimeDelta).isoformat()).to_datetime64()
             )
-            
+
             # 2) Use the actual run end-time.
             requiredEndTime = runEndTime
 

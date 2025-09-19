@@ -84,4 +84,6 @@ class LiveDataState(Exception):
         else:
             raise ValueError(f"unexpected run-state transition: {endRunNumber} <- {startRunNumber}")
 
-        return LiveDataState(message, transition=transition, endRunNumber=str(endRunNumber), startRunNumber=str(startRunNumber))
+        return LiveDataState(
+            message, transition=transition, endRunNumber=str(endRunNumber), startRunNumber=str(startRunNumber)
+        )
