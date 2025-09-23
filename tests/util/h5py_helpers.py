@@ -67,7 +67,7 @@ class MockH5File(Mapping):
         self.close = mock.Mock()
 
     def _randomFilename(self) -> int:
-        # This method allows the mock filename to be different for each `_MockLogs` instance!
+        # This method allows the mock filename to be different for each `_MockLogs` instance.
         random_int64 = np.random.randint(low=np.iinfo(np.int64).min, high=np.iinfo(np.int64).max, dtype=np.int64)
         return f"mock_h5py_file_{random_int64}.h5"
 
@@ -101,7 +101,7 @@ class MockH5File(Mapping):
         return self._PVLogs.__len__()
 
 
-def mockH5File(dict_, **kwargs) -> mock.Mock:
+def mockH5File(dict_, **kwargs) -> mock.MagicMock:
     # Fully wrap the `MockH5File`.
     logs = MockH5File(dict_, **kwargs)
     mock_ = mock.MagicMock(wraps=logs)
