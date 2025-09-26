@@ -29,18 +29,6 @@ class SampleDropDown(SNAPWidget):
 
     @Slot(bool)
     def _setEnabled(self, flag: bool):
-        if flag:
-            self.dropDown.setVisible(True)
-            self._disabledField.setVisible(False)
-            self._layout.addWidget(self.dropDown)
-            self._layout.removeWidget(self._disabledField)
-        else:
-            self.dropDown.setVisible(False)
-            self._disabledField.setVisible(True)
-            self._disabledField.setText(self.dropDown.currentText())
-            self._layout.addWidget(self._disabledField)
-            self._layout.removeWidget(self.dropDown)
-
         super(SampleDropDown, self).setEnabled(flag)
 
     def _initItems(self):
