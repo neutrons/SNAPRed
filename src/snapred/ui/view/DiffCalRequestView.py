@@ -127,6 +127,9 @@ class DiffCalRequestView(BackendRequestView):
     def getSkipPixelCalibration(self):
         return self.skipPixelCalToggle.getState()
 
+    def getSelectedPixelMasks(self):
+        return self.compatiblePixelMaskDropdown.checkedItems()
+
     @Slot(bool)
     def _enablePeakFunction(self, enable: bool):
         self.peakFunctionDropdown.setEnabled(enable)

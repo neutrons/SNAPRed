@@ -192,17 +192,22 @@ class CalibrationService(Service):
             calibrationTable=calibrationTableName,
             maskWorkspace=combinedMask,
         )
+
         if self.groceryService.workspaceDoesExist(calibrationMaskName):
             self.groceryService.renameWorkspace(calibrationMaskName, combinedMask)
+        elif request.pixelMasks:
+            self.groceryService.getCloneOfWorkspace(request.pixelMasks[0], combinedMask)
+
         if request.pixelMasks:
             for mask in request.pixelMasks:
                 if not self.groceryService.workspaceDoesExist(mask):
-                    raise pydantic.ValidationError([f"Pixel mask workspace '{mask}' does not exist"])
-                self.mantidSnapper.BinaryOperation(
+                    raise RuntimeError([f"Pixel mask workspace '{mask}' does not exist"])
+                self.mantidSnapper.BinaryOperateMasks(
+                    f"Combine pixel mask workspace {mask} with existing masks",
                     InputWorkspace1=combinedMask,
                     InputWorkspace2=mask,
                     OutputWorkspace=combinedMask,
-                    Operation="Or",
+                    OperationType="OR",
                 )
                 self.mantidSnapper.executeQueue()
 

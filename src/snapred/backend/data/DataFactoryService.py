@@ -214,8 +214,8 @@ class DataFactoryService:
         return self.lookupService.getCompatibleReductionMasks(runId, useLiteMode)
 
     @validate_call
-    def getCompatibleResidentPixelMasks(self, runId: str, useLiteMode: bool) -> List[WorkspaceName]:
-        return self.lookupService.getCompatibleResidentPixelMasks(runId, useLiteMode)
+    def getCompatibleResidentPixelMasks(self, useLiteMode: bool) -> List[WorkspaceName]:
+        return self.lookupService.getCompatibleResidentPixelMasks(useLiteMode)
 
     ##### WORKSPACE METHODS #####
 

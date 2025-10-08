@@ -9,7 +9,7 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
-from src.snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 class DiffractionCalibrationRequest(BaseModel):
