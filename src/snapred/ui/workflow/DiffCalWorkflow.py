@@ -39,7 +39,7 @@ from snapred.ui.view.DiffCalSaveView import DiffCalSaveView
 from snapred.ui.view.DiffCalTweakPeakView import DiffCalTweakPeakView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
-from src.snapred.backend.dao.request.CompatibleMasksRequest import CompatibleMasksRequest
+from snapred.backend.dao.request.CompatibleMasksRequest import CompatibleMasksRequest
 
 logger = snapredLogger.getLogger(__name__)
 

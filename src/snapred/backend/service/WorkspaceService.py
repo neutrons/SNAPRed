@@ -10,8 +10,8 @@ from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.service.Service import Register, Service
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
-from src.snapred.backend.dao.request.CompatibleMasksRequest import CompatibleMasksRequest
-from src.snapred.backend.data.DataFactoryService import DataFactoryService
+from snapred.backend.dao.request.CompatibleMasksRequest import CompatibleMasksRequest
+from snapred.backend.data.DataFactoryService import DataFactoryService
 
 
 class WorkspaceService(Service):
