@@ -1,7 +1,7 @@
 # TODO this can probably be relaced in the code with FarmFreshIngredients
-from typing import Any, Optional
+from typing import Any, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
 from snapred.backend.dao.Limit import Pair
@@ -9,9 +9,10 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
+from src.snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
-class DiffractionCalibrationRequest(BaseModel, extra="forbid"):
+class DiffractionCalibrationRequest(BaseModel):
     """
 
     The DiffractionCalibrationRequest class is designed to kick-start the calibration process
@@ -41,6 +42,7 @@ class DiffractionCalibrationRequest(BaseModel, extra="forbid"):
     )
     maxChiSq: float = Field(default_factory=lambda: Config["constants.GroupDiffractionCalibration.MaxChiSq"])
     removeBackground: bool = False
+    pixelMasks: List[WorkspaceName] = []
 
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
 
@@ -55,3 +57,9 @@ class DiffractionCalibrationRequest(BaseModel, extra="forbid"):
             # Coerce Generic[T]-derived type
             v = Pair[float](**v.dict())
         return v
+
+    model_config = ConfigDict(
+        extra="forbid",
+        # Required in order to use `WorkspaceName`:
+        arbitrary_types_allowed=True,
+    )

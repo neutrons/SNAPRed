@@ -57,6 +57,7 @@ from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe, GroupD
 from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe, PixelDiffCalServing
 from snapred.backend.service.Service import Register, Service
 from snapred.backend.service.SousChef import SousChef
+from snapred.meta import Time
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
@@ -181,13 +182,31 @@ class CalibrationService(Service):
         calibrationTableName = wng.diffCalTable().runNumber(request.runNumber).build()
         calibrationMaskName = wng.diffCalMask().runNumber(request.runNumber).build()
 
-        return self.groceryService.fetchGroceryDict(
+        timestamp = Time.timestamp(True)
+        combinedMask = wng.reductionPixelMask().runNumber(request.runNumber).timestamp(timestamp).build()
+
+        groceryDict = self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
             outputWorkspace=diffcalOutputName,
             diagnosticWorkspace=diagnosticWorkspaceName,
             calibrationTable=calibrationTableName,
-            maskWorkspace=calibrationMaskName,
+            maskWorkspace=combinedMask,
         )
+        if self.groceryService.workspaceDoesExist(calibrationMaskName):
+            self.groceryService.renameWorkspace(calibrationMaskName, combinedMask)
+        if request.pixelMasks:
+            for mask in request.pixelMasks:
+                if not self.groceryService.workspaceDoesExist(mask):
+                    raise pydantic.ValidationError([f"Pixel mask workspace '{mask}' does not exist"])
+                self.mantidSnapper.BinaryOperation(
+                    InputWorkspace1=combinedMask,
+                    InputWorkspace2=mask,
+                    OutputWorkspace=combinedMask,
+                    Operation="Or",
+                )
+                self.mantidSnapper.executeQueue()
+
+        return groceryDict
 
     @WallClockTime(N_ref=_calibration_N_ref, order=ComputationalOrder.O_N)
     @FromString

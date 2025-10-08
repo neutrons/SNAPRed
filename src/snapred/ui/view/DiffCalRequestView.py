@@ -4,6 +4,7 @@ from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.ui.view.BackendRequestView import BackendRequestView
+from snapred.ui.widget.MultiSelectDropDown import MultiSelectDropDown
 
 
 @Resettable
@@ -46,6 +47,7 @@ class DiffCalRequestView(BackendRequestView):
         self.setDefaultGrouping(groups)
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
         self.peakFunctionDropdown.setToolTip("Peak function to be used for calibration.")
+        self.compatiblePixelMaskDropdown = MultiSelectDropDown("Select Pixel Mask(s)", [], self)
 
         # set field properties
         self.liteModeToggle.setEnabled(True)
@@ -81,6 +83,7 @@ class DiffCalRequestView(BackendRequestView):
         layout_.addWidget(self.sampleDropdown, 3, 0)
         layout_.addWidget(self.groupingFileDropdown, 3, 1)
         layout_.addWidget(self.peakFunctionDropdown, 3, 2)
+        layout_.addWidget(self.compatiblePixelMaskDropdown, 4, 0, 1, 3)
 
     def setDefaultGrouping(self, groups):
         # find the first group where case insensitive match "column" is found

@@ -39,6 +39,7 @@ from snapred.ui.view.DiffCalSaveView import DiffCalSaveView
 from snapred.ui.view.DiffCalTweakPeakView import DiffCalTweakPeakView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
+from src.snapred.backend.dao.request.CompatibleMasksRequest import CompatibleMasksRequest
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -89,7 +90,9 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # connect signal to populate the grouping dropdown after run is selected
         self._requestView.liteModeToggle.stateChanged.connect(self._switchLiteNativeGroups)
+        self._requestView.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
+        self._requestView.runNumberField.editingFinished.connect(self._populatePixelMaskDropdown)
         self._requestView.sampleDropdown.dropDown.currentIndexChanged.connect(self._lookForOverrides)
         self._tweakPeakView.signalValueChanged.connect(self.onValueChange)
         self._tweakPeakView.signalPurgeBadPeaks.connect(self.purgeBadPeaks)
@@ -188,6 +191,18 @@ class DiffCalWorkflow(WorkflowImplementer):
             args=(runNumber, useLiteMode),
             onSuccess=_onDropdownSuccess,
         )
+
+    @ExceptionToErrLog
+    @Slot()
+    def _populatePixelMaskDropdown(self):
+        runNumber = self._requestView.runNumberField.text()
+        if not runNumber.isdigit():
+            return
+        useLiteMode = self._requestView.liteModeToggle.getState()
+        request = CompatibleMasksRequest(runNumber=runNumber, useLiteMode=useLiteMode)
+        masks = self.request(path="workspace/getCompatibleResidentPixelMasks", payload=request.model_dump_json()).data
+        logger.info(f"Found {len(masks)} compatible masks for run {runNumber} (lite mode: {useLiteMode})")
+        self._requestView.compatiblePixelMaskDropdown.setItems(masks)
 
     @ExceptionToErrLog
     @Slot()
@@ -537,6 +552,13 @@ class DiffCalWorkflow(WorkflowImplementer):
             args=(maxChiSq,),
             onSuccess=self._tweakPeakView.enableRecalculateButton,
         )
+
+    def _getCompatibleMasks(self):
+        payload = CompatibleMasksRequest(
+            runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
+        )
+        return self.request(path="workspace/getCompatibleResidentPixelMasks", payload=payload).data
 
     def _purgeBadPeaks(self, maxChiSq):
         # update the max chi sq
