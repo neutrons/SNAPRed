@@ -18,6 +18,7 @@ from snapred.backend.dao.request import (
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
+from snapred.backend.dao.request.CompatibleMasksRequest import CompatibleMasksRequest
 from snapred.backend.dao.request.RenameWorkspaceRequest import RenameWorkspaceRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
@@ -39,7 +40,6 @@ from snapred.ui.view.DiffCalSaveView import DiffCalSaveView
 from snapred.ui.view.DiffCalTweakPeakView import DiffCalTweakPeakView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
-from snapred.backend.dao.request.CompatibleMasksRequest import CompatibleMasksRequest
 
 logger = snapredLogger.getLogger(__name__)
 
