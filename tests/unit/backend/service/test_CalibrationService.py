@@ -751,6 +751,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         calibrationTableName = wng.diffCalTable().runNumber(runNumber).build()
         calibrationMaskName = wng.diffCalMask().runNumber(runNumber).build()
+        timestamp = 123
+        combinedMask = wng.reductionPixelMask().runNumber(runNumber).timestamp(timestamp).build()
 
         self.instance.groceryService.fetchGroceryDict = mock.Mock(
             return_value={
@@ -769,8 +771,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             useLiteMode=useLiteMode,
             focusGroup=focusGroup,
             startingTableVersion=0,
+            pixelMasks=[],
         )
-        result = self.instance.fetchDiffractionCalibrationGroceries(request)
+        with mock.patch("snapred.meta.Time.timestamp", return_value=timestamp):
+            result = self.instance.fetchDiffractionCalibrationGroceries(request)
 
         assert self.instance.groceryClerk.buildDict.call_count == 1
         self.instance.groceryService.fetchGroceryDict.assert_called_once_with(
@@ -778,7 +782,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             outputWorkspace=diffcalOutputName,
             diagnosticWorkspace=diagnosticWorkspaceName,
             calibrationTable=calibrationTableName,
-            maskWorkspace=calibrationMaskName,
+            maskWorkspace=combinedMask,
         )
         assert result == self.instance.groceryService.fetchGroceryDict.return_value
 
