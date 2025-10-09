@@ -795,12 +795,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             request.pixelMasks = ["mask1", "mask2"]
             self.instance.groceryService.combinePixelMasks = mock.Mock(return_value=combinedMask)
             result = self.instance.fetchDiffractionCalibrationGroceries(request)
-            assert mockMantidSnapper.BinaryOperation.called
+            assert mockMantidSnapper.BinaryOperateMasks.called
 
-            assert mockMantidSnapper.BinaryOperation.call_args[1]["OutputWorkspace"] == combinedMask
-            assert mockMantidSnapper.BinaryOperation.call_args[1]["OperationType"] == "OR"
-            assert mockMantidSnapper.BinaryOperation.call_args[1]["InputWorkspace1"] == combinedMask
-            assert mockMantidSnapper.BinaryOperation.call_args[1]["InputWorkspace2"] == "mask2"
+            assert mockMantidSnapper.BinaryOperateMasks.call_args[1]["OutputWorkspace"] == combinedMask
+            assert mockMantidSnapper.BinaryOperateMasks.call_args[1]["OperationType"] == "OR"
+            assert mockMantidSnapper.BinaryOperateMasks.call_args[1]["InputWorkspace1"] == combinedMask
+            assert mockMantidSnapper.BinaryOperateMasks.call_args[1]["InputWorkspace2"] == "mask2"
 
             assert self.instance.groceryService.renameWorkspace.called
 
