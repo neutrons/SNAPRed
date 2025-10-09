@@ -18,6 +18,7 @@ from snapred.backend.dao.request import (
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
+from snapred.backend.dao.request.CompatibleMasksRequest import CompatibleMasksRequest
 from snapred.backend.dao.request.RenameWorkspaceRequest import RenameWorkspaceRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
@@ -39,7 +40,6 @@ from snapred.ui.view.DiffCalSaveView import DiffCalSaveView
 from snapred.ui.view.DiffCalTweakPeakView import DiffCalTweakPeakView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
-from snapred.backend.dao.request.CompatibleMasksRequest import CompatibleMasksRequest
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -342,6 +342,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.peakFunction = view.peakFunctionDropdown.currentText()
         self.skipPixelCal = view.getSkipPixelCalibration()
         self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
+        self.pixelMasks = view.getSelectedPixelMasks()
 
         # Validate that the user has write permissions as early as possible in the workflow.
         permissionsRequest = CalibrationWritePermissionsRequest(
@@ -370,6 +371,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             peakFunction=self.peakFunction,
             fwhm=self.prevFWHM,
             maxChiSq=self.maxChiSq,
+            pixelMasks=self.pixelMasks,
         )
         self.ingredients = self.request(path="calibration/ingredients", payload=payload).data
         self.groceries = self.request(path="calibration/groceries", payload=payload).data
@@ -469,7 +471,9 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         return SNAPResponse(code=ResponseCode.OK)
 
-    def _createDiffCalRequest(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq) -> DiffractionCalibrationRequest:
+    def _createDiffCalRequest(
+        self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks
+    ) -> DiffractionCalibrationRequest:
         """
         Creates a standard diffraction calibration request in one location, so that the same parameters are always used.
         """
@@ -487,6 +491,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             crystalDMax=xtalDMax,
             maxChiSq=maxChiSq,
             removeBackground=self.removeBackground,
+            pixelMasks=pixelMasks,
         )
 
     def _renewIngredients(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq):

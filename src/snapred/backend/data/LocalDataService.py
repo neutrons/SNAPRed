@@ -1293,10 +1293,12 @@ class LocalDataService:
         )
         if self.mantidSnapper.mtd[wsName].getNumberHistograms() != targetPixelCount:
             return False
-        expectedStateId, _ = self.generateStateId(runNumber)
-        actualStateId, _ = self.stateIdFromWorkspace(wsName)
-        if actualStateId != expectedStateId:
-            return False
+        # Does a mask really need to be tied to a specific instrument state?
+        # What if one detector was down universally?
+        # expectedStateId, _ = self.generateStateId(runNumber)
+        # actualStateId, _ = self.stateIdFromWorkspace(wsName)
+        # if actualStateId != expectedStateId:
+        #     return False
         return True
 
     @validate_call

@@ -798,7 +798,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             assert mockMantidSnapper.BinaryOperation.called
 
             assert mockMantidSnapper.BinaryOperation.call_args[1]["OutputWorkspace"] == combinedMask
-            assert mockMantidSnapper.BinaryOperation.call_args[1]["Operation"] == "Or"
+            assert mockMantidSnapper.BinaryOperation.call_args[1]["OperationType"] == "OR"
             assert mockMantidSnapper.BinaryOperation.call_args[1]["InputWorkspace1"] == combinedMask
             assert mockMantidSnapper.BinaryOperation.call_args[1]["InputWorkspace2"] == "mask2"
 
