@@ -764,7 +764,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             }
         )
 
-        # Call the method with the provided parameters
         request = mock.Mock(
             spec=DiffractionCalibrationRequest,
             runNumber=runNumber,
