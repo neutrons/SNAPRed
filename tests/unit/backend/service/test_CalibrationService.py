@@ -785,6 +785,25 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         assert result == self.instance.groceryService.fetchGroceryDict.return_value
 
+        self.instance.groceryService.renameWorkspace = mock.Mock()
+        self.instance.groceryService.workspaceDoesExist = mock.Mock(return_value=True)
+
+        with (
+            mock.patch("snapred.meta.Time.timestamp", return_value=timestamp),
+            mock.patch.object(self.instance, "mantidSnapper") as mockMantidSnapper,
+        ):
+            request.pixelMasks = ["mask1", "mask2"]
+            self.instance.groceryService.combinePixelMasks = mock.Mock(return_value=combinedMask)
+            result = self.instance.fetchDiffractionCalibrationGroceries(request)
+            assert mockMantidSnapper.BinaryOperation.called
+
+            assert mockMantidSnapper.BinaryOperation.call_args[1]["OutputWorkspace"] == combinedMask
+            assert mockMantidSnapper.BinaryOperation.call_args[1]["Operation"] == "Or"
+            assert mockMantidSnapper.BinaryOperation.call_args[1]["InputWorkspace1"] == combinedMask
+            assert mockMantidSnapper.BinaryOperation.call_args[1]["InputWorkspace2"] == "mask2"
+
+            assert self.instance.groceryService.renameWorkspace.called
+
     @mock.patch(thisService + "SimpleDiffCalRequest", spec_set=SimpleDiffCalRequest)
     def test_diffractionCalibration_calls_others(self, SimpleDiffCalRequest):
         # mock out external functionalties
