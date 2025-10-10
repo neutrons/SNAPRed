@@ -3572,6 +3572,25 @@ class TestReductionPixelMasks:
                 pytest.fail("masks list contains duplicate entries")
             duplicates.add(name)
 
+    def test_getCompatibleResidentPixelMasks_exclude_one(self):
+        with (
+            mock.patch.object(
+                self.service,
+                "isCompatibleMask",
+                side_effect=lambda ws, runNumber, useLiteMode: {
+                    "MaskWorkspace": True,
+                    "MaskWorkspace_2": False,
+                }[ws],
+            ),
+            mock.patch(ThisService + "logger") as mockLogger,
+        ):
+            masks = self.service.getCompatibleResidentPixelMasks(self.runNumber1, self.useLiteMode)
+            assert "MaskWorkspace" in masks
+            assert "MaskWorkspace_2" not in masks
+
+            assert mockLogger.warning.called
+            assert "please make sure that both the instrument state" in mockLogger.warning.call_args[0][0]
+
     def test__reducedRuns_no_IPTS(self):
         # Verify the negative case that no IPTS directory generates an empty run numbers list.
 
