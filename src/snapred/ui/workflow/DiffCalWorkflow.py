@@ -405,6 +405,7 @@ class DiffCalWorkflow(WorkflowImplementer):
     @ExceptionToErrLog
     @Slot(int, float, float, SymmetricPeakEnum, Pair, float)
     def onValueChange(self, *args):
+        args = args + (self.pixelMasks,)
         self._tweakPeakView.disableRecalculateButton()
         self.workflow.presenter.handleAction(
             self.renewWhenRecalculate,
@@ -412,7 +413,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             onSuccess=self._tweakPeakView.enableRecalculateButton,
         )
 
-    def renewWhenRecalculate(self, groupingIndex, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq):
+    def renewWhenRecalculate(self, groupingIndex, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks):
         self._tweakPeakView.disableRecalculateButton()
 
         self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
@@ -422,7 +423,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         # if the user made a change in skip pixelcal election, redo everything
         if self.skipPixelCal != newSkipPixelSelection:
             self.skipPixelCal = newSkipPixelSelection
-            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks)
             self._renewPixelCal()
             self._renewFocus(groupingIndex)
             self._renewFitPeaks(peakFunction)
@@ -430,7 +431,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # if the grouping file changes, load new grouping and refocus
         elif groupingIndex != self.prevGroupingIndex:
-            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks)
             self._renewFocus(groupingIndex)
             self._renewFitPeaks(peakFunction)
             self._calculateResidual()
@@ -444,7 +445,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             or maxChiSq != self.maxChiSq
             or self.peaksWerePurged
         ):
-            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks)
             self._renewFitPeaks(peakFunction)
             self._calculateResidual()
 
@@ -494,8 +495,8 @@ class DiffCalWorkflow(WorkflowImplementer):
             pixelMasks=pixelMasks,
         )
 
-    def _renewIngredients(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq):
-        payload = self._createDiffCalRequest(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+    def _renewIngredients(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks):
+        payload = self._createDiffCalRequest(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks)
         response = self.request(path="calibration/ingredients", payload=payload)
         self.ingredients = response.data
         return response
