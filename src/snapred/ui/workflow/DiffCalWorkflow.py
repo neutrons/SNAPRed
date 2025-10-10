@@ -18,6 +18,7 @@ from snapred.backend.dao.request import (
     SimpleDiffCalRequest,
 )
 from snapred.backend.dao.request.CalibrationLockRequest import CalibrationLockRequest
+from snapred.backend.dao.request.CompatibleMasksRequest import CompatibleMasksRequest
 from snapred.backend.dao.request.RenameWorkspaceRequest import RenameWorkspaceRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
@@ -89,7 +90,9 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # connect signal to populate the grouping dropdown after run is selected
         self._requestView.liteModeToggle.stateChanged.connect(self._switchLiteNativeGroups)
+        self._requestView.liteModeToggle.stateChanged.connect(self._populatePixelMaskDropdown)
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
+        self._requestView.runNumberField.editingFinished.connect(self._populatePixelMaskDropdown)
         self._requestView.sampleDropdown.dropDown.currentIndexChanged.connect(self._lookForOverrides)
         self._tweakPeakView.signalValueChanged.connect(self.onValueChange)
         self._tweakPeakView.signalPurgeBadPeaks.connect(self.purgeBadPeaks)
@@ -188,6 +191,18 @@ class DiffCalWorkflow(WorkflowImplementer):
             args=(runNumber, useLiteMode),
             onSuccess=_onDropdownSuccess,
         )
+
+    @ExceptionToErrLog
+    @Slot()
+    def _populatePixelMaskDropdown(self):
+        runNumber = self._requestView.runNumberField.text()
+        if not runNumber.isdigit():
+            return
+        useLiteMode = self._requestView.liteModeToggle.getState()
+        request = CompatibleMasksRequest(runNumber=runNumber, useLiteMode=useLiteMode)
+        masks = self.request(path="workspace/getCompatibleResidentPixelMasks", payload=request.model_dump_json()).data
+        logger.info(f"Found {len(masks)} compatible masks for run {runNumber} (lite mode: {useLiteMode})")
+        self._requestView.compatiblePixelMaskDropdown.setItems(masks)
 
     @ExceptionToErrLog
     @Slot()
@@ -327,6 +342,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.peakFunction = view.peakFunctionDropdown.currentText()
         self.skipPixelCal = view.getSkipPixelCalibration()
         self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
+        self.pixelMasks = view.getSelectedPixelMasks()
 
         # Validate that the user has write permissions as early as possible in the workflow.
         permissionsRequest = CalibrationWritePermissionsRequest(
@@ -355,6 +371,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             peakFunction=self.peakFunction,
             fwhm=self.prevFWHM,
             maxChiSq=self.maxChiSq,
+            pixelMasks=self.pixelMasks,
         )
         self.ingredients = self.request(path="calibration/ingredients", payload=payload).data
         self.groceries = self.request(path="calibration/groceries", payload=payload).data
@@ -388,6 +405,7 @@ class DiffCalWorkflow(WorkflowImplementer):
     @ExceptionToErrLog
     @Slot(int, float, float, SymmetricPeakEnum, Pair, float)
     def onValueChange(self, *args):
+        args = args + (self.pixelMasks,)
         self._tweakPeakView.disableRecalculateButton()
         self.workflow.presenter.handleAction(
             self.renewWhenRecalculate,
@@ -395,7 +413,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             onSuccess=self._tweakPeakView.enableRecalculateButton,
         )
 
-    def renewWhenRecalculate(self, groupingIndex, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq):
+    def renewWhenRecalculate(self, groupingIndex, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks):
         self._tweakPeakView.disableRecalculateButton()
 
         self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
@@ -405,7 +423,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         # if the user made a change in skip pixelcal election, redo everything
         if self.skipPixelCal != newSkipPixelSelection:
             self.skipPixelCal = newSkipPixelSelection
-            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks)
             self._renewPixelCal()
             self._renewFocus(groupingIndex)
             self._renewFitPeaks(peakFunction)
@@ -413,7 +431,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # if the grouping file changes, load new grouping and refocus
         elif groupingIndex != self.prevGroupingIndex:
-            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks)
             self._renewFocus(groupingIndex)
             self._renewFitPeaks(peakFunction)
             self._calculateResidual()
@@ -427,7 +445,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             or maxChiSq != self.maxChiSq
             or self.peaksWerePurged
         ):
-            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+            self._renewIngredients(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks)
             self._renewFitPeaks(peakFunction)
             self._calculateResidual()
 
@@ -454,7 +472,9 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         return SNAPResponse(code=ResponseCode.OK)
 
-    def _createDiffCalRequest(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq) -> DiffractionCalibrationRequest:
+    def _createDiffCalRequest(
+        self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks
+    ) -> DiffractionCalibrationRequest:
         """
         Creates a standard diffraction calibration request in one location, so that the same parameters are always used.
         """
@@ -472,10 +492,11 @@ class DiffCalWorkflow(WorkflowImplementer):
             crystalDMax=xtalDMax,
             maxChiSq=maxChiSq,
             removeBackground=self.removeBackground,
+            pixelMasks=pixelMasks,
         )
 
-    def _renewIngredients(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq):
-        payload = self._createDiffCalRequest(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq)
+    def _renewIngredients(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks):
+        payload = self._createDiffCalRequest(xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks)
         response = self.request(path="calibration/ingredients", payload=payload)
         self.ingredients = response.data
         return response
@@ -537,6 +558,13 @@ class DiffCalWorkflow(WorkflowImplementer):
             args=(maxChiSq,),
             onSuccess=self._tweakPeakView.enableRecalculateButton,
         )
+
+    def _getCompatibleMasks(self):
+        payload = CompatibleMasksRequest(
+            runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
+        )
+        return self.request(path="workspace/getCompatibleResidentPixelMasks", payload=payload).data
 
     def _purgeBadPeaks(self, maxChiSq):
         # update the max chi sq
