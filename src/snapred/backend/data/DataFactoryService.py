@@ -213,6 +213,10 @@ class DataFactoryService:
         # Assemble a list of masks, both resident and otherwise, that are compatible with the current reduction
         return self.lookupService.getCompatibleReductionMasks(runId, useLiteMode)
 
+    @validate_call
+    def getCompatibleResidentPixelMasks(self, useLiteMode: bool) -> List[WorkspaceName]:
+        return self.lookupService.getCompatibleResidentPixelMasks(useLiteMode)
+
     ##### WORKSPACE METHODS #####
 
     def workspaceDoesExist(self, name):

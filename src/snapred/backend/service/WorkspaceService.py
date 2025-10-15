@@ -6,8 +6,10 @@ from snapred.backend.dao.request import (
     RenameWorkspaceRequest,
     RenameWorkspacesFromTemplateRequest,
 )
+from snapred.backend.dao.request.CompatibleMasksRequest import CompatibleMasksRequest
+from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
-from snapred.backend.service.Service import Service
+from snapred.backend.service.Service import Register, Service
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -21,16 +23,13 @@ class WorkspaceService(Service):
     def __init__(self):
         super().__init__()
         self.groceryService = GroceryService()
-        self.registerPath("rename", self.rename)
-        self.registerPath("renameFromTemplate", self.renameFromTemplate)
-        self.registerPath("clear", self.clear)
-        self.registerPath("getResidentWorkspaces", self.getResidentWorkspaces)
-        return
+        self.dataFactoryService = DataFactoryService()
 
     @staticmethod
     def name():
         return "workspace"
 
+    @Register("rename")
     @FromString
     def rename(self, request: RenameWorkspaceRequest):
         """
@@ -38,6 +37,7 @@ class WorkspaceService(Service):
         """
         self.groceryService.renameWorkspace(request.oldName, request.newName)
 
+    @Register("renameFromTemplate")
     @FromString
     def renameFromTemplate(self, request: RenameWorkspacesFromTemplateRequest) -> List[WorkspaceName]:
         """
@@ -56,6 +56,7 @@ class WorkspaceService(Service):
         self.groceryService.renameWorkspaces(request.workspaces, newWorkspaces)
         return newWorkspaces
 
+    @Register("clear")
     @FromString
     def clear(self, request: ClearWorkspacesRequest):
         """
@@ -63,6 +64,7 @@ class WorkspaceService(Service):
         """
         self.groceryService.clearADS(request.exclude, request.clearCache)
 
+    @Register("getResidentWorkspaces")
     def getResidentWorkspaces(self, request: ListWorkspacesRequest):
         """
         Gets the list of workspaces resident in the ADS:
@@ -70,3 +72,11 @@ class WorkspaceService(Service):
         - optionally excludes the cached workspaces from this list.
         """
         return self.groceryService.getResidentWorkspaces(excludeCache=request.excludeCache)
+
+    @Register("getCompatibleResidentPixelMasks")
+    @FromString
+    def getCompatibleResidentPixelMasks(self, request: CompatibleMasksRequest) -> List[WorkspaceName]:
+        """
+        Gets the list of resident pixel masks compatible with the given run number and lite-mode setting.
+        """
+        return self.dataFactoryService.getCompatibleResidentPixelMasks(request.useLiteMode)

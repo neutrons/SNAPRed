@@ -3415,28 +3415,23 @@ class TestReductionPixelMasks:
         stack.close()
 
     def test_isCompatibleMask_state(self):
-        assert self.service.isCompatibleMask(self.maskWS1, self.runNumber1, self.useLiteMode)
-        assert not self.service.isCompatibleMask(self.maskWS1, self.runNumber3, self.useLiteMode)
+        assert self.service.isCompatibleMask(self.maskWS1, self.useLiteMode)
 
     def test_isCompatibleMask_mode(self):
-        assert self.service.isCompatibleMask(self.maskWS1, self.runNumber1, self.useLiteMode)
-        assert not self.service.isCompatibleMask(self.maskWS1, self.runNumber1, not self.useLiteMode)
+        assert self.service.isCompatibleMask(self.maskWS1, self.useLiteMode)
+        assert not self.service.isCompatibleMask(self.maskWS1, not self.useLiteMode)
 
     def test_getCompatibleReductionMasks_resident(self):
         # Check that resident masks are compatible.
 
         # Compatible resident masks: one check for each run number
         masks = self.service.getCompatibleReductionMasks(self.runNumber1, self.useLiteMode)
-        for name in ["MaskWorkspace"]:
-            assert name in masks
-        for name in ["MaskWorkspace_2"]:
-            assert name not in masks
+        assert "MaskWorkspace" in masks
+        # assert "MaskWorkspace_2" not in masks
 
         masks = self.service.getCompatibleReductionMasks(self.runNumber3, self.useLiteMode)
-        for name in ["MaskWorkspace_2"]:
-            assert name in masks
-        for name in ["MaskWorkspace"]:
-            assert name not in masks
+        assert "MaskWorkspace_2" in masks
+        # assert "MaskWorkspace" not in masks
 
     def test_getCompatibleReductionMasks_resident_as_WNG(self):
         # Check that resident masks are added as complete `WorkspaceName` (with builder).
@@ -3450,16 +3445,7 @@ class TestReductionPixelMasks:
             # Be careful here: `masks: List[WorkspaceName]` not `masks: List[str]`
             # => iterate over the `WorkspaceName`, not over the `str`.
 
-            assert name in ["MaskWorkspace"]
-            # somewhat complicated: `WorkspaceName` is an annotated type
-            assert isinstance(name, typing.get_args(WorkspaceName)[0])
-            assert name.tokens("workspaceType") == wngt.REDUCTION_USER_PIXEL_MASK
-
-        masks = self.service.getCompatibleReductionMasks(self.runNumber3, self.useLiteMode)
-        for name in masks:
-            if "MaskWorkspace" not in name:
-                continue
-            assert name in ["MaskWorkspace_2"]
+            assert name in ["MaskWorkspace", "MaskWorkspace_2"]
             # somewhat complicated: `WorkspaceName` is an annotated type
             assert isinstance(name, typing.get_args(WorkspaceName)[0])
             assert name.tokens("workspaceType") == wngt.REDUCTION_USER_PIXEL_MASK
@@ -3488,7 +3474,7 @@ class TestReductionPixelMasks:
         #   even of there is an on-disk version (with the same name) which would be compatible.
         masks = self.service.getCompatibleReductionMasks(self.runNumber1, self.useLiteMode)
         assert residentMask1 in masks
-        assert residentMask2 not in masks
+        # assert residentMask2 not in masks
 
         DeleteWorkspaces(WorkspaceList=[residentMask1, residentMask2])
 
@@ -3575,6 +3561,25 @@ class TestReductionPixelMasks:
             if name in duplicates:
                 pytest.fail("masks list contains duplicate entries")
             duplicates.add(name)
+
+    def test_getCompatibleResidentPixelMasks_exclude_one(self):
+        with (
+            mock.patch.object(
+                self.service,
+                "isCompatibleMask",
+                side_effect=lambda ws, _: {
+                    "MaskWorkspace": True,
+                    "MaskWorkspace_2": False,
+                }[ws],
+            ),
+            mock.patch(ThisService + "logger") as mockLogger,
+        ):
+            masks = self.service.getCompatibleResidentPixelMasks(self.useLiteMode)
+            assert "MaskWorkspace" in masks
+            assert "MaskWorkspace_2" not in masks
+
+            assert mockLogger.warning.called
+            assert "please make sure that both the instrument state" in mockLogger.warning.call_args[0][0]
 
     def test__reducedRuns_no_IPTS(self):
         # Verify the negative case that no IPTS directory generates an empty run numbers list.

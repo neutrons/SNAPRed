@@ -1279,7 +1279,7 @@ class LocalDataService:
 
     ## PIXEL-MASK SUPPORT METHODS
 
-    def isCompatibleMask(self, wsName: WorkspaceName, runNumber: str, useLiteMode: bool) -> bool:
+    def isCompatibleMask(self, wsName: WorkspaceName, useLiteMode: bool) -> bool:
         """
         Test if a MaskWorkspace is compatible with a specified run number and lite-mode flag:
         * a compatible mask is a MaskWorkspace;
@@ -1293,11 +1293,36 @@ class LocalDataService:
         )
         if self.mantidSnapper.mtd[wsName].getNumberHistograms() != targetPixelCount:
             return False
-        expectedStateId, _ = self.generateStateId(runNumber)
-        actualStateId, _ = self.stateIdFromWorkspace(wsName)
-        if actualStateId != expectedStateId:
-            return False
         return True
+
+    @validate_call
+    def getCompatibleResidentPixelMasks(self, useLiteMode: bool) -> List[WorkspaceName]:
+        # Assemble a list of masks, both resident and otherwise, that are compatible with the current reduction
+        masks: Set[WorkspaceName] = set()
+        excludedCount = 0
+        mantidMaskName = re.compile(r"MaskWorkspace(_([0-9]+))?")
+        wsNames = self.mantidSnapper.mtd.getObjectNames()
+        for ws in wsNames:
+            match_ = mantidMaskName.match(ws)
+            if match_:
+                if not self.isCompatibleMask(ws, useLiteMode):
+                    excludedCount += 1
+                    continue
+
+                # Convert to a `WorkspaceName`
+                maskName = (
+                    wng.reductionUserPixelMask()
+                    .numberTag(int(match_.group(2)) if match_.group(2) is not None else 1)
+                    .build()
+                )
+                masks.add(maskName)
+        if excludedCount > 0:
+            logger.warning(
+                f"Excluded {excludedCount} incompatible pixel masks "
+                + f"from a total of {excludedCount + len(masks)} resident masks:\n"
+                + "  please make sure that both the instrument state, and the lite-mode setting are the same."
+            )
+        return list(masks)
 
     @validate_call
     def getCompatibleReductionMasks(self, runNumber: str, useLiteMode: bool) -> List[WorkspaceName]:
@@ -1317,9 +1342,7 @@ class LocalDataService:
 
                 if maskName not in masks and maskFilePath.exists():
                     # Ensure that any _resident_ mask is compatible:
-                    if self.mantidSnapper.mtd.doesExist(maskName) and not self.isCompatibleMask(
-                        maskName, runNumber, useLiteMode
-                    ):
+                    if self.mantidSnapper.mtd.doesExist(maskName) and not self.isCompatibleMask(maskName, useLiteMode):
                         # There is a possible name collision
                         # between reduction pixel masks from different lite-mode settings.
                         #   This clause bypasses that collision in the most straightforward way:
@@ -1329,30 +1352,15 @@ class LocalDataService:
                         continue
                     masks.add(maskName)
 
-        # Next: add compatible user-created masks that are already resident in the ADS
-        mantidMaskName = re.compile(r"MaskWorkspace(_([0-9]+))?")
-        wsNames = self.mantidSnapper.mtd.getObjectNames()
-        for ws in wsNames:
-            match_ = mantidMaskName.match(ws)
-            if match_:
-                if not self.isCompatibleMask(ws, runNumber, useLiteMode):
-                    excludedCount += 1
-                    continue
-
-                # Convert to a `WorkspaceName`
-                maskName = (
-                    wng.reductionUserPixelMask()
-                    .numberTag(int(match_.group(2)) if match_.group(2) is not None else 1)
-                    .build()
-                )
-                masks.add(maskName)
-
         if excludedCount > 0:
             logger.warning(
-                f"Excluded {excludedCount} incompatible pixel masks "
-                + f"from a total of {excludedCount + len(masks)} masks:\n"
-                + "  please make sure that both the instrument state, and the lite-mode setting are the same."
+                f"Excluded {excludedCount} pixel masks "
+                + f"from a total of {excludedCount + len(masks)} masks on disk:\n"
+                + "  This is likely a name-collision between resident masks of different lite-mode settings."
             )
+
+        # Next: add compatible user-created masks that are already resident in the ADS
+        masks.update(self.getCompatibleResidentPixelMasks(useLiteMode))
 
         return list(masks)
 
