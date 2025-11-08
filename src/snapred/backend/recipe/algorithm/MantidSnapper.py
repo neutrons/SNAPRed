@@ -54,6 +54,7 @@ class MantidSnapper:
     ##
     ## KNOWN NON-REENTRANT ALGORITHMS
     ##
+    _nonReentrantAlgorithms = "LoadLiveData", "LoadLiveDataInterval"
     _liveDataLock = Lock()
     _nonReentrantMutexes = {"LoadLiveData": _liveDataLock, "LoadLiveDataInterval": _liveDataLock}
 
@@ -244,13 +245,15 @@ class MantidSnapper:
             self.cleanup()
             raise AlgorithmException(name, str(e)) from e
         finally:
-            self._cleanupNonConcurrent(name, algorithm)
-            if mutex is not None:
-                mutex.release()
+            try:
+                self._cleanupNonConcurrent(name, algorithm)
+            finally:
+                if mutex is not None:
+                    mutex.release()
 
     @classmethod
     def _cleanupNonConcurrent(cls, name, algorithm):
-        if name in cls._nonConcurrentAlgorithms:
+        if name in cls._nonConcurrentAlgorithms or name in cls._nonReentrantAlgorithms:
             cls._waitForAlgorithmCompletion(name)
             cls._removeAlgorithm(algorithm)
 
@@ -301,12 +304,11 @@ class MantidSnapper:
 
     @classmethod
     def _addWorkspaceInfo(cls, workspaceName: str, algorithmName: str, propertyName: str):
-        cls._infoMutex.acquire()
-        cls._workspacesInfo[workspaceName] = {
-            "propertyName": propertyName,
-            "algorithm": algorithmName,
-        }
-        cls._infoMutex.release()
+        with cls._infoMutex:
+            cls._workspacesInfo[workspaceName] = {
+                "propertyName": propertyName,
+                "algorithm": algorithmName,
+            }
 
     @classmethod
     def getWorkspacesInfo(cls) -> Dict[str, Dict[str, Any]]:

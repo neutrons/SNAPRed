@@ -98,6 +98,10 @@ liveData:
   # Comparison threshold for the data pulse-time interval.
   time_comparison_threshold: 10 # seconds
 
+  # When true, allow dead-time handling (increment dead-time counter, break on maxDeadTime).
+  # When false (default), exit gracefully when no events and no fallback interval are found.
+  allowDeadTime: false
+
   # The ONLY supported mode right now is 'REPLACE':
   #   any other mode requires stay-resident `LoadLiveData` treatment.
   accumulationMethod: Replace
@@ -397,4 +401,4 @@ lockfile:
   checkFrequency: 10 # seconds
   timeout: 240 # seconds
   # Shared scratch directory across analysis nodes.
-  root: /SNS/EXAMPLES/scratch/snapred
+  root: ${IPTS.default}/EXAMPLES/scratch/snapred

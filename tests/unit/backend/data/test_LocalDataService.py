@@ -648,6 +648,227 @@ def test_hasLiveDataConnection_config_disabled(mockGetHostByAddr):
         mockGetHostByAddr.assert_not_called()
 
 
+## ====== Tests for: `LocalDataService.hasLiveDataConnection` (UDS paths) ======
+
+
+@mock.patch(ThisService + "ConfigService")
+def test_hasLiveDataConnection_uds_socket_file_exists(mockConfigService):
+    """UDS path: the configured address is a Unix domain socket that exists → True."""
+    with Config_override("liveData.enabled", True):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            socket_path = os.path.join(tmpdir, "test.sock")
+            # Create a real Unix domain socket file:
+            sock = socket.socket(socket.AF_UNIX)
+            sock.bind(socket_path)
+            try:
+                mockConfigService.getFacility.return_value.instrument.return_value.liveDataAddress.return_value = (
+                    socket_path
+                )
+                instance = LocalDataService()
+                assert instance.hasLiveDataConnection()
+            finally:
+                sock.close()
+
+
+@mock.patch(ThisService + "ConfigService")
+def test_hasLiveDataConnection_uds_path_exists_but_not_socket(mockConfigService):
+    """UDS path: the configured address is a regular file, not a socket → False."""
+    with Config_override("liveData.enabled", True):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            regular_file = os.path.join(tmpdir, "not_a_socket.txt")
+            # Create a plain regular file:
+            with open(regular_file, "w") as f:
+                f.write("not a socket")
+            mockConfigService.getFacility.return_value.instrument.return_value.liveDataAddress.return_value = (
+                regular_file
+            )
+            instance = LocalDataService()
+            assert not instance.hasLiveDataConnection()
+
+
+@mock.patch(ThisService + "ConfigService")
+def test_hasLiveDataConnection_uds_path_does_not_exist(mockConfigService):
+    """UDS path: the configured socket path does not exist at all → False."""
+    with Config_override("liveData.enabled", True):
+        mockConfigService.getFacility.return_value.instrument.return_value.liveDataAddress.return_value = (
+            "/tmp/_snapred_nonexistent_socket_zyxwvuts.sock"
+        )
+        instance = LocalDataService()
+        assert not instance.hasLiveDataConnection()
+
+
+@mock.patch(ThisService + "ConfigService")
+def test_hasLiveDataConnection_uds_is_socket_raises_os_stat_fallback_true(mockConfigService):
+    """UDS path: is_socket() raises (simulating Python < 3.12) → os.stat fallback identifies a socket → True."""
+    with Config_override("liveData.enabled", True):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            socket_path = os.path.join(tmpdir, "test_fallback.sock")
+            # Create a real Unix domain socket file:
+            sock = socket.socket(socket.AF_UNIX)
+            sock.bind(socket_path)
+            try:
+                mockConfigService.getFacility.return_value.instrument.return_value.liveDataAddress.return_value = (
+                    socket_path
+                )
+                # Simulate a Python version where is_socket() is unavailable:
+                with mock.patch("pathlib.Path.is_socket", side_effect=AttributeError("is_socket() not available")):
+                    instance = LocalDataService()
+                    assert instance.hasLiveDataConnection()
+            finally:
+                sock.close()
+
+
+@mock.patch(ThisService + "ConfigService")
+def test_hasLiveDataConnection_uds_is_socket_raises_os_stat_also_raises(mockConfigService):
+    """UDS path: is_socket() raises AND os.stat also raises → returns False."""
+    with Config_override("liveData.enabled", True):
+        mockConfigService.getFacility.return_value.instrument.return_value.liveDataAddress.return_value = (
+            "/tmp/_snapred_nonexistent_socket_zyxwvuts.sock"
+        )
+        # Patch pathlib.Path.exists to raise (so the outer try-block raises, triggering the except branch),
+        # then also make os.stat raise (so the inner fallback try-block also fails).
+        with (
+            mock.patch("pathlib.Path.exists", side_effect=RuntimeError("exists() unexpectedly failed")),
+            mock.patch("os.stat", side_effect=OSError("os.stat failed")),
+        ):
+            instance = LocalDataService()
+            assert not instance.hasLiveDataConnection()
+
+
+## ====== Tests for: `LocalDataService._parseSocketAddress:     ======
+#  (See also: "<mantid codebase>/LiveData/test/Python/test_adara_player_util.py" `Test_SocketAddress`.)
+
+
+def test_parse_hostname():
+    """Checks that hostnames and DNS names parse as (host, port) tuples."""
+
+    # Simple "localhost"
+    result = LocalDataService._parseSocketAddress("localhost:12345")
+    assert result == ("localhost", 12345)
+
+    # Common DNS-style name
+    result = LocalDataService._parseSocketAddress("example.com:80")
+    assert result == ("example.com", 80)
+
+    # Subdomain and hyphen in name
+    result = LocalDataService._parseSocketAddress("my-db-server.local:54321")
+    assert result == ("my-db-server.local", 54321)
+
+    # Fully qualified domain name (FQDN)
+    result = LocalDataService._parseSocketAddress("bl3-daq1.sns.gov:31415")
+    assert result == ("bl3-daq1.sns.gov", 31415)
+
+    # Hostname with digits
+    result = LocalDataService._parseSocketAddress("node123:8081")
+    assert result == ("node123", 8081)
+
+
+def test_parse_invalid_hostname_formats():
+    """Ensures invalid hostname/port addresses throw errors."""
+
+    # Hostname, missing port
+    with pytest.raises(ValueError, match=".*Invalid address format.*"):
+        LocalDataService._parseSocketAddress("example.com")
+
+    # Hostname, port out of range
+    with pytest.raises(ValueError, match=".*Port out of range.*"):
+        LocalDataService._parseSocketAddress("localhost:99999")
+
+    # Port is zero (not allowed)
+    with pytest.raises(ValueError, match=".*Port out of range.*"):
+        LocalDataService._parseSocketAddress("someserv:0")
+
+    # Hostname with invalid character
+    with pytest.raises(ValueError, match=".*Invalid address format.*"):
+        LocalDataService._parseSocketAddress("bad*host:8000")
+
+    # Leading colon, missing host
+    with pytest.raises(ValueError, match=".*Invalid address format.*"):
+        LocalDataService._parseSocketAddress(":8080")
+
+
+def test_parse_ipv4():
+    """Checks that IPv4 address/port strings parse to expected tuples."""
+    # Standard IPv4 address
+    result = LocalDataService._parseSocketAddress("192.168.1.100:8080")
+    assert result == ("192.168.1.100", 8080)
+
+    # Localhost
+    result = LocalDataService._parseSocketAddress("127.0.0.1:9000")
+    assert result == ("127.0.0.1", 9000)
+
+    # High port number
+    result = LocalDataService._parseSocketAddress("10.0.0.1:65535")
+    assert result == ("10.0.0.1", 65535)
+
+    # Low port number
+    result = LocalDataService._parseSocketAddress("172.16.0.1:1")
+    assert result == ("172.16.0.1", 1)
+
+
+def test_parse_ipv6():
+    """Checks that IPv6 address/port strings parse correctly, including bracket handling."""
+    # IPv6 with brackets (required format)
+    result = LocalDataService._parseSocketAddress("[::1]:8080")
+    assert result == ("::1", 8080)
+
+    # Full IPv6 address
+    result = LocalDataService._parseSocketAddress("[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:9000")
+    assert result == ("2001:0db8:85a3:0000:0000:8a2e:0370:7334", 9000)
+
+    # Compressed IPv6 address
+    result = LocalDataService._parseSocketAddress("[2001:db8::1]:443")
+    assert result == ("2001:db8::1", 443)
+
+    # IPv6 loopback
+    result = LocalDataService._parseSocketAddress("[::1]:12345")
+    assert result, ("::1", 12345)
+
+
+def test_parse_unix_socket():
+    """Tests parsing of Unix domain socket paths to Path objects."""
+    # Absolute path starting with /
+    result = LocalDataService._parseSocketAddress("/tmp/my_socket.sock")
+    assert isinstance(result, Path)
+    assert result == Path("/tmp/my_socket.sock")
+
+    # Another Unix socket path
+    result = LocalDataService._parseSocketAddress("/var/run/adara.sock")
+    assert isinstance(result, Path)
+    assert result == Path("/var/run/adara.sock")
+
+    # Path with multiple components
+    result = LocalDataService._parseSocketAddress("/home/user/.local/share/app/socket")
+    assert isinstance(result, Path)
+    assert result == Path("/home/user/.local/share/app/socket")
+
+
+def test_parse_invalid_format():
+    """Ensures invalid address strings throw errors."""
+    # Port out of range (too high)
+    with pytest.raises(ValueError, match=".*Port out of range.*"):
+        LocalDataService._parseSocketAddress("192.168.1.1:65536")
+
+    # Port out of range (negative)
+    with pytest.raises(ValueError, match=".*Invalid address format.*"):
+        LocalDataService._parseSocketAddress("192.168.1.1:-1")
+
+    # Port is zero
+    with pytest.raises(ValueError, match=".*Port out of range.*"):
+        LocalDataService._parseSocketAddress("192.168.1.1:0")
+
+    # Invalid format - no match for IP:port or Unix socket
+    with pytest.raises(ValueError, match=".*Invalid address format.*"):
+        LocalDataService._parseSocketAddress("not-a-valid-address")
+
+    # IPv6 without brackets
+    with pytest.raises(ValueError, match=".*Invalid address format.*"):
+        LocalDataService._parseSocketAddress("::1:8080")
+
+
+## ====== end: Tests for: `LocalDataService._parseSocketAddress ======
+
+
 @mock.patch(ThisService + "RunMetadata")
 def test__liveMetadataFromRun(mockRunMetadata):
     mockMetadata = mock.Mock(spec=RunMetadata)
