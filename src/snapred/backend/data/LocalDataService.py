@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import socket
+import stat
 import tempfile
 from datetime import datetime, timedelta, timezone
 from errno import ENOENT as NOT_FOUND
@@ -1487,7 +1488,7 @@ class LocalDataService:
 
     @lru_cache
     def hasLiveDataConnection(self) -> bool:
-        """For 'live data' methods: test if there is a listener connection to the instrument."""
+        """Test if there is a listener connection to the instrument (works with UDS or TCP)."""
 
         # NOTE: adding `lru_cache` to this method bypasses a possible race condition in
         #   `ConfigService.getFacility(...)`.  (And yes, that should be a `const` method.  :( )
@@ -1498,21 +1499,31 @@ class LocalDataService:
 
         status = False
         if Config["liveData.enabled"]:
-            # Normalize to an actual "URL" and then strip off the protocol (not actually "http") and port:
-            #   `liveDataAddress` returns a string similar to "bl3-daq1.sns.gov:31415".
+            # `liveDataAddress()` returns a string similar to "bl3-daq1.sns.gov:31415",
+            #   but during testing, it might also return a Unix domain socket (UDS) path string.
+            
+            facility, instrument  = Config["liveData.facility.name"], Config["liveData.instrument.name"]
+            address_str = ConfigService.getFacility(facility).instrument(instrument).liveDataAddress()
+            address = self._parseSocketAddress(address_str)
 
-            facility, instrument = Config["liveData.facility.name"], Config["liveData.instrument.name"]
-            hostname = urlparse(
-                "http://" + ConfigService.getFacility(facility).instrument(instrument).liveDataAddress()
-            ).hostname
-            status = True
-            try:
-                socket.gethostbyaddr(hostname)
-            except Exception as e:  # noqa: BLE001
-                # specifically:
-                #   we're expecting a `socket.gaierror`, but any exception will indicate that there's no connection
-                logger.debug(f"`hasLiveDataConnection` returns `False`: exception: {e}")
-                status = False
+            if isinstance(address, Path):  # UDS path
+                # For UDS, check that the file exists and is a socket
+                try:
+                    status = address.exists() and address.is_socket()
+                except Exception as e:  # .is_socket() only in Python 3.12+; otherwise use stat.S_ISSOCK
+                    try:
+                        st_mode = os.stat(address).st_mode
+                        status = stat.S_ISSOCK(st_mode)
+                    except Exception as e2:
+                        logger.debug(f"`hasLiveDataConnection` (UDS) returned `False`: exception: {e2}")
+            elif isinstance(address, tuple):
+                host, port = address
+                try:
+                    # DNS check: host is reachable from the local network
+                    socket.gethostbyaddr(host)
+                    status = True
+                except Exception as e:
+                    logger.debug(f"`hasLiveDataConnection` (INET) returns `False`: exception: {e}")
 
         return status
 
@@ -1572,6 +1583,46 @@ class LocalDataService:
     def readLiveData(self, ws: WorkspaceName, duration: int) -> WorkspaceName:
         # A duration of zero => read all of the available data.
         return self._readLiveData(ws, duration)
+
+    @classmethod
+    def _parseSocketAddress(cls, address: str) -> Path | tuple[str, int]:
+        """
+        Parse a socket address string, specified as either a Unix-domain socket path, or an IP/host:port,
+          into a Python-compatible format: `Path | tuple[str, int]`.
+        """
+        # Note: this duplicates code from the `SocketAddress` class in:
+        #   "<mantid codebase>/Framework/LiveData/src/ADARA/utils/packet_playback/adara_parser.py"
+
+        # Match [IPv6]:port, IPv4:port, or hostname:port
+        # Hostname spec (RFC 1123): letter/digit first, can contain '-', '.', letters, digits
+        host_port_re = re.compile(
+            r"""
+            ^
+            (?:\[(?P<ipv6>[0-9a-fA-F:]+)\]|      # [IPv6]
+               (?P<host>[a-zA-Z0-9.\-]+)         # or hostname/domain, or IPv4
+            )
+            :
+            (?P<port>\d{1,5})                    # Port
+            $
+            """,
+            re.VERBOSE,
+        )
+
+        match = host_port_re.match(address)
+        if match:
+            ip = match.group("ipv6") or match.group("host")
+            port = int(match.group("port"))
+
+            if 0 < port <= 65535:
+                return (ip, port)
+            else:
+                raise ValueError(f"Port out of range: {port}")
+
+        # If not host:port, treat as Unix socket path (absolute only)
+        if address.startswith("/"):
+            return Path(address)
+
+        raise ValueError(f"Invalid address format: {address}")
 
     ### GENERALIZED PROGRESS REPORTING:
     def _progressRecordsFilenameStem(self) -> str:

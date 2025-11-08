@@ -20,6 +20,7 @@ from util.Config_helpers import Config_override
 
 from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.data.util.PV_logs_util import datetimeFromLogTime
+from snapred.backend.error.RunStatus import RunStatus
 from snapred.backend.recipe.algorithm.LoadLiveDataInterval import LoadLiveDataInterval
 from snapred.meta.Config import Config
 
@@ -35,9 +36,15 @@ class TestLoadLiveDataInterval(unittest.TestCase):
         self.instrument = Config["instrument.name"]
         self.preserveEvents = True
 
+        # Default: treat all chunks as from a RUNNING run.
+        # Tests for RunStatus-based detection can override via self._from_run_patcher.side_effect.
+        self._from_run_patch = mock.patch.object(RunStatus, "from_run", return_value=RunStatus.RUNNING)
+        self._from_run_patcher = self._from_run_patch.start()
+
     def tearDown(self):
         if mtd.doesExist(self.outputWs):
             DeleteWorkspace(self.outputWs)
+        self._from_run_patch.stop()
 
     @classmethod
     def setUpClass(cls):
@@ -74,6 +81,14 @@ class TestLoadLiveDataInterval(unittest.TestCase):
                 AbsoluteStartTime=str(DateAndTime(cls.chunkEdges[n])),
                 AbsoluteStopTime=str(DateAndTime(cls.chunkEdges[n + 1])),
             )
+
+        # `CreateSampleWorkspace` creates workspaces with run number 0.
+        # Set a non-zero run number on all workspaces so that
+        # `LoadLiveDataInterval`'s inactive-run guard does not fire.
+        _runNumber = "12345"
+        mtd[cls.fullWs].mutableRun()["run_number"] = _runNumber
+        for ws in cls.chunkWss:
+            mtd[ws].mutableRun()["run_number"] = _runNumber
 
     @classmethod
     def tearDownClass(cls):
@@ -152,7 +167,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
         self.instance.initialize()
 
         assert set([p.name for p in self.instance.getProperties()]) == set(
-            ("OutputWorkspace", "StartTime", "EndTime", "Instrument", "PreserveEvents")
+            ("OutputWorkspace", "StartTime", "EndTime", "Instrument", "PreserveEvents", "RunStatus")
         )
 
         # verify default values
@@ -702,6 +717,9 @@ class TestLoadLiveDataInterval(unittest.TestCase):
             assert "A timeout occurred during data loading" in msg
 
     def test_exec_load_run_state_change(self):
+        # Force a run-state change during the chunk-assembly loop via RunStatus.from_run:
+        # * The initial chunk is RUNNING, one loop chunk is RUNNING, then the next is STOPPED.
+        # * This causes the loop to break, resulting in an incomplete load.
         mock_LoadLiveData = mock.Mock()
 
         self.instance.initialize()
@@ -732,15 +750,6 @@ class TestLoadLiveDataInterval(unittest.TestCase):
                 (datetime.datetime.fromisoformat(self.startTime) + timedelta(minutes=15)).isoformat()
             )
 
-            # Force a run-state change during the chunk-assembly loop:
-            # * Note that there's no separate log message for this case,
-            #   which is not an error.  When required, the state-change will be logged elsewhere.
-            # * In the case of the present test however, the assembled data-interval will be incomplete.
-            mock_chunkWs.getRunNumber.side_effect = ("12345", "12345", 0)
-
-            mock_chunkIntervals = [  # noqa: F841
-                (mock_chunkWs.getPulseTimeMin.return_value, mock_chunkWs.getPulseTimeMax.return_value)
-            ]
             mock_mtd = mock.MagicMock()
             mock_mtd.__getitem__.return_value = mock_chunkWs
             mock_mtd.doesExist.side_effect = lambda ws: ws == mock.sentinel.chunkWs
@@ -752,9 +761,18 @@ class TestLoadLiveDataInterval(unittest.TestCase):
             mock_loadIsComplete.return_value = False
             mock_sleep.side_effect = lambda _: None
 
+            # Simulate a run-state change on the 3rd call to RunStatus.from_run:
+            #   - Call 1 (initial chunk): RUNNING
+            #   - Call 2 (loop iter 1): RUNNING
+            #   - Call 3 (loop iter 2): STOPPED → break
+            self._from_run_patcher.side_effect = [RunStatus.RUNNING, RunStatus.RUNNING, RunStatus.STOPPED]
+
             self.instance.execute()
             msg = mock_logger.warning.mock_calls[0].args[0]
             assert "The complete data interval could not be loaded" in msg
+
+            # Three execute calls: 1 initial + 2 loop iterations.
+            assert mock_LoadLiveData.execute.call_count == 3
 
     def test_exec_filter_init(self):
         mock_LoadLiveData = mock.Mock()
@@ -1136,3 +1154,603 @@ class TestLoadLiveDataInterval(unittest.TestCase):
 
             # Verify that no filtering was required:
             mock_FilterByTime.execute.assert_not_called()
+
+    # ---------------------------------------------------------------------------
+    # Tests for _checkIntervalOverlaps
+    # ---------------------------------------------------------------------------
+
+    def test__checkIntervalOverlaps_empty_list(self):
+        t0 = np.datetime64("2010-01-01T00:00:00", "ns")
+        t1 = np.datetime64("2010-01-01T01:00:00", "ns")
+        assert not LoadLiveDataInterval._checkIntervalOverlaps((t0, t1), [])
+
+    def test__checkIntervalOverlaps_no_overlap(self):
+        # [t0, t1] and [t2, t3] are non-overlapping (t1 <= t2).
+        t0 = np.datetime64("2010-01-01T00:00:00", "ns")
+        t1 = np.datetime64("2010-01-01T01:00:00", "ns")
+        t2 = np.datetime64("2010-01-01T01:00:00", "ns")
+        t3 = np.datetime64("2010-01-01T02:00:00", "ns")
+        assert not LoadLiveDataInterval._checkIntervalOverlaps((t0, t1), [(t2, t3)])
+
+    def test__checkIntervalOverlaps_overlap(self):
+        t0 = np.datetime64("2010-01-01T00:00:00", "ns")
+        t1 = np.datetime64("2010-01-01T01:30:00", "ns")
+        t2 = np.datetime64("2010-01-01T01:00:00", "ns")
+        t3 = np.datetime64("2010-01-01T02:00:00", "ns")
+        assert LoadLiveDataInterval._checkIntervalOverlaps((t0, t1), [(t2, t3)])
+
+    def test__checkIntervalOverlaps_contained(self):
+        # candidate is fully contained within an existing interval.
+        t0 = np.datetime64("2010-01-01T00:30:00", "ns")
+        t1 = np.datetime64("2010-01-01T00:45:00", "ns")
+        t2 = np.datetime64("2010-01-01T00:00:00", "ns")
+        t3 = np.datetime64("2010-01-01T01:00:00", "ns")
+        assert LoadLiveDataInterval._checkIntervalOverlaps((t0, t1), [(t2, t3)])
+
+    def test__checkIntervalOverlaps_multiple_no_overlap(self):
+        t0 = np.datetime64("2010-01-01T02:00:00", "ns")
+        t1 = np.datetime64("2010-01-01T03:00:00", "ns")
+        existing = [
+            (np.datetime64("2010-01-01T00:00:00", "ns"), np.datetime64("2010-01-01T01:00:00", "ns")),
+            (np.datetime64("2010-01-01T01:00:00", "ns"), np.datetime64("2010-01-01T02:00:00", "ns")),
+        ]
+        assert not LoadLiveDataInterval._checkIntervalOverlaps((t0, t1), existing)
+
+    def test__checkIntervalOverlaps_multiple_one_overlaps(self):
+        t0 = np.datetime64("2010-01-01T01:30:00", "ns")
+        t1 = np.datetime64("2010-01-01T02:30:00", "ns")
+        existing = [
+            (np.datetime64("2010-01-01T00:00:00", "ns"), np.datetime64("2010-01-01T01:00:00", "ns")),
+            (np.datetime64("2010-01-01T02:00:00", "ns"), np.datetime64("2010-01-01T03:00:00", "ns")),
+        ]
+        assert LoadLiveDataInterval._checkIntervalOverlaps((t0, t1), existing)
+
+    # ---------------------------------------------------------------------------
+    # Tests for _fallbackChunkInterval
+    # ---------------------------------------------------------------------------
+
+    def _make_tsp_mock(self, name, start_iso, end_iso, size=1):
+        """Helper: create a mock TimeSeriesProperty-like object."""
+        from unittest.mock import MagicMock
+        from mantid.kernel import FloatTimeSeriesProperty
+
+        prop = mock.MagicMock(spec=FloatTimeSeriesProperty)
+        prop.name = name
+        prop.size.return_value = size
+        prop.firstTime.return_value.to_datetime64.return_value = (
+            np.datetime64(start_iso, "ns") if start_iso else None
+        )
+        prop.lastTime.return_value.to_datetime64.return_value = (
+            np.datetime64(end_iso, "ns") if end_iso else None
+        )
+        return prop
+
+    def test__fallbackChunkInterval_no_properties(self):
+        ws = mock.Mock()
+        ws.getRun.return_value.getProperties.return_value = []
+        requiredStart = np.datetime64("2010-01-01T00:00:00", "ns")
+        result = LoadLiveDataInterval._fallbackChunkInterval(ws, requiredStart, [])
+        assert result is None
+
+    def test__fallbackChunkInterval_empty_tsp_ignored(self):
+        # A TSP with size() == 0 should be ignored (not called for firstTime/lastTime).
+        from mantid.kernel import FloatTimeSeriesProperty
+
+        prop = mock.MagicMock(spec=FloatTimeSeriesProperty)
+        prop.size.return_value = 0
+
+        ws = mock.Mock()
+        ws.getRun.return_value.getProperties.return_value = [prop]
+        requiredStart = np.datetime64("2010-01-01T00:00:00", "ns")
+        result = LoadLiveDataInterval._fallbackChunkInterval(ws, requiredStart, [])
+        assert result is None
+        prop.firstTime.assert_not_called()
+
+    def test__fallbackChunkInterval_non_tsp_ignored(self):
+        # A non-TSP property (e.g., a plain mock without FloatTimeSeriesProperty spec) should be ignored.
+        prop = mock.Mock()  # not spec'd to any TSP type
+        prop.size.return_value = 5
+        ws = mock.Mock()
+        ws.getRun.return_value.getProperties.return_value = [prop]
+        requiredStart = np.datetime64("2010-01-01T00:00:00", "ns")
+        result = LoadLiveDataInterval._fallbackChunkInterval(ws, requiredStart, [])
+        assert result is None
+
+    def test__fallbackChunkInterval_before_required_start_ignored(self):
+        # A TSP whose start_dt is before requiredStartTime should be ignored.
+        prop = self._make_tsp_mock("log1", "2010-01-01T00:00:00", "2010-01-01T01:00:00")
+        ws = mock.Mock()
+        ws.getRun.return_value.getProperties.return_value = [prop]
+        # requiredStart is after the TSP interval start.
+        requiredStart = np.datetime64("2010-01-01T00:30:00", "ns")
+        result = LoadLiveDataInterval._fallbackChunkInterval(ws, requiredStart, [])
+        assert result is None
+
+    def test__fallbackChunkInterval_overlapping_ignored(self):
+        # A TSP that overlaps with an existing chunkInterval should be ignored.
+        prop = self._make_tsp_mock("log1", "2010-01-01T00:00:00", "2010-01-01T01:00:00")
+        ws = mock.Mock()
+        ws.getRun.return_value.getProperties.return_value = [prop]
+        requiredStart = np.datetime64("2010-01-01T00:00:00", "ns")
+        existing = [
+            (np.datetime64("2010-01-01T00:30:00", "ns"), np.datetime64("2010-01-01T01:30:00", "ns"))
+        ]
+        result = LoadLiveDataInterval._fallbackChunkInterval(ws, requiredStart, existing)
+        assert result is None
+
+    def test__fallbackChunkInterval_returns_largest_span(self):
+        # Given two valid TSP candidates, the one with the larger span should be returned.
+        prop_small = self._make_tsp_mock("small", "2010-01-01T00:00:00", "2010-01-01T00:30:00")
+        prop_large = self._make_tsp_mock("large", "2010-01-01T00:00:00", "2010-01-01T01:00:00")
+        ws = mock.Mock()
+        ws.getRun.return_value.getProperties.return_value = [prop_small, prop_large]
+        requiredStart = np.datetime64("2010-01-01T00:00:00", "ns")
+
+        result = LoadLiveDataInterval._fallbackChunkInterval(ws, requiredStart, [])
+
+        assert result == (
+            np.datetime64("2010-01-01T00:00:00", "ns"),
+            np.datetime64("2010-01-01T01:00:00", "ns"),
+        )
+
+    def test__fallbackChunkInterval_logs_warning_for_all_candidates(self):
+        # Verify that a WARNING is logged listing all valid candidates.
+        prop_a = self._make_tsp_mock("prop_a", "2010-01-01T00:00:00", "2010-01-01T00:30:00")
+        prop_b = self._make_tsp_mock("prop_b", "2010-01-01T00:00:00", "2010-01-01T01:00:00")
+        ws = mock.Mock()
+        ws.getRun.return_value.getProperties.return_value = [prop_a, prop_b]
+        requiredStart = np.datetime64("2010-01-01T00:00:00", "ns")
+
+        with mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "logger") as mock_logger:
+            LoadLiveDataInterval._fallbackChunkInterval(ws, requiredStart, [])
+            # At least one WARNING call should have been made listing both candidate names.
+            warning_calls = mock_logger.warning.call_args_list
+            assert len(warning_calls) >= 1
+            combined = " ".join(str(c) for c in warning_calls)
+            assert "prop_a" in combined
+            assert "prop_b" in combined
+
+    def test__fallbackChunkInterval_all_tsp_types_accepted(self):
+        # Verify that all five TSP types are accepted.
+        from mantid.kernel import (
+            BoolTimeSeriesProperty,
+            FloatTimeSeriesProperty,
+            Int32TimeSeriesProperty,
+            Int64TimeSeriesProperty,
+            StringTimeSeriesProperty,
+        )
+
+        start = "2010-01-01T00:00:00"
+        end = "2010-01-01T01:00:00"
+        props = [
+            mock.MagicMock(spec=FloatTimeSeriesProperty),
+            mock.MagicMock(spec=BoolTimeSeriesProperty),
+            mock.MagicMock(spec=Int32TimeSeriesProperty),
+            mock.MagicMock(spec=Int64TimeSeriesProperty),
+            mock.MagicMock(spec=StringTimeSeriesProperty),
+        ]
+        for i, p in enumerate(props):
+            p.name = f"prop_{i}"
+            p.size.return_value = 1
+            p.firstTime.return_value.to_datetime64.return_value = np.datetime64(start, "ns")
+            p.lastTime.return_value.to_datetime64.return_value = np.datetime64(end, "ns")
+
+        ws = mock.Mock()
+        ws.getRun.return_value.getProperties.return_value = props
+        requiredStart = np.datetime64(start, "ns")
+
+        result = LoadLiveDataInterval._fallbackChunkInterval(ws, requiredStart, [])
+        # All five should be valid candidates; result should not be None.
+        assert result is not None
+
+    # ---------------------------------------------------------------------------
+    # Tests for new PyExec behaviors
+    # ---------------------------------------------------------------------------
+
+    def test_exec_initial_chunk_no_events_fallback_found(self):
+        # When the initial chunk has no events but a fallback interval is found,
+        # the fallback interval should be appended to chunkIntervals.
+        mock_LoadLiveData = mock.Mock()
+
+        self.instance.initialize()
+        self._setProperties(
+            self.instance,
+            OutputWorkspace=self.outputWs,
+            StartTime=self.startTime,
+            Instrument=Config["instrument.name"],
+            PreserveEvents=self.preserveEvents,
+        )
+
+        fallback_interval = (
+            np.datetime64("2010-01-01T00:00:00", "ns"),
+            np.datetime64("2010-01-01T01:00:00", "ns"),
+        )
+
+        with (
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "ConfigService") as mock_ConfigService,
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "logger") as mock_logger,
+            mock.patch.object(self.instance, "createChildAlgorithm") as mock_createChildAlgorithm,
+            mock.patch.object(self.instance, "mantidSnapper") as mock_snapper,
+            mock.patch.object(self.instance, "isLogging"),
+            mock.patch.object(LoadLiveDataInterval, "_loadIsComplete") as mock_loadIsComplete,
+            mock.patch.object(LoadLiveDataInterval, "_requiredLoadInterval") as mock_requiredLoadInterval,
+            mock.patch.object(LoadLiveDataInterval, "_fallbackChunkInterval") as mock_fallback,
+        ):
+            mock_ConfigService.getFacility.return_value.instrument.return_value = mock.sentinel.InstrumentInfo
+            mock_createChildAlgorithm.return_value = mock_LoadLiveData
+
+            mock_chunkWs = mock.Mock()
+            mock_chunkWs.getNumberEvents.return_value = 0
+            mock_mtd = mock.MagicMock()
+            mock_mtd.__getitem__.return_value = mock_chunkWs
+            mock_mtd.doesExist.side_effect = lambda ws: ws == mock.sentinel.chunkWs
+            mock_mtd.unique_hidden_name.return_value = mock.sentinel.chunkWs
+            mock_snapper.mtd = mock_mtd
+
+            mock_requiredLoadInterval.return_value = (fallback_interval[0], fallback_interval[1])
+            mock_fallback.return_value = fallback_interval
+            mock_loadIsComplete.return_value = True
+
+            self.instance.execute()
+
+            mock_fallback.assert_called_once()
+            # A warning about using the fallback should be logged.
+            warning_msgs = " ".join(c.args[0] for c in mock_logger.warning.call_args_list)
+            assert "fallback" in warning_msgs.lower() or "NO EVENTS" in warning_msgs
+
+    def test_exec_initial_chunk_no_events_no_fallback_no_allow_dead_time_raises(self):
+        # When the initial chunk has no events, no fallback is found, and
+        # liveData.allowDeadTime is False (or missing), a RuntimeError should be raised.
+        mock_LoadLiveData = mock.Mock()
+
+        self.instance.initialize()
+        self._setProperties(
+            self.instance,
+            OutputWorkspace=self.outputWs,
+            StartTime=self.startTime,
+            Instrument=Config["instrument.name"],
+            PreserveEvents=self.preserveEvents,
+        )
+
+        with (
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "ConfigService") as mock_ConfigService,
+            mock.patch.object(self.instance, "createChildAlgorithm") as mock_createChildAlgorithm,
+            mock.patch.object(self.instance, "mantidSnapper") as mock_snapper,
+            mock.patch.object(self.instance, "isLogging"),
+            mock.patch.object(LoadLiveDataInterval, "_requiredLoadInterval") as mock_requiredLoadInterval,
+            mock.patch.object(LoadLiveDataInterval, "_fallbackChunkInterval") as mock_fallback,
+        ):
+            mock_ConfigService.getFacility.return_value.instrument.return_value = mock.sentinel.InstrumentInfo
+            mock_createChildAlgorithm.return_value = mock_LoadLiveData
+
+            mock_chunkWs = mock.Mock()
+            mock_chunkWs.getNumberEvents.return_value = 0
+            mock_mtd = mock.MagicMock()
+            mock_mtd.__getitem__.return_value = mock_chunkWs
+            mock_mtd.doesExist.side_effect = lambda ws: ws == mock.sentinel.chunkWs
+            mock_mtd.unique_hidden_name.return_value = mock.sentinel.chunkWs
+            mock_snapper.mtd = mock_mtd
+
+            mock_requiredLoadInterval.return_value = (
+                np.datetime64("2010-01-01T00:00:00", "ns"),
+                np.datetime64("2010-01-01T01:00:00", "ns"),
+            )
+            mock_fallback.return_value = None
+
+            # allowDeadTime is False (default in test config) => should raise.
+            with pytest.raises(RuntimeError, match="Initial chunk contained no events"):
+                self.instance.PyExec()
+
+    def test_exec_initial_chunk_no_events_no_fallback_allow_dead_time_continues(self):
+        # When the initial chunk has no events, no fallback is found, but
+        # liveData.allowDeadTime is True, the existing dead-time behavior should proceed.
+        mock_LoadLiveData = mock.Mock()
+
+        self.instance.initialize()
+        self._setProperties(
+            self.instance,
+            OutputWorkspace=self.outputWs,
+            StartTime=self.startTime,
+            Instrument=Config["instrument.name"],
+            PreserveEvents=self.preserveEvents,
+        )
+
+        with (
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "ConfigService") as mock_ConfigService,
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "sleep") as mock_sleep,
+            mock.patch.object(self.instance, "createChildAlgorithm") as mock_createChildAlgorithm,
+            mock.patch.object(self.instance, "mantidSnapper") as mock_snapper,
+            mock.patch.object(self.instance, "isLogging"),
+            mock.patch.object(LoadLiveDataInterval, "_loadIsComplete") as mock_loadIsComplete,
+            mock.patch.object(LoadLiveDataInterval, "_requiredLoadInterval") as mock_requiredLoadInterval,
+            mock.patch.object(LoadLiveDataInterval, "_fallbackChunkInterval") as mock_fallback,
+            Config_override("liveData.allowDeadTime", True),
+        ):
+            mock_ConfigService.getFacility.return_value.instrument.return_value = mock.sentinel.InstrumentInfo
+            mock_createChildAlgorithm.return_value = mock_LoadLiveData
+            mock_sleep.side_effect = lambda _: None
+
+            mock_chunkWs = mock.Mock()
+            mock_chunkWs.getNumberEvents.return_value = 0
+            mock_mtd = mock.MagicMock()
+            mock_mtd.__getitem__.return_value = mock_chunkWs
+            mock_mtd.doesExist.side_effect = lambda ws: ws == mock.sentinel.chunkWs
+            mock_mtd.unique_hidden_name.return_value = mock.sentinel.chunkWs
+            mock_snapper.mtd = mock_mtd
+
+            mock_requiredLoadInterval.return_value = (
+                np.datetime64("2010-01-01T00:00:00", "ns"),
+                np.datetime64("2010-01-01T01:00:00", "ns"),
+            )
+            mock_fallback.return_value = None
+            mock_loadIsComplete.return_value = True
+
+            # Should NOT raise; should complete (dead-time mode).
+            self.instance.execute()
+
+    def test_exec_loop_chunk_no_events_fallback_found(self):
+        # In the loop, when a chunk has no events but a fallback is found,
+        # the fallback should be appended and deadTimeDuration reset to 0.
+        mock_LoadLiveData = mock.Mock()
+
+        self.instance.initialize()
+        self._setProperties(
+            self.instance,
+            OutputWorkspace=self.outputWs,
+            StartTime=self.startTime,
+            Instrument=Config["instrument.name"],
+            PreserveEvents=self.preserveEvents,
+        )
+
+        fallback_interval = (
+            np.datetime64("2010-01-01T00:00:00", "ns"),
+            np.datetime64("2010-01-01T01:00:00", "ns"),
+        )
+
+        with (
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "ConfigService") as mock_ConfigService,
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "logger") as mock_logger,
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "sleep") as mock_sleep,
+            mock.patch.object(self.instance, "createChildAlgorithm") as mock_createChildAlgorithm,
+            mock.patch.object(self.instance, "mantidSnapper") as mock_snapper,
+            mock.patch.object(self.instance, "isLogging"),
+            mock.patch.object(LoadLiveDataInterval, "_loadIsComplete") as mock_loadIsComplete,
+            mock.patch.object(LoadLiveDataInterval, "_requiredLoadInterval") as mock_requiredLoadInterval,
+            mock.patch.object(LoadLiveDataInterval, "_fallbackChunkInterval") as mock_fallback,
+        ):
+            mock_ConfigService.getFacility.return_value.instrument.return_value = mock.sentinel.InstrumentInfo
+            mock_createChildAlgorithm.return_value = mock_LoadLiveData
+            mock_sleep.side_effect = lambda _: None
+
+            # First call (initial chunk) has events; second call (loop chunk) has none.
+            mock_chunkWs = mock.Mock()
+            mock_chunkWs.getNumberEvents.side_effect = [1, 0]
+            mock_chunkWs.getPulseTimeMin.return_value = DateAndTime(self.startTime)
+            mock_chunkWs.getPulseTimeMax.return_value = DateAndTime(
+                (datetime.datetime.fromisoformat(self.startTime) + timedelta(minutes=15)).isoformat()
+            )
+            mock_mtd = mock.MagicMock()
+            mock_mtd.__getitem__.return_value = mock_chunkWs
+            mock_mtd.doesExist.side_effect = lambda ws: ws == mock.sentinel.chunkWs
+            mock_mtd.unique_hidden_name.return_value = mock.sentinel.chunkWs
+            mock_snapper.mtd = mock_mtd
+
+            mock_requiredLoadInterval.return_value = (fallback_interval[0], fallback_interval[1])
+            mock_fallback.return_value = fallback_interval
+            # First call: don't complete. Second call: complete.
+            mock_loadIsComplete.side_effect = [False, True]
+
+            self.instance.execute()
+
+            # The fallback should have been called (for the loop empty-chunk case).
+            mock_fallback.assert_called()
+            # A warning about using the fallback should be logged.
+            warning_msgs = " ".join(c.args[0] for c in mock_logger.warning.call_args_list)
+            assert "fallback" in warning_msgs.lower() or "NO NEW EVENTS" in warning_msgs
+
+    def test_exec_loop_chunk_no_events_no_fallback_no_allow_dead_time_breaks(self):
+        # In the loop, when a chunk has no events, no fallback is found, and
+        # liveData.allowDeadTime is False, the loop should break gracefully.
+        mock_LoadLiveData = mock.Mock()
+
+        self.instance.initialize()
+        self._setProperties(
+            self.instance,
+            OutputWorkspace=self.outputWs,
+            StartTime=self.startTime,
+            Instrument=Config["instrument.name"],
+            PreserveEvents=self.preserveEvents,
+        )
+
+        with (
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "ConfigService") as mock_ConfigService,
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "logger") as mock_logger,
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "sleep") as mock_sleep,
+            mock.patch.object(self.instance, "createChildAlgorithm") as mock_createChildAlgorithm,
+            mock.patch.object(self.instance, "mantidSnapper") as mock_snapper,
+            mock.patch.object(self.instance, "isLogging"),
+            mock.patch.object(LoadLiveDataInterval, "_loadIsComplete") as mock_loadIsComplete,
+            mock.patch.object(LoadLiveDataInterval, "_requiredLoadInterval") as mock_requiredLoadInterval,
+            mock.patch.object(LoadLiveDataInterval, "_fallbackChunkInterval") as mock_fallback,
+        ):
+            mock_ConfigService.getFacility.return_value.instrument.return_value = mock.sentinel.InstrumentInfo
+            mock_createChildAlgorithm.return_value = mock_LoadLiveData
+            mock_sleep.side_effect = lambda _: None
+
+            # Initial chunk has events; loop chunk has none.
+            mock_chunkWs = mock.Mock()
+            mock_chunkWs.getNumberEvents.side_effect = [1, 0]
+            mock_chunkWs.getPulseTimeMin.return_value = DateAndTime(self.startTime)
+            mock_chunkWs.getPulseTimeMax.return_value = DateAndTime(
+                (datetime.datetime.fromisoformat(self.startTime) + timedelta(minutes=15)).isoformat()
+            )
+            mock_mtd = mock.MagicMock()
+            mock_mtd.__getitem__.return_value = mock_chunkWs
+            mock_mtd.doesExist.side_effect = lambda ws: ws == mock.sentinel.chunkWs
+            mock_mtd.unique_hidden_name.return_value = mock.sentinel.chunkWs
+            mock_snapper.mtd = mock_mtd
+
+            mock_requiredLoadInterval.return_value = (
+                np.datetime64("2010-01-01T00:00:00", "ns"),
+                np.datetime64("2010-01-01T01:00:00", "ns"),
+            )
+            mock_fallback.return_value = None
+            # Never complete so we rely on the break.
+            mock_loadIsComplete.return_value = False
+
+            self.instance.execute()
+
+            # LoadLiveData.execute should have been called exactly twice:
+            #   once for the initial chunk, once in the loop before the break.
+            assert mock_LoadLiveData.execute.call_count == 2
+
+            # A graceful-exit warning should be logged.
+            warning_msgs = " ".join(c.args[0] for c in mock_logger.warning.call_args_list)
+            assert "gracefully" in warning_msgs.lower() or "NO NEW EVENTS" in warning_msgs
+
+    def test_exec_loop_chunk_no_events_no_fallback_allow_dead_time_continues(self):
+        # In the loop, when a chunk has no events, no fallback, and allowDeadTime is True,
+        # the existing dead-time behavior should apply (increment and eventually break on maxDeadTime).
+        mock_LoadLiveData = mock.Mock()
+
+        self.instance.initialize()
+        self._setProperties(
+            self.instance,
+            OutputWorkspace=self.outputWs,
+            StartTime=self.startTime,
+            Instrument=Config["instrument.name"],
+            PreserveEvents=self.preserveEvents,
+        )
+
+        with (
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "ConfigService") as mock_ConfigService,
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "logger") as mock_logger,
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "sleep") as mock_sleep,
+            mock.patch.object(self.instance, "createChildAlgorithm") as mock_createChildAlgorithm,
+            mock.patch.object(self.instance, "mantidSnapper") as mock_snapper,
+            mock.patch.object(self.instance, "isLogging"),
+            mock.patch.object(LoadLiveDataInterval, "_loadIsComplete") as mock_loadIsComplete,
+            mock.patch.object(LoadLiveDataInterval, "_requiredLoadInterval") as mock_requiredLoadInterval,
+            mock.patch.object(LoadLiveDataInterval, "_fallbackChunkInterval") as mock_fallback,
+            Config_override("liveData.allowDeadTime", True),
+            Config_override("liveData.chunkLoadWait", 3),
+            Config_override("liveData.time_comparison_threshold", 6),  # => 2 empty chunks before break
+        ):
+            mock_ConfigService.getFacility.return_value.instrument.return_value = mock.sentinel.InstrumentInfo
+            mock_createChildAlgorithm.return_value = mock_LoadLiveData
+            mock_sleep.side_effect = lambda _: None
+
+            # Initial chunk has events; all loop chunks have none.
+            mock_chunkWs = mock.Mock()
+            mock_chunkWs.getNumberEvents.side_effect = [1, 0, 0, 0, 0, 0]
+            mock_chunkWs.getPulseTimeMin.return_value = DateAndTime(self.startTime)
+            mock_chunkWs.getPulseTimeMax.return_value = DateAndTime(
+                (datetime.datetime.fromisoformat(self.startTime) + timedelta(minutes=15)).isoformat()
+            )
+            mock_mtd = mock.MagicMock()
+            mock_mtd.__getitem__.return_value = mock_chunkWs
+            mock_mtd.doesExist.side_effect = lambda ws: ws == mock.sentinel.chunkWs
+            mock_mtd.unique_hidden_name.return_value = mock.sentinel.chunkWs
+            mock_snapper.mtd = mock_mtd
+
+            mock_requiredLoadInterval.return_value = (
+                np.datetime64("2010-01-01T00:00:00", "ns"),
+                np.datetime64("2010-01-01T01:00:00", "ns"),
+            )
+            mock_fallback.return_value = None
+            mock_loadIsComplete.return_value = False
+
+            self.instance.execute()
+
+            # With chunkLoadWait=3 and maxDeadTime=6: after 2 empty loop chunks (6s) it should break.
+            # So total execute calls = 1 (initial) + 2 (loop) = 3.
+            assert mock_LoadLiveData.execute.call_count == 3
+
+            # NO NEW EVENTS warnings should be logged.
+            warning_msgs = " ".join(c.args[0] for c in mock_logger.warning.call_args_list)
+            assert "NO NEW EVENTS" in warning_msgs
+
+    def test_exec_initial_chunk_inactive_run_raises(self):
+        # When the initial chunk has events but RunStatus.from_run returns non-RUNNING,
+        # a RuntimeError should be raised.
+        mock_LoadLiveData = mock.Mock()
+
+        self.instance.initialize()
+        self._setProperties(
+            self.instance,
+            OutputWorkspace=self.outputWs,
+            StartTime=self.startTime,
+            Instrument=Config["instrument.name"],
+            PreserveEvents=self.preserveEvents,
+        )
+
+        with (
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "ConfigService") as mock_ConfigService,
+            mock.patch.object(self.instance, "createChildAlgorithm") as mock_createChildAlgorithm,
+            mock.patch.object(self.instance, "mantidSnapper") as mock_snapper,
+            mock.patch.object(self.instance, "isLogging"),
+        ):
+            mock_ConfigService.getFacility.return_value.instrument.return_value = mock.sentinel.InstrumentInfo
+            mock_createChildAlgorithm.return_value = mock_LoadLiveData
+
+            mock_chunkWs = mock.Mock()
+            mock_chunkWs.getNumberEvents.return_value = 1  # has events → triggers from_run check
+            mock_mtd = mock.MagicMock()
+            mock_mtd.__getitem__.return_value = mock_chunkWs
+            mock_mtd.doesExist.side_effect = lambda ws: ws == mock.sentinel.chunkWs
+            mock_mtd.unique_hidden_name.return_value = mock.sentinel.chunkWs
+            mock_snapper.mtd = mock_mtd
+
+            # Simulate an inactive run.
+            self._from_run_patcher.return_value = RunStatus.STOPPED
+
+            with pytest.raises(RuntimeError, match="cannot extract initial chunk from inactive run"):
+                self.instance.PyExec()
+
+    def test_exec_loop_chunk_inactive_run_breaks(self):
+        # When a loop chunk's RunStatus.from_run returns non-RUNNING, the loop should break.
+        mock_LoadLiveData = mock.Mock()
+
+        self.instance.initialize()
+        self._setProperties(
+            self.instance,
+            OutputWorkspace=self.outputWs,
+            StartTime=self.startTime,
+            Instrument=Config["instrument.name"],
+            PreserveEvents=self.preserveEvents,
+        )
+
+        with (
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "ConfigService") as mock_ConfigService,
+            mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "sleep") as mock_sleep,
+            mock.patch.object(self.instance, "createChildAlgorithm") as mock_createChildAlgorithm,
+            mock.patch.object(self.instance, "mantidSnapper") as mock_snapper,
+            mock.patch.object(self.instance, "isLogging"),
+            mock.patch.object(LoadLiveDataInterval, "_loadIsComplete") as mock_loadIsComplete,
+        ):
+            mock_ConfigService.getFacility.return_value.instrument.return_value = mock.sentinel.InstrumentInfo
+            mock_createChildAlgorithm.return_value = mock_LoadLiveData
+            mock_sleep.side_effect = lambda _: None
+
+            mock_chunkWs = mock.Mock()
+            mock_chunkWs.getNumberEvents.return_value = 1  # always has events
+            mock_chunkWs.getPulseTimeMin.return_value = DateAndTime(self.startTime)
+            mock_chunkWs.getPulseTimeMax.return_value = DateAndTime(
+                (datetime.datetime.fromisoformat(self.startTime) + timedelta(minutes=15)).isoformat()
+            )
+            mock_mtd = mock.MagicMock()
+            mock_mtd.__getitem__.return_value = mock_chunkWs
+            mock_mtd.doesExist.side_effect = lambda ws: ws == mock.sentinel.chunkWs
+            mock_mtd.unique_hidden_name.return_value = mock.sentinel.chunkWs
+            mock_snapper.mtd = mock_mtd
+
+            mock_loadIsComplete.return_value = False
+
+            # Initial chunk: RUNNING; first loop chunk: STOPPED → break.
+            self._from_run_patcher.side_effect = [RunStatus.RUNNING, RunStatus.STOPPED]
+
+            self.instance.execute()
+
+            # Only 2 execute calls: 1 initial + 1 loop (then break on STOPPED).
+            assert mock_LoadLiveData.execute.call_count == 2
+

@@ -163,7 +163,9 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         """Test fetch method with LoadLiveDataInterval loader"""
         mock_instance = mockAlgo.return_value
         mock_instance.execute.return_value = "data"
-        mock_instance.getPropertyValue.return_value = "LoadLiveDataInterval"
+        mock_instance.getPropertyValue.side_effect = lambda name: (
+            "LoadLiveDataInterval" if name == "LoaderType" else ""
+        )
 
         self.clearoutWorkspaces()
         res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveDataInterval")
@@ -171,6 +173,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["result"]
         assert res["loader"] == "LoadLiveDataInterval"
         assert res["workspace"] == self.fetchedWSname
+        assert "runStatus" in res
 
     def test_fetch_failed(self):
         # this is some file that it can't load
