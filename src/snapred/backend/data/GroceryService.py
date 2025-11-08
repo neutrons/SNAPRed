@@ -17,6 +17,7 @@ from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.error.LiveDataState import LiveDataState
+from snapred.backend.error.RunStatus import RunStatus
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
@@ -878,18 +879,64 @@ class GroceryService:
             data = self.grocer.executeRecipe(workspace=workspaceName, loader=loader, loaderArgs=json.dumps(loaderArgs))
             data["fromLiveData"] = True
             if data["result"]:
-                run = self.mantidSnapper.mtd[workspaceName].getRun()
-                liveRunNumber = run.getProperty("run_number").value if run.hasProperty("run_number") else 0
+                if data.get("runStatus"):
+                    try:
+                        runStatus = RunStatus(data["runStatus"])
+                        if runStatus != RunStatus.RUNNING:
+                            # There is some type of issue with the live run.
+                            self.deleteWorkspaceUnconditional(workspaceName)
+                            data = {"result": False}
+                            if liveDataArgs is not None:
+                                match runStatus:
+                                    case RunStatus.PAUSED:
+                                        raise LiveDataState.runStateTransition(runNumber, runNumber)
+                                    case RunStatus.STOPPED:
+                                        raise LiveDataState.runStateTransition("0", runNumber)
+                                    case RunStatus.ERROR:
+                                        raise LiveDataState.runError(runNumber)
+                                    case _:
+                                        raise RuntimeError(
+                                            f"implementation error: unexpected 'RunStatus' value: '{runStatus}'"
+                                        )
+                            raise RuntimeError(
+                                f"Neutron data for run '{runNumber}' is not present on disk, "
+                                "and there is a problem with the live-data run:\n"
+                                f"    live-run status: {runStatus}."
+                            )
+                    except ValueError as e:
+                        logger.debug(
+                            f"Error when parsing 'RunStatus' returned by `FetchGroceriesAlgorithm`:\n"
+                            f"    {data['runStatus']}:\n"
+                            f"    {e}."
+                        )
 
-                if int(runNumber) != int(liveRunNumber):
-                    # Live run number is unexpected => there has been a live-data run-state change.
+                run = self.mantidSnapper.mtd[workspaceName].getRun()
+                # IMPORTANT: due to issues with the `SNSLiveEventData` listener implementation, we cannot assume
+                #   that the 'run_number' property has actually been set.
+                liveRunNumber = run.getProperty("run_number").value if run.hasProperty("run_number") else None
+
+                if liveRunNumber is not None:
+                    if int(runNumber) != int(liveRunNumber):
+                        # Live run number is unexpected => there has been a live-data run-state change.
+                        self.deleteWorkspaceUnconditional(workspaceName)
+                        data = {"result": False}
+                        if liveDataArgs is not None:
+                            raise LiveDataState.runStateTransition(liveRunNumber, runNumber)
+                        raise RuntimeError(
+                            f"Neutron data for run '{runNumber}' is not present on disk, nor is it the live-data run"
+                        )
+                elif liveDataArgs is not None:
+                    # Temporary fix for `SNSLiveEventDataListener` not setting the run-number:
+                    #   just set it here.
+                    self.mantidSnapper.mtd[workspaceName].mutableRun()["run_number"] = str(runNumber)
+                else:
+                    # Do NOT fix the run-number in the fallback case.
                     self.deleteWorkspaceUnconditional(workspaceName)
                     data = {"result": False}
-                    if liveDataArgs is not None:
-                        raise LiveDataState.runStateTransition(liveRunNumber, runNumber)
                     raise RuntimeError(
-                        f"Neutron data for run '{runNumber}' is not present on disk, " + "nor is it the live-data run"
+                        f"Neutron data for run '{runNumber}' is not present on disk, nor is it the live-data run"
                     )
+
                 self._loadedRuns[self._key(runNumber, False)] = 0
                 self._liveDataKeys.append(self._key(runNumber, False))
         else:

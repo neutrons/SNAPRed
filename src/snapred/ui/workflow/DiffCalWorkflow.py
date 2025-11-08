@@ -740,6 +740,8 @@ class DiffCalWorkflow(WorkflowImplementer):
             createRecordRequest=createRecordRequest,
         )
 
-        response = self.request(path="calibration/save", payload=payload.model_dump_json())
-        lock.release()
+        try:
+            response = self.request(path="calibration/save", payload=payload.model_dump_json())
+        finally:
+            lock.release()
         return response

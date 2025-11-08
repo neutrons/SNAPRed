@@ -208,7 +208,8 @@ class ReductionService(Service):
         N_groups = len(self._getGroupingMap(request.runNumber, request.useLiteMode))
         if N_groups >= 1 and not request.liveDataMode:
             inputFilePath = self.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
-            if inputFilePath.exists():
+            # in the live-data case, `inputFilePath` may be `None`
+            if inputFilePath and inputFilePath.exists():
                 # As the workspaces aren't actually loaded yet, this estimate uses the file size in bytes.
                 dataSize = float(inputFilePath.stat().st_size)
                 N_ref = float(N_groups * dataSize)

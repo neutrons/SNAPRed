@@ -344,9 +344,13 @@ class WorkflowPresenter(QObject):
     @Slot(object)
     def liveDataStateTransition(self, liveDataInfo: LiveDataState.Model):
         # The associated signal is of type ``Signal(SNAPResponseHandler.liveDataStateTransition) as Signal(object)``
-        QMessageBox.information(self.view, "Live Data:", liveDataInfo.message)
+
         # Any live-data transition resets the workflow:
         #   at which point the live-data part of the request view should display the new live-data status.
+        self.reset()
+
+        # In case it's a modal dialog, display the message box after performing the reset.
+        QMessageBox.information(self.view, "Live Data:", liveDataInfo.message)
 
     @Slot()
     def requestCancellation(self):
