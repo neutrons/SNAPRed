@@ -80,7 +80,7 @@ instrument:
   maxNumberOfRuns: 10
 
 liveData:
-  enabled: false
+  enabled: true
   # Override 'liveData.facility' and 'liveData.instrument'
   #   in order to use the mock listener for testing
   #   without overriding the real instrument.
