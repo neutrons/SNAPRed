@@ -1,9 +1,12 @@
+from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import QComboBox, QVBoxLayout
 
 from snapred.ui.widget.SNAPWidget import SNAPWidget
 
 
 class SampleDropDown(SNAPWidget):
+    signalSetEnabled = Signal(bool)
+
     def __init__(self, label, items=[], parent=None):
         super(SampleDropDown, self).__init__(parent)
         self._label = label
@@ -17,19 +20,13 @@ class SampleDropDown(SNAPWidget):
         self._layout = QVBoxLayout(self)
         self._layout.addWidget(self.dropDown)
 
-    def setEnabled(self, flag: bool):
-        if flag:
-            self.dropDown.setVisible(True)
-            self._disabledField.setVisible(False)
-            self._layout.addWidget(self.dropDown)
-            self._layout.removeWidget(self._disabledField)
-        else:
-            self.dropDown.setVisible(False)
-            self._disabledField.setVisible(True)
-            self._disabledField.setText(self.dropDown.currentText())
-            self._layout.addWidget(self._disabledField)
-            self._layout.removeWidget(self.dropDown)
+        self.signalSetEnabled.connect(self._setEnabled)
 
+    def setEnabled(self, flag: bool):
+        self.signalSetEnabled.emit(flag)
+
+    @Slot(bool)
+    def _setEnabled(self, flag: bool):
         super(SampleDropDown, self).setEnabled(flag)
 
     def _initItems(self):
