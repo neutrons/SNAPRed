@@ -164,7 +164,7 @@ snapred = { path = ".", editable = true }
 
 [tool.pixi.dependencies]
 python = ">=3.10"
-pip = "*"
+pip = ">=25.3"
 pydantic = ">=2.7.3,<3"
 # Mantid packages moved to feature-specific dependencies with channel constraints
 "ruamel.yaml" = "*"
@@ -183,7 +183,7 @@ hatchling = "*"
 versioningit = "*"
 
 [tool.pixi.package.run-dependencies]
-mantidworkbench = ">=6.13.0"
+mantidworkbench = ">=6.14.0"
 pydantic = ">=2.7.3,<3"
 "ruamel.yaml" = "*"
 
@@ -277,12 +277,12 @@ versioningit = "*"
 # ------------------------------- #
 [tool.pixi.feature.dev.dependencies]
 python = ">=3.10"
-pip = "*"
+pip = ">=25.3"
 pydantic = ">=2.7.3,<3"
 # Channel-specific dependencies: Dev uses nightly Mantid builds
-mantidworkbench = { version = ">=6.13.0", channel = "mantid/label/nightly" }
-mantid = { version = ">=6.13.0", channel = "mantid/label/nightly" }
-mantidqt = { version = ">=6.13.0", channel = "mantid/label/nightly" }
+mantidworkbench = { version = ">=6.14.0", channel = "mantid/label/nightly" }
+mantid = { version = ">=6.14.0", channel = "mantid/label/nightly" }
+mantidqt = { version = ">=6.14.0", channel = "mantid/label/nightly" }
 mslice = "*"
 qtpy = "*"
 muparser = "=2.3.4"
@@ -295,12 +295,12 @@ git-lfs = "*"
 # ------------------------------- #
 [tool.pixi.feature.qa.dependencies]
 python = ">=3.10"
-pip = "*"
+pip = ">=25.3"
 pydantic = ">=2.7.3,<3"
 # Channel-specific dependencies: QA uses RC Mantid builds
-mantidworkbench = { version = ">=6.13.0", channel = "mantid-ornl/label/rc" }
-mantid = { version = ">=6.13.0", channel = "mantid-ornl/label/rc" }
-mantidqt = { version = ">=6.13.0", channel = "mantid-ornl/label/rc" }
+mantidworkbench = { version = ">=6.14.0", channel = "mantid-ornl/label/rc" }
+mantid = { version = ">=6.14.0", channel = "mantid-ornl/label/rc" }
+mantidqt = { version = ">=6.14.0", channel = "mantid-ornl/label/rc" }
 mslice = "*"
 qtpy = "*"
 muparser = "=2.3.4"
@@ -313,12 +313,12 @@ git-lfs = "*"
 # ------------------------------- #
 [tool.pixi.feature.prod.dependencies]
 python = ">=3.10"
-pip = "*"
+pip = ">=25.3"
 pydantic = ">=2.7.3,<3"
 # Channel-specific dependencies: Prod uses stable Mantid builds
-mantidworkbench = { version = ">=6.13.0", channel = "mantid-ornl/label/main" }
-mantid = { version = ">=6.13.0", channel = "mantid-ornl/label/main" }
-mantidqt = { version = ">=6.13.0", channel = "mantid-ornl/label/main" }
+mantidworkbench = { version = ">=6.14.0", channel = "mantid-ornl/label/main" }
+mantid = { version = ">=6.14.0", channel = "mantid-ornl/label/main" }
+mantidqt = { version = ">=6.14.0", channel = "mantid-ornl/label/main" }
 mslice = "*"
 qtpy = "*"
 muparser = "=2.3.4"

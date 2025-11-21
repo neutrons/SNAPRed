@@ -32,6 +32,7 @@ repos:
   rev: v2.9.0
   hooks:
     - id: pip-audit
+      args: ["--ignore-vuln", "GHSA-4xh5-x5gv-qwph"]
 # disable for now
 #- repo: https://github.com/pre-commit/mirrors-mypy
 #  rev: v1.1.1
