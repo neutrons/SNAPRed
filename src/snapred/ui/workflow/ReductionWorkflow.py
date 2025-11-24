@@ -430,6 +430,7 @@ class ReductionWorkflow(WorkflowImplementer):
         return ReductionRequest(
             runNumber=str(runNumber),
             useLiteMode=self.useLiteMode,
+            focusGroupAllowList=["Column"],
             liveDataMode=self.liveDataMode,
             liveDataDuration=self.liveDataDuration,
             timestamp=self.timestamp,

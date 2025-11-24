@@ -326,12 +326,12 @@ class ReductionService(Service):
         :rtype: Dict[str, Any]
         """
         # fetch all valid groups for this run state
-        result = self.loadAllGroupings(request.runNumber, request.useLiteMode)
+        result = self.loadAllGroupings(request.runNumber, request.useLiteMode, allowList=request.focusGroupAllowList)
         return result
 
     @FromString
     @Register("loadGroupings")
-    def loadAllGroupings(self, runNumber: str, useLiteMode: bool) -> Dict[str, Any]:
+    def loadAllGroupings(self, runNumber: str, useLiteMode: bool, allowList: List[str] = None) -> Dict[str, Any]:
         """
         Load all groupings that are valid for a specific state, determined from the run number
         and corresponding to lite mode setting.
@@ -349,8 +349,10 @@ class ReductionService(Service):
         """
 
         groupingMap = self._getGroupingMap(runNumber, useLiteMode)
+        groupingMap = {k: v for k, v in groupingMap.items() if v.name in allowList}
         for focusGroup in groupingMap.values():
-            self.groceryClerk.fromRun(runNumber).grouping(focusGroup.name).useLiteMode(useLiteMode).add()
+            if allowList is None or focusGroup.name in allowList:
+                self.groceryClerk.fromRun(runNumber).grouping(focusGroup.name).useLiteMode(useLiteMode).add()
         groupingWorkspaces = self.groceryService.fetchGroceryList(self.groceryClerk.buildList())
         return {
             "focusGroups": list(groupingMap.values()),
