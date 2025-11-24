@@ -334,14 +334,14 @@ class SousChef(Service):
         )
 
     def prepDiffractionCalibrationIngredients(
-        self, ingredients: FarmFreshIngredients
+        self, ingredients: FarmFreshIngredients, combinedPixelMask: Optional[WorkspaceName] = None
     ) -> DiffractionCalibrationIngredients:
         self.verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
 
         return DiffractionCalibrationIngredients(
             runConfig=self.prepRunConfig(ingredients.runNumber),
-            pixelGroup=self.prepPixelGroup(ingredients),
-            groupedPeakLists=self.prepDetectorPeaks(ingredients),
+            pixelGroup=self.prepPixelGroup(ingredients, pixelMask=combinedPixelMask),
+            groupedPeakLists=self.prepDetectorPeaks(ingredients, purgePeaks=False, pixelMask=combinedPixelMask),
             peakFunction=ingredients.peakFunction,
             convergenceThreshold=ingredients.convergenceThreshold,
             maxOffset=ingredients.maxOffset,

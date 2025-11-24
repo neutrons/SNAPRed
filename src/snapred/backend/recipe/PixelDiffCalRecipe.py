@@ -106,6 +106,16 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         self.DIFCpixel = groceries["calibrationTable"]
         self.DIFCprev = groceries.get("previousCalibration", "")
         # the input data converted to d-spacing
+        
+        if self.mantidSnapper.mtd.doesExist(self.maskWS):
+            self.mantidSnapper.MaskDetectors(
+                "applying user generated mask",
+                Workspace=self.wsTOF,
+                MaskedWorkspace=self.maskWS
+            )
+        else:
+            raise RuntimeError(f"Mask workspace {self.maskWS} does not exist")
+        
         self.wsDSP = wng.diffCalInputDSP().runNumber(self.runNumber).build()
         self.convertUnitsAndRebin(self.wsTOF, self.wsDSP)
         self.mantidSnapper.CloneWorkspace(
@@ -215,11 +225,14 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         wscc: str = f"__{self.runNumber}_tmp_group_CC_{self._counts}"
 
         for i, (groupID, workspaceIndices) in enumerate(self.groupWorkspaceIndices.items()):
+            if groupID not in self.maxDSpaceShifts:
+                # group has been fully masked.
+                continue
             workspaceIndices = list(workspaceIndices)
             refID: int = self.getRefID(workspaceIndices)
 
             self.mantidSnapper.CrossCorrelate(
-                f"Cross-Correlating spectra for {wscc}",
+                f"Cross-Correlating spectra for {wscc}, group {groupID}",
                 InputWorkspace=self.wsDSP,
                 OutputWorkspace=wscc + f"_group{groupID}",
                 ReferenceSpectra=refID,
@@ -230,7 +243,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             )
 
             self.mantidSnapper.GetDetectorOffsets(
-                f"Calculate offset workspace {wsoff}",
+                f"Calculate offset workspace {wsoff}, group {groupID}",
                 InputWorkspace=wscc + f"_group{groupID}",
                 OutputWorkspace=wsoff,
                 MaskWorkspace=self.maskWS,

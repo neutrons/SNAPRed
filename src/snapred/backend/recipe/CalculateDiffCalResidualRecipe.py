@@ -66,7 +66,6 @@ class CalculateDiffCalResidualRecipe(Recipe[None]):
         # Step 2: Check for overlapping spectra and manage them
         fitPeaksWorkspace = self.mantidSnapper.mtd[self.fitPeaksDiagnosticWorkspaceName]
         numHistograms = fitPeaksWorkspace.getNumberHistograms()
-        processedSpectra = []
         spectrumDict = {}
 
         for i in range(numHistograms):
@@ -102,9 +101,7 @@ class CalculateDiffCalResidualRecipe(Recipe[None]):
 
                 spectrumDict[spectrumId] = singleSpectrumName
 
-            # Append the processed spectrum to the list
-            processedSpectra.append(singleSpectrumName)
-
+        processedSpectra = list(spectrumDict.values())
         # Step 3: Combine all processed spectra into a single workspace
         combinedWorkspace = processedSpectra[0]
         for spectrum in processedSpectra[1:]:

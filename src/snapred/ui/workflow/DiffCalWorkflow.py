@@ -59,6 +59,8 @@ class DiffCalWorkflow(WorkflowImplementer):
         super().__init__(parent)
 
         self.mantidSnapper = MantidSnapper(None, "Utensils")
+        self.groceries = None
+        self.ingredients = None
         # create a tree of flows for the user to successfully execute diffraction calibration
         # DiffCal Request ->
         # Check Peaks     ->
@@ -373,8 +375,9 @@ class DiffCalWorkflow(WorkflowImplementer):
             maxChiSq=self.maxChiSq,
             pixelMasks=self.pixelMasks,
         )
-        self.ingredients = self.request(path="calibration/ingredients", payload=payload).data
         self.groceries = self.request(path="calibration/groceries", payload=payload).data
+        payload.combinedPixelMask = self.groceries["maskWorkspace"]
+        self.ingredients = self.request(path="calibration/ingredients", payload=payload).data
 
         # set "previous" values -- this is their initialization
         # these are used to compare if the values have changed
@@ -390,6 +393,9 @@ class DiffCalWorkflow(WorkflowImplementer):
         # focus the workspace to view the peaks
         self._renewPixelCal()
         self.groceries["inputWorkspace"] = self.pixelCalibratedWorkspace
+        
+        
+        
         self._renewFocus(self.prevGroupingIndex)
         self._renewFitPeaks(self.peakFunction)
         response = self._calculateResidual()
@@ -478,6 +484,9 @@ class DiffCalWorkflow(WorkflowImplementer):
         """
         Creates a standard diffraction calibration request in one location, so that the same parameters are always used.
         """
+        combinedMask = None
+        if self.groceries:
+            combinedMask = self.groceries["maskWorkspace"]
         return DiffractionCalibrationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
@@ -493,6 +502,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             maxChiSq=maxChiSq,
             removeBackground=self.removeBackground,
             pixelMasks=pixelMasks,
+            combinedPixelMask=combinedMask,
         )
 
     def _renewIngredients(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks):
@@ -524,6 +534,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             preserveEvents=False,
             inputWorkspace=self.groceries["inputWorkspace"],
             groupingWorkspace=self.groceries["groupingWorkspace"],
+            maskWorkspace=self.groceries["maskWorkspace"],
         )
         response = self.request(path="calibration/focus", payload=payload)
         self.focusedWorkspace = response.data[0]

@@ -147,7 +147,7 @@ class CalibrationService(Service):
             maxChiSq=request.maxChiSq,
             state=state,
         )
-        ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
+        ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh, request.combinedPixelMask)
         ingredients.removeBackground = request.removeBackground
         return ingredients
 
@@ -275,9 +275,14 @@ class CalibrationService(Service):
     @Register("pixel")
     def pixelCalibration(self, request: SimpleDiffCalRequest) -> PixelDiffCalServing:
         # cook recipe
+        userMaskWs = request.groceries.get("maskWorkspace")
+        userMaskWs = self.groceryService.getWorkspaceForName(userMaskWs)
+        numMaskedBeforePixelCal = 0
+        if userMaskWs:
+            numMaskedBeforePixelCal = userMaskWs.getNumberMasked()
         res = PixelDiffCalRecipe().cook(request.ingredients, request.groceries)
         maskWS = self.groceryService.getWorkspaceForName(res.maskWorkspace)
-        percentMasked = maskWS.getNumberMasked() / maskWS.getNumberHistograms()
+        percentMasked = (maskWS.getNumberMasked()-numMaskedBeforePixelCal) / maskWS.getNumberHistograms()
         threshold = Config["constants.maskedPixelThreshold"]
         if percentMasked > threshold:
             res.result = False
@@ -348,7 +353,7 @@ class CalibrationService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber, useLiteMode=request.useLiteMode, focusGroups=[request.focusGroup], state=state
         )
-        pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
+        pixelGroup = self.sousChef.prepPixelGroup(farmFresh, pixelMask=request.maskWorkspace)
         # fetch the grouping workspace
         self.groceryClerk.grouping(request.focusGroup.name).fromRun(request.runNumber).useLiteMode(request.useLiteMode)
         groupingWorkspace = self.groceryService.fetchGroupingDefinition(self.groceryClerk.build())["workspace"]

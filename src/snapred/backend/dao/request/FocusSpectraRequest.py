@@ -13,4 +13,5 @@ class FocusSpectraRequest(BaseModel):
 
     inputWorkspace: str
     groupingWorkspace: str
+    maskWorkspace: str
     outputWorkspace: Optional[str] = None
