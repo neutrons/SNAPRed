@@ -349,10 +349,10 @@ class ReductionService(Service):
         """
 
         groupingMap = self._getGroupingMap(runNumber, useLiteMode)
-        groupingMap = {k: v for k, v in groupingMap.items() if v.name in allowList}
+        if allowList is not None:
+            groupingMap = {k: v for k, v in groupingMap.items() if v.name in allowList}
         for focusGroup in groupingMap.values():
-            if allowList is None or focusGroup.name in allowList:
-                self.groceryClerk.fromRun(runNumber).grouping(focusGroup.name).useLiteMode(useLiteMode).add()
+            self.groceryClerk.fromRun(runNumber).grouping(focusGroup.name).useLiteMode(useLiteMode).add()
         groupingWorkspaces = self.groceryService.fetchGroceryList(self.groceryClerk.buildList())
         return {
             "focusGroups": list(groupingMap.values()),
