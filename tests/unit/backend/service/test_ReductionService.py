@@ -165,6 +165,9 @@ class TestReductionService(unittest.TestCase):
         assert pydantic.TypeAdapter(List[FocusGroup]).validate_python(data["focusGroups"])
         assert pydantic.TypeAdapter(List[str]).validate_python(data["groupingWorkspaces"])
 
+        data = self.instance.loadAllGroupings(self.request.runNumber, self.request.useLiteMode, allowList=["Column"])
+        assert len(data["focusGroups"]) == 1
+
     def test_loadAllGroupings_default(self):
         self.instance.dataFactoryService.getGroupingMap = mock.Mock(
             side_effect=StateValidationException(Exception("test"))
