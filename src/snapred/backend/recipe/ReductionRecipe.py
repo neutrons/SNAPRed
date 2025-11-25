@@ -162,6 +162,29 @@ class ReductionRecipe(Recipe[Ingredients]):
             f"Converting unfocused data to {units}",
             InputWorkspace=preOutputUnfocWs,
             OutputWorkspace=preOutputUnfocWs,
+            Target="TOF",
+        )
+        
+        self.mantidSnapper.Rebin(
+            "Rebin in log TOF",
+            InputWorkspace=preOutputUnfocWs,
+            Params=Config["constants.ReductionRecipe.unfocussed.Rebin.Params"],
+            PreserveEvents=Config["constants.ReductionRecipe.unfocussed.Rebin.PreserveEvents"],
+            OutputWorkspace=preOutputUnfocWs,
+            BinningMode="Logarithmic",
+        )
+
+        self.mantidSnapper.ConvertUnits(
+            f"Converting unfocused data to {units}",
+            InputWorkspace=preOutputUnfocWs,
+            OutputWorkspace=preOutputUnfocWs,
+            Target="dSpacing",
+        )
+
+        self.mantidSnapper.ConvertUnits(
+            f"Converting unfocused data to {units}",
+            InputWorkspace=preOutputUnfocWs,
+            OutputWorkspace=preOutputUnfocWs,
             Target=units,
         )
 
@@ -266,10 +289,6 @@ class ReductionRecipe(Recipe[Ingredients]):
     def execute(self):
         data: Dict[str, Any] = {"result": False}
 
-        # Retain unfocused data for comparison.
-        if self.keepUnfocused:
-            data["unfocusedWS"] = self._prepareUnfocusedData(self.sampleWs, self.maskWs, self.convertUnitsTo)
-
         outputs = []
 
         if bool(self.maskWs) and all(
@@ -305,6 +324,10 @@ class ReductionRecipe(Recipe[Ingredients]):
             **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
         )
         self._cloneIntermediateWorkspace(self.sampleWs, "sample_preprocessed")
+        
+        # Retain unfocused data for comparison.
+        if self.keepUnfocused:
+            data["unfocusedWS"] = self._prepareUnfocusedData(self.sampleWs, None, self.convertUnitsTo)
 
         if self.normalizationWs:
             # If artificial normalization is being used, there won't be any incoming normalization workspace.
