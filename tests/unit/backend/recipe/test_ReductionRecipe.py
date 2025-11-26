@@ -152,49 +152,121 @@ class ReductionRecipeTest(TestCase):
 
         # TODO: All units are tested here for now, this will be changed when EWM 6615 is completed
         units = "dSpacing"
-        msg = f"Converting unfocused data to {units}"
         recipe._prepareUnfocusedData(workspace, None, units)
         outputWs = (
             wng.run().runNumber("555").lite(True).unit(wng.Units.DSP).group(wng.Groups.UNFOC).hidden(True).build()
         )
-        recipe.mantidSnapper.ConvertUnits.assert_called_once_with(
-            msg, InputWorkspace=outputWs, OutputWorkspace=outputWs, Target=units
+        recipe.mantidSnapper.ConvertUnits.assert_has_calls(
+            [
+                mock.call(
+                    "Converting unfocused data to TOF",
+                    InputWorkspace=outputWs,
+                    OutputWorkspace=outputWs,
+                    Target="TOF",
+                ),
+                mock.call(
+                    "Converting unfocused data to dSpacing",
+                    InputWorkspace=outputWs,
+                    OutputWorkspace=outputWs,
+                    Target="dSpacing",
+                ),
+                mock.call(
+                    f"Converting unfocused data to {units}",
+                    InputWorkspace=outputWs,
+                    OutputWorkspace=outputWs,
+                    Target=units,
+                ),
+            ]
         )
         recipe.mantidSnapper.executeQueue.assert_called()
         recipe.mantidSnapper.reset_mock()
 
         units = "MomentumTransfer"
-        msg = f"Converting unfocused data to {units}"
         recipe._prepareUnfocusedData(workspace, None, units)
         outputWs = (
             wng.run().runNumber("555").lite(True).unit(wng.Units.QSP).group(wng.Groups.UNFOC).hidden(True).build()
         )
-        recipe.mantidSnapper.ConvertUnits.assert_called_once_with(
-            msg, InputWorkspace=outputWs, OutputWorkspace=outputWs, Target=units
+        recipe.mantidSnapper.ConvertUnits.assert_has_calls(
+            [
+                mock.call(
+                    "Converting unfocused data to TOF",
+                    InputWorkspace=outputWs,
+                    OutputWorkspace=outputWs,
+                    Target="TOF",
+                ),
+                mock.call(
+                    "Converting unfocused data to dSpacing",
+                    InputWorkspace=outputWs,
+                    OutputWorkspace=outputWs,
+                    Target="dSpacing",
+                ),
+                mock.call(
+                    f"Converting unfocused data to {units}",
+                    InputWorkspace=outputWs,
+                    OutputWorkspace=outputWs,
+                    Target=units,
+                ),
+            ]
         )
         recipe.mantidSnapper.executeQueue.assert_called()
         recipe.mantidSnapper.reset_mock()
 
         units = "Wavelength"
-        msg = f"Converting unfocused data to {units}"
         recipe._prepareUnfocusedData(workspace, None, units)
         outputWs = (
             wng.run().runNumber("555").lite(True).unit(wng.Units.LAM).group(wng.Groups.UNFOC).hidden(True).build()
         )
-        recipe.mantidSnapper.ConvertUnits.assert_called_once_with(
-            msg, InputWorkspace=outputWs, OutputWorkspace=outputWs, Target=units
+        recipe.mantidSnapper.ConvertUnits.assert_has_calls(
+            [
+                mock.call(
+                    "Converting unfocused data to TOF",
+                    InputWorkspace=outputWs,
+                    OutputWorkspace=outputWs,
+                    Target="TOF",
+                ),
+                mock.call(
+                    "Converting unfocused data to dSpacing",
+                    InputWorkspace=outputWs,
+                    OutputWorkspace=outputWs,
+                    Target="dSpacing",
+                ),
+                mock.call(
+                    f"Converting unfocused data to {units}",
+                    InputWorkspace=outputWs,
+                    OutputWorkspace=outputWs,
+                    Target=units,
+                ),
+            ]
         )
         recipe.mantidSnapper.executeQueue.assert_called()
         recipe.mantidSnapper.reset_mock()
 
         units = "TOF"
-        msg = f"Converting unfocused data to {units}"
         recipe._prepareUnfocusedData(workspace, None, units)
         outputWs = (
             wng.run().runNumber("555").lite(True).unit(wng.Units.TOF).group(wng.Groups.UNFOC).hidden(True).build()
         )
-        recipe.mantidSnapper.ConvertUnits.assert_called_once_with(
-            msg, InputWorkspace=outputWs, OutputWorkspace=outputWs, Target=units
+        recipe.mantidSnapper.ConvertUnits.assert_has_calls(
+            [
+                mock.call(
+                    "Converting unfocused data to TOF",
+                    InputWorkspace=outputWs,
+                    OutputWorkspace=outputWs,
+                    Target="TOF",
+                ),
+                mock.call(
+                    "Converting unfocused data to dSpacing",
+                    InputWorkspace=outputWs,
+                    OutputWorkspace=outputWs,
+                    Target="dSpacing",
+                ),
+                mock.call(
+                    f"Converting unfocused data to {units}",
+                    InputWorkspace=outputWs,
+                    OutputWorkspace=outputWs,
+                    Target=units,
+                ),
+            ]
         )
         recipe.mantidSnapper.executeQueue.assert_called()
         recipe.mantidSnapper.reset_mock()
@@ -228,11 +300,28 @@ class ReductionRecipeTest(TestCase):
         recipe.mantidSnapper.MaskDetectorFlags.assert_called_once_with(
             "Applying pixel mask to unfocused data", MaskWorkspace=maskWs, OutputWorkspace=preOutputWs
         )
-        recipe.mantidSnapper.ConvertUnits.assert_called_once_with(
-            f"Converting unfocused data to {units}",
-            InputWorkspace=preOutputWs,
-            OutputWorkspace=preOutputWs,
-            Target=units,
+
+        recipe.mantidSnapper.ConvertUnits.assert_has_calls(
+            [
+                mock.call(
+                    "Converting unfocused data to TOF",
+                    InputWorkspace=preOutputWs,
+                    OutputWorkspace=preOutputWs,
+                    Target="TOF",
+                ),
+                mock.call(
+                    "Converting unfocused data to dSpacing",
+                    InputWorkspace=preOutputWs,
+                    OutputWorkspace=preOutputWs,
+                    Target="dSpacing",
+                ),
+                mock.call(
+                    f"Converting unfocused data to {units}",
+                    InputWorkspace=preOutputWs,
+                    OutputWorkspace=preOutputWs,
+                    Target=units,
+                ),
+            ]
         )
 
         # Test the output add-or-replace sequence.
@@ -320,7 +409,7 @@ class ReductionRecipeTest(TestCase):
         result = recipe.execute()
 
         # Assertions
-        recipe._prepareUnfocusedData.assert_called_once_with("sample", "mask", "dSpacing")
+        recipe._prepareUnfocusedData.assert_called_once_with("sample", None, "dSpacing")
         # Delete the group clones (sample + norm), and the masked normalization clone.
         assert recipe._deleteWorkspace.call_count == 3
         recipe._deleteWorkspace.assert_called_with(recipe.normalizationWsMasked)

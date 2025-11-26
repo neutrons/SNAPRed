@@ -21,6 +21,7 @@ class ReductionRequest(BaseModel):
     liveDataMode: Optional[bool] = False
     liveDataDuration: Optional[datetime.timedelta] = None
     timestamp: Optional[float] = None
+    focusGroupAllowList: Optional[List[str]] = None
     focusGroups: List[FocusGroup] = []
 
     keepUnfocused: bool = False
