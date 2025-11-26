@@ -164,7 +164,7 @@ class ReductionRecipe(Recipe[Ingredients]):
             OutputWorkspace=preOutputUnfocWs,
             Target="TOF",
         )
-        
+
         self.mantidSnapper.Rebin(
             "Rebin in log TOF",
             InputWorkspace=preOutputUnfocWs,
@@ -324,7 +324,7 @@ class ReductionRecipe(Recipe[Ingredients]):
             **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
         )
         self._cloneIntermediateWorkspace(self.sampleWs, "sample_preprocessed")
-        
+
         # Retain unfocused data for comparison.
         if self.keepUnfocused:
             data["unfocusedWS"] = self._prepareUnfocusedData(self.sampleWs, None, self.convertUnitsTo)
