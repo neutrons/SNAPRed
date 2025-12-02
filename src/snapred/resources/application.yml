@@ -336,6 +336,11 @@ constants:
   RawVanadiumCorrection:
     numberOfSlices: 10
     numberOfAnnuli: 10
+  ReductionRecipe:
+    unfocussed:
+      Rebin:
+        Params: "-0.002"
+        PreserveEvents: true
   ResampleX:
     NumberBins: 1500
 
