@@ -80,6 +80,11 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         self.unbagGroceries()
 
         for index, groupID in enumerate(self.groupIDs):
+            spectrumInfo = self.mantidSnapper.mtd[self.inputWorkspaceName].spectrumInfo()
+            numHisto = self.mantidSnapper.mtd[self.inputWorkspaceName].getNumberHistograms()
+            if index >= numHisto or spectrumInfo.isMasked(index):
+                continue
+
             tmpSpecName = mtd.unique_name(prefix=f"__tmp_fitspec_{index}_")
             outputNameTmp = mtd.unique_name(prefix=f"__tmp_fitdiag_{index}_")
             outputNamesTmp = {x: f"{outputNameTmp}{self.outputSuffix[x]}_{index}" for x in FitOutputEnum}

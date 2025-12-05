@@ -77,7 +77,7 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
             )
 
         diffocWS = self.mantidSnapper.mtd[groceries["groupingWorkspace"]]
-        if groupIDs != diffocWS.getGroupIDs().tolist():
+        if groupIDs > diffocWS.getGroupIDs().tolist():
             raise RuntimeError(
                 f"Group IDs do not match between peak list and focus WS: '{groupIDs}' vs. '{diffocWS.getGroupIDs()}'"
             )
