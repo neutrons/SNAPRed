@@ -506,7 +506,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.25.0-py311haee01d2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - pypi: https://files.pythonhosted.org/packages/31/b4/b9b800c45527aadd64d5b442f9b932b00648617eb5d63d2c7a6587b7cafc/jmespath-1.0.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/42/b9/558e83ddddfc4618eb2a31d3479b0609477f0ebc047c2c173eb3d496cdd0/pyoncat-1.6.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/61/22/b8cb00df7d2b5e0875f60628594d44dba283e951b1ae17c12f99e332cc0a/regex-2025.11.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/d2/b8/f0b9b880c03a3db8eaff63d76ca751ac7d8e45483fb7a0bb9f8e5c6ce433/toml_cli-0.8.2-py3-none-any.whl
       - pypi: ./
@@ -1014,7 +1013,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.25.0-py311haee01d2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - pypi: https://files.pythonhosted.org/packages/31/b4/b9b800c45527aadd64d5b442f9b932b00648617eb5d63d2c7a6587b7cafc/jmespath-1.0.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/42/b9/558e83ddddfc4618eb2a31d3479b0609477f0ebc047c2c173eb3d496cdd0/pyoncat-1.6.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/61/22/b8cb00df7d2b5e0875f60628594d44dba283e951b1ae17c12f99e332cc0a/regex-2025.11.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/d2/b8/f0b9b880c03a3db8eaff63d76ca751ac7d8e45483fb7a0bb9f8e5c6ce433/toml_cli-0.8.2-py3-none-any.whl
       - pypi: ./
@@ -1380,7 +1378,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.23.0-pyhcf101f3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
-      - pypi: https://files.pythonhosted.org/packages/42/b9/558e83ddddfc4618eb2a31d3479b0609477f0ebc047c2c173eb3d496cdd0/pyoncat-1.6.2-py2.py3-none-any.whl
       - pypi: ./
   local-mantid:
     channels:
@@ -1716,7 +1713,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.23.0-pyhcf101f3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
-      - pypi: https://files.pythonhosted.org/packages/42/b9/558e83ddddfc4618eb2a31d3479b0609477f0ebc047c2c173eb3d496cdd0/pyoncat-1.6.2-py2.py3-none-any.whl
       - pypi: ./
   prod:
     channels:
@@ -2222,7 +2218,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.25.0-py311haee01d2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - pypi: https://files.pythonhosted.org/packages/31/b4/b9b800c45527aadd64d5b442f9b932b00648617eb5d63d2c7a6587b7cafc/jmespath-1.0.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/42/b9/558e83ddddfc4618eb2a31d3479b0609477f0ebc047c2c173eb3d496cdd0/pyoncat-1.6.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/61/22/b8cb00df7d2b5e0875f60628594d44dba283e951b1ae17c12f99e332cc0a/regex-2025.11.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/d2/b8/f0b9b880c03a3db8eaff63d76ca751ac7d8e45483fb7a0bb9f8e5c6ce433/toml_cli-0.8.2-py3-none-any.whl
       - pypi: ./
@@ -2730,7 +2725,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.25.0-py311haee01d2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - pypi: https://files.pythonhosted.org/packages/31/b4/b9b800c45527aadd64d5b442f9b932b00648617eb5d63d2c7a6587b7cafc/jmespath-1.0.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/42/b9/558e83ddddfc4618eb2a31d3479b0609477f0ebc047c2c173eb3d496cdd0/pyoncat-1.6.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/61/22/b8cb00df7d2b5e0875f60628594d44dba283e951b1ae17c12f99e332cc0a/regex-2025.11.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/d2/b8/f0b9b880c03a3db8eaff63d76ca751ac7d8e45483fb7a0bb9f8e5c6ce433/toml_cli-0.8.2-py3-none-any.whl
       - pypi: ./
@@ -6141,7 +6135,6 @@ packages:
   md5: 2e1b84d273b01835256e53fd938de355
   depends:
   - __glibc >=2.17,<3.0.a0
-  - icu >=75.1,<76.0a0
   - libgcc >=14
   - libzlib >=1.3.1,<2.0a0
   license: blessing
@@ -6251,7 +6244,6 @@ packages:
   - __glibc >=2.17,<3.0.a0
   - libgcc >=14
   license: BSD-3-Clause
-  license_family: BSD
   purls: []
   size: 40235
   timestamp: 1764790744114
@@ -7839,15 +7831,6 @@ packages:
   - pkg:pypi/pygraphviz?source=hash-mapping
   size: 147838
   timestamp: 1759598316297
-- pypi: https://files.pythonhosted.org/packages/42/b9/558e83ddddfc4618eb2a31d3479b0609477f0ebc047c2c173eb3d496cdd0/pyoncat-1.6.2-py2.py3-none-any.whl
-  name: pyoncat
-  version: 1.6.2
-  sha256: 704ad1873d7b5e9834e8432de66fe3854a699779010d4a020dd64c7a87ee4cb7
-  requires_dist:
-  - requests
-  - oauthlib ; extra == 'auth'
-  - requests-oauthlib ; extra == 'auth'
-  requires_python: '>=2.6,!=3.0.*,!=3.1.*,!=3.2.*,<4'
 - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.5-pyhcf101f3_0.conda
   sha256: 6814b61b94e95ffc45ec539a6424d8447895fef75b0fec7e1be31f5beee883fb
   md5: 6c8979be6d7a17692793114fa26916e8
@@ -8916,10 +8899,8 @@ packages:
   timestamp: 1762948049098
 - pypi: ./
   name: snapred
-  version: 2.1.0.dev10+d202512021941
-  sha256: 77342b221f16e77c80c8d2e2a88bb99298892fe9ffb228e0b05b2a81a405847f
-  requires_dist:
-  - pyoncat~=1.6
+  version: 2.2.0.dev10
+  sha256: be854f5a176ae3b72d54126d0f4afa70bc31186543a4400d8fb6c3e9ed99243a
   requires_python: '>=3.10'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/sniffio-1.3.1-pyhd8ed1ab_2.conda
@@ -9108,6 +9089,7 @@ packages:
   - pyyaml
   - sphinx
   license: BSD-2-Clause
+  license_family: BSD
   purls:
   - pkg:pypi/sphinxcontrib-mermaid?source=hash-mapping
   size: 18777
@@ -9141,7 +9123,6 @@ packages:
   md5: 968f50847d17c74a428fc47a2c70fd6f
   depends:
   - __glibc >=2.17,<3.0.a0
-  - icu >=75.1,<76.0a0
   - libgcc >=14
   - libsqlite 3.51.1 h0c1763c_0
   - libzlib >=1.3.1,<2.0a0
@@ -9447,6 +9428,7 @@ packages:
   - python >=3.10
   - typing_extensions >=4.12.0
   license: MIT
+  license_family: MIT
   purls:
   - pkg:pypi/typing-inspection?source=compressed-mapping
   size: 18923
@@ -9551,6 +9533,7 @@ packages:
   sha256: f120be9990717a5a48f68696f78286db99a17f95618f29598b1c02ea60692495
   md5: 4e1798885aaa0aca5ce9f2a22600f469
   depends:
+  - __glibc >=2.17,<3.0.a0
   - libgcc >=14
   - libstdcxx >=14
   constrains:
