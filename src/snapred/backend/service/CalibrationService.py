@@ -282,7 +282,7 @@ class CalibrationService(Service):
             numMaskedBeforePixelCal = userMaskWs.getNumberMasked()
         res = PixelDiffCalRecipe().cook(request.ingredients, request.groceries)
         maskWS = self.groceryService.getWorkspaceForName(res.maskWorkspace)
-        percentMasked = (maskWS.getNumberMasked()-numMaskedBeforePixelCal) / maskWS.getNumberHistograms()
+        percentMasked = (maskWS.getNumberMasked() - numMaskedBeforePixelCal) / maskWS.getNumberHistograms()
         threshold = Config["constants.maskedPixelThreshold"]
         if percentMasked > threshold:
             res.result = False

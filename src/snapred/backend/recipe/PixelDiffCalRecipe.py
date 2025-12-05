@@ -106,16 +106,14 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         self.DIFCpixel = groceries["calibrationTable"]
         self.DIFCprev = groceries.get("previousCalibration", "")
         # the input data converted to d-spacing
-        
+
         if self.mantidSnapper.mtd.doesExist(self.maskWS):
             self.mantidSnapper.MaskDetectors(
-                "applying user generated mask",
-                Workspace=self.wsTOF,
-                MaskedWorkspace=self.maskWS
+                "applying user generated mask", Workspace=self.wsTOF, MaskedWorkspace=self.maskWS
             )
         else:
             raise RuntimeError(f"Mask workspace {self.maskWS} does not exist")
-        
+
         self.wsDSP = wng.diffCalInputDSP().runNumber(self.runNumber).build()
         self.convertUnitsAndRebin(self.wsTOF, self.wsDSP)
         self.mantidSnapper.CloneWorkspace(
