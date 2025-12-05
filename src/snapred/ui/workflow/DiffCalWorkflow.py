@@ -393,9 +393,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         # focus the workspace to view the peaks
         self._renewPixelCal()
         self.groceries["inputWorkspace"] = self.pixelCalibratedWorkspace
-        
-        
-        
+
         self._renewFocus(self.prevGroupingIndex)
         self._renewFitPeaks(self.peakFunction)
         response = self._calculateResidual()

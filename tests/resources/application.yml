@@ -323,6 +323,12 @@ constants:
   m2cm: 10000.0 # conversion factor for m^2 to cm^2
   maskedPixelThreshold: 0.15
 
+  ReductionRecipe:
+    unfocussed:
+      Rebin:
+        Params: "-0.002"
+        PreserveEvents: true
+
   CrystallographicInfo:
     crystalDMin: 0.4
     crystalDMax: 100.0
