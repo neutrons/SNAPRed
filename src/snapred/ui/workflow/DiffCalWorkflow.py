@@ -484,7 +484,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         """
         combinedMask = None
         if self.groceries:
-            combinedMask = self.groceries["maskWorkspace"]
+            combinedMask = self.groceries.get("combinedMask")
         return DiffractionCalibrationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
@@ -532,7 +532,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             preserveEvents=False,
             inputWorkspace=self.groceries["inputWorkspace"],
             groupingWorkspace=self.groceries["groupingWorkspace"],
-            maskWorkspace=self.groceries["maskWorkspace"],
+            maskWorkspace=self.groceries.get("combinedMask"),
         )
         response = self.request(path="calibration/focus", payload=payload)
         self.focusedWorkspace = response.data[0]
