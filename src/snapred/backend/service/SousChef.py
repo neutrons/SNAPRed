@@ -341,7 +341,7 @@ class SousChef(Service):
         return DiffractionCalibrationIngredients(
             runConfig=self.prepRunConfig(ingredients.runNumber),
             pixelGroup=self.prepPixelGroup(ingredients, pixelMask=combinedPixelMask),
-            groupedPeakLists=self.prepDetectorPeaks(ingredients, purgePeaks=False, pixelMask=combinedPixelMask),
+            groupedPeakLists=self.prepDetectorPeaks(ingredients, pixelMask=combinedPixelMask),
             peakFunction=ingredients.peakFunction,
             convergenceThreshold=ingredients.convergenceThreshold,
             maxOffset=ingredients.maxOffset,
