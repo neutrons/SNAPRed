@@ -129,6 +129,7 @@ class CalibrationService(Service):
     def prepDiffractionCalibrationIngredients(
         self, request: DiffractionCalibrationRequest
     ) -> DiffractionCalibrationIngredients:
+        self.validateRequest(request)
         # fetch the ingredients needed to focus and plot the peaks
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         state, _ = self.dataFactoryService.constructStateId(request.runNumber)
@@ -155,7 +156,7 @@ class CalibrationService(Service):
     @Register("groceries")
     def fetchDiffractionCalibrationGroceries(self, request: DiffractionCalibrationRequest) -> Dict[str, str]:
         # groceries
-
+        self.validateRequest(request)
         # TODO:  It would be nice for groceryclerk to be smart enough to flatten versions
         # However I will save that scope for another time
         if request.startingTableVersion == VersionState.DEFAULT:
@@ -321,6 +322,7 @@ class CalibrationService(Service):
             runNumber=request.runNumber, continueFlags=request.continueFlags
         )
         self.validateWritePermissions(permissionsRequest)
+        self.sousChef.verifyCalibrationExists(request.runNumber, request.useLiteMode)
 
     @Register("validateWritePermissions")
     def validateWritePermissions(self, request: CalibrationWritePermissionsRequest):
