@@ -509,11 +509,11 @@ class TestSousChef(unittest.TestCase):
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("stateId", "DetectorState"))
 
-        result = self.instance.prepDiffractionCalibrationIngredients(self.ingredients)
+        result = self.instance.prepDiffractionCalibrationIngredients(self.ingredients, None)
 
         self.instance.prepRunConfig.assert_called_once_with(self.ingredients.runNumber)
-        self.instance.prepPixelGroup.assert_called_once_with(self.ingredients)
-        self.instance.prepDetectorPeaks.assert_called_once_with(self.ingredients)
+        self.instance.prepPixelGroup.assert_called_once_with(self.ingredients, pixelMask=None)
+        self.instance.prepDetectorPeaks.assert_called_once_with(self.ingredients, purgePeaks=False, pixelMask=None)
         DiffractionCalibrationIngredients.assert_called_once_with(
             runConfig=self.instance.prepRunConfig.return_value,
             pixelGroup=self.instance.prepPixelGroup.return_value,

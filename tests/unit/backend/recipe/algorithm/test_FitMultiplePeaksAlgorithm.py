@@ -14,7 +14,7 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
-    from mantid.simpleapi import CreateSingleValuedWorkspace, CreateWorkspace, LoadNexusProcessed, mtd
+    from mantid.simpleapi import CreateSingleValuedWorkspace, CreateWorkspace, LoadInstrument, LoadNexusProcessed, mtd
     from util.SculleryBoy import SculleryBoy
 
     from snapred.backend.dao.GroupPeakList import GroupPeakList
@@ -49,6 +49,7 @@ with mock.patch.dict(
             DataY=[1] * 6,
             NSpec=6,
         )
+        LoadInstrument(wsName, InstrumentName="SNAP", RewriteSpectraMap=True)
         mockFarmFresh = mock.Mock(spec_set=FarmFreshIngredients)
         peaks = SculleryBoy().prepDetectorPeaks(mockFarmFresh)
         fmpAlgo = FitMultiplePeaksAlgorithm()

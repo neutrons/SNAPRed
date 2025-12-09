@@ -223,7 +223,7 @@ class ImitationSousChef(SousChef):
     generation process.
     """
 
-    def prepDiffractionCalibrationIngredients(self, ingredients: Any) -> Any:
+    def prepDiffractionCalibrationIngredients(self, ingredients: Any, combinedPixelMask: str) -> Any:
         return dataSynthesizer.ingredients
 
 

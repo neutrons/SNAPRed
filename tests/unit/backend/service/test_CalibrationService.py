@@ -969,15 +969,18 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Call the method with the provided parameters
         request = SimpleDiffCalRequest.model_construct(
             ingredients=mock.sentinel.ingredients,
-            groceries=mock.sentinel.groceries,
+            groceries=mock.Mock(),
         )
+
+        self.instance.groceryService.getWorkspaceForName = mock.Mock(side_effect=[False, mtd[self.sampleMaskWS]])
+
         result = self.instance.pixelCalibration(request)
 
         # Perform assertions to check the result and method calls
         assert result == mock.sentinel.result
         PixelRx().cook.assert_called_once_with(
             mock.sentinel.ingredients,
-            mock.sentinel.groceries,
+            request.groceries,
         )
 
     @mock.patch(thisService + "PixelDiffCalRecipe", spec_set=PixelDiffCalRecipe)
@@ -997,8 +1000,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Call the method with the provided parameters
         request = SimpleDiffCalRequest.model_construct(
             ingredients=mock.sentinel.ingredients,
-            groceries=mock.sentinel.groceries,
+            groceries=mock.Mock(),
         )
+
+        self.instance.groceryService.getWorkspaceForName = mock.Mock(side_effect=[False, maskWS])
+
         with pytest.raises(Exception, match=r".*pixels failed calibration*"):
             self.instance.pixelCalibration(request)
 
@@ -1105,7 +1111,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             maskWS.setY(pixel, [1.0])
         self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"maskWorkspace": self.sampleMaskWS})
-        self.instance.groceryService.getWorkspaceForName = mock.Mock(return_value=mtd[self.sampleMaskWS])
+        self.instance.groceryService.getWorkspaceForName = mock.Mock(side_effect=[False, mtd[self.sampleMaskWS]])
 
         # Call the method with the provided parameters
         request = DiffractionCalibrationRequest(
@@ -1149,6 +1155,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             preserveEvents=False,
             inputWorkspace=focusedWorkspace,
             groupingWorkspace=groupingWorkspace,
+            maskWorkspace="mockMaskWorkspace",
         )
 
         # Call the method with the provided parameters

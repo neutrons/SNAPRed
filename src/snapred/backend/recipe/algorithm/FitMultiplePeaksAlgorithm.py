@@ -82,6 +82,10 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         for index, groupID in enumerate(self.groupIDs):
             spectrumInfo = self.mantidSnapper.mtd[self.inputWorkspaceName].spectrumInfo()
             numHisto = self.mantidSnapper.mtd[self.inputWorkspaceName].getNumberHistograms()
+            if spectrumInfo.detectorCount() == 0:
+                raise ValueError(
+                    f"Spectrum with NO DETECTORS encountered on {self.inputWorkspaceName} at index {index}"
+                )
             if index >= numHisto or spectrumInfo.isMasked(index):
                 continue
 

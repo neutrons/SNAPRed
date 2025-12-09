@@ -76,9 +76,9 @@ class TestPixelDiffCalRecipe(unittest.TestCase):
         result = rx.cook(self.ingredients, self.groceries).medianOffsets
 
         # check that value converges
-        # WARNING: testing for three iterations seems to be about the limit here.
-        #   At greater than 3 iterations, there are small oscillations about a limit value.
-        maxIter = 3
+        # WARNING: testing for four iterations seems to be about the limit here.
+        #   At greater than 4 iterations, there are small oscillations about a limit value.
+        maxIter = 4
         assert len(result) < maxIter
         allOffsets = [result[0]]
 

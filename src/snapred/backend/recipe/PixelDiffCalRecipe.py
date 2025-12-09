@@ -108,11 +108,10 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         # the input data converted to d-spacing
 
         if self.mantidSnapper.mtd.doesExist(self.maskWS):
+            # if user supplied mask exists, apply it before adding the addition pixelcal mask to it
             self.mantidSnapper.MaskDetectors(
                 "applying user generated mask", Workspace=self.wsTOF, MaskedWorkspace=self.maskWS
             )
-        else:
-            raise RuntimeError(f"Mask workspace {self.maskWS} does not exist")
 
         self.wsDSP = wng.diffCalInputDSP().runNumber(self.runNumber).build()
         self.convertUnitsAndRebin(self.wsTOF, self.wsDSP)
