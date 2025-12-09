@@ -376,7 +376,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             pixelMasks=self.pixelMasks,
         )
         self.groceries = self.request(path="calibration/groceries", payload=payload).data
-        payload.combinedPixelMask = self.groceries["maskWorkspace"]
+        payload.combinedPixelMask = self.groceries.get("combinedMask")
         self.ingredients = self.request(path="calibration/ingredients", payload=payload).data
 
         # set "previous" values -- this is their initialization

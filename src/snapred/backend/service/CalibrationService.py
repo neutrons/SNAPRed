@@ -211,6 +211,11 @@ class CalibrationService(Service):
                 )
                 self.mantidSnapper.executeQueue()
 
+        if self.groceryService.workspaceDoesExist(combinedMask):
+            # this is set here to confirm this ws exists and is not just a placeholder
+            # like `maskworkspace` can be
+            groceryDict["combinedMask"] = combinedMask
+
         return groceryDict
 
     @WallClockTime(N_ref=_calibration_N_ref, order=ComputationalOrder.O_N)

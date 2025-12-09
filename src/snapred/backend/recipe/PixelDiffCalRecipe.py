@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 import numpy as np
 from pydantic import BaseModel
@@ -18,7 +18,7 @@ logger = snapredLogger.getLogger(__name__)
 class PixelDiffCalServing(BaseModel):
     result: bool
     medianOffsets: List[float]
-    maskWorkspace: str
+    maskWorkspace: Optional[str] = None
     calibrationTable: str
     outputWorkspace: str
 
@@ -101,14 +101,16 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         """
         self.wsTOF = groceries["inputWorkspace"]
         self.groupingWS = groceries["groupingWorkspace"]
-        self.maskWS = groceries["maskWorkspace"]
+        self.maskWS = groceries.get("maskWorkspace")
         # the name of the output calibration table
         self.DIFCpixel = groceries["calibrationTable"]
         self.DIFCprev = groceries.get("previousCalibration", "")
         # the input data converted to d-spacing
 
-        if self.mantidSnapper.mtd.doesExist(self.maskWS):
-            # if user supplied mask exists, apply it before adding the addition pixelcal mask to it
+        if self.maskWS and self.mantidSnapper.mtd.doesExist(self.maskWS):
+            # if user supplied mask exists, apply it
+            # A user mask may not exist, but the maskws name is used to store
+            # the mask generated as part of PixelDiffCalRecipe
             self.mantidSnapper.MaskDetectors(
                 "applying user generated mask", Workspace=self.wsTOF, MaskedWorkspace=self.maskWS
             )
