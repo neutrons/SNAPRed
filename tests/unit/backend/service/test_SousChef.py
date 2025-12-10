@@ -513,7 +513,7 @@ class TestSousChef(unittest.TestCase):
 
         self.instance.prepRunConfig.assert_called_once_with(self.ingredients.runNumber)
         self.instance.prepPixelGroup.assert_called_once_with(self.ingredients, pixelMask=None)
-        self.instance.prepDetectorPeaks.assert_called_once_with(self.ingredients, purgePeaks=False, pixelMask=None)
+        self.instance.prepDetectorPeaks.assert_called_once_with(self.ingredients, pixelMask=None)
         DiffractionCalibrationIngredients.assert_called_once_with(
             runConfig=self.instance.prepRunConfig.return_value,
             pixelGroup=self.instance.prepPixelGroup.return_value,

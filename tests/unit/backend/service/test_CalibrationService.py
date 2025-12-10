@@ -728,15 +728,17 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # self.instance.sousChef = SculleryBoy() #
         self.instance.sousChef = mock.Mock(spec_set=SousChef)
+        self.instance.validateRequest = mock.Mock()
 
         # Call the method with the provided parameters
-        request = mock.Mock(calibrantSamplePath="bundt/cake_egg.py")
+        request = mock.Mock(calibrantSamplePath="bundt/cake_egg.py", runNumber="123", continueFlags=0)
         res = self.instance.prepDiffractionCalibrationIngredients(request)
 
         # Perform assertions to check the result and method calls
         assert FarmFreshIngredients.call_count == 1
         self.instance.dataFactoryService.getCifFilePath.assert_called_once_with("cake_egg")
         assert res == self.instance.sousChef.prepDiffractionCalibrationIngredients(mockFF)
+        self.instance.validateRequest.assert_called_once()
 
     def test_fetchDiffractionCalibrationGroceries(self):
         self.instance.groceryClerk = mock.Mock(spec=GroceryListBuilder)
@@ -763,6 +765,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 "maskWorkspace": calibrationMaskName,
             }
         )
+        self.instance.validateRequest = mock.Mock()
 
         request = mock.Mock(
             spec=DiffractionCalibrationRequest,
@@ -823,6 +826,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             assert not self.instance.groceryService.renameWorkspace.called
             assert self.instance.groceryService.getCloneOfWorkspace.call_count == 1
             assert self.instance.groceryService.getCloneOfWorkspace.call_args[0][0] == "mask1"
+            self.instance.validateRequest.assert_called()
 
     @mock.patch(thisService + "SimpleDiffCalRequest", spec_set=SimpleDiffCalRequest)
     def test_diffractionCalibration_calls_others(self, SimpleDiffCalRequest):
@@ -847,6 +851,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         self.instance.pixelCalibration = mock.Mock(return_value=mockPixelRxServing)
         self.instance.groupCalibration = mock.Mock(return_value=mockGroupRxServing)
+        self.instance.sousChef.verifyCalibrationExists = mock.Mock()
 
         # Call the method with the provided parameters
         request = DiffractionCalibrationRequest(
@@ -870,6 +875,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         self.instance.pixelCalibration.assert_called_once_with(SimpleDiffCalRequest())
         self.instance.groupCalibration.assert_called_once_with(SimpleDiffCalRequest())
+        self.instance.sousChef.verifyCalibrationExists.assert_called()
         assert result == {
             "calibrationTable": mock.sentinel.newCalTable,
             "diagnosticWorkspace": mock.sentinel.diagnostic,
@@ -1039,9 +1045,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         permissionsRequest = CalibrationWritePermissionsRequest(
             runNumber=request.runNumber, continueFlags=request.continueFlags
         )
-        with mock.patch.object(self.instance, "validateWritePermissions") as mockValidateWritePermissions:
+        with (
+            mock.patch.object(self.instance, "validateWritePermissions") as mockValidateWritePermissions,
+            mock.patch.object(self.instance, "sousChef", mock.Mock()) as mockSousChef,
+        ):
             self.instance.validateRequest(request)
             mockValidateWritePermissions.assert_called_once_with(permissionsRequest)
+            mockSousChef.verifyCalibrationExists.assert_called_once()
 
     def test_validateWritePermissions(self):
         # test that `validateWritePermissions` throws no exceptions
