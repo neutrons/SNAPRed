@@ -18,6 +18,12 @@ class CheckableComboBox(QComboBox):
         else:
             item.setCheckState(Qt.Checked)
 
+    def setItemCheckedByValue(self, value):
+        for index in range(self.count()):
+            item = self.model().item(index)
+            if item.text() == value:
+                item.setCheckState(Qt.Checked)
+
     def checkedItems(self) -> List[str]:
         checked_items = []
         for index in range(self.count()):
@@ -71,6 +77,9 @@ class MultiSelectDropDown(QWidget):
     def setItems(self, items: List[str] = []):
         self._items = items
         self._initItems()
+
+    def numItems(self):
+        return len(self._items)
 
     def checkedItems(self) -> List[str]:
         return self.dropDown.checkedItems()

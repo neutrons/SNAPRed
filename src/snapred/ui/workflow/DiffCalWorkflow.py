@@ -61,6 +61,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.mantidSnapper = MantidSnapper(None, "Utensils")
         self.groceries = None
         self.ingredients = None
+        self.combinedPixelMaskWs = None
         # create a tree of flows for the user to successfully execute diffraction calibration
         # DiffCal Request ->
         # Check Peaks     ->
@@ -376,7 +377,10 @@ class DiffCalWorkflow(WorkflowImplementer):
             pixelMasks=self.pixelMasks,
         )
         self.groceries = self.request(path="calibration/groceries", payload=payload).data
-        payload.combinedPixelMask = self.groceries.get("combinedMask")
+        self.combinedPixelMaskWs = self.groceries.get("combinedMask")
+        if self.combinedPixelMaskWs:
+            payload.combinedPixelMask = self.groceries.pop("combinedMask")
+
         self.ingredients = self.request(path="calibration/ingredients", payload=payload).data
 
         # set "previous" values -- this is their initialization
@@ -482,9 +486,6 @@ class DiffCalWorkflow(WorkflowImplementer):
         """
         Creates a standard diffraction calibration request in one location, so that the same parameters are always used.
         """
-        combinedMask = None
-        if self.groceries:
-            combinedMask = self.groceries.get("combinedMask")
         return DiffractionCalibrationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
@@ -500,7 +501,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             maxChiSq=maxChiSq,
             removeBackground=self.removeBackground,
             pixelMasks=pixelMasks,
-            combinedPixelMask=combinedMask,
+            combinedPixelMask=self.combinedPixelMaskWs,
         )
 
     def _renewIngredients(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks):
@@ -532,7 +533,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             preserveEvents=False,
             inputWorkspace=self.groceries["inputWorkspace"],
             groupingWorkspace=self.groceries["groupingWorkspace"],
-            maskWorkspace=self.groceries.get("combinedMask"),
+            maskWorkspace=self.groceries.get("maskWorkspace"),
         )
         response = self.request(path="calibration/focus", payload=payload)
         self.focusedWorkspace = response.data[0]

@@ -232,7 +232,6 @@ class CalibrationService(Service):
             ingredients=self.prepDiffractionCalibrationIngredients(request),
             groceries=self.fetchDiffractionCalibrationGroceries(request),
         )
-
         pixelRes = self.pixelCalibration(payload)
         if not pixelRes.result:
             raise RuntimeError("Pixel Calibration failed")
