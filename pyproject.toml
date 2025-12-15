@@ -3,7 +3,7 @@ name = "SNAPRed"
 description = "A desktop application for Lifecycle Managment of data collected from the SNAP instrument."
 dynamic = ["version"]
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["fastapi>=0.95", "uvicorn[standard]>=0.22"]
 readme = "README.md"
 license = { text = "GPL3.0" }
 
