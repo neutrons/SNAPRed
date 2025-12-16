@@ -72,3 +72,9 @@ def call_service(service: str, subpath: str, payload: Dict[str, Any] | None = No
         raise
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/mcp/{service}")
+def call_service_root(service: str, payload: Dict[str, Any] | None = None):
+    """Invoke a registered service path with an empty subpath."""
+    return call_service(service, "", payload)

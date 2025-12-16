@@ -1,0 +1,11 @@
+{
+  "name": "my-project",
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=25.2.1"
+  },
+  "devDependencies": {
+    "@github/copilot": "^0.0.369"
+  }
+}

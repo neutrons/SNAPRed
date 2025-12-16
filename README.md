@@ -19,6 +19,18 @@ Planned to include: Reduction, Calibration, Data Exploration, and Diagnosis
 
 Please visit the [getting started guide](https://snapred.readthedocs.io/en/latest/getting_started.html) for developer documentation.
 
+
+## MCP Setup
+
+1. if running on analysis, install npm via the following
+	1. download the standalone binary to your `~/bin` folder and unzip
+	2. add it to your path (change version to match your downloaded version) `export PATH="$HOME/bin/node-v24.12.0-linux-x64/bin:$PATH"
+2. install copilot into your project's folder via `npm install @github/copilot --save-dev`
+3. start the snapred mcp server with `pixi run python -m snapred.mcp_main`
+4. run copilot cli via `npx copilot`
+5. `/login` to the copilot cli
+6. ask copilot to do some diffraction calibration
+
 ## Documentation
 
 https://snapred.readthedocs.io/en/latest/
