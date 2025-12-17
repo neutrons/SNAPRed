@@ -1527,6 +1527,8 @@ class GroceryService:
         for maskWsName in masks2Combine[startingIndex:]:
             if maskWsName == outputMaskWsName:
                 continue
+            if not self.mantidSnapper.mtd.doesExist(maskWsName):
+                raise ValueError(f"Mask {maskWsName} of mask set {masks2Combine} does not exist, cannot combine into pixel mask.")
             self.mantidSnapper.BinaryOperateMasks(
                 f"combine from pixel mask: '{maskWsName}'...",
                 InputWorkspace1=outputMaskWsName,

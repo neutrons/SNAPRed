@@ -437,7 +437,8 @@ class ReductionService(Service):
                 **residentMasks,
             ).values()
         )
-
+        # purge empty string, diffcalmask comes back as one if it doesnt exist
+        allMasks = [m for m in allMasks if m]
         allMasks.append(self.groceryService.fetchCompatiblePixelMask(combinedMask, runNumber, useLiteMode))
         if len(allMasks) > 0:
             combinedMask = self.groceryService.combinePixelMasks(combinedMask, allMasks)

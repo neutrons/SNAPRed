@@ -226,6 +226,8 @@ class TestReductionService(unittest.TestCase):
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
         self.instance.groceryService._validateWorkspaceInstrument = mock.Mock()
         self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
+        self.instance.groceryService.mantidSnapper = mock.Mock()
+        self.instance.groceryService.checkPixelMask = mock.Mock(return_value=True)
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.request.continueFlags = ContinueWarning.Type.UNSET
         res = self.instance.fetchReductionGroceries(self.request)
@@ -1190,6 +1192,7 @@ class TestReductionServiceMasks:
         def _createCompatibleMask(maskWSName, runNumber):
             createCompatibleMask(maskWSName, _instrumentDonorFromRun(runNumber))
             cleanup_workspace_at_exit(maskWSName)
+            return maskWSName
 
         monkeypatch.setattr(
             self.service.groceryService,
@@ -1253,6 +1256,7 @@ class TestReductionServiceMasks:
         with (
             mock.patch.object(self.service.groceryService, "fetchGroceryDict") as mockFetchGroceryDict,
             mock.patch.object(self.service.dataFactoryService, "getLatestApplicableCalibrationVersion", return_value=1),
+            mock.patch.object(self.service.groceryService, "mantidSnapper"),
         ):
             fetchGroceryCallArgs = []
 
@@ -1301,6 +1305,7 @@ class TestReductionServiceMasks:
         with (
             mock.patch.object(self.service.groceryService, "fetchGroceryDict") as mockFetchGroceryDict,
             mock.patch.object(self.service.dataFactoryService, "getLatestApplicableCalibrationVersion", return_value=1),
+            mock.patch.object(self.service.groceryService, "mantidSnapper"),
         ):
             fetchGroceryCallArgs = []
 
