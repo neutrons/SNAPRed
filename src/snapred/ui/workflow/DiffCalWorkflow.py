@@ -540,7 +540,9 @@ class DiffCalWorkflow(WorkflowImplementer):
         return response
 
     def _renewFitPeaks(self, peakFunction):
-        logger.info(f"there are {len(self.ingredients.pixelGroup.groupIDs)} groups, and {len(self.ingredients.groupedPeakLists)} peak lists")
+        logger.info(
+            f"there are {len(self.ingredients.pixelGroup.groupIDs)} groups, and {len(self.ingredients.groupedPeakLists)} peak lists"
+        )
 
         payload = FitMultiplePeaksRequest(
             inputWorkspace=self.focusedWorkspace,

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Set
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -10,7 +10,8 @@ from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceNameGenerator as wng
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class PixelDiffCalServing(BaseModel):
     maskWorkspace: WorkspaceName | None = None
     calibrationTable: str
     outputWorkspace: str
-    
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
