@@ -37,6 +37,7 @@ class CalibrationAssessmentRequest(BaseModel):
         default_factory=lambda: Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
     )
     maxChiSq: float = Field(default_factory=lambda: Config["constants.GroupDiffractionCalibration.MaxChiSq"])
+    combinedPixelMask: WorkspaceName | None = None
 
     @field_validator("fwhmMultipliers", mode="before")
     @classmethod

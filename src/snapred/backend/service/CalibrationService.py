@@ -688,8 +688,8 @@ class CalibrationService(Service):
             maxChiSq=request.maxChiSq,
             state=state,
         )
-        pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
-        detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh)
+        pixelGroup = self.sousChef.prepPixelGroup(farmFresh, pixelMask=request.combinedPixelMask)
+        detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh, pixelMask=request.combinedPixelMask)
 
         # TODO: We Need to Fit the Data
         fitResults = FitMultiplePeaksRecipe().executeRecipe(

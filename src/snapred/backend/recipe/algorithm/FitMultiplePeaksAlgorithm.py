@@ -78,6 +78,11 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         )
         self.chopIngredients(reducedPeakList)
         self.unbagGroceries()
+        
+        numHisto = self.mantidSnapper.mtd[self.inputWorkspaceName].getNumberHistograms()
+        if numHisto < len(self.groupIDs):
+            raise ValueError(f"Number of histograms and number of GroupPeakLists do not match: {numHisto} vs {len(self.groupIDs)}")
+        
 
         for index, groupID in enumerate(self.groupIDs):
             spectrumInfo = self.mantidSnapper.mtd[self.inputWorkspaceName].spectrumInfo()
@@ -86,9 +91,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
                 raise ValueError(
                     f"Spectrum with NO DETECTORS encountered on {self.inputWorkspaceName} at index {index}"
                 )
-            if index >= numHisto or spectrumInfo.isMasked(index):
-                continue
-
+                
             tmpSpecName = mtd.unique_name(prefix=f"__tmp_fitspec_{index}_")
             outputNameTmp = mtd.unique_name(prefix=f"__tmp_fitdiag_{index}_")
             outputNamesTmp = {x: f"{outputNameTmp}{self.outputSuffix[x]}_{index}" for x in FitOutputEnum}
