@@ -801,7 +801,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             result = self.instance.fetchDiffractionCalibrationGroceries(request)
             assert self.instance.groceryService.fetchCompatiblePixelMask.called
             assert self.instance.groceryService.combinePixelMasks.called
-            assert self.instance.groceryService.combinePixelMasks.call_args[0] == (combinedMask,[calibrationMaskName, "mask1", "mask2", combinedMask])
+            assert self.instance.groceryService.combinePixelMasks.call_args[0] == (
+                combinedMask,
+                [calibrationMaskName, "mask1", "mask2", combinedMask],
+            )
 
     @mock.patch(thisService + "SimpleDiffCalRequest", spec_set=SimpleDiffCalRequest)
     def test_diffractionCalibration_calls_others(self, SimpleDiffCalRequest):

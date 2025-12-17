@@ -201,7 +201,9 @@ class CalibrationService(Service):
         if request.pixelMasks:
             allMasks.extend(request.pixelMasks)
 
-        allMasks.append(self.groceryService.fetchCompatiblePixelMask(combinedMask, request.runNumber, request.useLiteMode))
+        allMasks.append(
+            self.groceryService.fetchCompatiblePixelMask(combinedMask, request.runNumber, request.useLiteMode)
+        )
 
         if len(allMasks) > 0:
             combinedMask = self.groceryService.combinePixelMasks(combinedMask, allMasks)

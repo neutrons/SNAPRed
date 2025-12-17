@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict
 
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -16,5 +14,5 @@ class FocusSpectraRequest(BaseModel):
     groupingWorkspace: str
     maskWorkspace: WorkspaceName | None = None
     outputWorkspace: WorkspaceName | None = None
-    
+
     model_config = ConfigDict(arbitrary_types_allowed=True)

@@ -52,7 +52,8 @@ from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Resource
-from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf, WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import parse_file_as, write_model_pretty
@@ -214,7 +215,7 @@ class ImitationGroceryService(GroceryService):
         tableWorkspaceName = self.createDiffCalTableWorkspaceName("default", useLiteMode, version)
         CloneWorkspace(InputWorkspace=self.diffcalTableWS, OutputWorkspace=tableWorkspaceName)
         return tableWorkspaceName
-    
+
     def fetchCompatiblePixelMask(self, maskWSName: WorkspaceName, runNumber: str, useLiteMode: bool) -> WorkspaceName:  # noqa: ARG002
         CloneWorkspace(InputWorkspace=self.maskWS, OutputWorkspace=maskWSName)
         return maskWSName
