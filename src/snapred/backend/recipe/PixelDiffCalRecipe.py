@@ -1,16 +1,16 @@
 from typing import Any, Dict, List, Optional, Set
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.profiling.ProgressRecorder import ComputationalOrder, WallClockTime
 from snapred.backend.recipe.algorithm.Utensils import Utensils
-from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
+from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -18,9 +18,11 @@ logger = snapredLogger.getLogger(__name__)
 class PixelDiffCalServing(BaseModel):
     result: bool
     medianOffsets: List[float]
-    maskWorkspace: Optional[str] = None
+    maskWorkspace: WorkspaceName | None = None
     calibrationTable: str
     outputWorkspace: str
+    
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 # Decorating with the `WallClockTime` profiler here somewhat duplicates the objective of the decoration
@@ -231,7 +233,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             refID: int = self.getRefID(workspaceIndices)
 
             self.mantidSnapper.CrossCorrelate(
-                f"Cross-Correlating spectra for {wscc}, group {groupID}",
+                f"Cross-Correlating spectra for {wscc}, subgroup {groupID}",
                 InputWorkspace=self.wsDSP,
                 OutputWorkspace=wscc + f"_group{groupID}",
                 ReferenceSpectra=refID,

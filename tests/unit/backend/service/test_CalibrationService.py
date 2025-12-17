@@ -814,7 +814,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value=mock.sentinel.stateroot)
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
         self.instance.prepDiffractionCalibrationIngredients = mock.Mock(return_value=mock.sentinel.ingredients)
-        self.instance.fetchDiffractionCalibrationGroceries = mock.Mock(return_value=mock.sentinel.groceries)
+        self.instance.fetchDiffractionCalibrationGroceries = mock.Mock(return_value={})
         mockPixelRxServing = mock.Mock(
             result=True,
             calibrationTable=mock.sentinel.oldCalTable,
@@ -849,7 +849,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.fetchDiffractionCalibrationGroceries.assert_called_once_with(request)
         SimpleDiffCalRequest.assert_called_once_with(
             ingredients=mock.sentinel.ingredients,
-            groceries=mock.sentinel.groceries,
+            groceries={},
         )
         self.instance.pixelCalibration.assert_called_once_with(SimpleDiffCalRequest())
         self.instance.groupCalibration.assert_called_once_with(SimpleDiffCalRequest())
