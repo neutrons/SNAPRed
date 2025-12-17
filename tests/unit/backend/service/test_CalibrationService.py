@@ -794,7 +794,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         with (
             mock.patch("snapred.meta.Time.timestamp", return_value=timestamp),
-            mock.patch.object(self.instance, "mantidSnapper") as mockMantidSnapper,
+            mock.patch.object(self.instance, "mantidSnapper"),
         ):
             request.pixelMasks = ["mask1", "mask2"]
             self.instance.groceryService.combinePixelMasks = mock.Mock(return_value=combinedMask)
