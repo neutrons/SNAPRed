@@ -133,7 +133,7 @@ class SculleryBoy:
     def prepDiffractionCalibrationIngredients(
         self,
         ingredients: FarmFreshIngredients,
-        pixelMask=None,  # noqa: ARG002
+        combinedPixelMask: WorkspaceName  # noqa: ARG002
     ) -> DiffractionCalibrationIngredients:
         return DiffractionCalibrationIngredients(
             runConfig=self.prepRunConfig(ingredients.runNumber),

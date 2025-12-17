@@ -194,28 +194,19 @@ class CalibrationService(Service):
             maskWorkspace=combinedMask,
         )
 
+        allMasks = []
+
         if self.groceryService.workspaceDoesExist(calibrationMaskName):
-            self.groceryService.renameWorkspace(calibrationMaskName, combinedMask)
-        elif request.pixelMasks:
-            self.groceryService.getCloneOfWorkspace(request.pixelMasks[0], combinedMask)
-
+            allMasks.append(calibrationMaskName)
         if request.pixelMasks:
-            for mask in request.pixelMasks:
-                if not self.groceryService.workspaceDoesExist(mask):
-                    raise RuntimeError([f"Pixel mask workspace '{mask}' does not exist"])
-                self.mantidSnapper.BinaryOperateMasks(
-                    f"Combine pixel mask workspace {mask} with existing masks",
-                    InputWorkspace1=combinedMask,
-                    InputWorkspace2=mask,
-                    OutputWorkspace=combinedMask,
-                    OperationType="OR",
-                )
-                self.mantidSnapper.executeQueue()
+            allMasks.extend(request.pixelMasks)
 
-        if self.groceryService.workspaceDoesExist(combinedMask):
-            # this is set here to confirm this ws exists and is not just a placeholder
-            # like `maskworkspace` can be
-            groceryDict["combinedMask"] = combinedMask
+        allMasks.append(self.groceryService.fetchCompatiblePixelMask(combinedMask, request.runNumber, request.useLiteMode))
+
+        if len(allMasks) > 0:
+            combinedMask = self.groceryService.combinePixelMasks(combinedMask, allMasks)
+        else:
+            combinedMask = ""
 
         return groceryDict
 
@@ -228,9 +219,12 @@ class CalibrationService(Service):
         # Profiling note: none of the following should be marked as sub-steps:
         #   their service methods are decorated separately.
 
+        groceries = self.fetchDiffractionCalibrationGroceries(request)
+        if not request.combinedPixelMask:
+            request.combinedPixelMask = groceries.get("maskWorkspace")
         payload = SimpleDiffCalRequest(
             ingredients=self.prepDiffractionCalibrationIngredients(request),
-            groceries=self.fetchDiffractionCalibrationGroceries(request),
+            groceries=groceries,
         )
         pixelRes = self.pixelCalibration(payload)
         if not pixelRes.result:

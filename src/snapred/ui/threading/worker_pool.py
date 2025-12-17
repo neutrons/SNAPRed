@@ -51,7 +51,7 @@ class Worker(QObject):
             results = SNAPResponse(code=ResponseCode.RECOVERABLE, message=e.model.json())
         except Exception as e:  # noqa: BLE001
             logger.error(e)
-            if logger.isEnabledFor(logging.DEBUG):
+            if logger.isEnabledFor(logging.DEBUG) or True:
                 # print stacktrace
                 import traceback
 

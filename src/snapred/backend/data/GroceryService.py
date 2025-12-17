@@ -1515,6 +1515,30 @@ class GroceryService:
 
         return groceries
 
+
+    def combinePixelMasks(self, outputMaskWsName : WorkspaceName, masks2Combine:List[WorkspaceName]):
+        startingIndex = 0
+        if len(masks2Combine) <= 0:
+            raise ValueError("Lists of masks to combine is empty")
+        
+        if not self.mantidSnapper.mtd.doesExist(outputMaskWsName):
+            self.renameWorkspace(masks2Combine[0], outputMaskWsName)
+            startingIndex = 1
+            
+        for maskWsName in masks2Combine[startingIndex:]:
+            if maskWsName == outputMaskWsName:
+                continue
+            self.mantidSnapper.BinaryOperateMasks(
+                    f"combine from pixel mask: '{maskWsName}'...",
+                    InputWorkspace1=outputMaskWsName,
+                    InputWorkspace2=maskWsName,
+                    OperationType="OR",
+                    OutputWorkspace=outputMaskWsName,
+                )
+
+        self.mantidSnapper.executeQueue()
+        return outputMaskWsName
+        
     def fetchGroceryDict(self, groceryDict: Dict[str, GroceryListItem], **kwargs) -> Dict[str, WorkspaceName]:
         """
         This is the primary method you should use for fetching groceries, in almost all cases.

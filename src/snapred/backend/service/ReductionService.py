@@ -393,7 +393,11 @@ class ReductionService(Service):
             # If no alternativeState state is provided, use the sample's state.
             state, _ = self.dataFactoryService.constructStateId(runNumber)
 
+
+
         combinedMask = wng.reductionPixelMask().runNumber(runNumber).timestamp(timestamp).build()
+
+
 
         # if there is a mask associated with the diffcal file, load it here
         calVersion = request.versions.calibration
@@ -415,6 +419,8 @@ class ReductionService(Service):
             self.groceryClerk.diffCalFilePath(request.alternativeCalibrationFilePath)
         self.groceryClerk.add()
 
+
+
         # if the user specified masks to use, also pull those
         residentMasks = {}
         for mask in request.pixelMasks:
@@ -429,25 +435,20 @@ class ReductionService(Service):
                     raise RuntimeError(
                         f"reduction pixel mask '{mask}' has unexpected workspace-type '{mask.tokens('workspaceType')}'"  # noqa: E501
                     )
+                    
+                    
         # Load all pixel masks
-        allMasks = self.groceryService.fetchGroceryDict(
+        allMasks = list(self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
             **residentMasks,
-        )
-
-        self.groceryService.fetchCompatiblePixelMask(combinedMask, runNumber, useLiteMode)
-        for mask in allMasks.values():
-            # If there is no mask corresponding to the diffraction calibration, it will be set to the empty string.
-            if bool(mask):
-                self.mantidSnapper.BinaryOperateMasks(
-                    f"combine from pixel mask: '{mask}'...",
-                    InputWorkspace1=combinedMask,
-                    InputWorkspace2=mask,
-                    OperationType="OR",
-                    OutputWorkspace=combinedMask,
-                )
-
-        self.mantidSnapper.executeQueue()
+        ).values())
+        
+        allMasks.append(self.groceryService.fetchCompatiblePixelMask(combinedMask, runNumber, useLiteMode))
+        if len(allMasks) > 0:
+            combinedMask = self.groceryService.combinePixelMasks(combinedMask, allMasks)
+        else:
+            combinedMask = ""
+            
         return combinedMask
 
     @FromString

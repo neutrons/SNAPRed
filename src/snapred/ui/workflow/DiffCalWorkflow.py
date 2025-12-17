@@ -61,7 +61,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.mantidSnapper = MantidSnapper(None, "Utensils")
         self.groceries = None
         self.ingredients = None
-        self.combinedPixelMaskWs = None
+        self.combinedPixelMaskName = None
         # create a tree of flows for the user to successfully execute diffraction calibration
         # DiffCal Request ->
         # Check Peaks     ->
@@ -377,10 +377,9 @@ class DiffCalWorkflow(WorkflowImplementer):
             pixelMasks=self.pixelMasks,
         )
         self.groceries = self.request(path="calibration/groceries", payload=payload).data
-        self.combinedPixelMaskWs = self.groceries.get("combinedMask")
-        if self.combinedPixelMaskWs:
-            payload.combinedPixelMask = self.groceries.pop("combinedMask")
-
+        self.combinedPixelMaskName = self.groceries.get("maskWorkspace")
+        if self.combinedPixelMaskName:
+            payload.combinedPixelMask = self.combinedPixelMaskName
         self.ingredients = self.request(path="calibration/ingredients", payload=payload).data
 
         # set "previous" values -- this is their initialization
@@ -501,7 +500,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             maxChiSq=maxChiSq,
             removeBackground=self.removeBackground,
             pixelMasks=pixelMasks,
-            combinedPixelMask=self.combinedPixelMaskWs,
+            combinedPixelMask=self.combinedPixelMaskName,
         )
 
     def _renewIngredients(self, xtalDMin, xtalDMax, peakFunction, fwhm, maxChiSq, pixelMasks):
