@@ -1520,8 +1520,8 @@ class GroceryService:
             raise ValueError("Internal Error: Lists of masks to combine is empty")
 
         if not self.mantidSnapper.mtd.doesExist(outputMaskWsName):
-            raise ValueError(("Internal Error: outputMaskWs should exist before attempting to combine masks with it."
-                              "consider using fetchCompatiblePixelMask to generate it."))
+            raise ValueError(("Internal Error: outputMaskWs should exist before attempting to combine masks with it. "
+                              "Consider using fetchCompatiblePixelMask to generate it."))
 
         for maskWsName in masks2Combine:
             if maskWsName == outputMaskWsName:

@@ -766,6 +766,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             }
         )
         self.instance.groceryService.fetchCompatiblePixelMask = mock.Mock(side_effect=lambda n, _, __: n)
+        self.instance.groceryService.mantidSnapper.mtd.doesExist = mock.Mock(side_effect=lambda _: True)
+        self.instance.groceryService.mantidSnapper.BinaryOperateMasks = mock.Mock()
         self.instance.validateRequest = mock.Mock()
 
         request = mock.Mock(
@@ -805,7 +807,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 combinedMask,
                 [calibrationMaskName, "mask1", "mask2", combinedMask],
             )
-
+            assert self.instance.groceryService.mantidSnapper.BinaryOperateMasks.called
+            
     @mock.patch(thisService + "SimpleDiffCalRequest", spec_set=SimpleDiffCalRequest)
     def test_diffractionCalibration_calls_others(self, SimpleDiffCalRequest):
         # mock out external functionalties
@@ -1101,6 +1104,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"maskWorkspace": self.sampleMaskWS})
         self.instance.groceryService.getWorkspaceForName = mock.Mock(side_effect=[False, mtd[self.sampleMaskWS]])
         self.instance.groceryService.fetchCompatiblePixelMask = mock.Mock(side_effect=lambda n, _, __: n)
+        self.instance.groceryService.mantidSnapper.mtd.doesExist = mock.Mock(side_effect=lambda _: True)
+        self.instance.groceryService.mantidSnapper.BinaryOperateMasks = mock.Mock()
         # Call the method with the provided parameters
         request = DiffractionCalibrationRequest(
             runNumber="123",
