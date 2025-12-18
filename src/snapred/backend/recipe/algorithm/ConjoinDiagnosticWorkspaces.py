@@ -20,6 +20,7 @@ from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEn
 
 logger = snapredLogger.getLogger(__name__)
 
+
 class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
     """
     Given the grouped diagnostic output from PDCalibration run on one spectum at a time,
@@ -139,13 +140,13 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
             CheckOverlapping=False,
             CheckMatchingBins=False,  # Not available in 6.11.0.3rc2
         )
-        
-        # TODO: Remove when Defect 14460 is resolved. 
+
+        # TODO: Remove when Defect 14460 is resolved.
         #       There is a defect in ConjoinWorkspaces that incorrectly determines
         #       if spectrum numbers need to be remapped.
         for i, specNum in enumerate(specNumbers):
             mtd[outws].getSpectrum(i).setSpectrumNo(specNum)
-        
+
         logger.debug(f"resulting spectrum numbers: {mtd[outws].getSpectrumNumbers()}")
         if self.autoDelete and inws in mtd:
             DeleteWorkspace(inws)

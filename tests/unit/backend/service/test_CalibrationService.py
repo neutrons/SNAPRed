@@ -20,7 +20,6 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from util.Config_helpers import Config_override
 from util.dao import DAOFactory
 from util.helpers import (
@@ -59,6 +58,7 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.CalculateDiffCalResidualRecipe import CalculateDiffCalServing
 from snapred.backend.recipe.GroupDiffCalRecipe import GroupDiffCalRecipe
 from snapred.backend.recipe.PixelDiffCalRecipe import PixelDiffCalRecipe, PixelDiffCalServing
@@ -779,8 +779,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             startingTableVersion=0,
             pixelMasks=[],
         )
-        with (mock.patch("snapred.meta.Time.timestamp", return_value=timestamp),
-              mock.patch.object(self.instance.groceryService.mantidSnapper.mtd, "doesExist",  mock.Mock(side_effect=lambda _: True))):
+        with (
+            mock.patch("snapred.meta.Time.timestamp", return_value=timestamp),
+            mock.patch.object(
+                self.instance.groceryService.mantidSnapper.mtd, "doesExist", mock.Mock(side_effect=lambda _: True)
+            ),
+        ):
             result = self.instance.fetchDiffractionCalibrationGroceries(request)
 
         assert self.instance.groceryClerk.buildDict.call_count == 1
@@ -810,7 +814,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 [calibrationMaskName, "mask1", "mask2", combinedMask],
             )
             assert self.instance.groceryService.mantidSnapper.BinaryOperateMasks.called
-            
+
     @mock.patch(thisService + "SimpleDiffCalRequest", spec_set=SimpleDiffCalRequest)
     def test_diffractionCalibration_calls_others(self, SimpleDiffCalRequest):
         # mock out external functionalties
@@ -1116,8 +1120,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             focusGroup=FocusGroup(name="all", definition="path/to/all"),
             continueFlags=ContinueWarning.Type.UNSET,
         )
-        with (pytest.raises(Exception, match=r".*pixels failed calibration*"),
-              mock.patch.object(self.instance.groceryService.mantidSnapper.mtd, "doesExist",  mock.Mock(side_effect=lambda _: True))):
+        with (
+            pytest.raises(Exception, match=r".*pixels failed calibration*"),
+            mock.patch.object(
+                self.instance.groceryService.mantidSnapper.mtd, "doesExist", mock.Mock(side_effect=lambda _: True)
+            ),
+        ):
             self.instance.diffractionCalibration(request)
         GroupRx().cook.assert_not_called()
 
