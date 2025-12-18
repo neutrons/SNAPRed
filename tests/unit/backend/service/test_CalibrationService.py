@@ -20,6 +20,7 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from util.Config_helpers import Config_override
 from util.dao import DAOFactory
 from util.helpers import (
@@ -249,6 +250,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataExportService.dataService = self.localDataService
         self.instance.dataFactoryService.lookupService = self.localDataService
         self.instance.groceryService.dataService = self.localDataService
+        self.instance.groceryService.mantidSnapper = MantidSnapper(None, __name__)
         self.outputNameFormat = "{}_calibration_reduction_result"
         # Mock the _calculatePixelGroupingParameters method to return a predefined value
         self.instance._calculatePixelGroupingParameters = lambda calib, focus_def, lite_mode, nBins: {  # noqa: ARG005
@@ -766,7 +768,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             }
         )
         self.instance.groceryService.fetchCompatiblePixelMask = mock.Mock(side_effect=lambda n, _, __: n)
-        self.instance.groceryService.mantidSnapper.mtd.doesExist = mock.Mock(side_effect=lambda _: True)
         self.instance.groceryService.mantidSnapper.BinaryOperateMasks = mock.Mock()
         self.instance.validateRequest = mock.Mock()
 
@@ -778,7 +779,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             startingTableVersion=0,
             pixelMasks=[],
         )
-        with mock.patch("snapred.meta.Time.timestamp", return_value=timestamp):
+        with (mock.patch("snapred.meta.Time.timestamp", return_value=timestamp),
+              mock.patch.object(self.instance.groceryService.mantidSnapper.mtd, "doesExist",  mock.Mock(side_effect=lambda _: True))):
             result = self.instance.fetchDiffractionCalibrationGroceries(request)
 
         assert self.instance.groceryClerk.buildDict.call_count == 1
@@ -1104,7 +1106,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"maskWorkspace": self.sampleMaskWS})
         self.instance.groceryService.getWorkspaceForName = mock.Mock(side_effect=[False, mtd[self.sampleMaskWS]])
         self.instance.groceryService.fetchCompatiblePixelMask = mock.Mock(side_effect=lambda n, _, __: n)
-        self.instance.groceryService.mantidSnapper.mtd.doesExist = mock.Mock(side_effect=lambda _: True)
         self.instance.groceryService.mantidSnapper.BinaryOperateMasks = mock.Mock()
         # Call the method with the provided parameters
         request = DiffractionCalibrationRequest(
@@ -1115,7 +1116,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             focusGroup=FocusGroup(name="all", definition="path/to/all"),
             continueFlags=ContinueWarning.Type.UNSET,
         )
-        with pytest.raises(Exception, match=r".*pixels failed calibration*"):
+        with (pytest.raises(Exception, match=r".*pixels failed calibration*"),
+              mock.patch.object(self.instance.groceryService.mantidSnapper.mtd, "doesExist",  mock.Mock(side_effect=lambda _: True))):
             self.instance.diffractionCalibration(request)
         GroupRx().cook.assert_not_called()
 
