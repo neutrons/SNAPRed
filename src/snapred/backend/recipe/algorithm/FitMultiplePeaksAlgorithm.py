@@ -133,7 +133,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
                 OutputWorkspace=outputNameTmp,
             )
             self.mantidSnapper.ConjoinDiagnosticWorkspaces(
-                "Conjoin the diagnostic group workspaces",
+                f"Conjoin the diagnostic group workspaces for subgroup {groupID}",
                 DiagnosticWorkspace=outputNameTmp,
                 TotalDiagnosticWorkspace=self.outputWorkspaceName,
                 AddAtIndex=index,

@@ -15,8 +15,10 @@ from mantid.simpleapi import (
     mtd,
 )
 
+from snapred.backend.log.logger import snapredLogger
 from snapred.meta.mantid.FitPeaksOutput import FIT_PEAK_DIAG_SUFFIX, FitOutputEnum
 
+logger = snapredLogger.getLogger(__name__)
 
 class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
     """
@@ -127,12 +129,24 @@ class ConjoinDiagnosticWorkspaces(PythonAlgorithm):
                 InputWorkspace=inws,
                 OutputWorkspace=tmpws,
             )
+        logger.debug(f"{outws} already has spectrum numbers of {mtd[outws].getSpectrumNumbers()}")
+        logger.debug(f"Conjoining {tmpws} with {outws}, adding spectrum numbers of {mtd[tmpws].getSpectrumNumbers()}")
+        specNumbers = list(mtd[outws].getSpectrumNumbers())
+        specNumbers.extend(list(mtd[tmpws].getSpectrumNumbers()))
         ConjoinWorkspaces(
             InputWorkspace1=outws,
             InputWorkspace2=tmpws,
             CheckOverlapping=False,
             CheckMatchingBins=False,  # Not available in 6.11.0.3rc2
         )
+        
+        # TODO: Remove when Defect 14460 is resolved. 
+        #       There is a defect in ConjoinWorkspaces that incorrectly determines
+        #       if spectrum numbers need to be remapped.
+        for i, specNum in enumerate(specNumbers):
+            mtd[outws].getSpectrum(i).setSpectrumNo(specNum)
+        
+        logger.debug(f"resulting spectrum numbers: {mtd[outws].getSpectrumNumbers()}")
         if self.autoDelete and inws in mtd:
             DeleteWorkspace(inws)
         assert outws in mtd

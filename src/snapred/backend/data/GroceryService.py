@@ -1516,15 +1516,14 @@ class GroceryService:
         return groceries
 
     def combinePixelMasks(self, outputMaskWsName: WorkspaceName, masks2Combine: List[WorkspaceName]):
-        startingIndex = 0
-        if len(masks2Combine) <= 0:
-            raise ValueError("Lists of masks to combine is empty")
+        if not masks2Combine:
+            raise ValueError("Internal Error: Lists of masks to combine is empty")
 
         if not self.mantidSnapper.mtd.doesExist(outputMaskWsName):
-            self.renameWorkspace(masks2Combine[0], outputMaskWsName)
-            startingIndex = 1
+            raise ValueError(("Internal Error: outputMaskWs should exist before attempting to combine masks with it."
+                              "consider using fetchCompatiblePixelMask to generate it."))
 
-        for maskWsName in masks2Combine[startingIndex:]:
+        for maskWsName in masks2Combine:
             if maskWsName == outputMaskWsName:
                 continue
             if not self.mantidSnapper.mtd.doesExist(maskWsName):
