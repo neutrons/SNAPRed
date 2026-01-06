@@ -209,12 +209,14 @@ class CalibrationService(Service):
             combinedMask = self.groceryService.combinePixelMasks(combinedMask, allMasks)
         else:
             combinedMask = ""
-            
+
         # assert that the mask does not completely remove the instrument
         combinedMaskInst = self.groceryService.getWorkspaceForName(combinedMask)
         if combinedMaskInst:
             if combinedMaskInst.getNumberMasked() == combinedMaskInst.getNumberHistograms():
-                raise ValueError("Instrument Completely Masked!  Please supply a different mask or consult your CIS if you did not supply one.")
+                raise ValueError(
+                    "Instrument Completely Masked!  Please supply a different mask or consult your CIS if you did not supply one."
+                )
 
         return groceryDict
 
