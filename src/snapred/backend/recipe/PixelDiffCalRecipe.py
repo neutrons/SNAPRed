@@ -258,7 +258,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
 
             # add in group offsets to total, or begin the sum if none
             # NOTE wsoff has all spectra, with value 0 in those not used in CrossCorrelate
-            if i == 0:
+            if not self.mantidSnapper.mtd.doesExist(self.totalOffsetWS):
                 self.mantidSnapper.CloneWorkspace(
                     f"Starting summation with offset workspace {wsoff}",
                     InputWorkspace=wsoff,
