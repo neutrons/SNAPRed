@@ -215,7 +215,8 @@ class CalibrationService(Service):
         if combinedMaskInst:
             if combinedMaskInst.getNumberMasked() == combinedMaskInst.getNumberHistograms():
                 raise ValueError(
-                    "Instrument Completely Masked!  Please supply a different mask or consult your CIS if you did not supply one."
+                    ("Instrument Completely Masked!  "
+                     "Please supply a different mask or consult your CIS if you did not supply one.")
                 )
 
         return groceryDict

@@ -1455,7 +1455,7 @@ class TestDiffractionCalibration(unittest.TestCase):
             mock.patch.object(self.service, "pixelCalibration", mock.Mock()) as mockPixelCalibration,
             mock.patch.object(self.service, "groupCalibration", mock.Mock()) as mockGroupCalibration,
         ):
-            res = self.service.diffractionCalibration(mock.Mock())
+            self.service.diffractionCalibration(mock.Mock())
             assert mockGroupCalibration.called
             assert mockPixelCalibration.called
 
