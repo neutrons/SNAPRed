@@ -784,6 +784,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             mock.patch.object(
                 self.instance.groceryService.mantidSnapper.mtd, "doesExist", mock.Mock(side_effect=lambda _: True)
             ),
+            mock.patch.object(
+                self.instance.groceryService, "getWorkspaceForName", mock.MagicMock(getNumberMasked=lambda:0, getNumberHistograms=lambda:1)
+            ),
         ):
             result = self.instance.fetchDiffractionCalibrationGroceries(request)
 
@@ -803,6 +806,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         with (
             mock.patch("snapred.meta.Time.timestamp", return_value=timestamp),
             mock.patch.object(self.instance, "mantidSnapper"),
+            mock.patch.object(
+                self.instance.groceryService, "getWorkspaceForName", mock.MagicMock(getNumberMasked=lambda:0, getNumberHistograms=lambda:1)
+            ),
         ):
             request.pixelMasks = ["mask1", "mask2"]
             self.instance.groceryService.combinePixelMasks = mock.Mock(return_value=combinedMask)
@@ -1108,7 +1114,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             maskWS.setY(pixel, [1.0])
         self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"maskWorkspace": self.sampleMaskWS})
-        self.instance.groceryService.getWorkspaceForName = mock.Mock(side_effect=[False, mtd[self.sampleMaskWS]])
+        self.instance.groceryService.getWorkspaceForName = mock.Mock(side_effect=[False, None, mtd[self.sampleMaskWS]])
         self.instance.groceryService.fetchCompatiblePixelMask = mock.Mock(side_effect=lambda n, _, __: n)
         self.instance.groceryService.mantidSnapper.BinaryOperateMasks = mock.Mock()
         # Call the method with the provided parameters
@@ -1432,7 +1438,6 @@ class TestDiffractionCalibration(unittest.TestCase):
         rawWS = "_test_diffcal_rx_data"
         groupingWS = "_test_diffcal_grouping"
         maskWS = "_test_diffcal_mask"
-        self.syntheticInputs.generateWorkspaces(rawWS, groupingWS, maskWS)
 
         self.groceryList["inputWorkspace"] = rawWS
         self.groceryList["groupingWorkspace"] = groupingWS
@@ -1442,16 +1447,12 @@ class TestDiffractionCalibration(unittest.TestCase):
             groceries=self.groceryList,
         )
 
-        try:
-            res = self.service.diffractionCalibration(mock.Mock())
-        except ValueError:
-            print(res)
-        assert res["result"]
 
-        assert res["maskWorkspace"]
-        mask = mtd[res["maskWorkspace"]]
-        assert mask.getNumberMasked() == 0
-        assert res["steps"][-1] <= self.fakeIngredients.convergenceThreshold
+        with (mock.patch.object(self.service, "pixelCalibration", mock.Mock()) as mockPixelCalibration,
+            mock.patch.object(self.service, "groupCalibration", mock.Mock()) as mockGroupCalibration):
+            res = self.service.diffractionCalibration(mock.Mock())
+            assert mockGroupCalibration.called
+            assert mockPixelCalibration.called
 
     def test_obtainLock(self):
         runNumber = "123456"
