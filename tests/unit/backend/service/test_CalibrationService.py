@@ -785,7 +785,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 self.instance.groceryService.mantidSnapper.mtd, "doesExist", mock.Mock(side_effect=lambda _: True)
             ),
             mock.patch.object(
-                self.instance.groceryService, "getWorkspaceForName", mock.MagicMock(getNumberMasked=lambda:0, getNumberHistograms=lambda:1)
+                self.instance.groceryService,
+                "getWorkspaceForName",
+                mock.MagicMock(getNumberMasked=lambda: 0, getNumberHistograms=lambda: 1),
             ),
         ):
             result = self.instance.fetchDiffractionCalibrationGroceries(request)
@@ -807,7 +809,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             mock.patch("snapred.meta.Time.timestamp", return_value=timestamp),
             mock.patch.object(self.instance, "mantidSnapper"),
             mock.patch.object(
-                self.instance.groceryService, "getWorkspaceForName", mock.MagicMock(getNumberMasked=lambda:0, getNumberHistograms=lambda:1)
+                self.instance.groceryService,
+                "getWorkspaceForName",
+                mock.MagicMock(getNumberMasked=lambda: 0, getNumberHistograms=lambda: 1),
             ),
         ):
             request.pixelMasks = ["mask1", "mask2"]
@@ -1447,9 +1451,10 @@ class TestDiffractionCalibration(unittest.TestCase):
             groceries=self.groceryList,
         )
 
-
-        with (mock.patch.object(self.service, "pixelCalibration", mock.Mock()) as mockPixelCalibration,
-            mock.patch.object(self.service, "groupCalibration", mock.Mock()) as mockGroupCalibration):
+        with (
+            mock.patch.object(self.service, "pixelCalibration", mock.Mock()) as mockPixelCalibration,
+            mock.patch.object(self.service, "groupCalibration", mock.Mock()) as mockGroupCalibration,
+        ):
             res = self.service.diffractionCalibration(mock.Mock())
             assert mockGroupCalibration.called
             assert mockPixelCalibration.called
