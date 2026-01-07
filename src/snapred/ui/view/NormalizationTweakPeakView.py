@@ -230,6 +230,7 @@ class NormalizationTweakPeakView(BackendRequestView):
         # now re-draw the figure
         self.figure.clear()
         for i in range(numGraphs):
+            groupID = peaks[i].groupID
             ax = self.figure.add_subplot(nrows, ncols, i + 1, projection="mantid")
 
             # NOTE: Mutate the ax object as the mantidaxis does not account for lines
@@ -249,7 +250,7 @@ class NormalizationTweakPeakView(BackendRequestView):
 
             ax.legend()
             ax.tick_params(direction="in")
-            ax.set_title(f"Group ID: {i + 1}")
+            ax.set_title(f"Group ID: {groupID}")
             # fill in the discovered peaks for easier viewing
             x, y, _, _ = get_spectrum(focusedWorkspace, i, normalize_by_bin_width=True)
             # for each detected peak in this group, shade in the peak region
