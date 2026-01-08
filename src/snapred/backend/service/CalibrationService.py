@@ -148,6 +148,10 @@ class CalibrationService(Service):
             maxChiSq=request.maxChiSq,
             state=state,
         )
+        # The pixel mask has the potential to change during this workflow
+        # this requires we dump the cache of souschef as each depends on the state of the mask
+        # It is not feasible to hash the state of the mask.
+        self.sousChef.dumpCache()
         ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh, request.combinedPixelMask)
         ingredients.removeBackground = request.removeBackground
         return ingredients
@@ -215,8 +219,10 @@ class CalibrationService(Service):
         if combinedMaskInst:
             if combinedMaskInst.getNumberMasked() == combinedMaskInst.getNumberHistograms():
                 raise ValueError(
-                    ("Instrument Completely Masked!  "
-                     "Please supply a different mask or consult your CIS if you did not supply one.")
+                    (
+                        "Instrument Completely Masked!  "
+                        "Please supply a different mask or consult your CIS if you did not supply one."
+                    )
                 )
 
         return groceryDict

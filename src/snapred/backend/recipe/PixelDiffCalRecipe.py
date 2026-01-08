@@ -248,6 +248,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
                 f"Calculate offset workspace {wsoff}, group {groupID}",
                 InputWorkspace=wscc + f"_group{groupID}",
                 OutputWorkspace=wsoff,
+                # MasKWs is an in/out, this algo will modify it
                 MaskWorkspace=self.maskWS,
                 # Scale the fitting ROI using the expected peak width (including a few possible peaks):
                 XMin=-(self.maxDSpaceShifts[groupID] / self.dBin) * 2.0,
@@ -323,6 +324,12 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
                 InstrumentWorkspace=self.wsTOF,
                 CalibrationWorkspace=self.DIFCpixel,
             )
+            self.mantidSnapper.MaskDetectors(
+                "reapplying user generated + get detector offsets mask",
+                Workspace=self.wsTOF,
+                MaskedWorkspace=self.maskWS,
+            )
+
         else:
             logger.warning("Offsets failed to converge monotonically")
 

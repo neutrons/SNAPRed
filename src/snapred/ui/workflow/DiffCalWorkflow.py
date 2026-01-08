@@ -397,6 +397,12 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._renewPixelCal()
         self.groceries["inputWorkspace"] = self.pixelCalibratedWorkspace
 
+        # pixel calibration may also update the mask workspace
+        # the mask workspace then may influece what detector peaks and groups
+        # are still present
+        # So we need to refresh ingredients.
+        self.ingredients = self.request(path="calibration/ingredients", payload=payload).data
+
         self._renewFocus(self.prevGroupingIndex)
         self._renewFitPeaks(self.peakFunction)
         response = self._calculateResidual()

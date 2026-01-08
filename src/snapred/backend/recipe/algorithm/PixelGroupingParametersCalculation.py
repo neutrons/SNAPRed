@@ -224,6 +224,8 @@ class PixelGroupingParametersCalculation(PythonAlgorithm):
                         dRelativeResolution=delta_d_over_d,
                     )
                 )
+            else:
+                logger.debug(f"Group {groupID} excluded due to 0 valid pixels")
 
         self.setProperty("OutputParameters", list_to_raw(allGroupingParams))
         self.mantidSnapper.WashDishes(

@@ -52,6 +52,10 @@ class SousChef(Service):
         self._peaksCache: Dict[Tuple[str, bool, str, float, float, float], List[GroupPeakList]] = {}
         return
 
+    def dumpCache(self):
+        self._pixelGroupCache = {}
+        self._peaksCache = {}
+
     @staticmethod
     def name():
         return "souschef"
@@ -128,6 +132,7 @@ class SousChef(Service):
             self.groceryClerk.name("groupingWorkspace").fromRun(ingredients.runNumber).grouping(
                 focusGroup.name
             ).useLiteMode(ingredients.useLiteMode).add()
+
             groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict(), maskWorkspace=pixelMask)
             data = PixelGroupingParametersCalculationRecipe().executeRecipe(pixelGroupingIngredients, groceries)
 
