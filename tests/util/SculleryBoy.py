@@ -49,6 +49,9 @@ class SculleryBoy:
         self.prepPeakIngredientsFlags = prepPeakIngredientsFlags
         self.prepDetectorPeaksFlags = prepDetectorPeaksFlags
 
+    def dumpCache(self):
+        pass
+
     def prepCalibration(self, ingredients: FarmFreshIngredients):  # noqa ARG002
         return DAOFactory.calibrationParameters(ingredients.runNumber, ingredients.useLiteMode)
 
