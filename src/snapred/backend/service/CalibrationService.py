@@ -129,6 +129,7 @@ class CalibrationService(Service):
     def prepDiffractionCalibrationIngredients(
         self, request: DiffractionCalibrationRequest
     ) -> DiffractionCalibrationIngredients:
+        self.validateRequest(request)
         # fetch the ingredients needed to focus and plot the peaks
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         state, _ = self.dataFactoryService.constructStateId(request.runNumber)
@@ -147,7 +148,11 @@ class CalibrationService(Service):
             maxChiSq=request.maxChiSq,
             state=state,
         )
-        ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
+        # The pixel mask has the potential to change during this workflow
+        # this requires we dump the cache of souschef as each depends on the state of the mask
+        # It is not feasible to hash the state of the mask.
+        self.sousChef.dumpCache()
+        ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh, request.combinedPixelMask)
         ingredients.removeBackground = request.removeBackground
         return ingredients
 
@@ -155,7 +160,7 @@ class CalibrationService(Service):
     @Register("groceries")
     def fetchDiffractionCalibrationGroceries(self, request: DiffractionCalibrationRequest) -> Dict[str, str]:
         # groceries
-
+        self.validateRequest(request)
         # TODO:  It would be nice for groceryclerk to be smart enough to flatten versions
         # However I will save that scope for another time
         if request.startingTableVersion == VersionState.DEFAULT:
@@ -193,23 +198,32 @@ class CalibrationService(Service):
             maskWorkspace=combinedMask,
         )
 
-        if self.groceryService.workspaceDoesExist(calibrationMaskName):
-            self.groceryService.renameWorkspace(calibrationMaskName, combinedMask)
-        elif request.pixelMasks:
-            self.groceryService.getCloneOfWorkspace(request.pixelMasks[0], combinedMask)
+        allMasks = []
 
+        if self.groceryService.workspaceDoesExist(calibrationMaskName):
+            allMasks.append(calibrationMaskName)
         if request.pixelMasks:
-            for mask in request.pixelMasks:
-                if not self.groceryService.workspaceDoesExist(mask):
-                    raise RuntimeError([f"Pixel mask workspace '{mask}' does not exist"])
-                self.mantidSnapper.BinaryOperateMasks(
-                    f"Combine pixel mask workspace {mask} with existing masks",
-                    InputWorkspace1=combinedMask,
-                    InputWorkspace2=mask,
-                    OutputWorkspace=combinedMask,
-                    OperationType="OR",
+            allMasks.extend(request.pixelMasks)
+
+        allMasks.append(
+            self.groceryService.fetchCompatiblePixelMask(combinedMask, request.runNumber, request.useLiteMode)
+        )
+
+        if len(allMasks) > 0:
+            combinedMask = self.groceryService.combinePixelMasks(combinedMask, allMasks)
+        else:
+            combinedMask = ""
+
+        # assert that the mask does not completely remove the instrument
+        combinedMaskInst = self.groceryService.getWorkspaceForName(combinedMask)
+        if combinedMaskInst:
+            if combinedMaskInst.getNumberMasked() == combinedMaskInst.getNumberHistograms():
+                raise ValueError(
+                    (
+                        "Instrument Completely Masked!  "
+                        "Please supply a different mask or consult your CIS if you did not supply one."
+                    )
                 )
-                self.mantidSnapper.executeQueue()
 
         return groceryDict
 
@@ -222,11 +236,13 @@ class CalibrationService(Service):
         # Profiling note: none of the following should be marked as sub-steps:
         #   their service methods are decorated separately.
 
+        groceries = self.fetchDiffractionCalibrationGroceries(request)
+        if not request.combinedPixelMask:
+            request.combinedPixelMask = groceries.get("maskWorkspace")
         payload = SimpleDiffCalRequest(
             ingredients=self.prepDiffractionCalibrationIngredients(request),
-            groceries=self.fetchDiffractionCalibrationGroceries(request),
+            groceries=groceries,
         )
-
         pixelRes = self.pixelCalibration(payload)
         if not pixelRes.result:
             raise RuntimeError("Pixel Calibration failed")
@@ -275,9 +291,14 @@ class CalibrationService(Service):
     @Register("pixel")
     def pixelCalibration(self, request: SimpleDiffCalRequest) -> PixelDiffCalServing:
         # cook recipe
+        userMaskWs = request.groceries.get("maskWorkspace")
+        userMaskWs = self.groceryService.getWorkspaceForName(userMaskWs)
+        numMaskedBeforePixelCal = 0
+        if userMaskWs:
+            numMaskedBeforePixelCal = userMaskWs.getNumberMasked()
         res = PixelDiffCalRecipe().cook(request.ingredients, request.groceries)
         maskWS = self.groceryService.getWorkspaceForName(res.maskWorkspace)
-        percentMasked = maskWS.getNumberMasked() / maskWS.getNumberHistograms()
+        percentMasked = (maskWS.getNumberMasked() - numMaskedBeforePixelCal) / maskWS.getNumberHistograms()
         threshold = Config["constants.maskedPixelThreshold"]
         if percentMasked > threshold:
             res.result = False
@@ -311,6 +332,7 @@ class CalibrationService(Service):
             runNumber=request.runNumber, continueFlags=request.continueFlags
         )
         self.validateWritePermissions(permissionsRequest)
+        self.sousChef.verifyCalibrationExists(request.runNumber, request.useLiteMode)
 
     @Register("validateWritePermissions")
     def validateWritePermissions(self, request: CalibrationWritePermissionsRequest):
@@ -348,7 +370,7 @@ class CalibrationService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber, useLiteMode=request.useLiteMode, focusGroups=[request.focusGroup], state=state
         )
-        pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
+        pixelGroup = self.sousChef.prepPixelGroup(farmFresh, pixelMask=request.maskWorkspace)
         # fetch the grouping workspace
         self.groceryClerk.grouping(request.focusGroup.name).fromRun(request.runNumber).useLiteMode(request.useLiteMode)
         groupingWorkspace = self.groceryService.fetchGroupingDefinition(self.groceryClerk.build())["workspace"]
@@ -681,8 +703,8 @@ class CalibrationService(Service):
             maxChiSq=request.maxChiSq,
             state=state,
         )
-        pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
-        detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh)
+        pixelGroup = self.sousChef.prepPixelGroup(farmFresh, pixelMask=request.combinedPixelMask)
+        detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh, pixelMask=request.combinedPixelMask)
 
         # TODO: We Need to Fit the Data
         fitResults = FitMultiplePeaksRecipe().executeRecipe(

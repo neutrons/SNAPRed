@@ -52,6 +52,10 @@ class SousChef(Service):
         self._peaksCache: Dict[Tuple[str, bool, str, float, float, float], List[GroupPeakList]] = {}
         return
 
+    def dumpCache(self):
+        self._pixelGroupCache = {}
+        self._peaksCache = {}
+
     @staticmethod
     def name():
         return "souschef"
@@ -128,6 +132,7 @@ class SousChef(Service):
             self.groceryClerk.name("groupingWorkspace").fromRun(ingredients.runNumber).grouping(
                 focusGroup.name
             ).useLiteMode(ingredients.useLiteMode).add()
+
             groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict(), maskWorkspace=pixelMask)
             data = PixelGroupingParametersCalculationRecipe().executeRecipe(pixelGroupingIngredients, groceries)
 
@@ -334,14 +339,15 @@ class SousChef(Service):
         )
 
     def prepDiffractionCalibrationIngredients(
-        self, ingredients: FarmFreshIngredients
+        self, ingredients: FarmFreshIngredients, combinedPixelMask: Optional[WorkspaceName] = None
     ) -> DiffractionCalibrationIngredients:
         self.verifyCalibrationExists(ingredients.runNumber, ingredients.useLiteMode)
-
+        pixelGroup = self.prepPixelGroup(ingredients, pixelMask=combinedPixelMask)
+        groupedPeakLists = self.prepDetectorPeaks(ingredients, pixelMask=combinedPixelMask)
         return DiffractionCalibrationIngredients(
             runConfig=self.prepRunConfig(ingredients.runNumber),
-            pixelGroup=self.prepPixelGroup(ingredients),
-            groupedPeakLists=self.prepDetectorPeaks(ingredients),
+            pixelGroup=pixelGroup,
+            groupedPeakLists=groupedPeakLists,
             peakFunction=ingredients.peakFunction,
             convergenceThreshold=ingredients.convergenceThreshold,
             maxOffset=ingredients.maxOffset,

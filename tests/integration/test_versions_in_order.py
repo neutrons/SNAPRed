@@ -53,6 +53,7 @@ from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import parse_file_as, write_model_pretty
@@ -215,6 +216,10 @@ class ImitationGroceryService(GroceryService):
         CloneWorkspace(InputWorkspace=self.diffcalTableWS, OutputWorkspace=tableWorkspaceName)
         return tableWorkspaceName
 
+    def fetchCompatiblePixelMask(self, maskWSName: WorkspaceName, runNumber: str, useLiteMode: bool) -> WorkspaceName:  # noqa: ARG002
+        CloneWorkspace(InputWorkspace=self.maskWS, OutputWorkspace=maskWSName)
+        return maskWSName
+
 
 class ImitationSousChef(SousChef):
     """
@@ -223,7 +228,7 @@ class ImitationSousChef(SousChef):
     generation process.
     """
 
-    def prepDiffractionCalibrationIngredients(self, ingredients: Any) -> Any:
+    def prepDiffractionCalibrationIngredients(self, ingredients: Any, combinedPixelMask: WorkspaceName) -> Any:
         return dataSynthesizer.ingredients
 
 

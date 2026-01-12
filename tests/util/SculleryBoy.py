@@ -49,6 +49,9 @@ class SculleryBoy:
         self.prepPeakIngredientsFlags = prepPeakIngredientsFlags
         self.prepDetectorPeaksFlags = prepDetectorPeaksFlags
 
+    def dumpCache(self):
+        pass
+
     def prepCalibration(self, ingredients: FarmFreshIngredients):  # noqa ARG002
         return DAOFactory.calibrationParameters(ingredients.runNumber, ingredients.useLiteMode)
 
@@ -131,7 +134,9 @@ class SculleryBoy:
         return True
 
     def prepDiffractionCalibrationIngredients(
-        self, ingredients: FarmFreshIngredients
+        self,
+        ingredients: FarmFreshIngredients,
+        combinedPixelMask: WorkspaceName,  # noqa: ARG002
     ) -> DiffractionCalibrationIngredients:
         return DiffractionCalibrationIngredients(
             runConfig=self.prepRunConfig(ingredients.runNumber),

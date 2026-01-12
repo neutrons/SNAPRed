@@ -43,6 +43,7 @@ class DiffractionCalibrationRequest(BaseModel):
     maxChiSq: float = Field(default_factory=lambda: Config["constants.GroupDiffractionCalibration.MaxChiSq"])
     removeBackground: bool = False
     pixelMasks: List[WorkspaceName] = []
+    combinedPixelMask: WorkspaceName | None = None
 
     continueFlags: Optional[ContinueWarning.Type] = ContinueWarning.Type.UNSET
 

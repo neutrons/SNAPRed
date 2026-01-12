@@ -1,5 +1,6 @@
 import re
 from contextlib import ExitStack, suppress
+from pathlib import Path
 
 ##
 ## In order to retain the normal import order as much as possible:
@@ -19,7 +20,7 @@ from util.pytest_helpers import handleStateInit
 from util.qt_mock_util import MockQMessageBox
 from util.TestSummary import TestSummary
 
-from snapred.meta.Config import Resource
+from snapred.meta.Config import Config, Resource
 from snapred.ui.main import SNAPRedGUI, prependDataSearchDirectories
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 from snapred.ui.view.DiffCalRequestView import DiffCalRequestView
@@ -45,7 +46,7 @@ class TestGUIPanels:
         # DEFAULT PATCHES:
         #   FAIL TEST if any 'warning' OR 'critical' message boxes occur.
         #   In the test body, these patches are overridden for special cases.
-
+        self.workflowState = {}
         self._warningMessageBox = mock.patch(
             "qtpy.QtWidgets.QMessageBox.warning",
             lambda *args, **kwargs: pytest.fail(
@@ -525,6 +526,294 @@ class TestGUIPanels:
         # Force a clean exit
         qtbot.wait(5000)
 
+    def subtest_open_gui(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: ARG002
+        gui = SNAPRedGUI(translucentBackground=True)
+        gui.show()
+        qtbot.addWidget(gui)
+
+        """
+        SNAPRedGUI owns the following widgets:
+
+            * self.calibrationPanelButton [new] = QPushButton("Open Calibration Panel")
+
+            <button click> => self.newWindow = TestPanel(self).setWindowTitle("Calibration Panel")
+
+            * LogTable("load dummy", self).widget
+
+            * WorkspaceWidget(self)
+
+            * AlgorithmProgressWidget()
+
+            * <central widget>: QWidget().setObjectName("centralWidget")
+
+            * self.userDocButton = UserDocsButton(self)
+        """
+
+        # Open the calibration panel:
+        self.workflowState["gui"] = gui
+        self.testSummary.SUCCESS()
+
+    def subtest_open_calibration_panel(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: ARG002
+        gui = self.workflowState["gui"]
+
+        # Travel to the Diffcal Workflow Tab
+
+        # QPushButton* button = pWin->findChild<QPushButton*>("Button name");
+        qtbot.mouseClick(gui.calibrationPanelButton, QtCore.Qt.LeftButton)
+        exceptions = self.workflowState["exceptions"]
+        if len(exceptions):
+            raise InterruptWithBlock
+        calibrationPanel = gui.calibrationPanel
+
+        # tab indices: (0) diffraction calibration, (1) normalization calibration, and (2) reduction
+        calibrationPanelTabs = calibrationPanel.presenter.view.tabWidget
+
+        ##########################################################################################################
+        ##################### DIFFRACTION CALIBRATION PANEL: #####################################################
+        ##########################################################################################################
+
+        # Diffraction calibration:
+        calibrationPanelTabs.setCurrentIndex(1)
+        diffractionCalibrationWidget = calibrationPanelTabs.currentWidget()
+
+        ### The use of this next signal is somewhat cryptic, but it makes testing the GUI much more stable:
+        ##    The `actionCompleted` signal is emitted whenever a workflow node completes its action.
+        ##    Otherwise, we would need to infer that the action is completed by other means.
+        actionCompleted = calibrationPanel.presenter.diffractionCalibrationWorkflow.workflow.presenter.actionCompleted
+        self.workflowState["actionCompleted"] = actionCompleted
+        ###
+
+        # node-tab indices: (0) request view, (1) tweak-peak view, (2) assessment view, and (4) save view
+        workflowNodeTabs = diffractionCalibrationWidget.findChild(QTabWidget, "nodeTabs")
+        self.workflowState["workflowNodeTabs"] = workflowNodeTabs
+
+        requestView = workflowNodeTabs.currentWidget().view
+        assert isinstance(requestView, DiffCalRequestView)
+        self.testSummary.SUCCESS()
+
+    def subtest_set_request_panel(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: ARG002
+        workflowNodeTabs = self.workflowState["workflowNodeTabs"]
+
+        requestView = workflowNodeTabs.currentWidget().view
+
+        requestView.liteModeToggle.setState(False)
+
+        #    set "Run Number", "Convergence Threshold", ,:
+        requestView.runNumberField.setText("58882")
+        qtbot.keyClick(requestView.runNumberField._field, Qt.Key_Return)
+        qapp.processEvents()
+        qtbot.wait(1000)
+
+        # assert default is gaussian:
+        assert requestView.peakFunctionDropdown.currentIndex() == 0
+        assert requestView.peakFunctionDropdown.currentText() == "Gaussian"
+
+        # ensure overrides from the sample JSON are applied:
+        requestView.sampleDropdown.setCurrentIndex(0)
+        assert requestView.sampleDropdown.currentIndex() == 0
+        assert requestView.sampleDropdown.currentText().endswith("Diamond_001.json")
+        qtbot.wait(1000)
+        assert requestView.peakFunctionDropdown.currentText() == "Lorentzian"
+
+        #    set all dropdown selections, but make sure that the dropdown contents are as expected
+        requestView.sampleDropdown.setCurrentIndex(3)
+        assert requestView.sampleDropdown.currentIndex() == 3
+        assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
+
+        requestView.groupingFileDropdown.setCurrentIndex(0)
+        assert requestView.groupingFileDropdown.currentIndex() == 0
+        assert requestView.groupingFileDropdown.currentText() == "Column"
+
+        requestView.peakFunctionDropdown.setCurrentIndex(0)
+        assert requestView.peakFunctionDropdown.currentIndex() == 0
+        assert requestView.peakFunctionDropdown.currentText() == "Gaussian"
+
+        requestView.skipPixelCalToggle.setState(False)
+
+        self.testSummary.SUCCESS()
+
+    def subtest_execute_request_panel(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: ARG002
+        workflowNodeTabs = self.workflowState["workflowNodeTabs"]
+        actionCompleted = self.workflowState["actionCompleted"]
+
+        requestView = workflowNodeTabs.currentWidget().view
+
+        #    execute the request
+
+        # TODO: make sure that there's no initialized state => abort the test if there is!
+        #   At the moment, we preserve some options here to speed up development.
+        stateId = "04bd2c53f6bf6754"
+        waitForStateInit = True
+        handleStateInit(waitForStateInit, stateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
+
+        # Now that there is a new state, we need to reselect the grouping file ... :
+        # Why was this error box being swallowed?
+        requestView.groupingFileDropdown.setCurrentIndex(0)
+
+        #    (2) execute the calibration workflow
+        with qtbot.waitSignal(actionCompleted, timeout=60000):
+            qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+        qtbot.waitUntil(lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalTweakPeakView), timeout=60000)
+        self.testSummary.SUCCESS()
+
+    def subtest_tweak_panel(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: ARG002
+        workflowNodeTabs = self.workflowState["workflowNodeTabs"]
+        actionCompleted = self.workflowState["actionCompleted"]
+        tweakPeakView = workflowNodeTabs.currentWidget().view
+
+        # ---------------------------------------------------------------------------
+        # Required patch for "TweakPeakView": ensure continuation if only two peaks are found.
+        # IMPORTANT: "greater than two peaks" warning is triggered by an exception throw:
+        #   => do _not_ patch using a with clause!
+        self._logWarningsMessageBox.stop()
+        warningMessageBox = mock.patch(  # noqa: PT008
+            "qtpy.QtWidgets.QMessageBox.exec",
+            lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
+        )
+        warningMessageBox.start()
+        mb = MockQMessageBox().continueButton("Yes")
+        mb[0].start()
+        # ---------------------------------------------------------------------------
+
+        #    set "xtal dMin", "FWHM left", and "FWHM right": these are sufficient to get "58882" to pass.
+        #    TODO: set ALL of the relevant fields, and use a test initialization template for this.
+        tweakPeakView.fieldFWHMleft.setText("1.5")
+        tweakPeakView.fieldFWHMright.setText("2")
+        tweakPeakView.maxChiSqField.setText("1000.0")
+        tweakPeakView.peakFunctionDropdown.setCurrentIndex(0)
+        assert tweakPeakView.peakFunctionDropdown.currentIndex() == 0
+        assert tweakPeakView.peakFunctionDropdown.currentText() == "Gaussian"
+
+        #    recalculate using the new values
+        #    * recalculate => peak display is recalculated,
+        #      not the entire calibration.
+        qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
+        qtbot.wait(10000)
+
+        #    continue to the next panel
+        with qtbot.waitSignal(actionCompleted, timeout=80000):
+            qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+        self.testSummary.SUCCESS()
+
+        qtbot.waitUntil(lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalAssessmentView), timeout=80000)
+
+        # Placing this next `stop` correctly, causes some difficulty:
+        #   if it's placed too early, the `warning` box patch doesn't correctly trap the "tweak peaks" warning.
+        # So, for this reason this stop is placed _after_ the `waitUntil`.
+        # ("Tweak peaks" view should have definitely completed by this point.)
+        warningMessageBox.stop()
+        mb[0].stop()
+        self._logWarningsMessageBox.start()
+
+    def subtest_assessment_panel(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: ARG002
+        workflowNodeTabs = self.workflowState["workflowNodeTabs"]
+        actionCompleted = self.workflowState["actionCompleted"]
+        assessmentView = workflowNodeTabs.currentWidget().view  # noqa: F841
+        #    nothing to do here, for this test
+
+        #    continue to the next panel
+        with qtbot.waitSignal(actionCompleted, timeout=80000):
+            qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+        self.testSummary.SUCCESS()
+        qtbot.waitUntil(lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalSaveView), timeout=5000)
+
+    def subtest_save_panel(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: ARG002
+        workflowNodeTabs = self.workflowState["workflowNodeTabs"]
+        actionCompleted = self.workflowState["actionCompleted"]
+        saveView = workflowNodeTabs.currentWidget().view
+
+        #    set "author" and "comment"
+        saveView.fieldAuthor.setText("kat")
+        saveView.fieldComments.setText("calibration-panel integration test")
+
+        #    continue in order to save workspaces and to finish the workflow
+        with qtbot.waitSignal(actionCompleted, timeout=60000):
+            qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
+        self.testSummary.SUCCESS()
+        #   `ActionPrompt.prompt("..The workflow has completed successfully..)` gives immediate mocked response:
+        #      Here we still need to wait until the ADS cleanup has occurred,
+        #      or else it will happen in the middle of the next workflow. :(
+        qtbot.waitUntil(lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalRequestView), timeout=10000)
+
+    def subtest_close_gui(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: ARG002
+        gui = self.workflowState["gui"]
+        calibrationPanel = gui.calibrationPanel
+        ###############################
+        ########### END OF TEST #######
+        ###############################
+
+        calibrationPanel.widget.close()
+        gui.close()
+
+        self.testSummary.SUCCESS()
+
+    def test_diffraction_calibration_panel_happy_path_user_mask(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: F811
+        tmpCalibrationHomeDirectory = calibration_home_from_mirror()  # noqa: F841
+
+        self.testSummary = (
+            TestSummary.builder()
+            .step("Open the GUI")
+            .step("Open the calibration panel")
+            .step("Set the diffraction calibration request")
+            .step("Select user generated mask.")
+            .step("Execute the diffraction calibration request")
+            .step("Tweak the peaks")
+            .step("Assess the peaks")
+            .step("Save the diffraction calibration")
+            .step("Close the GUI")
+            .build()
+        )
+        with (
+            qtbot.captureExceptions() as exceptions,
+            suppress(InterruptWithBlock),
+        ):
+            self.workflowState["exceptions"] = exceptions
+            self.subtest_open_gui(qtbot, qapp, calibration_home_from_mirror)
+
+            dataPath = Path(Config["IPTS.root"]) / "SNAP" / "IPTS-24641" / "nexus" / "SNAP_58882.nxs.h5"
+
+            from mantid.simpleapi import DeleteWorkspace, ExtractMask, Load, MaskDetectors
+
+            Load(Filename=str(dataPath), OutputWorkspace="snapred_lite_data")
+            MaskDetectors(Workspace="snapred_lite_data", ComponentList="Column6")
+            ExtractMask(
+                InputWorkspace="snapred_lite_data", OutputWorkspace="MaskWorkspace_2", DetectorList="9216-12287"
+            )
+            DeleteWorkspace(Workspace="snapred_lite_data")
+
+            self.subtest_open_calibration_panel(qtbot, qapp, calibration_home_from_mirror)
+            self.subtest_set_request_panel(qtbot, qapp, calibration_home_from_mirror)
+
+            # test getting the user mask selected
+            workflowNodeTabs = self.workflowState["workflowNodeTabs"]
+
+            requestView = workflowNodeTabs.currentWidget().view
+            assert requestView.compatiblePixelMaskDropdown.numItems() == 1
+            requestView.compatiblePixelMaskDropdown.dropDown.setItemCheckedByValue("MaskWorkspace_2")
+
+            checkedItems = requestView.compatiblePixelMaskDropdown.checkedItems()
+            assert checkedItems[0] == "MaskWorkspace_2"
+
+            self.testSummary.SUCCESS()
+
+            self.subtest_execute_request_panel(qtbot, qapp, calibration_home_from_mirror)
+            self.subtest_tweak_panel(qtbot, qapp, calibration_home_from_mirror)
+            self.subtest_assessment_panel(qtbot, qapp, calibration_home_from_mirror)
+            self.subtest_save_panel(qtbot, qapp, calibration_home_from_mirror)
+            self.subtest_close_gui(qtbot, qapp, calibration_home_from_mirror)
+
+        #####################################################################
+        # Force a printout of information about any exceptions that happened#
+        #   within the Qt event loop.                                       #
+        #####################################################################
+        if len(exceptions):
+            # sys.exc_info ::= type(e), e, <traceback>
+            _, e, _ = exceptions[0]
+            raise e
+
+        # Force a clean exit
+        qtbot.wait(5000)
+
     def test_diffraction_calibration_panel_happy_path(self, qtbot, qapp, calibration_home_from_mirror):  # noqa: F811
         # Override the mirror with a new home directory, omitting any existing
         #   calibration or normalization data.
@@ -545,198 +834,16 @@ class TestGUIPanels:
             qtbot.captureExceptions() as exceptions,
             suppress(InterruptWithBlock),
         ):
-            gui = SNAPRedGUI(translucentBackground=True)
-            gui.show()
-            qtbot.addWidget(gui)
+            self.workflowState["exceptions"] = exceptions
+            self.subtest_open_gui(qtbot, qapp, calibration_home_from_mirror)
+            self.subtest_open_calibration_panel(qtbot, qapp, calibration_home_from_mirror)
+            self.subtest_set_request_panel(qtbot, qapp, calibration_home_from_mirror)
+            self.subtest_execute_request_panel(qtbot, qapp, calibration_home_from_mirror)
+            self.subtest_tweak_panel(qtbot, qapp, calibration_home_from_mirror)
 
-            """
-            SNAPRedGUI owns the following widgets:
-
-              * self.calibrationPanelButton [new] = QPushButton("Open Calibration Panel")
-
-                <button click> => self.newWindow = TestPanel(self).setWindowTitle("Calibration Panel")
-
-              * LogTable("load dummy", self).widget
-
-              * WorkspaceWidget(self)
-
-              * AlgorithmProgressWidget()
-
-              * <central widget>: QWidget().setObjectName("centralWidget")
-
-              * self.userDocButton = UserDocsButton(self)
-            """
-
-            # Open the calibration panel:
-            self.testSummary.SUCCESS()
-            # QPushButton* button = pWin->findChild<QPushButton*>("Button name");
-            qtbot.mouseClick(gui.calibrationPanelButton, QtCore.Qt.LeftButton)
-            if len(exceptions):
-                raise InterruptWithBlock
-            calibrationPanel = gui.calibrationPanel
-
-            # tab indices: (0) diffraction calibration, (1) normalization calibration, and (2) reduction
-            calibrationPanelTabs = calibrationPanel.presenter.view.tabWidget
-
-            ##########################################################################################################
-            ##################### DIFFRACTION CALIBRATION PANEL: #####################################################
-            ##########################################################################################################
-
-            # Diffraction calibration:
-            calibrationPanelTabs.setCurrentIndex(1)
-            diffractionCalibrationWidget = calibrationPanelTabs.currentWidget()
-
-            ### The use of this next signal is somewhat cryptic, but it makes testing the GUI much more stable:
-            ##    The `actionCompleted` signal is emitted whenever a workflow node completes its action.
-            ##    Otherwise, we would need to infer that the action is completed by other means.
-            actionCompleted = (
-                calibrationPanel.presenter.diffractionCalibrationWorkflow.workflow.presenter.actionCompleted
-            )
-            ###
-
-            # node-tab indices: (0) request view, (1) tweak-peak view, (2) assessment view, and (4) save view
-            workflowNodeTabs = diffractionCalibrationWidget.findChild(QTabWidget, "nodeTabs")
-
-            requestView = workflowNodeTabs.currentWidget().view
-            assert isinstance(requestView, DiffCalRequestView)
-            self.testSummary.SUCCESS()
-
-            requestView.liteModeToggle.setState(False)
-
-            #    set "Run Number", "Convergence Threshold", ,:
-            requestView.runNumberField.setText("58882")
-            qtbot.keyClick(requestView.runNumberField._field, Qt.Key_Return)
-            qapp.processEvents()
-            qtbot.wait(1000)
-
-            # assert default is gaussian:
-            assert requestView.peakFunctionDropdown.currentIndex() == 0
-            assert requestView.peakFunctionDropdown.currentText() == "Gaussian"
-
-            # ensure overrides from the sample JSON are applied:
-            requestView.sampleDropdown.setCurrentIndex(0)
-            assert requestView.sampleDropdown.currentIndex() == 0
-            assert requestView.sampleDropdown.currentText().endswith("Diamond_001.json")
-            qtbot.wait(1000)
-            assert requestView.peakFunctionDropdown.currentText() == "Lorentzian"
-
-            #    set all dropdown selections, but make sure that the dropdown contents are as expected
-            requestView.sampleDropdown.setCurrentIndex(3)
-            assert requestView.sampleDropdown.currentIndex() == 3
-            assert requestView.sampleDropdown.currentText().endswith("Silicon_NIST_640D_001.json")
-
-            requestView.groupingFileDropdown.setCurrentIndex(0)
-            assert requestView.groupingFileDropdown.currentIndex() == 0
-            assert requestView.groupingFileDropdown.currentText() == "Column"
-
-            requestView.peakFunctionDropdown.setCurrentIndex(0)
-            assert requestView.peakFunctionDropdown.currentIndex() == 0
-            assert requestView.peakFunctionDropdown.currentText() == "Gaussian"
-
-            requestView.skipPixelCalToggle.setState(False)
-
-            self.testSummary.SUCCESS()
-            #    execute the request
-
-            # TODO: make sure that there's no initialized state => abort the test if there is!
-            #   At the moment, we preserve some options here to speed up development.
-            stateId = "04bd2c53f6bf6754"
-            waitForStateInit = True
-            handleStateInit(waitForStateInit, stateId, qtbot, qapp, actionCompleted, workflowNodeTabs)
-
-            # Now that there is a new state, we need to reselect the grouping file ... :
-            # Why was this error box being swallowed?
-            requestView.groupingFileDropdown.setCurrentIndex(0)
-
-            #    (2) execute the calibration workflow
-            with qtbot.waitSignal(actionCompleted, timeout=60000):
-                qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-            qtbot.waitUntil(
-                lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalTweakPeakView), timeout=60000
-            )
-            self.testSummary.SUCCESS()
-            tweakPeakView = workflowNodeTabs.currentWidget().view
-
-            # ---------------------------------------------------------------------------
-            # Required patch for "TweakPeakView": ensure continuation if only two peaks are found.
-            # IMPORTANT: "greater than two peaks" warning is triggered by an exception throw:
-            #   => do _not_ patch using a with clause!
-            self._logWarningsMessageBox.stop()
-            warningMessageBox = mock.patch(  # noqa: PT008
-                "qtpy.QtWidgets.QMessageBox.exec",
-                lambda *args, **kwargs: QMessageBox.Yes,  # noqa: ARG005
-            )
-            warningMessageBox.start()
-            mb = MockQMessageBox().continueButton("Yes")
-            mb[0].start()
-            # ---------------------------------------------------------------------------
-
-            #    set "xtal dMin", "FWHM left", and "FWHM right": these are sufficient to get "58882" to pass.
-            #    TODO: set ALL of the relevant fields, and use a test initialization template for this.
-            tweakPeakView.fieldFWHMleft.setText("1.5")
-            tweakPeakView.fieldFWHMright.setText("2")
-            tweakPeakView.maxChiSqField.setText("1000.0")
-            tweakPeakView.peakFunctionDropdown.setCurrentIndex(0)
-            assert tweakPeakView.peakFunctionDropdown.currentIndex() == 0
-            assert tweakPeakView.peakFunctionDropdown.currentText() == "Gaussian"
-
-            #    recalculate using the new values
-            #    * recalculate => peak display is recalculated,
-            #      not the entire calibration.
-            qtbot.mouseClick(tweakPeakView.recalculationButton, Qt.MouseButton.LeftButton)
-            qtbot.wait(10000)
-
-            #    continue to the next panel
-            with qtbot.waitSignal(actionCompleted, timeout=80000):
-                qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-            self.testSummary.SUCCESS()
-
-            qtbot.waitUntil(
-                lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalAssessmentView), timeout=80000
-            )
-
-            # Placing this next `stop` correctly, causes some difficulty:
-            #   if it's placed too early, the `warning` box patch doesn't correctly trap the "tweak peaks" warning.
-            # So, for this reason this stop is placed _after_ the `waitUntil`.
-            # ("Tweak peaks" view should have definitely completed by this point.)
-            warningMessageBox.stop()
-            mb[0].stop()
-            self._logWarningsMessageBox.start()
-
-            assessmentView = workflowNodeTabs.currentWidget().view  # noqa: F841
-            #    nothing to do here, for this test
-
-            #    continue to the next panel
-            with qtbot.waitSignal(actionCompleted, timeout=80000):
-                qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-            self.testSummary.SUCCESS()
-
-            qtbot.waitUntil(lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalSaveView), timeout=5000)
-            saveView = workflowNodeTabs.currentWidget().view
-
-            #    set "author" and "comment"
-            saveView.fieldAuthor.setText("kat")
-            saveView.fieldComments.setText("calibration-panel integration test")
-
-            #    continue in order to save workspaces and to finish the workflow
-            with qtbot.waitSignal(actionCompleted, timeout=60000):
-                qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
-            self.testSummary.SUCCESS()
-            #   `ActionPrompt.prompt("..The workflow has completed successfully..)` gives immediate mocked response:
-            #      Here we still need to wait until the ADS cleanup has occurred,
-            #      or else it will happen in the middle of the next workflow. :(
-            qtbot.waitUntil(
-                lambda: isinstance(workflowNodeTabs.currentWidget().view, DiffCalRequestView), timeout=10000
-            )
-
-            ###############################
-            ########### END OF TEST #######
-            ###############################
-
-            calibrationPanel.widget.close()
-            gui.close()
-
-            self.testSummary.SUCCESS()
+            self.subtest_assessment_panel(qtbot, qapp, calibration_home_from_mirror)
+            self.subtest_save_panel(qtbot, qapp, calibration_home_from_mirror)
+            self.subtest_close_gui(qtbot, qapp, calibration_home_from_mirror)
 
         #####################################################################
         # Force a printout of information about any exceptions that happened#

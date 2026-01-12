@@ -79,7 +79,20 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         self.chopIngredients(reducedPeakList)
         self.unbagGroceries()
 
+        numHisto = self.mantidSnapper.mtd[self.inputWorkspaceName].getNumberHistograms()
+        if numHisto < len(self.groupIDs):
+            raise ValueError(
+                f"Number of histograms and number of GroupPeakLists do not match: {numHisto} vs {len(self.groupIDs)}"
+            )
+
         for index, groupID in enumerate(self.groupIDs):
+            spectrumInfo = self.mantidSnapper.mtd[self.inputWorkspaceName].spectrumInfo()
+            numHisto = self.mantidSnapper.mtd[self.inputWorkspaceName].getNumberHistograms()
+            if spectrumInfo.detectorCount() == 0:
+                raise ValueError(
+                    f"Spectrum with NO DETECTORS encountered on {self.inputWorkspaceName} at index {index}"
+                )
+
             tmpSpecName = mtd.unique_name(prefix=f"__tmp_fitspec_{index}_")
             outputNameTmp = mtd.unique_name(prefix=f"__tmp_fitdiag_{index}_")
             outputNamesTmp = {x: f"{outputNameTmp}{self.outputSuffix[x]}_{index}" for x in FitOutputEnum}
@@ -120,7 +133,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
                 OutputWorkspace=outputNameTmp,
             )
             self.mantidSnapper.ConjoinDiagnosticWorkspaces(
-                "Conjoin the diagnostic group workspaces",
+                f"Conjoin the diagnostic group workspaces for subgroup {groupID}",
                 DiagnosticWorkspace=outputNameTmp,
                 TotalDiagnosticWorkspace=self.outputWorkspaceName,
                 AddAtIndex=index,

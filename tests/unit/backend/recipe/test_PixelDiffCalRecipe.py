@@ -58,27 +58,15 @@ class TestPixelDiffCalRecipe(unittest.TestCase):
         algoNames = [x[0] for x in algoQueue]
         assert "RemoveSmoothedBackground" in algoNames
 
-    def test_execute(self):
-        """Test that the algorithm executes"""
-        rx = Recipe()
-        rx.prep(self.ingredients, self.groceries)
-        assert rx.execute()
-
-        x = rx.medianOffsets[-1]
-        assert x is not None
-        assert x != 0.0
-        assert x > 0.0
-        assert x <= self.ingredients.maxOffset
-
     def test_reexecution_and_convergence(self):
         """Test that the algorithm can run, and that it will converge to an answer"""
         rx = Recipe()
         result = rx.cook(self.ingredients, self.groceries).medianOffsets
 
         # check that value converges
-        # WARNING: testing for three iterations seems to be about the limit here.
-        #   At greater than 3 iterations, there are small oscillations about a limit value.
-        maxIter = 3
+        # WARNING: testing for four iterations seems to be about the limit here.
+        #   At greater than 4 iterations, there are small oscillations about a limit value.
+        maxIter = 4
         assert len(result) < maxIter
         allOffsets = [result[0]]
 

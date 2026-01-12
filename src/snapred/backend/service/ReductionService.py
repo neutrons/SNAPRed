@@ -429,25 +429,22 @@ class ReductionService(Service):
                     raise RuntimeError(
                         f"reduction pixel mask '{mask}' has unexpected workspace-type '{mask.tokens('workspaceType')}'"  # noqa: E501
                     )
+
         # Load all pixel masks
-        allMasks = self.groceryService.fetchGroceryDict(
-            self.groceryClerk.buildDict(),
-            **residentMasks,
+        allMasks = list(
+            self.groceryService.fetchGroceryDict(
+                self.groceryClerk.buildDict(),
+                **residentMasks,
+            ).values()
         )
+        # purge empty string, diffcalmask comes back as one if it doesnt exist
+        allMasks = [m for m in allMasks if m]
+        allMasks.append(self.groceryService.fetchCompatiblePixelMask(combinedMask, runNumber, useLiteMode))
+        if len(allMasks) > 0:
+            combinedMask = self.groceryService.combinePixelMasks(combinedMask, allMasks)
+        else:
+            combinedMask = ""
 
-        self.groceryService.fetchCompatiblePixelMask(combinedMask, runNumber, useLiteMode)
-        for mask in allMasks.values():
-            # If there is no mask corresponding to the diffraction calibration, it will be set to the empty string.
-            if bool(mask):
-                self.mantidSnapper.BinaryOperateMasks(
-                    f"combine from pixel mask: '{mask}'...",
-                    InputWorkspace1=combinedMask,
-                    InputWorkspace2=mask,
-                    OperationType="OR",
-                    OutputWorkspace=combinedMask,
-                )
-
-        self.mantidSnapper.executeQueue()
         return combinedMask
 
     @FromString

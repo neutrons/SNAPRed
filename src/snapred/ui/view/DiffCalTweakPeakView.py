@@ -262,6 +262,7 @@ class DiffCalTweakPeakView(BackendRequestView):
 
         for wkspIndex in range(numGraphs):
             peaks = self.peaks[wkspIndex].peaks
+            groupID = self.peaks[wkspIndex].groupID
             # collect the fit chi-sq parameters for this spectrum, and the fits
             chisq = [x2 for i, x2 in zip(index, allChisq) if i == wkspIndex]
             self.goodPeaksCount[wkspIndex] = len([peak for chi2, peak in zip(chisq, peaks) if chi2 < maxChiSq])
@@ -274,7 +275,7 @@ class DiffCalTweakPeakView(BackendRequestView):
             ax = mantidAxisFactory(ax)
 
             ax.tick_params(direction="in")
-            ax.set_title(f"Group ID: {wkspIndex + 1}")
+            ax.set_title(f"Group ID: {groupID}")
             # plot the data and fitted curve
             ax.plot(self.mantidSnapper.mtd[workspace], wkspIndex=wkspIndex, label="data", normalize_by_bin_width=True)
             ax.plot(fitted_peaks, wkspIndex=wkspIndex, label="fit", color="black", normalize_by_bin_width=True)

@@ -1,15 +1,16 @@
 from typing import Any, Dict, List, Set
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.profiling.ProgressRecorder import ComputationalOrder, WallClockTime
 from snapred.backend.recipe.algorithm.Utensils import Utensils
-from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
+from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
@@ -18,9 +19,11 @@ logger = snapredLogger.getLogger(__name__)
 class PixelDiffCalServing(BaseModel):
     result: bool
     medianOffsets: List[float]
-    maskWorkspace: str
+    maskWorkspace: WorkspaceName | None = None
     calibrationTable: str
     outputWorkspace: str
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 # Decorating with the `WallClockTime` profiler here somewhat duplicates the objective of the decoration
@@ -101,11 +104,20 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         """
         self.wsTOF = groceries["inputWorkspace"]
         self.groupingWS = groceries["groupingWorkspace"]
-        self.maskWS = groceries["maskWorkspace"]
+        self.maskWS = groceries.get("maskWorkspace")
         # the name of the output calibration table
         self.DIFCpixel = groceries["calibrationTable"]
         self.DIFCprev = groceries.get("previousCalibration", "")
         # the input data converted to d-spacing
+
+        if self.maskWS and self.mantidSnapper.mtd.doesExist(self.maskWS):
+            # if user supplied mask exists, apply it
+            # A user mask may not exist, but the maskws name is used to store
+            # the mask generated as part of PixelDiffCalRecipe
+            self.mantidSnapper.MaskDetectors(
+                "applying user generated mask", Workspace=self.wsTOF, MaskedWorkspace=self.maskWS
+            )
+
         self.wsDSP = wng.diffCalInputDSP().runNumber(self.runNumber).build()
         self.convertUnitsAndRebin(self.wsTOF, self.wsDSP)
         self.mantidSnapper.CloneWorkspace(
@@ -215,11 +227,14 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
         wscc: str = f"__{self.runNumber}_tmp_group_CC_{self._counts}"
 
         for i, (groupID, workspaceIndices) in enumerate(self.groupWorkspaceIndices.items()):
+            if groupID not in self.maxDSpaceShifts:
+                # group has been fully masked.
+                continue
             workspaceIndices = list(workspaceIndices)
             refID: int = self.getRefID(workspaceIndices)
 
             self.mantidSnapper.CrossCorrelate(
-                f"Cross-Correlating spectra for {wscc}",
+                f"Cross-Correlating spectra for {wscc}, subgroup {groupID}",
                 InputWorkspace=self.wsDSP,
                 OutputWorkspace=wscc + f"_group{groupID}",
                 ReferenceSpectra=refID,
@@ -230,9 +245,10 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             )
 
             self.mantidSnapper.GetDetectorOffsets(
-                f"Calculate offset workspace {wsoff}",
+                f"Calculate offset workspace {wsoff}, group {groupID}",
                 InputWorkspace=wscc + f"_group{groupID}",
                 OutputWorkspace=wsoff,
+                # MasKWs is an in/out, this algo will modify it
                 MaskWorkspace=self.maskWS,
                 # Scale the fitting ROI using the expected peak width (including a few possible peaks):
                 XMin=-(self.maxDSpaceShifts[groupID] / self.dBin) * 2.0,
@@ -243,7 +259,7 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
 
             # add in group offsets to total, or begin the sum if none
             # NOTE wsoff has all spectra, with value 0 in those not used in CrossCorrelate
-            if i == 0:
+            if not self.mantidSnapper.mtd.doesExist(self.totalOffsetWS):
                 self.mantidSnapper.CloneWorkspace(
                     f"Starting summation with offset workspace {wsoff}",
                     InputWorkspace=wsoff,
@@ -308,6 +324,12 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
                 InstrumentWorkspace=self.wsTOF,
                 CalibrationWorkspace=self.DIFCpixel,
             )
+            self.mantidSnapper.MaskDetectors(
+                "reapplying user generated + get detector offsets mask",
+                Workspace=self.wsTOF,
+                MaskedWorkspace=self.maskWS,
+            )
+
         else:
             logger.warning("Offsets failed to converge monotonically")
 
