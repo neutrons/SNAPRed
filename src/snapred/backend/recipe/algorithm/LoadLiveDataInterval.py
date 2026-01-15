@@ -282,9 +282,6 @@ class LoadLiveDataInterval(PythonAlgorithm):
             outputWs = self.getProperty("OutputWorkspace").valueAsStr
             startTime = self.getProperty("StartTime").value
 
-            waitTimeIncrement = 10  # seconds
-            dataLoadTimeout = Config["liveData.dataLoadTimeout"]
-
             # Create the "LoadLiveData" child and set its properties.
             loadLiveData = self._createChildAlgorithm(self, "LoadLiveData", 0.0, 0.75, self.isLogging())
             loadLiveData.initialize()
@@ -306,17 +303,23 @@ class LoadLiveDataInterval(PythonAlgorithm):
             activeRunNumber = self.mantidSnapper.mtd[chunkWs].getRunNumber()
 
             logger.info(f"Run interval: ({run.startTime().to_datetime64()}, {run.endTime().to_datetime64()})")
-            logger.info(
-                f"Loaded-chunk interval: ({self.mantidSnapper.mtd[chunkWs].getPulseTimeMin().to_datetime64()}, "
-                f"{self.mantidSnapper.mtd[chunkWs].getPulseTimeMax().to_datetime64()})"
-            )
-
-            self.chunkIntervals.append(
-                (
-                    self.mantidSnapper.mtd[chunkWs].getPulseTimeMin().to_datetime64(),
-                    self.mantidSnapper.mtd[chunkWs].getPulseTimeMax().to_datetime64(),
+            
+            deadTimeDuration = 0
+            if self.mantidSnapper.mtd[chunkWs].getNumberEvents():
+                logger.info(
+                    f"Loaded-chunk interval: ({self.mantidSnapper.mtd[chunkWs].getPulseTimeMin().to_datetime64()}, "
+                    f"{self.mantidSnapper.mtd[chunkWs].getPulseTimeMax().to_datetime64()})"
                 )
-            )
+
+                self.chunkIntervals.append(
+                    (
+                        self.mantidSnapper.mtd[chunkWs].getPulseTimeMin().to_datetime64(),
+                        self.mantidSnapper.mtd[chunkWs].getPulseTimeMax().to_datetime64(),
+                    )
+                )
+            else:
+                deadTimeDuration = 10 # `SNSLiveEventDataListener` initially accumulates 10 s of data.
+                logger.warning("NO EVENTS in initially-loaded chunk interval.")
 
             self.mantidSnapper.CloneWorkspace(
                 "replace output workspace", OutputWorkspace=outputWs, InputWorkspace=chunkWs
@@ -327,6 +330,7 @@ class LoadLiveDataInterval(PythonAlgorithm):
             waitTime = 0
             dataLoadTimeout = Config["liveData.dataLoadTimeout"]
             waitTimeIncrement = Config["liveData.chunkLoadWait"]
+            maxDeadTime = Config["liveData.time_comparison_threshold"] # this is also the maximum data-gap duration
             while (waitTime < dataLoadTimeout) and not self._loadIsComplete(outputWs, startTime, self.chunkIntervals):
                 sleep(waitTimeIncrement)
                 waitTime += waitTimeIncrement
@@ -336,6 +340,23 @@ class LoadLiveDataInterval(PythonAlgorithm):
                 # Check for possible run-state change:
                 if activeRunNumber != self.mantidSnapper.mtd[chunkWs].getRunNumber():
                     break
+                
+                # Check for dead time:
+                
+                # Implementation note:
+                #   - when there are no events, `getPulseTimeMin()` and `getPulseTimeMax()` return
+                #     `DateAndTime::maximum()` and `DateAndTime::minimum()` respectively.
+                if not self.mantidSnapper.mtd[chunkWs].getNumberEvents():
+                    deadTimeDuration += waitTimeIncrement
+                    logger.warning(f"NO NEW EVENTS in {waitTimeIncrement} s")
+                    if deadTimeDuration >= maxDeadTime:
+                        # No events for longer than the configured comparison threshold: stop waiting.
+                        break
+                    # Skip accumulation / logging for empty chunks.
+                    continue
+                else:
+                    # Reset accumulator once we see events again.
+                    deadTimeDuration = 0
 
                 logger.info(
                     f"Loaded-chunk interval: ({self.mantidSnapper.mtd[chunkWs].getPulseTimeMin().to_datetime64()}, "
