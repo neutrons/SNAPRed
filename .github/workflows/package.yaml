@@ -8,6 +8,14 @@ on:
   pull_request:
     # Run on pull requests targeting any base branch
 
+# cancel previous job if new commit is pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PKG_NAME: snapred
+
 jobs:
   linux:
     runs-on: ubuntu-latest
