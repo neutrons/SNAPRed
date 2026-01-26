@@ -26,6 +26,20 @@ jobs:
       - name: build conda package
         run: |
           pixi run build-conda
+          mkdir -p /tmp/local-channel/noarch
+          cp *.conda /tmp/local-channel/noarch/
+          # extract version from the package file name "snapred-<version>-<build>.conda"
+          echo "PKG_VERSION=$(ls *.conda | cut -d'-' -f2)" >> $GITHUB_ENV
+      - name: Verify Conda Package
+        uses: neutrons/conda-verify@v0.1.2
+        with:
+          python-version: "3.11"
+          local-channel: /tmp/local-channel
+          package-name: ${{ env.PKG_NAME }}=${{ env.PKG_VERSION }} # install exact version
+          extra-channels: neutrons mantid oncat conda-forge
+          extra-commands: |
+            python -c "import snapred"
+            python -c "import mantid"
       - name: upload conda package to anaconda
         if: startsWith(github.ref, 'refs/tags/v')
         env:
