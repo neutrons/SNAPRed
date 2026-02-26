@@ -57,3 +57,14 @@ class TestGroupedDetectorIDs(unittest.TestCase):
         )
         utensils.mantidSnapper.executeQueue()
         assert data == {2: [2, 4, 11, 14], 3: [0, 5, 10, 15], 7: [1, 7, 8, 13], 11: [3, 6, 9, 12]}
+
+    def test_with_mask(self):
+        maskWs = mtd[self.fakeMaskWorkspace]
+        maskWs.setValue(11, True)
+        algo = Algo()
+        algo.initialize()
+        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
+        algo.setProperty("MaskWorkspace", self.fakeMaskWorkspace)
+        assert algo.execute()
+        data = access_pointer(algo.getProperty("GroupWorkspaceIndices").value)
+        assert data == {2: [2, 4, 14], 3: [0, 5, 10, 15], 7: [1, 7, 8, 13], 11: [3, 6, 9, 12]}

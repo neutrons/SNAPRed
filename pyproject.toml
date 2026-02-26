@@ -179,11 +179,12 @@ pycifrw = "*"
 pyqtwebengine = "*"
 git-lfs = "*"
 pre-commit = ">=4.3.0,<5"
-
+virtualenv = "<21"  #mismatched pins causes hatch to fail
 
 [tool.pixi.package.host-dependencies]
 python = ">=3.10"
 hatchling = "*"
+virtualenv = "<21"  #mismatched pins causes hatch to fail
 versioningit = "*"
 
 [tool.pixi.package.run-dependencies]
@@ -268,7 +269,7 @@ ruff = "*"
 python-build = "*"
 
 [tool.pixi.feature.docs.dependencies]
-sphinx = "*"
+sphinx = "<9" # sphinx 9 seems to break the doc build for whatever reason
 sphinx_rtd_theme = "*"
 sphinxcontrib-mermaid = "*"
 types-pyyaml = "*"
@@ -284,9 +285,9 @@ python = ">=3.10"
 pip = ">=25.3"
 pydantic = ">=2.7.3,<3"
 # Channel-specific dependencies: Dev uses nightly Mantid builds
-mantidworkbench = { version = ">=6.14.0,<6.15", channel = "mantid/label/nightly" }
-mantid = { version = ">=6.14.0,<6.15", channel = "mantid/label/nightly" }
-mantidqt = { version = ">=6.14.0,<6.15", channel = "mantid/label/nightly" }
+mantidworkbench = { version = ">=6.15.0,<6.16", channel = "mantid/label/nightly" }
+mantid = { version = ">=6.15.0,<6.16", channel = "mantid/label/nightly" }
+mantidqt = { version = ">=6.15.0,<6.16", channel = "mantid/label/nightly" }
 mslice = "*"
 qtpy = "*"
 muparser = "=2.3.4"

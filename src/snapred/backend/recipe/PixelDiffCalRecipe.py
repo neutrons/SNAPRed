@@ -151,9 +151,13 @@ class PixelDiffCalRecipe(Recipe[Ingredients]):
             )
 
     def stirInputs(self):
+        mask = ""
+        if self.mantidSnapper.mtd.doesExist(self.maskWS):
+            mask = self.maskWS
         self.groupWorkspaceIndices = self.mantidSnapper.GroupedDetectorIDs(
             "Extract the detector IDs for each group",
             GroupingWorkspace=self.groupingWS,
+            MaskWorkspace=mask,
         )
         self.mantidSnapper.executeQueue()
 
