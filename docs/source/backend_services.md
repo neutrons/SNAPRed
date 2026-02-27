@@ -204,7 +204,7 @@ request = SNAPRequest(
 )
 # Called with keyword args via decorator
 result = controller.executeRequest(
-    SNAPRequest(path="/ingestion/", 
+    SNAPRequest(path="/ingestion/",
     payload=None)
 )
 ```
@@ -303,11 +303,11 @@ def reduction(self, request: ReductionRequest):
     # Prepare ingredients and groceries
     ingredients = self.prepReductionIngredients(request)
     groceries = self.fetchReductionGroceries(request)
-    
+
     # Execute recipe
     recipe = ReductionRecipe()
     result = recipe.cook(ingredients, groceries)
-    
+
     return ReductionResponse(...)
 ```
 
@@ -352,10 +352,10 @@ class MyRequest(BaseModel):
     useLiteMode: bool
     optionalField: Optional[str] = None
     listField: List[int] = []
-    
+
     # Validators
     from pydantic import field_validator
-    
+
     @field_validator("runNumber")
     @classmethod
     def validate_run(cls, v):
@@ -376,14 +376,14 @@ from snapred.backend.error.RecoverableException import RecoverableException
 def validateReduction(self, request: ReductionRequest):
     if not self.dataFactoryService.stateExists(request.runNumber):
         raise RecoverableException.stateUninitialized(
-            request.runNumber, 
+            request.runNumber,
             request.useLiteMode
         )
-    
+
     continueFlags = ContinueWarning.Type.UNSET
     if not self.dataFactoryService.normalizationExists(request.runNumber):
         continueFlags |= ContinueWarning.Type.MISSING_NORMALIZATION
-    
+
     return continueFlags
 ```
 

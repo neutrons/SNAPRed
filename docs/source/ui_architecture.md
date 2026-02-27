@@ -52,58 +52,58 @@ from qtpy import QtWidgets, QtCore
 
 class MyView(QtWidgets.QWidget):
     """A simple input/output view."""
-    
+
     # Signals for user actions
     inputChanged = QtCore.Signal(str)
     processRequested = QtCore.Signal(dict)
-    
+
     def __init__(self):
         super().__init__()
         self.setupUI()
-    
+
     def setupUI(self):
         """Build the UI layout."""
         layout = QtWidgets.QVBoxLayout()
-        
+
         # Input section
         input_label = QtWidgets.QLabel("Input Value:")
         self.input_field = QtWidgets.QLineEdit()
         self.input_field.textChanged.connect(self.onInputChanged)
-        
+
         # Button
         self.process_button = QtWidgets.QPushButton("Process")
         self.process_button.clicked.connect(self.onProcessClicked)
-        
+
         # Output
         self.result_display = QtWidgets.QTextEdit()
         self.result_display.setReadOnly(True)
-        
+
         # Assemble layout
         layout.addWidget(input_label)
         layout.addWidget(self.input_field)
         layout.addWidget(self.process_button)
         layout.addWidget(QtWidgets.QLabel("Result:"))
         layout.addWidget(self.result_display)
-        
+
         self.setLayout(layout)
-    
+
     def onInputChanged(self, text):
         """Called when input changes."""
         self.inputChanged.emit(text)
-    
+
     def onProcessClicked(self):
         """Called when process button clicked."""
         data = {"value": self.input_field.text()}
         self.processRequested.emit(data)
-    
+
     def displayResult(self, result):
         """Update view with result."""
         self.result_display.setText(str(result))
-    
+
     def showError(self, message):
         """Display error to user."""
         QtWidgets.QMessageBox.critical(self, "Error", message)
-    
+
     def enableProcessing(self, enabled: bool):
         """Enable/disable processing UI."""
         self.process_button.setEnabled(enabled)
@@ -128,50 +128,50 @@ logger = snapredLogger.getLogger(__name__)
 
 class MyPresenter:
     """Connects MyView to business logic."""
-    
+
     def __init__(self, view):
         self.view = view
         self.controller = InterfaceController()
-        
+
         # Connect view signals to presenter methods
         self.view.processRequested.connect(self.onProcessRequested)
         self.view.inputChanged.connect(self.onInputChanged)
-    
+
     def onInputChanged(self, text):
         """Validate input as user types."""
         if len(text) > 0:
             self.view.enableProcessing(True)
         else:
             self.view.enableProcessing(False)
-    
+
     def onProcessRequested(self, data):
         """Handle process request from view."""
         logger.info(f"Processing: {data}")
-        
+
         # Disable UI during processing
         self.view.enableProcessing(False)
-        
+
         try:
             # Create request
             from snapred.backend.dao.MyOperationRequest import MyInput
             input_data = MyInput(value=data["value"])
-            
+
             request = SNAPRequest(
                 path="/myservice/operation",
                 payload=input_data
             )
-            
+
             # Execute request
             result = self.controller.executeRequest(request)
-            
+
             # Update view with result
             self.view.displayResult(result)
             logger.info("Processing completed successfully")
-            
+
         except Exception as e:
             logger.error(f"Processing failed: {e}")
             self.view.showError(str(e))
-        
+
         finally:
             self.view.enableProcessing(True)
 ```
@@ -281,26 +281,26 @@ from qtpy import QtWidgets, QtCore
 
 class RunNumberInput(QtWidgets.QWidget):
     """Input widget for run numbers."""
-    
+
     valueChanged = QtCore.Signal(int)
-    
+
     def __init__(self):
         super().__init__()
         layout = QtWidgets.QHBoxLayout()
-        
+
         label = QtWidgets.QLabel("Run Number:")
         self.spinbox = QtWidgets.QSpinBox()
         self.spinbox.setMinimum(1)
         self.spinbox.setMaximum(999999)
         self.spinbox.valueChanged.connect(self.valueChanged.emit)
-        
+
         layout.addWidget(label)
         layout.addWidget(self.spinbox)
         self.setLayout(layout)
-    
+
     def getValue(self):
         return self.spinbox.value()
-    
+
     def setValue(self, value):
         self.spinbox.setValue(value)
 ```
@@ -353,14 +353,14 @@ class MyPresenter:
             payload=data
         )
         return controller.executeRequest(request)
-    
+
     def startLongOperation(self):
         """Called from UI thread."""
         self.view.showProgress("Processing...")
-        
+
         # This returns immediately; result comes via signal
         result = self.runLongOperation(self.data)
-        
+
         # When done, update UI
         self.view.showResult(result)
 ```
@@ -389,7 +389,7 @@ class MyPresenter:
     def __init__(self, view):
         self.view = view
         self.model = MyModel()
-    
+
     def onProcessRequested(self, data):
         self.model.processing = True
         self.model.input_value = data["value"]
@@ -405,7 +405,7 @@ class MyView(QtWidgets.QWidget):
     # Define signals
     dataReady = QtCore.Signal(object)  # Emits object
     userAction = QtCore.Signal()       # No data
-    
+
     def emitSignal(self):
         self.dataReady.emit({"key": "value"})
 
@@ -456,7 +456,7 @@ progress.setValue(50)
 # View
 class SearchView(QtWidgets.QWidget):
     searchRequested = QtCore.Signal(str)
-    
+
     def setupUI(self):
         layout = QtWidgets.QVBoxLayout()
         self.search_input = QtWidgets.QLineEdit()
@@ -464,17 +464,17 @@ class SearchView(QtWidgets.QWidget):
         search_btn.clicked.connect(self.onSearch)
         self.results = QtWidgets.QTextEdit()
         self.results.setReadOnly(True)
-        
+
         layout.addWidget(QtWidgets.QLabel("Search:"))
         layout.addWidget(self.search_input)
         layout.addWidget(search_btn)
         layout.addWidget(self.results)
         self.setLayout(layout)
-    
+
     def onSearch(self):
         query = self.search_input.text()
         self.searchRequested.emit(query)
-    
+
     def displayResults(self, results):
         self.results.setText(str(results))
 
@@ -484,7 +484,7 @@ class SearchPresenter:
         self.view = view
         self.controller = InterfaceController()
         self.view.searchRequested.connect(self.onSearch)
-    
+
     def onSearch(self, query):
         request = SNAPRequest(
             path="/search/find",

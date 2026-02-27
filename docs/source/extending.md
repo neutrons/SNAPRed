@@ -51,7 +51,7 @@ from snapred.backend.dao.MyOperationRequest import MyInput, MyOutput
 class MyService(Service):
     def name(self):
         return "MyService"
-    
+
     @Register("/myservice/operation")
     def performOperation(self, input_data: MyInput) -> MyOutput:
         """
@@ -124,28 +124,28 @@ class MyRecipe(Recipe[MyIngredients]):
     """
     Processes a workspace through multiple steps.
     """
-    
+
     def __init__(self, utensils: Utensils = None):
         super().__init__(utensils)
-    
+
     def cook(self, ingredients: MyIngredients) -> MyProduct:
         """
         Execute the recipe on the provided ingredients.
         """
         # Access Mantid algorithms via self.utensils
         mantid_alg = self.utensils.getAlgorithm("SomeAlgorithm")
-        
+
         # Execute algorithm
         result = mantid_alg(
             InputWorkspace=ingredients.workspace_name,
             OutputWorkspace="temp_output",
             Factor=ingredients.smoothing_factor
         )
-        
+
         # Extract data
         workspace = self.mantidSnapper.mtd(result.OutputWorkspace)
         peak_positions = extract_peaks(workspace)
-        
+
         return MyProduct(
             output_workspace=result.OutputWorkspace,
             peak_positions=peak_positions
@@ -186,11 +186,11 @@ from qtpy import QtWidgets, QtCore
 class MyView(QtWidgets.QWidget):
     # Define signals for user actions
     actionTriggered = QtCore.Signal(object)  # Emit data
-    
+
     def __init__(self):
         super().__init__()
         self.setupUI()
-    
+
     def setupUI(self):
         layout = QtWidgets.QVBoxLayout()
         self.input_field = QtWidgets.QLineEdit()
@@ -199,11 +199,11 @@ class MyView(QtWidgets.QWidget):
         layout.addWidget(self.input_field)
         layout.addWidget(button)
         self.setLayout(layout)
-    
+
     def onButtonClicked(self):
         data = {"value": self.input_field.text()}
         self.actionTriggered.emit(data)
-    
+
     def showResult(self, result):
         QtWidgets.QMessageBox.information(self, "Result", f"Result: {result}")
 ```
@@ -219,7 +219,7 @@ class MyPresenter:
         self.view = view
         self.controller = InterfaceController()
         self.view.actionTriggered.connect(self.onAction)
-    
+
     def onAction(self, data):
         """Handle view action, call service, update view."""
         try:
@@ -274,7 +274,7 @@ class MyInput(BaseModel):
     """Input for my operation."""
     run_number: int = Field(..., description="Neutron run number")
     tolerance: float = Field(default=0.1, ge=0, le=1.0)
-    
+
     @field_validator("run_number")
     @classmethod
     def validate_run(cls, v):

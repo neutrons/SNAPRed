@@ -43,10 +43,10 @@ class SimpleProduct(BaseModel):
 # Create recipe
 class MySimpleRecipe(Recipe[SimpleIngredients]):
     """Smooths neutron diffraction data."""
-    
+
     def __init__(self, utensils: Utensils = None):
         super().__init__(utensils)
-    
+
     def cook(self, ingredients: SimpleIngredients) -> SimpleProduct:
         """Execute recipe."""
         # Step 1: Smooth the data
@@ -56,7 +56,7 @@ class MySimpleRecipe(Recipe[SimpleIngredients]):
             OutputWorkspace="smoothed_data",
             WindowLength=ingredients.smoothing_window
         )
-        
+
         # Step 2: Return results
         return SimpleProduct(
             smoothed_workspace=result.OutputWorkspace,
@@ -154,40 +154,40 @@ class CalibrationProduct(BaseModel):
 
 class CalibrationRecipe(Recipe[CalibrationIngredients]):
     """Multi-step calibration workflow."""
-    
+
     def cook(self, ingredients: CalibrationIngredients) -> CalibrationProduct:
         # Step 1: Load calibration standard
         std_data = self._loadCalibrationStandard(
             ingredients.calibration_material
         )
-        
+
         # Step 2: Fit peaks
         peaks = self._fitPeaks(
             ingredients.raw_workspace,
             std_data["theoretical_positions"]
         )
-        
+
         # Step 3: Calculate offsets
         offsets = self._calculateOffsets(
             peaks,
             std_data["theoretical_positions"]
         )
-        
+
         # Step 4: Apply offsets
         offset_ws = self._applyOffsets(
             ingredients.raw_workspace,
             offsets
         )
-        
+
         # Step 5: Assess quality
         quality = self._assessQuality(offset_ws, peaks)
-        
+
         return CalibrationProduct(
             offset_workspace=offset_ws,
             calibration_quality=quality,
             peak_positions=peaks
         )
-    
+
     def _loadCalibrationStandard(self, material: str):
         """Load crystallographic data for calibration material."""
         # Lookup material data
@@ -201,12 +201,12 @@ class CalibrationRecipe(Recipe[CalibrationIngredients]):
                 "d_spacing": 2.70
             }
         }
-        
+
         if material not in materials_db:
             raise ValueError(f"Unknown material: {material}")
-        
+
         return materials_db[material]
-    
+
     def _fitPeaks(self, workspace: str, peak_positions: List[float]):
         """Fit peaks to find actual peak centers."""
         fit_alg = self.utensils.getAlgorithm("FindPeaks")
@@ -216,15 +216,15 @@ class CalibrationRecipe(Recipe[CalibrationIngredients]):
             OutputWorkspace="peak_fit",
             FitWindowWidth=0.1
         )
-        
+
         # Extract fitted peak positions
         peak_table = self.mantidSnapper.mtd("peak_table")
         fitted_positions = []
         for i in range(peak_table.rowCount()):
             fitted_positions.append(peak_table.row(i)["centre"])
-        
+
         return fitted_positions
-    
+
     def _calculateOffsets(
         self,
         fitted_peaks: List[float],
@@ -235,9 +235,9 @@ class CalibrationRecipe(Recipe[CalibrationIngredients]):
         for fitted, theoretical in zip(fitted_peaks, theoretical_peaks):
             offset = theoretical - fitted
             offsets.append(offset)
-        
+
         return offsets
-    
+
     def _applyOffsets(self, workspace: str, offsets):
         """Apply calculated offsets to detectors."""
         adjust_alg = self.utensils.getAlgorithm("AdjustPeaks")
@@ -247,16 +247,16 @@ class CalibrationRecipe(Recipe[CalibrationIngredients]):
             OutputWorkspace="calibrated"
         )
         return result.OutputWorkspace
-    
+
     def _assessQuality(self, workspace: str, peaks: List[float]):
         """Calculate calibration quality metric."""
         ws = self.mantidSnapper.mtd(workspace)
-        
+
         # Simple metric: standard deviation of peak positions
         mean_peak = sum(peaks) / len(peaks)
         variance = sum((p - mean_peak) ** 2 for p in peaks) / len(peaks)
         quality = 1.0 / (1.0 + variance)  # 0-1 scale
-        
+
         return quality
 ```
 
@@ -269,7 +269,7 @@ from snapred.backend.recipe.GenericRecipe import GenericRecipe
 
 class MyGenericRecipe(GenericRecipe[MyIngredients, MyProduct]):
     """Uses GenericRecipe for standard patterns."""
-    
+
     def executeAlgorithms(self, ingredients: MyIngredients):
         """Override to define algorithm chain."""
         # Define algorithms to execute
@@ -283,9 +283,9 @@ class MyGenericRecipe(GenericRecipe[MyIngredients, MyProduct]):
                 "OutputWorkspace": "step2"
             })
         ]
-        
+
         return algorithms
-    
+
     def transformResults(self, algorithm_results):
         """Transform algorithm outputs to product."""
         return MyProduct(
@@ -303,7 +303,7 @@ class MyRecipe(Recipe[MyIngredients]):
         # Validate inputs
         if not ingredients.workspace_name:
             raise SnapredError("Workspace name is required")
-        
+
         try:
             # Access workspace
             ws = self.mantidSnapper.mtd(ingredients.workspace_name)
@@ -311,7 +311,7 @@ class MyRecipe(Recipe[MyIngredients]):
             raise SnapredError(
                 f"Workspace '{ingredients.workspace_name}' not found"
             ) from e
-        
+
         try:
             # Execute algorithm
             alg = self.utensils.getAlgorithm("MyAlgorithm")
@@ -323,7 +323,7 @@ class MyRecipe(Recipe[MyIngredients]):
             raise SnapredError(
                 f"Algorithm execution failed: {e}"
             ) from e
-        
+
         return MyProduct(output_workspace=result.OutputWorkspace)
 ```
 
@@ -360,26 +360,26 @@ def test_recipe_with_valid_input():
         workspace_name="test_data",
         parameter=1.0
     )
-    
+
     product = recipe.cook(ingredients)
-    
+
     assert product.output_workspace is not None
     assert len(product.results) > 0
 
 def test_recipe_validates_input():
     """Test recipe validation."""
     recipe = MyRecipe()
-    
+
     with pytest.raises(SnapredError):
         recipe.cook(MyIngredients(workspace_name=""))
 
 def test_recipe_error_handling(mock_utensils):
     """Test error handling."""
     recipe = MyRecipe(utensils=mock_utensils)
-    
+
     # Mock algorithm to raise error
     mock_utensils.getAlgorithm.return_value.side_effect = RuntimeError()
-    
+
     with pytest.raises(SnapredError):
         recipe.cook(MyIngredients(workspace_name="data"))
 ```
@@ -424,15 +424,15 @@ class MyRecipe(Recipe[MyIngredients]):
     def cook(self, ingredients: MyIngredients):
         from snapred.backend.log.logger import snapredLogger
         logger = snapredLogger.getLogger(__name__)
-        
+
         logger.info(f"Starting recipe with {ingredients}")
-        
+
         # ... algorithm execution ...
-        
+
         # Clean up intermediate workspaces
         self.utensils.deleteMantidWorkspace("intermediate_step1")
         self.utensils.deleteMantidWorkspace("intermediate_step2")
-        
+
         logger.info("Recipe completed successfully")
         return product
 ```
@@ -444,15 +444,15 @@ class MyRecipe(Recipe[MyIngredients]):
 def processAllSpectra(self, workspace: str):
     ws = self.mantidSnapper.mtd(workspace)
     results = []
-    
+
     for i in range(ws.getNumberHistograms()):
         x = ws.dataX(i)
         y = ws.dataY(i)
         e = ws.dataE(i)
-        
+
         processed = self.processSpectrum(x, y, e)
         results.append(processed)
-    
+
     return results
 ```
 
@@ -460,7 +460,7 @@ def processAllSpectra(self, workspace: str):
 ```python
 def parameterSweep(self, workspace: str, param_values: List[float]):
     results = {}
-    
+
     for param in param_values:
         alg = self.utensils.getAlgorithm("MyAlgorithm")
         result = alg(
@@ -469,7 +469,7 @@ def parameterSweep(self, workspace: str, param_values: List[float]):
             OutputWorkspace=f"result_{param}"
         )
         results[param] = result.OutputWorkspace
-    
+
     return results
 ```
 

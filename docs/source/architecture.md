@@ -93,7 +93,7 @@ class MyService(Service):
     def process(self, ingredients: MyIngredients) -> MyResult:
         # Implementation
         pass
-    
+
     def name(self):
         return "MyService"
 ```
