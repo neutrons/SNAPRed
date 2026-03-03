@@ -1,5 +1,6 @@
 from typing import Dict, List
 
+import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     MatrixWorkspaceProperty,
@@ -7,7 +8,7 @@ from mantid.api import (
     PythonAlgorithm,
     mtd,
 )
-from mantid.dataobjects import GroupingWorkspace
+from mantid.dataobjects import GroupingWorkspace, MaskWorkspaceProperty
 from mantid.kernel import Direction, ULongLongPropertyWithValue
 
 from snapred.meta.pointer import create_pointer
@@ -36,6 +37,10 @@ class GroupedDetectorIDs(PythonAlgorithm):
             doc="Workspace containing the grouping information",
         )
         self.declareProperty(
+            MaskWorkspaceProperty("MaskWorkspace", "", Direction.Input, PropertyMode.Optional),
+            doc="Workspace containing the mask",
+        )
+        self.declareProperty(
             ULongLongPropertyWithValue("GroupWorkspaceIndices", id(None), direction=Direction.Output),
             doc="A pointer to the output dictionary (must be cast to object from memory address).",
         )
@@ -44,13 +49,22 @@ class GroupedDetectorIDs(PythonAlgorithm):
     def PyExec(self):
         # Retrieve pixel-IDs for all pixels in each subgroup.
         groupingWs = mtd[self.getPropertyValue("GroupingWorkspace")]
+        maskWs = None
+
+        if self.getPropertyValue("MaskWorkspace"):
+            maskWs = mtd[self.getPropertyValue("MaskWorkspace")]
 
         groupWorkspaceIndices: Dict[int, List[int]] = {}
 
         # `<numpy ndarray>.tolist()` both converts to the nearest native-Python type, which is in this case `int`,
         #    and also converts to a Python list.
         for subgroupID in groupingWs.getGroupIDs().tolist():
-            groupWorkspaceIndices[subgroupID] = groupingWs.getDetectorIDsOfGroup(subgroupID).tolist()
+            detIdList = groupingWs.getDetectorIDsOfGroup(subgroupID)
+            if maskWs is not None:
+                maskedDetectorIdList = maskWs.getMaskedDetectors()
+                detIdList = np.setdiff1d(detIdList, maskedDetectorIdList)
+
+            groupWorkspaceIndices[subgroupID] = detIdList.tolist()
 
         self.setProperty("GroupWorkspaceIndices", create_pointer(groupWorkspaceIndices))
 
