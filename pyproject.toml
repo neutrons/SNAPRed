@@ -248,7 +248,7 @@ pyyaml = "*"
 
 [tool.pixi.feature.package.dependencies]
 boa = "*"
-anaconda-client = "!=1.14.1"
+anaconda-client = ">=1.14"
 conda-build = "<24"
 conda-verify = "*"
 check-wheel-contents = ">=0.6.0"
