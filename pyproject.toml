@@ -255,6 +255,7 @@ check-wheel-contents = ">=0.6.0"
 twine = "*"
 versioningit = "*"
 hatch = "*"
+setuptools = "*"
 toml = "*"
 "ruamel.yaml" = "*"
 
