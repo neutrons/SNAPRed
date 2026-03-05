@@ -5,7 +5,7 @@ dynamic = ["version"]
 requires-python = ">=3.10"
 dependencies = []
 readme = "README.md"
-license = { text = "GPL3.0" }
+license = { text = "GPL-3.0-only" }
 
 
 [project.urls]
@@ -147,7 +147,8 @@ channels = [
   "mantid-ornl/label/main",  # ORNL-specific stable releases
   "neutrons/label/main",  # Neutron facility stable releases
   "mantid-ornl/label/rc",  # Fallback to RC if stable not available
-  "neutrons/label/rc"  # Fallback to RC if stable not available
+  "neutrons/label/rc",  # Fallback to RC if stable not available
+  "https://prefix.dev/pixi-build-backends", # Required for pixi build
 ]
 platforms = ["linux-64"]  # add additional platforms as needed
 
@@ -198,11 +199,7 @@ name = "snapred"
 version = "0.0.0"  # placeholder, overwritten by sync-version
 
 [tool.pixi.package.build]
-backend = { name = "pixi-build-python", version = "0.1.*" }
-channels = [
-  "https://prefix.dev/pixi-build-backends",
-  "https://prefix.dev/conda-forge",
-]
+backend = { name = "pixi-build-python", version = "*" }
 
 # --------------- #
 # Pixi Tasks      #
