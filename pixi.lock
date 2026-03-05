@@ -9960,8 +9960,8 @@ packages:
   timestamp: 1762948049098
 - pypi: .
   name: snapred
-  version: 2.4.0.dev8
-  sha256: f5c435737977fd87dacdec8e4f6cd8bac7ad2d012282eb779a401c9f33f96554
+  version: 2.4.0.dev1
+  sha256: fcb38a40a501b786fd70aad311724092ca99d5742515a00100e1e57fc950ba8e
   requires_python: '>=3.10'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/sniffio-1.3.1-pyhd8ed1ab_2.conda
