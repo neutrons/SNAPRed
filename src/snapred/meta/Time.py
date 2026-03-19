@@ -1,7 +1,7 @@
 import time
+import warnings
 
 import numpy as np
-import warnings
 
 
 def timestamp(ensureUnique: bool = False) -> float:
