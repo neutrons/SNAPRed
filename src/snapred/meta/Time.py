@@ -24,9 +24,8 @@ def parseTimestamp(ts: float | str | int) -> float:
         # the warning is purely a nuissance and can be ignored
         # note there is an alternative solutiob using the python-dateutil library to handle strings
         with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=Warning)
-            time = np.datetime64(ts).astype(int) / 1e9  # convert to seconds
-        return time
+            warnings.filterwarnings("ignore", category=UserWarning)
+            return np.datetime64(ts).astype(int) / 1e9  # convert to seconds
     if isinstance(ts, int):
         # DEPRECIATED: support legacy integer encoding
         return float(ts) / 1000.0
@@ -41,7 +40,7 @@ def isoFromTimestamp(ts: float) -> str:
     # NOTE np.datetime64 throws an obnoxious warning if there is a timezone offset
     # it likely does not occur in this method, but it is safe to ignore it just in case
     with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=Warning)
+        warnings.filterwarnings("ignore", category=UserWarning)
         npDatetime = np.datetime64(ts_ns, "ns")
     iso = np.datetime_as_string(npDatetime, timezone="local", unit="ns")
     return iso
