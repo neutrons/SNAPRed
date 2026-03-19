@@ -29,12 +29,12 @@ class TestTime(TestCase):
         assert parseTimestamp(ts) == expected
 
     def test_parseTimestamp_error(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Timestamp must be a float, int, or ISO format string"):
             parseTimestamp(None)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Error parsing datetime string"):
             parseTimestamp("invalid timestamp")
         obj = {"x": 2}
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Timestamp must be a float, int, or ISO format string"):
             parseTimestamp(obj)
 
     def test_isoFromTimestamp(self):
