@@ -1,8 +1,7 @@
-import os
-from typing import List
 from unittest import TestCase
 
-from snapred.meta.Time import timestamp, parseTimestamp, isoFromTimestamp
+from snapred.meta.Time import isoFromTimestamp, parseTimestamp, timestamp
+
 
 class TestTime(TestCase):
     def test_timestamp(self):
