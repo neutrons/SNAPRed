@@ -32,7 +32,7 @@ class TestTime(TestCase):
             parseTimestamp(None)
         with self.assertRaises(ValueError):
             parseTimestamp("invalid timestamp")
-        obj = ["x": 2]
+        obj = {"x": 2}
         with self.assertRaises(ValueError):
             parseTimestamp(obj)
 
