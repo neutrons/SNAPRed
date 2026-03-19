@@ -1,5 +1,6 @@
 import time
 from unittest import TestCase
+
 import pytest
 
 from snapred.meta.Time import isoFromTimestamp, parseTimestamp, timestamp
