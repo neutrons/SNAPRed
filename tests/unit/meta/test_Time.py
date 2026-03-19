@@ -1,5 +1,6 @@
 import time
 from unittest import TestCase
+import pytest
 
 from snapred.meta.Time import isoFromTimestamp, parseTimestamp, timestamp
 
@@ -27,18 +28,17 @@ class TestTime(TestCase):
         assert parseTimestamp(ts) == expected
 
     def test_parseTimestamp_error(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             parseTimestamp(None)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             parseTimestamp("invalid timestamp")
         obj = {"x": 2}
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             parseTimestamp(obj)
 
     def test_isoFromTimestamp(self):
         ts = 1717227296.789012
         localTimeZone = time.strftime("%z", time.localtime())
         offsetHours = int(localTimeZone[:3])
-        print("offset Hours: ", offsetHours)
         expected = f"2024-06-01T{(7 + offsetHours):02d}:34:56.789011968" + localTimeZone
         assert isoFromTimestamp(ts) == expected
