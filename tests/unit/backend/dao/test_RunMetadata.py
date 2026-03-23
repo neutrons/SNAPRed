@@ -526,12 +526,10 @@ class TestRunMetadata(unittest.TestCase):
         with pytest.raises(RuntimeError, match=".*the 'run_number' dataset must be added.*"):
             self._test_default_run_number(RunMetadata.fromNeXusLogs, mockH5File)
 
-    def _test_defaults_log_warning(self, mapFunc, mockLogs, neXusFormat: bool):
+    def _test_defaults_log_warning(self, mapFunc, mockLogs, neXusFormat: bool, defaultKeys):
         # Test that any default-value substitution logs messages at debug logging level.
         # -- `mapFunc`: either `RunMetadata.fromRun` or `RunMetadata.fromNeXusLogs`;
         # -- `mockLogs`: either `self._mockRun` or `mockH5File`.
-
-        defaultKeys = ("runNumber", "runTitle", "startTime", "endTime", "protonCharge")
 
         # Note that the "entry/run_number" dataset must always be present in a NeXus-format HDF5 file.
         logs = mockLogs(self.DASlogs, **({} if not neXusFormat else {"run_number": "12345"}))
@@ -539,7 +537,7 @@ class TestRunMetadata(unittest.TestCase):
             map_ = mapFunc(logs, DetectorState.LEGACY_SCHEMA)  # noqa: F841
             assert mockLogger.isEnabledFor.call_count == 2
             mockLogger.isEnabledFor.assert_any_call(logging.DEBUG)
-            assert mockLogger.debug.call_count == len(defaultKeys)
+            assert mockLogger.debug.call_count == len(defaultKeys), mockLogger.debug.call_args_list
             for k in defaultKeys:
                 callFound = False
                 for call in mockLogger.debug.mock_calls:
@@ -549,7 +547,12 @@ class TestRunMetadata(unittest.TestCase):
                 assert callFound, f"no default warning logged for kwarg '{k}'"
 
     def test_defaults_log_warning_fromRun(self):
-        self._test_defaults_log_warning(RunMetadata.fromRun, self._mockRun, False)
+        self._test_defaults_log_warning(
+            RunMetadata.fromRun, self._mockRun, False, ("runNumber", "runTitle", "startTime", "endTime", "protonCharge")
+        )
 
     def test_defaults_log_warning_fromNeXusLogs(self):
-        self._test_defaults_log_warning(RunMetadata.fromNeXusLogs, mockH5File, True)
+        # runnumber is required in the nexuslogs case.
+        self._test_defaults_log_warning(
+            RunMetadata.fromNeXusLogs, mockH5File, True, ("runTitle", "startTime", "endTime", "protonCharge")
+        )
