@@ -1,4 +1,5 @@
 import time
+import warnings
 
 import numpy as np
 
@@ -18,8 +19,13 @@ def timestamp(ensureUnique: bool = False) -> float:
 
 def parseTimestamp(ts: float | str | int) -> float:
     if isinstance(ts, str):
-        # Convert ISO format string to timestamp
-        return np.datetime64(ts).astype(int) / 1e9  # convert to seconds
+        # Convert string to timestamp -- the strings into this method are not always ISO format
+        # NOTE np.datetime64 throws an obnoxious warning if there is a timezone offset
+        # the warning is purely a nuissance and can be ignored
+        # note there is an alternative solutiob using the python-dateutil library to handle strings
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            return float(np.datetime64(ts).astype(int) / 1e9)  # convert to seconds
     if isinstance(ts, int):
         # DEPRECIATED: support legacy integer encoding
         return float(ts) / 1000.0
@@ -31,6 +37,9 @@ def parseTimestamp(ts: float | str | int) -> float:
 def isoFromTimestamp(ts: float) -> str:
     # Convert float timestamp (seconds) to integer nanoseconds
     ts_ns = int(ts * 1e9)
-    npDatetime = np.datetime64(ts_ns, "ns")
-    iso = np.datetime_as_string(npDatetime, timezone="local", unit="ns")
-    return iso
+    # NOTE np.datetime64 throws an obnoxious warning if there is a timezone offset
+    # it likely does not occur in this method, but it is safe to ignore it just in case
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning)
+        npDatetime = np.datetime64(ts_ns, "ns")
+    return str(np.datetime_as_string(npDatetime, timezone="local", unit="ns"))
