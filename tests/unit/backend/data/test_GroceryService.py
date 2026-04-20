@@ -54,6 +54,7 @@ from snapred.backend.dao.WorkspaceMetadata import UNSET, DiffcalStateMetadata, W
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.error.LiveDataState import LiveDataState
+from snapred.backend.error.RunStatus import RunStatus
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config, Resource
 from snapred.meta.InternalConstants import ReservedRunNumber
@@ -866,6 +867,7 @@ class TestGroceryService(unittest.TestCase):
             "result": True,
             "loader": "LoadNexusProcessed",
             "workspace": self.fetchedWSname,
+            "runStatus": "",
         }
         assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
@@ -3970,3 +3972,251 @@ class TestGroceryService(unittest.TestCase):
 
             with pytest.raises(RuntimeError, match="Expected instrument to be snaplite for the lite resolution."):
                 self.instance._validateWorkspaceInstrument(item, "wsName")
+
+    # ----- tests for the runStatus-based routing in _fetchLiveData -----
+
+    def test_fetchLiveData_runStatus_running_continues_normally(self):
+        """_fetchLiveData continues normally when runStatus is RUNNING."""
+        runNumber = self.runNumber
+        workspaceName = self.instance._createNeutronWorkspaceName(runNumber, False)
+        item = GroceryListItem(
+            workspaceType="neutron",
+            runNumber=runNumber,
+            useLiteMode=False,
+            loader="",
+            liveDataArgs=LiveDataArgs(duration=datetime.timedelta(seconds=42)),
+        )
+
+        with (
+            mock.patch.object(self.instance, "grocer") as mockGrocer,
+            mock.patch.object(self.instance.dataService, "hasLiveDataConnection", return_value=True),
+            mock.patch.object(self.instance, "mantidSnapper") as mockSnapper,
+            mock.patch.dict(self.instance._loadedRuns, clear=True),
+        ):
+            mockGrocer.executeRecipe.return_value = {
+                "result": True,
+                "loader": "LoadLiveDataInterval",
+                "workspace": workspaceName,
+                "runStatus": RunStatus.RUNNING,
+            }
+            mockSnapper.mtd.__getitem__.return_value = mock.Mock(getRun=mock.Mock(return_value=self.mockRun(runNumber)))
+
+            data = self.instance._fetchLiveData(item)
+            assert data["result"] is True
+
+    def test_fetchLiveData_runStatus_paused_with_live_data_args_raises_LiveDataState(self):
+        """_fetchLiveData raises LiveDataState (RUN_PAUSE) when runStatus is PAUSED and liveDataArgs is set."""
+        runNumber = self.runNumber
+        workspaceName = self.instance._createNeutronWorkspaceName(runNumber, False)
+        item = GroceryListItem(
+            workspaceType="neutron",
+            runNumber=runNumber,
+            useLiteMode=False,
+            loader="",
+            liveDataArgs=LiveDataArgs(duration=datetime.timedelta(seconds=42)),
+        )
+
+        with (
+            mock.patch.object(self.instance, "grocer") as mockGrocer,
+            mock.patch.object(self.instance.dataService, "hasLiveDataConnection", return_value=True),
+            mock.patch.object(self.instance, "deleteWorkspaceUnconditional"),
+        ):
+            mockGrocer.executeRecipe.return_value = {
+                "result": True,
+                "loader": "LoadLiveDataInterval",
+                "workspace": workspaceName,
+                "runStatus": RunStatus.PAUSED,
+            }
+
+            with pytest.raises(LiveDataState) as exc_info:
+                self.instance._fetchLiveData(item)
+            assert exc_info.value.transition == LiveDataState.Type.RUN_PAUSE
+
+    def test_fetchLiveData_runStatus_stopped_with_live_data_args_raises_LiveDataState(self):
+        """_fetchLiveData raises LiveDataState (RUN_END) when runStatus is STOPPED and liveDataArgs is set."""
+        runNumber = self.runNumber
+        workspaceName = self.instance._createNeutronWorkspaceName(runNumber, False)
+        item = GroceryListItem(
+            workspaceType="neutron",
+            runNumber=runNumber,
+            useLiteMode=False,
+            loader="",
+            liveDataArgs=LiveDataArgs(duration=datetime.timedelta(seconds=42)),
+        )
+
+        with (
+            mock.patch.object(self.instance, "grocer") as mockGrocer,
+            mock.patch.object(self.instance.dataService, "hasLiveDataConnection", return_value=True),
+            mock.patch.object(self.instance, "deleteWorkspaceUnconditional"),
+        ):
+            mockGrocer.executeRecipe.return_value = {
+                "result": True,
+                "loader": "LoadLiveDataInterval",
+                "workspace": workspaceName,
+                "runStatus": RunStatus.STOPPED,
+            }
+
+            with pytest.raises(LiveDataState) as exc_info:
+                self.instance._fetchLiveData(item)
+            assert exc_info.value.transition == LiveDataState.Type.RUN_END
+
+    def test_fetchLiveData_runStatus_error_with_live_data_args_raises_LiveDataState(self):
+        """_fetchLiveData raises LiveDataState (RUN_ERROR) when runStatus is ERROR and liveDataArgs is set."""
+        runNumber = self.runNumber
+        workspaceName = self.instance._createNeutronWorkspaceName(runNumber, False)
+        item = GroceryListItem(
+            workspaceType="neutron",
+            runNumber=runNumber,
+            useLiteMode=False,
+            loader="",
+            liveDataArgs=LiveDataArgs(duration=datetime.timedelta(seconds=42)),
+        )
+
+        with (
+            mock.patch.object(self.instance, "grocer") as mockGrocer,
+            mock.patch.object(self.instance.dataService, "hasLiveDataConnection", return_value=True),
+            mock.patch.object(self.instance, "deleteWorkspaceUnconditional"),
+        ):
+            mockGrocer.executeRecipe.return_value = {
+                "result": True,
+                "loader": "LoadLiveDataInterval",
+                "workspace": workspaceName,
+                "runStatus": RunStatus.ERROR,
+            }
+
+            with pytest.raises(LiveDataState) as exc_info:
+                self.instance._fetchLiveData(item)
+            assert exc_info.value.transition == LiveDataState.Type.RUN_ERROR
+
+    def test_fetchLiveData_runStatus_not_running_without_live_data_args_raises_RuntimeError(self):
+        """_fetchLiveData raises RuntimeError for any non-RUNNING status when liveDataArgs is None."""
+        runNumber = self.runNumber
+        workspaceName = self.instance._createNeutronWorkspaceName(runNumber, False)
+        item = GroceryListItem(
+            workspaceType="neutron",
+            runNumber=runNumber,
+            useLiteMode=False,
+            loader="",
+        )
+
+        with (
+            mock.patch.object(self.instance, "grocer") as mockGrocer,
+            mock.patch.object(self.instance.dataService, "hasLiveDataConnection", return_value=True),
+            mock.patch.object(self.instance, "deleteWorkspaceUnconditional"),
+        ):
+            mockGrocer.executeRecipe.return_value = {
+                "result": True,
+                "loader": "LoadLiveDataInterval",
+                "workspace": workspaceName,
+                "runStatus": RunStatus.STOPPED,
+            }
+
+            with pytest.raises(RuntimeError, match=".*problem with the live-data run.*"):
+                self.instance._fetchLiveData(item)
+
+    def test_fetchLiveData_runStatus_invalid_value_logs_debug_and_continues(self):
+        """_fetchLiveData logs a debug message and continues normally when runStatus is not a valid RunStatus value."""
+        runNumber = self.runNumber
+        workspaceName = self.instance._createNeutronWorkspaceName(runNumber, False)
+        item = GroceryListItem(
+            workspaceType="neutron",
+            runNumber=runNumber,
+            useLiteMode=False,
+            loader="",
+            liveDataArgs=LiveDataArgs(duration=datetime.timedelta(seconds=42)),
+        )
+
+        with (
+            mock.patch.object(self.instance, "grocer") as mockGrocer,
+            mock.patch.object(self.instance.dataService, "hasLiveDataConnection", return_value=True),
+            mock.patch.object(self.instance, "mantidSnapper") as mockSnapper,
+            mock.patch.dict(self.instance._loadedRuns, clear=True),
+            mock.patch(ThisService + "logger") as mockLogger,
+        ):
+            mockGrocer.executeRecipe.return_value = {
+                "result": True,
+                "loader": "LoadLiveDataInterval",
+                "workspace": workspaceName,
+                "runStatus": "NOT_A_VALID_RUN_STATUS_VALUE",
+            }
+            mockSnapper.mtd.__getitem__.return_value = mock.Mock(getRun=mock.Mock(return_value=self.mockRun(runNumber)))
+
+            data = self.instance._fetchLiveData(item)
+            assert data["result"] is True
+            mockLogger.debug.assert_called_once()
+
+    # ----- tests for liveRunNumber=None paths in _fetchLiveData -----
+
+    def _mockRunWithoutRunNumber(self) -> mock.Mock:
+        """Return a mock mantid.api.Run that has NO 'run_number' property."""
+        return mock.Mock(
+            spec=Run,
+            hasProperty=mock.Mock(return_value=False),
+            getProperty=mock.Mock(return_value=None),
+        )
+
+    def test_fetchLiveData_live_run_number_none_with_live_data_args_sets_run_number(self):
+        """When run_number is absent in the live workspace and liveDataArgs is set,
+        _fetchLiveData patches the workspace run-number in-place and succeeds."""
+        runNumber = self.runNumber
+        workspaceName = self.instance._createNeutronWorkspaceName(runNumber, False)
+        item = GroceryListItem(
+            workspaceType="neutron",
+            runNumber=runNumber,
+            useLiteMode=False,
+            loader="",
+            liveDataArgs=LiveDataArgs(duration=datetime.timedelta(seconds=42)),
+        )
+
+        with (
+            mock.patch.object(self.instance, "grocer") as mockGrocer,
+            mock.patch.object(self.instance.dataService, "hasLiveDataConnection", return_value=True),
+            mock.patch.object(self.instance, "mantidSnapper") as mockSnapper,
+            mock.patch.dict(self.instance._loadedRuns, clear=True),
+        ):
+            mockGrocer.executeRecipe.return_value = {
+                "result": True,
+                "loader": "LoadLiveDataInterval",
+                "workspace": workspaceName,
+            }
+            mockWs = mock.MagicMock()
+            mockWs.getRun.return_value = self._mockRunWithoutRunNumber()
+            mockSnapper.mtd.__getitem__.return_value = mockWs
+
+            data = self.instance._fetchLiveData(item)
+
+            assert data["result"] is True
+            # The workspace run-number should have been patched with the item's run number:
+            mockWs.mutableRun.return_value.__setitem__.assert_called_once_with("run_number", runNumber)
+
+    def test_fetchLiveData_live_run_number_none_without_live_data_args_raises_runtime_error(self):
+        """When run_number is absent in the live workspace and liveDataArgs is None (fallback mode),
+        _fetchLiveData deletes the workspace and raises RuntimeError."""
+        runNumber = self.runNumber
+        workspaceName = self.instance._createNeutronWorkspaceName(runNumber, False)
+        item = GroceryListItem(
+            workspaceType="neutron",
+            runNumber=runNumber,
+            useLiteMode=False,
+            loader="",
+            # liveDataArgs is intentionally absent (None) → fallback mode
+        )
+
+        with (
+            mock.patch.object(self.instance, "grocer") as mockGrocer,
+            mock.patch.object(self.instance.dataService, "hasLiveDataConnection", return_value=True),
+            mock.patch.object(self.instance, "mantidSnapper") as mockSnapper,
+            mock.patch.object(self.instance, "deleteWorkspaceUnconditional") as mockDeleteWorkspace,
+        ):
+            mockGrocer.executeRecipe.return_value = {
+                "result": True,
+                "loader": "LoadLiveDataInterval",
+                "workspace": workspaceName,
+            }
+            mockSnapper.mtd.__getitem__.return_value = mock.Mock(
+                getRun=mock.Mock(return_value=self._mockRunWithoutRunNumber())
+            )
+
+            with pytest.raises(RuntimeError, match=".*nor is it the live-data run.*"):
+                self.instance._fetchLiveData(item)
+            mockDeleteWorkspace.assert_called_once_with(workspaceName)
