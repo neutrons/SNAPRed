@@ -1,8 +1,9 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from pydantic import ConfigDict, Field, PrivateAttr, model_validator
 
 from snapred.backend.dao.indexing.IndexedObject import IndexedObject
+from snapred.backend.dao.state.Cycle import Cycle
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.meta.Config import Config
 
@@ -31,6 +32,8 @@ class InstrumentConfig(IndexedObject):
     width: float
     frequency: float
     lowWavelengthCrop: float = Field(default_factory=lambda: Config["constants.CropFactors.lowWavelengthCrop"])
+
+    cycle: Optional[Cycle] = None
 
     # attributes supporting extensible `DetectorState`:
     stateIdSchema: Dict[str, Any] = DetectorState.LEGACY_SCHEMA

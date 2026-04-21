@@ -15,6 +15,7 @@ from snapred.backend.dao.request.CreateIndexEntryRequest import CreateIndexEntry
 from snapred.backend.dao.request.NormalizationExportRequest import NormalizationExportRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.RunMetadata import RunMetadata
+from snapred.backend.dao.state.Cycle import Cycle
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.StateConfig import StateConfig
@@ -78,6 +79,12 @@ class DataFactoryService:
 
     def getDefaultInstrumentState(self, runId: str):
         return self.lookupService.generateInstrumentState(runId)
+
+    def updateInstrumentConfigCycle(self, runNumber: str, cycle: Cycle, appliesTo: str, author: str):
+        instrumentConfig = self.lookupService.readInstrumentParameters(runNumber)
+        instrumentConfig.cycle = cycle
+        self.lookupService.writeInstrumentParameters(instrumentConfig, appliesTo, author)
+        return instrumentConfig
 
     def getCompatibleStates(self, runId: str, useLiteMode: bool):
         return self.lookupService.findCompatibleStates(runId, useLiteMode)

@@ -22,6 +22,12 @@
     "delThWithGuide": 3.20e-3,
     "width": 1600.0,
     "frequency": 60.4,
+    "cycle": {
+        "cycleID": "2022-A",
+        "startDate": "2022-01-04",
+        "stopDate": "2022-03-13",
+        "firstRun": 52862
+    },
     "indexEntry": {
         "version": 0,
         "useLiteMode": true,
