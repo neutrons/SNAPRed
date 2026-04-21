@@ -931,9 +931,9 @@ class TestGroceryService(unittest.TestCase):
         nonExistentPath = Path("does/not/exist.nxs")
         assert not nonExistentPath.exists()
         self.instance.createNeutronFilePath = mock.Mock(
-            side_effect=lambda _runNumber, useLiteMode: Path(self.sampleWSFilePath)
-            if not useLiteMode
-            else nonExistentPath
+            side_effect=lambda _runNumber, useLiteMode: (
+                Path(self.sampleWSFilePath) if not useLiteMode else nonExistentPath
+            )
         )
 
         def generateTestItem(deep=False):  # noqa: ARG001
@@ -1312,20 +1312,16 @@ class TestGroceryService(unittest.TestCase):
                         liteModeFilePath.exists.return_value = liteOnDisk
                         nativeModeFilePath.exists.return_value = nativeOnDisk
 
-                        mockCreateNeutronFilePath.side_effect = (
-                            lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                        mockCreateNeutronFilePath.side_effect = lambda _runNumber, useLiteMode: (
+                            liteModeFilePath if useLiteMode else nativeModeFilePath
                         )
 
-                        mockCreateNeutronWorkspaceName.side_effect = (
-                            lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
-                            if useLiteMode
-                            else mock.sentinel.nativeWorkspaceName
+                        mockCreateNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                            mock.sentinel.liteWorkspaceName if useLiteMode else mock.sentinel.nativeWorkspaceName
                         )
 
-                        mockCreateRawNeutronWorkspaceName.side_effect = (
-                            lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
-                            if useLiteMode
-                            else mock.sentinel.nativeRawWorkspaceName
+                        mockCreateRawNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                            mock.sentinel.liteRawWorkspaceName if useLiteMode else mock.sentinel.nativeRawWorkspaceName
                         )
 
                         mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
@@ -1493,20 +1489,16 @@ class TestGroceryService(unittest.TestCase):
                 liteModeFilePath.exists.return_value = liteOnDisk
                 nativeModeFilePath.exists.return_value = nativeOnDisk
 
-                mockCreateNeutronFilePath.side_effect = (
-                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                mockCreateNeutronFilePath.side_effect = lambda _runNumber, useLiteMode: (
+                    liteModeFilePath if useLiteMode else nativeModeFilePath
                 )
 
-                mockCreateNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeWorkspaceName
+                mockCreateNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteWorkspaceName if useLiteMode else mock.sentinel.nativeWorkspaceName
                 )
 
-                mockCreateRawNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeRawWorkspaceName
+                mockCreateRawNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteRawWorkspaceName if useLiteMode else mock.sentinel.nativeRawWorkspaceName
                 )
 
                 mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
@@ -1522,8 +1514,8 @@ class TestGroceryService(unittest.TestCase):
                 # Mock `<workspace>.getRun` to return `Run` that has the correct run number.
                 mockWs = mock.Mock()
                 mockWs.getRun.return_value = self.mockRun(runNumber)
-                mockSnapper.mtd.__getitem__.side_effect = (
-                    lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
+                mockSnapper.mtd.__getitem__.side_effect = lambda wsName: (
+                    mockWs if _valid_key(wsName, workspaceName) else None
                 )
 
                 # Action-related mocks:
@@ -1620,20 +1612,16 @@ class TestGroceryService(unittest.TestCase):
                 liteModeFilePath.exists.return_value = liteOnDisk
                 nativeModeFilePath.exists.return_value = nativeOnDisk
 
-                mockCreateNeutronFilePath.side_effect = (
-                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                mockCreateNeutronFilePath.side_effect = lambda _runNumber, useLiteMode: (
+                    liteModeFilePath if useLiteMode else nativeModeFilePath
                 )
 
-                mockCreateNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeWorkspaceName
+                mockCreateNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteWorkspaceName if useLiteMode else mock.sentinel.nativeWorkspaceName
                 )
 
-                mockCreateRawNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeRawWorkspaceName
+                mockCreateRawNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteRawWorkspaceName if useLiteMode else mock.sentinel.nativeRawWorkspaceName
                 )
 
                 mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
@@ -1648,8 +1636,8 @@ class TestGroceryService(unittest.TestCase):
                 # Mock `<workspace>.getRun` to return `Run` that DOES NOT HAVE the correct run number.
                 mockWs = mock.Mock()
                 mockWs.getRun.return_value = self.mockRun(str(int(runNumber) + 1))
-                mockSnapper.mtd.__getitem__.side_effect = (
-                    lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
+                mockSnapper.mtd.__getitem__.side_effect = lambda wsName: (
+                    mockWs if _valid_key(wsName, workspaceName) else None
                 )
 
                 # Action-related mocks:
@@ -1737,20 +1725,16 @@ class TestGroceryService(unittest.TestCase):
                 liteModeFilePath.exists.return_value = liteOnDisk
                 nativeModeFilePath.exists.return_value = nativeOnDisk
 
-                mockCreateNeutronFilePath.side_effect = (
-                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                mockCreateNeutronFilePath.side_effect = lambda _runNumber, useLiteMode: (
+                    liteModeFilePath if useLiteMode else nativeModeFilePath
                 )
 
-                mockCreateNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeWorkspaceName
+                mockCreateNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteWorkspaceName if useLiteMode else mock.sentinel.nativeWorkspaceName
                 )
 
-                mockCreateRawNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeRawWorkspaceName
+                mockCreateRawNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteRawWorkspaceName if useLiteMode else mock.sentinel.nativeRawWorkspaceName
                 )
 
                 mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
@@ -1766,8 +1750,8 @@ class TestGroceryService(unittest.TestCase):
                 # Mock `<workspace>.getRun` to return `Run` that has the correct run number.
                 mockWs = mock.Mock()
                 mockWs.getRun.return_value = self.mockRun(runNumber)
-                mockSnapper.mtd.__getitem__.side_effect = (
-                    lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
+                mockSnapper.mtd.__getitem__.side_effect = lambda wsName: (
+                    mockWs if _valid_key(wsName, workspaceName) else None
                 )
 
                 # Action-related mocks:
@@ -1852,20 +1836,16 @@ class TestGroceryService(unittest.TestCase):
                 liteModeFilePath.exists.return_value = liteOnDisk
                 nativeModeFilePath.exists.return_value = nativeOnDisk
 
-                mockCreateNeutronFilePath.side_effect = (
-                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                mockCreateNeutronFilePath.side_effect = lambda _runNumber, useLiteMode: (
+                    liteModeFilePath if useLiteMode else nativeModeFilePath
                 )
 
-                mockCreateNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeWorkspaceName
+                mockCreateNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteWorkspaceName if useLiteMode else mock.sentinel.nativeWorkspaceName
                 )
 
-                mockCreateRawNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeRawWorkspaceName
+                mockCreateRawNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteRawWorkspaceName if useLiteMode else mock.sentinel.nativeRawWorkspaceName
                 )
 
                 mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
@@ -1881,8 +1861,8 @@ class TestGroceryService(unittest.TestCase):
                 # Mock `<workspace>.getRun` to return `Run` that DOES NOT HAVE the correct run number.
                 mockWs = mock.Mock()
                 mockWs.getRun.return_value = self.mockRun(str(int(runNumber) + 1))
-                mockSnapper.mtd.__getitem__.side_effect = (
-                    lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
+                mockSnapper.mtd.__getitem__.side_effect = lambda wsName: (
+                    mockWs if _valid_key(wsName, workspaceName) else None
                 )
 
                 # Action-related mocks:
@@ -1985,24 +1965,20 @@ class TestGroceryService(unittest.TestCase):
                         liteModeFilePath.exists.return_value = liteOnDisk
                         nativeModeFilePath.exists.return_value = nativeOnDisk
 
-                        mockCreateNeutronFilePath.side_effect = (
-                            lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                        mockCreateNeutronFilePath.side_effect = lambda _runNumber, useLiteMode: (
+                            liteModeFilePath if useLiteMode else nativeModeFilePath
                         )
 
-                        mockCreateNeutronWorkspaceName.side_effect = (
-                            lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
-                            if useLiteMode
-                            else mock.sentinel.nativeWorkspaceName
+                        mockCreateNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                            mock.sentinel.liteWorkspaceName if useLiteMode else mock.sentinel.nativeWorkspaceName
                         )
 
-                        mockCreateRawNeutronWorkspaceName.side_effect = (
-                            lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
-                            if useLiteMode
-                            else mock.sentinel.nativeRawWorkspaceName
+                        mockCreateRawNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                            mock.sentinel.liteRawWorkspaceName if useLiteMode else mock.sentinel.nativeRawWorkspaceName
                         )
 
-                        mockCreateCopyNeutronWorkspaceName.side_effect = (
-                            lambda _runNumber, useLiteMode, _copyNumber: mock.sentinel.liteCopyWorkspaceName
+                        mockCreateCopyNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode, _copyNumber: (
+                            mock.sentinel.liteCopyWorkspaceName
                             if useLiteMode
                             else mock.sentinel.nativeCopyWorkspaceName
                         )
@@ -2167,20 +2143,16 @@ class TestGroceryService(unittest.TestCase):
                 liteModeFilePath.exists.return_value = liteOnDisk
                 nativeModeFilePath.exists.return_value = nativeOnDisk
 
-                mockCreateNeutronFilePath.side_effect = (
-                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                mockCreateNeutronFilePath.side_effect = lambda _runNumber, useLiteMode: (
+                    liteModeFilePath if useLiteMode else nativeModeFilePath
                 )
 
-                mockCreateNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeWorkspaceName
+                mockCreateNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteWorkspaceName if useLiteMode else mock.sentinel.nativeWorkspaceName
                 )
 
-                mockCreateRawNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeRawWorkspaceName
+                mockCreateRawNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteRawWorkspaceName if useLiteMode else mock.sentinel.nativeRawWorkspaceName
                 )
 
                 mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
@@ -2196,8 +2168,8 @@ class TestGroceryService(unittest.TestCase):
                 # Mock `<workspace>.getRun` to return `Run` that has the correct run number.
                 mockWs = mock.Mock()
                 mockWs.getRun.return_value = self.mockRun(runNumber)
-                mockSnapper.mtd.__getitem__.side_effect = (
-                    lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
+                mockSnapper.mtd.__getitem__.side_effect = lambda wsName: (
+                    mockWs if _valid_key(wsName, workspaceName) else None
                 )
 
                 # Action-related mocks:
@@ -2299,20 +2271,16 @@ class TestGroceryService(unittest.TestCase):
                 liteModeFilePath.exists.return_value = liteOnDisk
                 nativeModeFilePath.exists.return_value = nativeOnDisk
 
-                mockCreateNeutronFilePath.side_effect = (
-                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                mockCreateNeutronFilePath.side_effect = lambda _runNumber, useLiteMode: (
+                    liteModeFilePath if useLiteMode else nativeModeFilePath
                 )
 
-                mockCreateNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeWorkspaceName
+                mockCreateNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteWorkspaceName if useLiteMode else mock.sentinel.nativeWorkspaceName
                 )
 
-                mockCreateRawNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeRawWorkspaceName
+                mockCreateRawNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteRawWorkspaceName if useLiteMode else mock.sentinel.nativeRawWorkspaceName
                 )
 
                 mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
@@ -2328,8 +2296,8 @@ class TestGroceryService(unittest.TestCase):
                 # Mock `<workspace>.getRun` to return `Run` that DOES NOT HAVE the correct run number.
                 mockWs = mock.Mock()
                 mockWs.getRun.return_value = self.mockRun(str(int(runNumber) + 1))
-                mockSnapper.mtd.__getitem__.side_effect = (
-                    lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
+                mockSnapper.mtd.__getitem__.side_effect = lambda wsName: (
+                    mockWs if _valid_key(wsName, workspaceName) else None
                 )
 
                 # Action-related mocks:
@@ -2417,20 +2385,16 @@ class TestGroceryService(unittest.TestCase):
                 liteModeFilePath.exists.return_value = liteOnDisk
                 nativeModeFilePath.exists.return_value = nativeOnDisk
 
-                mockCreateNeutronFilePath.side_effect = (
-                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                mockCreateNeutronFilePath.side_effect = lambda _runNumber, useLiteMode: (
+                    liteModeFilePath if useLiteMode else nativeModeFilePath
                 )
 
-                mockCreateNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeWorkspaceName
+                mockCreateNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteWorkspaceName if useLiteMode else mock.sentinel.nativeWorkspaceName
                 )
 
-                mockCreateRawNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeRawWorkspaceName
+                mockCreateRawNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteRawWorkspaceName if useLiteMode else mock.sentinel.nativeRawWorkspaceName
                 )
 
                 mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
@@ -2446,8 +2410,8 @@ class TestGroceryService(unittest.TestCase):
                 # Mock `<workspace>.getRun` to return `Run` that has the correct run number.
                 mockWs = mock.Mock()
                 mockWs.getRun.return_value = self.mockRun(runNumber)
-                mockSnapper.mtd.__getitem__.side_effect = (
-                    lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
+                mockSnapper.mtd.__getitem__.side_effect = lambda wsName: (
+                    mockWs if _valid_key(wsName, workspaceName) else None
                 )
 
                 # Action-related mocks:
@@ -2540,20 +2504,16 @@ class TestGroceryService(unittest.TestCase):
                 liteModeFilePath.exists.return_value = liteOnDisk
                 nativeModeFilePath.exists.return_value = nativeOnDisk
 
-                mockCreateNeutronFilePath.side_effect = (
-                    lambda _runNumber, useLiteMode: liteModeFilePath if useLiteMode else nativeModeFilePath
+                mockCreateNeutronFilePath.side_effect = lambda _runNumber, useLiteMode: (
+                    liteModeFilePath if useLiteMode else nativeModeFilePath
                 )
 
-                mockCreateNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeWorkspaceName
+                mockCreateNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteWorkspaceName if useLiteMode else mock.sentinel.nativeWorkspaceName
                 )
 
-                mockCreateRawNeutronWorkspaceName.side_effect = (
-                    lambda _runNumber, useLiteMode: mock.sentinel.liteRawWorkspaceName
-                    if useLiteMode
-                    else mock.sentinel.nativeRawWorkspaceName
+                mockCreateRawNeutronWorkspaceName.side_effect = lambda _runNumber, useLiteMode: (
+                    mock.sentinel.liteRawWorkspaceName if useLiteMode else mock.sentinel.nativeRawWorkspaceName
                 )
 
                 mockGetCloneOfWorkspace.return_value = mock.sentinel.clonedWorkspace
@@ -2569,8 +2529,8 @@ class TestGroceryService(unittest.TestCase):
                 # Mock `<workspace>.getRun` to return `Run` that DOES NOT HAVE the correct run number.
                 mockWs = mock.Mock()
                 mockWs.getRun.return_value = self.mockRun(str(int(runNumber) + 1))
-                mockSnapper.mtd.__getitem__.side_effect = (
-                    lambda wsName: mockWs if _valid_key(wsName, workspaceName) else None
+                mockSnapper.mtd.__getitem__.side_effect = lambda wsName: (
+                    mockWs if _valid_key(wsName, workspaceName) else None
                 )
 
                 # Action-related mocks:
