@@ -337,6 +337,25 @@ class TestDataFactoryService(unittest.TestCase):
         self.instance.deleteWorkspaceUnconditional(wsname)
         assert not self.instance.workspaceDoesExist(wsname)
 
+    ##### TEST CYCLE METHODS ####
+
+    def test_updateInstrumentConfigCycle(self):
+        from snapred.backend.dao.state.Cycle import Cycle
+
+        cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+        mockInstrumentConfig = mock.MagicMock()
+        self.instance.lookupService.readInstrumentParameters = mock.Mock(return_value=mockInstrumentConfig)
+        self.instance.lookupService.writeInstrumentParameters = mock.Mock()
+
+        result = self.instance.updateInstrumentConfigCycle("12345", cycle, ">=12345", "testAuthor")
+
+        self.instance.lookupService.readInstrumentParameters.assert_called_once_with("12345")
+        assert mockInstrumentConfig.cycle == cycle
+        self.instance.lookupService.writeInstrumentParameters.assert_called_once_with(
+            mockInstrumentConfig, ">=12345", "testAuthor"
+        )
+        assert result == mockInstrumentConfig
+
     ##### TEST LIVE-DATA SUPPORT METHODS ####
 
     def test_getLiveMetadata(self):
