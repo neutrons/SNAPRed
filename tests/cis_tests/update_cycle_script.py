@@ -28,5 +28,11 @@ response = interfaceController.executeRequest(request)
 
 print(f"Response code: {response.code}")
 print(f"Response message: {response.message}")
-if response.data is not None:
-    print(f"Updated InstrumentConfig cycle: {response.data.cycle}")
+updated_cycle = getattr(response.data, "cycle", None)
+if updated_cycle != cycle:
+    raise RuntimeError(
+        f"Cycle update failed or returned unexpected data: "
+        f"code={response.code}, message={response.message}, data={response.data}"
+    )
+
+print(f"Updated InstrumentConfig cycle: {updated_cycle}")
