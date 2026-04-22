@@ -13,9 +13,7 @@ cycle = Cycle(
 
 # Build the request to update the InstrumentConfig with the cycle
 updateCycleRequest = UpdateCycleRequest(
-    runNumber="52862",
     cycle=cycle,
-    appliesTo=">=52862",
     author="author: snap test script",
 )
 

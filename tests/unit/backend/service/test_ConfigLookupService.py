@@ -31,14 +31,12 @@ def test_updateCycle():
     service = Service()
     service.dataFactoryService = mock.Mock()
     cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
-    request = UpdateCycleRequest(runNumber="12345", cycle=cycle, appliesTo=">=12345", author="testAuthor")
+    request = UpdateCycleRequest(cycle=cycle, author="testAuthor")
 
     actual = service.updateCycle(request)
 
     service.dataFactoryService.updateInstrumentConfigCycle.assert_called_once_with(
-        runNumber="12345",
         cycle=cycle,
-        appliesTo=">=12345",
         author="testAuthor",
     )
     assert actual == service.dataFactoryService.updateInstrumentConfigCycle.return_value

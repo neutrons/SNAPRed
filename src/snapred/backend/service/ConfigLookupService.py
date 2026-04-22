@@ -48,8 +48,6 @@ class ConfigLookupService(Service):
     @FromString
     def updateCycle(self, request: UpdateCycleRequest):
         return self.dataFactoryService.updateInstrumentConfigCycle(
-            runNumber=request.runNumber,
             cycle=request.cycle,
-            appliesTo=request.appliesTo,
             author=request.author,
         )

@@ -53,6 +53,17 @@ class DataFactoryService:
     def getInstrumentConfig(self, runId: str) -> InstrumentConfig:
         return self.lookupService.readInstrumentConfig(runId)
 
+    def getCycleID(self, runNumber: str) -> str:
+        instrumentConfig = self.lookupService.readInstrumentParameters(runNumber)
+        if instrumentConfig.cycle is None:
+            raise ValueError(f"No cycle information found for run {runNumber}")
+        if int(runNumber) < instrumentConfig.cycle.firstRun:
+            raise ValueError(
+                f"Run {runNumber} is not within cycle {instrumentConfig.cycle.cycleID}"
+                f" (first run: {instrumentConfig.cycle.firstRun})"
+            )
+        return instrumentConfig.cycle.cycleID
+
     def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
         return self.lookupService.readStateConfig(runId, useLiteMode)
 
@@ -80,7 +91,9 @@ class DataFactoryService:
     def getDefaultInstrumentState(self, runId: str):
         return self.lookupService.generateInstrumentState(runId)
 
-    def updateInstrumentConfigCycle(self, runNumber: str, cycle: Cycle, appliesTo: str, author: str):
+    def updateInstrumentConfigCycle(self, cycle: Cycle, author: str):
+        runNumber = str(cycle.firstRun)
+        appliesTo = f">={cycle.firstRun}"
         instrumentConfig = self.lookupService.readInstrumentParameters(runNumber)
         instrumentConfig.cycle = cycle
         self.lookupService.writeInstrumentParameters(instrumentConfig, appliesTo, author)
