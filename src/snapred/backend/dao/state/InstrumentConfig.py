@@ -12,17 +12,6 @@ class InstrumentConfig(IndexedObject):
     """Class to hold the instrument parameters."""
 
     facility: str
-    name: str
-    nexusFileExtension: str
-    nexusFilePrefix: str
-    calibrationFileExtension: str
-    calibrationFilePrefix: str
-    calibrationDirectory: str
-    pixelGroupingDirectory: str
-    sharedDirectory: str
-    nexusDirectory: str
-    reducedDataDirectory: str
-    reductionRecordDirectory: str
     bandwidth: float
     maxBandwidth: float
     L1: float
@@ -32,6 +21,19 @@ class InstrumentConfig(IndexedObject):
     width: float
     frequency: float
     lowWavelengthCrop: float = Field(default_factory=lambda: Config["constants.CropFactors.lowWavelengthCrop"])
+
+    # deprecated fields (retained for backward-compatible reads, excluded from new exports)
+    name: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    nexusFileExtension: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    nexusFilePrefix: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    calibrationFileExtension: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    calibrationFilePrefix: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    calibrationDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    pixelGroupingDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    sharedDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    nexusDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    reducedDataDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    reductionRecordDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
 
     cycle: Optional[Cycle] = None
 
