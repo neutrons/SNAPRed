@@ -4,6 +4,7 @@ import unittest.mock as mock
 from pathlib import Path
 from random import randint
 
+import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, DeleteWorkspace, mtd
 
 from snapred.backend.dao.calibration import Calibration
@@ -135,6 +136,34 @@ class TestDataFactoryService(unittest.TestCase):
         self.instance.lookupService.generateInstrumentState = mock.Mock()
         actual = self.instance.getDefaultInstrumentState("123")
         assert actual == self.instance.lookupService.generateInstrumentState.return_value
+
+    def test_getCycleID(self):
+        from snapred.backend.dao.state.Cycle import Cycle
+
+        cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+        mockConfig = mock.Mock()
+        mockConfig.cycle = cycle
+        self.instance.lookupService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
+        actual = self.instance.getCycleID("200")
+        assert actual == "2024-A"
+        self.instance.lookupService.readInstrumentParameters.assert_called_once_with("200")
+
+    def test_getCycleID_no_cycle(self):
+        mockConfig = mock.Mock()
+        mockConfig.cycle = None
+        self.instance.lookupService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
+        with pytest.raises(ValueError, match="No cycle information found for run 200"):
+            self.instance.getCycleID("200")
+
+    def test_getCycleID_run_before_cycle(self):
+        from snapred.backend.dao.state.Cycle import Cycle
+
+        cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+        mockConfig = mock.Mock()
+        mockConfig.cycle = cycle
+        self.instance.lookupService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
+        with pytest.raises(ValueError, match="Run 50 is not within cycle 2024-A"):
+            self.instance.getCycleID("50")
 
     ## TEST CALIBRATION METHODS
 
@@ -336,6 +365,25 @@ class TestDataFactoryService(unittest.TestCase):
         assert self.instance.workspaceDoesExist(wsname)
         self.instance.deleteWorkspaceUnconditional(wsname)
         assert not self.instance.workspaceDoesExist(wsname)
+
+    ##### TEST CYCLE METHODS ####
+
+    def test_updateInstrumentConfigCycle(self):
+        from snapred.backend.dao.state.Cycle import Cycle
+
+        cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+        mockInstrumentConfig = mock.MagicMock()
+        self.instance.lookupService.readInstrumentParameters = mock.Mock(return_value=mockInstrumentConfig)
+        self.instance.lookupService.writeInstrumentParameters = mock.Mock()
+
+        result = self.instance.updateInstrumentConfigCycle(cycle, "testAuthor")
+
+        self.instance.lookupService.readInstrumentParameters.assert_called_once_with("100")
+        assert mockInstrumentConfig.cycle == cycle
+        self.instance.lookupService.writeInstrumentParameters.assert_called_once_with(
+            mockInstrumentConfig, ">=100", "testAuthor"
+        )
+        assert result == mockInstrumentConfig
 
     ##### TEST LIVE-DATA SUPPORT METHODS ####
 

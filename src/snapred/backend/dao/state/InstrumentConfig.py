@@ -1,8 +1,9 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from pydantic import ConfigDict, Field, PrivateAttr, model_validator
 
 from snapred.backend.dao.indexing.IndexedObject import IndexedObject
+from snapred.backend.dao.state.Cycle import Cycle
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.meta.Config import Config
 
@@ -11,17 +12,6 @@ class InstrumentConfig(IndexedObject):
     """Class to hold the instrument parameters."""
 
     facility: str
-    name: str
-    nexusFileExtension: str
-    nexusFilePrefix: str
-    calibrationFileExtension: str
-    calibrationFilePrefix: str
-    calibrationDirectory: str
-    pixelGroupingDirectory: str
-    sharedDirectory: str
-    nexusDirectory: str
-    reducedDataDirectory: str
-    reductionRecordDirectory: str
     bandwidth: float
     maxBandwidth: float
     L1: float
@@ -31,6 +21,21 @@ class InstrumentConfig(IndexedObject):
     width: float
     frequency: float
     lowWavelengthCrop: float = Field(default_factory=lambda: Config["constants.CropFactors.lowWavelengthCrop"])
+
+    # deprecated fields (retained for backward-compatible reads, excluded from new exports)
+    name: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    nexusFileExtension: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    nexusFilePrefix: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    calibrationFileExtension: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    calibrationFilePrefix: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    calibrationDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    pixelGroupingDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    sharedDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    nexusDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    reducedDataDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+    reductionRecordDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
+
+    cycle: Optional[Cycle] = None
 
     # attributes supporting extensible `DetectorState`:
     stateIdSchema: Dict[str, Any] = DetectorState.LEGACY_SCHEMA

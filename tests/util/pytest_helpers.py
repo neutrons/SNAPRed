@@ -253,10 +253,10 @@ def handleStateInit(waitForStateInit, stateId, qtbot, qapp, actionCompleted, wor
         with qtbot.waitSignal(actionCompleted, timeout=60000):
             qtbot.mouseClick(workflowNodeTabs.currentWidget().continueButton, Qt.MouseButton.LeftButton)
         qtbot.waitUntil(
-            lambda: len(
-                [o for o in qapp.topLevelWidgets() if isinstance(o, InitializeStateCheckView.InitializationMenu)]
-            )
-            > 0,
+            lambda: (
+                len([o for o in qapp.topLevelWidgets() if isinstance(o, InitializeStateCheckView.InitializationMenu)])
+                > 0
+            ),
             timeout=1000,
         )
         stateInitDialog = [

@@ -1,5 +1,7 @@
 import unittest.mock as mock
 
+from snapred.backend.dao.request.UpdateCycleRequest import UpdateCycleRequest
+from snapred.backend.dao.state.Cycle import Cycle
 from snapred.backend.service.ConfigLookupService import ConfigLookupService as Service
 
 
@@ -23,3 +25,18 @@ def test_getConfigs():
     runs = [mock.MagicMock()]
     actual = service.getConfigs(runs)
     assert actual == {runs[0].runNumber: service.dataFactoryService.getReductionState.return_value}
+
+
+def test_updateCycle():
+    service = Service()
+    service.dataFactoryService = mock.Mock()
+    cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+    request = UpdateCycleRequest(cycle=cycle, author="testAuthor")
+
+    actual = service.updateCycle(request)
+
+    service.dataFactoryService.updateInstrumentConfigCycle.assert_called_once_with(
+        cycle=cycle,
+        author="testAuthor",
+    )
+    assert actual == service.dataFactoryService.updateInstrumentConfigCycle.return_value

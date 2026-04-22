@@ -30,6 +30,9 @@ instrument:
   reduction:
     # Here "{IPTS}" will be substituted with the IPTS-directory name for a specified <runNumber>
     home: ${instrument.home}/{IPTS}/shared/SNAPRed
+    # IPTS-relative directories
+    sharedDirectory: shared/
+    reducedDataDirectory: shared/manualReduced/
 
   # Swap the commented out fields when using ultralite data
   config: ${instrument.calibration.home}/SNAPInstPrm.json
