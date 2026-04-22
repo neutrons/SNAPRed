@@ -1103,7 +1103,6 @@ def test__readRunConfig():
     localDataService = LocalDataService()
     runNumber = "57514"
     localDataService.getIPTS = mock.Mock(return_value=Path("IPTS-123"))
-    localDataService.readInstrumentConfig = mock.Mock(return_value=getMockInstrumentConfig())
     actual = localDataService._readRunConfig(runNumber)
     assert actual.runNumber == runNumber
 

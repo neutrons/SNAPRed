@@ -102,9 +102,9 @@ class LocalDataService:
     @lru_cache
     def readInstrumentConfig(self, runNumber: str) -> InstrumentConfig:
         instrumentConfig = self.readInstrumentParameters(runNumber)
-        instrumentConfig.calibrationDirectory = Config["instrument.calibration.home"]
-        if self.verifyPaths and not Path(instrumentConfig.calibrationDirectory).exists():
-            raise _createFileNotFoundError("[calibration directory]", instrumentConfig.calibrationDirectory)
+        calibrationDirectory = Config["instrument.calibration.home"]
+        if self.verifyPaths and not Path(calibrationDirectory).exists():
+            raise _createFileNotFoundError("[calibration directory]", calibrationDirectory)
 
         return instrumentConfig
 
@@ -264,13 +264,12 @@ class LocalDataService:
         if not bool(IPTS):
             raise RuntimeError(f"Cannot find IPTS directory for run '{runId}'")
 
-        instrumentConfig = self.readInstrumentConfig(runId)
         return RunConfig(
             IPTS=str(IPTS),
             runNumber=runId,
             maskFileName="",
-            maskFileDirectory=str(IPTS) + instrumentConfig.sharedDirectory,
-            gsasFileDirectory=str(IPTS) + instrumentConfig.reducedDataDirectory,
+            maskFileDirectory=str(IPTS) + Config["instrument.reduction.sharedDirectory"],
+            gsasFileDirectory=str(IPTS) + Config["instrument.reduction.reducedDataDirectory"],
             calibrationState=None,
         )
 
