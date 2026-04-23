@@ -802,7 +802,7 @@ class _ProgressRecorder(BaseModel):
     @field_serializer("steps")
     def _serialize_steps(self, steps: Dict[Tuple[str, ...], ProgressStep], _info) -> List[ProgressStep]:
         # By default `Tuple[str, ...]` keys don't serialize correctly to JSON.
-        return list(steps.values())  # *** DEBUG *** vs. `self.steps.values()` ? Which is correct?!
+        return list(steps.values())  # TODO: ambiguous: we also have`self.steps.values()`: which is correct here?!
 
 
 # The `ProgressRecorder` singleton.
