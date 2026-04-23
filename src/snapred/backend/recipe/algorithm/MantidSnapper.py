@@ -11,7 +11,7 @@ from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
 
 # must import to register with AlgorithmManager
-from snapred.meta.Callback import callback
+from snapred.meta.Callback import Callback, callback
 from snapred.meta.Config import Config, Resource
 from snapred.meta.pointer import access_pointer, create_pointer
 
@@ -20,14 +20,14 @@ logger = snapredLogger.getLogger(__name__)
 
 class _CustomMtd:
     def __getitem__(self, key):
-        if str(key.__class__) == str(callback(int).__class__):
+        if isinstance(key, Callback):
             key = key.get()
         if self.doesExist(key):
             return mtd[key]
         raise KeyError(f"Workspace {key} not found in mtd: {self.getObjectNames()}")
 
     def doesExist(self, key):
-        if str(key.__class__) == str(callback(int).__class__):
+        if isinstance(key, Callback):
             key = key.get()
         return key is not None and mtd.doesExist(key)
 
@@ -54,6 +54,7 @@ class MantidSnapper:
     ##
     ## KNOWN NON-REENTRANT ALGORITHMS
     ##
+    _nonReentrantAlgorithms = "LoadLiveData", "LoadLiveDataInterval"
     _liveDataLock = Lock()
     _nonReentrantMutexes = {"LoadLiveData": _liveDataLock, "LoadLiveDataInterval": _liveDataLock}
 
@@ -208,11 +209,13 @@ class MantidSnapper:
                 mutex.acquire()
 
             for prop, val in kwargs.items():
-                # this line is to appease mantid properties, idk where its pulling empty string from
-                if str(val.__class__) == str(callback(int).__class__):
+                # Unwrap any deferred-output Callback so that boost::python sees
+                # the underlying str / workspace name / value, not the wrapper.
+                if isinstance(val, Callback):
                     val = val.get()
                 if val is None:
                     continue
+
                 # for pointer property, set via its pointer
                 # allows for "pass-by-reference"-like behavior
                 # this is safe even if the memory address is directly passed
@@ -248,9 +251,10 @@ class MantidSnapper:
             if mutex is not None:
                 mutex.release()
 
+
     @classmethod
     def _cleanupNonConcurrent(cls, name, algorithm):
-        if name in cls._nonConcurrentAlgorithms:
+        if name in cls._nonConcurrentAlgorithms or name in cls._nonReentrantAlgorithms:
             cls._waitForAlgorithmCompletion(name)
             cls._removeAlgorithm(algorithm)
 
