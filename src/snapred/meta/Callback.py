@@ -60,9 +60,6 @@ class CallbackMeta(type):
         Returns:
             The newly created class
         """
-        # Get the wrapped type from kwargs or namespace
-        wrapped_type = kwargs.get('_wrapped_type') or namespace.get('_wrapped_type')
-        
         # Generate forwarding magic methods
         for method_name in mcs._FORWARDED_MAGIC_METHODS:
             if method_name not in namespace:  # Don't override explicitly defined methods
