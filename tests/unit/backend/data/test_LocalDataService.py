@@ -1014,6 +1014,22 @@ def test_createNeutronFilePath():
             mockGetIPTS.reset_mock()
 
 
+def test_createNeutronFilePath_legacyFallback():
+    instance = LocalDataService()
+    with mock.patch.object(instance, "getIPTS") as mockGetIPTS:
+        mockGetIPTS.return_value = Path("IPTS-TEST")
+        runNumber = "99999"
+        legacyPath = mockGetIPTS.return_value / ("data/SNAP_" + runNumber + "_event.nxs")
+
+        def fake_exists(self):
+            return self == legacyPath
+
+        with mock.patch.object(Path, "exists", fake_exists):
+            actual = instance.createNeutronFilePath(runNumber, False)
+        assert actual == legacyPath
+        mockGetIPTS.assert_called_once_with(runNumber)
+
+
 def test_stateExists():
     instance = LocalDataService()
     with (
