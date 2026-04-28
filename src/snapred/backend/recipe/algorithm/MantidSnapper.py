@@ -251,7 +251,6 @@ class MantidSnapper:
             if mutex is not None:
                 mutex.release()
 
-
     @classmethod
     def _cleanupNonConcurrent(cls, name, algorithm):
         if name in cls._nonConcurrentAlgorithms or name in cls._nonReentrantAlgorithms:
