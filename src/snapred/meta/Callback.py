@@ -47,7 +47,7 @@ class CallbackMeta(type):
         '__await__', '__aiter__', '__anext__', '__aenter__', '__aexit__',
     }
     
-    def __new__(mcs, name: str, bases: tuple, namespace: dict, **kwargs) -> type:
+    def __new__(mcs, name: str, bases: tuple, namespace: dict, **_kwargs) -> type:
         """
         Create a new Callback class with auto-generated magic methods.
         
