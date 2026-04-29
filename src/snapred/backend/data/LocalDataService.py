@@ -243,9 +243,12 @@ class LocalDataService:
             ext = instr + ".extension"
             filePath = IPTS / (Config[pre] + str(runNumber) + Config[ext])
             if not filePath.exists():
-                legacyPath = IPTS / ("data/SNAP_" + str(runNumber) + "_event.nxs")
-                if legacyPath.exists():
-                    filePath = legacyPath
+                if not useLiteMode:
+                    legacyPath = IPTS / ("data/SNAP_" + str(runNumber) + "_event.nxs")
+                    if legacyPath.exists():
+                        filePath = legacyPath
+                else:
+                    filePath = None
         return filePath
 
     def stateExists(self, runId: str) -> bool:

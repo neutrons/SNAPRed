@@ -1008,7 +1008,8 @@ def test_createNeutronFilePath():
                 Config[f"nexus.{mode}.prefix"] + runNumber + Config[f"nexus.{mode}.extension"]
             )
 
-            actual = instance.createNeutronFilePath(runNumber, mode == "lite")
+            with mock.patch.object(Path, "exists", return_value=True):
+                actual = instance.createNeutronFilePath(runNumber, mode == "lite")
             mockGetIPTS.assert_called_once_with(runNumber)
             assert actual == expected
             mockGetIPTS.reset_mock()
@@ -1027,6 +1028,22 @@ def test_createNeutronFilePath_legacyFallback():
         with mock.patch.object(Path, "exists", fake_exists):
             actual = instance.createNeutronFilePath(runNumber, False)
         assert actual == legacyPath
+        mockGetIPTS.assert_called_once_with(runNumber)
+
+
+def test_createNeutronFilePath_legacyFallback_skippedForLiteMode():
+    instance = LocalDataService()
+    with mock.patch.object(instance, "getIPTS") as mockGetIPTS:
+        mockGetIPTS.return_value = Path("IPTS-TEST")
+        runNumber = "99999"
+        legacyPath = mockGetIPTS.return_value / ("data/SNAP_" + runNumber + "_event.nxs")
+
+        def fake_exists(self):
+            return self == legacyPath
+
+        with mock.patch.object(Path, "exists", fake_exists):
+            actual = instance.createNeutronFilePath(runNumber, True)
+        assert actual is None
         mockGetIPTS.assert_called_once_with(runNumber)
 
 
