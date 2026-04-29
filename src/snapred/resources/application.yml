@@ -125,6 +125,9 @@ nexus:
   native:
     prefix: nexus/SNAP_
     extension: .nxs.h5
+  legacy:
+    prefix: data/SNAP_
+    extension: _event.nxs
   file:
     prefix: SNAP_
     extension: .nxs.h5

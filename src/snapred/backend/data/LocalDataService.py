@@ -244,7 +244,9 @@ class LocalDataService:
             filePath = IPTS / (Config[pre] + str(runNumber) + Config[ext])
             if not filePath.exists():
                 if not useLiteMode:
-                    legacyPath = IPTS / ("data/SNAP_" + str(runNumber) + "_event.nxs")
+                    legacyPath = IPTS / (
+                        Config["nexus.legacy.prefix"] + str(runNumber) + Config["nexus.legacy.extension"]
+                    )
                     if legacyPath.exists():
                         filePath = legacyPath
                 else:

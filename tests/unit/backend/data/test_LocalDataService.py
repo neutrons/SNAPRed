@@ -1020,7 +1020,9 @@ def test_createNeutronFilePath_legacyFallback():
     with mock.patch.object(instance, "getIPTS") as mockGetIPTS:
         mockGetIPTS.return_value = Path("IPTS-TEST")
         runNumber = "99999"
-        legacyPath = mockGetIPTS.return_value / ("data/SNAP_" + runNumber + "_event.nxs")
+        legacyPath = mockGetIPTS.return_value / (
+            Config["nexus.legacy.prefix"] + runNumber + Config["nexus.legacy.extension"]
+        )
 
         def fake_exists(self):
             return self == legacyPath
@@ -1036,7 +1038,9 @@ def test_createNeutronFilePath_legacyFallback_skippedForLiteMode():
     with mock.patch.object(instance, "getIPTS") as mockGetIPTS:
         mockGetIPTS.return_value = Path("IPTS-TEST")
         runNumber = "99999"
-        legacyPath = mockGetIPTS.return_value / ("data/SNAP_" + runNumber + "_event.nxs")
+        legacyPath = mockGetIPTS.return_value / (
+            Config["nexus.legacy.prefix"] + runNumber + Config["nexus.legacy.extension"]
+        )
 
         def fake_exists(self):
             return self == legacyPath
