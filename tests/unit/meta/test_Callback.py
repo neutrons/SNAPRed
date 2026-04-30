@@ -74,25 +74,25 @@ class TestCallback(unittest.TestCase):
     def test_repr_notPopulated(self):
         testCallback = callback(str)
         repr_ = repr(testCallback)
-        assert f"Callback(str" in repr_
-        assert "not populated" in repr_ 
+        assert "Callback(str" in repr_
+        assert "not populated" in repr_
 
     def test_repr_populated(self):
         testCallback = callback(str)
         testCallback.update("test")
         repr_ = repr(testCallback)
-        assert f"Callback(str" in repr_
-        assert f"value={'test'!r}" in repr_ 
+        assert "Callback(str" in repr_
+        assert f"value={'test'!r}" in repr_
 
     def test_str_notPopulated(self):
         testCallback = callback(str)
         str_ = str(testCallback)
         assert "<Callback(str)>" == str_
- 
+
     def test_str_populated(self):
         testCallback = callback(str)
         testCallback.update("test")
-        str_ = str(testCallback) 
+        str_ = str(testCallback)
         assert str_ == "test"
 
     def test_callbackInstances(self):
