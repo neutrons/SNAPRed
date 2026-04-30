@@ -142,10 +142,16 @@ class DataFactoryService:
         useLiteMode: bool,
         version: Version = VersionState.LATEST,
         state: Optional[str] = None,
+        cycleID: Optional[str] = None,
     ) -> CalibrationRecord:
         """
-        If no version is passed, will use the latest version applicable to runId
+        If no version is passed, will use the latest version applicable to runId.
+        If cycleID is provided, validates that runId belongs to the given cycle.
         """
+        if cycleID is not None:
+            actualCycleID = self.getCycleID(runId)
+            if actualCycleID != cycleID:
+                raise ValueError(f"Run {runId} belongs to cycle {actualCycleID}, not the requested cycle {cycleID}")
         return self.lookupService.readCalibrationRecord(runId, useLiteMode, state, version)
 
     @validate_call
@@ -182,11 +188,21 @@ class DataFactoryService:
 
     @validate_call
     def getNormalizationRecord(
-        self, runId: str, useLiteMode: bool, state: str, version: Version = VersionState.LATEST
+        self,
+        runId: str,
+        useLiteMode: bool,
+        state: str,
+        version: Version = VersionState.LATEST,
+        cycleID: Optional[str] = None,
     ) -> NormalizationRecord:
         """
-        If no version is passed, will use the latest version applicable to runId
+        If no version is passed, will use the latest version applicable to runId.
+        If cycleID is provided, validates that runId belongs to the given cycle.
         """
+        if cycleID is not None:
+            actualCycleID = self.getCycleID(runId)
+            if actualCycleID != cycleID:
+                raise ValueError(f"Run {runId} belongs to cycle {actualCycleID}, not the requested cycle {cycleID}")
         return self.lookupService.readNormalizationRecord(runId, useLiteMode, state, version)
 
     @validate_call
