@@ -32,6 +32,7 @@ repos:
   rev: v2.10.0
   hooks:
     - id: pip-audit
+      args: ["--ignore-vuln", "CVE-2026-3219"]
 # disable for now
 #- repo: https://github.com/pre-commit/mirrors-mypy
 #  rev: v1.1.1

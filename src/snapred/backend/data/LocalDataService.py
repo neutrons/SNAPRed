@@ -242,6 +242,15 @@ class LocalDataService:
             pre = instr + ".prefix"
             ext = instr + ".extension"
             filePath = IPTS / (Config[pre] + str(runNumber) + Config[ext])
+            if not filePath.exists():
+                if not useLiteMode:
+                    legacyPath = IPTS / (
+                        Config["nexus.legacy.prefix"] + str(runNumber) + Config["nexus.legacy.extension"]
+                    )
+                    if legacyPath.exists():
+                        filePath = legacyPath
+                else:
+                    filePath = None
         return filePath
 
     def stateExists(self, runId: str) -> bool:
