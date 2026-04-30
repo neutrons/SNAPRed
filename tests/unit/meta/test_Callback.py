@@ -2,7 +2,7 @@ import unittest
 
 import pytest
 
-from snapred.meta.Callback import callback
+from snapred.meta.Callback import Callback, callback
 
 
 class TestCallback(unittest.TestCase):
@@ -50,6 +50,50 @@ class TestCallback(unittest.TestCase):
         assert testCallback.__float__() == 123.456
         assert testCallback == 123.456
         assert testCallback + 1 == 124.456
+
+    def test_getattr_nameInIgnore(self):
+        # When `__getattr__` is invoked with a name that is in `self._ignore`,
+        # the implementation falls through to the Callback object.
+        testCallback = callback(str)
+        assert testCallback.__getattr__("_ignore") == Callback._ignore
+
+    def test_setattr_notPopulated(self):
+        # Setting an attribute when the callback is not populated should
+        # succeed (the class does not override `__setattr__`) and must not
+        # mark the callback as populated.
+        testCallback = callback(str)
+        assert testCallback._set is False
+        testCallback.someNewAttribute = "hello"
+        assert testCallback.someNewAttribute == "hello"
+        # Setting an arbitrary attribute must not flip the populated flag.
+        assert testCallback._set is False
+        # `get` should still raise because the callback was never updated.
+        with pytest.raises(AttributeError):
+            testCallback.get()
+
+    def test_repr_notPopulated(self):
+        testCallback = callback(str)
+        repr_ = repr(testCallback)
+        assert f"Callback(str" in repr_
+        assert "not populated" in repr_ 
+
+    def test_repr_populated(self):
+        testCallback = callback(str)
+        testCallback.update("test")
+        repr_ = repr(testCallback)
+        assert f"Callback(str" in repr_
+        assert f"value={'test'!r}" in repr_ 
+
+    def test_str_notPopulated(self):
+        testCallback = callback(str)
+        str_ = str(testCallback)
+        assert "<Callback(str)>" == str_
+ 
+    def test_str_populated(self):
+        testCallback = callback(str)
+        testCallback.update("test")
+        str_ = str(testCallback) 
+        assert str_ == "test"
 
     def test_callbackInstances(self):
         # `callback()` returns distinct instances, but the underlying class is
