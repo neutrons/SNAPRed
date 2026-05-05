@@ -198,9 +198,29 @@ class TestDataFactoryService(unittest.TestCase):
 
     def test_getCalibrationRecord(self):
         runId = "345"
+        self.instance.getCycleID = mock.Mock(return_value="2024-A")
         for useLiteMode in [True, False]:
-            actual = self.instance.getCalibrationRecord(runId, useLiteMode, self.version, "stateId")
+            actual = self.instance.getCalibrationRecord(runId, useLiteMode, "2024-A", self.version, "stateId")
             assert actual == self.expected(runId, useLiteMode, "stateId", self.version)
+
+    def test_getCalibrationRecord_with_valid_cycleID(self):
+        runId = "345"
+        self.instance.getCycleID = mock.Mock(return_value="2024-A")
+        for useLiteMode in [True, False]:
+            actual = self.instance.getCalibrationRecord(runId, useLiteMode, "2024-A", self.version, "stateId")
+            assert actual == self.expected(runId, useLiteMode, "stateId", self.version)
+        self.instance.getCycleID.assert_called_with(runId)
+
+    def test_getCalibrationRecord_with_invalid_cycleID(self):
+        runId = "345"
+        self.instance.getCycleID = mock.Mock(return_value="2024-A")
+        with pytest.raises(ValueError, match="Run 345 belongs to cycle 2024-A, not the requested cycle 2024-B"):
+            self.instance.getCalibrationRecord(runId, True, "2024-B", self.version, "stateId")
+
+    def test_getCalibrationRecord_without_cycleID_raises_error(self):
+        runId = "345"
+        with pytest.raises(Exception):  # noqa: PT011
+            self.instance.getCalibrationRecord(runId, True, self.version, "stateId")
 
     def test_getCalibrationDataWorkspace(self):
         self.instance.groceryService.fetchWorkspace = mock.Mock()
@@ -241,9 +261,29 @@ class TestDataFactoryService(unittest.TestCase):
             assert actual == [self.expected("Normalization")]
 
     def test_getNormalizationRecord(self):
+        self.instance.getCycleID = mock.Mock(return_value="2024-A")
         for useLiteMode in [True, False]:
-            actual = self.instance.getNormalizationRecord("123", useLiteMode, "stateId", self.version)
+            actual = self.instance.getNormalizationRecord("123", useLiteMode, "stateId", "2024-A", self.version)
             assert actual == self.expected("123", useLiteMode, "stateId", self.version)
+
+    def test_getNormalizationRecord_with_valid_cycleID(self):
+        runId = "123"
+        self.instance.getCycleID = mock.Mock(return_value="2024-A")
+        for useLiteMode in [True, False]:
+            actual = self.instance.getNormalizationRecord(runId, useLiteMode, "stateId", "2024-A", self.version)
+            assert actual == self.expected(runId, useLiteMode, "stateId", self.version)
+        self.instance.getCycleID.assert_called_with(runId)
+
+    def test_getNormalizationRecord_with_invalid_cycleID(self):
+        runId = "123"
+        self.instance.getCycleID = mock.Mock(return_value="2024-A")
+        with pytest.raises(ValueError, match="Run 123 belongs to cycle 2024-A, not the requested cycle 2024-B"):
+            self.instance.getNormalizationRecord(runId, True, "stateId", "2024-B", self.version)
+
+    def test_getNormalizationRecord_without_cycleID_raises_error(self):
+        runId = "123"
+        with pytest.raises(Exception):  # noqa: PT011
+            self.instance.getNormalizationRecord(runId, True, "stateId", self.version)
 
     def test_getNormalizationDataWorkspace(self):
         self.instance.groceryService.fetchWorkspace = mock.Mock()
