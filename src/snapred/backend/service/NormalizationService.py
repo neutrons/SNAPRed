@@ -220,7 +220,7 @@ class NormalizationService(Service):
 
             cycleID = self.dataFactoryService.getCycleID(request.runNumber)
             calRunNumber = self.dataFactoryService.getCalibrationRecord(
-                request.runNumber, request.useLiteMode, calVersion, state, cycleID=cycleID
+                request.runNumber, request.useLiteMode, cycleID, calVersion, state
             ).runNumber
 
             self.groceryClerk.name("maskWorkspace").diffcal_mask(state, calVersion, request.runNumber).useLiteMode(

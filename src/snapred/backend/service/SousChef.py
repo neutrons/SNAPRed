@@ -249,9 +249,9 @@ class SousChef(Service):
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(
             ingredients.runNumber,
             ingredients.useLiteMode,
+            cycleID,
             ingredients.versions.calibration,
             ingredients.state,
-            cycleID=cycleID,
         )
         if calibrationRecord is not None:
             ingredients.calibrantSamplePath = calibrationRecord.calculationParameters.calibrantSamplePath
@@ -285,8 +285,8 @@ class SousChef(Service):
             ingredients.runNumber,
             ingredients.useLiteMode,
             ingredients.state,
+            cycleID,
             ingredients.versions.normalization,
-            cycleID=cycleID,
         )
         smoothingParameter = Config["calibration.parameters.default.smoothing"]
         calibrantSamplePath = None

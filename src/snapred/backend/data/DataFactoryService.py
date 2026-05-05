@@ -140,10 +140,9 @@ class DataFactoryService:
         self,
         runId: str,
         useLiteMode: bool,
+        cycleID: str,
         version: Version = VersionState.LATEST,
         state: Optional[str] = None,
-        *,
-        cycleID: str,
     ) -> CalibrationRecord:
         """
         If no version is passed, will use the latest version applicable to runId.
@@ -192,9 +191,8 @@ class DataFactoryService:
         runId: str,
         useLiteMode: bool,
         state: str,
-        version: Version = VersionState.LATEST,
-        *,
         cycleID: str,
+        version: Version = VersionState.LATEST,
     ) -> NormalizationRecord:
         """
         If no version is passed, will use the latest version applicable to runId.
