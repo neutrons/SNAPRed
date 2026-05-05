@@ -430,3 +430,90 @@ class TestDataFactoryService(unittest.TestCase):
     def test_getLiveMetadata(self):
         actual = self.instance.getLiveMetadata()
         assert actual == self.expected()
+
+    ##### TEST FILTER CALIBRATION BY NON-STRADDLING GROUPS ####
+
+    @mock.patch("snapred.backend.data.DataFactoryService.access_pointer")
+    def test_filterCalibrationRecordsByNonStraddlingGroups_keeps_valid(self, mockAccessPointer):
+        from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+        from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
+
+        mockAccessPointer.return_value = []  # no straddling groups
+        self.instance.mantidSnapper = mock.MagicMock()
+        self.instance.groceryService = mock.MagicMock()
+        self.instance.groceryService.fetchGroupingDefinition.return_value = {"workspace": "fake_ws"}
+
+        record = mock.MagicMock(spec=CalibrationRecord)
+        record.focusGroupCalibrationMetrics = mock.MagicMock(spec=FocusGroupMetric)
+        record.focusGroupCalibrationMetrics.focusGroupName = "Column"
+
+        result = self.instance.filterCalibrationRecordsByNonStraddlingGroups([record], "12345", True)
+        assert result == [record]
+        self.instance.mantidSnapper.DetectorPanelStraddleCheck.assert_called_once_with(
+            "Checking panel straddle", GroupingWorkspace="fake_ws"
+        )
+
+    @mock.patch("snapred.backend.data.DataFactoryService.access_pointer")
+    def test_filterCalibrationRecordsByNonStraddlingGroups_excludes_straddling(self, mockAccessPointer):
+        from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+        from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
+
+        mockAccessPointer.return_value = [1, 2]  # has straddling groups
+        self.instance.mantidSnapper = mock.MagicMock()
+        self.instance.groceryService = mock.MagicMock()
+        self.instance.groceryService.fetchGroupingDefinition.return_value = {"workspace": "fake_ws"}
+
+        record = mock.MagicMock(spec=CalibrationRecord)
+        record.focusGroupCalibrationMetrics = mock.MagicMock(spec=FocusGroupMetric)
+        record.focusGroupCalibrationMetrics.focusGroupName = "All"
+        record.runNumber = "12345"
+        record.version = 1
+
+        result = self.instance.filterCalibrationRecordsByNonStraddlingGroups([record], "12345", True)
+        assert result == []
+
+    @mock.patch("snapred.backend.data.DataFactoryService.access_pointer")
+    def test_filterCalibrationRecordsByNonStraddlingGroups_mixed(self, mockAccessPointer):
+        from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+        from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
+
+        # First call (Column) -> no straddle, second call (All) -> straddles
+        mockAccessPointer.side_effect = [[], [1]]
+        self.instance.mantidSnapper = mock.MagicMock()
+        self.instance.groceryService = mock.MagicMock()
+        self.instance.groceryService.fetchGroupingDefinition.return_value = {"workspace": "fake_ws"}
+
+        record_good = mock.MagicMock(spec=CalibrationRecord)
+        record_good.focusGroupCalibrationMetrics = mock.MagicMock(spec=FocusGroupMetric)
+        record_good.focusGroupCalibrationMetrics.focusGroupName = "Column"
+
+        record_bad = mock.MagicMock(spec=CalibrationRecord)
+        record_bad.focusGroupCalibrationMetrics = mock.MagicMock(spec=FocusGroupMetric)
+        record_bad.focusGroupCalibrationMetrics.focusGroupName = "All"
+        record_bad.runNumber = "12345"
+        record_bad.version = 2
+
+        result = self.instance.filterCalibrationRecordsByNonStraddlingGroups([record_good, record_bad], "12345", True)
+        assert result == [record_good]
+
+    @mock.patch("snapred.backend.data.DataFactoryService.access_pointer")
+    def test_filterCalibrationRecordsByNonStraddlingGroups_caches_per_groupname(self, mockAccessPointer):
+        from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+        from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
+
+        mockAccessPointer.return_value = []
+        self.instance.mantidSnapper = mock.MagicMock()
+        self.instance.groceryService = mock.MagicMock()
+        self.instance.groceryService.fetchGroupingDefinition.return_value = {"workspace": "fake_ws"}
+
+        records = []
+        for _ in range(3):
+            r = mock.MagicMock(spec=CalibrationRecord)
+            r.focusGroupCalibrationMetrics = mock.MagicMock(spec=FocusGroupMetric)
+            r.focusGroupCalibrationMetrics.focusGroupName = "Column"
+            records.append(r)
+
+        result = self.instance.filterCalibrationRecordsByNonStraddlingGroups(records, "12345", True)
+        assert len(result) == 3
+        # Only one call to the algorithm despite three records with the same grouping
+        self.instance.mantidSnapper.DetectorPanelStraddleCheck.assert_called_once()
