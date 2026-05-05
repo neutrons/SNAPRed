@@ -175,6 +175,7 @@ class TestCalibrationServiceExports:
         calibrationService = CalibrationService()
         calibrationService.dataFactoryService.getCalibrationRecord = mock.Mock(return_value="passed")
         calibrationService.dataFactoryService.constructStateId = mock.Mock(return_value=("StateId", None))
+        calibrationService.dataFactoryService.getCycleID = mock.Mock(return_value="2024-A")
         res = calibrationService.load(mock.Mock())
         assert res == calibrationService.dataFactoryService.getCalibrationRecord.return_value
 
@@ -249,6 +250,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # it is necessary to coordinate these to all point to the same data service for redirect to work
         self.instance.dataExportService.dataService = self.localDataService
         self.instance.dataFactoryService.lookupService = self.localDataService
+        self.instance.dataFactoryService.getCycleID = mock.Mock(return_value="2024-A")
         self.instance.groceryService.dataService = self.localDataService
         self.instance.groceryService.mantidSnapper = MantidSnapper(None, __name__)
         self.outputNameFormat = "{}_calibration_reduction_result"
@@ -555,6 +557,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 version=version,
                 checkExistent=False,
             )
+            self.instance.dataFactoryService.getCycleID = mock.Mock(return_value="2024-A")
             self.instance.groceryService._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
             self.instance.groceryService._validateWorkspaceInstrument = mock.Mock(return_value=True)
 

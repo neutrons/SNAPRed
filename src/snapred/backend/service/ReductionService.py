@@ -288,12 +288,13 @@ class ReductionService(Service):
             #     its version will have been filled in by `fetchReductionGroceries`.
             #   * `MISSING_DIFFRACTION_CALIBRATION` now means that the default diffraction calibration
             #     with `VERSION_START` is being applied.
+            cycleID = self.dataFactoryService.getCycleID(request.runNumber)
             calibration = self.dataFactoryService.getCalibrationRecord(
-                request.runNumber, request.useLiteMode, request.versions.calibration, state
+                request.runNumber, request.useLiteMode, request.versions.calibration, state, cycleID=cycleID
             )
             if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
                 normalization = self.dataFactoryService.getNormalizationRecord(
-                    request.runNumber, request.useLiteMode, state, request.versions.normalization
+                    request.runNumber, request.useLiteMode, state, request.versions.normalization, cycleID=cycleID
                 )
 
         return ReductionRecord(

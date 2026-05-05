@@ -495,7 +495,10 @@ class CalibrationService(Service):
         run = request.runConfig
         version = request.version
         state, _ = self.dataFactoryService.constructStateId(run.runNumber)
-        return self.dataFactoryService.getCalibrationRecord(run.runNumber, run.useLiteMode, version, state)
+        cycleID = self.dataFactoryService.getCycleID(run.runNumber)
+        return self.dataFactoryService.getCalibrationRecord(
+            run.runNumber, run.useLiteMode, version, state, cycleID=cycleID
+        )
 
     def matchRunsToCalibrationVersions(self, request: MatchRunsRequest) -> Dict[str, Any]:
         """
@@ -596,7 +599,10 @@ class CalibrationService(Service):
         useLiteMode = request.useLiteMode
         version = request.version
         state, _ = self.dataFactoryService.constructStateId(runId)
-        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, useLiteMode, version, state)
+        cycleID = self.dataFactoryService.getCycleID(runId)
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(
+            runId, useLiteMode, version, state, cycleID=cycleID
+        )
         if calibrationRecord is None:
             errorTxt = f"No calibration record found for run {runId}, version {version}."
             logger.error(errorTxt)
