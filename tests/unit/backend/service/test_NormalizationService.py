@@ -380,6 +380,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         self.instance.dataFactoryService.getLatestApplicableCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("12345", None))
+        self.instance.dataFactoryService.getCycleID = mock.Mock(return_value="2024-A")
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=mock.Mock(runNumber="12345"))

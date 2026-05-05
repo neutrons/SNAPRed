@@ -46,6 +46,7 @@ from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode
+from snapred.backend.dao.state.Cycle import Cycle
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -95,7 +96,9 @@ class ImitationDataService(LocalDataService):
             shutil.rmtree(self._outputPath)
 
     def readInstrumentParameters(self, runNumber):  # noqa: ARG002
-        return DAOFactory.default_instrument_config
+        config = DAOFactory.default_instrument_config.model_copy()
+        config.cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=1)
+        return config
 
     def readInstrumentConfig(self, runNumber):  # noqa: ARG002
         return DAOFactory.default_instrument_config
