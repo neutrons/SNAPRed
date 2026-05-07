@@ -116,7 +116,7 @@ class CalibrationService(Service):
 
         N_ref = None
         inputFilePath = self.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
-        if inputFilePath.exists():
+        if inputFilePath is not None and inputFilePath.exists():
             # As the workspaces aren't loaded yet, this estimate uses the file size.
             # Note: `st_size` is in bytes.
             dataSize = float(inputFilePath.stat().st_size)

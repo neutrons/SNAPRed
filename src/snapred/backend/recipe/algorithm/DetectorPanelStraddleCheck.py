@@ -9,10 +9,9 @@ from mantid.api import (
     mtd,
 )
 from mantid.dataobjects import GroupingWorkspace
-from mantid.kernel import Direction, ULongLongPropertyWithValue
+from mantid.kernel import Direction, StringArrayProperty
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.meta.pointer import create_pointer
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -48,8 +47,8 @@ class DetectorPanelStraddleCheck(PythonAlgorithm):
             doc="GroupingWorkspace with instrument geometry attached",
         )
         self.declareProperty(
-            ULongLongPropertyWithValue("StraddlingGroups", id(None), direction=Direction.Output),
-            doc="A pointer to the list of group IDs that straddle East/West panels.",
+            StringArrayProperty("StraddlingGroups", direction=Direction.Output),
+            doc="List of group IDs (as strings) that straddle East/West panels.",
         )
         self.setRethrows(True)
 
@@ -110,7 +109,7 @@ class DetectorPanelStraddleCheck(PythonAlgorithm):
             if len(unique_panels) > 1:
                 straddling_groups.append(int(group_id))
 
-        self.setProperty("StraddlingGroups", create_pointer(straddling_groups))
+        self.setProperty("StraddlingGroups", [str(g) for g in straddling_groups])
 
 
 # Register algorithm with Mantid

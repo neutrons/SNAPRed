@@ -12,7 +12,6 @@ from mantid.simpleapi import (
 
 from snapred.backend.recipe.algorithm.DetectorPanelStraddleCheck import DetectorPanelStraddleCheck as Algo
 from snapred.meta.Config import Resource
-from snapred.meta.pointer import access_pointer
 
 # Fake SNAP instrument: East = bank1 (IDs 0-3) + bank2 (IDs 4-7)
 #                        West = bank3 (IDs 8-11) + bank4 (IDs 12-15)
@@ -87,8 +86,8 @@ class TestDetectorPanelStraddleCheck(unittest.TestCase):
         algo.setProperty("GroupingWorkspace", grpName)
         assert algo.execute()
 
-        result = access_pointer(algo.getProperty("StraddlingGroups").value)
-        assert sorted(result) == [1, 2, 3, 4]
+        result = list(algo.getProperty("StraddlingGroups").value)
+        assert sorted(int(g) for g in result) == [1, 2, 3, 4]
 
     def test_no_groups_straddle(self):
         """East-only and West-only groups should not be flagged."""
@@ -107,7 +106,7 @@ class TestDetectorPanelStraddleCheck(unittest.TestCase):
         algo.setProperty("GroupingWorkspace", grpName)
         assert algo.execute()
 
-        result = access_pointer(algo.getProperty("StraddlingGroups").value)
+        result = list(algo.getProperty("StraddlingGroups").value)
         assert result == []
 
     def test_some_groups_straddle(self):
@@ -131,8 +130,8 @@ class TestDetectorPanelStraddleCheck(unittest.TestCase):
         algo.setProperty("GroupingWorkspace", grpName)
         assert algo.execute()
 
-        result = access_pointer(algo.getProperty("StraddlingGroups").value)
-        assert result == [2]
+        result = list(algo.getProperty("StraddlingGroups").value)
+        assert [int(g) for g in result] == [2]
 
     def test_single_group_all_pixels(self):
         """A single group containing all pixels straddles."""
@@ -150,5 +149,5 @@ class TestDetectorPanelStraddleCheck(unittest.TestCase):
         algo.setProperty("GroupingWorkspace", grpName)
         assert algo.execute()
 
-        result = access_pointer(algo.getProperty("StraddlingGroups").value)
-        assert result == [1]
+        result = list(algo.getProperty("StraddlingGroups").value)
+        assert [int(g) for g in result] == [1]

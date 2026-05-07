@@ -26,7 +26,6 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
-from snapred.meta.pointer import access_pointer
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -191,7 +190,7 @@ class DataFactoryService:
                     "Checking panel straddle", GroupingWorkspace=wsName
                 )
                 self.mantidSnapper.executeQueue()
-                straddling = access_pointer(straddlingPtr.get())
+                straddling = straddlingPtr.get()
                 checked[groupName] = len(straddling) == 0
 
             if checked[groupName]:
@@ -199,6 +198,41 @@ class DataFactoryService:
             else:
                 logger.info(
                     f"Excluding calibration record (run={record.runNumber}, version={record.version}) "
+                    f"because grouping '{groupName}' straddles East/West panels"
+                )
+
+        return kept
+
+    def filterNormalizationRecordsByNonStraddlingGroups(
+        self,
+        records: List[NormalizationRecord],
+        runId: str,
+        useLiteMode: bool,
+    ) -> List[NormalizationRecord]:
+        """
+        Return only the NormalizationRecords whose focus group does not straddle
+        both the East and West detector panels.
+        """
+        kept: List[NormalizationRecord] = []
+        checked: Dict[str, bool] = {}
+
+        for record in records:
+            groupName = record.calculationParameters.name
+            if groupName not in checked:
+                item = GroceryListItem.builder().grouping(groupName).fromRun(runId).useLiteMode(useLiteMode).build()
+                wsName = self.groceryService.fetchGroupingDefinition(item)["workspace"]
+                straddlingPtr = self.mantidSnapper.DetectorPanelStraddleCheck(
+                    "Checking panel straddle", GroupingWorkspace=wsName
+                )
+                self.mantidSnapper.executeQueue()
+                straddling = straddlingPtr.get()
+                checked[groupName] = len(straddling) == 0
+
+            if checked[groupName]:
+                kept.append(record)
+            else:
+                logger.info(
+                    f"Excluding normalization record (run={record.runNumber}, version={record.version}) "
                     f"because grouping '{groupName}' straddles East/West panels"
                 )
 

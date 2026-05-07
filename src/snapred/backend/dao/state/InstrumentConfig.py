@@ -87,9 +87,13 @@ class InstrumentConfig(IndexedObject):
 
     @model_validator(mode="after")
     def _initDerivedPVMap(self):
+        # If the on-disk schema is incomplete (legacy), fall back to the full LEGACY_SCHEMA
+        if "length" not in self.stateIdSchema or "properties" not in self.stateIdSchema:
+            self.stateIdSchema = DetectorState.LEGACY_SCHEMA
+
         # reconstruct the derived-PV map from the schema into a more convenient format
         map_ = {}
-        for name, sc in self.stateIdSchema["derivedPVs"].items():
+        for name, sc in self.stateIdSchema.get("derivedPVs", {}).items():
             keyPVs = sc["keyPVs"]
             kvs = [(self._list_to_tuple(k), v) for k, v in sc["items"]]
             map_[name] = {"keyPVs": keyPVs, "kvs": dict(kvs)}
