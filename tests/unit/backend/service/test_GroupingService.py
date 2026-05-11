@@ -14,6 +14,30 @@ class TestGroupingService(unittest.TestCase):
         self.instance.mantidSnapper = mock.MagicMock()
         self.instance._straddleCache = {}
 
+    # --- __init__ ---
+
+    @mock.patch("snapred.backend.service.GroupingService.MantidSnapper")
+    @mock.patch("snapred.backend.service.GroupingService.GroceryService")
+    def test_init_default_groceryService(self, MockGroceryService, MockMantidSnapper):
+        """When no groceryService is passed, a new GroceryService() is created."""
+        instance = GroupingService.__new__(GroupingService)
+        instance.__init__()
+        MockGroceryService.assert_called_once()
+        assert instance.groceryService is MockGroceryService.return_value
+        MockMantidSnapper.assert_called_once_with(None, "snapred.backend.service.GroupingService")
+        assert instance.mantidSnapper is MockMantidSnapper.return_value
+
+    @mock.patch("snapred.backend.service.GroupingService.MantidSnapper")
+    @mock.patch("snapred.backend.service.GroupingService.GroceryService")
+    def test_init_custom_groceryService(self, MockGroceryService, MockMantidSnapper):
+        """When a groceryService is passed, it is used directly."""
+        custom_gs = mock.MagicMock()
+        instance = GroupingService.__new__(GroupingService)
+        instance.__init__(groceryService=custom_gs)
+        MockGroceryService.assert_not_called()
+        assert instance.groceryService is custom_gs
+        MockMantidSnapper.assert_called_once_with(None, "snapred.backend.service.GroupingService")
+
     # --- isGroupNonStraddling ---
 
     def test_isGroupNonStraddling_returns_true_when_no_straddle(self):
