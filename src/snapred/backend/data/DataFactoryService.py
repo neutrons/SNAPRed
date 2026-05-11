@@ -7,7 +7,6 @@ from pydantic import validate_call
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
-from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.ReductionState import ReductionState
@@ -23,7 +22,6 @@ from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -41,7 +39,6 @@ class DataFactoryService:
         #   to allow singleton reset during testing.
         self.lookupService = self._defaultClass(lookupService, LocalDataService)
         self.groceryService = self._defaultClass(groceryService, GroceryService)
-        self.mantidSnapper = MantidSnapper(None, __name__)
 
     def _defaultClass(self, val, clazz):
         if val is None:
@@ -167,76 +164,6 @@ class DataFactoryService:
     @validate_call
     def getLatestApplicableCalibrationVersion(self, runId: str, useLiteMode: bool, state: str):
         return self.lookupService.calibrationIndexer(useLiteMode, state).latestApplicableVersion(runId)
-
-    def filterCalibrationRecordsByNonStraddlingGroups(
-        self,
-        records: List[CalibrationRecord],
-        runId: str,
-        useLiteMode: bool,
-    ) -> List[CalibrationRecord]:
-        """
-        Return only the CalibrationRecords whose focus group does not straddle
-        both the East and West detector panels.
-        """
-        kept: List[CalibrationRecord] = []
-        checked: Dict[str, bool] = {}
-
-        for record in records:
-            groupName = record.focusGroupCalibrationMetrics.focusGroupName
-            if groupName not in checked:
-                item = GroceryListItem.builder().grouping(groupName).fromRun(runId).useLiteMode(useLiteMode).build()
-                wsName = self.groceryService.fetchGroupingDefinition(item)["workspace"]
-                straddlingPtr = self.mantidSnapper.DetectorPanelStraddleCheck(
-                    "Checking panel straddle", GroupingWorkspace=wsName
-                )
-                self.mantidSnapper.executeQueue()
-                straddling = straddlingPtr.get()
-                checked[groupName] = len(straddling) == 0
-
-            if checked[groupName]:
-                kept.append(record)
-            else:
-                logger.info(
-                    f"Excluding calibration record (run={record.runNumber}, version={record.version}) "
-                    f"because grouping '{groupName}' straddles East/West panels"
-                )
-
-        return kept
-
-    def filterNormalizationRecordsByNonStraddlingGroups(
-        self,
-        records: List[NormalizationRecord],
-        runId: str,
-        useLiteMode: bool,
-    ) -> List[NormalizationRecord]:
-        """
-        Return only the NormalizationRecords whose focus group does not straddle
-        both the East and West detector panels.
-        """
-        kept: List[NormalizationRecord] = []
-        checked: Dict[str, bool] = {}
-
-        for record in records:
-            groupName = record.calculationParameters.name
-            if groupName not in checked:
-                item = GroceryListItem.builder().grouping(groupName).fromRun(runId).useLiteMode(useLiteMode).build()
-                wsName = self.groceryService.fetchGroupingDefinition(item)["workspace"]
-                straddlingPtr = self.mantidSnapper.DetectorPanelStraddleCheck(
-                    "Checking panel straddle", GroupingWorkspace=wsName
-                )
-                self.mantidSnapper.executeQueue()
-                straddling = straddlingPtr.get()
-                checked[groupName] = len(straddling) == 0
-
-            if checked[groupName]:
-                kept.append(record)
-            else:
-                logger.info(
-                    f"Excluding normalization record (run={record.runNumber}, version={record.version}) "
-                    f"because grouping '{groupName}' straddles East/West panels"
-                )
-
-        return kept
 
     ##### NORMALIZATION METHODS #####
 

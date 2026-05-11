@@ -1,4 +1,4 @@
-"""CIS script to test DataFactoryService.filter{Calibration,Normalization}RecordsByNonStraddlingGroups"""
+"""CIS script to test GroupingService.filter{Calibration,Normalization}RecordsByNonStraddlingGroups"""
 
 from pathlib import Path
 import sys
@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(SNAPRed_module_root).parent / "tests"))
 from util.IPTS_override import IPTS_override
 
 from snapred.backend.data.DataFactoryService import DataFactoryService
+from snapred.backend.service.GroupingService import GroupingService
 
 
 # --- User input ---
@@ -20,6 +21,7 @@ recordType = "calibration"  # "calibration" or "normalization"
 
 with IPTS_override():
     dfs = DataFactoryService()
+    gs = GroupingService()
 
     # Build state ID for this run
     stateId, _ = dfs.constructStateId(runNumber)
@@ -31,14 +33,14 @@ with IPTS_override():
             "exists": dfs.calibrationExists,
             "getIndex": dfs.getCalibrationIndex,
             "readRecord": dfs.lookupService.readCalibrationRecord,
-            "filterRecords": dfs.filterCalibrationRecordsByNonStraddlingGroups,
+            "filterRecords": gs.filterCalibrationRecordsByNonStraddlingGroups,
             "groupName": lambda rec: rec.focusGroupCalibrationMetrics.focusGroupName,
         },
         "normalization": {
             "exists": dfs.normalizationExists,
             "getIndex": dfs.getNormalizationIndex,
             "readRecord": dfs.lookupService.readNormalizationRecord,
-            "filterRecords": dfs.filterNormalizationRecordsByNonStraddlingGroups,
+            "filterRecords": gs.filterNormalizationRecordsByNonStraddlingGroups,
             "groupName": lambda rec: rec.calculationParameters.name,
         },
     }
