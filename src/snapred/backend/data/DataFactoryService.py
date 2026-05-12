@@ -21,8 +21,11 @@ from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+
+logger = snapredLogger.getLogger(__name__)
 
 
 @Singleton
