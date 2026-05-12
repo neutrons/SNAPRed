@@ -46,6 +46,7 @@ jobs:
         with:
           package-name: ${{ env.PKG_NAME }}
           module-name: ${{ env.MODULE_NAME }}
+          python-version: "3.12"
           local-channel: /tmp/local-channel
           extra-channels: mantid-ornl mantid neutrons
 
