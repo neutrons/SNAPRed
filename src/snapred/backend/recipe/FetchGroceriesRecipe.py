@@ -61,6 +61,7 @@ class FetchGroceriesRecipe:
             data["result"] = algo.execute()
             data["loader"] = algo.getPropertyValue("LoaderType")
             data["workspace"] = workspace
+            data["runStatus"] = algo.getPropertyValue("RunStatus")
         except (RuntimeError, TypeError) as e:
             # TODO: use `MantidSnapper`!
             name = "FetchGroceriesAlgorithm"

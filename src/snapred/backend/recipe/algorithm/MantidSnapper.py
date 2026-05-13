@@ -247,9 +247,11 @@ class MantidSnapper:
             self.cleanup()
             raise AlgorithmException(name, str(e)) from e
         finally:
-            self._cleanupNonConcurrent(name, algorithm)
-            if mutex is not None:
-                mutex.release()
+            try:
+                self._cleanupNonConcurrent(name, algorithm)
+            finally:
+                if mutex is not None:
+                    mutex.release()
 
     @classmethod
     def _cleanupNonConcurrent(cls, name, algorithm):
@@ -304,12 +306,11 @@ class MantidSnapper:
 
     @classmethod
     def _addWorkspaceInfo(cls, workspaceName: str, algorithmName: str, propertyName: str):
-        cls._infoMutex.acquire()
-        cls._workspacesInfo[workspaceName] = {
-            "propertyName": propertyName,
-            "algorithm": algorithmName,
-        }
-        cls._infoMutex.release()
+        with cls._infoMutex:
+            cls._workspacesInfo[workspaceName] = {
+                "propertyName": propertyName,
+                "algorithm": algorithmName,
+            }
 
     @classmethod
     def getWorkspacesInfo(cls) -> Dict[str, Dict[str, Any]]:
