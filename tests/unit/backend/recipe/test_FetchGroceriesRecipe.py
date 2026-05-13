@@ -163,9 +163,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         """Test fetch method with LoadLiveDataInterval loader"""
         mock_instance = mockAlgo.return_value
         mock_instance.execute.return_value = "data"
-        mock_instance.getPropertyValue.side_effect = lambda name: (
-            "LoadLiveDataInterval" if name == "LoaderType" else ""
-        )
+        mock_instance.getPropertyValue.side_effect = lambda name: "LoadLiveDataInterval" if name == "LoaderType" else ""
 
         self.clearoutWorkspaces()
         res = self.rx.executeRecipe(self.filePath, self.fetchedWSname, "LoadLiveDataInterval")
