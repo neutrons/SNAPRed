@@ -181,6 +181,7 @@ class LocalDataService:
                 "CalibrantSamples",
                 "Powder/PixelGroupingDefinitions",
                 "Powder/SNAPLite.xml",
+                "Powder/LiteGroupMap.hdf",
             ]
 
             # Validate all items first
