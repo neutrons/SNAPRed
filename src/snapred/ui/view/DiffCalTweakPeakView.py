@@ -3,6 +3,7 @@ from typing import List
 import matplotlib.pyplot as plt
 import pydantic
 from mantid.plots.datafunctions import get_spectrum
+from mantid.plots.utility import PlotNormalizationType
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import (
     QHBoxLayout,
@@ -293,7 +294,9 @@ class DiffCalTweakPeakView(BackendRequestView):
             ax.legend(loc=1)
 
             # fill in the discovered peaks for easier viewing
-            x, y, _, _ = get_spectrum(self.mantidSnapper.mtd[workspace], wkspIndex, normalize_by_bin_width=True)
+            x, y, _, _ = get_spectrum(
+                self.mantidSnapper.mtd[workspace], wkspIndex, normalization=PlotNormalizationType.BIN_WIDTH
+            )
             # for each detected peak in this group, shade in the peak region
             for chi2, peak in zip(chisq, peaks):
                 # areas inside peak bounds (to be shaded)
