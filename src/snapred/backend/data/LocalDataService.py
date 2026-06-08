@@ -1468,7 +1468,16 @@ class LocalDataService:
                 raise  # the existing exception is sufficient
 
         if not success:
-            metadata = self.readLiveMetadata()
+            # No local PVFile for `runNumber`, but a live-data connection exists: fall back to the live run.
+            #   If the fallback itself fails, make clear that (1) there's no local data for the requested run,
+            #   and (2) the *live-data* read is what actually errored.  Otherwise a live-data failure (which is
+            #   about a different, currently-running experiment) masquerades as a problem with `runNumber`.
+            try:
+                metadata = self.readLiveMetadata()
+            except Exception as e:  # noqa: BLE001
+                raise RuntimeError(
+                    f"No PVFile exists for run: {runNumber}, and the live-data fallback failed:\n  {e}"
+                ) from e
 
             if metadata.runNumber == runNumber:
                 success = True

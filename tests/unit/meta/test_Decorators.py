@@ -88,11 +88,12 @@ def test_stateValidationExceptionWithInvalidState(mockLogger):  # noqa: ARG001
     testMessage = "Here I will tell you, the end user, the reason why the state is invalid."
     mock_exception = generateMockExceptionWithTraceback(RuntimeError, testMessage)
 
-    with pytest.raises(
-        StateValidationException, match=r"Instrument State for given Run Number is invalid! \(See logs for details\.\)"
-    ):
+    with pytest.raises(StateValidationException, match=r"Instrument State for given Run Number is invalid!") as excinfo:
         raise StateValidationException(mock_exception)
 
+    # The underlying reason should be surfaced in the user-facing message, not just the logs.
+    assert testMessage in str(excinfo.value)
+    assert "(See logs for details.)" in str(excinfo.value)
     mockLogger.error.assert_called_once_with(testMessage)
 
 
