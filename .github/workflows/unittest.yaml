@@ -49,6 +49,11 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     steps:
+    - name: Configure Git credentials for code.ornl.gov
+      env:
+        TOKEN: ${{ secrets.GITLAB_LFS_READ_TOKEN }}
+      run: |
+        git config --global url."https://gitlab-ci-token:${TOKEN}@code.ornl.gov/".insteadOf "https://code.ornl.gov/
     - uses: actions/checkout@v4
       with:
         submodules: true
