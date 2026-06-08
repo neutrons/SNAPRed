@@ -116,7 +116,7 @@ class CalibrationService(Service):
 
         N_ref = None
         inputFilePath = self.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
-        if inputFilePath.exists():
+        if inputFilePath is not None and inputFilePath.exists():
             # As the workspaces aren't loaded yet, this estimate uses the file size.
             # Note: `st_size` is in bytes.
             dataSize = float(inputFilePath.stat().st_size)
@@ -495,7 +495,8 @@ class CalibrationService(Service):
         run = request.runConfig
         version = request.version
         state, _ = self.dataFactoryService.constructStateId(run.runNumber)
-        return self.dataFactoryService.getCalibrationRecord(run.runNumber, run.useLiteMode, version, state)
+        cycleID = self.dataFactoryService.getCycleID(run.runNumber)
+        return self.dataFactoryService.getCalibrationRecord(run.runNumber, run.useLiteMode, cycleID, version, state)
 
     def matchRunsToCalibrationVersions(self, request: MatchRunsRequest) -> Dict[str, Any]:
         """
@@ -596,7 +597,8 @@ class CalibrationService(Service):
         useLiteMode = request.useLiteMode
         version = request.version
         state, _ = self.dataFactoryService.constructStateId(runId)
-        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, useLiteMode, version, state)
+        cycleID = self.dataFactoryService.getCycleID(runId)
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, useLiteMode, cycleID, version, state)
         if calibrationRecord is None:
             errorTxt = f"No calibration record found for run {runId}, version {version}."
             logger.error(errorTxt)

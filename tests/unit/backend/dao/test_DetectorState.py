@@ -130,8 +130,87 @@ class TestDetectorState:
         run, info = next(iter(self.runInfo.items()))
         PVs = self._logs_from_DetectorState(info["detectorState"])
         del PVs["det_arc2"]
-        with pytest.raises(RuntimeError, match=".*a required state PV.*is not present.*"):
+        with pytest.raises(RuntimeError, match=".*required state PV.*not present.*"):
             DetectorState.fromPVLogs(PVs, DetectorState.LEGACY_SCHEMA)
+
+    def test_fromPVLogs_reports_all_missing_PVs(self):
+        run, info = next(iter(self.runInfo.items()))
+        PVs = self._logs_from_DetectorState(info["detectorState"])
+        del PVs["det_arc2"]
+        del PVs["BL3:Chop:Skf1:WavelengthUserReq"]
+        with pytest.raises(RuntimeError, match=".*det_arc2.*") as exc_info:
+            DetectorState.fromPVLogs(PVs, DetectorState.LEGACY_SCHEMA)
+        # Both missing PVs should be mentioned in the error
+        assert "det_arc2" in str(exc_info.value)
+        assert "BL3:Chop:Skf1:WavelengthUserReq" in str(exc_info.value)
+
+    def test_fromPVLogs_uses_default_for_missing_PV(self):
+        import copy
+
+        run, info = next(iter(self.runInfo.items()))
+        PVs = self._logs_from_DetectorState(info["detectorState"])
+
+        # Create a schema with a default value for a PV
+        schema = copy.deepcopy(DetectorState.LEGACY_SCHEMA)
+        schema["properties"]["BL3:Chop:Skf1:WavelengthUserReq"]["default"] = 2.1
+
+        # Remove the PV from logs to simulate an older run
+        del PVs["BL3:Chop:Skf1:WavelengthUserReq"]
+
+        # Should succeed using the default value instead of raising
+        detectorState = DetectorState.fromPVLogs(PVs, schema)
+        assert detectorState.PVs["BL3:Chop:Skf1:WavelengthUserReq"] == 2.1
+
+    def test_fromPVLogs_uses_default_for_multiple_missing_PVs(self):
+        import copy
+
+        run, info = next(iter(self.runInfo.items()))
+        PVs = self._logs_from_DetectorState(info["detectorState"])
+
+        # Create a schema with defaults for multiple PVs
+        schema = copy.deepcopy(DetectorState.LEGACY_SCHEMA)
+        schema["properties"]["BL3:Chop:Skf1:WavelengthUserReq"]["default"] = 2.1
+        schema["properties"]["BL3:Mot:OpticsPos:Pos"]["default"] = 2
+
+        # Remove both PVs from logs
+        del PVs["BL3:Chop:Skf1:WavelengthUserReq"]
+        del PVs["BL3:Mot:OpticsPos:Pos"]
+
+        detectorState = DetectorState.fromPVLogs(PVs, schema)
+        assert detectorState.PVs["BL3:Chop:Skf1:WavelengthUserReq"] == 2.1
+        assert detectorState.PVs["BL3:Mot:OpticsPos:Pos"] == 2
+
+    def test_fromPVLogs_prefers_log_value_over_default(self):
+        import copy
+
+        run, info = next(iter(self.runInfo.items()))
+        PVs = self._logs_from_DetectorState(info["detectorState"])
+
+        # Create a schema with a default that differs from the log value
+        schema = copy.deepcopy(DetectorState.LEGACY_SCHEMA)
+        schema["properties"]["BL3:Chop:Skf1:WavelengthUserReq"]["default"] = 9.9
+
+        # PV is present in the logs: the log value should be used, not the default
+        detectorState = DetectorState.fromPVLogs(PVs, schema)
+        expected = DetectorState._normalize_type(
+            PVs["BL3:Chop:Skf1:WavelengthUserReq"],
+            schema["properties"]["BL3:Chop:Skf1:WavelengthUserReq"]["type"],
+            "BL3:Chop:Skf1:WavelengthUserReq",
+        )
+        assert detectorState.PVs["BL3:Chop:Skf1:WavelengthUserReq"] == expected
+
+    def test_fromPVLogs_still_raises_without_default(self):
+        import copy
+
+        run, info = next(iter(self.runInfo.items()))
+        PVs = self._logs_from_DetectorState(info["detectorState"])
+
+        # Schema without a default for the missing PV should still raise
+        schema = copy.deepcopy(DetectorState.LEGACY_SCHEMA)
+        del PVs["BL3:Chop:Skf1:WavelengthUserReq"]
+
+        with pytest.raises(RuntimeError, match=".*required state PV.*not present.*"):
+            DetectorState.fromPVLogs(PVs, schema)
 
     def test_toPVLogs(self):
         # verify the `toPVLogs` converts to "time series" (as `Iterable`)

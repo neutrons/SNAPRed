@@ -150,6 +150,9 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("LoaderType", "LoadNexus")
         assert "LoadNexus" == algo.getPropertyValue("LoaderType")
 
+        # RunStatus output property must exist (used to pass live-data run status back to recipe)
+        assert algo.getPropertyValue("RunStatus") == ""
+
         # set instrument name
         algo.setPropertyValue("InstrumentName", "SNAP")
         assert "SNAP" == algo.getPropertyValue("InstrumentName")

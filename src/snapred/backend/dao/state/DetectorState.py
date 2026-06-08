@@ -85,8 +85,9 @@ class DetectorState(BaseModel):
                 # access as `numpy.ndarray`
                 v = v[...]
         elif not isinstance(v, (str, bytes, np.bytes_)) and isinstance(v, Iterable):
-            # if a scalar is required, access the starting value from any time-series log
-            v = v[0]
+            # scalar required from a time-series log: use the last (most recent) value,
+            # as legacy files may have a spurious 0 at index 0
+            v = v[-1]
 
         # the following converts scalar types to Python-native types
         match type_:
@@ -201,14 +202,21 @@ class DetectorState(BaseModel):
     @classmethod
     def fromPVLogs(cls, logs: Mapping[str, Any], schema: Dict[str, Any]) -> "DetectorState":
         PVs = {}
+        missingPVs = []
         for PV in schema["properties"]:
-            if PV not in logs:
-                raise RuntimeError(f"a required state PV '{PV}' is not present in the PV logs")
             field = schema["properties"][PV]
-            value = cls._normalize_type(logs[PV], field["type"], PV)
-            # resolution is not _applied_ at this point, this allows the `DetectorState` to be
-            #   used in calculations which require PV values at the original precision.
-            PVs[PV] = value
+            if PV not in logs:
+                if "default" in field:
+                    PVs[PV] = field["default"]
+                else:
+                    missingPVs.append(PV)
+            else:
+                value = cls._normalize_type(logs[PV], field["type"], PV)
+                # resolution is not _applied_ at this point, this allows the `DetectorState` to be
+                #   used in calculations which require PV values at the original precision.
+                PVs[PV] = value
+        if missingPVs:
+            raise RuntimeError(f"the following required state PV(s) are not present in the PV logs: {missingPVs}")
         stateId = cls.SHA(PVs, schema)
         return DetectorState(PVs=PVs, stateId=stateId)
 
@@ -288,6 +296,10 @@ class DetectorState(BaseModel):
                 # -- only include if different from the PVlogs key;
                 # -- this field can also be used for remapping, if for some reason the PVlogs key changes.
                 "alias": "vdet_arc1",
+                # [optional] Default value to use when the PV is not present in the logs:
+                # -- this is useful for older runs where certain PVs did not exist;
+                # -- the value should match the expected type for this PV.
+                # "default": -65.0,
             },
             ## Example of a `List[float]` attribute (also must be added to the "required" list).
             ## Array attributes may include arbitrarily-nested arrays.

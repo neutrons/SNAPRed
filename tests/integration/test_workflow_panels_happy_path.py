@@ -49,11 +49,16 @@ class TestGUIPanels:
         self.workflowState = {}
         self._warningMessageBox = mock.patch(
             "qtpy.QtWidgets.QMessageBox.warning",
-            lambda *args, **kwargs: pytest.fail(
-                "WARNING This test seems to be missing expected calibration and/or normalization data", pytrace=False
-            )
-            if "Reduction is missing calibration data," in args[2]
-            else pytest.fail("WARNING messagebox:\n" + f"    args: {args}\n" + f"    kwargs: {kwargs}", pytrace=False),
+            lambda *args, **kwargs: (
+                pytest.fail(
+                    "WARNING This test seems to be missing expected calibration and/or normalization data",
+                    pytrace=False,
+                )
+                if "Reduction is missing calibration data," in args[2]
+                else pytest.fail(
+                    "WARNING messagebox:\n" + f"    args: {args}\n" + f"    kwargs: {kwargs}", pytrace=False
+                )
+            ),
         )
         self._warningMessageBox.start()
 
@@ -68,18 +73,20 @@ class TestGUIPanels:
         # patch log-warnings QMessage box: runs using `QMessageBox.exec`.
         self._logWarningsMessageBox = mock.patch(
             "qtpy.QtWidgets.QMessageBox.exec",
-            lambda self, *args, **kwargs: QMessageBox.Ok
-            if (
-                "The backend has encountered warning(s)" in self.text()
-                and "InstrumentDonor will only be used if GroupingFilename is in XML format." in self.detailedText()
-            )
-            else pytest.fail(
-                "unexpected QMessageBox.exec:"
-                + f"    args: {args}"
-                + f"    kwargs: {kwargs}"
-                + f"    text: '{self.text()}'"
-                + f"    detailed text: '{self.detailedText()}'",
-                pytrace=False,
+            lambda self, *args, **kwargs: (
+                QMessageBox.Ok
+                if (
+                    "The backend has encountered warning(s)" in self.text()
+                    and "InstrumentDonor will only be used if GroupingFilename is in XML format." in self.detailedText()
+                )
+                else pytest.fail(
+                    "unexpected QMessageBox.exec:"
+                    + f"    args: {args}"
+                    + f"    kwargs: {kwargs}"
+                    + f"    text: '{self.text()}'"
+                    + f"    detailed text: '{self.detailedText()}'",
+                    pytrace=False,
+                )
             ),
         )
         self._logWarningsMessageBox.start()

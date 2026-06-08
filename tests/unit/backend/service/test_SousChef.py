@@ -443,6 +443,7 @@ class TestSousChef(unittest.TestCase):
         self.instance._getThresholdFromCalibrantSample = mock.Mock(return_value=mock.Mock())
         self.instance.dataFactoryService.getCifFilePath = mock.Mock()
         self.instance.dataFactoryService.getReductionState = mock.Mock()
+        self.instance.dataFactoryService.getCycleID = mock.Mock(return_value="2024-A")
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibrationRecord)
         self.instance.dataFactoryService.getNormalizationRecord = mock.Mock(return_value=normalizationRecord)
 

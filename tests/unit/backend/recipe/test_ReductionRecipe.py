@@ -731,8 +731,8 @@ class ReductionRecipeTest(TestCase):
             mockGroupWorkspace.readY.return_value = [0] * 10
             mockMaskworkspace.readY.return_value = [0] * 10
 
-            mockMtd.__getitem__.side_effect = (
-                lambda ws_name: mockMaskworkspace if ws_name == "mask" else mockGroupWorkspace
+            mockMtd.__getitem__.side_effect = lambda ws_name: (
+                mockMaskworkspace if ws_name == "mask" else mockGroupWorkspace
             )
 
             recipe = ReductionRecipe()

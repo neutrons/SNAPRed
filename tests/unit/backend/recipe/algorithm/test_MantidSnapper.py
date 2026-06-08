@@ -53,6 +53,31 @@ class TestMantidSnapper(unittest.TestCase):
             with pytest.raises(TimeoutError, match="Timeout occurred while waiting for instance of"):
                 mantidSnapper.executeQueue()
 
+            # Mutex must still be released even when TimeoutError is raised
+            assert MantidSnapper._nonConcurrentAlgorithmMutex.release.called
+
+    @mock.patch(PatchRoot.format("AlgorithmManager"))
+    def test_timeout_nonReentrant_mutex_released(self, mockAlgorithmManager):
+        """Verify non-reentrant mutex is released even when _waitForAlgorithmCompletion raises TimeoutError."""
+        mockAlgorithmManager.runningInstancesOf = mock.Mock(return_value=["theAlgoThatNeverEnds"])
+        mockAlgorithmManager.create.return_value = self.fakeFunction
+
+        fakeMutex = mock.Mock()
+        with (
+            mock.patch.object(MantidSnapper, "_timeout", 0.2),
+            mock.patch.object(MantidSnapper, "_nonReentrantAlgorithms", ("fakeFunction",)),
+            mock.patch.object(MantidSnapper, "_nonReentrantMutexes", {"fakeFunction": fakeMutex}),
+        ):
+            mantidSnapper = MantidSnapper(parentAlgorithm=None, name="")
+            mantidSnapper.fakeFunction("test", fakeOutput="output")
+
+            with pytest.raises(TimeoutError, match="Timeout occurred while waiting for instance of"):
+                mantidSnapper.executeQueue()
+
+            # The mutex MUST be released even though TimeoutError was raised
+            assert fakeMutex.acquire.called
+            assert fakeMutex.release.called
+
     @mock.patch(PatchRoot.format("AlgorithmManager"))
     def test_timeout_concurrent(self, mockAlgorithmManager):
         mockAlgorithmManager.runningInstancesOf = mock.Mock(return_value=["theAlgoThatNeverEnds"])

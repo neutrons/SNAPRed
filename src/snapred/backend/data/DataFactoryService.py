@@ -15,13 +15,17 @@ from snapred.backend.dao.request.CreateIndexEntryRequest import CreateIndexEntry
 from snapred.backend.dao.request.NormalizationExportRequest import NormalizationExportRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.RunMetadata import RunMetadata
+from snapred.backend.dao.state.Cycle import Cycle
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+
+logger = snapredLogger.getLogger(__name__)
 
 
 @Singleton
@@ -52,6 +56,17 @@ class DataFactoryService:
     def getInstrumentConfig(self, runId: str) -> InstrumentConfig:
         return self.lookupService.readInstrumentConfig(runId)
 
+    def getCycleID(self, runNumber: str) -> str:
+        instrumentConfig = self.lookupService.readInstrumentParameters(runNumber)
+        if instrumentConfig.cycle is None:
+            raise ValueError(f"No cycle information found for run {runNumber}")
+        if int(runNumber) < instrumentConfig.cycle.firstRun:
+            raise ValueError(
+                f"Run {runNumber} is not within cycle {instrumentConfig.cycle.cycleID}"
+                f" (first run: {instrumentConfig.cycle.firstRun})"
+            )
+        return instrumentConfig.cycle.cycleID
+
     def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
         return self.lookupService.readStateConfig(runId, useLiteMode)
 
@@ -78,6 +93,14 @@ class DataFactoryService:
 
     def getDefaultInstrumentState(self, runId: str):
         return self.lookupService.generateInstrumentState(runId)
+
+    def updateInstrumentConfigCycle(self, cycle: Cycle, author: str):
+        runNumber = str(cycle.firstRun)
+        appliesTo = f">={cycle.firstRun}"
+        instrumentConfig = self.lookupService.readInstrumentParameters(runNumber)
+        instrumentConfig.cycle = cycle
+        self.lookupService.writeInstrumentParameters(instrumentConfig, appliesTo, author)
+        return instrumentConfig
 
     def getCompatibleStates(self, runId: str, useLiteMode: bool):
         return self.lookupService.findCompatibleStates(runId, useLiteMode)
@@ -120,12 +143,17 @@ class DataFactoryService:
         self,
         runId: str,
         useLiteMode: bool,
+        cycleID: str,
         version: Version = VersionState.LATEST,
         state: Optional[str] = None,
     ) -> CalibrationRecord:
         """
-        If no version is passed, will use the latest version applicable to runId
+        If no version is passed, will use the latest version applicable to runId.
+        Validates that runId belongs to the given cycle.
         """
+        actualCycleID = self.getCycleID(runId)
+        if actualCycleID != cycleID:
+            raise ValueError(f"Run {runId} belongs to cycle {actualCycleID}, not the requested cycle {cycleID}")
         return self.lookupService.readCalibrationRecord(runId, useLiteMode, state, version)
 
     @validate_call
@@ -162,11 +190,20 @@ class DataFactoryService:
 
     @validate_call
     def getNormalizationRecord(
-        self, runId: str, useLiteMode: bool, state: str, version: Version = VersionState.LATEST
+        self,
+        runId: str,
+        useLiteMode: bool,
+        state: str,
+        cycleID: str,
+        version: Version = VersionState.LATEST,
     ) -> NormalizationRecord:
         """
-        If no version is passed, will use the latest version applicable to runId
+        If no version is passed, will use the latest version applicable to runId.
+        Validates that runId belongs to the given cycle.
         """
+        actualCycleID = self.getCycleID(runId)
+        if actualCycleID != cycleID:
+            raise ValueError(f"Run {runId} belongs to cycle {actualCycleID}, not the requested cycle {cycleID}")
         return self.lookupService.readNormalizationRecord(runId, useLiteMode, state, version)
 
     @validate_call

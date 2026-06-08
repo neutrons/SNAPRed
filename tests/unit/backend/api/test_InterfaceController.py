@@ -37,8 +37,8 @@ with mock.patch.dict(
         mockService = mock.Mock()
         mockService.orchestrateRecipe.side_effect = orchestrateRecipe_side_effect
 
-        interfaceController.serviceFactory.getService.side_effect = (
-            lambda x: mockService if x == "Test Service" else None
+        interfaceController.serviceFactory.getService.side_effect = lambda x: (
+            mockService if x == "Test Service" else None
         )
         return interfaceController
 

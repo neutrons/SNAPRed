@@ -1,5 +1,6 @@
 from typing import List
 
+from snapred.backend.dao.request.UpdateCycleRequest import UpdateCycleRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.service.Service import Service
@@ -23,6 +24,7 @@ class ConfigLookupService(Service):
         self.registerPath("", self.getConfigs)
         self.registerPath("samplePaths", self.getSampleFilePaths)
         self.registerPath("groupingMap", self.getGroupingMap)
+        self.registerPath("updateCycle", self.updateCycle)
 
         return
 
@@ -42,3 +44,10 @@ class ConfigLookupService(Service):
         for run in runs:
             data[run.runNumber] = self.dataFactoryService.getReductionState(run.runNumber, run.useLiteMode)
         return data
+
+    @FromString
+    def updateCycle(self, request: UpdateCycleRequest):
+        return self.dataFactoryService.updateInstrumentConfigCycle(
+            cycle=request.cycle,
+            author=request.author,
+        )

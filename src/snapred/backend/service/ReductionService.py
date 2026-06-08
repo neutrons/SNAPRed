@@ -208,7 +208,8 @@ class ReductionService(Service):
         N_groups = len(self._getGroupingMap(request.runNumber, request.useLiteMode))
         if N_groups >= 1 and not request.liveDataMode:
             inputFilePath = self.groceryService.createNeutronFilePath(request.runNumber, request.useLiteMode)
-            if inputFilePath.exists():
+            # in the live-data case, `inputFilePath` may be `None`
+            if inputFilePath and inputFilePath.exists():
                 # As the workspaces aren't actually loaded yet, this estimate uses the file size in bytes.
                 dataSize = float(inputFilePath.stat().st_size)
                 N_ref = float(N_groups * dataSize)
@@ -288,12 +289,13 @@ class ReductionService(Service):
             #     its version will have been filled in by `fetchReductionGroceries`.
             #   * `MISSING_DIFFRACTION_CALIBRATION` now means that the default diffraction calibration
             #     with `VERSION_START` is being applied.
+            cycleID = self.dataFactoryService.getCycleID(request.runNumber)
             calibration = self.dataFactoryService.getCalibrationRecord(
-                request.runNumber, request.useLiteMode, request.versions.calibration, state
+                request.runNumber, request.useLiteMode, cycleID, request.versions.calibration, state
             )
             if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
                 normalization = self.dataFactoryService.getNormalizationRecord(
-                    request.runNumber, request.useLiteMode, state, request.versions.normalization
+                    request.runNumber, request.useLiteMode, state, cycleID, request.versions.normalization
                 )
 
         return ReductionRecord(
