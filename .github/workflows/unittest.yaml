@@ -53,7 +53,7 @@ jobs:
       env:
         TOKEN: ${{ secrets.GITLAB_LFS_READ_TOKEN }}
       run: |
-        git config --global url."https://gitlab-ci-token:${TOKEN}@code.ornl.gov/".insteadOf "https://code.ornl.gov/
+        git config --global url."https://gitlab-ci-token:${TOKEN}@code.ornl.gov/".insteadOf "https://code.ornl.gov/"
     - uses: actions/checkout@v4
       with:
         submodules: true
