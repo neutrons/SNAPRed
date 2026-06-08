@@ -631,6 +631,50 @@ def test_readRunMetadata_live_data_fallback_no_active_run(mockRunMetadata):
         actual = instance.readRunMetadata(runNumber)  # noqa: F841
 
 
+def test_readRunMetadata_other_file_not_found_reraises():
+    # A `FileNotFoundError` that isn't a "No PVFile exists" error should be re-raised as-is.
+    runNumber = "12345"
+    instance = LocalDataService()
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("some other file is missing"))
+    instance.hasLiveDataConnection = mock.Mock(return_value=True)
+    instance.readLiveMetadata = mock.Mock()
+
+    with pytest.raises(FileNotFoundError, match="some other file is missing"):
+        instance.readRunMetadata(runNumber)
+    instance.readLiveMetadata.assert_not_called()
+
+
+def test_readRunMetadata_no_pvfile_no_live_connection_reraises():
+    # No PVFile and no live-data connection: the original `FileNotFoundError` should be re-raised.
+    runNumber = "12345"
+    instance = LocalDataService()
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists"))
+    instance.hasLiveDataConnection = mock.Mock(return_value=False)
+    instance.readLiveMetadata = mock.Mock()
+
+    with pytest.raises(FileNotFoundError, match="No PVFile exists"):
+        instance.readRunMetadata(runNumber)
+    instance.readLiveMetadata.assert_not_called()
+
+
+def test_readRunMetadata_live_data_fallback_read_fails():
+    # No PVFile, a live-data connection exists, but the live-data read itself errors.
+    runNumber = "12345"
+    instance = LocalDataService()
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists"))
+    instance.hasLiveDataConnection = mock.Mock(return_value=True)
+    instance.readLiveMetadata = mock.Mock(side_effect=RuntimeError("live-data listener is down"))
+
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            f"No PVFile exists for run: {runNumber}, and the live-data fallback failed:"
+            + "(.|\n)*live-data listener is down"
+        ),
+    ):
+        instance.readRunMetadata(runNumber)
+
+
 @mock.patch("socket.gethostbyaddr")
 def test_hasLiveDataConnection(mockGetHostByAddr):
     with Config_override("liveData.enabled", True):
