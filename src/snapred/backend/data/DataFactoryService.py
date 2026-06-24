@@ -33,6 +33,9 @@ class DataFactoryService:
     # TODO: rules for busting cache
     cache: Dict[str, ReductionState] = {}
 
+    # Sentinel cycle ID used when cycle info is absent/invalid; reduction continues as "diagnostic".
+    FALLBACK_CYCLE_ID: str = "unknown"
+
     def __init__(self, lookupService: LocalDataService = None, groceryService: GroceryService = None) -> None:
         # 'LocalDataService' and 'GroceryService' are singletons:
         #   declare them here as instance attributes, rather than class attributes,
@@ -56,15 +59,20 @@ class DataFactoryService:
     def getInstrumentConfig(self, runId: str) -> InstrumentConfig:
         return self.lookupService.readInstrumentConfig(runId)
 
-    def getCycleID(self, runNumber: str) -> str:
+    def cycleInfoExists(self, runNumber: str) -> bool:
+        # Cycle info is considered present only when a cycle is defined *and* the run
+        #   falls within it. Absent/incomplete/invalid cycle info is not an error: like a
+        #   missing calibration, reduction proceeds with output labelled "diagnostic".
         instrumentConfig = self.lookupService.readInstrumentParameters(runNumber)
         if instrumentConfig.cycle is None:
-            raise ValueError(f"No cycle information found for run {runNumber}")
-        if int(runNumber) < instrumentConfig.cycle.firstRun:
-            raise ValueError(
-                f"Run {runNumber} is not within cycle {instrumentConfig.cycle.cycleID}"
-                f" (first run: {instrumentConfig.cycle.firstRun})"
-            )
+            return False
+        return int(runNumber) >= instrumentConfig.cycle.firstRun
+
+    def getCycleID(self, runNumber: str) -> str:
+        instrumentConfig = self.lookupService.readInstrumentParameters(runNumber)
+        if instrumentConfig.cycle is None or int(runNumber) < instrumentConfig.cycle.firstRun:
+            # No usable cycle info: fall back so reduction can continue (output marked diagnostic).
+            return self.FALLBACK_CYCLE_ID
         return instrumentConfig.cycle.cycleID
 
     def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:

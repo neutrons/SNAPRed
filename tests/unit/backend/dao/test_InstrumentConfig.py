@@ -1,4 +1,3 @@
-import copy
 import unittest
 from typing import Any, Dict
 from unittest import mock
@@ -6,10 +5,7 @@ from unittest import mock
 import pytest
 from util.dao import DAOFactory
 
-from snapred.backend.dao.state.Cycle import Cycle
 from snapred.backend.dao.state.DetectorState import DetectorState
-from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
-from snapred.meta.Config import Config
 
 
 class TestInstrumentConfig(unittest.TestCase):
@@ -45,44 +41,6 @@ class TestInstrumentConfig(unittest.TestCase):
             }
         },
     }
-
-    @staticmethod
-    def _makeConfig(runNumber: str, cycle):
-        # Build an `InstrumentConfig` from the shared boilerplate, overriding the
-        #   run number (on the index entry) and the `cycle`.
-        boilerplate = copy.deepcopy(DAOFactory.instrument_config_boilerplate)
-        boilerplate["indexEntry"] = copy.deepcopy(boilerplate["indexEntry"])
-        boilerplate["indexEntry"]["runNumber"] = runNumber
-        return InstrumentConfig(
-            **boilerplate,
-            maxBandwidth=3.2,
-            delLOverL=6.452e-05,
-            cycle=cycle,
-        )
-
-    def test_cycle_notRequiredBelowMinimum(self):
-        # A run below the minimum run number may omit the cycle.
-        minRunNumber = Config["instrument.minimumRunNumber"]
-        config = self._makeConfig(str(minRunNumber - 1), cycle=None)
-        assert config.cycle is None
-
-    def test_cycle_requiredAtOrAboveMinimum(self):
-        # A run at or above the minimum run number must supply a cycle.
-        minRunNumber = Config["instrument.minimumRunNumber"]
-        with pytest.raises(ValueError, match=".*'cycle' is required.*"):
-            self._makeConfig(str(minRunNumber), cycle=None)
-
-    def test_cycle_presentAtOrAboveMinimum(self):
-        # A run at or above the minimum run number with a cycle validates.
-        minRunNumber = Config["instrument.minimumRunNumber"]
-        cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-02-01", firstRun=minRunNumber)
-        config = self._makeConfig(str(minRunNumber), cycle=cycle)
-        assert config.cycle == cycle
-
-    def test_cycle_nonDigitRunNumberSkipsValidation(self):
-        # A non-numeric run number does not trigger the cycle requirement.
-        config = self._makeConfig("not-a-number", cycle=None)
-        assert config.cycle is None
 
     def test_derivedPV(self):
         TEST_SCHEMA = TestInstrumentConfig.TEST_SCHEMA

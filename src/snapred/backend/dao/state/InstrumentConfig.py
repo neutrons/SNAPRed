@@ -86,22 +86,6 @@ class InstrumentConfig(IndexedObject):
         return obj
 
     @model_validator(mode="after")
-    def _validateCycle(self):
-        # A `cycle` is only required for runs at or above the minimum run number;
-        #   older runs predate cycle bookkeeping and are allowed to omit it.
-        indexEntry = getattr(self, "indexEntry", None)
-        if indexEntry is None:
-            # Nothing to validate against (e.g. a partially-constructed config).
-            return self
-        runNumber = indexEntry.runNumber
-        if runNumber.isdigit() and int(runNumber) >= Config["instrument.minimumRunNumber"] and self.cycle is None:
-            raise ValueError(
-                f"A 'cycle' is required for run {runNumber} "
-                f"(at or above the minimum run number {Config['instrument.minimumRunNumber']})."
-            )
-        return self
-
-    @model_validator(mode="after")
     def _initDerivedPVMap(self):
         # If the on-disk schema is incomplete (legacy), fall back to the full LEGACY_SCHEMA
         if "length" not in self.stateIdSchema or "properties" not in self.stateIdSchema:

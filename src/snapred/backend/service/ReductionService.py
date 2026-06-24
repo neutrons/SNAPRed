@@ -157,6 +157,17 @@ class ReductionService(Service):
                 "<p>Would you like to continue anyway?</p>"
             )
 
+        # Check that cycle information is available for the run.
+        #   Missing/invalid cycle info is handled like a missing calibration: reduction may
+        #   proceed, but the output will be labelled "diagnostic" rather than "reduced".
+        if not self.dataFactoryService.cycleInfoExists(request.runNumber):
+            continueFlags |= ContinueWarning.Type.MISSING_CYCLE_INFO
+            message += (
+                "<p><b>Cycle information is missing.</b></p>"
+                "<p>Reduction will proceed, but the output will be marked as diagnostic.</p>"
+                "<p>Would you like to continue anyway?</p>"
+            )
+
         # Remove any continue flags that are also present in the request by XOR-ing with the request flags
         if request.continueFlags:
             continueFlags ^= request.continueFlags & continueFlags
@@ -250,6 +261,8 @@ class ReductionService(Service):
         )
         isDiagnostic = workspaceMetadata.diffcalState != DiffcalStateMetadata.EXISTS
         isDiagnostic = isDiagnostic or workspaceMetadata.normalizationState != NormalizationStateMetadata.EXISTS
+        # Absent/invalid cycle info forces diagnostic output, just like a missing calibration.
+        isDiagnostic = isDiagnostic or not self.dataFactoryService.cycleInfoExists(request.runNumber)
         ingredients.isDiagnostic = isDiagnostic
 
         # Profiling sub-step: "reduce-data":
