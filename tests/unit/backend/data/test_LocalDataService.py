@@ -4024,6 +4024,7 @@ class TestReductionPixelMasks:
         (root / "CalibrationRoot" / "Powder" / "PixelGroupingDefinitions").mkdir(parents=True, exist_ok=True)
         (root / "CalibrationRoot" / "Powder" / "SNAPLite.xml").touch()
         (root / "CalibrationRoot" / "Powder" / ".mysecretcode").touch()
+        (root / "CalibrationRoot" / "Powder" / "LiteGroupMap.hdf").touch()
 
     def test_copyCalibrationRootSkeleton(self):
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
@@ -4036,6 +4037,7 @@ class TestReductionPixelMasks:
             assert (tmpDir / "Calibration" / "Powder").exists()
             assert (tmpDir / "Calibration" / "Powder" / "PixelGroupingDefinitions").exists()
             assert (tmpDir / "Calibration" / "Powder" / "SNAPLite.xml").exists()
+            assert (tmpDir / "Calibration" / "Powder" / "LiteGroupMap.hdf").exists()
             # ignore hidden files
             assert not (tmpDir / "Calibration" / "Powder" / ".mysecretcode").exists()
             # ignore hidden dirs

@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from mantid.plots.datafunctions import get_spectrum
+from mantid.plots.utility import PlotNormalizationType
 from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import (
     QFrame,
@@ -153,7 +154,7 @@ class ArtificialNormalizationView(BackendRequestView):
             ax.tick_params(direction="in")
             ax.set_title(f"Group ID: {i + 1}")
             # fill in the discovered peaks for easier viewing
-            x, y, _, _ = get_spectrum(diffractionWorkspace, i, normalize_by_bin_width=True)
+            x, y, _, _ = get_spectrum(diffractionWorkspace, i, normalization=PlotNormalizationType.BIN_WIDTH)
             # for each detected peak in this group, shade in the peak region
 
         # resize window and redraw
