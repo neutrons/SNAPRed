@@ -259,11 +259,12 @@ class ReductionService(Service):
         workspaceMetadata: WorkspaceMetadata = self.groceryService.getSNAPRedWorkspaceMetadata(
             groceries["inputWorkspace"]
         )
-        isDiagnostic = workspaceMetadata.diffcalState != DiffcalStateMetadata.EXISTS
-        isDiagnostic = isDiagnostic or workspaceMetadata.normalizationState != NormalizationStateMetadata.EXISTS
         # Absent/invalid cycle info forces diagnostic output, just like a missing calibration.
-        isDiagnostic = isDiagnostic or not self.dataFactoryService.cycleInfoExists(request.runNumber)
-        ingredients.isDiagnostic = isDiagnostic
+        ingredients.isDiagnostic = (
+            workspaceMetadata.diffcalState != DiffcalStateMetadata.EXISTS
+            or workspaceMetadata.normalizationState != NormalizationStateMetadata.EXISTS
+            or not self.dataFactoryService.cycleInfoExists(request.runNumber)
+        )
 
         # Profiling sub-step: "reduce-data":
         #   * Alternatively, we could decorate the `ReductionRecipe` itself,

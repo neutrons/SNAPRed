@@ -34,7 +34,8 @@ class DataFactoryService:
     cache: Dict[str, ReductionState] = {}
 
     # Sentinel cycle ID used when cycle info is absent/invalid; reduction continues as "diagnostic".
-    FALLBACK_CYCLE_ID: str = "unknown"
+    #   Aliased from `LocalDataService`, where the cycle logic actually lives.
+    FALLBACK_CYCLE_ID: str = LocalDataService.FALLBACK_CYCLE_ID
 
     def __init__(self, lookupService: LocalDataService = None, groceryService: GroceryService = None) -> None:
         # 'LocalDataService' and 'GroceryService' are singletons:
@@ -60,20 +61,10 @@ class DataFactoryService:
         return self.lookupService.readInstrumentConfig(runId)
 
     def cycleInfoExists(self, runNumber: str) -> bool:
-        # Cycle info is considered present only when a cycle is defined *and* the run
-        #   falls within it. Absent/incomplete/invalid cycle info is not an error: like a
-        #   missing calibration, reduction proceeds with output labelled "diagnostic".
-        instrumentConfig = self.lookupService.readInstrumentParameters(runNumber)
-        if instrumentConfig.cycle is None:
-            return False
-        return int(runNumber) >= instrumentConfig.cycle.firstRun
+        return self.lookupService.cycleInfoExists(runNumber)
 
     def getCycleID(self, runNumber: str) -> str:
-        instrumentConfig = self.lookupService.readInstrumentParameters(runNumber)
-        if instrumentConfig.cycle is None or int(runNumber) < instrumentConfig.cycle.firstRun:
-            # No usable cycle info: fall back so reduction can continue (output marked diagnostic).
-            return self.FALLBACK_CYCLE_ID
-        return instrumentConfig.cycle.cycleID
+        return self.lookupService.getCycleID(runNumber)
 
     def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
         return self.lookupService.readStateConfig(runId, useLiteMode)

@@ -87,6 +87,9 @@ class LocalDataService:
     # -- in its use below, this is used to convert 1.0e-10 * m^2 to <time in microsecond>.
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
+    # Sentinel cycle ID used when cycle info is absent/invalid; reduction continues as "diagnostic".
+    FALLBACK_CYCLE_ID: str = "unknown"
+
     def __init__(self) -> None:
         self.mantidSnapper = MantidSnapper(None, "Utensils")
 
@@ -633,6 +636,22 @@ class LocalDataService:
         if version is None:
             raise FileNotFoundError(f"No instrument parameters found for run {runNumber}")
         return indexer.readIndexedObject(InstrumentConfig, version)
+
+    def cycleInfoExists(self, runNumber: str) -> bool:
+        # Cycle info is considered present only when a cycle is defined *and* the run
+        #   falls within it. Absent/incomplete/invalid cycle info is not an error: like a
+        #   missing calibration, reduction proceeds with output labelled "diagnostic".
+        instrumentConfig = self.readInstrumentParameters(runNumber)
+        if instrumentConfig.cycle is None:
+            return False
+        return int(runNumber) >= instrumentConfig.cycle.firstRun
+
+    def getCycleID(self, runNumber: str) -> str:
+        instrumentConfig = self.readInstrumentParameters(runNumber)
+        if instrumentConfig.cycle is None or int(runNumber) < instrumentConfig.cycle.firstRun:
+            # No usable cycle info: fall back so reduction can continue (output marked diagnostic).
+            return self.FALLBACK_CYCLE_ID
+        return instrumentConfig.cycle.cycleID
 
     ##### NORMALIZATION METHODS #####
 
