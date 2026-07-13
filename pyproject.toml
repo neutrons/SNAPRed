@@ -282,9 +282,9 @@ python = ">=3.10"
 pip = ">=25.3"
 pydantic = ">=2.7.3,<3"
 # Channel-specific dependencies: Dev uses nightly Mantid builds
-mantidworkbench = { version = ">=6.15.0,<6.16", channel = "mantid/label/nightly" }
-mantid = { version = ">=6.15.0,<6.16", channel = "mantid/label/nightly" }
-mantidqt = { version = ">=6.15.0,<6.16", channel = "mantid/label/nightly" }
+mantidworkbench = { version = ">=6.16", channel = "mantid-ornl/label/rc" }
+mantid = { version = ">=6.16", channel = "mantid-ornl/label/rc" }
+mantidqt = { version = ">=6.16", channel = "mantid-ornl/label/rc" }
 qtpy = "*"
 muparser = "=2.3.4"
 pycifrw = "*"
