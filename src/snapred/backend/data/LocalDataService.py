@@ -48,7 +48,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
-from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
+from snapred.meta.decorators.ExceptionHandler import BUG_EXCEPTIONS, ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.InternalConstants import ReservedRunNumber, ReservedStateId
 from snapred.meta.LockFile import LockFile
@@ -297,7 +297,7 @@ class LocalDataService:
 
     # NOTE `lru_cache` decorator needs to be on the outside
     @lru_cache
-    @ExceptionHandler(StateValidationException)
+    @ExceptionHandler(StateValidationException, passthrough=BUG_EXCEPTIONS)
     def generateStateId(self, runId: str) -> Tuple[str | None, DetectorState | None]:
         detectorState = None
         if runId in ReservedRunNumber.values():
@@ -1159,7 +1159,7 @@ class LocalDataService:
         )
 
     @validate_call
-    @ExceptionHandler(StateValidationException)
+    @ExceptionHandler(StateValidationException, passthrough=BUG_EXCEPTIONS)
     # NOTE if you are debugging and got here, coment out the ExceptionHandler and try again
     def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
         from snapred.backend.data.GroceryService import GroceryService

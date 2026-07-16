@@ -107,6 +107,37 @@ def test_stateExceptionHandler():
         throwsStateException()
 
 
+def test_exceptionHandlerPreservesCause():
+    # The real cause must be preserved as `__cause__`, not dropped to a log line only.
+    with pytest.raises(StateValidationException) as excinfo:
+        throwsStateException()
+    assert isinstance(excinfo.value.__cause__, RuntimeError)
+    assert "I love exceptions" in str(excinfo.value.__cause__)
+
+
+@ExceptionHandler(StateValidationException)
+def rethrowsStateException():
+    raise StateValidationException(RuntimeError("already meaningful"))
+
+
+def test_exceptionHandlerDoesNotDoubleWrap():
+    # An exception already of the target type must propagate unchanged, not be re-wrapped.
+    with pytest.raises(StateValidationException) as excinfo:
+        rethrowsStateException()
+    assert excinfo.value.__cause__ is None
+
+
+@ExceptionHandler(StateValidationException, passthrough=(ValueError,))
+def throwsPassthroughException():
+    raise ValueError("this is a bug, not an invalid state")
+
+
+def test_exceptionHandlerPassthrough():
+    # A `passthrough` exception (e.g. a genuine bug) must not be mislabeled as the target type.
+    with pytest.raises(ValueError, match="this is a bug"):
+        throwsPassthroughException()
+
+
 def test_recoverableExceptionKwargs():
     exceptionString = "State uninitialized"
     with pytest.raises(RecoverableException, match=exceptionString):

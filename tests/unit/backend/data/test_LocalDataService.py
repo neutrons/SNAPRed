@@ -1553,6 +1553,17 @@ def test_generateStateId(mockRunMetadata):
     assert actual == (stateId.hex, detectorState)
 
 
+def test_generateStateId_bug_not_mislabeled():
+    # A genuine bug (e.g. `list.remove(x): x not in list`) must propagate as itself,
+    # not be mislabeled as a `StateValidationException` ("Instrument State ... is invalid!").
+    service = LocalDataService()
+    service.generateStateId.cache_clear()
+    service.readRunMetadata = mock.Mock(side_effect=ValueError("list.remove(x): x not in list"))
+
+    with pytest.raises(ValueError, match=r"list\.remove\(x\)"):
+        service.generateStateId("12345")
+
+
 @mock.patch(ThisService + "RunMetadata")
 def test_generateStateId_cache(mockRunMetadata):
     service = LocalDataService()
