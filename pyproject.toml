@@ -189,7 +189,7 @@ versioningit = "*"
 setuptools = "*" # ci fails in binstar because `No module named 'pkg_resources'`
 
 [tool.pixi.package.run-dependencies]
-mantidworkbench = ">=6.15.0,<6.16"
+mantidworkbench = ">=6.16.0,<6.17"
 pydantic = ">=2.7.3,<3"
 "ruamel.yaml" = "*"
 
