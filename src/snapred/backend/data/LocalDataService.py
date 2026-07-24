@@ -39,6 +39,7 @@ from snapred.backend.dao.state import (
     InstrumentState,
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
+from snapred.backend.dao.state.Cycle import Cycle
 from snapred.backend.data.Indexer import Indexer, IndexerType
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.backend.error.RecoverableException import RecoverableException
@@ -86,9 +87,6 @@ class LocalDataService:
     # conversion factor in units of cm**2 / s:
     # -- in its use below, this is used to convert 1.0e-10 * m^2 to <time in microsecond>.
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
-
-    # Sentinel cycle ID used when cycle info is absent/invalid; reduction continues as "diagnostic".
-    FALLBACK_CYCLE_ID: str = "unknown"
 
     def __init__(self) -> None:
         self.mantidSnapper = MantidSnapper(None, "Utensils")
@@ -650,7 +648,7 @@ class LocalDataService:
         instrumentConfig = self.readInstrumentParameters(runNumber)
         if instrumentConfig.cycle is None or int(runNumber) < instrumentConfig.cycle.firstRun:
             # No usable cycle info: fall back so reduction can continue (output marked diagnostic).
-            return self.FALLBACK_CYCLE_ID
+            return Cycle.NO_CYCLE
         return instrumentConfig.cycle.cycleID
 
     ##### NORMALIZATION METHODS #####

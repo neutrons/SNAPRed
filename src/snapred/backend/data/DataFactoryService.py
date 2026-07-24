@@ -33,10 +33,6 @@ class DataFactoryService:
     # TODO: rules for busting cache
     cache: Dict[str, ReductionState] = {}
 
-    # Sentinel cycle ID used when cycle info is absent/invalid; reduction continues as "diagnostic".
-    #   Aliased from `LocalDataService`, where the cycle logic actually lives.
-    FALLBACK_CYCLE_ID: str = LocalDataService.FALLBACK_CYCLE_ID
-
     def __init__(self, lookupService: LocalDataService = None, groceryService: GroceryService = None) -> None:
         # 'LocalDataService' and 'GroceryService' are singletons:
         #   declare them here as instance attributes, rather than class attributes,

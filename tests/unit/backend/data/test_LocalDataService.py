@@ -412,10 +412,12 @@ def test_getCycleID():
 def test_getCycleID_no_cycle():
     # Missing cycle info is not an error: a fallback cycle ID is returned so reduction
     #   can proceed (the output will be labelled "diagnostic").
+    from snapred.backend.dao.state.Cycle import Cycle
+
     mockConfig = mock.Mock(cycle=None)
     localDataService = LocalDataService()
     localDataService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
-    assert localDataService.getCycleID("200") == LocalDataService.FALLBACK_CYCLE_ID
+    assert localDataService.getCycleID("200") == Cycle.NO_CYCLE
 
 
 def test_getCycleID_run_before_cycle():
@@ -426,7 +428,7 @@ def test_getCycleID_run_before_cycle():
     mockConfig = mock.Mock(cycle=cycle)
     localDataService = LocalDataService()
     localDataService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
-    assert localDataService.getCycleID("50") == LocalDataService.FALLBACK_CYCLE_ID
+    assert localDataService.getCycleID("50") == Cycle.NO_CYCLE
 
 
 def test_cycleInfoExists():
