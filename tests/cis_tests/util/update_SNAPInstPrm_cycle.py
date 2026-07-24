@@ -9,13 +9,15 @@
 #   * `cycleID` / `startDate` / `stopDate` are SNS facility metadata that cannot be
 #     inferred from a run number, so they are looked up from CYCLE_METADATA below.
 #
-# Every other field in the JSON is preserved. Originals are backed up next to each
-# file as `SNAPInstPrm.json.bak` before they are overwritten.
+# Every other field in the JSON is preserved. Before any file is overwritten, the
+# entire SNAPInstPrm directory is copied to a timestamped backup alongside it; the
+# script prints where the backup is and never deletes it -- removing it is left to you.
 #
 # Edit CYCLE_METADATA below, then run with `pixi run python <this file>`.
 
 import json
 import shutil
+import time
 from pathlib import Path
 
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
@@ -73,6 +75,7 @@ if not jsonFiles:
 print(f"Found {len(jsonFiles)} SNAPInstPrm.json file(s).\n")
 
 updated, skipped = 0, 0
+backupDir = None
 for jsonFile in jsonFiles:
     versionFolder = jsonFile.parent.name
 
@@ -109,7 +112,15 @@ for jsonFile in jsonFiles:
     print(f"[{action}] {versionFolder}: appliesTo='{appliesTo}' -> cycle={cycle.model_dump()}")
 
     if not DRY_RUN:
-        shutil.copy2(jsonFile, jsonFile.with_suffix(".json.bak"))
+        # Back up the entire directory once, before overwriting the first file, so the
+        # whole run is reversible. The backup is left in place for you to delete.
+        if backupDir is None:
+            backupDir = home.parent / f"backup_SNAPInstPrm_{time.strftime('%Y%m%d_%H%M%S')}"
+            if backupDir.exists():
+                raise FileExistsError(f"Backup directory already exists: {backupDir}")
+            print(f"Backing up {home} to {backupDir} ...")
+            shutil.copytree(home, backupDir)
+            print(f"Backup complete: {backupDir}\n")
         with open(jsonFile, "w") as f:
             json.dump(newData, f, indent=4)
     updated += 1
@@ -117,3 +128,9 @@ for jsonFile in jsonFiles:
 print(f"\nDone. {updated} file(s) {'to update' if DRY_RUN else 'updated'}, {skipped} skipped.")
 if DRY_RUN:
     print("DRY_RUN is True -- no files were written. Set DRY_RUN = False to apply.")
+elif backupDir is not None:
+    print("\n" + "=" * 72)
+    print(f"A backup of the original SNAPInstPrm directory is kept at:\n\n    {backupDir}\n")
+    print("It has NOT been deleted. Once you have verified the update succeeded,")
+    print("delete the backup yourself to reclaim the space.")
+    print("=" * 72)
