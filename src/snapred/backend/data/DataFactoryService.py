@@ -59,8 +59,8 @@ class DataFactoryService:
     def cycleInfoExists(self, runNumber: str) -> bool:
         return self.lookupService.cycleInfoExists(runNumber)
 
-    def getCycleID(self, runNumber: str) -> str:
-        return self.lookupService.getCycleID(runNumber)
+    def getCycle(self, runNumber: str) -> Cycle:
+        return self.lookupService.getCycle(runNumber)
 
     def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
         return self.lookupService.readStateConfig(runId, useLiteMode)
@@ -146,7 +146,7 @@ class DataFactoryService:
         If no version is passed, will use the latest version applicable to runId.
         Validates that runId belongs to the given cycle.
         """
-        actualCycleID = self.getCycleID(runId)
+        actualCycleID = self.getCycle(runId).cycleID
         if actualCycleID != cycleID:
             raise ValueError(f"Run {runId} belongs to cycle {actualCycleID}, not the requested cycle {cycleID}")
         return self.lookupService.readCalibrationRecord(runId, useLiteMode, state, version)
@@ -196,7 +196,7 @@ class DataFactoryService:
         If no version is passed, will use the latest version applicable to runId.
         Validates that runId belongs to the given cycle.
         """
-        actualCycleID = self.getCycleID(runId)
+        actualCycleID = self.getCycle(runId).cycleID
         if actualCycleID != cycleID:
             raise ValueError(f"Run {runId} belongs to cycle {actualCycleID}, not the requested cycle {cycleID}")
         return self.lookupService.readNormalizationRecord(runId, useLiteMode, state, version)

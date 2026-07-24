@@ -218,7 +218,7 @@ class NormalizationService(Service):
                 request.useLiteMode
             ).add()
 
-            cycleID = self.dataFactoryService.getCycleID(request.runNumber)
+            cycleID = self.dataFactoryService.getCycle(request.runNumber).cycleID
             calRunNumber = self.dataFactoryService.getCalibrationRecord(
                 request.runNumber, request.useLiteMode, cycleID, calVersion, state
             ).runNumber

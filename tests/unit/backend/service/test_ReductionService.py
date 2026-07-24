@@ -363,7 +363,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("state", None))
-        self.instance.dataFactoryService.getCycleID = mock.Mock(return_value="2024-A")
+        self.instance.dataFactoryService.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
         self.instance.dataFactoryService.cycleInfoExists = mock.Mock(return_value=True)
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
         self.instance.groceryService._validateWorkspaceInstrument = mock.Mock()

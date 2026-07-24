@@ -8,18 +8,17 @@ from snapred.backend.log.logger import snapredLogger
 logger = snapredLogger.getLogger(__name__)
 
 
-# Exceptions that indicate a programming error (a bug), not a recoverable domain condition.
-# Passing these as `ExceptionHandler(..., passthrough=BUG_EXCEPTIONS)` lets a genuine bug
-# propagate as itself instead of being mislabeled as a domain exception (e.g. a plain
-# `list.remove(x): x not in list` should not be reported as "Instrument State ... is invalid!").
-BUG_EXCEPTIONS: Tuple[Type[BaseException], ...] = (
-    TypeError,
-    AttributeError,
-    NameError,
-    IndexError,
-    ValueError,
-    AssertionError,
-)
+# Exceptions that genuinely indicate an invalid or inaccessible instrument state (as opposed to a
+# programming bug or an unrelated failure). Passed as `ExceptionHandler(StateValidationException,
+# convert=STATE_EXCEPTIONS)`, these are the ONLY exceptions re-routed into the domain type; anything
+# else propagates as itself.  This way a plain bug (`list.remove(x): x not in list`, a `TypeError`,
+# ...) or an unrelated failure (e.g. a live-data read `RuntimeError`) is never mislabeled as
+# "Instrument State ... is invalid!".
+#
+# `OSError` is the umbrella for the file/IO conditions that mean "can't read the state data": it
+# covers `FileNotFoundError` and `PermissionError` (both subclasses, and special-cased in
+# `StateValidationException`) as well as the plain `OSError` that h5py raises on an unreadable file.
+STATE_EXCEPTIONS: Tuple[Type[BaseException], ...] = (OSError,)
 
 
 def extractTrueStacktrace() -> str:
@@ -38,23 +37,27 @@ def extractTrueStacktrace() -> str:
 
 def ExceptionHandler(
     exceptionType: Type[Exception],
-    passthrough: Tuple[Type[BaseException], ...] = (),
+    convert: Tuple[Type[BaseException], ...] = (),
 ):
     """
-    Decorator that re-routes exceptions raised by the wrapped function into `exceptionType`.
+    Decorator that re-routes *selected* exceptions raised by the wrapped function into `exceptionType`.
 
-    Two important guarantees, in contrast to a naive `except Exception: raise exceptionType(e)`:
+    This uses an allowlist, the inverse of a blocklist: ONLY the exception types listed in `convert`
+    are re-routed into `exceptionType`; every other exception propagates unchanged.  Rather than
+    trying (and inevitably failing) to enumerate every exception that must NOT be converted, the
+    caller states exactly which ones SHOULD be.  This way genuine bugs and unrelated failures are
+    never mislabeled as `exceptionType`.
+
+    Two further guarantees, in contrast to a naive `except SomeType: raise exceptionType(e)`:
 
     1. The original exception is preserved as the `__cause__` (via `raise ... from e`), so the real
-       root cause is never lost.  A generic bug (e.g. `list.remove(x): x not in list`) rewrapped into
-       a domain exception will still surface its true traceback, rather than surviving only as a log line.
+       root cause is never lost, rather than surviving only as a log line.
 
-    2. Exceptions that already describe what went wrong are re-raised unchanged rather than mislabeled:
-         - `exceptionType` (and its subclasses): already the intended type, so avoid double-wrapping.
-         - any type listed in `passthrough`: caller-declared exceptions that must propagate as themselves.
+    2. An exception already of `exceptionType` (or a subclass) is re-raised unchanged rather than
+       double-wrapped.
 
-    :param exceptionType: the exception type unexpected exceptions are re-routed into.
-    :param passthrough: exception types that should propagate unchanged instead of being re-routed.
+    :param exceptionType: the exception type that listed exceptions are re-routed into.
+    :param convert: exception types to re-route into `exceptionType`; all others propagate unchanged.
     """
 
     def decorator(func: Callable[..., Any]):
@@ -62,10 +65,10 @@ def ExceptionHandler(
         def inner(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except (exceptionType, *passthrough):
-                # Already a meaningful exception: don't re-wrap or mislabel it.
+            except exceptionType:
+                # Already the intended type: don't double-wrap.
                 raise
-            except Exception as e:  # noqa BLE001
+            except convert as e:
                 logger.error(f"{extractTrueStacktrace()}")
                 # Preserve the exception chain so the true cause is not lost.
                 raise exceptionType(e) from e

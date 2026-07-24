@@ -137,12 +137,12 @@ class TestDataFactoryService(unittest.TestCase):
         actual = self.instance.getDefaultInstrumentState("123")
         assert actual == self.instance.lookupService.generateInstrumentState.return_value
 
-    def test_getCycleID(self):
+    def test_getCycle(self):
         # The cycle logic lives in `LocalDataService`; `DataFactoryService` just delegates.
-        self.instance.lookupService.getCycleID = mock.Mock(return_value="2024-A")
-        actual = self.instance.getCycleID("200")
-        assert actual == self.instance.lookupService.getCycleID.return_value
-        self.instance.lookupService.getCycleID.assert_called_once_with("200")
+        self.instance.lookupService.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
+        actual = self.instance.getCycle("200")
+        assert actual == self.instance.lookupService.getCycle.return_value
+        self.instance.lookupService.getCycle.assert_called_once_with("200")
 
     def test_cycleInfoExists(self):
         self.instance.lookupService.cycleInfoExists = mock.Mock(return_value=True)
@@ -183,22 +183,22 @@ class TestDataFactoryService(unittest.TestCase):
 
     def test_getCalibrationRecord(self):
         runId = "345"
-        self.instance.getCycleID = mock.Mock(return_value="2024-A")
+        self.instance.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
         for useLiteMode in [True, False]:
             actual = self.instance.getCalibrationRecord(runId, useLiteMode, "2024-A", self.version, "stateId")
             assert actual == self.expected(runId, useLiteMode, "stateId", self.version)
 
     def test_getCalibrationRecord_with_valid_cycleID(self):
         runId = "345"
-        self.instance.getCycleID = mock.Mock(return_value="2024-A")
+        self.instance.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
         for useLiteMode in [True, False]:
             actual = self.instance.getCalibrationRecord(runId, useLiteMode, "2024-A", self.version, "stateId")
             assert actual == self.expected(runId, useLiteMode, "stateId", self.version)
-        self.instance.getCycleID.assert_called_with(runId)
+        self.instance.getCycle.assert_called_with(runId)
 
     def test_getCalibrationRecord_with_invalid_cycleID(self):
         runId = "345"
-        self.instance.getCycleID = mock.Mock(return_value="2024-A")
+        self.instance.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
         with pytest.raises(ValueError, match="Run 345 belongs to cycle 2024-A, not the requested cycle 2024-B"):
             self.instance.getCalibrationRecord(runId, True, "2024-B", self.version, "stateId")
 
@@ -246,22 +246,22 @@ class TestDataFactoryService(unittest.TestCase):
             assert actual == [self.expected("Normalization")]
 
     def test_getNormalizationRecord(self):
-        self.instance.getCycleID = mock.Mock(return_value="2024-A")
+        self.instance.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
         for useLiteMode in [True, False]:
             actual = self.instance.getNormalizationRecord("123", useLiteMode, "stateId", "2024-A", self.version)
             assert actual == self.expected("123", useLiteMode, "stateId", self.version)
 
     def test_getNormalizationRecord_with_valid_cycleID(self):
         runId = "123"
-        self.instance.getCycleID = mock.Mock(return_value="2024-A")
+        self.instance.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
         for useLiteMode in [True, False]:
             actual = self.instance.getNormalizationRecord(runId, useLiteMode, "stateId", "2024-A", self.version)
             assert actual == self.expected(runId, useLiteMode, "stateId", self.version)
-        self.instance.getCycleID.assert_called_with(runId)
+        self.instance.getCycle.assert_called_with(runId)
 
     def test_getNormalizationRecord_with_invalid_cycleID(self):
         runId = "123"
-        self.instance.getCycleID = mock.Mock(return_value="2024-A")
+        self.instance.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
         with pytest.raises(ValueError, match="Run 123 belongs to cycle 2024-A, not the requested cycle 2024-B"):
             self.instance.getNormalizationRecord(runId, True, "stateId", "2024-B", self.version)
 

@@ -97,12 +97,13 @@ def test_stateValidationExceptionWithInvalidState(mockLogger):  # noqa: ARG001
     mockLogger.error.assert_called_once_with(testMessage)
 
 
-@ExceptionHandler(StateValidationException)
+@ExceptionHandler(StateValidationException, convert=(RuntimeError,))
 def throwsStateException():
     raise RuntimeError("I love exceptions!!! Ah ha ha!")
 
 
 def test_stateExceptionHandler():
+    # A listed (`convert`) exception is re-routed into the target type.
     with pytest.raises(StateValidationException):
         throwsStateException()
 
@@ -127,15 +128,16 @@ def test_exceptionHandlerDoesNotDoubleWrap():
     assert excinfo.value.__cause__ is None
 
 
-@ExceptionHandler(StateValidationException, passthrough=(ValueError,))
-def throwsPassthroughException():
+@ExceptionHandler(StateValidationException, convert=(FileNotFoundError,))
+def throwsUnlistedException():
     raise ValueError("this is a bug, not an invalid state")
 
 
-def test_exceptionHandlerPassthrough():
-    # A `passthrough` exception (e.g. a genuine bug) must not be mislabeled as the target type.
+def test_exceptionHandlerDoesNotConvertUnlisted():
+    # An exception not in `convert` (e.g. a genuine bug) must propagate as itself, never
+    # mislabeled as the target type.
     with pytest.raises(ValueError, match="this is a bug"):
-        throwsPassthroughException()
+        throwsUnlistedException()
 
 
 def test_recoverableExceptionKwargs():
