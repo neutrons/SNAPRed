@@ -8,17 +8,18 @@ from snapred.backend.log.logger import snapredLogger
 logger = snapredLogger.getLogger(__name__)
 
 
-# Exceptions that genuinely indicate an invalid or inaccessible instrument state (as opposed to a
-# programming bug or an unrelated failure). Passed as `ExceptionHandler(StateValidationException,
-# convert=STATE_EXCEPTIONS)`, these are the ONLY exceptions re-routed into the domain type; anything
-# else propagates as itself.  This way a plain bug (`list.remove(x): x not in list`, a `TypeError`,
-# ...) or an unrelated failure (e.g. a live-data read `RuntimeError`) is never mislabeled as
-# "Instrument State ... is invalid!".
+# The only exceptions re-routed into `StateValidationException` ("Instrument State ... is invalid!");
+# everything else propagates as itself, so bugs and unrelated failures are never mislabeled.
 #
-# `OSError` is the umbrella for the file/IO conditions that mean "can't read the state data": it
-# covers `FileNotFoundError` and `PermissionError` (both subclasses, and special-cased in
-# `StateValidationException`) as well as the plain `OSError` that h5py raises on an unreadable file.
-STATE_EXCEPTIONS: Tuple[Type[BaseException], ...] = (OSError,)
+# Entries must be CONCRETE types, never a base class: `except` matches subclasses, so `OSError` alone
+# would also capture `ConnectionError`, `TimeoutError`, ... -- the very failures this list keeps out.
+# Under-listing is harmless (the exception propagates with its own message); over-listing is not.
+STATE_EXCEPTIONS: Tuple[Type[BaseException], ...] = (
+    # No PVFile, no instrument parameters, or no calibration directory for the run.
+    FileNotFoundError,
+    # State root not readable, or not writable at `initializeState`.
+    PermissionError,
+)
 
 
 def extractTrueStacktrace() -> str:
@@ -37,12 +38,12 @@ def extractTrueStacktrace() -> str:
 
 def ExceptionHandler(
     exceptionType: Type[Exception],
-    convert: Tuple[Type[BaseException], ...] = (),
+    rewrap: Tuple[Type[BaseException], ...] = (),
 ):
     """
     Decorator that re-routes *selected* exceptions raised by the wrapped function into `exceptionType`.
 
-    This uses an allowlist, the inverse of a blocklist: ONLY the exception types listed in `convert`
+    This uses an allowlist, the inverse of a blocklist: ONLY the exception types listed in `rewrap`
     are re-routed into `exceptionType`; every other exception propagates unchanged.  Rather than
     trying (and inevitably failing) to enumerate every exception that must NOT be converted, the
     caller states exactly which ones SHOULD be.  This way genuine bugs and unrelated failures are
@@ -57,7 +58,7 @@ def ExceptionHandler(
        double-wrapped.
 
     :param exceptionType: the exception type that listed exceptions are re-routed into.
-    :param convert: exception types to re-route into `exceptionType`; all others propagate unchanged.
+    :param rewrap: exception types to re-route into `exceptionType`; all others propagate unchanged.
     """
 
     def decorator(func: Callable[..., Any]):
@@ -68,7 +69,7 @@ def ExceptionHandler(
             except exceptionType:
                 # Already the intended type: don't double-wrap.
                 raise
-            except convert as e:
+            except rewrap as e:
                 logger.error(f"{extractTrueStacktrace()}")
                 # Preserve the exception chain so the true cause is not lost.
                 raise exceptionType(e) from e

@@ -1540,6 +1540,32 @@ def test_readPVFile_exception_passthrough():
         localDataService._readPVFile(runNumber)
 
 
+def test_readPVFile_unreadable(tmp_path):
+    # An existing file that isn't HDF5: h5py's bare `OSError` can't be named in `STATE_EXCEPTIONS`
+    #   without admitting every unrelated `OSError` subclass, so `_readPVFile` routes it itself.
+    runNumber = "12345"
+    notAnHDF5File = tmp_path / f"SNAP_{runNumber}.nxs.h5"
+    notAnHDF5File.write_text("this is not an HDF5 file")
+
+    localDataService = LocalDataService()
+    localDataService._constructPVFilePath = mock.Mock(return_value=notAnHDF5File)
+    with pytest.raises(StateValidationException, match=f"The PVFile for run '{runNumber}'") as excinfo:
+        localDataService._readPVFile(runNumber)
+
+    # The original h5py error must survive as the cause.
+    assert isinstance(excinfo.value.__cause__, OSError)
+
+
+@mock.patch("h5py.File", side_effect=PermissionError("nope"))
+def test_readPVFile_permission_error_not_translated(h5pyMock):  # noqa: ARG001
+    # `PermissionError` is already specific, and routes via `STATE_EXCEPTIONS`: `_readPVFile`
+    #   must not re-label it as "unreadable".
+    localDataService = LocalDataService()
+    localDataService._constructPVFilePath = mock.Mock(return_value=mock.Mock(spec=Path))
+    with pytest.raises(PermissionError, match="nope"):
+        localDataService._readPVFile("12345")
+
+
 @mock.patch(ThisService + "RunMetadata")
 def test_generateStateId(mockRunMetadata):
     runNumber = "12345"
@@ -1566,6 +1592,30 @@ def test_generateStateId_bug_not_mislabeled():
 
     with pytest.raises(ValueError, match=r"list\.remove\(x\)"):
         service.generateStateId("12345")
+
+
+@pytest.mark.parametrize("exceptionType", [ConnectionError, TimeoutError, BlockingIOError, InterruptedError])
+def test_generateStateId_unrelated_OSError_not_mislabeled(exceptionType):
+    # `STATE_EXCEPTIONS` deliberately lists concrete types rather than the `OSError` base class:
+    #   these `OSError` subclasses are NOT state failures and must propagate as themselves.
+    service = LocalDataService()
+    service.generateStateId.cache_clear()
+    service.readRunMetadata = mock.Mock(side_effect=exceptionType("not a state problem"))
+
+    with pytest.raises(exceptionType, match="not a state problem"):
+        service.generateStateId("12345")
+
+
+@pytest.mark.parametrize("exceptionType", [FileNotFoundError, PermissionError])
+def test_generateStateId_state_failures_are_routed(exceptionType):
+    # The listed types DO mean "can't read this run's state data": they become `StateValidationException`.
+    service = LocalDataService()
+    service.generateStateId.cache_clear()
+    service.readRunMetadata = mock.Mock(side_effect=exceptionType("no state data"))
+
+    with pytest.raises(StateValidationException) as excinfo:
+        service.generateStateId("12345")
+    assert isinstance(excinfo.value.__cause__, exceptionType)
 
 
 @mock.patch(ThisService + "RunMetadata")

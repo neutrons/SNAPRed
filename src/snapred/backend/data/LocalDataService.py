@@ -289,13 +289,23 @@ class LocalDataService:
 
     def _readPVFile(self, runId: str):
         filePath: Path = self._constructPVFilePath(runId)
-        if bool(filePath) and filePath.exists():
+        if not (bool(filePath) and filePath.exists()):
+            raise FileNotFoundError(f"No PVFile exists for run: '{runId}'")
+        try:
             return h5py.File(filePath, "r")
-        raise FileNotFoundError(f"No PVFile exists for run: '{runId}'")
+        except (FileNotFoundError, PermissionError):
+            # Already specific enough: these are listed in `STATE_EXCEPTIONS` and route on their own.
+            raise
+        except OSError as e:
+            # "Exists, but isn't readable as HDF5" arrives as a bare `OSError`, which `STATE_EXCEPTIONS`
+            #   can't list without also admitting every unrelated `OSError` subclass: route it here.
+            raise StateValidationException(
+                OSError(f"The PVFile for run '{runId}' at '{filePath}' cannot be read: {e}")
+            ) from e
 
     # NOTE `lru_cache` decorator needs to be on the outside
     @lru_cache
-    @ExceptionHandler(StateValidationException, convert=STATE_EXCEPTIONS)
+    @ExceptionHandler(StateValidationException, rewrap=STATE_EXCEPTIONS)
     def generateStateId(self, runId: str) -> Tuple[str | None, DetectorState | None]:
         detectorState = None
         if runId in ReservedRunNumber.values():
@@ -1157,7 +1167,7 @@ class LocalDataService:
         )
 
     @validate_call
-    @ExceptionHandler(StateValidationException, convert=STATE_EXCEPTIONS)
+    @ExceptionHandler(StateValidationException, rewrap=STATE_EXCEPTIONS)
     # NOTE if you are debugging and got here, coment out the ExceptionHandler and try again
     def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
         from snapred.backend.data.GroceryService import GroceryService
