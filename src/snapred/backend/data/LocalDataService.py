@@ -39,6 +39,7 @@ from snapred.backend.dao.state import (
     InstrumentState,
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
+from snapred.backend.dao.state.Cycle import Cycle
 from snapred.backend.data.Indexer import Indexer, IndexerType
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.backend.error.RecoverableException import RecoverableException
@@ -48,7 +49,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
-from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
+from snapred.meta.decorators.ExceptionHandler import STATE_EXCEPTIONS, ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.InternalConstants import ReservedRunNumber, ReservedStateId
 from snapred.meta.LockFile import LockFile
@@ -288,13 +289,23 @@ class LocalDataService:
 
     def _readPVFile(self, runId: str):
         filePath: Path = self._constructPVFilePath(runId)
-        if bool(filePath) and filePath.exists():
+        if not (bool(filePath) and filePath.exists()):
+            raise FileNotFoundError(f"No PVFile exists for run: '{runId}'")
+        try:
             return h5py.File(filePath, "r")
-        raise FileNotFoundError(f"No PVFile exists for run: '{runId}'")
+        except (FileNotFoundError, PermissionError):
+            # Already specific enough: these are listed in `STATE_EXCEPTIONS` and route on their own.
+            raise
+        except OSError as e:
+            # "Exists, but isn't readable as HDF5" arrives as a bare `OSError`, which `STATE_EXCEPTIONS`
+            #   can't list without also admitting every unrelated `OSError` subclass: route it here.
+            raise StateValidationException(
+                OSError(f"The PVFile for run '{runId}' at '{filePath}' cannot be read: {e}")
+            ) from e
 
     # NOTE `lru_cache` decorator needs to be on the outside
     @lru_cache
-    @ExceptionHandler(StateValidationException)
+    @ExceptionHandler(StateValidationException, rewrap=STATE_EXCEPTIONS)
     def generateStateId(self, runId: str) -> Tuple[str | None, DetectorState | None]:
         detectorState = None
         if runId in ReservedRunNumber.values():
@@ -633,6 +644,22 @@ class LocalDataService:
         if version is None:
             raise FileNotFoundError(f"No instrument parameters found for run {runNumber}")
         return indexer.readIndexedObject(InstrumentConfig, version)
+
+    def cycleInfoExists(self, runNumber: str) -> bool:
+        # Cycle info is considered present only when a cycle is defined *and* the run
+        #   falls within it. Absent/incomplete/invalid cycle info is not an error: like a
+        #   missing calibration, reduction proceeds with output labelled "diagnostic".
+        instrumentConfig = self.readInstrumentParameters(runNumber)
+        if instrumentConfig.cycle is None:
+            return False
+        return int(runNumber) >= instrumentConfig.cycle.firstRun
+
+    def getCycle(self, runNumber: str) -> Cycle:
+        instrumentConfig = self.readInstrumentParameters(runNumber)
+        if instrumentConfig.cycle is None or int(runNumber) < instrumentConfig.cycle.firstRun:
+            # No usable cycle info: fall back so reduction can continue (output marked diagnostic).
+            return Cycle.noCycle()
+        return instrumentConfig.cycle
 
     ##### NORMALIZATION METHODS #####
 
@@ -1140,7 +1167,7 @@ class LocalDataService:
         )
 
     @validate_call
-    @ExceptionHandler(StateValidationException)
+    @ExceptionHandler(StateValidationException, rewrap=STATE_EXCEPTIONS)
     # NOTE if you are debugging and got here, coment out the ExceptionHandler and try again
     def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
         from snapred.backend.data.GroceryService import GroceryService
@@ -1477,7 +1504,16 @@ class LocalDataService:
                 raise  # the existing exception is sufficient
 
         if not success:
-            metadata = self.readLiveMetadata()
+            # No local PVFile for `runNumber`, but a live-data connection exists: fall back to the live run.
+            #   If the fallback itself fails, make clear that (1) there's no local data for the requested run,
+            #   and (2) the *live-data* read is what actually errored.  Otherwise a live-data failure (which is
+            #   about a different, currently-running experiment) masquerades as a problem with `runNumber`.
+            try:
+                metadata = self.readLiveMetadata()
+            except Exception as e:  # noqa: BLE001
+                raise RuntimeError(
+                    f"No PVFile exists for run: {runNumber}, and the live-data fallback failed:\n  {e}"
+                ) from e
 
             if metadata.runNumber == runNumber:
                 success = True

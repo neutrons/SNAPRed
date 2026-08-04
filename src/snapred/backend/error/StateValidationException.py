@@ -26,7 +26,11 @@ class StateValidationException(Exception):
         if isinstance(exception, (FileNotFoundError, PermissionError)):
             self.message = f"The following error occurred: {exceptionStr}\n\n" + "Please contact your IS or CIS."
         else:
-            self.message = "Instrument State for given Run Number is invalid! (See logs for details.)"
+            self.message = (
+                "Instrument State for given Run Number is invalid!\n\n"
+                + f"{exceptionStr}\n\n"
+                + "(See logs for details.)"
+            )
 
         logger.error(exceptionStr)
         super().__init__(self.message)

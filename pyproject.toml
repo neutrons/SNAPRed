@@ -169,7 +169,7 @@ snapred = { path = ".", editable = true }
 
 [tool.pixi.dependencies]
 python = ">=3.10"
-pip = ">=25.3"
+pip = ">=26.1.2"
 pydantic = ">=2.7.3,<3"
 # Mantid packages moved to feature-specific dependencies with channel constraints
 "ruamel.yaml" = "*"
@@ -279,7 +279,7 @@ versioningit = "*"
 # ------------------------------- #
 [tool.pixi.feature.dev.dependencies]
 python = ">=3.10"
-pip = ">=25.3"
+pip = ">=26.1.2"
 pydantic = ">=2.7.3,<3"
 # Channel-specific dependencies: Dev uses nightly Mantid builds
 mantidworkbench = { version = ">=6.16", channel = "mantid-ornl/label/rc" }
@@ -296,7 +296,7 @@ git-lfs = "*"
 # ------------------------------- #
 [tool.pixi.feature.qa.dependencies]
 python = ">=3.10"
-pip = ">=25.3"
+pip = ">=26.1.2"
 pydantic = ">=2.7.3,<3"
 # Channel-specific dependencies: QA uses RC Mantid builds
 mantidworkbench = { version = ">=6.16,<6.17", channel = "mantid-ornl/label/rc" }
@@ -313,7 +313,7 @@ git-lfs = "*"
 # ------------------------------- #
 [tool.pixi.feature.prod.dependencies]
 python = ">=3.10"
-pip = ">=25.3"
+pip = ">=26.1.2"
 pydantic = ">=2.7.3,<3"
 # Channel-specific dependencies: Prod uses stable Mantid builds
 mantidworkbench = { version = ">=6.16,<6.17", channel = "mantid-ornl/label/main" }

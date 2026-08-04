@@ -398,6 +398,55 @@ def test_readInstrumentParameters():
     assert actual.name == "SNAP"
 
 
+def test_getCycle():
+    from snapred.backend.dao.state.Cycle import Cycle
+
+    cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+    mockConfig = mock.Mock(cycle=cycle)
+    localDataService = LocalDataService()
+    localDataService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
+    actual = localDataService.getCycle("200")
+    assert actual is cycle
+    assert actual.cycleID == "2024-A"
+    localDataService.readInstrumentParameters.assert_called_once_with("200")
+
+
+def test_getCycle_no_cycle():
+    # Missing cycle info is not an error: a fallback sentinel cycle is returned so reduction
+    #   can proceed (the output will be labelled "diagnostic").
+    from snapred.backend.dao.state.Cycle import Cycle
+
+    mockConfig = mock.Mock(cycle=None)
+    localDataService = LocalDataService()
+    localDataService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
+    assert localDataService.getCycle("200").cycleID == Cycle.NO_CYCLE
+
+
+def test_getCycle_run_before_cycle():
+    # A run that predates the cycle's first run is treated as invalid cycle info: fall back.
+    from snapred.backend.dao.state.Cycle import Cycle
+
+    cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+    mockConfig = mock.Mock(cycle=cycle)
+    localDataService = LocalDataService()
+    localDataService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
+    assert localDataService.getCycle("50").cycleID == Cycle.NO_CYCLE
+
+
+def test_cycleInfoExists():
+    from snapred.backend.dao.state.Cycle import Cycle
+
+    cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+    mockConfig = mock.Mock(cycle=cycle)
+    localDataService = LocalDataService()
+    localDataService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
+    assert localDataService.cycleInfoExists("200") is True
+    # A run before the cycle's first run, or with no cycle at all, has no usable cycle info.
+    assert localDataService.cycleInfoExists("50") is False
+    mockConfig.cycle = None
+    assert localDataService.cycleInfoExists("200") is False
+
+
 def test_readInstrumentConfig_bad_calibration_directory():
     localDataService = LocalDataService()
     localDataService.readInstrumentParameters = mock.Mock(return_value=_readInstrumentParameters())
@@ -629,6 +678,50 @@ def test_readRunMetadata_live_data_fallback_no_active_run(mockRunMetadata):
 
     with pytest.raises(RuntimeError, match=".*no live run is active.*"):
         actual = instance.readRunMetadata(runNumber)  # noqa: F841
+
+
+def test_readRunMetadata_other_file_not_found_reraises():
+    # A `FileNotFoundError` that isn't a "No PVFile exists" error should be re-raised as-is.
+    runNumber = "12345"
+    instance = LocalDataService()
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("some other file is missing"))
+    instance.hasLiveDataConnection = mock.Mock(return_value=True)
+    instance.readLiveMetadata = mock.Mock()
+
+    with pytest.raises(FileNotFoundError, match="some other file is missing"):
+        instance.readRunMetadata(runNumber)
+    instance.readLiveMetadata.assert_not_called()
+
+
+def test_readRunMetadata_no_pvfile_no_live_connection_reraises():
+    # No PVFile and no live-data connection: the original `FileNotFoundError` should be re-raised.
+    runNumber = "12345"
+    instance = LocalDataService()
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists"))
+    instance.hasLiveDataConnection = mock.Mock(return_value=False)
+    instance.readLiveMetadata = mock.Mock()
+
+    with pytest.raises(FileNotFoundError, match="No PVFile exists"):
+        instance.readRunMetadata(runNumber)
+    instance.readLiveMetadata.assert_not_called()
+
+
+def test_readRunMetadata_live_data_fallback_read_fails():
+    # No PVFile, a live-data connection exists, but the live-data read itself errors.
+    runNumber = "12345"
+    instance = LocalDataService()
+    instance._readPVFile = mock.Mock(side_effect=FileNotFoundError("No PVFile exists"))
+    instance.hasLiveDataConnection = mock.Mock(return_value=True)
+    instance.readLiveMetadata = mock.Mock(side_effect=RuntimeError("live-data listener is down"))
+
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            f"No PVFile exists for run: {runNumber}, and the live-data fallback failed:"
+            + "(.|\n)*live-data listener is down"
+        ),
+    ):
+        instance.readRunMetadata(runNumber)
 
 
 @mock.patch("socket.gethostbyaddr")
@@ -1447,6 +1540,32 @@ def test_readPVFile_exception_passthrough():
         localDataService._readPVFile(runNumber)
 
 
+def test_readPVFile_unreadable(tmp_path):
+    # An existing file that isn't HDF5: h5py's bare `OSError` can't be named in `STATE_EXCEPTIONS`
+    #   without admitting every unrelated `OSError` subclass, so `_readPVFile` routes it itself.
+    runNumber = "12345"
+    notAnHDF5File = tmp_path / f"SNAP_{runNumber}.nxs.h5"
+    notAnHDF5File.write_text("this is not an HDF5 file")
+
+    localDataService = LocalDataService()
+    localDataService._constructPVFilePath = mock.Mock(return_value=notAnHDF5File)
+    with pytest.raises(StateValidationException, match=f"The PVFile for run '{runNumber}'") as excinfo:
+        localDataService._readPVFile(runNumber)
+
+    # The original h5py error must survive as the cause.
+    assert isinstance(excinfo.value.__cause__, OSError)
+
+
+@mock.patch("h5py.File", side_effect=PermissionError("nope"))
+def test_readPVFile_permission_error_not_translated(h5pyMock):  # noqa: ARG001
+    # `PermissionError` is already specific, and routes via `STATE_EXCEPTIONS`: `_readPVFile`
+    #   must not re-label it as "unreadable".
+    localDataService = LocalDataService()
+    localDataService._constructPVFilePath = mock.Mock(return_value=mock.Mock(spec=Path))
+    with pytest.raises(PermissionError, match="nope"):
+        localDataService._readPVFile("12345")
+
+
 @mock.patch(ThisService + "RunMetadata")
 def test_generateStateId(mockRunMetadata):
     runNumber = "12345"
@@ -1462,6 +1581,41 @@ def test_generateStateId(mockRunMetadata):
 
     actual = service.generateStateId("12345")
     assert actual == (stateId.hex, detectorState)
+
+
+def test_generateStateId_bug_not_mislabeled():
+    # A genuine bug (e.g. `list.remove(x): x not in list`) must propagate as itself,
+    # not be mislabeled as a `StateValidationException` ("Instrument State ... is invalid!").
+    service = LocalDataService()
+    service.generateStateId.cache_clear()
+    service.readRunMetadata = mock.Mock(side_effect=ValueError("list.remove(x): x not in list"))
+
+    with pytest.raises(ValueError, match=r"list\.remove\(x\)"):
+        service.generateStateId("12345")
+
+
+@pytest.mark.parametrize("exceptionType", [ConnectionError, TimeoutError, BlockingIOError, InterruptedError])
+def test_generateStateId_unrelated_OSError_not_mislabeled(exceptionType):
+    # `STATE_EXCEPTIONS` deliberately lists concrete types rather than the `OSError` base class:
+    #   these `OSError` subclasses are NOT state failures and must propagate as themselves.
+    service = LocalDataService()
+    service.generateStateId.cache_clear()
+    service.readRunMetadata = mock.Mock(side_effect=exceptionType("not a state problem"))
+
+    with pytest.raises(exceptionType, match="not a state problem"):
+        service.generateStateId("12345")
+
+
+@pytest.mark.parametrize("exceptionType", [FileNotFoundError, PermissionError])
+def test_generateStateId_state_failures_are_routed(exceptionType):
+    # The listed types DO mean "can't read this run's state data": they become `StateValidationException`.
+    service = LocalDataService()
+    service.generateStateId.cache_clear()
+    service.readRunMetadata = mock.Mock(side_effect=exceptionType("no state data"))
+
+    with pytest.raises(StateValidationException) as excinfo:
+        service.generateStateId("12345")
+    assert isinstance(excinfo.value.__cause__, exceptionType)
 
 
 @mock.patch(ThisService + "RunMetadata")

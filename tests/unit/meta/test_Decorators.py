@@ -13,7 +13,7 @@ from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.meta.decorators.Builder import Builder
 from snapred.meta.decorators.EntryExitLogger import EntryExitLogger
-from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
+from snapred.meta.decorators.ExceptionHandler import STATE_EXCEPTIONS, ExceptionHandler
 from snapred.meta.decorators.FromString import FromString
 
 
@@ -88,22 +88,65 @@ def test_stateValidationExceptionWithInvalidState(mockLogger):  # noqa: ARG001
     testMessage = "Here I will tell you, the end user, the reason why the state is invalid."
     mock_exception = generateMockExceptionWithTraceback(RuntimeError, testMessage)
 
-    with pytest.raises(
-        StateValidationException, match=r"Instrument State for given Run Number is invalid! \(See logs for details\.\)"
-    ):
+    with pytest.raises(StateValidationException, match=r"Instrument State for given Run Number is invalid!") as excinfo:
         raise StateValidationException(mock_exception)
 
+    # The underlying reason should be surfaced in the user-facing message, not just the logs.
+    assert testMessage in str(excinfo.value)
+    assert "(See logs for details.)" in str(excinfo.value)
     mockLogger.error.assert_called_once_with(testMessage)
 
 
-@ExceptionHandler(StateValidationException)
+@ExceptionHandler(StateValidationException, rewrap=(RuntimeError,))
 def throwsStateException():
     raise RuntimeError("I love exceptions!!! Ah ha ha!")
 
 
 def test_stateExceptionHandler():
+    # A listed (`convert`) exception is re-routed into the target type.
     with pytest.raises(StateValidationException):
         throwsStateException()
+
+
+def test_exceptionHandlerPreservesCause():
+    # The real cause must be preserved as `__cause__`, not dropped to a log line only.
+    with pytest.raises(StateValidationException) as excinfo:
+        throwsStateException()
+    assert isinstance(excinfo.value.__cause__, RuntimeError)
+    assert "I love exceptions" in str(excinfo.value.__cause__)
+
+
+@ExceptionHandler(StateValidationException)
+def rethrowsStateException():
+    raise StateValidationException(RuntimeError("already meaningful"))
+
+
+def test_exceptionHandlerDoesNotDoubleWrap():
+    # An exception already of the target type must propagate unchanged, not be re-wrapped.
+    with pytest.raises(StateValidationException) as excinfo:
+        rethrowsStateException()
+    assert excinfo.value.__cause__ is None
+
+
+@ExceptionHandler(StateValidationException, rewrap=(FileNotFoundError,))
+def throwsUnlistedException():
+    raise ValueError("this is a bug, not an invalid state")
+
+
+def test_exceptionHandlerDoesNotConvertUnlisted():
+    # An exception not in `convert` (e.g. a genuine bug) must propagate as itself, never
+    # mislabeled as the target type.
+    with pytest.raises(ValueError, match="this is a bug"):
+        throwsUnlistedException()
+
+
+def test_stateExceptionsAreConcreteTypes():
+    # `STATE_EXCEPTIONS` must never list an abstract/umbrella base class: `except` matches
+    # subclasses, so a base class silently re-admits every exception beneath it -- which is how
+    # every failure came to be reported as "Instrument State ... is invalid!" in the first place.
+    forbidden = (Exception, OSError, RuntimeError, ValueError, ArithmeticError, LookupError)
+    for exceptionType in STATE_EXCEPTIONS:
+        assert exceptionType not in forbidden, f"{exceptionType.__name__} is an umbrella base class"
 
 
 def test_recoverableExceptionKwargs():

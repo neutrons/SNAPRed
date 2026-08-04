@@ -363,7 +363,8 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("state", None))
-        self.instance.dataFactoryService.getCycleID = mock.Mock(return_value="2024-A")
+        self.instance.dataFactoryService.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
+        self.instance.dataFactoryService.cycleInfoExists = mock.Mock(return_value=True)
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
         self.instance.groceryService._validateWorkspaceInstrument = mock.Mock()
         self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
@@ -410,6 +411,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.calibrationExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.cycleInfoExists = mock.Mock(return_value=True)
         self.instance._markWorkspaceMetadata = mock.Mock()
 
         self.instance.fetchReductionGroupings = mock.Mock(
@@ -491,6 +493,7 @@ class TestReductionService(unittest.TestCase):
             self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
             self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
             self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("state", None))
+            self.instance.dataFactoryService.cycleInfoExists = mock.Mock(return_value=True)
             self.instance.groceryService._processNeutronDataCopy = mock.Mock()
             self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
             self.instance._markWorkspaceMetadata = mock.Mock()
@@ -779,6 +782,30 @@ class TestReductionService(unittest.TestCase):
         fakeDataService.normalizationExists.return_value = True
         fakeDataService.constructStateId.return_value = ("state", None)
         self.instance.dataFactoryService = fakeDataService
+        self.instance.validateReduction(self.request)
+
+    def test_validateReduction_missingCycleInfo(self):
+        # Missing cycle info is not fatal: a ContinueWarning is raised so the user can proceed
+        #   (the reduction output will subsequently be labelled "diagnostic").
+        fakeDataService = mock.Mock()
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = mock.sentinel.version
+        fakeDataService.normalizationExists.return_value = True
+        fakeDataService.constructStateId.return_value = ("state", None)
+        fakeDataService.cycleInfoExists.return_value = False
+        self.instance.dataFactoryService = fakeDataService
+        with pytest.raises(ContinueWarning) as excInfo:
+            self.instance.validateReduction(self.request)
+        assert excInfo.value.model.flags == ContinueWarning.Type.MISSING_CYCLE_INFO
+
+    def test_validateReduction_missingCycleInfo_reentry(self):
+        # When the user has already accepted the missing-cycle warning, no exception is raised.
+        fakeDataService = mock.Mock()
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = mock.sentinel.version
+        fakeDataService.normalizationExists.return_value = True
+        fakeDataService.constructStateId.return_value = ("state", None)
+        fakeDataService.cycleInfoExists.return_value = False
+        self.instance.dataFactoryService = fakeDataService
+        self.request.continueFlags = ContinueWarning.Type.MISSING_CYCLE_INFO
         self.instance.validateReduction(self.request)
 
     def test_validateReduction_alternativeCalibrationFilePath_notExist(self):
