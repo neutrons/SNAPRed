@@ -73,20 +73,51 @@ def liveDataFacilityActive() -> bool:
         return _active
 
 
+def _reentranceError(context: str) -> LiveDataFacilityReentranceError:
+    return LiveDataFacilityReentranceError(
+        f"A live-data facility scope is already active, and cannot be nested (entering: {context}).\n"
+        "  While such a scope is active the Mantid default facility is overridden process-wide,"
+        " so nesting would run the outer call under the wrong facility.\n"
+        "  This indicates a defect in the calling code: live-data algorithms are expected to run"
+        " one at a time."
+    )
+
+
 def assertNoLiveDataFacility(context: str):
     """Fail loudly if a live-data facility scope is already active.
 
     Call this *before* acquiring any live-data mutex, so that re-entry reports itself instead of
       deadlocking.
+
+    Note that this is an *advisory* check only -- it cannot be atomic with respect to a subsequent
+      entry.  `liveDataFacility` performs the authoritative check-and-claim itself; this exists so
+      that the common single-threaded nesting mistake is reported before a mutex can swallow it.
     """
     if liveDataFacilityActive():
-        raise LiveDataFacilityReentranceError(
-            f"A live-data facility scope is already active, and cannot be nested (entering: {context}).\n"
-            "  While such a scope is active the Mantid default facility is overridden process-wide,"
-            " so nesting would run the outer call under the wrong facility.\n"
-            "  This indicates a defect in the calling code: live-data algorithms are expected to run"
-            " one at a time."
-        )
+        raise _reentranceError(context)
+
+
+def _claimLiveDataFacility(context: str):
+    """Atomically claim the live-data facility scope, or raise if it is already claimed.
+
+    The check and the claim *must* occur in a single critical section.  Performing them separately
+      allows two threads to both pass the check before either claims, so both then override the
+      process-wide Mantid configuration -- and the one which exits last restores the *overridden*
+      values rather than the user's, permanently changing the user's default facility.
+    """
+    global _active
+
+    with _activeLock:
+        if _active:
+            raise _reentranceError(context)
+        _active = True
+
+
+def _releaseLiveDataFacility():
+    global _active
+
+    with _activeLock:
+        _active = False
 
 
 @contextmanager
@@ -96,20 +127,14 @@ def liveDataFacility(context: str = "live-data algorithm"):
     Restores the previous `default.facility` and `default.instrument` on exit, including on error.
       Raises `LiveDataFacilityReentranceError` if such a scope is already active.
     """
-    global _active
-
-    assertNoLiveDataFacility(context)
-
-    facility, instrument = Config["liveData.facility.name"], Config["liveData.instrument.name"]
-    with _activeLock:
-        _active = True
+    _claimLiveDataFacility(context)
     try:
+        facility, instrument = Config["liveData.facility.name"], Config["liveData.instrument.name"]
         logger.debug(f"applying live-data facility '{facility}' / instrument '{instrument}' for {context}")
         with amend_config(facility=facility, instrument=instrument):
             yield
     finally:
-        with _activeLock:
-            _active = False
+        _releaseLiveDataFacility()
 
 
 def liveDataFacilityFor(algorithmName: str) -> AbstractContextManager:

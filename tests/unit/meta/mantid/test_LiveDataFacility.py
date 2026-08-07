@@ -1,9 +1,12 @@
+import threading
+import time
 from contextlib import nullcontext
 
 import pytest
 from mantid.kernel import ConfigService
 
 from snapred.meta.Config import Config
+from snapred.meta.mantid import LiveDataFacility
 from snapred.meta.mantid.LiveDataFacility import (
     LiveDataFacilityReentranceError,
     assertNoLiveDataFacility,
@@ -167,3 +170,65 @@ def test_ordinaryAlgorithmScopeNestsInsideALiveDataScope(otherDefaultFacility):
         with liveDataFacilityFor("CloneWorkspace"):
             # Still the live-data facility, courtesy of the enclosing scope -- and no error.
             assert otherDefaultFacility[DEFAULT_FACILITY_KEY] == Config["liveData.facility.name"]
+
+
+##
+## ATOMICITY OF THE RE-ENTRANCE CLAIM
+##
+
+
+def test_nestingIsRejectedEvenIfTheAdvisoryCheckIsBypassed(otherDefaultFacility, monkeypatch):
+    """`liveDataFacility` must perform its own authoritative check-and-claim.
+
+    Regression test: the check and the claim were once two separate critical sections, with only
+      `assertNoLiveDataFacility` guarding entry.  Two threads could then both pass the check before
+      either claimed, both override the process-wide configuration, and the one exiting last would
+      restore the *overridden* values -- permanently changing the user's default facility.
+
+    Bypassing the advisory check here stands in for losing that race deterministically.
+    """
+    monkeypatch.setattr(LiveDataFacility, "assertNoLiveDataFacility", lambda _context: None)
+
+    with liveDataFacility("outer"):
+        with pytest.raises(LiveDataFacilityReentranceError, match="cannot be nested"):
+            with liveDataFacility("inner"):
+                pass
+
+    assert otherDefaultFacility[DEFAULT_FACILITY_KEY] == OTHER_FACILITY
+    assert otherDefaultFacility[DEFAULT_INSTRUMENT_KEY] == OTHER_INSTRUMENT
+
+
+def test_concurrentEntryAdmitsOnlyOneHolderAndDoesNotLeakConfig(otherDefaultFacility):
+    """Under contention the scope must admit one holder at a time and always restore the user's config."""
+    occupancy = {"current": 0, "max": 0}
+    occupancyLock = threading.Lock()
+    admitted, rejected = [], []
+
+    def contend(index):
+        try:
+            with liveDataFacility(f"thread-{index}"):
+                with occupancyLock:
+                    occupancy["current"] += 1
+                    occupancy["max"] = max(occupancy["max"], occupancy["current"])
+                time.sleep(0.02)
+                with occupancyLock:
+                    occupancy["current"] -= 1
+            admitted.append(index)
+        except LiveDataFacilityReentranceError:
+            rejected.append(index)
+
+    threads = [threading.Thread(target=contend, args=(i,)) for i in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+
+    assert not any(thread.is_alive() for thread in threads), "a contending thread failed to finish"
+    # Contenders are rejected rather than queued, so some will not be admitted -- but never two at once.
+    assert occupancy["max"] == 1
+    assert len(admitted) + len(rejected) == 8
+    assert admitted, "at least one thread should have been admitted"
+
+    # Whatever the interleaving, the user's configuration must be intact.
+    assert otherDefaultFacility[DEFAULT_FACILITY_KEY] == OTHER_FACILITY
+    assert otherDefaultFacility[DEFAULT_INSTRUMENT_KEY] == OTHER_INSTRUMENT
