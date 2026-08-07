@@ -13,6 +13,11 @@ from snapred.backend.log.logger import snapredLogger
 # must import to register with AlgorithmManager
 from snapred.meta.Callback import Callback, callback
 from snapred.meta.Config import Config, Resource
+from snapred.meta.mantid.LiveDataFacility import (
+    assertNoLiveDataFacility,
+    liveDataFacilityFor,
+    needsLiveDataFacility,
+)
 from snapred.meta.pointer import access_pointer, create_pointer
 
 logger = snapredLogger.getLogger(__name__)
@@ -199,31 +204,48 @@ class MantidSnapper:
         return mutex
 
     def executeAlgorithm(self, name, outputs, **kwargs):
-        algorithm = self._createAlgorithm(name)
+        algorithm = None
         mutex = None
         try:
+            # Nested *live-data* calls would deadlock on the live-data mutex below, silently and with
+            #   no diagnostic.  Report the re-entry here, *before* the mutex is acquired.
+            #   Note that this must be conditional: a live-data algorithm legitimately calls other,
+            #   ordinary algorithms through `MantidSnapper` from inside its own `PyExec` -- and hence
+            #   from inside the facility scope -- e.g. `LoadLiveDataInterval` calls `CloneWorkspace`,
+            #   `Plus`, `FilterByTime` and `DeleteWorkspace`.
+            if needsLiveDataFacility(name):
+                assertNoLiveDataFacility(name)
+
             # Protect non-reentrant algorithms.
 
             mutex = self._obtainMutex(name)
             if mutex is not None:
                 mutex.acquire()
 
-            for prop, val in kwargs.items():
-                # Unwrap any deferred-output Callback so that boost::python sees
-                # the underlying str / workspace name / value, not the wrapper.
-                if isinstance(val, Callback):
-                    val = val.get()
-                if val is None:
-                    continue
+            # For live-data algorithms, SNAPRed's facility and instrument must be the Mantid defaults:
+            #   these algorithms validate their `Instrument` property against the *default facility*,
+            #   and they do so when the algorithm is initialized -- which `_createAlgorithm` does.
+            #   `ConfigService` is a process-wide singleton, so this scope is deliberately entered
+            #   *inside* the live-data mutex above, and exited as soon as the algorithm has run.
+            with liveDataFacilityFor(name):
+                algorithm = self._createAlgorithm(name)
 
-                # for pointer property, set via its pointer
-                # allows for "pass-by-reference"-like behavior
-                # this is safe even if the memory address is directly passed
-                if isinstance(algorithm.getProperty(prop), PointerProperty) and type(val) is not int:
-                    val = create_pointer(val)
-                algorithm.setProperty(prop, val)
-            if not algorithm.execute():
-                raise RuntimeError(f"{name} failed to execute")
+                for prop, val in kwargs.items():
+                    # Unwrap any deferred-output Callback so that boost::python sees
+                    # the underlying str / workspace name / value, not the wrapper.
+                    if isinstance(val, Callback):
+                        val = val.get()
+                    if val is None:
+                        continue
+
+                    # for pointer property, set via its pointer
+                    # allows for "pass-by-reference"-like behavior
+                    # this is safe even if the memory address is directly passed
+                    if isinstance(algorithm.getProperty(prop), PointerProperty) and type(val) is not int:
+                        val = create_pointer(val)
+                    algorithm.setProperty(prop, val)
+                if not algorithm.execute():
+                    raise RuntimeError(f"{name} failed to execute")
             for prop, val in outputs.items():
                 # TODO: Special cases are bad
                 if name == "LoadDiffCal":
@@ -248,7 +270,9 @@ class MantidSnapper:
             raise AlgorithmException(name, str(e)) from e
         finally:
             try:
-                self._cleanupNonConcurrent(name, algorithm)
+                # `algorithm` is `None` if creation itself failed.
+                if algorithm is not None:
+                    self._cleanupNonConcurrent(name, algorithm)
             finally:
                 if mutex is not None:
                     mutex.release()

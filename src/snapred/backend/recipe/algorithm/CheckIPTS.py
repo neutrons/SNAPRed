@@ -27,7 +27,10 @@ class CheckIPTS(PythonAlgorithm):
 
         for name in ["SNS", "HFIR"]:
             facility = ConfigService.getFacility(name)
-            facilityInstruments = sorted([item.shortName() for item in facility.instruments() if item != "DAS"])
+            # Note: `item` is an `InstrumentInfo`, so the "DAS" exclusion must compare against its short name.
+            facilityInstruments = sorted(
+                [item.shortName() for item in facility.instruments() if item.shortName() != "DAS"]
+            )
             instruments.extend(facilityInstruments)
 
         return instruments
