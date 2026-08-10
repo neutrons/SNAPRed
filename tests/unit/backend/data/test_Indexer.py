@@ -469,6 +469,23 @@ class TestIndexer(unittest.TestCase):
         latest = indexer.latestApplicableVersion(runNumber)
         assert latest == applicableVersions[-1]
 
+    def test_latestApplicableVersion_defaultInIndexButNotApplicable(self):
+        # the default version can sit in the index without applying to this run.
+        # Excluding it must not assume it is among the applicable entries.
+        runNumber = "123"
+        versionList = [VERSION_START(), 4, 5]
+        self.prepareVersions(versionList)
+        indexer = self.initIndexer()
+        # the default applies to earlier runs only
+        indexer.index[indexer.defaultVersion()].appliesTo = f"<{runNumber}"
+        # two non-default entries apply
+        applicableVersions = [4, 5]
+        for version in applicableVersions:
+            indexer.index[version].appliesTo = f">={runNumber}"
+        # get latest applicable
+        latest = indexer.latestApplicableVersion(runNumber)
+        assert latest == applicableVersions[-1]
+
     def test_getLatestApplicableVersion(self):
         # make one applicable entry
         version1 = randint(1, 10)

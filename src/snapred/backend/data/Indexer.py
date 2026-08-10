@@ -208,8 +208,13 @@ class Indexer:
         elif len(relevantEntries) == 1:
             entry = relevantEntries[0]
         else:
-            if self.defaultVersion() in self.index:
-                relevantEntries.remove(self.index[self.defaultVersion()])
+            # The default version is a fallback: it only applies when nothing else does.
+            # Test membership of `relevantEntries`, not of the index -- the default may be
+            # present in the index while not applying to this run, and removing it then
+            # raises ValueError.
+            defaultEntry = self.index.get(self.defaultVersion())
+            if defaultEntry in relevantEntries:
+                relevantEntries.remove(defaultEntry)
             entry = relevantEntries[-1]
         return entry
 
