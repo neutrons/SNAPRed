@@ -13,9 +13,15 @@
 ##   non-GUI entry point (e.g. `snapwrap`, which imports `snapred.backend` directly) inherits the
 ##   user's own facility setting and then fails inside `LocalDataService._readLiveData`.
 ##
-## These tests characterize the Mantid-side behavior that the fix depends upon.  They deliberately do
-##   *not* assert anything about where SNAPRed performs the facility/instrument setup: that decision
-##   is still open, and these tests should hold for any of the candidate implementations.
+## This is a Mantid defect, and the agreed fix is upstream: make that validation dynamic and add an
+##   optional `Facility` property to the live-data algorithms.  SNAPRed deliberately does *not* work
+##   around it by mutating Mantid's process-wide configuration -- see
+##   'docs/source/developer/implementation_notes/mantid_config_ownership.rst'.
+##
+## These tests characterize the Mantid-side behavior only.  They assert nothing about SNAPRed, so they
+##   remain valid both for the present interim workaround (the user sets their own facility) and after
+##   the upstream fix lands -- at which point the "rejected" expectations below should start failing,
+##   which is the signal that this workaround can be retired.
 ##
 
 import mantid.simpleapi  # noqa: F401  (import registers `LoadLiveData` with the `AlgorithmFactory`)
@@ -95,9 +101,10 @@ def test_liveDataInstrumentAcceptedWhenFacilityAndInstrumentAreSet(mantidFacilit
 
 
 def test_amendConfigRestoresPreviousFacilityAndInstrument(mantidFacilityConfig):
-    """`amend_config` must not leak SNAPRed's facility/instrument into the enclosing session.
+    """A caller who sets the facility for themselves can put it back afterwards.
 
-    This is the property which makes a scoped change viable despite `ConfigService` being a singleton.
+    This documents the interim workaround: until the upstream fix lands, a consumer whose default
+      facility is not ours can wrap its own calls, and Mantid restores the previous values cleanly.
     """
     mantidFacilityConfig.setString(DEFAULT_FACILITY_KEY, OTHER_FACILITY)
     mantidFacilityConfig.setString(DEFAULT_INSTRUMENT_KEY, OTHER_INSTRUMENT)
@@ -141,11 +148,10 @@ def test_settingFacilityAloneDoesNotSetTheInstrument(mantidFacilityConfig):
 def test_allowedInstrumentsAreSnapshottedAtInitialize(mantidFacilityConfig, algorithmName):
     """The allowed-values list is fixed at `initialize()` and not re-evaluated afterwards.
 
-    This bounds how long SNAPRed must hold a modified `ConfigService`: the scope needs to cover
-      algorithm creation, `initialize()` and `setProperty`, but not the data load itself.
-
-    Note: whether the *execute* path of `LoadLiveData` also requires the default facility has not
-      been verified here -- doing so needs a live listener.  See the story notes.
+    This is why adding a `Facility` *property* upstream is not sufficient on its own: property values
+      are only set after initialization, by which time the validator is already built.  The upstream
+      fix must therefore also make the validation dynamic -- e.g. by moving the check into
+      `validateInputs`, where both properties are available.
     """
     instrument = Config["liveData.instrument.name"]
 

@@ -7,7 +7,7 @@ from unittest import mock
 import numpy as np
 import pytest
 from mantid.api import MatrixWorkspaceProperty, Run, mtd
-from mantid.kernel import DateAndTime
+from mantid.kernel import ConfigService, DateAndTime
 from mantid.simpleapi import (
     CloneWorkspace,
     CreateSampleWorkspace,
@@ -167,7 +167,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
         self.instance.initialize()
 
         assert set([p.name for p in self.instance.getProperties()]) == set(
-            ("OutputWorkspace", "StartTime", "EndTime", "Instrument", "PreserveEvents", "RunStatus")
+            ("OutputWorkspace", "StartTime", "EndTime", "Instrument", "Facility", "PreserveEvents", "RunStatus")
         )
 
         # verify default values
@@ -175,6 +175,10 @@ class TestLoadLiveDataInterval(unittest.TestCase):
         assert self.instance.getProperty("EndTime").value == RunMetadata.FROM_NOW_ISO8601
 
         assert self.instance.getProperty("PreserveEvents").value
+
+        # An empty 'Facility' means "SNAPRed's configured live-data facility", not Mantid's default.
+        assert self.instance.getProperty("Facility").isDefault
+        assert self.instance.getProperty("Facility").value == ""
 
     def test_validateInputs(self):
         with (
@@ -308,7 +312,10 @@ class TestLoadLiveDataInterval(unittest.TestCase):
             errors = self.instance.validateInputs()
 
             assert "Instrument" in errors
-            assert f"Instrument '{Config['instrument.name']}' not found in current facility." in errors["Instrument"]
+            assert (
+                f"Instrument '{Config['instrument.name']}' is not part of facility "
+                f"'{Config['liveData.facility.name']}'." in errors["Instrument"]
+            )
 
     def test_validateInputs_instrument_other_exception(self):
         with (
@@ -1746,3 +1753,81 @@ class TestLoadLiveDataInterval(unittest.TestCase):
 
             # Only 2 execute calls: 1 initial + 1 loop (then break on STOPPED).
             assert mock_LoadLiveData.execute.call_count == 2
+
+
+class TestLoadLiveDataIntervalFacility(unittest.TestCase):
+    """`Instrument` must be resolved against an explicitly named facility, never Mantid's default.
+
+    Mantid's `ConfigService.getFacility()` -- with no argument -- returns the *user's* default
+      facility, so validating against it makes this algorithm's behavior depend on unrelated user
+      configuration.  See
+      'docs/source/developer/implementation_notes/mantid_config_ownership.rst'.
+    """
+
+    DEFAULT_FACILITY_KEY = "default.facility"
+    DEFAULT_INSTRUMENT_KEY = "default.instrument"
+    OTHER_FACILITY = "ILL"
+    OTHER_INSTRUMENT = "IN5"
+
+    def setUp(self):
+        self.mantidConfig = ConfigService.Instance()
+        self._saved = {key: self.mantidConfig[key] for key in (self.DEFAULT_FACILITY_KEY, self.DEFAULT_INSTRUMENT_KEY)}
+        # A default facility which owns neither SNAP nor any live listener.
+        self.mantidConfig.setString(self.DEFAULT_FACILITY_KEY, self.OTHER_FACILITY)
+        self.mantidConfig.setString(self.DEFAULT_INSTRUMENT_KEY, self.OTHER_INSTRUMENT)
+
+        self.instance = LoadLiveDataInterval()
+        self.instance.initialize()
+
+    def tearDown(self):
+        self.mantidConfig.setString(self.DEFAULT_FACILITY_KEY, self._saved[self.DEFAULT_FACILITY_KEY])
+        self.mantidConfig.setString(self.DEFAULT_INSTRUMENT_KEY, self._saved[self.DEFAULT_INSTRUMENT_KEY])
+
+    def _validate(self, **properties):
+        with mock.patch.object(inspect.getmodule(LoadLiveDataInterval), "mtd") as mock_mtd:
+            mock_mtd.doesExist.return_value = False
+            for key, value in properties.items():
+                self.instance.setProperty(key, value)
+            return self.instance.validateInputs()
+
+    def test_instrumentValidatesUnderANonDefaultFacility(self):
+        """The regression: SNAP must validate even though the default facility is ILL."""
+        errors = self._validate(
+            OutputWorkspace="ws", StartTime=RunMetadata.FROM_NOW_ISO8601, Instrument=Config["instrument.name"]
+        )
+
+        assert "Instrument" not in errors
+        assert "Facility" not in errors
+
+    def test_explicitFacilityIsHonoured(self):
+        errors = self._validate(
+            OutputWorkspace="ws",
+            StartTime=RunMetadata.FROM_NOW_ISO8601,
+            Instrument=Config["instrument.name"],
+            Facility=Config["liveData.facility.name"],
+        )
+
+        assert "Instrument" not in errors
+        assert "Facility" not in errors
+
+    def test_instrumentNotInTheNamedFacilityIsRejected(self):
+        errors = self._validate(
+            OutputWorkspace="ws",
+            StartTime=RunMetadata.FROM_NOW_ISO8601,
+            Instrument=Config["instrument.name"],
+            Facility="HFIR",
+        )
+
+        assert "Instrument" in errors
+        assert "is not part of facility 'HFIR'" in errors["Instrument"]
+
+    def test_unknownFacilityIsRejected(self):
+        errors = self._validate(
+            OutputWorkspace="ws",
+            StartTime=RunMetadata.FROM_NOW_ISO8601,
+            Instrument=Config["instrument.name"],
+            Facility="NOT_A_FACILITY",
+        )
+
+        assert "Facility" in errors
+        assert "is not known to Mantid" in errors["Facility"]

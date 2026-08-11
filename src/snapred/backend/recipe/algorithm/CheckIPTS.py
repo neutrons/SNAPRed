@@ -69,8 +69,14 @@ class CheckIPTS(PythonAlgorithm):
     def checkIPTSLocal(self, instrument, runnumber) -> str | None:
         # prepend non-empty instrument name for FileFinder
         if len(instrument) == 0:
-            instrument_default = ConfigService.getInstrument().name()
-            self.log().information(f"Using default instrument: {instrument_default}")
+            # Note: the default instrument is *not* substituted here -- `FileFinder` is left to
+            #   resolve the bare run number.  Callers within SNAPRed always pass 'Instrument'
+            #   explicitly, and should continue to: relying on Mantid's process-wide default
+            #   instrument makes behavior depend on unrelated user configuration.
+            self.log().information(
+                f"No instrument specified for run '{runnumber}': leaving resolution to `FileFinder`."
+                f"  (Mantid's default instrument is '{ConfigService.getInstrument().name()}'.)"
+            )
 
         filename = __class__.findFile(instrument, runnumber)
 

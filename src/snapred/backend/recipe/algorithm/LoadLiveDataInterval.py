@@ -92,6 +92,17 @@ class LoadLiveDataInterval(PythonAlgorithm):
 
         self.declareProperty("Instrument", defaultValue="", direction=Direction.Input)
 
+        # An instrument name is only meaningful with respect to a facility, so the two are always
+        #   declared together: it must be possible to override either without relying on Mantid's
+        #   process-wide defaults.  An empty `Facility` means "SNAPRed's configured live-data
+        #   facility", *not* "Mantid's default facility".
+        self.declareProperty(
+            "Facility",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="[optional] facility owning 'Instrument'; empty uses <liveData.facility.name>",
+        )
+
         # TODO: should "PreserveEvents" even be a declared property?
         #  Does this algorithm even work when this is turned off?
         self.declareProperty("PreserveEvents", defaultValue=True, direction=Direction.Input)
@@ -134,15 +145,28 @@ class LoadLiveDataInterval(PythonAlgorithm):
             if not self._endTime > self._startTime:
                 errors["EndTime"] = "'StartTime' must be before 'EndTime'."
 
+        # Resolve the instrument against an *explicitly named* facility.  Mantid's
+        #   `ConfigService.getFacility()` (no argument) returns the user's default facility, so using
+        #   it here would make this algorithm fail for any user whose default facility is not ours.
+        instrumentName = self.getProperty("Instrument").value
+        facilityName = self.getProperty("Facility").value or Config["liveData.facility.name"]
         try:
-            instrument = ConfigService.getFacility().instrument(self.getProperty("Instrument").value)  # noqa: F841
+            facility = ConfigService.getFacility(facilityName)
+        except RuntimeError as e:
+            # Note the sentinel differs between the two lookups: an unknown *facility* reports
+            #   "Facilities search object", whereas an unknown *instrument* within a facility reports
+            #   "FacilityInfo search object".
+            if "Facilities search object" not in str(e):
+                raise
+            errors["Facility"] = f"Facility '{facilityName}' is not known to Mantid."
+            return errors
+
+        try:
+            facility.instrument(instrumentName)
         except RuntimeError as e:
             if "FacilityInfo search object" not in str(e):
                 raise
-            errors["Instrument"] = (
-                f"Instrument '{self.getProperty('Instrument').value}' not found in current facility.\n"
-                "  Please execute `ConfigService.setFacility(...)` before using this algorithm."
-            )
+            errors["Instrument"] = f"Instrument '{instrumentName}' is not part of facility '{facilityName}'."
 
         return errors
 
@@ -378,6 +402,11 @@ class LoadLiveDataInterval(PythonAlgorithm):
             loadLiveData.setAlwaysStoreInADS(True)
             loadLiveData.setRethrows(True)
             loadLiveData.setPropertyValue("OutputWorkspace", chunkWs)
+            # TODO: `Facility` cannot be forwarded here: Mantid's `LoadLiveData` has no such property,
+            #   and validates `Instrument` against the *default* facility using a `StringListValidator`
+            #   fixed at initialization.  Until that validation is made dynamic and a `Facility`
+            #   property added upstream, a user whose default facility is not ours must set it
+            #   themselves.  See 'docs/source/developer/implementation_notes/mantid_config_ownership.rst'.
             loadLiveData.setProperty("Instrument", self.getProperty("Instrument").value)
             loadLiveData.setProperty("StartTime", startTime)
             loadLiveData.setProperty("PreserveEvents", self.getProperty("PreserveEvents").value)
