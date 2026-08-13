@@ -72,6 +72,29 @@ dynamic and add an optional ``Facility`` property to those algorithms upstream i
 of that shape validates correctly under a non-SNS default facility, requires no configuration mutation
 at all, and produces considerably better diagnostics than "not in the list of allowed values".
 
+Do not move live-data algorithm construction
+============================================
+
+One detail is worth recording here, because the withdrawn approach got it wrong and the reasoning is
+not obvious from the code.
+
+``MantidSnapper._liveDataLock`` guards the *execution* of ``LoadLiveData`` and
+``LoadLiveDataInterval``, not their *construction*: ``MantidSnapper.executeAlgorithm`` calls
+``_createAlgorithm`` before acquiring the mutex, deliberately.  ``LoadLiveData`` has been used as a
+stay-resident algorithm, with the instance kept alive across calls to ``execute`` so that its listener
+could preload the stream and then keep working against that same stream.  Construction is cheap and
+creates no listener -- the listener is created during execution.
+
+The withdrawn override needed the Mantid configuration to be correct at construction time, and so
+moved construction inside the mutex.  That was justified at the time by an appeal to listener safety,
+which was simply wrong: constructing the algorithm does not create a listener.  Anything which appears
+to require moving construction inside these mutexes should be treated as a sign that the approach
+itself is wrong.
+
+More generally, Mantid's algorithm lifecycle is awkward -- algorithms are nominally shallow, stateless
+wrappers, yet have a managed lifetime -- and ``MantidSnapper``'s algorithm-removal handling has already
+been revised more than once.  Expect to have to revisit it again, and be conservative when touching it.
+
 Interim workaround
 ==================
 
