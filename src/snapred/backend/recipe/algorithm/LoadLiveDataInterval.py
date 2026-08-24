@@ -93,14 +93,17 @@ class LoadLiveDataInterval(PythonAlgorithm):
         self.declareProperty("Instrument", defaultValue="", direction=Direction.Input)
 
         # An instrument name is only meaningful with respect to a facility, so the two are always
-        #   declared together: it must be possible to override either without relying on Mantid's
-        #   process-wide defaults.  An empty `Facility` means "SNAPRed's configured live-data
-        #   facility", *not* "Mantid's default facility".
+        #   declared together: it must be possible to override either.
+        #
+        # This algorithm is a candidate for promotion into Mantid proper, so it deliberately does
+        #   *not* consult SNAPRed's `Config`: an empty `Facility` means Mantid's default facility,
+        #   which is the usual Mantid convention.  Supplying SNAPRed's live-data facility is the
+        #   caller's job -- see `GroceryService._fetchLiveData`, which passes it explicitly.
         self.declareProperty(
             "Facility",
             defaultValue="",
             direction=Direction.Input,
-            doc="[optional] facility owning 'Instrument'; empty uses <liveData.facility.name>",
+            doc="[optional] facility owning 'Instrument'; empty uses the Mantid default facility",
         )
 
         # TODO: should "PreserveEvents" even be a declared property?
@@ -145,13 +148,13 @@ class LoadLiveDataInterval(PythonAlgorithm):
             if not self._endTime > self._startTime:
                 errors["EndTime"] = "'StartTime' must be before 'EndTime'."
 
-        # Resolve the instrument against an *explicitly named* facility.  Mantid's
-        #   `ConfigService.getFacility()` (no argument) returns the user's default facility, so using
-        #   it here would make this algorithm fail for any user whose default facility is not ours.
+        # Resolve the instrument against the named facility when one is given.  Callers within
+        #   SNAPRed always name it, so SNAPRed never depends on the user's default facility; an empty
+        #   'Facility' falls back to the Mantid default, per the usual Mantid convention.
         instrumentName = self.getProperty("Instrument").value
-        facilityName = self.getProperty("Facility").value or Config["liveData.facility.name"]
+        facilityName = self.getProperty("Facility").value
         try:
-            facility = ConfigService.getFacility(facilityName)
+            facility = ConfigService.getFacility(facilityName) if facilityName else ConfigService.getFacility()
         except RuntimeError as e:
             # Note the sentinel differs between the two lookups: an unknown *facility* reports
             #   "Facilities search object", whereas an unknown *instrument* within a facility reports
@@ -166,7 +169,7 @@ class LoadLiveDataInterval(PythonAlgorithm):
         except RuntimeError as e:
             if "FacilityInfo search object" not in str(e):
                 raise
-            errors["Instrument"] = f"Instrument '{instrumentName}' is not part of facility '{facilityName}'."
+            errors["Instrument"] = f"Instrument '{instrumentName}' is not part of facility '{facility.name()}'."
 
         return errors
 
@@ -402,11 +405,11 @@ class LoadLiveDataInterval(PythonAlgorithm):
             loadLiveData.setAlwaysStoreInADS(True)
             loadLiveData.setRethrows(True)
             loadLiveData.setPropertyValue("OutputWorkspace", chunkWs)
-            # TODO: `Facility` cannot be forwarded here: Mantid's `LoadLiveData` has no such property,
-            #   and validates `Instrument` against the *default* facility using a `StringListValidator`
-            #   fixed at initialization.  Until that validation is made dynamic and a `Facility`
-            #   property added upstream, a user whose default facility is not ours must set it
-            #   themselves.  See 'docs/source/developer/implementation_notes/mantid_config_ownership.rst'.
+            # TODO (EWM#15513): `Facility` cannot be forwarded here -- Mantid's `LoadLiveData` has no
+            #   such property, and validates `Instrument` against the *default* facility using a
+            #   `StringListValidator` fixed at initialization.  Once the Mantid PR adding a dynamic
+            #   `Facility` property is merged, forward it here and drop the interim workaround
+            #   described in 'docs/source/developer/implementation_notes/mantid_config_ownership.rst'.
             loadLiveData.setProperty("Instrument", self.getProperty("Instrument").value)
             loadLiveData.setProperty("StartTime", startTime)
             loadLiveData.setProperty("PreserveEvents", self.getProperty("PreserveEvents").value)

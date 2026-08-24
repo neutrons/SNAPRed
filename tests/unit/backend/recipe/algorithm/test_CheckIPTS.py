@@ -49,7 +49,100 @@ def test_getValidInstrumentsCoversBothFacilities(algorithm):
 
 
 def test_instrumentPropertyAcceptsTheSNAPRedInstrument(algorithm):
-    """End-to-end on the property itself: `Instrument=SNAP` must be settable."""
+    """`Instrument=SNAP` must be settable, and must survive validation."""
+    algorithm.setProperty("RunNumber", 12345)
     algorithm.setProperty("Instrument", Config["instrument.name"])
 
     assert algorithm.getProperty("Instrument").value == Config["instrument.name"]
+    assert algorithm.validateInputs() == {}
+
+
+##
+## OPTIONAL 'Facility' ARGUMENT
+##
+## An instrument name is only meaningful with respect to a facility, so anywhere SNAPRed passes an
+##   instrument it should be able to pass a facility too.
+##
+
+
+def test_instrumentPropertyHasNoFrozenValidator(algorithm):
+    """'Instrument' must not carry a `StringListValidator`.
+
+    Such a validator is built once at initialization and never re-evaluated, so it could not account
+      for the 'Facility' property -- property values are only set *after* initialization.  The check
+      lives in `validateInputs` instead.
+    """
+    assert not list(algorithm.getProperty("Instrument").allowedValues)
+
+
+def test_facilityDefaultsToTheORNLFacilities(algorithm):
+    """An empty 'Facility' preserves the previous behavior: search SNS and HFIR."""
+    assert algorithm.getProperty("Facility").isDefault
+
+    instruments = algorithm.getValidInstruments("")
+    for facilityName in CheckIPTS.DEFAULT_FACILITIES:
+        expected = {i.shortName() for i in ConfigService.getFacility(facilityName).instruments()} - {"DAS"}
+        assert expected <= set(instruments)
+
+
+def test_namedFacilityNarrowsTheInstrumentList(algorithm):
+    snsOnly = algorithm.getValidInstruments("SNS")
+    hfirOnly = algorithm.getValidInstruments("HFIR")
+
+    assert Config["instrument.name"] in snsOnly
+    assert Config["instrument.name"] not in hfirOnly
+
+
+def test_validateInputsAcceptsTheSNAPRedInstrumentAndFacility(algorithm):
+    algorithm.setProperty("RunNumber", 12345)
+    algorithm.setProperty("Instrument", Config["instrument.name"])
+    algorithm.setProperty("Facility", Config["facility.name"])
+
+    assert algorithm.validateInputs() == {}
+
+
+def test_validateInputsAcceptsAnEmptyInstrument(algorithm):
+    """Empty means "let `FileFinder` resolve the bare run number", so it must remain valid."""
+    algorithm.setProperty("RunNumber", 12345)
+
+    assert algorithm.validateInputs() == {}
+
+
+def test_validateInputsRejectsAnInstrumentOutsideTheNamedFacility(algorithm):
+    algorithm.setProperty("RunNumber", 12345)
+    algorithm.setProperty("Instrument", Config["instrument.name"])
+    algorithm.setProperty("Facility", "HFIR")
+
+    errors = algorithm.validateInputs()
+
+    assert "Instrument" in errors
+    assert "is not part of facility 'HFIR'" in errors["Instrument"]
+
+
+def test_validateInputsRejectsAnUnknownFacility(algorithm):
+    algorithm.setProperty("RunNumber", 12345)
+    algorithm.setProperty("Instrument", Config["instrument.name"])
+    algorithm.setProperty("Facility", "NOT_A_FACILITY")
+
+    errors = algorithm.validateInputs()
+
+    assert "Facility" in errors
+    assert "is not known to Mantid" in errors["Facility"]
+
+
+def test_validationDoesNotDependOnTheMantidDefaultFacility(algorithm):
+    """The regression: SNAP must validate while the Mantid default facility is something else."""
+    mantidConfig = ConfigService.Instance()
+    saved = (mantidConfig["default.facility"], mantidConfig["default.instrument"])
+    try:
+        mantidConfig.setString("default.facility", "ILL")
+        mantidConfig.setString("default.instrument", "IN5")
+
+        algorithm.setProperty("RunNumber", 12345)
+        algorithm.setProperty("Instrument", Config["instrument.name"])
+        algorithm.setProperty("Facility", Config["facility.name"])
+
+        assert algorithm.validateInputs() == {}
+    finally:
+        mantidConfig.setString("default.facility", saved[0])
+        mantidConfig.setString("default.instrument", saved[1])

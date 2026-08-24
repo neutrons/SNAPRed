@@ -9,7 +9,7 @@
 from functools import lru_cache
 
 from mantid.api import AlgorithmFactory, FileFinder, PythonAlgorithm
-from mantid.kernel import ConfigService, Direction, IntBoundedValidator, StringListValidator
+from mantid.kernel import ConfigService, Direction, IntBoundedValidator
 
 
 class CheckIPTS(PythonAlgorithm):
@@ -22,10 +22,20 @@ class CheckIPTS(PythonAlgorithm):
     def summary(self):
         return "Extracts the IPTS number from a run using FileFinder, returns empty string if no such directory exists"
 
-    def getValidInstruments(self):
+    # Facilities searched when no 'Facility' is named.  This algorithm is an ORNL utility (it derives
+    #   from Mantid's `GetIPTS`), so these -- and not the Mantid *default* facility -- are the
+    #   behavior-preserving fallback.
+    DEFAULT_FACILITIES = ("SNS", "HFIR")
+
+    def getValidInstruments(self, facilityName: str = ""):
+        """Instrument short-names valid for `facilityName`, or for the ORNL facilities if unnamed.
+
+        The empty string is included: it means "let `FileFinder` resolve the bare run number".
+        """
         instruments = [""]
 
-        for name in ["SNS", "HFIR"]:
+        facilityNames = (facilityName,) if facilityName else self.DEFAULT_FACILITIES
+        for name in facilityNames:
             facility = ConfigService.getFacility(name)
             # Note: `item` is an `InstrumentInfo`, so the "DAS" exclusion must compare against its short name.
             facilityInstruments = sorted(
@@ -99,11 +109,46 @@ class CheckIPTS(PythonAlgorithm):
             doc="Extracts the IPTS number for a run",
         )
 
-        instruments = self.getValidInstruments()
-        self.declareProperty("Instrument", "", StringListValidator(instruments), "Empty uses default instrument")
+        # NOTE: 'Instrument' deliberately carries no `StringListValidator`.  Such a validator is built
+        #   once, when the algorithm is initialized, and is never re-evaluated -- so it could not take
+        #   the 'Facility' property below into account, since property values are only set *after*
+        #   initialization.  The check is therefore performed in `validateInputs`, where both
+        #   properties are available.  This is the same shape proposed for Mantid's live-data
+        #   algorithms; see 'docs/source/developer/implementation_notes/mantid_config_ownership.rst'.
+        self.declareProperty("Instrument", "", direction=Direction.Input, doc="Empty lets `FileFinder` resolve the run")
+
+        # An instrument name is only meaningful with respect to a facility, so the two are declared
+        #   together.  Empty means the ORNL facilities (see `DEFAULT_FACILITIES`).
+        self.declareProperty(
+            "Facility",
+            "",
+            direction=Direction.Input,
+            doc="[optional] facility owning 'Instrument'; empty searches the ORNL facilities",
+        )
+
         self.declareProperty("ClearCache", False, "Remove internal cache of run descriptions to file paths")
 
         self.declareProperty("Directory", "", direction=Direction.Output)
+
+    def validateInputs(self) -> dict:
+        errors = {}
+
+        facilityName = self.getProperty("Facility").value
+        instrumentName = self.getProperty("Instrument").value
+
+        try:
+            validInstruments = self.getValidInstruments(facilityName)
+        except RuntimeError as e:
+            if "Facilities search object" not in str(e):
+                raise
+            errors["Facility"] = f"Facility '{facilityName}' is not known to Mantid."
+            return errors
+
+        if instrumentName not in validInstruments:
+            searched = facilityName if facilityName else " / ".join(self.DEFAULT_FACILITIES)
+            errors["Instrument"] = f"Instrument '{instrumentName}' is not part of facility '{searched}'."
+
+        return errors
 
     def PyExec(self):
         instrument = self.getProperty("Instrument").value

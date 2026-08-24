@@ -229,8 +229,14 @@ class LocalDataService:
         # Fully cached version of `GetIPTS`:
         #   returns the IPTS-directory for the run or None if no IPTS directory exists.
 
+        # Name the facility as well as the instrument: an instrument name is only meaningful with
+        #   respect to a facility, and SNAPRed must not depend on the user's Mantid default.
         IPTS = self.mantidSnapper.CheckIPTS(
-            "get IPTS directory", RunNumber=runNumber, Instrument=instrumentName, ClearCache=True
+            "get IPTS directory",
+            RunNumber=runNumber,
+            Instrument=instrumentName,
+            Facility=Config["facility.name"],
+            ClearCache=True,
         )
         self.mantidSnapper.executeQueue()
         IPTS = str(IPTS)  # "collapse" the `Callback`

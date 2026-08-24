@@ -13,8 +13,8 @@ follow, and they apply to all SNAPRed code:
    facilities and are unaffected by the user's defaults; the no-argument forms are not.
 2. **Wherever an algorithm accepts an instrument, it should also accept a facility.**  An instrument
    name is only meaningful with respect to a facility, so the two belong together.  Either may be
-   optional, but it must be possible to override both.  SNAPRed's ``LoadLiveDataInterval`` follows
-   this: an empty ``Facility`` means <``liveData.facility.name``>, *not* Mantid's default facility.
+   optional, but it must be possible to override both.  SNAPRed's ``LoadLiveDataInterval`` and
+   ``CheckIPTS`` both follow this -- see "Algorithms owned by SNAPRed" below.
 
 Anything SNAPRed does modify -- for example the data-search directories, or the default facility and
 instrument in ``SNAPRedGUI`` -- must be saved beforehand and restored afterwards.
@@ -48,7 +48,13 @@ Three properties of that validator are worth recording, since they rule out the 
 3. **Naming the listener explicitly does not avoid the lookup.**  With ``Instrument`` left empty, the
    algorithm resolves the listener from the *default instrument* regardless of what ``Listener`` and
    ``Address`` are set to, failing with "Attempted to access live listener for <instrument>
-   instrument, which has no listeners."
+   instrument, which has no listeners."  This holds for ``Listener`` alone, ``Address`` alone, both
+   together, and neither.
+
+Note that only the *validator* is at fault.  ``LiveDataAlgorithm::createLiveListener`` resolves the
+instrument with ``ConfigService::Instance().getInstrument(inst_name)``, which searches *all*
+facilities, so execution itself is already facility-independent.  The upstream change is therefore
+confined to validation, which makes it a smaller and safer PR than it first appears.
 
 Why SNAPRed does not work around this
 =====================================
@@ -95,6 +101,28 @@ More generally, Mantid's algorithm lifecycle is awkward -- algorithms are nomina
 wrappers, yet have a managed lifetime -- and ``MantidSnapper``'s algorithm-removal handling has already
 been revised more than once.  Expect to have to revisit it again, and be conservative when touching it.
 
+Algorithms owned by SNAPRed
+===========================
+
+SNAPRed's own algorithms are, in effect, proposals for general Mantid algorithms, so they should not
+reach into SNAPRed's ``Config`` for defaults.  Both ``LoadLiveDataInterval`` and ``CheckIPTS``
+therefore declare an optional ``Facility`` alongside ``Instrument``, and neither treats SNAPRed's
+configuration as its default.  ``LoadLiveDataInterval`` falls back to *Mantid's* default facility, the
+usual Mantid convention; ``CheckIPTS`` falls back to the ORNL facilities (``SNS`` and ``HFIR``), which
+preserves the behavior it inherited from Mantid's ``GetIPTS``.  Either way, passing SNAPRed's facility
+is the caller's job:
+
+* ``GroceryService._fetchLiveData`` passes ``<liveData.facility.name>`` (forwarded through
+  ``FetchGroceriesAlgorithm``);
+* ``LocalDataService.getIPTS`` passes ``<facility.name>``.
+
+``CheckIPTS`` is a useful reference for the upstream fix, because it had exactly the same problem: its
+``Instrument`` property carried a ``StringListValidator`` built at initialization, which a ``Facility``
+property could never influence.  The validator was removed and the check moved into
+``validateInputs``.  The cost of that change is the loss of ``allowedValues``, which is what populates
+the instrument drop-down in Mantid's *generic* algorithm dialog -- worth weighing upstream, though the
+bespoke live-data dialog builds its own list from ``liveListenerInfoList()`` and is unaffected.
+
 Interim workaround
 ==================
 
@@ -124,3 +152,13 @@ The behaviour described above is pinned by
 ``tests/unit/backend/data/test_liveDataFacilityConfig.py``.  Those tests assert nothing about SNAPRed,
 only about Mantid; when the upstream fix lands, the "rejected" expectations there should begin to
 fail, which is the signal that this note and the workaround can be retired.
+
+
+Possible future direction
+=========================
+
+It may be worth SNAPRed exposing a *configuration manager* -- ``SNAPWrap`` in particular could be used
+this way -- so that borrowing Mantid configuration has definite enter and exit hooks rather than being
+handled ad hoc at each site.  Whether that is warranted depends on how many Mantid settings SNAPRed
+really needs to borrow; at present it is only the data-search directories and, in the GUI, the default
+facility and instrument.

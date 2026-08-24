@@ -298,6 +298,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
             mock_ConfigService.getFacility.return_value.instrument.side_effect = RuntimeError(
                 "FacilityInfo search object"
             )
+            mock_ConfigService.getFacility.return_value.name.return_value = Config["liveData.facility.name"]
             mock_mtd.doesExist.return_value = False
 
             self.instance.initialize()
@@ -307,6 +308,7 @@ class TestLoadLiveDataInterval(unittest.TestCase):
                 StartTime=self.startTime,
                 EndTime=self.endTime,
                 Instrument=Config["instrument.name"],
+                Facility=Config["liveData.facility.name"],
                 PreserveEvents=self.preserveEvents,
             )
             errors = self.instance.validateInputs()
@@ -1790,14 +1792,34 @@ class TestLoadLiveDataIntervalFacility(unittest.TestCase):
                 self.instance.setProperty(key, value)
             return self.instance.validateInputs()
 
-    def test_instrumentValidatesUnderANonDefaultFacility(self):
-        """The regression: SNAP must validate even though the default facility is ILL."""
+    def test_namedFacilityValidatesUnderANonDefaultMantidFacility(self):
+        """The regression: naming the facility must work even though Mantid's default is ILL.
+
+        This is how SNAPRed calls the algorithm -- see `GroceryService._fetchLiveData`.
+        """
         errors = self._validate(
-            OutputWorkspace="ws", StartTime=RunMetadata.FROM_NOW_ISO8601, Instrument=Config["instrument.name"]
+            OutputWorkspace="ws",
+            StartTime=RunMetadata.FROM_NOW_ISO8601,
+            Instrument=Config["instrument.name"],
+            Facility=Config["liveData.facility.name"],
         )
 
         assert "Instrument" not in errors
         assert "Facility" not in errors
+
+    def test_emptyFacilityFollowsTheMantidDefault(self):
+        """An empty 'Facility' means Mantid's default facility, deliberately.
+
+        The algorithm is a candidate for promotion into Mantid, so it must not reach into SNAPRed's
+          `Config` for a default.  Supplying the facility is the caller's responsibility, and every
+          SNAPRed call site does so.  Here the Mantid default is ILL, which does not own SNAP.
+        """
+        errors = self._validate(
+            OutputWorkspace="ws", StartTime=RunMetadata.FROM_NOW_ISO8601, Instrument=Config["instrument.name"]
+        )
+
+        assert "Instrument" in errors
+        assert f"is not part of facility '{self.OTHER_FACILITY}'" in errors["Instrument"]
 
     def test_explicitFacilityIsHonoured(self):
         errors = self._validate(
