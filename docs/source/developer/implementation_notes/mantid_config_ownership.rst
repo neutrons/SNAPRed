@@ -56,33 +56,47 @@ instrument with ``ConfigService::Instance().getInstrument(inst_name)``, which se
 facilities, so execution itself is already facility-independent.  The upstream change is therefore
 confined to validation, which makes it a smaller and safer PR than it first appears.
 
-Why SNAPRed does not work around this
-=====================================
+How SNAPRed works around this, for now
+======================================
 
-It is technically possible for SNAPRed to override the default facility for the duration of each
-live-data call and then restore it.  That approach was implemented, reviewed, and **deliberately
-withdrawn**: it adds real complexity, and it is complexity that exists only to compensate for a defect
-in code we do not own.  Specifically, it requires SNAPRed to mutate a process-wide singleton that the
-workbench is simultaneously reading, which brings its own hazards -- the override must be
-non-reentrant, its lifetime has to be reasoned about against Mantid's algorithm-level mutexes, and any
-mistake silently corrupts the user's own configuration.
+The real fix is upstream: make the live-data validation dynamic and add an optional ``Facility``
+property to those algorithms in Mantid.  That work is in review as ``mantidproject/mantid#42089``.
 
-Nor are the alternatives to a scoped override any better.  Setting the facility at SNAPRed **module
-load** would change it for the entire workbench session, with no dependable point at which to restore
-it, and doing that as an import side effect is an antipattern regardless.  Setting it **only at GUI
-startup** is what SNAPRed did historically, and it leaves every non-GUI entry point broken: consumers
-which import ``snapred.backend`` directly -- ``SNAPWrap``, scripts, tests -- never construct the GUI.
+SNAPRed cannot simply wait for it, however.  Once the upstream validation is confined to a single
+facility -- which is the correct behaviour -- SNAPRed *must* name its facility on every live-data
+call, and there is no property to name it with until that PR ships.  So there is no combination of
+released Mantid and SNAPRed changes which fixes the defect on its own.
 
-The agreed direction is therefore to fix the defect at its source: make the live-data validation
-dynamic and add an optional ``Facility`` property to those algorithms upstream in Mantid.  A prototype
-of that shape validates correctly under a non-SNS default facility, requires no configuration mutation
-at all, and produces considerably better diagnostics than "not in the list of allowed values".
+Until then, ``snapred.meta.mantid.liveDataFacility`` makes SNAPRed's facility and instrument the
+Mantid defaults for as long as it takes to create and configure a live-data algorithm, and then
+restores whatever the user had.  This is **temporary**, and the module documents how to remove it.
+Two properties keep it tolerable:
+
+* the override is applied at the point of use, not process-wide, so nothing needs to remember to call
+  a SNAPRed setup or teardown hook;
+* ``mantid.kernel.amend_config`` restores the previous values on the way out, including on an
+  exception, so a failed live-data load cannot leave SNAPRed's facility behind.
+
+The scope must cover algorithm *creation*, because the allowed values for ``Instrument`` are fixed
+when the algorithm is initialized.  With ``MantidSnapper`` that means covering both the call which
+queues the algorithm and the ``executeQueue()`` which runs it, since an algorithm is created during
+each.  It deliberately does **not** cover the repeated ``execute`` calls in
+``LoadLiveDataInterval``: released Mantid resolves the listener at execution time through
+``ConfigService::getInstrument``, which searches every facility and so does not care what the default
+is, and those calls can run for up to <``liveData.dataLoadTimeout``> seconds.  Holding a process-wide
+override for that long, in a session shared with the workbench, would be antisocial.
+
+Note what is *not* acceptable.  Setting the facility at SNAPRed **module load** would change it for
+the entire workbench session, with no dependable point at which to restore it, and doing that as an
+import side effect is an antipattern regardless.  Setting it **only at GUI startup** is what SNAPRed
+did historically, and it leaves every non-GUI entry point broken: consumers which import
+``snapred.backend`` directly -- ``SNAPWrap``, scripts, tests -- never construct the GUI.
 
 Do not move live-data algorithm construction
 ============================================
 
-One detail is worth recording here, because the withdrawn approach got it wrong and the reasoning is
-not obvious from the code.
+One detail is worth recording here, because an earlier revision of the workaround got it wrong and
+the reasoning is not obvious from the code.
 
 ``MantidSnapper._liveDataLock`` guards the *execution* of ``LoadLiveData`` and
 ``LoadLiveDataInterval``, not their *construction*: ``MantidSnapper.executeAlgorithm`` calls
@@ -91,11 +105,12 @@ stay-resident algorithm, with the instance kept alive across calls to ``execute`
 could preload the stream and then keep working against that same stream.  Construction is cheap and
 creates no listener -- the listener is created during execution.
 
-The withdrawn override needed the Mantid configuration to be correct at construction time, and so
-moved construction inside the mutex.  That was justified at the time by an appeal to listener safety,
-which was simply wrong: constructing the algorithm does not create a listener.  Anything which appears
-to require moving construction inside these mutexes should be treated as a sign that the approach
-itself is wrong.
+The override does need the Mantid configuration to be correct at construction time, and an earlier
+revision achieved that by applying it inside ``MantidSnapper`` and moving construction inside the
+mutex.  That was justified by an appeal to listener safety, which was simply wrong: constructing the
+algorithm does not create a listener.  The current workaround instead wraps the call sites, which
+needs no change to ``MantidSnapper`` at all.  Anything which appears to require moving construction
+inside these mutexes should be treated as a sign that the approach is wrong.
 
 More generally, Mantid's algorithm lifecycle is awkward -- algorithms are nominally shallow, stateless
 wrappers, yet have a managed lifetime -- and ``MantidSnapper``'s algorithm-removal handling has already
@@ -123,11 +138,13 @@ property could never influence.  The validator was removed and the check moved i
 the instrument drop-down in Mantid's *generic* algorithm dialog -- worth weighing upstream, though the
 bespoke live-data dialog builds its own list from ``liveListenerInfoList()`` and is unaffected.
 
-Interim workaround
-==================
+Using Mantid's live data directly
+=================================
 
-Until that lands, a user whose Mantid default facility is not ``SNS`` must set it themselves before
-using live data.  Any of the following is sufficient:
+SNAPRed's own live-data calls are covered by the workaround above, so no user action is needed for
+them.  Driving Mantid's live-data algorithms *directly* -- from the ``StartLiveData`` dialog, or from a
+script of your own -- is still subject to the defect until the upstream fix ships.  In that case, set
+the default facility yourself.  Any of the following is sufficient:
 
 * in ``mantid_workbench``, *File → Settings → General*, set the default facility and instrument;
 * in ``~/.mantid/Mantid.user.properties``, set ``default.facility`` and ``default.instrument``;

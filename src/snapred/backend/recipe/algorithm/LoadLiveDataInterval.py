@@ -29,6 +29,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
+from snapred.meta.mantid.liveDataFacility import liveDataFacility
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -400,23 +401,32 @@ class LoadLiveDataInterval(PythonAlgorithm):
                 allowDeadTime = False
 
             # Create the "LoadLiveData" child and set its properties.
-            loadLiveData = self._createChildAlgorithm(self, "LoadLiveData", 0.0, 0.75, self.isLogging())
-            loadLiveData.initialize()
-            loadLiveData.setAlwaysStoreInADS(True)
-            loadLiveData.setRethrows(True)
-            loadLiveData.setPropertyValue("OutputWorkspace", chunkWs)
-            # TODO (EWM#15513): `Facility` cannot be forwarded here -- Mantid's `LoadLiveData` has no
-            #   such property, and validates `Instrument` against the *default* facility using a
-            #   `StringListValidator` fixed at initialization.  Once the Mantid PR adding a dynamic
-            #   `Facility` property is merged, forward it here and drop the interim workaround
-            #   described in 'docs/source/developer/implementation_notes/mantid_config_ownership.rst'.
-            loadLiveData.setProperty("Instrument", self.getProperty("Instrument").value)
-            loadLiveData.setProperty("StartTime", startTime)
-            loadLiveData.setProperty("PreserveEvents", self.getProperty("PreserveEvents").value)
-            #   In order to extract the chunk pulse-time span:
-            #     each chunk of data will be loaded to the `chunkWs` first,
-            #     before transferring its events to the output workspace.
-            loadLiveData.setProperty("AccumulationMethod", "Replace")
+            # TODO (EWM#15513): `Facility` cannot be forwarded to `LoadLiveData` -- Mantid has no such
+            #   property yet -- so SNAPRed's facility is made the Mantid default just long enough to
+            #   create the child and set its properties.  Replace this scope with `Facility=` passed
+            #   alongside `Instrument` once the pinned Mantid version declares it, and see
+            #   `snapred.meta.mantid.liveDataFacility`.
+            #
+            #   Note the scope deliberately does *not* cover `execute` below.  `Instrument`'s allowed
+            #   values are fixed when the algorithm is initialized, so that is the only part which
+            #   needs the override; whereas `LoadLiveData` resolves its listener at execution time via
+            #   `ConfigService::getInstrument`, which searches every facility and so does not care what
+            #   the default is.  Since `execute` is called repeatedly below, for up to
+            #   <liveData.dataLoadTimeout> seconds, holding a process-wide override across it would be
+            #   both unnecessary and antisocial to anything else sharing this Mantid session.
+            with liveDataFacility():
+                loadLiveData = self._createChildAlgorithm(self, "LoadLiveData", 0.0, 0.75, self.isLogging())
+                loadLiveData.initialize()
+                loadLiveData.setAlwaysStoreInADS(True)
+                loadLiveData.setRethrows(True)
+                loadLiveData.setPropertyValue("OutputWorkspace", chunkWs)
+                loadLiveData.setProperty("Instrument", self.getProperty("Instrument").value)
+                loadLiveData.setProperty("StartTime", startTime)
+                loadLiveData.setProperty("PreserveEvents", self.getProperty("PreserveEvents").value)
+                #   In order to extract the chunk pulse-time span:
+                #     each chunk of data will be loaded to the `chunkWs` first,
+                #     before transferring its events to the output workspace.
+                loadLiveData.setProperty("AccumulationMethod", "Replace")
 
             # Load the first data-chunk: this replaces any contents of the output workspace.
             loadLiveData.execute()
