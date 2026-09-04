@@ -195,6 +195,10 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                         "loading live-data interval",
                         OutputWorkspace=outWS,
                         Instrument=loaderArgs["Instrument"],
+                        # An instrument is only meaningful with respect to a facility: name it
+                        #   explicitly rather than letting the algorithm fall back to Mantid's
+                        #   default facility, which is the user's setting and not ours.
+                        Facility=loaderArgs["Facility"],
                         PreserveEvents=loaderArgs["PreserveEvents"],
                         StartTime=loaderArgs["StartTime"],
                     )
