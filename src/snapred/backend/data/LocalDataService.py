@@ -53,6 +53,7 @@ from snapred.meta.decorators.ExceptionHandler import STATE_EXCEPTIONS, Exception
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.InternalConstants import ReservedRunNumber, ReservedStateId
 from snapred.meta.LockFile import LockFile
+from snapred.meta.mantid.liveDataFacility import liveDataFacility
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     ValueFormatter as wnvf,
 )
@@ -229,8 +230,14 @@ class LocalDataService:
         # Fully cached version of `GetIPTS`:
         #   returns the IPTS-directory for the run or None if no IPTS directory exists.
 
+        # Name the facility as well as the instrument: an instrument name is only meaningful with
+        #   respect to a facility, and SNAPRed must not depend on the user's Mantid default.
         IPTS = self.mantidSnapper.CheckIPTS(
-            "get IPTS directory", RunNumber=runNumber, Instrument=instrumentName, ClearCache=True
+            "get IPTS directory",
+            RunNumber=runNumber,
+            Instrument=instrumentName,
+            Facility=Config["facility.name"],
+            ClearCache=True,
         )
         self.mantidSnapper.executeQueue()
         IPTS = str(IPTS)  # "collapse" the `Callback`
@@ -1599,15 +1606,22 @@ class LocalDataService:
 
         # TODO: this call is partially duplicated at `FetchGroceriesAlgorithm`.
         #   However, this separate method is required in order to specify a "fast load" for metadata purposes.
-        self.mantidSnapper.LoadLiveData(
-            "load live-data chunk",
-            OutputWorkspace=ws,
-            Instrument=Config["liveData.instrument.name"],
-            AccumulationMethod=accumulationMethod,
-            StartTime=startTime,
-            PreserveEvents=preserveEvents,
-        )
-        self.mantidSnapper.executeQueue()
+        #
+        # TODO (EWM#15513): replace the `liveDataFacility()` scope with `Facility=` passed alongside
+        #   `Instrument`, once SNAPRed's pinned Mantid version declares that property -- see
+        #   `snapred.meta.mantid.liveDataFacility`.  The scope must cover the `executeQueue` as well as
+        #   the call that queues the algorithm, because `MantidSnapper` creates the algorithm during
+        #   both, and `Instrument`'s allowed values are fixed at creation.
+        with liveDataFacility():
+            self.mantidSnapper.LoadLiveData(
+                "load live-data chunk",
+                OutputWorkspace=ws,
+                Instrument=Config["liveData.instrument.name"],
+                AccumulationMethod=accumulationMethod,
+                StartTime=startTime,
+                PreserveEvents=preserveEvents,
+            )
+            self.mantidSnapper.executeQueue()
 
         return ws
 

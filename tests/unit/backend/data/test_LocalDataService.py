@@ -1228,14 +1228,22 @@ def test_getIPTS(mockPathExists):
         res = localDataService.getIPTS(runNumber)
         assert res == Path(mockSnapper.CheckIPTS.return_value)
         mockSnapper.CheckIPTS.assert_called_with(
-            "get IPTS directory", RunNumber=runNumber, Instrument=Config["instrument.name"], ClearCache=True
+            "get IPTS directory",
+            RunNumber=runNumber,
+            Instrument=Config["instrument.name"],
+            Facility=Config["facility.name"],
+            ClearCache=True,
         )
         mockSnapper.CheckIPTS.reset_mock()
 
         res = localDataService.getIPTS(runNumber, "CRACKLE")
         assert res == Path(mockSnapper.CheckIPTS.return_value)
         mockSnapper.CheckIPTS.assert_called_with(
-            "get IPTS directory", RunNumber=runNumber, Instrument="CRACKLE", ClearCache=True
+            "get IPTS directory",
+            RunNumber=runNumber,
+            Instrument="CRACKLE",
+            Facility=Config["facility.name"],
+            ClearCache=True,
         )
 
 

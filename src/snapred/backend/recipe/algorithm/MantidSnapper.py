@@ -54,6 +54,15 @@ class MantidSnapper:
     ##
     ## KNOWN NON-REENTRANT ALGORITHMS
     ##
+    ## Note that these mutexes deliberately guard algorithm *execution*, and not algorithm
+    ##   *construction* -- see `executeAlgorithm`, where `_createAlgorithm` is called before the mutex
+    ##   is acquired.  This is not accidental: `LoadLiveData` has been used as a stay-resident
+    ##   algorithm, with the instance kept alive between calls to `execute` so that its listener could
+    ##   preload the stream and then continue working against that same stream.  Constructing the
+    ##   algorithm is cheap and creates no listener; the listener is created during execution.
+    ##
+    ## Please do not move construction inside these mutexes.
+    ##
     _nonReentrantAlgorithms = "LoadLiveData", "LoadLiveDataInterval"
     _liveDataLock = Lock()
     _nonReentrantMutexes = {"LoadLiveData": _liveDataLock, "LoadLiveDataInterval": _liveDataLock}

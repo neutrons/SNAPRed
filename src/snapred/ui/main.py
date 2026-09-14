@@ -39,6 +39,7 @@ LOGGERCLASSKEY = "logging.channels.consoleChannel.class"
 LOGGERLEVELKEY = "logging.loggers.root.level"
 DATASEARCH_DIR_KEY = "datasearch.directories"
 DEFAULT_FACILITY_KEY = "default.facility"
+DEFAULT_INSTRUMENT_KEY = "default.instrument"
 FILEEVENTDATALISTENER_FILENAME_KEY = "fileeventdatalistener.filename"
 FILEEVENTDATALISTENER_CHUNKS_KEY = "fileeventdatalistener.chunks"
 
@@ -197,11 +198,19 @@ class SNAPRedGUI(QMainWindow):
         self._mantidConfig.setString(DATASEARCH_DIR_KEY, self._savedMantidConfigEntries[DATASEARCH_DIR_KEY])
 
     def _addLiveDataMantidConfigEntries(self):
-        # Save any current default-facility setting:
+        # Save any current default-facility and default-instrument settings:
         self._savedMantidConfigEntries[DEFAULT_FACILITY_KEY] = self._mantidConfig[DEFAULT_FACILITY_KEY]
+        self._savedMantidConfigEntries[DEFAULT_INSTRUMENT_KEY] = self._mantidConfig[DEFAULT_INSTRUMENT_KEY]
 
-        # Add the required default-facility value:
+        # Add the required default-facility and default-instrument values.
+        #   Both are required: Mantid's live-data algorithms build the allowed values for their
+        #   `Instrument` property from the *default facility*, so a non-SNS default facility makes
+        #   `Instrument="SNAP"` unusable.  Setting the facility via `setString` leaves the previous
+        #   instrument in place (whereas `ConfigService.setFacility` would reset it to the facility's
+        #   first instrument) -- neither yields the instrument we need, so it is set explicitly here.
+        #   The instrument is set _after_ the facility, so that it wins in either case.
         self._mantidConfig.setString(DEFAULT_FACILITY_KEY, Config["liveData.facility.name"])
+        self._mantidConfig.setString(DEFAULT_INSTRUMENT_KEY, Config["liveData.instrument.name"])
 
         if Config["liveData.facility.name"] == "TEST_LIVE":
             # Save any current values from the file-listener keys:
@@ -217,8 +226,10 @@ class SNAPRedGUI(QMainWindow):
             self._mantidConfig.setString(FILEEVENTDATALISTENER_CHUNKS_KEY, str(Config["liveData.testInput.chunks"]))
 
     def _restoreLiveDataMantidConfigEntries(self):
-        # Restore any previous default-facility setting:
+        # Restore any previous default-facility and default-instrument settings.
+        #   As in `_addLiveDataMantidConfigEntries`, the instrument is restored _after_ the facility.
         self._mantidConfig.setString(DEFAULT_FACILITY_KEY, self._savedMantidConfigEntries[DEFAULT_FACILITY_KEY])
+        self._mantidConfig.setString(DEFAULT_INSTRUMENT_KEY, self._savedMantidConfigEntries[DEFAULT_INSTRUMENT_KEY])
 
         if Config["liveData.facility.name"] == "TEST_LIVE":
             # Restore any previous values to the file-listener keys:

@@ -29,6 +29,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
+from snapred.meta.mantid.liveDataFacility import liveDataFacility
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -92,6 +93,20 @@ class LoadLiveDataInterval(PythonAlgorithm):
 
         self.declareProperty("Instrument", defaultValue="", direction=Direction.Input)
 
+        # An instrument name is only meaningful with respect to a facility, so the two are always
+        #   declared together: it must be possible to override either.
+        #
+        # This algorithm is a candidate for promotion into Mantid proper, so it deliberately does
+        #   *not* consult SNAPRed's `Config`: an empty `Facility` means Mantid's default facility,
+        #   which is the usual Mantid convention.  Supplying SNAPRed's live-data facility is the
+        #   caller's job -- see `GroceryService._fetchLiveData`, which passes it explicitly.
+        self.declareProperty(
+            "Facility",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="[optional] facility owning 'Instrument'; empty uses the Mantid default facility",
+        )
+
         # TODO: should "PreserveEvents" even be a declared property?
         #  Does this algorithm even work when this is turned off?
         self.declareProperty("PreserveEvents", defaultValue=True, direction=Direction.Input)
@@ -134,15 +149,28 @@ class LoadLiveDataInterval(PythonAlgorithm):
             if not self._endTime > self._startTime:
                 errors["EndTime"] = "'StartTime' must be before 'EndTime'."
 
+        # Resolve the instrument against the named facility when one is given.  Callers within
+        #   SNAPRed always name it, so SNAPRed never depends on the user's default facility; an empty
+        #   'Facility' falls back to the Mantid default, per the usual Mantid convention.
+        instrumentName = self.getProperty("Instrument").value
+        facilityName = self.getProperty("Facility").value
         try:
-            instrument = ConfigService.getFacility().instrument(self.getProperty("Instrument").value)  # noqa: F841
+            facility = ConfigService.getFacility(facilityName) if facilityName else ConfigService.getFacility()
+        except RuntimeError as e:
+            # Note the sentinel differs between the two lookups: an unknown *facility* reports
+            #   "Facilities search object", whereas an unknown *instrument* within a facility reports
+            #   "FacilityInfo search object".
+            if "Facilities search object" not in str(e):
+                raise
+            errors["Facility"] = f"Facility '{facilityName}' is not known to Mantid."
+            return errors
+
+        try:
+            facility.instrument(instrumentName)
         except RuntimeError as e:
             if "FacilityInfo search object" not in str(e):
                 raise
-            errors["Instrument"] = (
-                f"Instrument '{self.getProperty('Instrument').value}' not found in current facility.\n"
-                "  Please execute `ConfigService.setFacility(...)` before using this algorithm."
-            )
+            errors["Instrument"] = f"Instrument '{instrumentName}' is not part of facility '{facility.name()}'."
 
         return errors
 
@@ -373,18 +401,32 @@ class LoadLiveDataInterval(PythonAlgorithm):
                 allowDeadTime = False
 
             # Create the "LoadLiveData" child and set its properties.
-            loadLiveData = self._createChildAlgorithm(self, "LoadLiveData", 0.0, 0.75, self.isLogging())
-            loadLiveData.initialize()
-            loadLiveData.setAlwaysStoreInADS(True)
-            loadLiveData.setRethrows(True)
-            loadLiveData.setPropertyValue("OutputWorkspace", chunkWs)
-            loadLiveData.setProperty("Instrument", self.getProperty("Instrument").value)
-            loadLiveData.setProperty("StartTime", startTime)
-            loadLiveData.setProperty("PreserveEvents", self.getProperty("PreserveEvents").value)
-            #   In order to extract the chunk pulse-time span:
-            #     each chunk of data will be loaded to the `chunkWs` first,
-            #     before transferring its events to the output workspace.
-            loadLiveData.setProperty("AccumulationMethod", "Replace")
+            # TODO (EWM#15513): `Facility` cannot be forwarded to `LoadLiveData` -- Mantid has no such
+            #   property yet -- so SNAPRed's facility is made the Mantid default just long enough to
+            #   create the child and set its properties.  Replace this scope with `Facility=` passed
+            #   alongside `Instrument` once the pinned Mantid version declares it, and see
+            #   `snapred.meta.mantid.liveDataFacility`.
+            #
+            #   Note the scope deliberately does *not* cover `execute` below.  `Instrument`'s allowed
+            #   values are fixed when the algorithm is initialized, so that is the only part which
+            #   needs the override; whereas `LoadLiveData` resolves its listener at execution time via
+            #   `ConfigService::getInstrument`, which searches every facility and so does not care what
+            #   the default is.  Since `execute` is called repeatedly below, for up to
+            #   <liveData.dataLoadTimeout> seconds, holding a process-wide override across it would be
+            #   both unnecessary and antisocial to anything else sharing this Mantid session.
+            with liveDataFacility():
+                loadLiveData = self._createChildAlgorithm(self, "LoadLiveData", 0.0, 0.75, self.isLogging())
+                loadLiveData.initialize()
+                loadLiveData.setAlwaysStoreInADS(True)
+                loadLiveData.setRethrows(True)
+                loadLiveData.setPropertyValue("OutputWorkspace", chunkWs)
+                loadLiveData.setProperty("Instrument", self.getProperty("Instrument").value)
+                loadLiveData.setProperty("StartTime", startTime)
+                loadLiveData.setProperty("PreserveEvents", self.getProperty("PreserveEvents").value)
+                #   In order to extract the chunk pulse-time span:
+                #     each chunk of data will be loaded to the `chunkWs` first,
+                #     before transferring its events to the output workspace.
+                loadLiveData.setProperty("AccumulationMethod", "Replace")
 
             # Load the first data-chunk: this replaces any contents of the output workspace.
             loadLiveData.execute()
