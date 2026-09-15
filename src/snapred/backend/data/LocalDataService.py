@@ -23,7 +23,9 @@ from pydantic import validate_call
 from snapred.backend.dao import GSASParameters, ObjectSHA, ParticleBounds, RunConfig, RunMetadata, StateConfig
 from snapred.backend.dao.calibration import Calibration, CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.RunRange import RunRange
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
+from snapred.backend.dao.indexing.VersionSegment import VersionSegment
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.normalization import Normalization, NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
@@ -652,30 +654,24 @@ class LocalDataService:
             raise FileNotFoundError(f"No instrument parameters found for run {runNumber}")
         return indexer.readIndexedObject(InstrumentConfig, version)
 
-    def readInstrumentParameterSegments(self, runNumber: str) -> List[Tuple[int, Optional[int], InstrumentConfig]]:
+    def readInstrumentParametersVersion(self, version: int) -> InstrumentConfig:
         """
-        The instrument parameters applying at or above `runNumber`, partitioned into the run
-        segments over which they are constant, as (firstRun, lastRun, parameters); `lastRun`
-        is None on the final, open-ended segment.
+        The instrument parameters stored at a specific version.
 
-        One segment is the ordinary case. More than one means `runNumber` sits below a later
-        configuration boundary, and each segment has to keep the parameters already governing
-        it rather than inheriting those in force at `runNumber`.
-
-        The partition and every segment's parameters are resolved up front, before the caller
-        writes any of them back -- a write would otherwise outrank the entries still being read
-        and change the answer midway through.
+        Instrument-parameter entries all carry the same reserved `runNumber`, so an entry cannot
+        be read back by run number; its version is what identifies it.
         """
-        indexer = self.instrumentParameterIndexer()
-        segments = indexer.applicableVersionSegments(runNumber)
-        if not segments or segments[0][2] is None:
-            raise FileNotFoundError(f"No instrument parameters found for run {runNumber}")
-        return [
-            (firstRun, lastRun, indexer.readIndexedObject(InstrumentConfig, version))
-            for firstRun, lastRun, version in segments
-            # a gap no entry applies to has no parameters to carry forward, so it is left alone
-            if version is not None
-        ]
+        return self.instrumentParameterIndexer().readIndexedObject(InstrumentConfig, version)
+
+    def getRelevantInstrumentParameterSegments(self, runRange: RunRange) -> List[VersionSegment]:
+        """
+        How `runRange` divides up by the instrument parameters governing it.
+
+        One segment is the ordinary case. More than one means a configuration boundary falls
+        inside the range, and each segment then has to keep the parameters already governing it
+        rather than inheriting whichever set is in force at the range's first run.
+        """
+        return self.instrumentParameterIndexer().applicableVersionSegments(runRange)
 
     def cycleInfoExists(self, runNumber: str) -> bool:
         # Cycle info is considered present only when a cycle is defined *and* the run

@@ -23,7 +23,9 @@ from snapred.backend.dao.indexing.CalculationParameters import CalculationParame
 from snapred.backend.dao.indexing.IndexedObject import IndexedObject
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
+from snapred.backend.dao.indexing.RunRange import RunRange
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
+from snapred.backend.dao.indexing.VersionSegment import VersionSegment
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.data.Indexer import DEFAULT_RECORD_TYPE, Indexer, IndexerType
 from snapred.meta.Config import Config, Resource
@@ -495,22 +497,43 @@ class TestIndexer(unittest.TestCase):
             indexer.index[version].timestamp = timestamp
         return indexer
 
+    def _expectedSegments(self, *layout):
+        return [
+            VersionSegment(runRange=RunRange(firstRun=firstRun, lastRun=lastRun), version=version)
+            for firstRun, lastRun, version in layout
+        ]
+
     def test_applicableVersionSegments_openEnded(self):
-        # nothing above the run opens a new boundary, so the whole range is one segment
+        # nothing above the range's first run opens a new boundary, so it is all one segment
         indexer = self._segmentIndexer([(1, ">=100", 1000.0)])
-        assert indexer.applicableVersionSegments("200") == [(200, None, 1)]
+        assert indexer.applicableVersionSegments(RunRange(firstRun=200)) == self._expectedSegments((200, None, 1))
 
     def test_applicableVersionSegments_splitsAtBoundary(self):
         # the shape of the production instrument-parameter index: bounded early epochs
-        # followed by an open-ended current one.  A run inside the bounded epoch has to
-        # split at the start of the epoch above it.
+        # followed by an open-ended current one.  A range starting inside the bounded epoch
+        # has to split at the start of the epoch above it.
         indexer = self._segmentIndexer(
             [
                 (1, ">=100,<=199", 1000.0),
                 (2, ">=200", 2000.0),
             ]
         )
-        assert indexer.applicableVersionSegments("150") == [(150, 199, 1), (200, None, 2)]
+        assert indexer.applicableVersionSegments(RunRange(firstRun=150)) == self._expectedSegments(
+            (150, 199, 1), (200, None, 2)
+        )
+
+    def test_applicableVersionSegments_stopsAtTheEndOfTheRange(self):
+        # a bounded range must not reach past its own last run: runs above 250 keep whatever
+        # already governs them, which is what leaves a gap between one cycle and the next
+        indexer = self._segmentIndexer(
+            [
+                (1, ">=100,<=199", 1000.0),
+                (2, ">=200", 2000.0),
+            ]
+        )
+        assert indexer.applicableVersionSegments(RunRange(firstRun=150, lastRun=250)) == self._expectedSegments(
+            (150, 199, 1), (200, 250, 2)
+        )
 
     def test_applicableVersionSegments_mergesEqualVersions(self):
         # a boundary that does not change the resolved version must not split the range:
@@ -521,17 +544,20 @@ class TestIndexer(unittest.TestCase):
                 (2, ">=100", 2000.0),
             ]
         )
-        assert indexer.applicableVersionSegments("150") == [(150, None, 2)]
+        assert indexer.applicableVersionSegments(RunRange(firstRun=150)) == self._expectedSegments((150, None, 2))
 
-    def test_applicableVersionSegments_reportsGaps(self):
-        # no entry applies between 200 and 299; that range resolves to no version at all
+    def test_applicableVersionSegments_omitsGaps(self):
+        # no entry applies between 200 and 299, so no segment covers it and a caller writing
+        # entries from these segments leaves that range alone
         indexer = self._segmentIndexer(
             [
                 (1, ">=100,<=199", 1000.0),
                 (2, ">=300", 2000.0),
             ]
         )
-        assert indexer.applicableVersionSegments("150") == [(150, 199, 1), (200, 299, None), (300, None, 2)]
+        assert indexer.applicableVersionSegments(RunRange(firstRun=150)) == self._expectedSegments(
+            (150, 199, 1), (300, None, 2)
+        )
 
     def test_applicableVersionSegments_exclusiveBounds(self):
         # ">" and "<" name a boundary one run away from the number they carry
@@ -541,7 +567,9 @@ class TestIndexer(unittest.TestCase):
                 (2, ">=200", 2000.0),
             ]
         )
-        assert indexer.applicableVersionSegments("150") == [(150, 199, 1), (200, None, 2)]
+        assert indexer.applicableVersionSegments(RunRange(firstRun=150)) == self._expectedSegments(
+            (150, 199, 1), (200, None, 2)
+        )
 
     def test_applicableVersionSegments_nestedEntry(self):
         # a newer entry wholly inside an older one interrupts it and then gives it back, so the
@@ -553,12 +581,25 @@ class TestIndexer(unittest.TestCase):
                 (2, ">=200,<=299", 2000.0),
             ]
         )
-        assert indexer.applicableVersionSegments("150") == [
-            (150, 199, 1),
-            (200, 299, 2),
-            (300, 400, 1),
-            (401, None, None),
-        ]
+        assert indexer.applicableVersionSegments(RunRange(firstRun=150)) == self._expectedSegments(
+            (150, 199, 1), (200, 299, 2), (300, 400, 1)
+        )
+
+    def test_getApplicableEntries_selectsByOverlapOldestFirst(self):
+        indexer = self._segmentIndexer(
+            [
+                (1, ">=100,<=199", 2000.0),
+                (2, ">=200,<=299", 1000.0),
+                (3, ">=300", 3000.0),
+            ]
+        )
+        entries = indexer.getApplicableEntries(RunRange(firstRun=150, lastRun=250))
+        # only the two entries meeting the range, oldest first
+        assert [entry.version for entry in entries] == [2, 1]
+
+    def test_getApplicableEntries_excludesAdjacentRange(self):
+        indexer = self._segmentIndexer([(1, ">=200", 1000.0)])
+        assert indexer.getApplicableEntries(RunRange(firstRun=100, lastRun=199)) == []
 
     def test_getLatestApplicableVersion(self):
         # make one applicable entry

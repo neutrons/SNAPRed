@@ -50,6 +50,7 @@ from snapred.backend.dao import StateConfig
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.RunRange import RunRange
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.Limit import Limit
@@ -439,12 +440,38 @@ def test_updateInstrumentConfigCycle_keepsLaterEpochConfig():
             assert service.readInstrumentParameters("250").delTOverT == LATER
 
 
-def test_readInstrumentParameterSegments_notFound():
+def test_updateInstrumentConfigCycle_boundedByTheCycleEnd():
+    """
+    A cycle with a known last run must leave the runs above it alone.  Runs collected after a
+    cycle ends -- beam not yet stable, configuration tests -- belong to no cycle, and only an
+    entry bounded at the cycle's last run can leave them that way.
+    """
+    from snapred.backend.dao.state.Cycle import Cycle
+    from snapred.backend.data.DataFactoryService import DataFactoryService
+
     service = LocalDataService()
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         with Config_override("instrument.parameters.home", str(tempdir)):
-            with pytest.raises(FileNotFoundError, match="No instrument parameters found for run 100"):
-                service.readInstrumentParameterSegments("100")
+            epoch = _readInstrumentParameters()
+            priorCycle = epoch.cycle
+            service.writeInstrumentParameters(epoch, ">=100", "test")
+
+            cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=150, lastRun=250)
+            DataFactoryService().updateInstrumentConfigCycle(cycle, "test")
+
+            # the cycle reaches its own runs ...
+            assert service.readInstrumentParameters("150").cycle == cycle
+            assert service.readInstrumentParameters("250").cycle == cycle
+            # ... and stops there: 251 is past the end of the cycle
+            assert service.readInstrumentParameters("251").cycle == priorCycle
+            assert priorCycle != cycle
+
+
+def test_getRelevantInstrumentParameterSegments_noneApply():
+    service = LocalDataService()
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+        with Config_override("instrument.parameters.home", str(tempdir)):
+            assert service.getRelevantInstrumentParameterSegments(RunRange(firstRun=100)) == []
 
 
 def test_getCycle():

@@ -1,7 +1,7 @@
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Type, TypeVar
+from typing import Dict, List, Type, TypeVar
 
 from pydantic import validate_call
 
@@ -11,7 +11,9 @@ from snapred.backend.dao.indexing.CalculationParameters import CalculationParame
 from snapred.backend.dao.indexing.IndexedObject import IndexedObject
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
+from snapred.backend.dao.indexing.RunRange import RunRange
 from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionState
+from snapred.backend.dao.indexing.VersionSegment import VersionSegment
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -229,34 +231,46 @@ class Indexer:
             version = latestEntry.version
         return version
 
-    def applicableVersionSegments(self, runNumber: str) -> List[Tuple[int, Optional[int], Optional[int]]]:
+    def getApplicableEntries(self, runRange: RunRange) -> List[IndexEntry]:
         """
-        Partition the runs at or above `runNumber` into maximal contiguous segments over which
-        `latestApplicableVersion` is constant.
-
-        Returns a list of (firstRun, lastRun, version), ordered by run number; `lastRun` is None
-        on the final segment, which is open-ended, and `version` is None over any run range no
-        entry applies to.
-
-        An entry's applicability is a conjunction of threshold comparisons, so the resolved
-        version can only change at a run number named by some entry's `appliesTo`. Those are
-        therefore the only candidate boundaries that have to be tested.
+        Every entry in the index that applies somewhere within `runRange`, oldest first.
         """
-        firstRun = int(runNumber)
-        candidates = sorted(b for b in self._appliesToBoundaries() if b > firstRun)
+        entries = [entry for entry in self.index.values() if self._entryRunRange(entry).overlaps(runRange)]
+        entries.sort(key=lambda entry: entry.timestamp)
+        return entries
 
-        starts = []
-        for start in [firstRun] + candidates:
+    def applicableVersionSegments(self, runRange: RunRange) -> List[VersionSegment]:
+        """
+        Split `runRange` into contiguous segments, each governed by a single version.
+
+        Which version governs a run is decided by `latestApplicableVersion`, and that answer can
+        only change where some entry starts or stops applying. Those run numbers are therefore
+        the only places a segment can begin, so resolving the version once at each of them
+        settles the whole range.
+
+        Runs that no entry applies to are left out rather than given a version: they are the gaps
+        between configurations, and a caller writing entries from these segments leaves them
+        untouched.
+        """
+        starts = self._segmentStarts(runRange)
+
+        segments: List[VersionSegment] = []
+        for start, nextStart in zip(starts, starts[1:] + [None]):
             version = self.latestApplicableVersion(str(start))
-            if starts and starts[-1][1] == version:
-                # same version as the segment already open: extend it rather than splitting
+            if version is None:
                 continue
-            starts.append((start, version))
 
-        return [
-            (start, starts[i + 1][0] - 1 if i + 1 < len(starts) else None, version)
-            for i, (start, version) in enumerate(starts)
-        ]
+            lastRun = runRange.lastRun if nextStart is None else nextStart - 1
+            previous = segments[-1] if segments else None
+            if previous is not None and previous.version == version and previous.runRange.runAfter == start:
+                # the same version continues across this boundary: widen the open segment
+                segments[-1] = VersionSegment(
+                    runRange=RunRange(firstRun=previous.runRange.firstRun, lastRun=lastRun),
+                    version=version,
+                )
+            else:
+                segments.append(VersionSegment(runRange=RunRange(firstRun=start, lastRun=lastRun), version=version))
+        return segments
 
     def nextVersion(self) -> int:
         """
@@ -302,22 +316,21 @@ class Indexer:
     def _parseAppliesTo(self, appliesTo: str):
         return IndexEntry.parseAppliesTo(appliesTo)
 
-    def _appliesToBoundaries(self) -> Set[int]:
+    def _entryRunRange(self, entry: IndexEntry) -> RunRange:
+        return RunRange.fromAppliesTo(entry.appliesTo)
+
+    def _segmentStarts(self, runRange: RunRange) -> List[int]:
         """
-        Every run number at which some entry in the index starts or stops applying.
+        Every run within `runRange` at which the governing version could change: the range's own
+        first run, plus each run where an entry starts applying or first stops applying.
         """
-        boundaries = set()
+        starts = {runRange.firstRun}
         for entry in self.index.values():
-            for symbol, runNumber in self._parseAppliesTo(entry.appliesTo):
-                run = int(runNumber)
-                if symbol in (">=", "<"):
-                    boundaries.add(run)
-                elif symbol in (">", "<="):
-                    boundaries.add(run + 1)
-                else:
-                    # bare run number: an equality, applying to that run alone
-                    boundaries.update((run, run + 1))
-        return boundaries
+            entryRange = self._entryRunRange(entry)
+            for boundary in (entryRange.firstRun, entryRange.runAfter):
+                if boundary is not None and runRange.contains(boundary):
+                    starts.add(boundary)
+        return sorted(starts)
 
     def _compareRunNumbers(self, runNumber1: str, runNumber2: str, symbol: str):
         expressions = {

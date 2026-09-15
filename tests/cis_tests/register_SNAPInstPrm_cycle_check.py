@@ -7,6 +7,10 @@ can see. `updateInstrumentConfigCycle` used to write an open-ended `appliesTo`, 
 newly registered cycle overrode every later configuration epoch and silently moved
 those runs. This checks that it no longer does.
 
+It also checks the other half: a cycle now stops at its own last run. SNAP collects
+runs after a cycle ends -- beam not yet stable, configuration tests -- and those belong
+to no cycle. Only an entry bounded above leaves them that way.
+
 SAFETY: this copies the production SNAPInstPrm to a scratch directory and points
 `Config` at the copy. Production is read once and never written.
 
@@ -30,12 +34,26 @@ from snapred.backend.data.LocalDataService import LocalDataService  # noqa: E402
 from snapred.meta.Config import Config  # noqa: E402
 
 # --- User input ---
-# The cycle to register. 2025-A is the first one awaiting registration, and the one
-# that straddles the v1/v2 configuration boundary at run 66557.
-CYCLE = Cycle(cycleID="2025-A", startDate="2025-01-28", stopDate="2025-07-01", firstRun=63978)
+# The cycle to register. 2025-A is the first one awaiting registration. Its last run is
+# measured from the production runs: 66474 is the last diffraction production run before
+# a 79-day beam gap, two months before 2025-B opens.
+CYCLE = Cycle(cycleID="2025-A", startDate="2025-01-28", stopDate="2025-07-01", firstRun=63978, lastRun=66474)
 AUTHOR = "cis test"
-# Runs spanning the index, chosen to sit either side of every boundary.
-PROBE_RUNS = ["46342", "50000", "63977", "63978", "66556", "66557", "66569", "70000", "80000"]
+# Runs spanning the index, chosen to sit either side of every boundary, of the cycle's own
+# bounds, and inside the out-of-cycle gap that follows it (66475 to 66568).
+PROBE_RUNS = [
+    "46342",
+    "50000",
+    "63977",
+    "63978",
+    "66474",
+    "66475",
+    "66556",
+    "66557",
+    "66569",
+    "70000",
+    "80000",
+]
 
 source = Path(Config["instrument.parameters.home"])
 print(f"reading production SNAPInstPrm from : {source}")
@@ -93,7 +111,7 @@ with tempfile.TemporaryDirectory(prefix="cis_SNAPInstPrm_") as scratch:
                 tagged.append(run)
             print(f"{run:>7}  {f'v{vBefore} -> v{vAfter}':>14}  {cycleID:>10}  {schema}")
 
-        expected = [r for r in PROBE_RUNS if int(r) >= CYCLE.firstRun]
+        expected = [r for r in PROBE_RUNS if CYCLE.runRange.contains(int(r))]
         print()
         print(f"state-ID schema moved for : {moved if moved else 'no runs'}")
         print(f"runs carrying {CYCLE.cycleID:<8}    : {tagged}")
@@ -102,8 +120,8 @@ with tempfile.TemporaryDirectory(prefix="cis_SNAPInstPrm_") as scratch:
         assert not moved, f"state-ID schema moved for {moved} -- registration is NOT safe"
         assert tagged == expected, f"cycle tagging wrong: got {tagged}, expected {expected}"
         print(
-            "\nPASS: every run kept its state-ID schema, and the cycle reached exactly the "
-            "runs at or above its first run."
+            "\nPASS: every run kept its state-ID schema, and the cycle reached exactly its own "
+            "runs -- nothing below its first run and nothing above its last."
         )
 
 print("\nscratch copy removed; production untouched.")
