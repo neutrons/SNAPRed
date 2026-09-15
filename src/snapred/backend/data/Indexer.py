@@ -1,7 +1,7 @@
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Type, TypeVar
+from typing import Dict, List, Optional, Set, Tuple, Type, TypeVar
 
 from pydantic import validate_call
 
@@ -229,6 +229,35 @@ class Indexer:
             version = latestEntry.version
         return version
 
+    def applicableVersionSegments(self, runNumber: str) -> List[Tuple[int, Optional[int], Optional[int]]]:
+        """
+        Partition the runs at or above `runNumber` into maximal contiguous segments over which
+        `latestApplicableVersion` is constant.
+
+        Returns a list of (firstRun, lastRun, version), ordered by run number; `lastRun` is None
+        on the final segment, which is open-ended, and `version` is None over any run range no
+        entry applies to.
+
+        An entry's applicability is a conjunction of threshold comparisons, so the resolved
+        version can only change at a run number named by some entry's `appliesTo`. Those are
+        therefore the only candidate boundaries that have to be tested.
+        """
+        firstRun = int(runNumber)
+        candidates = sorted(b for b in self._appliesToBoundaries() if b > firstRun)
+
+        starts = []
+        for start in [firstRun] + candidates:
+            version = self.latestApplicableVersion(str(start))
+            if starts and starts[-1][1] == version:
+                # same version as the segment already open: extend it rather than splitting
+                continue
+            starts.append((start, version))
+
+        return [
+            (start, starts[i + 1][0] - 1 if i + 1 < len(starts) else None, version)
+            for i, (start, version) in enumerate(starts)
+        ]
+
     def nextVersion(self) -> int:
         """
         A new version number to use for saving calibration records.
@@ -272,6 +301,23 @@ class Indexer:
 
     def _parseAppliesTo(self, appliesTo: str):
         return IndexEntry.parseAppliesTo(appliesTo)
+
+    def _appliesToBoundaries(self) -> Set[int]:
+        """
+        Every run number at which some entry in the index starts or stops applying.
+        """
+        boundaries = set()
+        for entry in self.index.values():
+            for symbol, runNumber in self._parseAppliesTo(entry.appliesTo):
+                run = int(runNumber)
+                if symbol in (">=", "<"):
+                    boundaries.add(run)
+                elif symbol in (">", "<="):
+                    boundaries.add(run + 1)
+                else:
+                    # bare run number: an equality, applying to that run alone
+                    boundaries.update((run, run + 1))
+        return boundaries
 
     def _compareRunNumbers(self, runNumber1: str, runNumber2: str, symbol: str):
         expressions = {

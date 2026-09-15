@@ -398,6 +398,55 @@ def test_readInstrumentParameters():
     assert actual.name == "SNAP"
 
 
+def test_updateInstrumentConfigCycle_keepsLaterEpochConfig():
+    """
+    Registering a cycle that reaches past a configuration boundary must leave the later epoch on
+    its own configuration.  The configuration carries `stateIdSchema`, which fixes a run's state
+    ID and hence which calibrations it can see, so imposing the cycle-start configuration on the
+    later epoch would silently move those runs to a different state.
+    """
+    from snapred.backend.dao.state.Cycle import Cycle
+    from snapred.backend.data.DataFactoryService import DataFactoryService
+
+    EARLY, LATER = 0.001, 0.002  # marks which epoch's configuration a run resolves to
+
+    service = LocalDataService()
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+        with Config_override("instrument.parameters.home", str(tempdir)):
+            # two configuration epochs, meeting at run 200
+            early = _readInstrumentParameters()
+            priorCycle = early.cycle  # whatever cycle the epochs already carry
+            early.delTOverT = EARLY
+            service.writeInstrumentParameters(early, ">=100,<=199", "test")
+            later = _readInstrumentParameters()
+            later.delTOverT = LATER
+            service.writeInstrumentParameters(later, ">=200", "test")
+
+            # a cycle starting inside the early epoch and continuing past the boundary
+            cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=150)
+            DataFactoryService().updateInstrumentConfigCycle(cycle, "test")
+
+            # the cycle reaches every run at or above its first run ...
+            assert service.readInstrumentParameters("150").cycle == cycle
+            assert service.readInstrumentParameters("250").cycle == cycle
+            # ... and runs below it keep the cycle they already had
+            assert service.readInstrumentParameters("120").cycle == priorCycle
+            assert priorCycle != cycle
+
+            # ... but each epoch keeps the configuration that already governed it.
+            # A single open-ended ">=150" would give run 250 the EARLY configuration here.
+            assert service.readInstrumentParameters("150").delTOverT == EARLY
+            assert service.readInstrumentParameters("250").delTOverT == LATER
+
+
+def test_readInstrumentParameterSegments_notFound():
+    service = LocalDataService()
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+        with Config_override("instrument.parameters.home", str(tempdir)):
+            with pytest.raises(FileNotFoundError, match="No instrument parameters found for run 100"):
+                service.readInstrumentParameterSegments("100")
+
+
 def test_getCycle():
     from snapred.backend.dao.state.Cycle import Cycle
 

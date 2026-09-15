@@ -652,6 +652,31 @@ class LocalDataService:
             raise FileNotFoundError(f"No instrument parameters found for run {runNumber}")
         return indexer.readIndexedObject(InstrumentConfig, version)
 
+    def readInstrumentParameterSegments(self, runNumber: str) -> List[Tuple[int, Optional[int], InstrumentConfig]]:
+        """
+        The instrument parameters applying at or above `runNumber`, partitioned into the run
+        segments over which they are constant, as (firstRun, lastRun, parameters); `lastRun`
+        is None on the final, open-ended segment.
+
+        One segment is the ordinary case. More than one means `runNumber` sits below a later
+        configuration boundary, and each segment has to keep the parameters already governing
+        it rather than inheriting those in force at `runNumber`.
+
+        The partition and every segment's parameters are resolved up front, before the caller
+        writes any of them back -- a write would otherwise outrank the entries still being read
+        and change the answer midway through.
+        """
+        indexer = self.instrumentParameterIndexer()
+        segments = indexer.applicableVersionSegments(runNumber)
+        if not segments or segments[0][2] is None:
+            raise FileNotFoundError(f"No instrument parameters found for run {runNumber}")
+        return [
+            (firstRun, lastRun, indexer.readIndexedObject(InstrumentConfig, version))
+            for firstRun, lastRun, version in segments
+            # a gap no entry applies to has no parameters to carry forward, so it is left alone
+            if version is not None
+        ]
+
     def cycleInfoExists(self, runNumber: str) -> bool:
         # Cycle info is considered present only when a cycle is defined *and* the run
         #   falls within it. Absent/incomplete/invalid cycle info is not an error: like a

@@ -486,6 +486,80 @@ class TestIndexer(unittest.TestCase):
         latest = indexer.latestApplicableVersion(runNumber)
         assert latest == applicableVersions[-1]
 
+    def _segmentIndexer(self, layout):
+        # build an indexer whose entries have the given (version, appliesTo, timestamp)
+        self.prepareVersions([version for version, _, _ in layout])
+        indexer = self.initIndexer()
+        for version, appliesTo, timestamp in layout:
+            indexer.index[version].appliesTo = appliesTo
+            indexer.index[version].timestamp = timestamp
+        return indexer
+
+    def test_applicableVersionSegments_openEnded(self):
+        # nothing above the run opens a new boundary, so the whole range is one segment
+        indexer = self._segmentIndexer([(1, ">=100", 1000.0)])
+        assert indexer.applicableVersionSegments("200") == [(200, None, 1)]
+
+    def test_applicableVersionSegments_splitsAtBoundary(self):
+        # the shape of the production instrument-parameter index: bounded early epochs
+        # followed by an open-ended current one.  A run inside the bounded epoch has to
+        # split at the start of the epoch above it.
+        indexer = self._segmentIndexer(
+            [
+                (1, ">=100,<=199", 1000.0),
+                (2, ">=200", 2000.0),
+            ]
+        )
+        assert indexer.applicableVersionSegments("150") == [(150, 199, 1), (200, None, 2)]
+
+    def test_applicableVersionSegments_mergesEqualVersions(self):
+        # a boundary that does not change the resolved version must not split the range:
+        # version 2 wins on both sides of 200, so 150 onwards is a single segment
+        indexer = self._segmentIndexer(
+            [
+                (1, ">=100,<=199", 1000.0),
+                (2, ">=100", 2000.0),
+            ]
+        )
+        assert indexer.applicableVersionSegments("150") == [(150, None, 2)]
+
+    def test_applicableVersionSegments_reportsGaps(self):
+        # no entry applies between 200 and 299; that range resolves to no version at all
+        indexer = self._segmentIndexer(
+            [
+                (1, ">=100,<=199", 1000.0),
+                (2, ">=300", 2000.0),
+            ]
+        )
+        assert indexer.applicableVersionSegments("150") == [(150, 199, 1), (200, 299, None), (300, None, 2)]
+
+    def test_applicableVersionSegments_exclusiveBounds(self):
+        # ">" and "<" name a boundary one run away from the number they carry
+        indexer = self._segmentIndexer(
+            [
+                (1, ">100,<200", 1000.0),
+                (2, ">=200", 2000.0),
+            ]
+        )
+        assert indexer.applicableVersionSegments("150") == [(150, 199, 1), (200, None, 2)]
+
+    def test_applicableVersionSegments_nestedEntry(self):
+        # a newer entry wholly inside an older one interrupts it and then gives it back, so the
+        # same version governs two separate segments.  The partition follows what actually
+        # resolves, not the bounds of any one entry.
+        indexer = self._segmentIndexer(
+            [
+                (1, ">=100,<=400", 1000.0),
+                (2, ">=200,<=299", 2000.0),
+            ]
+        )
+        assert indexer.applicableVersionSegments("150") == [
+            (150, 199, 1),
+            (200, 299, 2),
+            (300, 400, 1),
+            (401, None, None),
+        ]
+
     def test_getLatestApplicableVersion(self):
         # make one applicable entry
         version1 = randint(1, 10)

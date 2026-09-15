@@ -90,12 +90,25 @@ class DataFactoryService:
         return self.lookupService.generateInstrumentState(runId)
 
     def updateInstrumentConfigCycle(self, cycle: Cycle, author: str):
-        runNumber = str(cycle.firstRun)
-        appliesTo = f">={cycle.firstRun}"
-        instrumentConfig = self.lookupService.readInstrumentParameters(runNumber)
-        instrumentConfig.cycle = cycle
-        self.lookupService.writeInstrumentParameters(instrumentConfig, appliesTo, author)
-        return instrumentConfig
+        """
+        Attach `cycle` to the instrument parameters for every run at or above its first run,
+        and return the parameters governing the start of the cycle.
+
+        Each written entry is bounded above at the next configuration boundary instead of being
+        left open-ended. A new entry carries a fresh timestamp and so outranks the existing ones
+        wherever it applies, so a single open-ended `>=firstRun` would impose the parameters read
+        at the cycle's start on every later configuration epoch as well. Those parameters carry
+        `stateIdSchema`, which fixes the state ID and hence which calibrations a run can see, so
+        the effect would be to move runs between states and orphan their calibrations.
+
+        A cycle that opens no new boundary still writes exactly one entry, as before.
+        """
+        segments = self.lookupService.readInstrumentParameterSegments(str(cycle.firstRun))
+        for firstRun, lastRun, instrumentConfig in segments:
+            instrumentConfig.cycle = cycle
+            appliesTo = f">={firstRun}" if lastRun is None else f">={firstRun},<={lastRun}"
+            self.lookupService.writeInstrumentParameters(instrumentConfig, appliesTo, author)
+        return segments[0][2]
 
     def getCompatibleStates(self, runId: str, useLiteMode: bool):
         return self.lookupService.findCompatibleStates(runId, useLiteMode)

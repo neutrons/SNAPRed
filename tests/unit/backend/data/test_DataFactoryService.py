@@ -398,17 +398,48 @@ class TestDataFactoryService(unittest.TestCase):
 
         cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
         mockInstrumentConfig = mock.MagicMock()
-        self.instance.lookupService.readInstrumentParameters = mock.Mock(return_value=mockInstrumentConfig)
+        # one segment: nothing above the cycle's first run opens a new boundary
+        self.instance.lookupService.readInstrumentParameterSegments = mock.Mock(
+            return_value=[(100, None, mockInstrumentConfig)]
+        )
         self.instance.lookupService.writeInstrumentParameters = mock.Mock()
 
         result = self.instance.updateInstrumentConfigCycle(cycle, "testAuthor")
 
-        self.instance.lookupService.readInstrumentParameters.assert_called_once_with("100")
+        self.instance.lookupService.readInstrumentParameterSegments.assert_called_once_with("100")
         assert mockInstrumentConfig.cycle == cycle
         self.instance.lookupService.writeInstrumentParameters.assert_called_once_with(
             mockInstrumentConfig, ">=100", "testAuthor"
         )
         assert result == mockInstrumentConfig
+
+    def test_updateInstrumentConfigCycle_boundedAtConfigBoundary(self):
+        # A cycle spanning a configuration boundary must be written as one entry per segment,
+        # each bounded above and each keeping the configuration already governing its range.
+        # A single open-ended ">=100" would instead impose `configAtStart` -- and its
+        # `stateIdSchema` -- on every run from 200 up, moving those runs to a different state.
+        from snapred.backend.dao.state.Cycle import Cycle
+
+        cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+        configAtStart = mock.MagicMock()
+        configAbove = mock.MagicMock()
+        self.instance.lookupService.readInstrumentParameterSegments = mock.Mock(
+            return_value=[(100, 199, configAtStart), (200, None, configAbove)]
+        )
+        self.instance.lookupService.writeInstrumentParameters = mock.Mock()
+
+        result = self.instance.updateInstrumentConfigCycle(cycle, "testAuthor")
+
+        # both segments carry the cycle ...
+        assert configAtStart.cycle == cycle
+        assert configAbove.cycle == cycle
+        # ... but each keeps its own configuration, and only the last segment is open-ended
+        assert self.instance.lookupService.writeInstrumentParameters.call_args_list == [
+            mock.call(configAtStart, ">=100,<=199", "testAuthor"),
+            mock.call(configAbove, ">=200", "testAuthor"),
+        ]
+        # the configuration governing the start of the cycle is what is returned
+        assert result == configAtStart
 
     ##### TEST LIVE-DATA SUPPORT METHODS ####
 
