@@ -232,44 +232,35 @@ class Indexer:
         return version
 
     def getApplicableEntries(self, runRange: RunRange) -> List[IndexEntry]:
-        """
-        Every entry in the index that applies somewhere within `runRange`, oldest first.
-        """
+        """Every entry that applies somewhere in `runRange`, oldest first."""
         entries = [entry for entry in self.index.values() if self._entryRunRange(entry).overlaps(runRange)]
         entries.sort(key=lambda entry: entry.timestamp)
         return entries
 
     def applicableVersionSegments(self, runRange: RunRange) -> List[VersionSegment]:
         """
-        Split `runRange` into contiguous segments, each governed by a single version.
+        Split `runRange` into the segments that each version governs.
 
-        Which version governs a run is decided by `latestApplicableVersion`, and that answer can
-        only change where some entry starts or stops applying. Those run numbers are therefore
-        the only places a segment can begin, so resolving the version once at each of them
-        settles the whole range.
-
-        Runs that no entry applies to are left out rather than given a version: they are the gaps
-        between configurations, and a caller writing entries from these segments leaves them
-        untouched.
+        Entries are taken newest first, so the first entry to reach a run governs it. Each
+        entry then claims only what the newer entries left. Runs that no entry claims are
+        omitted: they are the gaps between configurations.
         """
-        starts = self._segmentStarts(runRange)
-
         segments: List[VersionSegment] = []
-        for start, nextStart in zip(starts, starts[1:] + [None]):
-            version = self.latestApplicableVersion(str(start))
-            if version is None:
-                continue
-
-            lastRun = runRange.lastRun if nextStart is None else nextStart - 1
-            previous = segments[-1] if segments else None
-            if previous is not None and previous.version == version and previous.runRange.runAfter == start:
-                # the same version continues across this boundary: widen the open segment
-                segments[-1] = VersionSegment(
-                    runRange=RunRange(firstRun=previous.runRange.firstRun, lastRun=lastRun),
-                    version=version,
-                )
-            else:
-                segments.append(VersionSegment(runRange=RunRange(firstRun=start, lastRun=lastRun), version=version))
+        unassigned = [runRange]
+        for entry in self._entriesByPrecedence():
+            if not unassigned:
+                break
+            entryRange = self._entryRunRange(entry)
+            stillUnassigned = []
+            for piece in unassigned:
+                governed = piece.intersection(entryRange)
+                if governed is None:
+                    stillUnassigned.append(piece)
+                    continue
+                segments.append(VersionSegment(runRange=governed, version=entry.version))
+                stillUnassigned.extend(piece.difference(governed))
+            unassigned = stillUnassigned
+        segments.sort(key=lambda segment: segment.runRange.firstRun)
         return segments
 
     def nextVersion(self) -> int:
@@ -319,18 +310,22 @@ class Indexer:
     def _entryRunRange(self, entry: IndexEntry) -> RunRange:
         return RunRange.fromAppliesTo(entry.appliesTo)
 
-    def _segmentStarts(self, runRange: RunRange) -> List[int]:
+    def _entriesByPrecedence(self) -> List[IndexEntry]:
         """
-        Every run within `runRange` at which the governing version could change: the range's own
-        first run, plus each run where an entry starts applying or first stops applying.
+        Index entries in the order that decides which one applies: newest first.
+
+        The default version comes last, because it applies only where no other entry does.
+        This matches `latestApplicableEntry`, so segments and `latestApplicableVersion` cannot
+        disagree.
+
+        The rule never fires for instrument parameters. The instrument evolves continuously, so
+        it has no default configuration; version 0 is its first epoch, and being first it is
+        also the oldest, so it sorts last either way.
         """
-        starts = {runRange.firstRun}
-        for entry in self.index.values():
-            entryRange = self._entryRunRange(entry)
-            for boundary in (entryRange.firstRun, entryRange.runAfter):
-                if boundary is not None and runRange.contains(boundary):
-                    starts.add(boundary)
-        return sorted(starts)
+        defaultEntry = self.index.get(self.defaultVersion())
+        entries = sorted(self.index.values(), key=lambda entry: entry.timestamp, reverse=True)
+        others = [entry for entry in entries if entry is not defaultEntry]
+        return others if defaultEntry is None else others + [defaultEntry]
 
     def _compareRunNumbers(self, runNumber1: str, runNumber2: str, symbol: str):
         expressions = {

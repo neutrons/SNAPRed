@@ -91,28 +91,36 @@ class DataFactoryService:
 
     def updateInstrumentConfigCycle(self, cycle: Cycle, author: str):
         """
-        Attach `cycle` to the instrument parameters governing its runs, and return the parameters
-        governing the start of the cycle.
+        Attach `cycle` to the instrument parameters that govern its runs.
 
-        What is written is decided by the cycle's own run range. A configuration boundary falling
-        inside the cycle splits it into segments, and each segment keeps the parameters already
-        governing it: those parameters carry `stateIdSchema`, which fixes a run's state ID and so
-        which calibrations it can see. Imposing the parameters read at the cycle's start on a
-        later configuration would move runs between states and orphan their calibrations.
+        Each configuration epoch within the cycle gets its own entry, bounded to that epoch.
+        An entry therefore never reaches past the end of the cycle, into a neighbouring cycle,
+        or into the runs collected between cycles.
 
-        Each entry is bounded to the segment it describes, so it cannot reach past the end of the
-        cycle into a neighbouring one or into the runs collected between cycles. A cycle that
-        spans no configuration boundary writes exactly one entry, as before.
+        Every epoch keeps the parameters that already govern it. Those parameters carry
+        `stateIdSchema`, which fixes a run's state ID and so which calibrations it can see.
+
+        Returns the parameters that govern the start of the cycle.
+
+        Raises FileNotFoundError if no parameters govern the cycle, and RuntimeError if an
+        entry already carries a different cycle.
         """
         segments = self.lookupService.getRelevantInstrumentParameterSegments(cycle.runRange)
         if not segments:
             raise FileNotFoundError(f"No instrument parameters found for cycle '{cycle.cycleID}'")
 
-        # Read every segment's parameters before writing any of them, so that nothing written
-        #   here can affect what the remaining segments read back.
+        # Read every segment before writing any, so that a write cannot change what is read next.
         instrumentConfigs = [
             self.lookupService.readInstrumentParametersVersion(segment.version) for segment in segments
         ]
+        for segment, instrumentConfig in zip(segments, instrumentConfigs):
+            priorCycle = instrumentConfig.cycle
+            if priorCycle is not None and priorCycle.cycleID != cycle.cycleID:
+                raise RuntimeError(
+                    f"instrument parameters v{segment.version} already carry cycle "
+                    f"'{priorCycle.cycleID}'. Each cycle needs its own entry, so one entry "
+                    f"cannot also serve '{cycle.cycleID}'."
+                )
         for segment, instrumentConfig in zip(segments, instrumentConfigs):
             instrumentConfig.cycle = cycle
             self.lookupService.writeInstrumentParameters(instrumentConfig, segment.runRange.toAppliesTo(), author)

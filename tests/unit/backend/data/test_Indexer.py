@@ -597,6 +597,34 @@ class TestIndexer(unittest.TestCase):
         # only the two entries meeting the range, oldest first
         assert [entry.version for entry in entries] == [2, 1]
 
+    def test_applicableVersionSegments_agreeWithLatestApplicableVersion(self):
+        # the write path and the read path must never disagree about which version governs a
+        # run: that divergence is the whole bug class this machinery exists to close
+        indexer = self._segmentIndexer(
+            [
+                (1, ">=100,<=400", 1000.0),
+                (2, ">=200,<=299", 3000.0),
+                (3, ">=350", 2000.0),
+            ]
+        )
+        for segment in indexer.applicableVersionSegments(RunRange(firstRun=100, lastRun=500)):
+            for runNumber in (segment.runRange.firstRun, segment.runRange.lastRun):
+                assert indexer.latestApplicableVersion(str(runNumber)) == segment.version
+
+    def test_applicableVersionSegments_defaultVersionAppliesOnlyWhereNothingElseDoes(self):
+        # the default is a fallback, so it must not outrank a real entry even when its
+        # timestamp is newer.  (For instrument parameters this never arises -- version 0 is
+        # the first epoch and so also the oldest -- but the Indexer is shared with difcal,
+        # where a default genuinely exists.)
+        indexer = self._segmentIndexer(
+            [
+                (VERSION_START(), ">=100", 9999.0),  # the default, and the newest by timestamp
+                (1, ">=100,<=199", 1000.0),
+            ]
+        )
+        segments = indexer.applicableVersionSegments(RunRange(firstRun=100, lastRun=299))
+        assert segments == self._expectedSegments((100, 199, 1), (200, 299, indexer.defaultVersion()))
+
     def test_getApplicableEntries_excludesAdjacentRange(self):
         indexer = self._segmentIndexer([(1, ">=200", 1000.0)])
         assert indexer.getApplicableEntries(RunRange(firstRun=100, lastRun=199)) == []

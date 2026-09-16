@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, model_validator
 
@@ -9,11 +9,10 @@ class RunRange(BaseModel):
     """
     An inclusive range of run numbers.
 
-    `lastRun` of None means the range is unbounded above, which is how an `appliesTo` such as
-    ">=63977" is expressed: it applies to that run and every run after it.
+    A `lastRun` of None means the range has no upper bound.
 
-    This is the same information an `appliesTo` string carries, in a form that can be compared
-    and combined. `fromAppliesTo`/`toAppliesTo` convert between the two.
+    An `appliesTo` string holds the same information. `fromAppliesTo` and `toAppliesTo`
+    convert between the two forms.
     """
 
     firstRun: int
@@ -28,10 +27,10 @@ class RunRange(BaseModel):
     @classmethod
     def fromAppliesTo(cls, appliesTo: Optional[str]) -> "RunRange":
         """
-        The range of runs an `appliesTo` expression selects.
+        The runs an `appliesTo` expression selects.
 
-        An expression is a conjunction of threshold comparisons, so each one either raises the
-        lower bound or lowers the upper bound. An entry with no expression applies everywhere.
+        Each comparison in the expression either raises the lower bound or lowers the upper
+        bound. An entry with no expression applies to every run.
         """
         if appliesTo is None:
             return cls(firstRun=0, lastRun=None)
@@ -70,10 +69,24 @@ class RunRange(BaseModel):
     def overlaps(self, other: "RunRange") -> bool:
         return self.intersection(other) is not None
 
+    def difference(self, other: "RunRange") -> List["RunRange"]:
+        """
+        The runs in this range but not in `other`.
+
+        Removing runs from the middle leaves two pieces, so this returns a list.
+        """
+        overlap = self.intersection(other)
+        if overlap is None:
+            return [self]
+        pieces = []
+        if overlap.firstRun > self.firstRun:
+            pieces.append(RunRange(firstRun=self.firstRun, lastRun=overlap.firstRun - 1))
+        if overlap.lastRun is not None and (self.lastRun is None or overlap.lastRun < self.lastRun):
+            pieces.append(RunRange(firstRun=overlap.lastRun + 1, lastRun=self.lastRun))
+        return pieces
+
     def intersection(self, other: "RunRange") -> Optional["RunRange"]:
-        """
-        The runs in both ranges, or None if they do not meet.
-        """
+        """The runs in both ranges, or None if they do not meet."""
         firstRun = max(self.firstRun, other.firstRun)
         if self.lastRun is None:
             lastRun = other.lastRun

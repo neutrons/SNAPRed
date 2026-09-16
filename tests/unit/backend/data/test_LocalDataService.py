@@ -416,10 +416,11 @@ def test_updateInstrumentConfigCycle_keepsLaterEpochConfig():
         with Config_override("instrument.parameters.home", str(tempdir)):
             # two configuration epochs, meeting at run 200
             early = _readInstrumentParameters()
-            priorCycle = early.cycle  # whatever cycle the epochs already carry
+            early.cycle = None  # a fresh epoch entry carries no cycle until one is registered
             early.delTOverT = EARLY
             service.writeInstrumentParameters(early, ">=100,<=199", "test")
             later = _readInstrumentParameters()
+            later.cycle = None
             later.delTOverT = LATER
             service.writeInstrumentParameters(later, ">=200", "test")
 
@@ -430,9 +431,8 @@ def test_updateInstrumentConfigCycle_keepsLaterEpochConfig():
             # the cycle reaches every run at or above its first run ...
             assert service.readInstrumentParameters("150").cycle == cycle
             assert service.readInstrumentParameters("250").cycle == cycle
-            # ... and runs below it keep the cycle they already had
-            assert service.readInstrumentParameters("120").cycle == priorCycle
-            assert priorCycle != cycle
+            # ... and runs below it are left alone, still carrying no cycle
+            assert service.readInstrumentParameters("120").cycle is None
 
             # ... but each epoch keeps the configuration that already governed it.
             # A single open-ended ">=150" would give run 250 the EARLY configuration here.
@@ -453,7 +453,7 @@ def test_updateInstrumentConfigCycle_boundedByTheCycleEnd():
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         with Config_override("instrument.parameters.home", str(tempdir)):
             epoch = _readInstrumentParameters()
-            priorCycle = epoch.cycle
+            epoch.cycle = None
             service.writeInstrumentParameters(epoch, ">=100", "test")
 
             cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=150, lastRun=250)
@@ -463,8 +463,31 @@ def test_updateInstrumentConfigCycle_boundedByTheCycleEnd():
             assert service.readInstrumentParameters("150").cycle == cycle
             assert service.readInstrumentParameters("250").cycle == cycle
             # ... and stops there: 251 is past the end of the cycle
-            assert service.readInstrumentParameters("251").cycle == priorCycle
-            assert priorCycle != cycle
+            assert service.readInstrumentParameters("251").cycle is None
+
+
+def test_updateInstrumentConfigCycle_refusesAnEntrySpanningTwoCycles():
+    """
+    Each cycle needs its own instrument-parameter entry. Registering a cycle over an entry that
+    already carries a different one would leave a single entry serving both, so it is refused.
+    """
+    from snapred.backend.dao.state.Cycle import Cycle
+    from snapred.backend.data.DataFactoryService import DataFactoryService
+
+    service = LocalDataService()
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+        with Config_override("instrument.parameters.home", str(tempdir)):
+            epoch = _readInstrumentParameters()
+            priorCycle = Cycle(cycleID="2023-A", startDate="2023-01-01", stopDate="2023-06-30", firstRun=50)
+            epoch.cycle = priorCycle
+            service.writeInstrumentParameters(epoch, ">=100", "test")
+
+            cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=150)
+            with pytest.raises(RuntimeError, match="already carry cycle '2023-A'"):
+                DataFactoryService().updateInstrumentConfigCycle(cycle, "test")
+
+            # the entry is untouched
+            assert service.readInstrumentParameters("150").cycle.cycleID == "2023-A"
 
 
 def test_getRelevantInstrumentParameterSegments_noneApply():
