@@ -90,12 +90,41 @@ class DataFactoryService:
         return self.lookupService.generateInstrumentState(runId)
 
     def updateInstrumentConfigCycle(self, cycle: Cycle, author: str):
-        runNumber = str(cycle.firstRun)
-        appliesTo = f">={cycle.firstRun}"
-        instrumentConfig = self.lookupService.readInstrumentParameters(runNumber)
-        instrumentConfig.cycle = cycle
-        self.lookupService.writeInstrumentParameters(instrumentConfig, appliesTo, author)
-        return instrumentConfig
+        """
+        Attach `cycle` to the instrument parameters that govern its runs.
+
+        Each configuration epoch within the cycle gets its own entry, bounded to that epoch.
+        An entry therefore never reaches past the end of the cycle, into a neighbouring cycle,
+        or into the runs collected between cycles.
+
+        Every epoch keeps the parameters that already govern it. Those parameters carry
+        `stateIdSchema`, which fixes a run's state ID and so which calibrations it can see.
+
+        Returns the parameters that govern the start of the cycle.
+
+        Raises FileNotFoundError if no parameters govern the cycle, and RuntimeError if an
+        entry already carries a different cycle.
+        """
+        segments = self.lookupService.getRelevantInstrumentParameterSegments(cycle.runRange)
+        if not segments:
+            raise FileNotFoundError(f"No instrument parameters found for cycle '{cycle.cycleID}'")
+
+        # Read every segment before writing any, so that a write cannot change what is read next.
+        instrumentConfigs = [
+            self.lookupService.readInstrumentParametersVersion(segment.version) for segment in segments
+        ]
+        for segment, instrumentConfig in zip(segments, instrumentConfigs):
+            priorCycle = instrumentConfig.cycle
+            if priorCycle is not None and priorCycle.cycleID != cycle.cycleID:
+                raise RuntimeError(
+                    f"instrument parameters v{segment.version} already carry cycle "
+                    f"'{priorCycle.cycleID}'. Each cycle needs its own entry, so one entry "
+                    f"cannot also serve '{cycle.cycleID}'."
+                )
+        for segment, instrumentConfig in zip(segments, instrumentConfigs):
+            instrumentConfig.cycle = cycle
+            self.lookupService.writeInstrumentParameters(instrumentConfig, segment.runRange.toAppliesTo(), author)
+        return instrumentConfigs[0]
 
     def getCompatibleStates(self, runId: str, useLiteMode: bool):
         return self.lookupService.findCompatibleStates(runId, useLiteMode)

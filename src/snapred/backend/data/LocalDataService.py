@@ -23,7 +23,9 @@ from pydantic import validate_call
 from snapred.backend.dao import GSASParameters, ObjectSHA, ParticleBounds, RunConfig, RunMetadata, StateConfig
 from snapred.backend.dao.calibration import Calibration, CalibrationDefaultRecord, CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.RunRange import RunRange
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
+from snapred.backend.dao.indexing.VersionSegment import VersionSegment
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.normalization import Normalization, NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
@@ -651,6 +653,25 @@ class LocalDataService:
         if version is None:
             raise FileNotFoundError(f"No instrument parameters found for run {runNumber}")
         return indexer.readIndexedObject(InstrumentConfig, version)
+
+    def readInstrumentParametersVersion(self, version: int) -> InstrumentConfig:
+        """
+        The instrument parameters stored at a specific version.
+
+        Instrument-parameter entries all carry the same reserved `runNumber`, so an entry cannot
+        be read back by run number; its version is what identifies it.
+        """
+        return self.instrumentParameterIndexer().readIndexedObject(InstrumentConfig, version)
+
+    def getRelevantInstrumentParameterSegments(self, runRange: RunRange) -> List[VersionSegment]:
+        """
+        How `runRange` divides up by the instrument parameters governing it.
+
+        One segment is the ordinary case. More than one means a configuration boundary falls
+        inside the range, and each segment then has to keep the parameters already governing it
+        rather than inheriting whichever set is in force at the range's first run.
+        """
+        return self.instrumentParameterIndexer().applicableVersionSegments(runRange)
 
     def cycleInfoExists(self, runNumber: str) -> bool:
         # Cycle info is considered present only when a cycle is defined *and* the run

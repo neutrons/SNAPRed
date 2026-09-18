@@ -11,7 +11,9 @@ from snapred.backend.dao.indexing.CalculationParameters import CalculationParame
 from snapred.backend.dao.indexing.IndexedObject import IndexedObject
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
+from snapred.backend.dao.indexing.RunRange import RunRange
 from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionState
+from snapred.backend.dao.indexing.VersionSegment import VersionSegment
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -208,8 +210,13 @@ class Indexer:
         elif len(relevantEntries) == 1:
             entry = relevantEntries[0]
         else:
-            if self.defaultVersion() in self.index:
-                relevantEntries.remove(self.index[self.defaultVersion()])
+            # The default version is a fallback: it only applies when nothing else does.
+            # Test membership of `relevantEntries`, not of the index -- the default may be
+            # present in the index while not applying to this run, and removing it then
+            # raises ValueError.
+            defaultEntry = self.index.get(self.defaultVersion())
+            if defaultEntry in relevantEntries:
+                relevantEntries.remove(defaultEntry)
             entry = relevantEntries[-1]
         return entry
 
@@ -223,6 +230,38 @@ class Indexer:
         else:
             version = latestEntry.version
         return version
+
+    def getApplicableEntries(self, runRange: RunRange) -> List[IndexEntry]:
+        """Every entry that applies somewhere in `runRange`, oldest first."""
+        entries = [entry for entry in self.index.values() if self._entryRunRange(entry).overlaps(runRange)]
+        entries.sort(key=lambda entry: entry.timestamp)
+        return entries
+
+    def applicableVersionSegments(self, runRange: RunRange) -> List[VersionSegment]:
+        """
+        Split `runRange` into the segments that each version governs.
+
+        Entries are taken newest first, so the first entry to reach a run governs it. Each
+        entry then claims only what the newer entries left. Runs that no entry claims are
+        omitted: they are the gaps between configurations.
+        """
+        segments: List[VersionSegment] = []
+        unassigned = [runRange]
+        for entry in self._entriesByPrecedence():
+            if not unassigned:
+                break
+            entryRange = self._entryRunRange(entry)
+            stillUnassigned = []
+            for piece in unassigned:
+                governed = piece.intersection(entryRange)
+                if governed is None:
+                    stillUnassigned.append(piece)
+                    continue
+                segments.append(VersionSegment(runRange=governed, version=entry.version))
+                stillUnassigned.extend(piece.difference(governed))
+            unassigned = stillUnassigned
+        segments.sort(key=lambda segment: segment.runRange.firstRun)
+        return segments
 
     def nextVersion(self) -> int:
         """
@@ -267,6 +306,26 @@ class Indexer:
 
     def _parseAppliesTo(self, appliesTo: str):
         return IndexEntry.parseAppliesTo(appliesTo)
+
+    def _entryRunRange(self, entry: IndexEntry) -> RunRange:
+        return RunRange.fromAppliesTo(entry.appliesTo)
+
+    def _entriesByPrecedence(self) -> List[IndexEntry]:
+        """
+        Index entries in the order that decides which one applies: newest first.
+
+        The default version comes last, because it applies only where no other entry does.
+        This matches `latestApplicableEntry`, so segments and `latestApplicableVersion` cannot
+        disagree.
+
+        The rule never fires for instrument parameters. The instrument evolves continuously, so
+        it has no default configuration; version 0 is its first epoch, and being first it is
+        also the oldest, so it sorts last either way.
+        """
+        defaultEntry = self.index.get(self.defaultVersion())
+        entries = sorted(self.index.values(), key=lambda entry: entry.timestamp, reverse=True)
+        others = [entry for entry in entries if entry is not defaultEntry]
+        return others if defaultEntry is None else others + [defaultEntry]
 
     def _compareRunNumbers(self, runNumber1: str, runNumber2: str, symbol: str):
         expressions = {
