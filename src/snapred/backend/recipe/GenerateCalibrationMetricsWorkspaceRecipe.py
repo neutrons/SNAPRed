@@ -1,3 +1,5 @@
+from mantid.simpleapi import mtd
+
 from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients as Ingredients
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
@@ -76,6 +78,9 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
             )
             self.mantidSnapper.executeQueue()
             logger.info("Finished generating calibration metrics workspace.")
+            for output in outputs:
+                ws = mtd[output]
+                ws.setPlotType("errorbar_y")
             return outputs
         except (RuntimeError, AlgorithmException) as e:
             errorString = str(e)
