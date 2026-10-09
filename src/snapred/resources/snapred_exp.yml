@@ -1,0 +1,5 @@
+# environment: exp
+
+instrument:
+  calibration:
+    home: ${instrument.home}/shared/CalibrationExp
