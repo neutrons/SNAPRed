@@ -468,6 +468,24 @@ def test_configureForDeploy():
                 assert "CalibrationNext" in yml["instrument"]["calibration"]["home"]
 
 
+def test_mergeAndExport_exp():
+    # copy application.yml to a temporary directory
+    with TemporaryDirectory() as tmpPath:
+        applicationYmlPath: Path = Path(Resource.getPath("application.yml"))
+        expApplicationYmlPath = applicationYmlPath.parent / "snapred_exp.yml"
+        (Path(tmpPath) / "application.yml").write_bytes(applicationYmlPath.read_bytes())
+        (Path(tmpPath) / "snapred_exp.yml").write_bytes(expApplicationYmlPath.read_bytes())
+        with (
+            mock.patch.object(Resource, "_resourcesPath", Path(tmpPath)),
+            #   Dont want to overrite the config for the rest of the tests
+            mock.patch.object(Config, "_config", {}),
+        ):
+            Config.mergeAndExport("snapred_exp")
+            with open(Path(tmpPath) / "application.yml", "r") as file:
+                yml = rYaml(typ="safe").load(file)
+                assert "CalibrationExp" in yml["instrument"]["calibration"]["home"]
+
+
 def test_configureForDeploy_qa_or_prod():
     with (
         mock.patch.object(Config, "snapredVersion", mock.Mock(return_value="1.0.0")) as mockVersion,

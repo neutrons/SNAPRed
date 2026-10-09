@@ -30,11 +30,27 @@ def test_workbench():
 
 def test_configure():
     with (
+        mock.patch("snapred.__main__.Config.snapredVersion", return_value="1.0.0"),
+        mock.patch("snapred.__main__.Config.mergeAndExport") as mockMergeExport,
         mock.patch("snapred.__main__.Config.configureForDeploy") as mockConfigure,
         mock.patch("snapred.__main__._print_text_splash"),
     ):
         main(["--configure"])
         mockConfigure.assert_called_once()
+        mockMergeExport.assert_not_called()
+
+
+@pytest.mark.parametrize("version", ["2.4.0+exp.1", "2.4.0+exp", "2.4.0+exp.1.cycle.aware.calib"])
+def test_configure_exp(version):
+    with (
+        mock.patch("snapred.__main__.Config.snapredVersion", return_value=version),
+        mock.patch("snapred.__main__.Config.mergeAndExport") as mockMergeExport,
+        mock.patch("snapred.__main__.Config.configureForDeploy") as mockConfigure,
+        mock.patch("snapred.__main__._print_text_splash"),
+    ):
+        main(["--configure"])
+        mockMergeExport.assert_called_once_with("snapred_exp")
+        mockConfigure.assert_not_called()
 
 
 def test_preloadImports_success(capsys):
