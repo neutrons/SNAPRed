@@ -3,3 +3,4 @@
 instrument:
   calibration:
     home: ${instrument.home}/shared/CalibrationNext
+    environment: next
