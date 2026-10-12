@@ -403,7 +403,7 @@ class LocalDataService:
         sourceParameters.version = targetVersion
         sourceParameters.indexEntry = targetIndexEntry
 
-        targetVersionPath = targetIndexer.versionPath(targetVersion)
+        targetVersionPath = targetIndexer.writeVersionPath(targetVersion)
 
         for workspaceType, workspaceNames in sourceWorspaces.items():
             sourceRecord.workspaces[workspaceType] = []
@@ -753,7 +753,7 @@ class LocalDataService:
         """
         instrumentState = self.generateInstrumentState(record.runNumber)
         indexer = self.normalizationIndexer(record.useLiteMode, instrumentState.id.hex)
-        normalizationDataPath: Path = indexer.versionPath(record.version)
+        normalizationDataPath: Path = indexer.writeVersionPath(record.version)
         if not normalizationDataPath.exists():
             normalizationDataPath.mkdir(parents=True, exist_ok=True)
 
@@ -843,7 +843,7 @@ class LocalDataService:
         """
         state, _ = self.generateStateId(record.runNumber)
         indexer = self.calibrationIndexer(record.useLiteMode, state)
-        calibrationDataPath = indexer.versionPath(record.version)
+        calibrationDataPath = indexer.writeVersionPath(record.version)
         if not calibrationDataPath.exists():
             calibrationDataPath.mkdir(parents=True, exist_ok=True)
 
@@ -1146,7 +1146,7 @@ class LocalDataService:
         filename = Path(grocer.createDiffCalTableWorkspaceName("default", useLiteMode, version) + ".h5")
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
 
-        calibrationDataPath = indexer.versionPath(version)
+        calibrationDataPath = indexer.writeVersionPath(version)
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, tableWorkspaceName=outWS)
 
         # TODO: all of this should have its own workflow, in which case, it could act like all other workflows

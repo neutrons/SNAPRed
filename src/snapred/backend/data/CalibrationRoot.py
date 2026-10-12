@@ -13,7 +13,7 @@ indexed directories are accessed through a `DirView`, which is pinned to a singl
 """
 
 from pathlib import Path
-from typing import Iterable, List, Optional, Union
+from typing import Callable, Iterable, List, Optional, Union
 
 from pydantic import ValidationError
 
@@ -300,9 +300,11 @@ class CalibrationRoot:
                 names.update(child.name for child in path.iterdir() if child.is_dir())
         return sorted(names)
 
-    def view(self, rel: Union[str, Path], anchor: str) -> "DirView":
-        """A view of the directory `rel`, with reads pinned to the first root containing `rel/anchor`."""
-        return DirView(self, rel, anchor)
+    def view(
+        self, rel: Union[str, Path], anchor: str, isPopulated: Optional[Callable[[Path], bool]] = None
+    ) -> "DirView":
+        """A view of the directory `rel`, with reads pinned to a single root: see `DirView`."""
+        return DirView(self, rel, anchor, isPopulated)
 
     ##
     ## Writes
@@ -337,18 +339,30 @@ class DirView:
     """
     A directory within a `CalibrationRoot` whose contents must all come from a single root (e.g. an indexed directory).
 
-    * `readRoot`: the directory in the first root containing the `anchor` file (e.g. the index).
-      Once home contains the anchor, the view stays pinned to home.
-      If no root contains it, this is the directory in home.
+    * `readRoot`: the directory in the first root that contains the `anchor` file (e.g. the index),
+      and that `isPopulated`.  If no such root exists: the first root that contains the anchor; otherwise home.
+      Once home is populated, the view stays pinned to home.
     * `writeRoot`: always the directory in home.
+
+    `isPopulated(directory)` decides whether a directory containing the anchor has any content of its own:
+    e.g. an index containing only the default version does not shadow a failover's versions.
+    When not specified, any directory containing the anchor is populated.
+    It is only called for directories that contain the anchor, and any error it raises is not masked.
     """
 
-    def __init__(self, root: CalibrationRoot, rel: Union[str, Path], anchor: str):
+    def __init__(
+        self,
+        root: CalibrationRoot,
+        rel: Union[str, Path],
+        anchor: str,
+        isPopulated: Optional[Callable[[Path], bool]] = None,
+    ):
         if Path(anchor).name != anchor or anchor in ("", ".", ".."):
             raise ValueError(f"expecting a file name for the anchor, not '{anchor}'")
         self._root = root
         self._rel = _relativePath(rel)
         self._anchor = anchor
+        self._isPopulated = isPopulated if isPopulated is not None else (lambda directory: True)  # noqa: ARG005
         self._pinnedToHome = False
 
     @property
@@ -364,13 +378,14 @@ class DirView:
         home = self._root.home / self._rel
         if self._pinnedToHome:
             return home
-        for root in self._root.roots:
-            path = root / self._rel
-            if (path / self._anchor).exists():
-                if root == self._root.home:
+        anchored = [root / self._rel for root in self._root.roots if (root / self._rel / self._anchor).exists()]
+        for path in anchored:
+            if self._isPopulated(path):
+                if path == home:
                     self._pinnedToHome = True
                 return path
-        return home
+        # nothing is populated: e.g. read home's default version, rather than a failover's
+        return anchored[0] if anchored else home
 
     @property
     def writeRoot(self) -> Path:

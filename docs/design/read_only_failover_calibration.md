@@ -20,8 +20,14 @@ users to maintain several calibration folders.
 2. **Failover granularity: per indexer directory.** For a given `<state>/<mode>/<workflow>` directory, use home if
    its index exists, otherwise the first failover root that has one. Shadowing only — no merged/overlay view of
    versions. Everything for that directory (index, records, parameters, workspaces) is read from the same root.
-   Once dev writes the first record for a state into home, prod's versions of that state are no longer visible to
-   dev (document this; `copyCalibration` can be used to import prod history if needed).
+   **The default version is ignored when choosing the root** (decided 2026-10-12): an index containing only the
+   default version (e.g. a state that was only initialized in home) does not shadow a failover. The first root
+   whose index has a non-default version is read; if none has one, the first root that has an index (home first)
+   is read, i.e. home's own default. Writes to a state that doesn't exist in home first initialize it in home;
+   after that, failover continues as usual until home has its first non-default version. Once dev writes that
+   version, prod's versions of that state are no longer visible to dev (document this; `copyCalibration` can be
+   used to import prod history if needed). Not applied to instrument parameters, whose version 0 is their first
+   epoch rather than a default.
 3. **Resolve by existence, not by retry-on-failure.** A root is skipped only when the target is *missing*. Parse
    errors, permission errors, or corrupted files in home must surface, never silently fall through to a failover.
 4. **Marker file** at the root of every deployed calibration home, holding the calibration folder schema version

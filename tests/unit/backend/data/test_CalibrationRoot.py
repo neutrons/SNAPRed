@@ -744,3 +744,67 @@ def test_writes_never_land_in_failover(roots, calibrationRoot):
     assert (prod / "groupingMap.json").read_text() == "prod"
     assert calibrationRoot.resolve("groupingMap.json") == home / "groupingMap.json"
     assert not (next_ / "groupingMap.json").exists()
+
+
+def test_view_isPopulated(roots, calibrationRoot):
+    home, prod, next_ = roots
+    touch(home / STATE / INDEX, "home")
+    touch(prod / STATE / INDEX, "")
+    touch(next_ / STATE / INDEX, "next")
+    calls = []
+
+    def isPopulated(directory):
+        calls.append(directory)
+        return (directory / INDEX).read_text() != "" and directory != home / STATE
+
+    view = calibrationRoot.view(STATE, INDEX, isPopulated)
+    # home and prod are not populated: the first populated root wins
+    assert view.readRoot == next_ / STATE
+    assert calls == [home / STATE, prod / STATE, next_ / STATE]
+
+
+def test_view_isPopulated_none_populated(roots, calibrationRoot):
+    # nothing is populated: the first root containing the anchor, home first
+    home, prod, _ = roots
+    touch(prod / STATE / INDEX)
+    view = calibrationRoot.view(STATE, INDEX, lambda directory: False)  # noqa: ARG005
+    assert view.readRoot == prod / STATE
+    touch(home / STATE / INDEX)
+    assert view.readRoot == home / STATE
+    assert not view.isFailover
+
+
+def test_view_isPopulated_only_called_with_anchor(roots, calibrationRoot):
+    home, prod, _ = roots
+    (home / STATE).mkdir(parents=True)
+    touch(prod / STATE / INDEX)
+    calls = []
+    view = calibrationRoot.view(STATE, INDEX, lambda directory: calls.append(directory) or True)
+    assert view.readRoot == prod / STATE
+    assert calls == [prod / STATE]
+
+
+def test_view_isPopulated_pins_home(roots, calibrationRoot):
+    home, prod, _ = roots
+    touch(home / STATE / INDEX)
+    touch(prod / STATE / INDEX)
+    populated = {"home": False}
+    view = calibrationRoot.view(STATE, INDEX, lambda directory: directory != home / STATE or populated["home"])
+    assert view.readRoot == prod / STATE
+    populated["home"] = True
+    assert view.readRoot == home / STATE
+    populated["home"] = False
+    # once populated, home stays pinned
+    assert view.readRoot == home / STATE
+
+
+def test_view_isPopulated_errors_are_not_masked(roots, calibrationRoot):
+    home, prod, _ = roots
+    touch(home / STATE / INDEX)
+    touch(prod / STATE / INDEX)
+
+    def isPopulated(directory):
+        raise RuntimeError(f"corrupt: {directory}")
+
+    with pytest.raises(RuntimeError, match="corrupt"):
+        calibrationRoot.view(STATE, INDEX, isPopulated).readRoot
