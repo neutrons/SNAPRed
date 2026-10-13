@@ -1263,7 +1263,11 @@ def test_writeGroupingMap_relative_paths():
 def test_calibrationFileExists(pathExists):
     pathExists.return_value = True
     localDataService = LocalDataService()
-    with mock.patch.object(localDataService, "getIPTS"):
+    with (
+        mock.patch.object(localDataService, "getIPTS"),
+        # `Path.exists` is mocked: keep the calibration root out of it.
+        mock.patch("snapred.backend.data.LocalDataService.resolveCalibrationPath", side_effect=lambda path: path),
+    ):
         stateId = ENDURING_STATE_ID
         with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
             tmpRoot.path().mkdir()
@@ -1477,6 +1481,9 @@ def test_stateExists():
     with (
         mock.patch.object(instance, "generateStateId") as mockGenerateStateId,
         mock.patch.object(instance, "constructCalibrationStateRoot") as mockConstructCalibrationStateRoot,
+        mock.patch(
+            "snapred.backend.data.LocalDataService.resolveCalibrationPath", side_effect=lambda path: path
+        ) as mockResolveCalibrationPath,
     ):
         mockGenerateStateId.return_value = (mock.sentinel.SHA, mock.sentinel.ignored)
         mockConstructCalibrationStateRoot.return_value = mock.Mock(
@@ -1484,6 +1491,8 @@ def test_stateExists():
         )
         runNumber = "12345"
         actual = instance.stateExists(runNumber)
+        # the state may exist in any calibration root
+        mockResolveCalibrationPath.assert_called_once_with(mockConstructCalibrationStateRoot.return_value)
         assert actual == mock.sentinel.exists
         mockGenerateStateId.assert_called_once_with(runNumber)
         mockConstructCalibrationStateRoot.assert_called_once_with(mock.sentinel.SHA)

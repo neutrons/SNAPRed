@@ -28,6 +28,7 @@ from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.indexing.VersionSegment import VersionSegment
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.data.Indexer import DEFAULT_RECORD_TYPE, Indexer, IndexerType
+from snapred.backend.data.IndexStore import IndexStore
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
@@ -70,7 +71,7 @@ class TestIndexer(unittest.TestCase):
 
     def initIndexer(self, indexerType=IndexerType.DEFAULT):
         # create an indexer of specific type inside the temporrary directory
-        return Indexer(indexerType=indexerType, directory=self.path)
+        return Indexer(IndexStore(indexerType, self.path))
 
     def indexEntry(self, version=None):
         # create an index entry with specific version
@@ -232,6 +233,21 @@ class TestIndexer(unittest.TestCase):
             del mockModules["pytest"]
             self.initIndexer()
         assert str(missingVersion) in str(e)
+
+    def test_init_versions_missing_directory_recoveryMode(self):
+        # in recovery mode, an index referring to missing versions is tolerated: it can then be recovered
+        missingVersion = 3
+        indexVersions = [1, 2, 3, 4]
+        recordVersions = [v for v in indexVersions if v != missingVersion]
+        self.prepareIndex(indexVersions)
+        self.prepareRecords(recordVersions)
+
+        with mock.patch.dict(IndexerModule.sys.modules) as mockModules:
+            del mockModules["pytest"]
+            indexer = Indexer(IndexStore(IndexerType.DEFAULT, self.path, recoveryMode=True))
+            assert sorted(indexer.index.keys()) == recordVersions
+            indexer.recoverIndex(dryrun=False)
+        assert sorted(entry.version for entry in indexer.readIndex().values()) == recordVersions
 
     def x_test_delete_save_on_exit(self):
         # ensure the index list is saved when the indexer is deleted
@@ -1191,7 +1207,7 @@ class TestIndexer(unittest.TestCase):
         # recover the index
         self.prepareVersions([1, 2, 3])
         indexer.indexPath().unlink()
-        indexer.recoveryMode = True
+        indexer.store.recoveryMode = True
         indexer.recoverIndex(dryrun=False)
         assert len(indexer.readIndex()) == 3
 
@@ -1226,6 +1242,6 @@ class TestIndexer(unittest.TestCase):
 
         # recover the index
         # we expect only the valid records and parameters to be recovered
-        indexer.recoveryMode = True
+        indexer.store.recoveryMode = True
         indexer.recoverIndex(dryrun=False)
         assert len(indexer.readIndex()) == 1

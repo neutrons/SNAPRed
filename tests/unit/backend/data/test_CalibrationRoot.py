@@ -9,7 +9,6 @@ from snapred.backend.dao.calibration.CalibrationHomeMarker import CalibrationEnv
 from snapred.backend.data import CalibrationRoot as CalibrationRootModule
 from snapred.backend.data.CalibrationRoot import (
     CalibrationRoot,
-    DirView,
     deployEnvironment,
     isUserMode,
     readFailoverPaths,
@@ -525,8 +524,6 @@ def test_reads_require_relative_paths(calibrationRoot, rel):
         calibrationRoot.glob(rel)
     with pytest.raises(ValueError, match="relative"):
         calibrationRoot.writePath(rel)
-    with pytest.raises(ValueError, match="relative"):
-        calibrationRoot.view(rel, "anchor.json")
 
 
 def test_exists(roots, calibrationRoot):
@@ -569,87 +566,6 @@ def test_listDirs_union(roots, calibrationRoot):
 
 def test_listDirs_missing(calibrationRoot):
     assert calibrationRoot.listDirs("Powder") == []
-
-
-##
-## Indexed reads: `DirView`
-##
-
-STATE = Path("Powder/0123456789abcdef/lite/diffraction")
-INDEX = "CalibrationIndex.json"
-
-
-def test_view(calibrationRoot):
-    view = calibrationRoot.view(STATE, INDEX)
-    assert isinstance(view, DirView)
-    assert view.rel == STATE
-    assert view.anchor == INDEX
-
-
-@pytest.mark.parametrize("anchor", ["", ".", "..", "sub/index.json", "/index.json"])
-def test_view_anchor_must_be_filename(calibrationRoot, anchor):
-    with pytest.raises(ValueError, match="file name"):
-        calibrationRoot.view(STATE, anchor)
-
-
-def test_view_no_index_anywhere(roots, calibrationRoot):
-    home, _, _ = roots
-    view = calibrationRoot.view(STATE, INDEX)
-    assert view.readRoot == home / STATE
-    assert view.writeRoot == home / STATE
-    assert not view.isFailover
-
-
-def test_view_pinned_to_failover(roots, calibrationRoot):
-    home, prod, next_ = roots
-    touch(prod / STATE / INDEX)
-    touch(next_ / STATE / INDEX)
-    view = calibrationRoot.view(STATE, INDEX)
-    assert view.readRoot == prod / STATE
-    assert view.isFailover
-    # writes still go to home
-    assert view.writeRoot == home / STATE
-
-
-def test_view_home_directory_without_index_does_not_shadow(roots, calibrationRoot):
-    # e.g. a stub state directory in home: the failover's index still wins
-    home, prod, _ = roots
-    touch(home / STATE / "v_0001" / "partial.json")
-    touch(prod / STATE / INDEX)
-    view = calibrationRoot.view(STATE, INDEX)
-    assert view.readRoot == prod / STATE
-
-
-def test_view_repins_to_home(roots, calibrationRoot):
-    home, prod, _ = roots
-    touch(prod / STATE / INDEX)
-    view = calibrationRoot.view(STATE, INDEX)
-    assert view.readRoot == prod / STATE
-
-    # the first write of the index into home shadows the failover
-    touch(home / STATE / INDEX)
-    assert view.readRoot == home / STATE
-    assert not view.isFailover
-
-    # once in home, the view stays in home
-    (home / STATE / INDEX).unlink()
-    assert view.readRoot == home / STATE
-
-
-def test_view_home_index(roots, calibrationRoot):
-    home, prod, _ = roots
-    touch(home / STATE / INDEX)
-    touch(prod / STATE / INDEX)
-    assert calibrationRoot.view(STATE, INDEX).readRoot == home / STATE
-
-
-def test_view_writeRoot_is_guarded(roots, calibrationRoot):
-    home, prod, _ = roots
-    (home / "Powder").mkdir()
-    (home / "Powder" / "0123456789abcdef").symlink_to(prod)
-    view = calibrationRoot.view(STATE, INDEX)
-    with pytest.raises(CalibrationWriteGuardError):
-        view.writeRoot
 
 
 ##
@@ -744,67 +660,3 @@ def test_writes_never_land_in_failover(roots, calibrationRoot):
     assert (prod / "groupingMap.json").read_text() == "prod"
     assert calibrationRoot.resolve("groupingMap.json") == home / "groupingMap.json"
     assert not (next_ / "groupingMap.json").exists()
-
-
-def test_view_isPopulated(roots, calibrationRoot):
-    home, prod, next_ = roots
-    touch(home / STATE / INDEX, "home")
-    touch(prod / STATE / INDEX, "")
-    touch(next_ / STATE / INDEX, "next")
-    calls = []
-
-    def isPopulated(directory):
-        calls.append(directory)
-        return (directory / INDEX).read_text() != "" and directory != home / STATE
-
-    view = calibrationRoot.view(STATE, INDEX, isPopulated)
-    # home and prod are not populated: the first populated root wins
-    assert view.readRoot == next_ / STATE
-    assert calls == [home / STATE, prod / STATE, next_ / STATE]
-
-
-def test_view_isPopulated_none_populated(roots, calibrationRoot):
-    # nothing is populated: the first root containing the anchor, home first
-    home, prod, _ = roots
-    touch(prod / STATE / INDEX)
-    view = calibrationRoot.view(STATE, INDEX, lambda directory: False)  # noqa: ARG005
-    assert view.readRoot == prod / STATE
-    touch(home / STATE / INDEX)
-    assert view.readRoot == home / STATE
-    assert not view.isFailover
-
-
-def test_view_isPopulated_only_called_with_anchor(roots, calibrationRoot):
-    home, prod, _ = roots
-    (home / STATE).mkdir(parents=True)
-    touch(prod / STATE / INDEX)
-    calls = []
-    view = calibrationRoot.view(STATE, INDEX, lambda directory: calls.append(directory) or True)
-    assert view.readRoot == prod / STATE
-    assert calls == [prod / STATE]
-
-
-def test_view_isPopulated_pins_home(roots, calibrationRoot):
-    home, prod, _ = roots
-    touch(home / STATE / INDEX)
-    touch(prod / STATE / INDEX)
-    populated = {"home": False}
-    view = calibrationRoot.view(STATE, INDEX, lambda directory: directory != home / STATE or populated["home"])
-    assert view.readRoot == prod / STATE
-    populated["home"] = True
-    assert view.readRoot == home / STATE
-    populated["home"] = False
-    # once populated, home stays pinned
-    assert view.readRoot == home / STATE
-
-
-def test_view_isPopulated_errors_are_not_masked(roots, calibrationRoot):
-    home, prod, _ = roots
-    touch(home / STATE / INDEX)
-    touch(prod / STATE / INDEX)
-
-    def isPopulated(directory):
-        raise RuntimeError(f"corrupt: {directory}")
-
-    with pytest.raises(RuntimeError, match="corrupt"):
-        calibrationRoot.view(STATE, INDEX, isPopulated).readRoot

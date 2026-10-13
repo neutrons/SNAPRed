@@ -3,7 +3,7 @@ import os
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Type, TypeVar
+from typing import Dict, List, Type, TypeVar
 
 from pydantic import validate_call
 
@@ -20,9 +20,9 @@ from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
-from snapred.backend.data.CalibrationRoot import DirView
+from snapred.backend.data.IndexerType import IndexerType
+from snapred.backend.data.IndexStore import IndexStore
 from snapred.backend.log.logger import snapredLogger
-from snapred.meta.Enum import StrEnum
 from snapred.meta.LockFile import LockFile, LockManager
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
@@ -48,39 +48,20 @@ T = TypeVar("T", bound=IndexedObject)
     The Indexer version list will only update when both a record and a corresponding inex entry
     have been written.
 
-    The Indexer's directory is given either as a plain `directory` (used for both reads and writes),
-    or as a `DirView` (see `CalibrationRoot`), whose read root may be a read-failover root while its write root
-    is always in the calibration home:
+    Where the index and its versions are read from and written to is decided by the Indexer's `IndexStore`:
 
     * `rootDirectory` is the directory that the in-memory index belongs to.
-    * Read methods first re-bind to the view's current read root (e.g. once home contains the index).
-    * Write methods (including `nextVersion`, which numbers the next write) bind to the write root for their
-      whole duration: the version numbering, the index, and every path used come from the write root alone.
-      Indexed data is never mixed between roots: once a write lands in home, home shadows the failover.
+    * Read methods first re-bind to the store's current read directory (e.g. once home contains the index).
+    * Write methods (including `nextVersion`, which numbers the next write) first let the store prepare its write
+      directory, then bind to it for their whole duration: the version numbering, the index, and every path used
+      come from the write directory alone.
+    * In the store's `recoveryMode`, a missing or corrupt index, or an index referring to missing versions,
+      is tolerated: see `recoverIndex`.
 """
 
 
-class _DirectoryView:
-    """A single directory used for both reads and writes: the plain-`directory` equivalent of a `DirView`."""
-
-    def __init__(self, directory: Path):
-        self._directory = Path(directory)
-
-    @property
-    def readRoot(self) -> Path:
-        return self._directory
-
-    @property
-    def writeRoot(self) -> Path:
-        return self._directory
-
-    @property
-    def isFailover(self) -> bool:
-        return False
-
-
 def _reads(method):
-    # Re-bind to the view's current read root before reading.
+    # Re-bind to the store's current read directory before reading.
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
         self._syncReadRoot()
@@ -90,21 +71,13 @@ def _reads(method):
 
 
 def _writes(method):
-    # Bind to the view's write root for the duration of the write.
+    # Bind to the store's write directory for the duration of the write.
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
         with self._writeContext():
             return method(self, *args, **kwargs)
 
     return wrapper
-
-
-class IndexerType(StrEnum):
-    DEFAULT = ""
-    CALIBRATION = "Calibration"
-    NORMALIZATION = "Normalization"
-    REDUCTION = "Reduction"
-    INSTRUMENT_PARAMETER = "InstrumentParameter"
 
 
 # the record type for each indexer type
@@ -142,34 +115,6 @@ FRIENDLY_NAME_MAPPING = {
 }
 
 
-def ignoringDefaultVersion(indexerType: IndexerType):
-    """
-    An `isPopulated` predicate for a `DirView` of an indexed directory (see `CalibrationRoot.view`):
-      a directory whose index contains only the default version is not populated,
-      so that a home that was only initialized does not shadow a read-failover's versions.
-
-    Not for instrument parameters: their version 0 is their first epoch, not a default.
-    """
-    indexName = f"{indexerType}Index.json"
-    # `DirView.readRoot` is evaluated before every read: only re-parse an index when it changes
-    cache: Dict[Path, Tuple[Tuple[int, int], bool]] = {}
-
-    def isPopulated(directory: Path) -> bool:
-        indexPath = Path(directory) / indexName
-        stat = indexPath.stat()
-        key = (stat.st_mtime_ns, stat.st_size)
-        cached = cache.get(indexPath)
-        if cached is not None and cached[0] == key:
-            return cached[1]
-        # any error reading an existing index is raised: it must never be masked by reading another root
-        entries = parse_file_as(List[IndexEntry], indexPath)
-        populated = any(entry.version != VERSION_START() for entry in entries)
-        cache[indexPath] = (key, populated)
-        return populated
-
-    return isPopulated
-
-
 class Indexer:
     rootDirectory: Path
     index: Dict[int, IndexEntry]
@@ -179,33 +124,18 @@ class Indexer:
     ## CONSTRUCTOR / DESTRUCTOR METHODS ##
 
     @validate_call(config={"arbitrary_types_allowed": True})
-    def __init__(
-        self,
-        *,
-        indexerType: IndexerType,
-        directory: Optional[Path | str] = None,
-        view: Optional[DirView] = None,
-        recoveryMode: bool = False,
-    ) -> None:
-        if (directory is None) == (view is None):
-            raise ValueError("exactly one of 'directory' or 'view' must be specified")
-        self.recoveryMode = recoveryMode
-        self.indexerType = indexerType
-        self._view = view if view is not None else _DirectoryView(Path(directory))
+    def __init__(self, store: IndexStore) -> None:
+        self.store = store
+        self.indexerType = store.indexerType
         # while non-zero, `rootDirectory` is pinned: read methods do not re-bind it
         self._pinDepth = 0
         self.index = {}
         # no index on disk is valid until we attempt to read an indexed object.
-        self._bind(self._view.readRoot)
+        self._bind(store.readDirectory)
 
     @property
-    def view(self) -> DirView | _DirectoryView:
-        return self._view
-
-    @property
-    def isFailover(self) -> bool:
-        """Whether this indexer currently reads from a read-failover root."""
-        return self._view.isFailover
+    def indexFilename(self) -> str:
+        return self.store.indexFilename
 
     def _bind(self, directory: Path):
         # load the index belonging to `directory`
@@ -220,22 +150,17 @@ class Indexer:
     def _syncReadRoot(self):
         if self._pinDepth > 0:
             return
-        readRoot = self._view.readRoot
-        if readRoot != self.rootDirectory:
-            logger.debug(f"{self.indexerType} indexer: reading from '{readRoot}'")
-            self._bind(readRoot)
+        readDirectory = self.store.readDirectory
+        if readDirectory != self.rootDirectory:
+            logger.debug(f"{self.indexerType} indexer: reading from '{readDirectory}'")
+            self._bind(readDirectory)
 
     @contextmanager
     def _writeContext(self):
-        # `writeRoot` runs the write guard
-        writeRoot = self._view.writeRoot
-        if self._pinDepth == 0 and writeRoot != self.rootDirectory:
-            if self._view.isFailover:
-                logger.warning(
-                    f"Writing to '{writeRoot}': "
-                    f"its versions now shadow those of the read-failover '{self.rootDirectory}'"
-                )
-            self._bind(writeRoot)
+        if self._pinDepth == 0:
+            writeDirectory = self.store.prepareWrite()
+            if writeDirectory != self.rootDirectory:
+                self._bind(writeDirectory)
         self._pinDepth += 1
         try:
             yield
@@ -251,10 +176,10 @@ class Indexer:
         Obtain a lock on the indexer directory.
         This is used to prevent concurrent writes to the indexer.
         """
-        return LockFile(self._view.writeRoot)
+        return LockFile(self.store.writeDirectory)
 
     def _lockContext(self):
-        return LockManager(self._view.writeRoot)
+        return LockManager(self.store.writeDirectory)
 
     @_reads
     def readDirectoryList(self):
@@ -292,7 +217,7 @@ class Indexer:
             indexVersions = indexVersions - missingRecords
             # This exception would otherwise always be thrown during a test-teardown sequence,
             #   which spams the test logs, even when nothing is wrong.
-            if "pytest" not in sys.modules:
+            if "pytest" not in sys.modules and not self.store.recoveryMode:
                 raise FileNotFoundError(
                     f"The following records were expected, but not available on disk: {missingRecords}"
                 )
@@ -486,7 +411,7 @@ class Indexer:
         """
         Path to the index
         """
-        return self.rootDirectory / f"{self.indexerType}Index.json"
+        return self.rootDirectory / self.indexFilename
 
     def recordPath(self, version: int):
         """
@@ -515,7 +440,7 @@ class Indexer:
     @_writes
     def writeVersionPath(self, version: int) -> Path:
         """
-        Path to write a specific version to: always under the write root.
+        Path to write a specific version to: always under the write directory.
         """
         return self.versionPath(version)
 
@@ -611,7 +536,7 @@ class Indexer:
         return entry
 
     def recoverIndex(self, dryrun=True) -> Dict[int, IndexEntry]:
-        # Unless it's a dry run, the index is recovered from, and written to, the write root:
+        # Unless it's a dry run, the index is recovered from, and written to, the write directory:
         #   an index written to home must never refer to the versions in a read-failover root.
         if dryrun:
             self._syncReadRoot()
@@ -661,7 +586,7 @@ class Indexer:
         try:
             indexList = parse_file_as(List[IndexEntry], indexPath)
         except Exception as e:  # noqa: BLE001
-            if not init and not self.recoveryMode:
+            if not init and not self.store.recoveryMode:
                 raise RuntimeError(
                     f"Index file {indexPath} is corrupted, invalid, or missing. "
                     "Please contact your IS or CIS for assistance."

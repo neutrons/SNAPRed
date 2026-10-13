@@ -1,5 +1,5 @@
 """
-`Indexer` over a `DirView`: reads from a read-failover root, writes only to the calibration home.
+`Indexer` over a `FailoverIndexStore`: reads from a read-failover root, writes only to the calibration home.
 """
 
 import importlib
@@ -16,16 +16,22 @@ from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.indexing.Versioning import VERSION_START
 from snapred.backend.data.CalibrationRoot import CalibrationRoot
-from snapred.backend.data.Indexer import Indexer, IndexerType, ignoringDefaultVersion
+from snapred.backend.data.Indexer import Indexer, IndexerType
+from snapred.backend.data.IndexStore import FailoverIndexStore, IndexStore
 from snapred.backend.error.CalibrationWriteGuardError import CalibrationWriteGuardError
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import write_model_pretty
 
-IndexerModule = importlib.import_module(Indexer.__module__)
+IndexStoreModule = importlib.import_module(IndexStore.__module__)
 
 STATE = Path("Powder/0123456789abcdef/lite/diffraction")
 # the index filename of an `IndexerType.DEFAULT` indexer
 INDEX = "Index.json"
+
+
+class DefaultIgnoringStore(FailoverIndexStore):
+    # e.g. the calibrations of a state: a directory containing only the default version is not populated
+    ignoresDefaultVersion = True
 
 
 def stamp(root: Path, environment: str) -> Path:
@@ -58,7 +64,7 @@ def record(version: int, runNumber: str = "12345") -> Record:
 
 def writeVersions(directory: Path, versions):
     # populate a directory independently of any failover
-    indexer = Indexer(indexerType=IndexerType.DEFAULT, directory=directory)
+    indexer = Indexer(IndexStore(IndexerType.DEFAULT, directory))
     for version in versions:
         rec = record(version)
         indexer.writeRecord(rec)
@@ -85,21 +91,21 @@ def calibrationRoot(roots):
 
 @pytest.fixture
 def indexer(calibrationRoot):
-    return Indexer(indexerType=IndexerType.DEFAULT, view=calibrationRoot.view(STATE, INDEX))
-
-
-def test_directory_or_view(calibrationRoot, tmp_path):
-    with pytest.raises(ValueError, match="exactly one of 'directory' or 'view'"):
-        Indexer(indexerType=IndexerType.DEFAULT)
-    with pytest.raises(ValueError, match="exactly one of 'directory' or 'view'"):
-        Indexer(indexerType=IndexerType.DEFAULT, directory=tmp_path, view=calibrationRoot.view(STATE, INDEX))
+    return Indexer(FailoverIndexStore(IndexerType.DEFAULT, calibrationRoot, STATE))
 
 
 def test_directory_indexer(tmp_path):
-    indexer = Indexer(indexerType=IndexerType.DEFAULT, directory=tmp_path)
-    assert not indexer.isFailover
-    assert indexer.view.readRoot == indexer.view.writeRoot == tmp_path
+    indexer = Indexer(IndexStore(IndexerType.DEFAULT, tmp_path))
+    assert not indexer.store.isFailover
+    assert indexer.store.readDirectory == indexer.store.writeDirectory == tmp_path
+    assert indexer.store.prepareWrite() == tmp_path
     assert indexer.rootDirectory == tmp_path
+
+
+def test_indexerType_is_the_stores(calibrationRoot):
+    indexer = Indexer(FailoverIndexStore(IndexerType.CALIBRATION, calibrationRoot, STATE))
+    assert indexer.indexerType == IndexerType.CALIBRATION
+    assert indexer.indexFilename == "CalibrationIndex.json"
 
 
 ##
@@ -109,7 +115,7 @@ def test_directory_indexer(tmp_path):
 
 def test_reads_from_failover(roots, indexer):
     home, prod = roots
-    assert indexer.isFailover
+    assert indexer.store.isFailover
     assert indexer.rootDirectory == prod / STATE
     assert sorted(indexer.allVersions()) == [VERSION_START(), 1, 2]
     assert indexer.currentVersion() == 2
@@ -172,7 +178,7 @@ def test_first_write_to_home_shadows_failover(roots, indexer):
     assert (home / STATE / wnvf.pathVersion(VERSION_START()) / "Record.json").exists()
 
     # reads now come from home: the failover's versions are no longer visible
-    assert not indexer.isFailover
+    assert not indexer.store.isFailover
     assert indexer.rootDirectory == home / STATE
     assert indexer.allVersions() == [VERSION_START()]
     assert indexer.readRecord(VERSION_START()).runNumber == "23456"
@@ -192,7 +198,7 @@ def test_write_numbering_never_mixes_roots(roots, indexer):
     indexer.writeRecord(rec)
     indexer.writeParameters(rec.calculationParameters)
     assert sorted(indexer.allVersions()) == [VERSION_START(), VERSION_START() + 1]
-    assert sorted(Indexer(indexerType=IndexerType.DEFAULT, directory=prod / STATE).allVersions()) == [
+    assert sorted(Indexer(IndexStore(IndexerType.DEFAULT, prod / STATE)).allVersions()) == [
         VERSION_START(),
         1,
         2,
@@ -215,7 +221,7 @@ def test_rebinds_to_home_when_another_process_writes(roots, indexer):
     writeVersions(home / STATE, [VERSION_START()])
     assert indexer.currentVersion() == VERSION_START()
     assert indexer.rootDirectory == home / STATE
-    assert not indexer.isFailover
+    assert not indexer.store.isFailover
 
 
 def test_write_guard(roots):
@@ -223,7 +229,7 @@ def test_write_guard(roots):
     home, prod = roots
     (home / "Powder").symlink_to(prod / "Powder")
     root = CalibrationRoot(home, [prod], environment="qa", schemaVersion=1)
-    indexer = Indexer(indexerType=IndexerType.DEFAULT, view=root.view(STATE, INDEX))
+    indexer = Indexer(FailoverIndexStore(IndexerType.DEFAULT, root, STATE))
     assert indexer.currentVersion() == 2
     prodBefore = snapshot(prod)
 
@@ -242,8 +248,8 @@ def test_home_only(calibrationRoot, roots):
     # with home containing the index, the failover is never consulted
     home, _ = roots
     writeVersions(home / STATE, [VERSION_START(), 1])
-    indexer = Indexer(indexerType=IndexerType.DEFAULT, view=calibrationRoot.view(STATE, INDEX))
-    assert not indexer.isFailover
+    indexer = Indexer(FailoverIndexStore(IndexerType.DEFAULT, calibrationRoot, STATE))
+    assert not indexer.store.isFailover
     assert sorted(indexer.allVersions()) == [VERSION_START(), 1]
     assert indexer.versionPath(1) == indexer.writeVersionPath(1) == home / STATE / wnvf.pathVersion(1)
 
@@ -258,13 +264,12 @@ def initializedIndexer(calibrationRoot, roots):
     # the state was initialized in home: its index contains only the default version
     home, _ = roots
     writeVersions(home / STATE, [VERSION_START()])
-    view = calibrationRoot.view(STATE, INDEX, ignoringDefaultVersion(IndexerType.DEFAULT))
-    return Indexer(indexerType=IndexerType.DEFAULT, view=view)
+    return Indexer(DefaultIgnoringStore(IndexerType.DEFAULT, calibrationRoot, STATE))
 
 
 def test_initialized_home_reads_failover(roots, initializedIndexer):
     _, prod = roots
-    assert initializedIndexer.isFailover
+    assert initializedIndexer.store.isFailover
     assert initializedIndexer.rootDirectory == prod / STATE
     assert sorted(initializedIndexer.allVersions()) == [VERSION_START(), 1, 2]
     assert initializedIndexer.latestApplicableVersion("12345") == 2
@@ -281,7 +286,7 @@ def test_initialized_home_numbering_continues_in_home(roots, initializedIndexer)
     assert snapshot(prod) == prodBefore
 
     # home is now populated: it shadows the failover, and stays pinned
-    assert not initializedIndexer.isFailover
+    assert not initializedIndexer.store.isFailover
     assert initializedIndexer.rootDirectory == home / STATE
     assert sorted(initializedIndexer.allVersions()) == [VERSION_START(), VERSION_START() + 1]
     assert initializedIndexer.readRecord(VERSION_START() + 1).runNumber == "23456"
@@ -290,8 +295,7 @@ def test_initialized_home_numbering_continues_in_home(roots, initializedIndexer)
 def test_initialized_home_other_process_initializing_does_not_shadow(roots, calibrationRoot):
     # a cached indexer keeps reading the failover when home is only initialized
     home, prod = roots
-    view = calibrationRoot.view(STATE, INDEX, ignoringDefaultVersion(IndexerType.DEFAULT))
-    indexer = Indexer(indexerType=IndexerType.DEFAULT, view=view)
+    indexer = Indexer(DefaultIgnoringStore(IndexerType.DEFAULT, calibrationRoot, STATE))
     writeVersions(home / STATE, [VERSION_START()])
     assert indexer.currentVersion() == 2
     assert indexer.rootDirectory == prod / STATE
@@ -307,10 +311,8 @@ def test_default_only_everywhere_reads_home(tmp_path):
     writeVersions(home / STATE, [VERSION_START()])
     writeVersions(prod / STATE, [VERSION_START()])
     root = CalibrationRoot(home, [prod], environment="qa", schemaVersion=1)
-    indexer = Indexer(
-        indexerType=IndexerType.DEFAULT, view=root.view(STATE, INDEX, ignoringDefaultVersion(IndexerType.DEFAULT))
-    )
-    assert not indexer.isFailover
+    indexer = Indexer(DefaultIgnoringStore(IndexerType.DEFAULT, root, STATE))
+    assert not indexer.store.isFailover
     assert indexer.rootDirectory == home / STATE
 
 
@@ -319,47 +321,142 @@ def test_default_only_failover_without_home_index(tmp_path):
     prod = stamp(tmp_path / "Calibration", "prod")
     writeVersions(prod / STATE, [VERSION_START()])
     root = CalibrationRoot(home, [prod], environment="qa", schemaVersion=1)
-    indexer = Indexer(
-        indexerType=IndexerType.DEFAULT, view=root.view(STATE, INDEX, ignoringDefaultVersion(IndexerType.DEFAULT))
-    )
+    indexer = Indexer(DefaultIgnoringStore(IndexerType.DEFAULT, root, STATE))
     assert indexer.rootDirectory == prod / STATE
 
 
-def test_ignoringDefaultVersion(tmp_path):
-    isPopulated = ignoringDefaultVersion(IndexerType.DEFAULT)
+def test_ignoresDefaultVersion(calibrationRoot, tmp_path):
+    store = DefaultIgnoringStore(IndexerType.DEFAULT, calibrationRoot, STATE)
     writeVersions(tmp_path / "default", [VERSION_START()])
     writeVersions(tmp_path / "populated", [VERSION_START(), 1])
     writeVersions(tmp_path / "noDefault", [1])
-    assert not isPopulated(tmp_path / "default")
-    assert isPopulated(tmp_path / "populated")
-    assert isPopulated(tmp_path / "noDefault")
+    assert not store.isPopulated(tmp_path / "default")
+    assert store.isPopulated(tmp_path / "populated")
+    assert store.isPopulated(tmp_path / "noDefault")
+    # by default, any directory containing the index is populated
+    assert FailoverIndexStore(IndexerType.DEFAULT, calibrationRoot, STATE).isPopulated(tmp_path / "default")
 
 
-def test_ignoringDefaultVersion_index_name(tmp_path):
-    (tmp_path / "CalibrationIndex.json").write_text("[]")
-    assert not ignoringDefaultVersion(IndexerType.CALIBRATION)(tmp_path)
-    with pytest.raises(FileNotFoundError):
-        ignoringDefaultVersion(IndexerType.NORMALIZATION)(tmp_path)
-
-
-def test_ignoringDefaultVersion_corrupt_home_index_is_not_masked(roots, calibrationRoot):
+def test_ignoresDefaultVersion_corrupt_home_index_is_not_masked(roots, calibrationRoot):
     home, _ = roots
     (home / STATE).mkdir(parents=True)
     (home / STATE / INDEX).write_text("{ corrupt")
-    view = calibrationRoot.view(STATE, INDEX, ignoringDefaultVersion(IndexerType.DEFAULT))
     with pytest.raises(ValueError, match="Invalid JSON"):
-        view.readRoot
+        DefaultIgnoringStore(IndexerType.DEFAULT, calibrationRoot, STATE).readDirectory
 
 
-def test_ignoringDefaultVersion_cache(tmp_path):
-    isPopulated = ignoringDefaultVersion(IndexerType.DEFAULT)
+def test_ignoresDefaultVersion_cache(calibrationRoot, tmp_path):
+    store = DefaultIgnoringStore(IndexerType.DEFAULT, calibrationRoot, STATE)
     writeVersions(tmp_path, [VERSION_START()])
-    with mock.patch.object(IndexerModule, "parse_file_as", wraps=IndexerModule.parse_file_as) as parse:
-        assert not isPopulated(tmp_path)
-        assert not isPopulated(tmp_path)
+    with mock.patch.object(IndexStoreModule, "parse_file_as", wraps=IndexStoreModule.parse_file_as) as parse:
+        assert not store.isPopulated(tmp_path)
+        assert not store.isPopulated(tmp_path)
         assert parse.call_count == 1
     # the index changes: it is re-parsed
     writeVersions(tmp_path, [1])
-    with mock.patch.object(IndexerModule, "parse_file_as", wraps=IndexerModule.parse_file_as) as parse:
-        assert isPopulated(tmp_path)
+    with mock.patch.object(IndexStoreModule, "parse_file_as", wraps=IndexStoreModule.parse_file_as) as parse:
+        assert store.isPopulated(tmp_path)
         assert parse.call_count == 1
+
+
+##
+## Initializing home before its first write
+##
+
+
+def test_initializeHome_before_first_write(roots, calibrationRoot):
+    # e.g. initialize home from the failover before its first write
+    home, _ = roots
+    store = DefaultIgnoringStore(IndexerType.DEFAULT, calibrationRoot, STATE)
+
+    def initialize():
+        writeVersions(home / STATE, [VERSION_START()])
+
+    with mock.patch.object(store, "initializeHome", side_effect=initialize) as initializeHome:
+        indexer = Indexer(store)
+        initializeHome.assert_not_called()
+        # reads don't initialize anything
+        assert indexer.currentVersion() == 2
+        initializeHome.assert_not_called()
+
+        # numbered after whatever was initialized
+        assert indexer.nextVersion() == VERSION_START() + 1
+        initializeHome.assert_called_once()
+        rec = record(VERSION_START() + 1)
+        indexer.writeRecord(rec)
+        indexer.writeParameters(rec.calculationParameters)
+        # home has an index now: never initialized again
+        indexer.nextVersion()
+        initializeHome.assert_called_once()
+    assert indexer.rootDirectory == home / STATE
+
+
+def test_initializeHome_nothing_initialized(roots, calibrationRoot):
+    # e.g. a new state: nothing to initialize, so the first write is numbered as usual
+    home, _ = roots
+    store = FailoverIndexStore(IndexerType.DEFAULT, calibrationRoot, "Powder/new")
+    with mock.patch.object(store, "initializeHome") as initializeHome:
+        indexer = Indexer(store)
+        assert indexer.nextVersion() == VERSION_START()
+        initializeHome.assert_called_once()
+    assert indexer.rootDirectory == home / "Powder/new"
+
+
+def test_initializeHome_not_while_pinned(calibrationRoot):
+    # nested writes are initialized only once
+    store = FailoverIndexStore(IndexerType.DEFAULT, calibrationRoot, STATE)
+    with mock.patch.object(store, "initializeHome") as initializeHome:
+        indexer = Indexer(store)
+        rec = record(VERSION_START())
+        indexer.writeRecord(rec)
+        # `writeRecord` -> `writeIndexedObject`
+        initializeHome.assert_called_once()
+
+
+def test_first_write_warns_once_about_shadowing(roots, calibrationRoot):
+    home, prod = roots
+    store = FailoverIndexStore(IndexerType.DEFAULT, calibrationRoot, STATE)
+    indexer = Indexer(store)
+    with mock.patch.object(IndexStoreModule, "logger") as logger:
+        indexer.nextVersion()
+        indexer.nextVersion()
+    logger.warning.assert_called_once()
+    message = logger.warning.call_args.args[0]
+    assert str(home / STATE) in message
+    assert str(prod / STATE) in message
+
+
+def test_no_shadowing_warning_without_failover(calibrationRoot):
+    indexer = Indexer(FailoverIndexStore(IndexerType.DEFAULT, calibrationRoot, "Powder/new"))
+    with mock.patch.object(IndexStoreModule, "logger") as logger:
+        indexer.nextVersion()
+    logger.warning.assert_not_called()
+
+
+##
+## Recovery mode
+##
+
+
+def test_recoveryMode_tolerates_corrupt_home_index(roots, calibrationRoot):
+    home, prod = roots
+    prodBefore = snapshot(prod)
+    writeVersions(home / STATE, [VERSION_START(), 1])
+    (home / STATE / INDEX).write_text("{ corrupt")
+    store = FailoverIndexStore(IndexerType.DEFAULT, calibrationRoot, STATE, recoveryMode=True)
+    indexer = Indexer(store)
+    assert indexer.readIndex() == {}
+    # recovered from, and written to, home alone
+    recovered = indexer.recoverIndex(dryrun=False)
+    assert sorted(entry.version for entry in recovered) == [VERSION_START(), 1]
+    assert sorted(indexer.readIndex().keys()) == [VERSION_START(), 1]
+    assert snapshot(prod) == prodBefore
+
+
+def test_corrupt_index_raises_without_recoveryMode(roots, calibrationRoot):
+    home, _ = roots
+    writeVersions(home / STATE, [VERSION_START(), 1])
+    indexer = Indexer(FailoverIndexStore(IndexerType.DEFAULT, calibrationRoot, STATE))
+    (home / STATE / INDEX).write_text("{ corrupt")
+    with pytest.raises(RuntimeError, match="is corrupted, invalid, or missing"):
+        indexer.readIndex()

@@ -9,11 +9,11 @@ Read-only failover for the calibration home.
 * writes only ever go to home, through `writePath`, which is the single write guard.
 
 Indexed data (an index together with its versioned records) must never be split across roots:
-indexed directories are accessed through a `DirView`, which is pinned to a single root.
+indexed directories are accessed through a `FailoverIndexStore` (see `IndexStore`), which reads from a single root.
 """
 
 from pathlib import Path
-from typing import Callable, Iterable, List, Optional, Union
+from typing import Iterable, List, Optional, Union
 
 from pydantic import ValidationError
 
@@ -22,18 +22,10 @@ from snapred.backend.error.CalibrationHomeError import CalibrationHomeError
 from snapred.backend.error.CalibrationWriteGuardError import CalibrationWriteGuardError
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config, isTestEnv
+from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.redantic import parse_file_as
 
 logger = snapredLogger.getLogger(__name__)
-
-__all__ = [
-    "CalibrationRoot",
-    "DirView",
-    "deployEnvironment",
-    "isUserMode",
-    "packageVersion",
-    "readFailoverPaths",
-]
 
 
 def packageVersion() -> str:
@@ -105,7 +97,7 @@ def readFailoverPaths() -> List[Path]:
     return [Path(path) for path in paths.values()]
 
 
-def _relativePath(rel: Union[str, Path]) -> Path:
+def relativePath(rel: Union[str, Path]) -> Path:
     rel = Path(rel)
     if rel.is_absolute() or ".." in rel.parts:
         raise ValueError(f"expecting a path relative to the calibration root, not '{rel}'")
@@ -266,7 +258,7 @@ class CalibrationRoot:
 
     def resolve(self, rel: Union[str, Path]) -> Path:
         """The path of `rel` in the first root where it exists."""
-        rel = _relativePath(rel)
+        rel = relativePath(rel)
         for root in self.roots:
             path = root / rel
             if path.exists():
@@ -274,12 +266,12 @@ class CalibrationRoot:
         raise FileNotFoundError(f"'{rel}' was not found in any calibration root: {[str(root) for root in self.roots]}")
 
     def exists(self, rel: Union[str, Path]) -> bool:
-        rel = _relativePath(rel)
+        rel = relativePath(rel)
         return any((root / rel).exists() for root in self.roots)
 
     def glob(self, pattern: str) -> List[Path]:
         """The union of the matches in every root: on a relative-path collision, the higher-priority root wins."""
-        _relativePath(pattern)
+        relativePath(pattern)
         seen = set()
         matches = []
         for root in self.roots:
@@ -292,19 +284,13 @@ class CalibrationRoot:
 
     def listDirs(self, rel: Union[str, Path]) -> List[str]:
         """The sorted union of the names of the subdirectories of `rel`, in every root."""
-        rel = _relativePath(rel)
+        rel = relativePath(rel)
         names = set()
         for root in self.roots:
             path = root / rel
             if path.is_dir():
                 names.update(child.name for child in path.iterdir() if child.is_dir())
         return sorted(names)
-
-    def view(
-        self, rel: Union[str, Path], anchor: str, isPopulated: Optional[Callable[[Path], bool]] = None
-    ) -> "DirView":
-        """A view of the directory `rel`, with reads pinned to a single root: see `DirView`."""
-        return DirView(self, rel, anchor, isPopulated)
 
     ##
     ## Writes
@@ -317,7 +303,7 @@ class CalibrationRoot:
         This is the single write guard: it refuses to return a path that resolves outside of home
         (and so under any read-failover root), or under a home that is stamped for another environment.
         """
-        rel = _relativePath(rel)
+        rel = relativePath(rel)
         if self._homeMarker is not None and self._homeMarker.environment != self._environment:
             raise CalibrationWriteGuardError(
                 f"Refusing to write to the calibration home '{self._home}': it is stamped for the "
@@ -335,63 +321,81 @@ class CalibrationRoot:
         return path
 
 
-class DirView:
+##
+## The configured calibration root
+##
+
+
+@Singleton
+class ConfiguredCalibrationRoot:
     """
-    A directory within a `CalibrationRoot` whose contents must all come from a single root (e.g. an indexed directory).
+    Holds the `CalibrationRoot` for the current configuration, shared by every reader and writer of calibration data.
 
-    * `readRoot`: the directory in the first root that contains the `anchor` file (e.g. the index),
-      and that `isPopulated`.  If no such root exists: the first root that contains the anchor; otherwise home.
-      Once home is populated, the view stays pinned to home.
-    * `writeRoot`: always the directory in home.
-
-    `isPopulated(directory)` decides whether a directory containing the anchor has any content of its own:
-    e.g. an index containing only the default version does not shadow a failover's versions.
-    When not specified, any directory containing the anchor is populated.
-    It is only called for directories that contain the anchor, and any error it raises is not masked.
+    The root is rebuilt whenever the configuration it depends on changes (e.g. after `Config.swapToUserYml`, or a
+    `Config_override` in tests), or when the home's marker file changes: the prod guard is applied at every access.
     """
 
-    def __init__(
-        self,
-        root: CalibrationRoot,
-        rel: Union[str, Path],
-        anchor: str,
-        isPopulated: Optional[Callable[[Path], bool]] = None,
-    ):
-        if Path(anchor).name != anchor or anchor in ("", ".", ".."):
-            raise ValueError(f"expecting a file name for the anchor, not '{anchor}'")
-        self._root = root
-        self._rel = _relativePath(rel)
-        self._anchor = anchor
-        self._isPopulated = isPopulated if isPopulated is not None else (lambda directory: True)  # noqa: ARG005
-        self._pinnedToHome = False
+    def __init__(self):
+        self._key: Optional[tuple] = None
+        self._root: Optional[CalibrationRoot] = None
 
-    @property
-    def rel(self) -> Path:
-        return self._rel
+    @staticmethod
+    def _configurationKey() -> tuple:
+        home = Path(Config["instrument.calibration.home"])
+        markerPath = CalibrationRoot.markerPath(home)
+        try:
+            markerStat = markerPath.stat()
+            marker = (markerStat.st_mtime_ns, markerStat.st_size)
+        except FileNotFoundError:
+            marker = None
+        return (
+            home,
+            marker,
+            tuple(readFailoverPaths()),
+            Config["instrument.calibration.environment"],
+            Config["instrument.calibration.schemaVersion"],
+            Config["instrument.calibration.requireMarker"],
+            isUserMode(),
+        )
 
-    @property
-    def anchor(self) -> str:
-        return self._anchor
+    def root(self) -> CalibrationRoot:
+        key = self._configurationKey()
+        if self._root is None or self._key != key:
+            self._root = CalibrationRoot.fromConfig()
+            self._key = key
+        return self._root
 
-    @property
-    def readRoot(self) -> Path:
-        home = self._root.home / self._rel
-        if self._pinnedToHome:
-            return home
-        anchored = [root / self._rel for root in self._root.roots if (root / self._rel / self._anchor).exists()]
-        for path in anchored:
-            if self._isPopulated(path):
-                if path == home:
-                    self._pinnedToHome = True
-                return path
-        # nothing is populated: e.g. read home's default version, rather than a failover's
-        return anchored[0] if anchored else home
 
-    @property
-    def writeRoot(self) -> Path:
-        return self._root.writePath(self._rel)
+def calibrationRoot() -> CalibrationRoot:
+    """The `CalibrationRoot` for the current configuration: see `ConfiguredCalibrationRoot`."""
+    return ConfiguredCalibrationRoot().root()
 
-    @property
-    def isFailover(self) -> bool:
-        # whether reads currently come from a failover root
-        return self.readRoot != self._root.home / self._rel
+
+def calibrationRelative(path: Union[str, Path]) -> Optional[Path]:
+    """
+    The path of `path` relative to the calibration home, or `None` if it is not under the home.
+
+    Calibration paths are configured as absolute paths in the home layer (e.g. "instrument.calibration.powder.home"):
+      this maps them back to a path within the calibration root.  A path that is configured outside of the home
+      (e.g. overridden in a test) is used as-is, without any read failover.
+    """
+    path = Path(path)
+    home = calibrationRoot().home
+    if not path.is_absolute() or not path.is_relative_to(home):
+        return None
+    return path.relative_to(home)
+
+
+def resolveCalibrationPath(path: Union[str, Path]) -> Path:
+    """
+    Where to read the home-layer path `path` from: the path in the first calibration root where it exists.
+
+    A path that is missing from every root, or that is not under the home, is returned unchanged:
+      callers keep reporting missing files at their home location.
+    """
+    path = Path(path)
+    rel = calibrationRelative(path)
+    if rel is None:
+        return path
+    root = calibrationRoot()
+    return root.resolve(rel) if root.exists(rel) else path
