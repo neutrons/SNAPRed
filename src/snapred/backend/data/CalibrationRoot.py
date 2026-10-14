@@ -97,6 +97,17 @@ def readFailoverPaths() -> List[Path]:
     return [Path(path) for path in paths.values()]
 
 
+def describeReadFailover() -> str:
+    """A description of the configured read-failover roots, for display: empty when there are none."""
+    try:
+        paths = readFailoverPaths()
+    except CalibrationHomeError as e:
+        return f"Read failover is misconfigured: {e}"
+    if not paths:
+        return ""
+    return "Calibration data missing from the calibration home is read from: " + ", ".join(str(p) for p in paths)
+
+
 def relativePath(rel: Union[str, Path]) -> Path:
     rel = Path(rel)
     if rel.is_absolute() or ".." in rel.parts:
@@ -133,8 +144,10 @@ class CalibrationRoot:
         self._schemaVersion = schemaVersion
         self._userMode = userMode
 
+        # every configured failover root, including any skipped as invalid: none of them is ever written to
+        self._configuredFailovers = [Path(failover) for failover in failovers]
         self._homeMarker = self._validateHome(requireMarker)
-        self._failovers = self._validateFailovers([Path(failover) for failover in failovers])
+        self._failovers = self._validateFailovers(self._configuredFailovers)
 
     @classmethod
     def fromConfig(cls) -> "CalibrationRoot":
@@ -320,6 +333,26 @@ class CalibrationRoot:
         #   (including any skipped as invalid) is, contains, or is contained by home.
         return path
 
+    def guardWrite(self, path: Union[str, Path]) -> Path:
+        """
+        The path to write `path` to.
+
+        * under home: through `writePath`;
+        * under any configured read-failover root (including any skipped as invalid): refused;
+        * otherwise (e.g. the reduction home): unchanged.
+        """
+        path = Path(path)
+        if path.is_absolute() and path.is_relative_to(self._home):
+            return self.writePath(path.relative_to(self._home))
+        resolved = path.resolve()
+        for failover in self._configuredFailovers:
+            # lexically under the failover (e.g. through a symlink within it), or resolving into it
+            if path.is_relative_to(failover) or resolved.is_relative_to(failover.resolve()):
+                raise CalibrationWriteGuardError(
+                    f"Refusing to write '{path}': it is under the read-failover root '{failover}'."
+                )
+        return path
+
 
 ##
 ## The configured calibration root
@@ -384,6 +417,11 @@ def calibrationRelative(path: Union[str, Path]) -> Optional[Path]:
     if not path.is_absolute() or not path.is_relative_to(home):
         return None
     return path.relative_to(home)
+
+
+def calibrationWritePath(path: Union[str, Path]) -> Path:
+    """Where to write the absolute path `path`: see `CalibrationRoot.guardWrite`."""
+    return calibrationRoot().guardWrite(path)
 
 
 def resolveCalibrationPath(path: Union[str, Path]) -> Path:

@@ -47,6 +47,7 @@ from util.instrument_helpers import addInstrumentLogs, getInstrumentLogDescripto
 from util.state_helpers import reduction_root_redirect, state_root_redirect
 
 from snapred.backend.dao import StateConfig
+from snapred.backend.dao.calibration.CalibrationHomeMarker import CalibrationHomeMarker
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
@@ -68,6 +69,7 @@ from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state import DetectorState, InstrumentConfig, InstrumentState
 from snapred.backend.dao.state.CalibrantSample.CalibrantSample import CalibrantSample
 from snapred.backend.dao.state.GroupingMap import GroupingMap
+from snapred.backend.data.CalibrationRoot import CalibrationRoot
 from snapred.backend.data.Indexer import IndexerType
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
@@ -4252,12 +4254,47 @@ class TestReductionPixelMasks:
         (root / "CalibrationRoot" / "Powder" / ".mysecretcode").touch()
         (root / "CalibrationRoot" / "Powder" / "LiteGroupMap.hdf").touch()
 
+    @staticmethod
+    def calibrationRoot(home: Path, failovers=()) -> CalibrationRoot:
+        for failover in failovers:
+            marker = CalibrationHomeMarker(schemaVersion=1, environment="prod", createdBy="test")
+            write_model_pretty(marker, failover / CalibrationHomeMarker.FILENAME)
+        return CalibrationRoot(home, failovers, environment="qa", schemaVersion=1, requireMarker=False)
+
+    def test_copyCalibrationRootSkeleton_from_failover(self):
+        # the user's skeleton comes from wherever the original calibration root reads it from
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+            tmpDir = Path(tmpDir)
+            self.generateFakeCalibrationRoot(tmpDir)
+            prod = tmpDir / "CalibrationRoot"
+            home = tmpDir / "CalibrationQA"
+            (prod / "SNAPInstPrm" / "InstrumentParameterIndex.json").write_text("[]")
+            (prod / "SNAPInstPrm" / "v_0000").mkdir()
+            # home has its own lite map, and a stub instrument-parameters directory without an index
+            (home / "Powder").mkdir(parents=True)
+            (home / "Powder" / "SNAPLite.xml").write_text("home")
+            (home / "SNAPInstPrm").mkdir()
+            calibrationRoot = self.calibrationRoot(home, [prod])
+            prodBefore = sorted(str(p) for p in prod.rglob("*"))
+
+            self.service.copyCalibrationRootSkeleton(calibrationRoot, tmpDir / "Calibration")
+
+            user = tmpDir / "Calibration"
+            assert (user / "Powder" / "SNAPLite.xml").read_text() == "home"
+            assert (user / "Powder" / "LiteGroupMap.hdf").exists()
+            assert (user / "CalibrantSamples").is_dir()
+            assert (user / "SNAPInstPrm" / "InstrumentParameterIndex.json").exists()
+            assert (user / "SNAPInstPrm" / "v_0000").is_dir()
+            assert sorted(str(p) for p in prod.rglob("*")) == prodBefore
+
     def test_copyCalibrationRootSkeleton(self):
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
             tmpDir = Path(tmpDir)
             # copy it to the temporary directory
             self.generateFakeCalibrationRoot(tmpDir)
-            self.service.copyCalibrationRootSkeleton(tmpDir / "CalibrationRoot", tmpDir / "Calibration")
+            self.service.copyCalibrationRootSkeleton(
+                self.calibrationRoot(tmpDir / "CalibrationRoot"), tmpDir / "Calibration"
+            )
             assert (tmpDir / "Calibration").exists()
             assert (tmpDir / "Calibration" / "CalibrantSamples").exists()
             assert (tmpDir / "Calibration" / "Powder").exists()
@@ -4270,7 +4307,9 @@ class TestReductionPixelMasks:
             assert not (tmpDir / "Calibration" / "CalibrantSamples" / ".git").exists()
 
             with mock.patch(ThisService + "logger") as mockLogger:
-                self.service.copyCalibrationRootSkeleton(tmpDir / "CalibrationRoot", tmpDir / "Calibration")
+                self.service.copyCalibrationRootSkeleton(
+                    self.calibrationRoot(tmpDir / "CalibrationRoot"), tmpDir / "Calibration"
+                )
                 assert mockLogger.info.call_count == 1
                 assert "already exists" in mockLogger.info.call_args[0][0]
                 assert "Calibration" in mockLogger.info.call_args[0][0]
@@ -4279,18 +4318,25 @@ class TestReductionPixelMasks:
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
             tmpDir = Path(tmpDir)
             with pytest.raises(FileNotFoundError, match="Failure to find"):
-                self.service.copyCalibrationRootSkeleton(tmpDir, tmpDir / "Calibration")
+                self.service.copyCalibrationRootSkeleton(self.calibrationRoot(tmpDir), tmpDir / "Calibration")
 
     def test_generateUserRootFolder(self):
         # mock out config
         with (
             mock.patch(ThisService + "Config", mock.MagicMock()) as mockConfig,
             mock.patch(ThisService + "LocalDataService.copyCalibrationRootSkeleton", mock.Mock()),
+            mock.patch(ThisService + "calibrationRoot") as mockCalibrationRoot,
         ):
+            mockCalibrationRoot.side_effect = lambda: (
+                mockConfig.swapToUserYml.assert_not_called() or mockCalibrationRoot.return_value
+            )
             # mock out the path
             self.service.generateUserRootFolder()
             assert self.service.copyCalibrationRootSkeleton.called
             assert self.service.copyCalibrationRootSkeleton.call_count == 1
+            # the root of the original calibration home: obtained before swapping to the user yml
+            assert self.service.copyCalibrationRootSkeleton.call_args[0][0] is mockCalibrationRoot.return_value
+            mockConfig.swapToUserYml.assert_called_once()
             assert mockConfig.__getitem__.called
 
 

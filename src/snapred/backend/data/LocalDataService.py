@@ -46,11 +46,13 @@ from snapred.backend.data.CalibrationRoot import (
     CalibrationRoot,
     calibrationRelative,
     calibrationRoot,
+    calibrationWritePath,
     resolveCalibrationPath,
 )
 from snapred.backend.data.Indexer import Indexer, IndexerType
 from snapred.backend.data.IndexStore import IndexStore, InstrumentParameterStore, StateIndexStore
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
+from snapred.backend.error.CalibrationWriteGuardError import CalibrationWriteGuardError
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
@@ -178,13 +180,22 @@ class LocalDataService:
 
     @staticmethod
     def generateUserRootFolder():
-        originalCalibrationHome = Path(Config["instrument.calibration.home"])
+        # the skeleton may come from a read-failover root of the original calibration home
+        originalCalibrationRoot = calibrationRoot()
         Config.swapToUserYml()
         userCalibrationHome = Path(Config["instrument.calibration.home"])
-        LocalDataService.copyCalibrationRootSkeleton(originalCalibrationHome, userCalibrationHome)
+        LocalDataService.copyCalibrationRootSkeleton(originalCalibrationRoot, userCalibrationHome)
 
     @staticmethod
-    def copyCalibrationRootSkeleton(originalCalibrationHome: Path, newCalibrationHome: Path):
+    def copyCalibrationRootSkeleton(originalCalibrationRoot: CalibrationRoot, newCalibrationHome: Path):
+        def source(item: str) -> Path:
+            if item == "SNAPInstPrm":
+                # indexed: all from a single root
+                directory = InstrumentParameterStore(originalCalibrationRoot, item).readDirectory
+                if directory.exists():
+                    return directory
+            return originalCalibrationRoot.resolve(item) if originalCalibrationRoot.exists(item) else None
+
         if not newCalibrationHome.exists():
             # need to copy: SNAPInstPrm, CalibrantSamples, Powder/PixelGroupingDefinitions, Powder/SNAPLite.xml,
             newCalibrationHome.mkdir(parents=True, exist_ok=True)
@@ -197,13 +208,12 @@ class LocalDataService:
             ]
 
             # Validate all items first
-            for item in itemsToCopy:
-                src = originalCalibrationHome / item
-                if not (src.exists()):
+            sources = {item: source(item) for item in itemsToCopy}
+            for item, src in sources.items():
+                if src is None or not src.exists():
                     raise FileNotFoundError(f"Failure to find {item} when creating user calibration home")
             # then copy them
-            for item in itemsToCopy:
-                src = originalCalibrationHome / item
+            for item, src in sources.items():
                 dst = newCalibrationHome / item
                 if src.is_dir():
                     dst.mkdir(parents=True, exist_ok=True)
@@ -489,7 +499,11 @@ class LocalDataService:
         return self.constructCalibrationStateRoot(stateId) / mode / "normalization"
 
     def _hasWritePermissionsCalibrationStateRoot(self) -> bool:
-        return self.checkWritePermissions(Path(Config["instrument.calibration.powder.home"]))
+        try:
+            path = calibrationWritePath(Config["instrument.calibration.powder.home"])
+        except CalibrationWriteGuardError:
+            return False
+        return self.checkWritePermissions(path)
 
     # reduction paths #
 
@@ -1078,9 +1092,11 @@ class LocalDataService:
         samplePath: str = Config["samples.home"]
         fileName: str = sample.name + "_" + sample.unique_id
         filePath = os.path.join(samplePath, fileName) + ".json"
-        if os.path.exists(filePath):
-            raise ValueError(f"the file '{filePath}' already exists")
-        write_model_pretty(sample, filePath)
+        # a sample in a read-failover root would be shadowed
+        existingPath = resolveCalibrationPath(filePath)
+        if os.path.exists(existingPath):
+            raise ValueError(f"the file '{existingPath}' already exists")
+        write_model_pretty(sample, calibrationWritePath(filePath))
 
     def readCalibrantSample(self, filePath: str):
         if not os.path.exists(filePath):
@@ -1249,7 +1265,8 @@ class LocalDataService:
 
         # Make sure that the state root directory has been initialized:
         stateRootPath: Path = self.constructCalibrationStateRoot(state)
-        if not stateRootPath.exists():
+        # a state that exists in a read-failover root is initialized in home from the failover, at its first write
+        if not resolveCalibrationPath(stateRootPath).exists():
             # WARNING: `_prepareStateRoot` is also called at `readStateConfig`; this allows
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
             self._prepareStateRoot(state)
@@ -1306,7 +1323,7 @@ class LocalDataService:
         """
         Create the state root directory, and populate it with any necessary metadata files.
         """
-        stateRootPath: Path = self.constructCalibrationStateRoot(stateId)
+        stateRootPath: Path = calibrationWritePath(self.constructCalibrationStateRoot(stateId))
         if not stateRootPath.exists():
             stateRootPath.mkdir(parents=True, exist_ok=True)
 
@@ -1366,12 +1383,12 @@ class LocalDataService:
 
     def _writeGroupingMap(self, stateId: str, groupingMap: GroupingMap):
         # Write a GroupingMap to a file in JSON format, but only if it has been modified.
-        groupingMapPath: Path = self._groupingMapPath(stateId)
+        groupingMapPath: Path = calibrationWritePath(self._groupingMapPath(stateId))
         if not groupingMapPath.parent.exists():
             raise FileNotFoundError(f'state-root directory "{groupingMapPath.parent}" does not exist')
 
-        # Only write once and do not allow overwrite.
-        if groupingMap.isDirty and not groupingMapPath.exists():
+        # Only write once and do not allow overwrite: nor shadow a grouping map in a read-failover root.
+        if groupingMap.isDirty and not resolveCalibrationPath(groupingMapPath).exists():
             # For consistency: write out `_isDirty` as False
             groupingMap.setDirty(False)
             write_model_pretty(groupingMap, groupingMapPath)
@@ -1482,7 +1499,7 @@ class LocalDataService:
         self.mantidSnapper.SaveNexus(
             "Save a workspace using Nexus format",
             InputWorkspace=workspaceName,
-            Filename=str(path / filename),
+            Filename=str(calibrationWritePath(Path(path) / filename)),
             Append=append,
         )
         self.mantidSnapper.executeQueue()
@@ -1532,7 +1549,7 @@ class LocalDataService:
             CalibrationWorkspace=tableWorkspaceName,
             MaskWorkspace=maskWorkspaceName,
             GroupingWorkspace=groupingWorkspaceName,
-            Filename=str(path / filename),
+            Filename=str(calibrationWritePath(Path(path) / filename)),
         )
         self.mantidSnapper.executeQueue()
 

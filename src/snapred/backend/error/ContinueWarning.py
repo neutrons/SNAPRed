@@ -47,7 +47,10 @@ class ContinueWarning(Exception):
 
     @staticmethod
     def calibrationHomeWritePermission():
+        from snapred.backend.data.CalibrationRoot import describeReadFailover
+
         calibrationHome = Config["instrument.calibration.home"]
+        readFailover = describeReadFailover()
         spaces24 = "".join(["&nbsp;"] * 24)
         spaces12 = "".join(["&nbsp;"] * 12)
         return ContinueWarning(
@@ -57,6 +60,7 @@ class ContinueWarning(Exception):
             + f"<p>{spaces12}It looks like you don't have permissions to write to "
             + f"<br>{spaces24}<b>{calibrationHome}</b>,<br>"
             + "This is a requirement in order to run the diffraction-calibration and normalization workflows.</p>"
+            + (f"{spaces12}<p>{readFailover}</p>" if readFailover else "")
             + f"{spaces12}<p>Would you like to swap to your user generated calibration home instead?</p>"
             + "<br><b>WARNING: This will create/archive SNAPRed managed <br>files in `~/.snapred`"
             + "<br><br>SNAPRed will use config `~/.snapred/snapred-user.yml` <br>until it is moved or renamed.</p>"

@@ -660,3 +660,65 @@ def test_writes_never_land_in_failover(roots, calibrationRoot):
     assert (prod / "groupingMap.json").read_text() == "prod"
     assert calibrationRoot.resolve("groupingMap.json") == home / "groupingMap.json"
     assert not (next_ / "groupingMap.json").exists()
+
+
+def test_guardWrite_home(roots, calibrationRoot):
+    home, _, _ = roots
+    assert calibrationRoot.guardWrite(home / "Powder" / "a.json") == home / "Powder" / "a.json"
+    assert calibrationRoot.guardWrite(str(home / "a.json")) == home / "a.json"
+
+
+def test_guardWrite_home_symlink_into_failover(roots, calibrationRoot):
+    home, prod, _ = roots
+    (prod / "Powder").mkdir()
+    (home / "Powder").symlink_to(prod / "Powder")
+    with pytest.raises(CalibrationWriteGuardError):
+        calibrationRoot.guardWrite(home / "Powder" / "a.json")
+
+
+def test_guardWrite_failover(roots, calibrationRoot):
+    _, prod, next_ = roots
+    for failover in (prod, next_):
+        with pytest.raises(CalibrationWriteGuardError, match="read-failover"):
+            calibrationRoot.guardWrite(failover / "Powder" / "a.json")
+
+
+def test_guardWrite_skipped_failover(roots, tmp_path):
+    # a failover root skipped as invalid is still never written to
+    home, _, _ = roots
+    unstamped = tmp_path / "Unstamped"
+    unstamped.mkdir()
+    root = CalibrationRoot(home, [unstamped], environment="qa", schemaVersion=SCHEMA)
+    assert root.failovers == []
+    with pytest.raises(CalibrationWriteGuardError, match="read-failover"):
+        root.guardWrite(unstamped / "a.json")
+
+
+def test_guardWrite_symlink_into_failover_from_elsewhere(roots, calibrationRoot, tmp_path):
+    _, prod, _ = roots
+    (tmp_path / "elsewhere").symlink_to(prod)
+    with pytest.raises(CalibrationWriteGuardError, match="read-failover"):
+        calibrationRoot.guardWrite(tmp_path / "elsewhere" / "a.json")
+
+
+def test_guardWrite_through_symlink_within_failover(roots, calibrationRoot, tmp_path):
+    # a failover root may contain symlinks to elsewhere: a path under it is still refused
+    _, prod, _ = roots
+    (tmp_path / "data").mkdir()
+    (prod / "Powder").symlink_to(tmp_path / "data")
+    with pytest.raises(CalibrationWriteGuardError, match="read-failover"):
+        calibrationRoot.guardWrite(prod / "Powder" / "a.json")
+
+
+def test_guardWrite_elsewhere(calibrationRoot, tmp_path):
+    # e.g. the reduction home
+    assert calibrationRoot.guardWrite(tmp_path / "reduction" / "a.nxs") == tmp_path / "reduction" / "a.nxs"
+    assert calibrationRoot.guardWrite(Path("relative/a.nxs")) == Path("relative/a.nxs")
+
+
+def test_guardWrite_wrong_environment_home(roots):
+    home, prod, _ = roots
+    stamp(home, "next")
+    root = CalibrationRoot(home, [prod], environment="qa", schemaVersion=SCHEMA, requireMarker=False, userMode=True)
+    with pytest.raises(CalibrationWriteGuardError, match="stamped for"):
+        root.guardWrite(home / "a.json")

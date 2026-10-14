@@ -26,12 +26,14 @@ from snapred.backend.data.CalibrationRoot import (
     ConfiguredCalibrationRoot,
     calibrationRelative,
     calibrationRoot,
+    describeReadFailover,
     resolveCalibrationPath,
 )
 from snapred.backend.data.Indexer import Indexer, IndexerType
 from snapred.backend.data.IndexStore import IndexStore, InstrumentParameterStore, StateIndexStore
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.error.CalibrationHomeError import CalibrationHomeError
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_pretty
 
@@ -706,3 +708,146 @@ def test_writes_never_land_in_failover(service, roots):
     with pytest.raises(CalibrationRootModule.CalibrationWriteGuardError):
         service.calibrationIndexer(True, STATE).nextVersion()
     assert snapshot(prod) == before
+
+
+##
+## Non-indexed writes
+##
+
+
+def sample(name: str = "apple", uniqueId: str = "banana"):
+    instance = mock.MagicMock()
+    instance.name = name
+    instance.unique_id = uniqueId
+    return instance
+
+
+def test_writeCalibrantSample_writes_home(service, roots):
+    home, prod = roots
+    with mock.patch.object(LocalDataServiceModule, "write_model_pretty") as write:
+        service.writeCalibrantSample(sample())
+    write.assert_called_once()
+    assert write.call_args.args[1] == home / "CalibrantSamples" / "apple_banana.json"
+    assert not (prod / "CalibrantSamples").exists()
+
+
+def test_writeCalibrantSample_would_shadow_failover(service, roots):
+    _, prod = roots
+    (prod / "CalibrantSamples").mkdir()
+    (prod / "CalibrantSamples" / "apple_banana.json").write_text("{}")
+    with mock.patch.object(LocalDataServiceModule, "write_model_pretty") as write:
+        with pytest.raises(ValueError, match=f"'{prod / 'CalibrantSamples' / 'apple_banana.json'}' already exists"):
+            service.writeCalibrantSample(sample())
+    write.assert_not_called()
+
+
+def test_writeCalibrantSample_guarded(service, roots):
+    # a symlink from home into the failover is refused
+    home, prod = roots
+    (prod / "CalibrantSamples").mkdir()
+    (home / "CalibrantSamples").symlink_to(prod / "CalibrantSamples")
+    with mock.patch.object(LocalDataServiceModule, "write_model_pretty") as write:
+        with pytest.raises(CalibrationRootModule.CalibrationWriteGuardError):
+            service.writeCalibrantSample(sample())
+    write.assert_not_called()
+
+
+def test_prepareStateRoot_writes_home(service, roots):
+    # the default grouping map is read from the failover
+    home, prod = roots
+    defaultGroupingMap = prod / "Powder" / "PixelGroupingDefinitions" / "defaultGroupingMap.json"
+    defaultGroupingMap.parent.mkdir(parents=True)
+    write_model_pretty(DAOFactory.groupingMap_SNAP(DAOFactory.magical_state_id.model_copy()), defaultGroupingMap)
+    prodBefore = snapshot(prod)
+    service._prepareStateRoot(OTHER_STATE)
+    assert (home / "Powder" / OTHER_STATE / "groupingMap.json").exists()
+    assert snapshot(prod) == prodBefore
+
+
+@pytest.mark.usefixtures("prodState")
+def test_writeGroupingMap_does_not_shadow_failover(service, roots):
+    home, _ = roots
+    (home / "Powder" / STATE).mkdir(parents=True)
+    groupingMap = DAOFactory.groupingMap_SNAP(DAOFactory.magical_state_id.model_copy())
+    groupingMap.setDirty(True)
+    service._writeGroupingMap(STATE, groupingMap)
+    assert not (home / "Powder" / STATE / "groupingMap.json").exists()
+
+
+class _StopAfterStateRoot(Exception):
+    pass
+
+
+@pytest.mark.usefixtures("prodState")
+@pytest.mark.parametrize(("state", "prepared"), [(STATE, False), (OTHER_STATE, True)])
+def test_initializeState_prepares_only_a_new_state_root(service, state, prepared):
+    # a failover state is initialized in home from the failover at its first write: not from the default grouping map
+    with (
+        mock.patch.object(service, "generateInstrumentState") as generateInstrumentState,
+        mock.patch.object(service, "_prepareStateRoot") as prepareStateRoot,
+        mock.patch.object(service, "calibrationIndexer", side_effect=_StopAfterStateRoot),
+    ):
+        generateInstrumentState.return_value.id.hex = state
+        with pytest.raises(_StopAfterStateRoot):
+            service.initializeState(RUN, True, "name")
+    assert prepareStateRoot.called == prepared
+
+
+@pytest.mark.parametrize("method", ["writeWorkspace", "writeDiffCalWorkspaces"])
+def test_workspace_writes_refuse_failover(service, roots, method):
+    _, prod = roots
+    filename = Path("ws.nxs.h5") if method == "writeWorkspace" else Path("ws.h5")
+    with mock.patch.object(service, "mantidSnapper") as mantidSnapper:
+        with pytest.raises(CalibrationRootModule.CalibrationWriteGuardError, match="read-failover"):
+            getattr(service, method)(prod / "Powder", filename, "ws")
+        mantidSnapper.executeQueue.assert_not_called()
+
+
+@pytest.mark.parametrize("method", ["writeWorkspace", "writeDiffCalWorkspaces"])
+def test_workspace_writes_elsewhere_unchanged(service, tmp_path, method):
+    filename = Path("ws.nxs.h5") if method == "writeWorkspace" else Path("ws.h5")
+    with mock.patch.object(service, "mantidSnapper") as mantidSnapper:
+        getattr(service, method)(tmp_path / "reduction", filename, "ws")
+    call = mantidSnapper.SaveNexus if method == "writeWorkspace" else mantidSnapper.SaveDiffCal
+    assert call.call_args.kwargs["Filename"] == str(tmp_path / "reduction" / filename)
+
+
+def test_workspace_writes_guarded_in_home(service, roots):
+    # a symlink from home into the failover is refused
+    home, prod = roots
+    (prod / "Powder").mkdir()
+    (home / "Powder").symlink_to(prod / "Powder")
+    with mock.patch.object(service, "mantidSnapper"):
+        with pytest.raises(CalibrationRootModule.CalibrationWriteGuardError):
+            service.writePixelMask(home / "Powder", Path("mask.h5"), "mask")
+
+
+def test_hasWritePermissionsCalibrationStateRoot(service, roots):
+    home, prod = roots
+    assert service._hasWritePermissionsCalibrationStateRoot()
+    (prod / "Powder").mkdir()
+    (home / "Powder").symlink_to(prod / "Powder")
+    assert not service._hasWritePermissionsCalibrationStateRoot()
+
+
+##
+## Display
+##
+
+
+def test_describeReadFailover(roots):
+    _, prod = roots
+    assert str(prod) in describeReadFailover()
+    with Config_override("instrument.calibration.readFailover", {"enabled": False}):
+        assert describeReadFailover() == ""
+    with Config_override("instrument.calibration.environment", "prod"):
+        assert "misconfigured" in describeReadFailover()
+
+
+def test_calibrationHomeWritePermission_shows_failover(roots):
+    home, prod = roots
+    message = ContinueWarning.calibrationHomeWritePermission().message
+    assert str(home) in message
+    assert f"read from: {prod}" in message
+    with Config_override("instrument.calibration.readFailover", {"enabled": False}):
+        assert "read from" not in ContinueWarning.calibrationHomeWritePermission().message
