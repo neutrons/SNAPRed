@@ -184,6 +184,8 @@ class CalibrationRoot:
 
     # writes
     def writePath(self, rel: Path) -> Path          # always home; runs the write guard; the single chokepoint
+    def guardWrite(self, path: Path) -> Path        # an absolute path: under home via `writePath`; under any
+                                                    #   configured failover refused; elsewhere unchanged
 
 
 
@@ -258,9 +260,18 @@ Benefits:
 - `findCompatibleStates`: `root.listDirs("Powder")`.
 - `checkCalibrationFileExists`, `_readGroupingMap`, `_defaultGroupingMapPath`: `exists()` / `resolve()`.
 - `readSampleFilePaths`: `glob()`. `readCifFilePath`: `resolve()`.
-- Home-only writes via `writePath()`: `writeCalibrantSample`, `_writeGroupingMap`, `writeInstrumentParameters`,
-  `writeWorkspace`, `writeDiffCalWorkspaces`, `writePixelMask`. Mantid save algorithms (`SaveNexus`,
-  `SaveDiffCal`) must receive paths from `writePath()` — enforced by convention and review.
+- Home-only writes: indexed writes through their store; the others through `calibrationWritePath()`
+  (`CalibrationRoot.guardWrite`): `writeCalibrantSample`, `_writeGroupingMap`, `_prepareStateRoot`,
+  `writeWorkspace`, `writeDiffCalWorkspaces` (and so `writePixelMask` / `writeGroupingWorkspace`). The Mantid save
+  algorithms (`SaveNexus`, `SaveDiffCal`) are guarded at these two methods, so that a path under a failover root is
+  refused wherever it came from; reduction output, outside of every calibration root, is unchanged.
+- Writes that would shadow failover data are refused or skipped: `writeCalibrantSample` refuses a sample that exists
+  in any root; `_writeGroupingMap` doesn't write a grouping map that exists in any root; `initializeState` doesn't
+  call `_prepareStateRoot` for a state that exists in a failover (it's initialized in home from the failover, at its
+  first write).
+- `_hasWritePermissionsCalibrationStateRoot`: `False` when the write guard refuses the powder home.
+- `generateUserRootFolder` / `copyCalibrationRootSkeleton`: the user-home skeleton is copied from wherever the
+  original calibration root reads it (`SNAPInstPrm` from a single root, as an indexed directory).
 - `readInstrumentConfig`: keep requiring `home` to exist.
 
 ### DAO path resolution
@@ -281,7 +292,8 @@ Benefits:
 
 ### Cosmetic
 
-- `__main__.py` (~line 123) and `ContinueWarning.py` (~line 50): show failover roots too (dev/qa only).
+- `__main__.py --configure` and `ContinueWarning.calibrationHomeWritePermission` show the failover roots too
+  (`describeReadFailover()`; empty when failover is off).
 
 ## Write-to-prod enforcement
 
@@ -294,8 +306,13 @@ Benefits:
 
 - ~78 test references to `calibrationIndexer` / `normalizationIndexer` / calibration-home overrides; most mock the
   indexer. Indexer unit tests need `FailoverIndexStore` cases.
-- Test and integration ymls need `schemaVersion` / `environment`; the `calibration_home_from_mirror` fixture and
-  test data need a marker (possible cross-repo change if the mirror is external).
+- Test and integration ymls need `schemaVersion` / `environment`. The mirror's calibration home has no marker in the
+  data repo: the session fixture `stamped_mirror_calibration_home` stamps it for the integration tests (and removes
+  only a marker that it created).
+- End to end: `tests/integration/test_read_failover.py` runs an empty QA-stamped home with a hard-linked,
+  prod-stamped copy of the mirror as its failover: reads and workspace loads come from the failover; a saved
+  calibration initializes the state in home and becomes home's version 1, while the other mode and the
+  normalizations still read the failover; nothing in the failover changes.
 - New cases:
   - `CalibrationRoot`: resolve top-down; missing-only fallthrough (corrupt home file is *not* skipped); glob union
     with home winning; `FailoverIndexStore` pinning and lazy re-pin

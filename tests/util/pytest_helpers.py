@@ -128,6 +128,33 @@ def get_unique_timestamp():
     pass
 
 
+@pytest.fixture(scope="session", autouse=True)
+def stamped_mirror_calibration_home():  # noqa: PT004
+    # For the integration tests: stamp the mirror's calibration home, if it isn't already.
+    # * Without its marker file, `CalibrationRoot` warns at the first request, and in the GUI tests that warning
+    #   is a modal dialog.
+    # * Only a marker created here is removed at teardown.
+    marker = None
+    if Config["environment"] == "integration_test":
+        from snapred.backend.dao.calibration.CalibrationHomeMarker import CalibrationHomeMarker
+        from snapred.meta.redantic import write_model_pretty
+
+        home = Path(Config["instrument.calibration.home"])
+        if home.is_dir() and not (home / CalibrationHomeMarker.FILENAME).exists():
+            marker = home / CalibrationHomeMarker.FILENAME
+            write_model_pretty(
+                CalibrationHomeMarker(
+                    schemaVersion=Config["instrument.calibration.schemaVersion"],
+                    environment=Config["instrument.calibration.environment"],
+                    createdBy="stamped_mirror_calibration_home",
+                ),
+                marker,
+            )
+    yield
+    if marker is not None:
+        marker.unlink(missing_ok=True)
+
+
 @pytest.fixture
 def calibration_home_from_mirror():
     # Test fixture to create a copy of the calibration home directory from an existing mirror:

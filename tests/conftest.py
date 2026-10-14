@@ -143,5 +143,6 @@ from util.pytest_helpers import (
     cleanup_workspace_at_exit,
     cleanup_class_workspace_at_exit,
     get_unique_timestamp,
-    reduction_home_from_mirror
+    reduction_home_from_mirror,
+    stamped_mirror_calibration_home,
 )
