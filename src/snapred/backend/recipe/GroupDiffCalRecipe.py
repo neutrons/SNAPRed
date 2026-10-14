@@ -130,7 +130,7 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         #   constants it was converted with, so converting it back recovers the original TOF exactly.
         self.temporaryTOF = None
         if self.mantidSnapper.mtd[self.originalWStof].getAxis(0).getUnit().unitID() != "TOF":
-            self.temporaryTOF = f"__{self.originalWStof}_TOF"
+            self.temporaryTOF = wng.diffCalInput().runNumber(self.runNumber).hidden(True).build()
             self.mantidSnapper.ConvertUnits(
                 "Convert the input back to TOF, so the new calibration can be applied to it",
                 InputWorkspace=self.originalWStof,
