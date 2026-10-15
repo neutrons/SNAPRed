@@ -57,7 +57,11 @@ class Crystallography(BaseModel):
     def validate_cifFile(cls, v):
         filePath = Path(v)
         if not filePath.is_absolute():
-            filePath = cls.calibrationSampleHome().joinpath(filePath)
+            # avoid a circular import
+            from snapred.backend.data.CalibrationRoot import resolveCalibrationPath
+
+            # the file in the first calibration root that has it
+            filePath = resolveCalibrationPath(cls.calibrationSampleHome().joinpath(filePath))
         if not os.path.exists(filePath):
             raise ValueError(
                 "'cifFile' must either be a relative path in 'calibration.sample.home'"

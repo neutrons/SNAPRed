@@ -130,6 +130,11 @@ def main(args=None):
         if options.configure:
             _configureForDeploy()
             print(f"SNAPRed configured to use {Config['instrument.calibration.home']}")
+            from snapred.backend.data.CalibrationRoot import describeReadFailover
+
+            readFailover = describeReadFailover()
+            if readFailover:
+                print(readFailover)
             return 0
         else:
             if options.workbench:

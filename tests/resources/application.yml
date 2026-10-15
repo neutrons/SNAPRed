@@ -18,6 +18,20 @@ instrument:
   calibration:
     # "instrument.calibration.home" is overridden in "test.yml":
     home: ${instrument.home}/shared/Calibration
+    # calibration folder schema version: must match the "schemaVersion" in the home's marker file.
+    #   Bump manually when the calibration folder layout or index format changes,
+    #   and re-stamp the deployed calibration homes before that release ships.
+    schemaVersion: 1
+    # intended deploy environment of "instrument.calibration.home": overridden in each "snapred_<env>.yml".
+    environment: prod
+    # while "false", a missing marker file in "instrument.calibration.home" only warns.
+    requireMarker: false
+    # testing only: read calibration data that is missing from "home" from these roots (never written to).
+    #   Must remain disabled for prod: enabling it in a prod deployment is an error at startup. Ignored in user mode.
+    readFailover:
+      enabled: false
+      # testing only: "requireMarker: false" reads a failover root that has no marker file (with a warning),
+      #   instead of skipping it.  When missing, failover roots must be stamped.
     sample:
       # "instrument.calibration.sample.home" is overridden in "test.yml":
       home: ${instrument.calibration.home}/CalibrantSamples

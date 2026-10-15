@@ -1,7 +1,7 @@
 # Read-Only Failover for Calibration Home
 
 Branch: `ewm18395_read_only_failover_calibration`
-Status: assessment / design agreed, not yet implemented (updated 2026-10-09)
+Status: design agreed; implementation in progress (updated 2026-10-13)
 
 ## Goal
 
@@ -20,8 +20,15 @@ users to maintain several calibration folders.
 2. **Failover granularity: per indexer directory.** For a given `<state>/<mode>/<workflow>` directory, use home if
    its index exists, otherwise the first failover root that has one. Shadowing only — no merged/overlay view of
    versions. Everything for that directory (index, records, parameters, workspaces) is read from the same root.
-   Once dev writes the first record for a state into home, prod's versions of that state are no longer visible to
-   dev (document this; `copyCalibration` can be used to import prod history if needed).
+   **The default version is ignored when choosing the root** (decided 2026-10-12): an index containing only the
+   default version (e.g. a state that was only initialized in home) does not shadow a failover. The first root
+   whose index has a non-default version is read; if none has one, the first root that has an index (home first)
+   is read, i.e. home's own default. Writes to a state that doesn't exist in home first initialize it in home;
+   after that, failover continues as usual until home has its first non-default version. Once dev writes that
+   version, prod's versions of that state are no longer visible to dev (document this; `copyCalibration` can be
+   used to import prod history if needed). Applied to calibration (diffraction) only: a normalization has no
+   default version (its version 0 is a real normalization), and the instrument parameters' version 0 is their
+   first epoch.
 3. **Resolve by existence, not by retry-on-failure.** A root is skipped only when the target is *missing*. Parse
    errors, permission errors, or corrupted files in home must surface, never silently fall through to a failover.
 4. **Marker file** at the root of every deployed calibration home, holding the calibration folder schema version
@@ -144,6 +151,11 @@ If wanted later, so that copied-but-inert keys like `readFailover` don't even ap
   without `--force`.
 - Optional grace flag `instrument.calibration.requireMarker: false`: missing home marker gives a warning instead
   of failing. Flip to `true` once prod, qa and next homes are stamped.
+- Testing flag `instrument.calibration.readFailover.requireMarker: false`: a failover root without a marker is read
+  (with a warning) instead of skipped, e.g. to test against a prod home that can't be stamped yet. A failover root
+  that has a marker is still validated, the home is still checked, and the failover is still never written to.
+  Read only once failover is enabled; when the key is missing, failover roots must be stamped.
+- The configured root is rebuilt when the marker of any of its roots (home or failover) changes.
 
 ## Read interface: `CalibrationRoot`
 
@@ -175,24 +187,38 @@ class CalibrationRoot:
     def glob(self, rel_pattern: str) -> list[Path]  # union, home wins on name collision
     def listDirs(self, rel: Path) -> list[str]
 
-    # indexed reads
-    def view(self, rel: Path, anchor: str) -> DirView  # pinned to first root containing `anchor` (the index file)
-
     # writes
     def writePath(self, rel: Path) -> Path          # always home; runs the write guard; the single chokepoint
+    def guardWrite(self, path: Path) -> Path        # an absolute path: under home via `writePath`; under any
+                                                    #   configured failover refused; elsewhere unchanged
 
 
-class DirView:
-    readRoot: Path    # re-pins lazily: moves to home once home contains the anchor
-    writeRoot: Path   # always home/<rel>
+
+# `src/snapred/backend/data/IndexStore.py`: where one indexed directory is read from and written to
+class IndexStore:                 # a single directory, used for both reads and writes
+    indexerType: IndexerType
+    recoveryMode: bool            # tolerate a missing/corrupt index, or one referring to missing versions
+    readDirectory: Path
+    writeDirectory: Path
+    def prepareWrite(self) -> Path  # called by the Indexer before each write
+
+class FailoverIndexStore(IndexStore):   # a directory `rel` within a `CalibrationRoot`
+    readDirectory: Path    # first root whose index `isPopulated`; re-pins lazily, stays in home once populated
+    writeDirectory: Path   # always home/<rel>, through `writePath`
+    def isPopulated(self, directory: Path) -> bool  # `ignoresDefaultVersion`: a default-only index is not
+    def initializeHome(self)                         # called by `prepareWrite` while home has no index
+
+class StateIndexStore(FailoverIndexStore): ...        # calibrations / normalizations of a state
+class InstrumentParameterStore(FailoverIndexStore): ...
 ```
 
 Case mapping:
 
 - **Single file** (`lite.map.file`, default grouping map, CIF, samples): `resolve()`.
-- **Indexed** (calibration, normalization, instrument parameters):
-  `Indexer(view=root.view(statePath, "CalibrationIndex.json"))`. The Indexer reads via `view.readRoot` and
-  writes/locks via `view.writeRoot`.
+- **Indexed** (calibration, normalization, instrument parameters): `Indexer(store)`. The `Indexer` keeps
+  track of versions; its store is the single owner of where they are read from and written to, of what happens
+  before the first write to home, and of recovery mode. The Indexer reads via `store.readDirectory` and
+  writes/locks via `store.prepareWrite()` / `store.writeDirectory`.
 - **Listing** (`findCompatibleStates`, `readSampleFilePaths`): `glob()` / `listDirs()`.
 - **Writes**: all via `writePath()`, so `assertWritable` lives in one place.
 
@@ -200,7 +226,7 @@ Benefits:
 
 - Failover logic and the write guard live in one module, unit-testable against tmp dirs.
 - Marker/schema validation and the prod guard live in `CalibrationRoot` construction; no separate service.
-- `DirView` lazy re-pinning fixes the `lru_cache` staleness problem; indexer caching can stay.
+- The store's lazy re-pinning fixes the `lru_cache` staleness problem; indexer caching can stay.
 - Call-site migration is mechanical: `Path(Config["instrument.calibration.powder.home"], x)` becomes
   `calibrationRoot.resolve(...)` / `writePath(...)`.
 
@@ -208,7 +234,8 @@ Benefits:
 
 ### `Indexer` (`src/snapred/backend/data/Indexer.py`)
 
-- Constructed from a `DirView` instead of a bare `directory`.
+- Constructed from an `IndexStore` instead of a bare `directory`: `Indexer(IndexStore(indexerType, directory))`
+  for a plain directory, and its `indexerType` is the store's.
 - Read via `readRoot`: `readIndex`, `readDirectoryList`, `readIndexedObject`, read side of `versionPath`.
 - Write via `writeRoot`: `writeIndex`, `writeIndexedObject`, `recoverIndex`, `obtainLock`, `_lockContext` (locks
   on write root only).
@@ -220,16 +247,36 @@ Benefits:
 
 - Owns the `CalibrationRoot`; rebuild it on Config reload / `swapToUserYml`.
 - **Highest risk — writing to a state that exists only in a failover.** Writes go to home, and the home state must
-  first be initialized (default version + `groupingMap.json`, i.e. the `initializeState` / `_prepareStateRoot`
-  logic), otherwise home shadows prod with an incomplete state. This is domain logic and stays here.
+  first be initialized (default version + `groupingMap.json`), otherwise home shadows prod with an incomplete
+  state: e.g. its first calibration would be numbered as the default version. Implemented by the stores'
+  `initializeHome`, called before the first write to a home directory that has no index: `StateIndexStore`
+  copies the failover's `groupingMap.json` and the default calibration version of both modes into home (not
+  `initializeState`, which needs a run number and would regenerate rather than copy the default).
+  `InstrumentParameterStore` copies all of the failover's instrument parameters, since a single new epoch in home
+  would otherwise shadow every prod epoch. `LocalDataService` only builds the stores.
+- The `CalibrationRoot` is shared rather than owned by `LocalDataService`: the `ConfiguredCalibrationRoot`
+  singleton holds it (accessed through `CalibrationRoot.calibrationRoot()`), so that the DAOs can resolve paths
+  without depending on it. It is rebuilt whenever its configuration or the home marker changes; cached indexers
+  are keyed on it.
+- Derived keys are mapped back to the calibration root by their path relative to `instrument.calibration.home`;
+  a derived key configured outside home (e.g. a test override) is used as-is, without failover.
 - `readStateConfig` calls `_prepareStateRoot` as a side effect of a read when `groupingMap.json` is missing; switch
   to `root.exists()` so stub state dirs are not created in home.
 - `findCompatibleStates`: `root.listDirs("Powder")`.
 - `checkCalibrationFileExists`, `_readGroupingMap`, `_defaultGroupingMapPath`: `exists()` / `resolve()`.
 - `readSampleFilePaths`: `glob()`. `readCifFilePath`: `resolve()`.
-- Home-only writes via `writePath()`: `writeCalibrantSample`, `_writeGroupingMap`, `writeInstrumentParameters`,
-  `writeWorkspace`, `writeDiffCalWorkspaces`, `writePixelMask`. Mantid save algorithms (`SaveNexus`,
-  `SaveDiffCal`) must receive paths from `writePath()` — enforced by convention and review.
+- Home-only writes: indexed writes through their store; the others through `calibrationWritePath()`
+  (`CalibrationRoot.guardWrite`): `writeCalibrantSample`, `_writeGroupingMap`, `_prepareStateRoot`,
+  `writeWorkspace`, `writeDiffCalWorkspaces` (and so `writePixelMask` / `writeGroupingWorkspace`). The Mantid save
+  algorithms (`SaveNexus`, `SaveDiffCal`) are guarded at these two methods, so that a path under a failover root is
+  refused wherever it came from; reduction output, outside of every calibration root, is unchanged.
+- Writes that would shadow failover data are refused or skipped: `writeCalibrantSample` refuses a sample that exists
+  in any root; `_writeGroupingMap` doesn't write a grouping map that exists in any root; `initializeState` doesn't
+  call `_prepareStateRoot` for a state that exists in a failover (it's initialized in home from the failover, at its
+  first write).
+- `_hasWritePermissionsCalibrationStateRoot`: `False` when the write guard refuses the powder home.
+- `generateUserRootFolder` / `copyCalibrationRootSkeleton`: the user-home skeleton is copied from wherever the
+  original calibration root reads it (`SNAPInstPrm` from a single root, as an indexed directory).
 - `readInstrumentConfig`: keep requiring `home` to exist.
 
 ### DAO path resolution
@@ -250,7 +297,8 @@ Benefits:
 
 ### Cosmetic
 
-- `__main__.py` (~line 123) and `ContinueWarning.py` (~line 50): show failover roots too (dev/qa only).
+- `__main__.py --configure` and `ContinueWarning.calibrationHomeWritePermission` show the failover roots too
+  (`describeReadFailover()`; empty when failover is off).
 
 ## Write-to-prod enforcement
 
@@ -262,12 +310,17 @@ Benefits:
 ## Tests
 
 - ~78 test references to `calibrationIndexer` / `normalizationIndexer` / calibration-home overrides; most mock the
-  indexer. Indexer unit tests need `DirView` cases.
-- Test and integration ymls need `schemaVersion` / `environment`; the `calibration_home_from_mirror` fixture and
-  test data need a marker (possible cross-repo change if the mirror is external).
+  indexer. Indexer unit tests need `FailoverIndexStore` cases.
+- Test and integration ymls need `schemaVersion` / `environment`. The mirror's calibration home has no marker in the
+  data repo: the session fixture `stamped_mirror_calibration_home` stamps it for the integration tests (and removes
+  only a marker that it created).
+- End to end: `tests/integration/test_read_failover.py` runs an empty QA-stamped home with a hard-linked,
+  prod-stamped copy of the mirror as its failover: reads and workspace loads come from the failover; a saved
+  calibration initializes the state in home and becomes home's version 1, while the other mode and the
+  normalizations still read the failover; nothing in the failover changes.
 - New cases:
   - `CalibrationRoot`: resolve top-down; missing-only fallthrough (corrupt home file is *not* skipped); glob union
-    with home winning; `DirView` pinning and lazy re-pin
+    with home winning; `FailoverIndexStore` pinning and lazy re-pin
   - writes never land in a failover (guard + tmp-dir assertion)
   - write to a failover-only state initializes home
   - `readFailover.paths` mapping resolves interpolated paths in yml order
@@ -386,10 +439,10 @@ exp refs with an inline workflow step that sets the env name.
 ## Implementation order
 
 1. yml keys (no `Config` code changes).
-2. `CalibrationRoot` + `DirView` + marker DAO + write guard + prod guard + user-mode detection, with standalone
+2. `CalibrationRoot` + indexed-directory view + marker DAO + write guard + prod guard + user-mode detection, with standalone
    tests.
 3. Stamp tool.
-4. Indexer moves to `DirView`.
+4. Indexer moves to an indexed-directory view (since refactored into `IndexStore`, step 5).
 5. Migrate `LocalDataService` / DAO / GroceryService call sites (fix read-with-write side effects first).
 6. Tests, test ymls, mirror marker.
 7. `exp` delivery (SNAPRed): `snapred_exp.yml`, `__main__` exp-aware configure, exp anaconda label, CI branch

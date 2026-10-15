@@ -42,8 +42,17 @@ from snapred.backend.dao.state import (
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
 from snapred.backend.dao.state.Cycle import Cycle
+from snapred.backend.data.CalibrationRoot import (
+    CalibrationRoot,
+    calibrationRelative,
+    calibrationRoot,
+    calibrationWritePath,
+    resolveCalibrationPath,
+)
 from snapred.backend.data.Indexer import Indexer, IndexerType
+from snapred.backend.data.IndexStore import IndexStore, InstrumentParameterStore, StateIndexStore
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
+from snapred.backend.error.CalibrationWriteGuardError import CalibrationWriteGuardError
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
@@ -120,10 +129,11 @@ class LocalDataService:
 
         # Read the grouping-schema map associated with this `StateConfig`.
         groupingMap = None
-        if self._groupingMapPath(state).exists():
+        if resolveCalibrationPath(self._groupingMapPath(state)).exists():
+            # Note: this may be a read-failover's grouping-schema map: nothing is written to home by this read.
             groupingMap = self._readGroupingMap(state)
         else:
-            # If no `GroupingMap` JSON file is present at the <state root>,
+            # If no `GroupingMap` JSON file is present at the <state root> in any calibration root,
             #   it is assumed that this is the first time that this state configuration has been initialized.
             # WARNING: `_prepareStateRoot` is also called at `initializeState`: this allows
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
@@ -170,13 +180,22 @@ class LocalDataService:
 
     @staticmethod
     def generateUserRootFolder():
-        originalCalibrationHome = Path(Config["instrument.calibration.home"])
+        # the skeleton may come from a read-failover root of the original calibration home
+        originalCalibrationRoot = calibrationRoot()
         Config.swapToUserYml()
         userCalibrationHome = Path(Config["instrument.calibration.home"])
-        LocalDataService.copyCalibrationRootSkeleton(originalCalibrationHome, userCalibrationHome)
+        LocalDataService.copyCalibrationRootSkeleton(originalCalibrationRoot, userCalibrationHome)
 
     @staticmethod
-    def copyCalibrationRootSkeleton(originalCalibrationHome: Path, newCalibrationHome: Path):
+    def copyCalibrationRootSkeleton(originalCalibrationRoot: CalibrationRoot, newCalibrationHome: Path):
+        def source(item: str) -> Path:
+            if item == "SNAPInstPrm":
+                # indexed: all from a single root
+                directory = InstrumentParameterStore(originalCalibrationRoot, item).readDirectory
+                if directory.exists():
+                    return directory
+            return originalCalibrationRoot.resolve(item) if originalCalibrationRoot.exists(item) else None
+
         if not newCalibrationHome.exists():
             # need to copy: SNAPInstPrm, CalibrantSamples, Powder/PixelGroupingDefinitions, Powder/SNAPLite.xml,
             newCalibrationHome.mkdir(parents=True, exist_ok=True)
@@ -189,13 +208,12 @@ class LocalDataService:
             ]
 
             # Validate all items first
-            for item in itemsToCopy:
-                src = originalCalibrationHome / item
-                if not (src.exists()):
+            sources = {item: source(item) for item in itemsToCopy}
+            for item, src in sources.items():
+                if src is None or not src.exists():
                     raise FileNotFoundError(f"Failure to find {item} when creating user calibration home")
             # then copy them
-            for item in itemsToCopy:
-                src = originalCalibrationHome / item
+            for item, src in sources.items():
                 dst = newCalibrationHome / item
                 if src.is_dir():
                     dst.mkdir(parents=True, exist_ok=True)
@@ -268,7 +286,7 @@ class LocalDataService:
         stateId, _ = self.generateStateId(runId)
         statePath = self.constructCalibrationStateRoot(stateId)
         # Shouldn't need to check lite as we init both at the same time
-        return statePath.exists()
+        return resolveCalibrationPath(statePath).exists()
 
     def workspaceIsInstance(self, wsName: str, wsType: Any) -> bool:
         # Is the workspace an instance of the specified type.
@@ -325,17 +343,21 @@ class LocalDataService:
             SHA = metadata.stateId
         return (SHA.hex if SHA is not None else ""), detectorState
 
+    def _calibrationStateFolders(self, useLiteMode: bool) -> List[str]:
+        # The ids of the states that have a folder for `useLiteMode`, in every calibration root:
+        #   i.e. ignore PixelGroupingDefinitions and other folders.
+        statesPath = Path(Config["instrument.calibration.powder.home"])
+        targetMode = self._getLiteModeString(useLiteMode)
+        statesRel = calibrationRelative(statesPath)
+        if statesRel is None:
+            # not under the calibration home (e.g. overridden in a test): used as-is
+            return [f.name for f in statesPath.iterdir() if f.is_dir() and (statesPath / f.name / targetMode).exists()]
+        root = calibrationRoot()
+        return [state for state in root.listDirs(statesRel) if root.exists(statesRel / state / targetMode)]
+
     def findCompatibleStates(self, runId: str, useLiteMode: bool) -> List[str]:
         # 1. collect list of all existing states
-        statesPath = Path(Config["instrument.calibration.powder.home"])
-        stateFolders = [f for f in statesPath.iterdir() if f.is_dir()]
-        targetMode = "lite" if useLiteMode else "native"
-        # filter stateFolders to only ones that contain the targetMode folder
-        # i.e. ignore PixelGroupingDefinition and other folders
-        calibrationStateFolders = []
-        for stateFolder in stateFolders:
-            if (statesPath / stateFolder / targetMode).exists():
-                calibrationStateFolders.append(stateFolder.name)
+        calibrationStateFolders = self._calibrationStateFolders(useLiteMode)
 
         stateCalibMap = []
         for stateId in calibrationStateFolders:
@@ -380,10 +402,9 @@ class LocalDataService:
         sourceVersion: Version = VersionState.LATEST,
     ):
         useLiteMode = targetIndexEntry.useLiteMode
-        sourcePath = self._constructCalibrationStatePath(sourceStateID, useLiteMode)
-        sourceIndexer = Indexer(indexerType=IndexerType.CALIBRATION, directory=sourcePath)
-        targetPath = self._constructCalibrationStatePath(targetStateID, useLiteMode)
-        targetIndexer = Indexer(indexerType=IndexerType.CALIBRATION, directory=targetPath)
+        # the source may be read from a read-failover: the target is always written to home
+        sourceIndexer = self.calibrationIndexer(useLiteMode, sourceStateID)
+        targetIndexer = self.calibrationIndexer(useLiteMode, targetStateID)
 
         if sourceVersion == VersionState.LATEST:
             sourceVersion = sourceIndexer.latestApplicableVersion(targetIndexEntry.runNumber)
@@ -403,7 +424,7 @@ class LocalDataService:
         sourceParameters.version = targetVersion
         sourceParameters.indexEntry = targetIndexEntry
 
-        targetVersionPath = targetIndexer.versionPath(targetVersion)
+        targetVersionPath = targetIndexer.writeVersionPath(targetVersion)
 
         for workspaceType, workspaceNames in sourceWorspaces.items():
             sourceRecord.workspaces[workspaceType] = []
@@ -478,7 +499,11 @@ class LocalDataService:
         return self.constructCalibrationStateRoot(stateId) / mode / "normalization"
 
     def _hasWritePermissionsCalibrationStateRoot(self) -> bool:
-        return self.checkWritePermissions(Path(Config["instrument.calibration.powder.home"]))
+        try:
+            path = calibrationWritePath(Config["instrument.calibration.powder.home"])
+        except CalibrationWriteGuardError:
+            return False
+        return self.checkWritePermissions(path)
 
     # reduction paths #
 
@@ -591,28 +616,51 @@ class LocalDataService:
                 raise NotImplementedError(f"Indexer of type {indexerType} is not supported by the LocalDataService")
         return path
 
-    @lru_cache
+    def _stateIndexStore(self, indexerType: IndexerType, state: str, path: Path, root: CalibrationRoot) -> IndexStore:
+        # The store of the home-layer directory `path` of `state`: reads may come from a read-failover root.
+        rel = calibrationRelative(path)
+        stateRel = calibrationRelative(self.constructCalibrationStateRoot(state))
+        calibrationRels = [
+            calibrationRelative(self._constructCalibrationStatePath(state, liteMode)) for liteMode in (True, False)
+        ]
+        if rel is None or stateRel is None or None in calibrationRels:
+            # not under the calibration home (e.g. overridden in a test): used as-is
+            return IndexStore(indexerType, path)
+        return StateIndexStore(indexerType, root, rel, stateRel=stateRel, calibrationRels=calibrationRels)
+
     @validate_call
     def calibrationIndexer(self, useLiteMode: bool, state: str) -> Indexer:
+        return self._calibrationIndexer(useLiteMode, state, calibrationRoot())
+
+    @lru_cache
+    def _calibrationIndexer(self, useLiteMode: bool, state: str, root: CalibrationRoot) -> Indexer:
+        # An indexer belongs to the calibration root that it was created for: `root` is part of the cache key.
         path = self._constructCalibrationStatePath(state, useLiteMode)
-        return Indexer(indexerType=IndexerType.CALIBRATION, directory=path)
+        return Indexer(self._stateIndexStore(IndexerType.CALIBRATION, state, path, root))
 
     def obtainCalibrationLock(self, useLiteMode: bool, state: str) -> LockFile:
         return self.calibrationIndexer(useLiteMode, state).obtainLock()
 
-    @lru_cache
     @validate_call
     def normalizationIndexer(self, useLiteMode: bool, state: str) -> Indexer:
+        return self._normalizationIndexer(useLiteMode, state, calibrationRoot())
+
+    @lru_cache
+    def _normalizationIndexer(self, useLiteMode: bool, state: str, root: CalibrationRoot) -> Indexer:
+        # `root` is part of the cache key: see `_calibrationIndexer`.
         path = self._constructNormalizationStatePath(state, useLiteMode)
-        return Indexer(indexerType=IndexerType.NORMALIZATION, directory=path)
+        return Indexer(self._stateIndexStore(IndexerType.NORMALIZATION, state, path, root))
 
     def obtainNormalizationLock(self, useListeMode: bool, state: str) -> LockFile:
         return self.normalizationIndexer(useListeMode, state).obtainLock()
 
     def instrumentParameterIndexer(self) -> Indexer:
-        return Indexer(
-            indexerType=IndexerType.INSTRUMENT_PARAMETER, directory=Path(Config["instrument.parameters.home"])
-        )
+        path = Path(Config["instrument.parameters.home"])
+        rel = calibrationRelative(path)
+        if rel is None:
+            # not under the calibration home (e.g. overridden in a test): used as-is
+            return Indexer(IndexStore(IndexerType.INSTRUMENT_PARAMETER, path))
+        return Indexer(InstrumentParameterStore(calibrationRoot(), rel))
 
     def writeCalibrationIndexEntry(self, entry: IndexEntry):
         """
@@ -753,7 +801,7 @@ class LocalDataService:
         """
         instrumentState = self.generateInstrumentState(record.runNumber)
         indexer = self.normalizationIndexer(record.useLiteMode, instrumentState.id.hex)
-        normalizationDataPath: Path = indexer.versionPath(record.version)
+        normalizationDataPath: Path = indexer.writeVersionPath(record.version)
         if not normalizationDataPath.exists():
             normalizationDataPath.mkdir(parents=True, exist_ok=True)
 
@@ -843,7 +891,7 @@ class LocalDataService:
         """
         state, _ = self.generateStateId(record.runNumber)
         indexer = self.calibrationIndexer(record.useLiteMode, state)
-        calibrationDataPath = indexer.versionPath(record.version)
+        calibrationDataPath = indexer.writeVersionPath(record.version)
         if not calibrationDataPath.exists():
             calibrationDataPath.mkdir(parents=True, exist_ok=True)
 
@@ -1025,8 +1073,15 @@ class LocalDataService:
         extensions = Config["instrument.calibration.sample.extensions"]
         # collect list of all json in folder
         sampleFiles = set()
+        sampleRel = calibrationRelative(sampleFolder)
         for extension in extensions:
-            sampleFiles.update(self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False))
+            if sampleRel is not None:
+                # the samples in every calibration root
+                sampleFiles.update(
+                    str(path) for path in calibrationRoot().glob(f"{sampleRel}/*.{extension}") if path.is_file()
+                )
+            else:
+                sampleFiles.update(self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False))
         if len(sampleFiles) < 1:
             raise RuntimeError(f"No samples found in {sampleFolder} for extensions {extensions}")
         sampleFiles = list(sampleFiles)
@@ -1037,9 +1092,11 @@ class LocalDataService:
         samplePath: str = Config["samples.home"]
         fileName: str = sample.name + "_" + sample.unique_id
         filePath = os.path.join(samplePath, fileName) + ".json"
-        if os.path.exists(filePath):
-            raise ValueError(f"the file '{filePath}' already exists")
-        write_model_pretty(sample, filePath)
+        # a sample in a read-failover root would be shadowed
+        existingPath = resolveCalibrationPath(filePath)
+        if os.path.exists(existingPath):
+            raise ValueError(f"the file '{existingPath}' already exists")
+        write_model_pretty(sample, calibrationWritePath(filePath))
 
     def readCalibrantSample(self, filePath: str):
         if not os.path.exists(filePath):
@@ -1057,7 +1114,7 @@ class LocalDataService:
     def readCifFilePath(self, sampleId: str):
         samplePath: str = Config["samples.home"]
         fileName: str = sampleId + ".json"
-        filePath = os.path.join(samplePath, fileName)
+        filePath = resolveCalibrationPath(os.path.join(samplePath, fileName))
         if not os.path.exists(filePath):
             raise ValueError(f"the file '{filePath}' does not exist")
         with open(filePath, "r") as f:
@@ -1065,7 +1122,7 @@ class LocalDataService:
         filePath = Path(calibrantSampleDict["crystallography"]["cifFile"])
         # Allow relative paths:
         if not filePath.is_absolute():
-            filePath = Path(Config["samples.home"]).joinpath(filePath)
+            filePath = resolveCalibrationPath(Path(Config["samples.home"]).joinpath(filePath))
         return str(filePath)
 
     ##### READ / WRITE STATE METHODS #####
@@ -1146,7 +1203,7 @@ class LocalDataService:
         filename = Path(grocer.createDiffCalTableWorkspaceName("default", useLiteMode, version) + ".h5")
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
 
-        calibrationDataPath = indexer.versionPath(version)
+        calibrationDataPath = indexer.writeVersionPath(version)
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, tableWorkspaceName=outWS)
 
         # TODO: all of this should have its own workflow, in which case, it could act like all other workflows
@@ -1208,7 +1265,8 @@ class LocalDataService:
 
         # Make sure that the state root directory has been initialized:
         stateRootPath: Path = self.constructCalibrationStateRoot(state)
-        if not stateRootPath.exists():
+        # a state that exists in a read-failover root is initialized in home from the failover, at its first write
+        if not resolveCalibrationPath(stateRootPath).exists():
             # WARNING: `_prepareStateRoot` is also called at `readStateConfig`; this allows
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
             self._prepareStateRoot(state)
@@ -1265,7 +1323,7 @@ class LocalDataService:
         """
         Create the state root directory, and populate it with any necessary metadata files.
         """
-        stateRootPath: Path = self.constructCalibrationStateRoot(stateId)
+        stateRootPath: Path = calibrationWritePath(self.constructCalibrationStateRoot(stateId))
         if not stateRootPath.exists():
             stateRootPath.mkdir(parents=True, exist_ok=True)
 
@@ -1293,7 +1351,7 @@ class LocalDataService:
 
             stateID, _ = self.generateStateId(runId)
             calibrationStatePath: Path = self.constructCalibrationStateRoot(stateID)
-            return calibrationStatePath.exists()
+            return resolveCalibrationPath(calibrationStatePath).exists()
         except (FileNotFoundError, RuntimeError):
             return False
 
@@ -1309,7 +1367,7 @@ class LocalDataService:
             return self._readDefaultGroupingMap()
 
     def _readGroupingMap(self, stateId: str) -> GroupingMap:
-        path: Path = self._groupingMapPath(stateId)
+        path: Path = resolveCalibrationPath(self._groupingMapPath(stateId))
         if not path.exists():
             raise FileNotFoundError(f'required grouping-schema map for state "{stateId}" at "{path}" does not exist')
         return parse_file_as(GroupingMap, path)
@@ -1318,19 +1376,19 @@ class LocalDataService:
         return self._readDefaultGroupingMap()
 
     def _readDefaultGroupingMap(self) -> GroupingMap:
-        path: Path = self._defaultGroupingMapPath()
+        path: Path = resolveCalibrationPath(self._defaultGroupingMapPath())
         if not path.exists():
             raise FileNotFoundError(f'required default grouping-schema map "{path}" does not exist')
         return parse_file_as(GroupingMap, path)
 
     def _writeGroupingMap(self, stateId: str, groupingMap: GroupingMap):
         # Write a GroupingMap to a file in JSON format, but only if it has been modified.
-        groupingMapPath: Path = self._groupingMapPath(stateId)
+        groupingMapPath: Path = calibrationWritePath(self._groupingMapPath(stateId))
         if not groupingMapPath.parent.exists():
             raise FileNotFoundError(f'state-root directory "{groupingMapPath.parent}" does not exist')
 
-        # Only write once and do not allow overwrite.
-        if groupingMap.isDirty and not groupingMapPath.exists():
+        # Only write once and do not allow overwrite: nor shadow a grouping map in a read-failover root.
+        if groupingMap.isDirty and not resolveCalibrationPath(groupingMapPath).exists():
             # For consistency: write out `_isDirty` as False
             groupingMap.setDirty(False)
             write_model_pretty(groupingMap, groupingMapPath)
@@ -1441,7 +1499,7 @@ class LocalDataService:
         self.mantidSnapper.SaveNexus(
             "Save a workspace using Nexus format",
             InputWorkspace=workspaceName,
-            Filename=str(path / filename),
+            Filename=str(calibrationWritePath(Path(path) / filename)),
             Append=append,
         )
         self.mantidSnapper.executeQueue()
@@ -1491,7 +1549,7 @@ class LocalDataService:
             CalibrationWorkspace=tableWorkspaceName,
             MaskWorkspace=maskWorkspaceName,
             GroupingWorkspace=groupingWorkspaceName,
-            Filename=str(path / filename),
+            Filename=str(calibrationWritePath(Path(path) / filename)),
         )
         self.mantidSnapper.executeQueue()
 

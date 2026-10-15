@@ -3,3 +3,9 @@
 instrument:
   calibration:
     home: ${instrument.home}/shared/CalibrationExp
+    environment: exp
+    readFailover:
+      enabled: true
+      # a mapping of name -> path, in priority order (list elements are not interpolated by `Config`)
+      paths:
+        prod: ${instrument.home}/shared/Calibration

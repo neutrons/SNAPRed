@@ -486,6 +486,95 @@ def test_mergeAndExport_exp():
                 assert "CalibrationExp" in yml["instrument"]["calibration"]["home"]
 
 
+def test_calibration_defaults():
+    # failover is disabled by default, and no failover paths are defined
+    assert Config["instrument.calibration.schemaVersion"] == 1
+    assert Config["instrument.calibration.environment"] == "prod"
+    assert Config["instrument.calibration.requireMarker"] is False
+    assert Config["instrument.calibration.readFailover.enabled"] is False
+    assert not Config.exists("instrument.calibration.readFailover.paths")
+
+
+@pytest.mark.parametrize(
+    ("env", "failoverEnabled"),
+    [("next", False), ("qa", False), ("prod", False), ("exp", True)],
+)
+def test_deployed_env_calibration_keys(env, failoverEnabled):
+    # the deployed env ymls (not the test copies) each declare their own calibration environment
+    deployedResources = Path(Config_module.__file__).parent.parent / "resources"
+    with open(deployedResources / f"snapred_{env}.yml", "r") as file:
+        calibration = rYaml(typ="safe").load(file)["instrument"]["calibration"]
+    assert calibration["environment"] == env
+    assert calibration.get("readFailover", {}).get("enabled", False) is failoverEnabled
+    if env == "prod":
+        assert "readFailover" not in calibration
+
+
+def test_deployed_application_yml_disables_failover():
+    deployedResources = Path(Config_module.__file__).parent.parent / "resources"
+    with open(deployedResources / "application.yml", "r") as file:
+        calibration = rYaml(typ="safe").load(file)["instrument"]["calibration"]
+    assert calibration["environment"] == "prod"
+    assert calibration["readFailover"] == {"enabled": False}
+
+
+def test_mergeAndExport_exp_readFailover():
+    with TemporaryDirectory() as tmpPath:
+        applicationYmlPath: Path = Path(Resource.getPath("application.yml"))
+        expApplicationYmlPath = applicationYmlPath.parent / "snapred_exp.yml"
+        (Path(tmpPath) / "application.yml").write_bytes(applicationYmlPath.read_bytes())
+        (Path(tmpPath) / "snapred_exp.yml").write_bytes(expApplicationYmlPath.read_bytes())
+        with (
+            mock.patch.object(Resource, "_resourcesPath", Path(tmpPath)),
+            #   Dont want to overrite the config for the rest of the tests
+            mock.patch.object(Config, "_config", {}),
+        ):
+            Config.mergeAndExport("snapred_exp")
+
+            # reload the exported "application.yml", as a deployed exp install would
+            Config.refresh("application.yml", True)
+            assert Config["instrument.calibration.environment"] == "exp"
+            assert Config["instrument.calibration.schemaVersion"] == 1
+            assert Config["instrument.calibration.readFailover.enabled"] is True
+            instrumentHome = Config["instrument.home"]
+            # a mapping's members are interpolated on read, in yml order
+            paths = Config["instrument.calibration.readFailover.paths"]
+            assert list(paths.items()) == [("prod", f"{instrumentHome}/shared/Calibration")]
+            assert Config["instrument.calibration.readFailover.paths.prod"] == f"{instrumentHome}/shared/Calibration"
+            assert Config["instrument.calibration.home"] == f"{instrumentHome}/shared/CalibrationExp"
+
+
+def test_readFailover_paths_order():
+    # priority is yml order: dict insertion order must survive the merge and interpolation
+    with TemporaryDirectory() as tmpPath:
+        applicationYmlPath: Path = Path(Resource.getPath("application.yml"))
+        (Path(tmpPath) / "application.yml").write_bytes(applicationYmlPath.read_bytes())
+        (Path(tmpPath) / "failover_order.yml").write_text(
+            "instrument:\n"
+            "  calibration:\n"
+            "    readFailover:\n"
+            "      enabled: true\n"
+            "      paths:\n"
+            "        qa: ${instrument.home}/shared/CalibrationQA\n"
+            "        prod: ${instrument.home}/shared/Calibration\n"
+            "        next: ${instrument.home}/shared/CalibrationNext\n"
+        )
+        with (
+            mock.patch.object(Resource, "_resourcesPath", Path(tmpPath)),
+            mock.patch.object(Config, "_config", {}),
+        ):
+            Config.refresh("application.yml", True)
+            Config.refresh("failover_order")
+            instrumentHome = Config["instrument.home"]
+            assert list(Config["instrument.calibration.readFailover.paths"].values()) == [
+                f"{instrumentHome}/shared/CalibrationQA",
+                f"{instrumentHome}/shared/Calibration",
+                f"{instrumentHome}/shared/CalibrationNext",
+            ]
+            # merging an env yml must not drop the other calibration keys
+            assert Config["instrument.calibration.schemaVersion"] == 1
+
+
 def test_configureForDeploy_qa_or_prod():
     with (
         mock.patch.object(Config, "snapredVersion", mock.Mock(return_value="1.0.0")) as mockVersion,
