@@ -30,6 +30,8 @@ instrument:
     #   Must remain disabled for prod: enabling it in a prod deployment is an error at startup. Ignored in user mode.
     readFailover:
       enabled: false
+      # testing only: "requireMarker: false" reads a failover root that has no marker file (with a warning),
+      #   instead of skipping it.  When missing, failover roots must be stamped.
     sample:
       # "instrument.calibration.sample.home" is overridden in "test.yml":
       home: ${instrument.calibration.home}/CalibrantSamples

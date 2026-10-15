@@ -722,3 +722,47 @@ def test_guardWrite_wrong_environment_home(roots):
     root = CalibrationRoot(home, [prod], environment="qa", schemaVersion=SCHEMA, requireMarker=False, userMode=True)
     with pytest.raises(CalibrationWriteGuardError, match="stamped for"):
         root.guardWrite(home / "a.json")
+
+
+##
+## Unstamped read-failover roots (testing only)
+##
+
+
+def test_unstamped_failover_skipped_by_default(roots, tmp_path, mockLogger):
+    home, _, _ = roots
+    unstamped = tmp_path / "Unstamped"
+    touch(unstamped / "a.json", "unstamped")
+    root = CalibrationRoot(home, [unstamped], environment="qa", schemaVersion=SCHEMA)
+    assert root.failovers == []
+    assert "no marker file" in mockLogger.warning.call_args.args[0]
+
+
+def test_unstamped_failover_read_without_requireMarker(roots, tmp_path, mockLogger):
+    home, _, _ = roots
+    unstamped = tmp_path / "Unstamped"
+    touch(unstamped / "a.json", "unstamped")
+    root = CalibrationRoot(home, [unstamped], environment="qa", schemaVersion=SCHEMA, failoverRequireMarker=False)
+    assert root.failovers == [unstamped]
+    assert "unstamped read-failover root" in mockLogger.warning.call_args.args[0]
+    assert root.resolve("a.json") == unstamped / "a.json"
+    # still never written to
+    with pytest.raises(CalibrationWriteGuardError, match="read-failover"):
+        root.guardWrite(unstamped / "a.json")
+    assert root.writePath("a.json") == home / "a.json"
+
+
+def test_stamped_failover_still_validated_without_requireMarker(roots, tmp_path):
+    home, _, _ = roots
+    wrongSchema = stamp(tmp_path / "WrongSchema", "prod", schemaVersion=SCHEMA + 1)
+    root = CalibrationRoot(home, [wrongSchema], environment="qa", schemaVersion=SCHEMA, failoverRequireMarker=False)
+    assert root.failovers == []
+
+
+def test_requireMarker_without_requireMarker_home_still_checked(roots, tmp_path):
+    # the switch only applies to the failover roots
+    _, prod, _ = roots
+    unstampedHome = tmp_path / "UnstampedHome"
+    unstampedHome.mkdir()
+    with pytest.raises(CalibrationHomeError, match="no marker file"):
+        CalibrationRoot(unstampedHome, [prod], environment="qa", schemaVersion=SCHEMA, failoverRequireMarker=False)

@@ -27,6 +27,7 @@ from snapred.backend.data.CalibrationRoot import (
     calibrationRelative,
     calibrationRoot,
     describeReadFailover,
+    failoverRequiresMarker,
     resolveCalibrationPath,
 )
 from snapred.backend.data.Indexer import Indexer, IndexerType
@@ -851,3 +852,40 @@ def test_calibrationHomeWritePermission_shows_failover(roots):
     assert f"read from: {prod}" in message
     with Config_override("instrument.calibration.readFailover", {"enabled": False}):
         assert "read from" not in ContinueWarning.calibrationHomeWritePermission().message
+
+
+##
+## Unstamped read-failover roots (testing only)
+##
+
+
+def test_failoverRequiresMarker(roots):
+    _, prod = roots
+    # missing: failover roots must be stamped
+    assert failoverRequiresMarker()
+    paths = {"prod": str(prod)}
+    with Config_override(
+        "instrument.calibration.readFailover", {"enabled": True, "paths": paths, "requireMarker": False}
+    ):
+        assert not failoverRequiresMarker()
+    with Config_override(
+        "instrument.calibration.readFailover", {"enabled": True, "paths": paths, "requireMarker": "no"}
+    ):
+        with pytest.raises(CalibrationHomeError, match="must be a boolean"):
+            failoverRequiresMarker()
+
+
+@pytest.mark.usefixtures("prodState")
+def test_unstamped_prod_read_without_requireMarker(service, roots):
+    home, prod = roots
+    (prod / CalibrationHomeMarker.FILENAME).unlink()
+    assert calibrationRoot().failovers == []
+    readFailover = {"enabled": True, "paths": {"prod": str(prod)}, "requireMarker": False}
+    with Config_override("instrument.calibration.readFailover", readFailover):
+        # the root is rebuilt for the new configuration
+        assert calibrationRoot().failovers == [prod]
+        assert service.calibrationIndexer(True, STATE).currentVersion() == 2
+        before = snapshot(prod)
+        service.calibrationIndexer(True, STATE).nextVersion()
+        assert snapshot(prod) == before
+        assert (home / "Powder" / STATE / "groupingMap.json").exists()

@@ -13,7 +13,7 @@ indexed directories are accessed through a `FailoverIndexStore` (see `IndexStore
 """
 
 from pathlib import Path
-from typing import Iterable, List, Optional, Union
+from typing import Iterable, List, Optional, Tuple, Union
 
 from pydantic import ValidationError
 
@@ -97,6 +97,25 @@ def readFailoverPaths() -> List[Path]:
     return [Path(path) for path in paths.values()]
 
 
+def failoverRequiresMarker() -> bool:
+    """
+    Whether a read-failover root must be stamped with a marker file: "readFailover.requireMarker".
+
+    Testing only, e.g. to read a prod home that can't be stamped: when `False`, an unstamped failover root is read
+      (with a warning) instead of being skipped.  A failover root that does have a marker is still validated.
+      When the key is missing, failover roots must be stamped.
+    """
+    if not Config.exists("instrument.calibration.readFailover.requireMarker"):
+        return True
+    requireMarker = Config["instrument.calibration.readFailover.requireMarker"]
+    if not isinstance(requireMarker, bool):
+        raise CalibrationHomeError(
+            "'instrument.calibration.readFailover.requireMarker' must be a boolean, "
+            f"not {requireMarker!r} ({type(requireMarker)})"
+        )
+    return requireMarker
+
+
 def describeReadFailover() -> str:
     """A description of the configured read-failover roots, for display: empty when there are none."""
     try:
@@ -126,6 +145,8 @@ class CalibrationRoot:
       | home     | error                  | error                | error if `requireMarker`, else warn  |
       | failover | warn, skip root        | allowed              | warn, skip root                      |
 
+    A failover root without a marker is read (with a warning) instead, while `failoverRequireMarker` is `False`.
+
     In user mode, the home marker is not checked, but the write guard still applies.
     """
 
@@ -137,12 +158,14 @@ class CalibrationRoot:
         environment: Union[str, CalibrationEnvironment],
         schemaVersion: int,
         requireMarker: bool = True,
+        failoverRequireMarker: bool = True,
         userMode: bool = False,
     ):
         self._home = Path(home)
         self._environment = CalibrationEnvironment(environment)
         self._schemaVersion = schemaVersion
         self._userMode = userMode
+        self._failoverRequireMarker = failoverRequireMarker
 
         # every configured failover root, including any skipped as invalid: none of them is ever written to
         self._configuredFailovers = [Path(failover) for failover in failovers]
@@ -157,6 +180,7 @@ class CalibrationRoot:
             environment=Config["instrument.calibration.environment"],
             schemaVersion=Config["instrument.calibration.schemaVersion"],
             requireMarker=Config["instrument.calibration.requireMarker"],
+            failoverRequireMarker=failoverRequiresMarker(),
             userMode=isUserMode(),
         )
 
@@ -248,10 +272,18 @@ class CalibrationRoot:
                 logger.warning(f"Skipping read-failover root '{failover}': unable to read its marker file: {e}")
                 continue
             if marker is None:
+                if self._failoverRequireMarker:
+                    logger.warning(
+                        f"Skipping read-failover root '{failover}': "
+                        f"it has no marker file '{CalibrationHomeMarker.FILENAME}'."
+                    )
+                    continue
                 logger.warning(
-                    f"Skipping read-failover root '{failover}': "
-                    f"it has no marker file '{CalibrationHomeMarker.FILENAME}'."
+                    f"Using the unstamped read-failover root '{failover}': "
+                    "'readFailover.requireMarker' is disabled (testing only)."
                 )
+                valid.append(failover)
+                resolvedValid.append(resolved)
                 continue
             if marker.schemaVersion != self._schemaVersion:
                 logger.warning(
@@ -365,7 +397,8 @@ class ConfiguredCalibrationRoot:
     Holds the `CalibrationRoot` for the current configuration, shared by every reader and writer of calibration data.
 
     The root is rebuilt whenever the configuration it depends on changes (e.g. after `Config.swapToUserYml`, or a
-    `Config_override` in tests), or when the home's marker file changes: the prod guard is applied at every access.
+    `Config_override` in tests), or when the marker file of any of its roots changes: the prod guard is applied at
+    every access.
     """
 
     def __init__(self):
@@ -373,18 +406,23 @@ class ConfiguredCalibrationRoot:
         self._root: Optional[CalibrationRoot] = None
 
     @staticmethod
-    def _configurationKey() -> tuple:
-        home = Path(Config["instrument.calibration.home"])
-        markerPath = CalibrationRoot.markerPath(home)
+    def _markerKey(root: Path) -> Optional[Tuple[int, int]]:
         try:
-            markerStat = markerPath.stat()
-            marker = (markerStat.st_mtime_ns, markerStat.st_size)
-        except FileNotFoundError:
-            marker = None
+            markerStat = CalibrationRoot.markerPath(root).stat()
+        except OSError:
+            return None
+        return (markerStat.st_mtime_ns, markerStat.st_size)
+
+    @classmethod
+    def _configurationKey(cls) -> tuple:
+        home = Path(Config["instrument.calibration.home"])
+        failovers = readFailoverPaths()
         return (
             home,
-            marker,
-            tuple(readFailoverPaths()),
+            # stamping, or re-stamping, any root changes which roots are valid
+            tuple(cls._markerKey(root) for root in [home, *failovers]),
+            tuple(failovers),
+            failoverRequiresMarker(),
             Config["instrument.calibration.environment"],
             Config["instrument.calibration.schemaVersion"],
             Config["instrument.calibration.requireMarker"],

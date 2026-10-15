@@ -151,6 +151,11 @@ If wanted later, so that copied-but-inert keys like `readFailover` don't even ap
   without `--force`.
 - Optional grace flag `instrument.calibration.requireMarker: false`: missing home marker gives a warning instead
   of failing. Flip to `true` once prod, qa and next homes are stamped.
+- Testing flag `instrument.calibration.readFailover.requireMarker: false`: a failover root without a marker is read
+  (with a warning) instead of skipped, e.g. to test against a prod home that can't be stamped yet. A failover root
+  that has a marker is still validated, the home is still checked, and the failover is still never written to.
+  Read only once failover is enabled; when the key is missing, failover roots must be stamped.
+- The configured root is rebuilt when the marker of any of its roots (home or failover) changes.
 
 ## Read interface: `CalibrationRoot`
 
