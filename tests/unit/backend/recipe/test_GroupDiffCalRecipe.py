@@ -293,6 +293,63 @@ class TestGroupDiffCalRecipe(unittest.TestCase):
         deleteWorkspaceNoThrow(inputWSName)
         deleteWorkspaceNoThrow(maskWSName)
 
+    def test_dspacing_input_gives_the_same_result_as_tof_input(self):
+        """The final output must use the final calibration, even when the input is in d-spacing.
+
+        PixelDiffCalRecipe hands its output to this recipe in d-spacing (it converts with the
+        pixel constants and deletes its TOF workspace). ApplyDiffCal followed by
+        ConvertUnits(Target="dSpacing") was then a no-op on that data, so the final output, and
+        the assessment metrics computed from it, showed the pixel-only calibration: constant
+        offsets of up to ~1500 ppm per group against a reduction with the saved table.
+        """
+        from mantid.simpleapi import ApplyDiffCal, CloneWorkspace, CompareWorkspaces, ConvertUnits
+
+        uniquePrefix = "test_dsp_in_"
+        runNumber = self.fakeIngredients.runConfig.runNumber
+
+        # A starting calibration that is off by 0.1%, so the group fit has a real correction to make.
+        perturbed = f"{uniquePrefix}perturbed_prev"
+        CloneWorkspace(InputWorkspace=self.difcWS, OutputWorkspace=perturbed)
+        table = mtd[perturbed]
+        for row in range(table.rowCount()):
+            table.setCell("difc", row, table.cell("difc", row) * 1.001)
+
+        def cook(label, inputWorkspace):
+            prev = f"{uniquePrefix}{label}_prev"
+            CloneWorkspace(InputWorkspace=perturbed, OutputWorkspace=prev)
+            (maskWS,) = mutableWorkspaceClones((self.fakeMaskWorkspace,), f"{uniquePrefix}{label}_")
+            groceries = {
+                "inputWorkspace": inputWorkspace,
+                "groupingWorkspace": self.fakeGroupingWorkspace,
+                "calibrationTable": f"{uniquePrefix}{label}_final",
+                "maskWorkspace": maskWS.name(),
+                "outputWorkspace": f"{uniquePrefix}{label}_out_dsp_{runNumber}",
+                "previousCalibration": prev,
+            }
+            res = Recipe().cook(self.fakeIngredients, groceries)
+            assert res.result
+            return groceries
+
+        # TOF input: the path that already worked.
+        (tofIn,) = mutableWorkspaceClones((self.fakeRawData,), f"{uniquePrefix}tof_")
+        tof = cook("tof", tofIn.name())
+
+        # d-spacing input, prepared the way PixelDiffCalRecipe prepares it.
+        (raw,) = mutableWorkspaceClones((self.fakeRawData,), f"{uniquePrefix}dsp_")
+        ApplyDiffCal(InstrumentWorkspace=raw.name(), CalibrationWorkspace=perturbed)
+        dspIn = f"{uniquePrefix}dsp_input"
+        ConvertUnits(InputWorkspace=raw.name(), OutputWorkspace=dspIn, Target="dSpacing")
+        dsp = cook("dsp", dspIn)
+
+        # Both fits see the same data, so they agree on the calibration...
+        tablesMatch, _ = CompareWorkspaces(tof["calibrationTable"], dsp["calibrationTable"], Tolerance=1.0e-8)
+        assert tablesMatch, "the d-spacing input changed the fitted calibration"
+        # ...and the final outputs must agree too: both use the final calibration.
+        outputsMatch, messages = CompareWorkspaces(
+            tof["outputWorkspace"], dsp["outputWorkspace"], Tolerance=1.0e-8, CheckInstrument=False
+        )
+        assert outputsMatch, f"final output differs for d-spacing input: {messages.column(0)[:3]}"
+
     def test_validateInputs_bad_workspaces(self):
         groceries = {
             "inputWorkspace": self.fakeRawData,

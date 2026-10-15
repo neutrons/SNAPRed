@@ -51,6 +51,12 @@ def testDiffCalInputNames():
     assert "_dsp_" + fRunNumber + "_raw" == wng.diffCalInput().runNumber(runNumber).unit(wng.Units.DSP).build()
 
 
+def testDiffCalPixelCalibratedName():
+    """Distinct from the raw input, whose name the grocery service caches the loaded run under."""
+    assert "_tof_" + fRunNumber + "_pixelcal" == wng.diffCalPixelCalibrated().runNumber(runNumber).build()
+    assert wng.diffCalPixelCalibrated().runNumber(runNumber).build() != wng.diffCalInput().runNumber(runNumber).build()
+
+
 def testDiffCalOutputName():
     assert f"_tof_unfoc_{fRunNumber}" == wng.diffCalOutput().runNumber(runNumber).unit(wng.Units.TOF).build()
     assert (

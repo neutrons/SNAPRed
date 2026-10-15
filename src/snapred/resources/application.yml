@@ -203,6 +203,8 @@ mantid:
 
         diffCal:
           input: "{unit},{runNumber},raw"
+          # the input after pixel calibration, converted back to its unit (TOF) for group calibration
+          pixelCalibrated: "{unit},{runNumber},pixelcal"
           table: "diffract_consts,{runNumber},{version}"
           output: "{unit},{group},{runNumber},{version}"
           diagnostic: "diagnostic,{group},{runNumber},{version}"

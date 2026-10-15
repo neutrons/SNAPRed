@@ -19,6 +19,7 @@ class WorkspaceType(StrEnum):
     #   For the moment: the <enum>.value will be `_WorkspaceNameGenerator` method name
     RUN = "run"
     DIFFCAL_INPUT = "diffCalInput"
+    DIFFCAL_PIXEL_CALIBRATED = "diffCalPixelCalibrated"
     DIFFCAL_OUTPUT = "diffCalOutput"
     DIFFCAL_DIAG = "diffCalDiagnostic"
     DIFFCAL_TABLE = "diffCalTable"
@@ -422,6 +423,15 @@ class _WorkspaceNameGenerator:
             self._diffCalInputTemplateKeys,
             self._delimiter,
             unit=self.Units.DSP,
+        )
+
+    def diffCalPixelCalibrated(self):
+        return NameBuilder(
+            WorkspaceType.DIFFCAL_PIXEL_CALIBRATED,
+            self._diffCalPixelCalibratedTemplate,
+            self._diffCalPixelCalibratedTemplateKeys,
+            self._delimiter,
+            unit=self.Units.TOF,
         )
 
     def diffCalTable(self):

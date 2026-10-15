@@ -122,6 +122,22 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
         self.diagnosticSuffix = FIT_PEAK_DIAG_SUFFIX.copy()
 
         self.originalWStof = groceries["inputWorkspace"]
+        # The pixel-calibration step hands this recipe its output in d-spacing: it converts the data
+        #   with the pixel constants, and deletes its TOF workspace.  `ApplyDiffCal` followed by
+        #   `ConvertUnits(Target="dSpacing")` would then leave that data unchanged, so the final output --
+        #   and the assessment metrics computed from it -- would show the pixel-only calibration instead
+        #   of the final one.  So work from TOF in every case.  The d-spacing data still carries the
+        #   constants it was converted with, so converting it back recovers the original TOF exactly.
+        self.temporaryTOF = None
+        if self.mantidSnapper.mtd[self.originalWStof].getAxis(0).getUnit().unitID() != "TOF":
+            self.temporaryTOF = wng.diffCalPixelCalibrated().runNumber(self.runNumber).hidden(True).build()
+            self.mantidSnapper.ConvertUnits(
+                "Convert the input back to TOF, so the new calibration can be applied to it",
+                InputWorkspace=self.originalWStof,
+                OutputWorkspace=self.temporaryTOF,
+                Target="TOF",
+            )
+            self.originalWStof = self.temporaryTOF
         self.focusWS = groceries["groupingWorkspace"]
         self.outputWStof = wng.diffCalOutput().runNumber(self.runNumber).build()
         self.outputWStofFocused = wng.diffCalOutput().runNumber(self.runNumber).group(self.grouping).build()
@@ -286,6 +302,11 @@ class GroupDiffCalRecipe(Recipe[Ingredients]):
             "Deleting unused workspace",
             Workspace=self.outputWStof,
         )
+        if self.temporaryTOF is not None:
+            self.mantidSnapper.DeleteWorkspace(
+                "Delete the TOF copy of the d-spacing input",
+                Workspace=self.temporaryTOF,
+            )
 
     def execute(self):
         self.mantidSnapper.executeQueue()
