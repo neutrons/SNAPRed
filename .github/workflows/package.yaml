@@ -40,14 +40,22 @@ jobs:
           pixi run build-conda
           mkdir -p /tmp/local-channel/linux-64
           cp *.conda /tmp/local-channel/linux-64
-      - name: Verify conda package
-        uses: neutrons/conda-verify@main
+      # pkg-verify requires a conda env that already has the package
+      # installed (and micromamba on PATH); pkg-install sets both up.
+      - name: Install built conda package
+        id: install
+        uses: neutrons/gh-actions/pkg-install@46e28a74c8872901c571e0493d26871afe2662fb # v2.1
         with:
           package-name: ${{ env.PKG_NAME }}
-          module-name: ${{ env.MODULE_NAME }}
           python-version: "3.12"
           local-channel: /tmp/local-channel
           extra-channels: mantid-ornl mantid neutrons
+      - name: Verify conda package
+        uses: neutrons/gh-actions/pkg-verify@46e28a74c8872901c571e0493d26871afe2662fb # v2.1
+        with:
+          package-name: ${{ env.PKG_NAME }}
+          module-name: ${{ env.MODULE_NAME }}
+          conda-env-name: ${{ steps.install.outputs.conda-env }}
 
       - name: upload conda package to anaconda
         if: startsWith(github.ref, 'refs/tags/v')
@@ -68,7 +76,7 @@ jobs:
     if: ${{github.ref_protected || github.ref_type == 'tag' }}
     steps:
       - name: Determine Environment
-        uses: neutrons/branch-mapper@v2
+        uses: neutrons/gh-actions/branch-mapper@46e28a74c8872901c571e0493d26871afe2662fb # v2.1
         id: conda_env_name
         with:
           prefix: snapred
