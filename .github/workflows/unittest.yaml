@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
       - name: Setup pixi
-        uses: prefix-dev/setup-pixi@5185adfbffb4bd703da3010310260805d89ebb11 # v0.9.6
+        uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
         with:
           manifest-path: pyproject.toml
           # Workaround: Dynamic versioning (versioningit) causes lock file version mismatch.
@@ -65,7 +65,7 @@ jobs:
         fetch-depth: 0
         fetch-tags: true
     - name: Setup pixi
-      uses: prefix-dev/setup-pixi@5185adfbffb4bd703da3010310260805d89ebb11 # v0.9.6
+      uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
       with:
         manifest-path: pyproject.toml
           # Workaround: Dynamic versioning (versioningit) causes lock file version mismatch.
@@ -98,7 +98,7 @@ jobs:
         fetch-depth: 0
         fetch-tags: true
     - name: Setup pixi
-      uses: prefix-dev/setup-pixi@5185adfbffb4bd703da3010310260805d89ebb11 # v0.9.6
+      uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
       with:
         manifest-path: pyproject.toml
         # Workaround: Dynamic versioning (versioningit) causes lock file version mismatch.
