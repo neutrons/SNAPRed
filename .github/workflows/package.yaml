@@ -26,6 +26,7 @@ jobs:
         uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
         with:
           manifest-path: pyproject.toml
+          pixi-version: v0.81.0
           # Workaround: Dynamic versioning (versioningit) causes lock file version mismatch.
           # We skip the editable package install and do it separately with pip.
           # See: https://github.com/prefix-dev/pixi/pull/3092
