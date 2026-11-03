@@ -20,7 +20,7 @@ instrument:
     #   and re-stamp the deployed calibration homes before that release ships.
     schemaVersion: 1
     # intended deploy environment of "instrument.calibration.home": overridden in each "snapred_<env>.yml".
-    environment: prod
+    environment: snapred_prod
     # while "false", a missing marker file in "instrument.calibration.home" only warns.
     requireMarker: false
     # testing only: read calibration data that is missing from "home" from these roots (never written to).

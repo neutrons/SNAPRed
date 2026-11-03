@@ -2,21 +2,8 @@ from typing import ClassVar
 
 from pydantic import BaseModel, Field, field_serializer, field_validator
 
-from snapred.meta.Enum import StrEnum
+from snapred.meta.Config import DeployEnvEnum
 from snapred.meta.Time import isoFromTimestamp, parseTimestamp, timestamp
-
-
-class CalibrationEnvironment(StrEnum):
-    """
-    The deploy environment that a calibration home is intended for.
-
-    `NEXT`, `QA` and `PROD` correspond to `DeployEnvEnum`; `EXP` is deliberately not part of `DeployEnvEnum`.
-    """
-
-    NEXT = "next"
-    QA = "qa"
-    PROD = "prod"
-    EXP = "exp"
 
 
 class CalibrationHomeMarker(BaseModel, extra="forbid"):
@@ -31,7 +18,7 @@ class CalibrationHomeMarker(BaseModel, extra="forbid"):
     FILENAME: ClassVar[str] = "calibrationHome.json"
 
     schemaVersion: int
-    environment: CalibrationEnvironment
+    environment: DeployEnvEnum
     createdBy: str
     createdAt: float = Field(default_factory=timestamp)
 

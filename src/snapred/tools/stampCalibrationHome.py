@@ -1,7 +1,9 @@
 """
 Admin tool: stamp a calibration home with its marker file.
 
-  python -m snapred.tools.stampCalibrationHome --home <path> --env <next|qa|prod|exp> --schema <version>
+  python -m snapred.tools.stampCalibrationHome --home <path> --env <environment> --schema <version>
+
+`<environment>` is a `DeployEnvEnum` value: snapred_next, snapred_qa, snapred_prod or snapred_exp.
 
 A deployed SNAPRed refuses to use a calibration home whose marker does not match its configured environment and
 schema version.  Existing homes are never stamped automatically: a misconfigured deployment would otherwise
@@ -16,7 +18,8 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from snapred.backend.dao.calibration.CalibrationHomeMarker import CalibrationEnvironment, CalibrationHomeMarker
+from snapred.backend.dao.calibration.CalibrationHomeMarker import CalibrationHomeMarker
+from snapred.meta.Config import DeployEnvEnum
 from snapred.meta.redantic import parse_file_as
 
 
@@ -29,7 +32,7 @@ def _createArgparser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--env",
         required=True,
-        choices=CalibrationEnvironment.values(),
+        choices=DeployEnvEnum.values(),
         help="the deploy environment that the calibration home is intended for",
     )
     parser.add_argument(

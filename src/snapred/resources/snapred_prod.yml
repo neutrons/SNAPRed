@@ -3,4 +3,4 @@
 instrument:
   calibration:
     home: ${instrument.home}/shared/Calibration
-    environment: prod
+    environment: snapred_prod

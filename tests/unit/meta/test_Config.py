@@ -489,7 +489,7 @@ def test_mergeAndExport_exp():
 def test_calibration_defaults():
     # failover is disabled by default, and no failover paths are defined
     assert Config["instrument.calibration.schemaVersion"] == 1
-    assert Config["instrument.calibration.environment"] == "prod"
+    assert Config["instrument.calibration.environment"] == DeployEnvEnum.PROD
     assert Config["instrument.calibration.requireMarker"] is False
     assert Config["instrument.calibration.readFailover.enabled"] is False
     assert not Config.exists("instrument.calibration.readFailover.paths")
@@ -497,16 +497,21 @@ def test_calibration_defaults():
 
 @pytest.mark.parametrize(
     ("env", "failoverEnabled"),
-    [("next", False), ("qa", False), ("prod", False), ("exp", True)],
+    [
+        (DeployEnvEnum.NEXT, False),
+        (DeployEnvEnum.QA, False),
+        (DeployEnvEnum.PROD, False),
+        (DeployEnvEnum.EXP, True),
+    ],
 )
 def test_deployed_env_calibration_keys(env, failoverEnabled):
     # the deployed env ymls (not the test copies) each declare their own calibration environment
     deployedResources = Path(Config_module.__file__).parent.parent / "resources"
-    with open(deployedResources / f"snapred_{env}.yml", "r") as file:
+    with open(deployedResources / f"{env}.yml", "r") as file:
         calibration = rYaml(typ="safe").load(file)["instrument"]["calibration"]
     assert calibration["environment"] == env
     assert calibration.get("readFailover", {}).get("enabled", False) is failoverEnabled
-    if env == "prod":
+    if env == DeployEnvEnum.PROD:
         assert "readFailover" not in calibration
 
 
@@ -514,7 +519,7 @@ def test_deployed_application_yml_disables_failover():
     deployedResources = Path(Config_module.__file__).parent.parent / "resources"
     with open(deployedResources / "application.yml", "r") as file:
         calibration = rYaml(typ="safe").load(file)["instrument"]["calibration"]
-    assert calibration["environment"] == "prod"
+    assert calibration["environment"] == DeployEnvEnum.PROD
     assert calibration["readFailover"] == {"enabled": False}
 
 
@@ -529,11 +534,11 @@ def test_mergeAndExport_exp_readFailover():
             #   Dont want to overrite the config for the rest of the tests
             mock.patch.object(Config, "_config", {}),
         ):
-            Config.mergeAndExport("snapred_exp")
+            Config.mergeAndExport(DeployEnvEnum.EXP)
 
             # reload the exported "application.yml", as a deployed exp install would
             Config.refresh("application.yml", True)
-            assert Config["instrument.calibration.environment"] == "exp"
+            assert Config["instrument.calibration.environment"] == DeployEnvEnum.EXP
             assert Config["instrument.calibration.schemaVersion"] == 1
             assert Config["instrument.calibration.readFailover.enabled"] is True
             instrumentHome = Config["instrument.home"]
@@ -575,6 +580,23 @@ def test_readFailover_paths_order():
             assert Config["instrument.calibration.schemaVersion"] == 1
 
 
+@pytest.mark.parametrize(
+    ("version", "expected"),
+    [
+        ("2.4.0+exp.1", DeployEnvEnum.EXP),
+        ("2.4.0+exp.1.cycle.aware.calib", DeployEnvEnum.EXP),
+        # exp is checked before dev: an exp build must never be classified as next
+        ("2.4.1.dev3+exp.1", DeployEnvEnum.EXP),
+        ("2.4.1.dev3", DeployEnvEnum.NEXT),
+        ("2.4.0rc1", DeployEnvEnum.QA),
+        ("2.4.0", DeployEnvEnum.PROD),
+    ],
+)
+def test_deployEnv(version, expected):
+    with mock.patch.object(Config, "snapredVersion", return_value=version):
+        assert Config.deployEnv() == expected
+
+
 def test_configureForDeploy_qa_or_prod():
     with (
         mock.patch.object(Config, "snapredVersion", mock.Mock(return_value="1.0.0")) as mockVersion,
@@ -589,3 +611,13 @@ def test_configureForDeploy_qa_or_prod():
         Config.configureForDeploy()
         mockVersion.assert_called_once()
         mockMergeExport.assert_called_once_with(DeployEnvEnum.QA)
+
+
+def test_configureForDeploy_exp():
+    # exp versions also contain "dev": they must be configured for exp, never for next
+    with (
+        mock.patch.object(Config, "snapredVersion", mock.Mock(return_value="2.4.1.dev3+exp.1")),
+        mock.patch.object(Config, "mergeAndExport", mock.Mock()) as mockMergeExport,
+    ):
+        Config.configureForDeploy()
+        mockMergeExport.assert_called_once_with(DeployEnvEnum.EXP)

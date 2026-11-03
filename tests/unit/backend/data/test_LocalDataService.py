@@ -4257,9 +4257,9 @@ class TestReductionPixelMasks:
     @staticmethod
     def calibrationRoot(home: Path, failovers=()) -> CalibrationRoot:
         for failover in failovers:
-            marker = CalibrationHomeMarker(schemaVersion=1, environment="prod", createdBy="test")
+            marker = CalibrationHomeMarker(schemaVersion=1, environment="snapred_prod", createdBy="test")
             write_model_pretty(marker, failover / CalibrationHomeMarker.FILENAME)
-        return CalibrationRoot(home, failovers, environment="qa", schemaVersion=1, requireMarker=False)
+        return CalibrationRoot(home, failovers, environment="snapred_qa", schemaVersion=1, requireMarker=False)
 
     def test_copyCalibrationRootSkeleton_from_failover(self):
         # the user's skeleton comes from wherever the original calibration root reads it from

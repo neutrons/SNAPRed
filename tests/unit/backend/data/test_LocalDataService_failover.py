@@ -122,12 +122,12 @@ def writeInstrumentParameters(root: Path, versions):
 
 @pytest.fixture
 def roots(tmp_path):
-    home = stamp(tmp_path / "CalibrationQA", "qa")
-    prod = stamp(tmp_path / "Calibration", "prod")
+    home = stamp(tmp_path / "CalibrationQA", "snapred_qa")
+    prod = stamp(tmp_path / "Calibration", "snapred_prod")
     with ExitStack() as stack:
         for key, value in (
             ("instrument.calibration.home", str(home)),
-            ("instrument.calibration.environment", "qa"),
+            ("instrument.calibration.environment", "snapred_qa"),
             ("instrument.calibration.requireMarker", True),
             ("instrument.calibration.readFailover", {"enabled": True, "paths": {"prod": str(prod)}}),
             ("instrument.calibration.sample.home", str(home / "CalibrantSamples")),
@@ -177,7 +177,7 @@ def test_calibrationRoot_is_held_by_the_singleton(roots):  # noqa: ARG001
 
 def test_calibrationRoot_rebuilt_on_configuration_change(roots, tmp_path):
     root = calibrationRoot()
-    other = stamp(tmp_path / "Other", "qa")
+    other = stamp(tmp_path / "Other", "snapred_qa")
     with Config_override("instrument.calibration.home", str(other)):
         assert calibrationRoot().home == other
     assert calibrationRoot() is not root
@@ -193,17 +193,17 @@ def test_calibrationRoot_rebuilt_when_failover_disabled(roots):
 def test_calibrationRoot_rebuilt_when_marker_changes(roots):
     home, _ = roots
     root = calibrationRoot()
-    marker = CalibrationHomeMarker(schemaVersion=2, environment="qa", createdBy="test")
+    marker = CalibrationHomeMarker(schemaVersion=2, environment="snapred_qa", createdBy="test")
     write_model_pretty(marker, home / CalibrationHomeMarker.FILENAME)
     with pytest.raises(CalibrationHomeError, match="schema version 2"):
         calibrationRoot()
-    stamp(home, "qa")
+    stamp(home, "snapred_qa")
     assert calibrationRoot() is not root
 
 
 def test_calibrationRoot_prod_guard_applies_at_every_call(roots):  # noqa: ARG001
     calibrationRoot()
-    with Config_override("instrument.calibration.environment", "prod"):
+    with Config_override("instrument.calibration.environment", "snapred_prod"):
         with pytest.raises(CalibrationHomeError, match="cannot be enabled for the 'prod' calibration environment"):
             calibrationRoot()
 
@@ -319,7 +319,7 @@ def test_calibrationIndexer_home_version_shadows(service, roots):
 def test_calibrationIndexer_cached_per_root(service, roots, tmp_path):  # noqa: ARG001
     indexer = service.calibrationIndexer(True, STATE)
     assert service.calibrationIndexer(True, STATE) is indexer
-    with Config_override("instrument.calibration.home", str(stamp(tmp_path / "Other", "qa"))):
+    with Config_override("instrument.calibration.home", str(stamp(tmp_path / "Other", "snapred_qa"))):
         other = service.calibrationIndexer(True, STATE)
         assert other is not indexer
         assert other.store.writeDirectory == statePath(tmp_path / "Other")
@@ -841,7 +841,7 @@ def test_describeReadFailover(roots):
     assert str(prod) in describeReadFailover()
     with Config_override("instrument.calibration.readFailover", {"enabled": False}):
         assert describeReadFailover() == ""
-    with Config_override("instrument.calibration.environment", "prod"):
+    with Config_override("instrument.calibration.environment", "snapred_prod"):
         assert "misconfigured" in describeReadFailover()
 
 

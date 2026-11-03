@@ -105,12 +105,12 @@ def failoverHomes():
         prod = Path(stack.enter_context(tempfile.TemporaryDirectory(dir=mirror.parent, prefix="CalibrationProd_")))
         home = Path(stack.enter_context(tempfile.TemporaryDirectory(dir=mirror.parent, prefix="CalibrationQA_")))
         copyTree(mirror, prod)
-        stamp(prod, "prod")
-        stamp(home, "qa")
+        stamp(prod, "snapred_prod")
+        stamp(home, "snapred_qa")
 
         for key, value in (
             ("instrument.calibration.home", str(home)),
-            ("instrument.calibration.environment", "qa"),
+            ("instrument.calibration.environment", "snapred_qa"),
             ("instrument.calibration.requireMarker", True),
             ("instrument.calibration.readFailover", {"enabled": True, "paths": {"prod": str(prod)}}),
         ):

@@ -33,9 +33,11 @@ users to maintain several calibration folders.
    errors, permission errors, or corrupted files in home must surface, never silently fall through to a failover.
 4. **Marker file** at the root of every deployed calibration home, holding the calibration folder schema version
    (must match a new application.yml field) and the intended deploy environment.
-5. **Environment values:** `next | qa | prod | exp`. `next | qa | prod` match `DeployEnvEnum` in
-   `src/snapred/meta/Config.py` (only the commented header in `snapred_next.yml` says "dev"); `exp` is new and is
-   deliberately not added to the enum (see "Delivery").
+5. **Environment values** are `DeployEnvEnum` (`src/snapred/meta/Config.py`):
+   `snapred_next | snapred_qa | snapred_prod | snapred_exp`, i.e. the env yml names. `EXP` was added to the enum,
+   rather than keeping a parallel calibration-only enum: this is the one deliberate `Config` change (see
+   "Delivery"). `neutrons_standard.config` has no way for an application to declare its deploy environments, so
+   the enum (and `Config.deployEnv`) is expected to move upstream when migrating.
 6. **Failover with schema mismatch (or missing marker): warn and continue** — skip that root.
 7. **Schema version bumps are manual.** An admin migrates the folder and re-stamps it. No automatic migration
    tooling for now. Whoever bumps `schemaVersion` in application.yml must re-stamp the target deployed folders
@@ -58,7 +60,7 @@ instrument:
   calibration:
     home: ${instrument.home}/shared/Calibration
     schemaVersion: 1        # bump manually when folder layout / index format changes
-    environment: prod       # overridden per env yml
+    environment: snapred_prod   # overridden per env yml
     readFailover:           # testing only
       enabled: false        # must stay false for prod
 
@@ -66,7 +68,7 @@ instrument:
 instrument:
   calibration:
     home: ${instrument.home}/shared/CalibrationQA
-    environment: qa
+    environment: snapred_qa
     readFailover:
       enabled: true
       paths:                # mapping, not a list: see notes
@@ -101,11 +103,10 @@ Notes:
 Failover must not be usable in prod, and must not be something users are nudged toward. All checks live in
 SNAPRed code (`CalibrationRoot` construction, run at startup), not in `Config`.
 
-- **Authoritative prod detection comes from the installed version, not the yml.** Use the same rule as
-  `Config.configureForDeploy`: a version containing `dev` is `next`, `rc` is `qa`, otherwise `prod`. Read via
-  `Config.snapredVersion()` (renamed `packageVersion()` in `neutrons_standard`; wrap it in one helper so the
-  migration touches a single line). A user yml cannot opt a prod install into failover by setting
-  `environment: qa`.
+- **Authoritative prod detection comes from the installed version, not the yml:** `Config.deployEnv()`, the
+  same rule `Config.configureForDeploy` uses: a version containing `exp` is exp (checked first, as exp versions
+  may also contain `dev`), `dev` is next, `rc` is qa, otherwise prod. A user yml cannot opt a prod install into
+  failover by setting `environment: snapred_qa`.
 - In a prod deployment, `readFailover.enabled: true` is a **hard error at startup** (not a warning), regardless of
   which yml supplied it. Also reject it if the configured `instrument.calibration.environment` is `prod`.
 - **User mode never uses failover.** Step 1 of the read order short-circuits before any `readFailover.*` key is
@@ -128,7 +129,7 @@ If wanted later, so that copied-but-inert keys like `readFailover` don't even ap
 `<home>/calibrationHome.json` (deliberately not a dotfile — easy for admins to find), backed by a pydantic DAO:
 
 ```json
-{ "schemaVersion": 1, "environment": "prod", "createdBy": "...", "createdAt": "..." }
+{ "schemaVersion": 1, "environment": "snapred_prod", "createdBy": "...", "createdAt": "..." }
 ```
 
 ### Validation rules
@@ -147,7 +148,7 @@ If wanted later, so that copied-but-inert keys like `readFailover` don't even ap
 - **Never auto-stamp an existing non-empty home** — a misconfigured QA install would stamp prod as `qa` and defeat
   the guard.
 - Provide an explicit admin tool, e.g.
-  `python -m snapred.tools.stampCalibrationHome --home <path> --env prod --schema 1`, refusing non-empty dirs
+  `python -m snapred.tools.stampCalibrationHome --home <path> --env snapred_prod --schema 1`, refusing non-empty dirs
   without `--force`.
 - Optional grace flag `instrument.calibration.requireMarker: false`: missing home marker gives a warning instead
   of failing. Flip to `true` once prod, qa and next homes are stamped.
@@ -327,7 +328,7 @@ Benefits:
   - read order: prod / user mode never read `readFailover.*`; `enabled: false` never reads `paths`
   - user-mode detection via top-level `environment` ending in `-user`
   - prod guard: version-detected prod with `readFailover.enabled: true` fails at startup, even with
-    `environment: qa` set in yml; `CalibrationRoot` construction refuses in prod
+    `environment: snapred_qa` set in yml; `CalibrationRoot` construction refuses in prod
   - home schema mismatch / env mismatch fails; failover schema mismatch skipped with warning
   - user mode skips home marker check but still guards failovers
   - stamp tool refuses non-empty dir without `--force`
@@ -372,20 +373,18 @@ Two repos are involved:
   instrument:
     calibration:
       home: ${instrument.home}/shared/CalibrationExp
-      environment: exp
+      environment: snapred_exp
       readFailover:
         enabled: true
         paths:
           prod: ${instrument.home}/shared/Calibration
   ```
-- **Build-time env selection without touching `Config`:** `Config.configureForDeploy()` checks `dev`, then `rc`,
-  else prod. `2.4.0+exp1` would configure as **prod**, and `2.4.0.dev3+exp` as **next**. In `__main__.py`, before
-  falling back to `configureForDeploy()`: if the version contains `exp` (or an explicit `--configure <env>` /
-  CI env var is given), call the existing public `Config.mergeAndExport("snapred_exp")`. `DeployEnvEnum` is not
-  extended.
-- **Prod-guard helper** (SNAPRed-side, wraps `Config.snapredVersion()`): check `exp` first, then `dev`, then `rc`,
-  else prod. An exp build must never be classified as prod (it would refuse failover) or as next.
-- **Marker env values** become `next | qa | prod | exp`.
+- **Build-time env selection:** `DeployEnvEnum` gains `EXP = "snapred_exp"`, and the version rule moves into
+  `Config.deployEnv()`, which checks `exp` first, then `dev`, then `rc`, else prod; `Config.configureForDeploy()`
+  is `mergeAndExport(deployEnv())`. Previously `2.4.0+exp1` would have configured as **prod**, and
+  `2.4.0.dev3+exp` as **next**. The prod guard uses the same `Config.deployEnv()`: an exp build must never be
+  classified as prod (it would refuse failover) or as next.
+- **Marker env values** are the `DeployEnvEnum` values.
 - **CI (`.github/workflows/package.yaml`):**
   - `push.branches` is `[main]`; add `exp`. Make `exp` protected (`trigger-deploy` requires `ref_protected`).
   - Anaconda upload picks label `rc` if the ref contains `rc`, else **`main`**. An exp tag would currently be

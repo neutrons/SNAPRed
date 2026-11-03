@@ -77,8 +77,8 @@ def snapshot(root: Path):
 
 @pytest.fixture
 def roots(tmp_path):
-    home = stamp(tmp_path / "CalibrationQA", "qa")
-    prod = stamp(tmp_path / "Calibration", "prod")
+    home = stamp(tmp_path / "CalibrationQA", "snapred_qa")
+    prod = stamp(tmp_path / "Calibration", "snapred_prod")
     writeVersions(prod / STATE, [VERSION_START(), 1, 2])
     return home, prod
 
@@ -86,7 +86,7 @@ def roots(tmp_path):
 @pytest.fixture
 def calibrationRoot(roots):
     home, prod = roots
-    return CalibrationRoot(home, [prod], environment="qa", schemaVersion=1)
+    return CalibrationRoot(home, [prod], environment="snapred_qa", schemaVersion=1)
 
 
 @pytest.fixture
@@ -228,7 +228,7 @@ def test_write_guard(roots):
     # a home whose state directory is symlinked into prod: reads are allowed, writes are refused
     home, prod = roots
     (home / "Powder").symlink_to(prod / "Powder")
-    root = CalibrationRoot(home, [prod], environment="qa", schemaVersion=1)
+    root = CalibrationRoot(home, [prod], environment="snapred_qa", schemaVersion=1)
     indexer = Indexer(FailoverIndexStore(IndexerType.DEFAULT, root, STATE))
     assert indexer.currentVersion() == 2
     prodBefore = snapshot(prod)
@@ -306,21 +306,21 @@ def test_initialized_home_other_process_initializing_does_not_shadow(roots, cali
 
 def test_default_only_everywhere_reads_home(tmp_path):
     # with no populated root, home's own default version is read
-    home = stamp(tmp_path / "CalibrationQA", "qa")
-    prod = stamp(tmp_path / "Calibration", "prod")
+    home = stamp(tmp_path / "CalibrationQA", "snapred_qa")
+    prod = stamp(tmp_path / "Calibration", "snapred_prod")
     writeVersions(home / STATE, [VERSION_START()])
     writeVersions(prod / STATE, [VERSION_START()])
-    root = CalibrationRoot(home, [prod], environment="qa", schemaVersion=1)
+    root = CalibrationRoot(home, [prod], environment="snapred_qa", schemaVersion=1)
     indexer = Indexer(DefaultIgnoringStore(IndexerType.DEFAULT, root, STATE))
     assert not indexer.store.isFailover
     assert indexer.rootDirectory == home / STATE
 
 
 def test_default_only_failover_without_home_index(tmp_path):
-    home = stamp(tmp_path / "CalibrationQA", "qa")
-    prod = stamp(tmp_path / "Calibration", "prod")
+    home = stamp(tmp_path / "CalibrationQA", "snapred_qa")
+    prod = stamp(tmp_path / "Calibration", "snapred_prod")
     writeVersions(prod / STATE, [VERSION_START()])
-    root = CalibrationRoot(home, [prod], environment="qa", schemaVersion=1)
+    root = CalibrationRoot(home, [prod], environment="snapred_qa", schemaVersion=1)
     indexer = Indexer(DefaultIgnoringStore(IndexerType.DEFAULT, root, STATE))
     assert indexer.rootDirectory == prod / STATE
 

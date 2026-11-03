@@ -17,38 +17,15 @@ from typing import Iterable, List, Optional, Tuple, Union
 
 from pydantic import ValidationError
 
-from snapred.backend.dao.calibration.CalibrationHomeMarker import CalibrationEnvironment, CalibrationHomeMarker
+from snapred.backend.dao.calibration.CalibrationHomeMarker import CalibrationHomeMarker
 from snapred.backend.error.CalibrationHomeError import CalibrationHomeError
 from snapred.backend.error.CalibrationWriteGuardError import CalibrationWriteGuardError
 from snapred.backend.log.logger import snapredLogger
-from snapred.meta.Config import Config, isTestEnv
+from snapred.meta.Config import Config, DeployEnvEnum, isTestEnv
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.redantic import parse_file_as
 
 logger = snapredLogger.getLogger(__name__)
-
-
-def packageVersion() -> str:
-    # The single place that reads the installed version:
-    #   `Config.snapredVersion` becomes `packageVersion` in `neutrons_standard.config`.
-    return Config.snapredVersion()
-
-
-def deployEnvironment() -> CalibrationEnvironment:
-    """
-    The deploy environment, as determined from the *installed version*, not from any yml.
-
-    This follows the same rule as `Config.configureForDeploy`, except that "exp" is checked first:
-      exp versions may also contain "dev", and must never be classified as either next or prod.
-    """
-    version = packageVersion()
-    if "exp" in version:
-        return CalibrationEnvironment.EXP
-    if "dev" in version:
-        return CalibrationEnvironment.NEXT
-    if "rc" in version:
-        return CalibrationEnvironment.QA
-    return CalibrationEnvironment.PROD
 
 
 def isUserMode() -> bool:
@@ -79,13 +56,14 @@ def readFailoverPaths() -> List[Path]:
     if not enabled:
         return []
 
-    if Config["instrument.calibration.environment"] == CalibrationEnvironment.PROD:
+    if Config["instrument.calibration.environment"] == DeployEnvEnum.PROD:
         raise CalibrationHomeError(
             "Read failover is testing only: it cannot be enabled for the 'prod' calibration environment."
         )
-    if not isTestEnv() and deployEnvironment() == CalibrationEnvironment.PROD:
+    if not isTestEnv() and Config.deployEnv() == DeployEnvEnum.PROD:
         raise CalibrationHomeError(
-            f"Read failover is testing only: it cannot be enabled in a prod deployment (version {packageVersion()})."
+            "Read failover is testing only: it cannot be enabled in a prod deployment "
+            f"(version {Config.snapredVersion()})."
         )
 
     # a mapping of name -> path: unlike list elements, a mapping's members are interpolated by `Config`
@@ -155,14 +133,14 @@ class CalibrationRoot:
         home: Union[str, Path],
         failovers: Iterable[Union[str, Path]] = (),
         *,
-        environment: Union[str, CalibrationEnvironment],
+        environment: Union[str, DeployEnvEnum],
         schemaVersion: int,
         requireMarker: bool = True,
         failoverRequireMarker: bool = True,
         userMode: bool = False,
     ):
         self._home = Path(home)
-        self._environment = CalibrationEnvironment(environment)
+        self._environment = DeployEnvEnum(environment)
         self._schemaVersion = schemaVersion
         self._userMode = userMode
         self._failoverRequireMarker = failoverRequireMarker
@@ -198,7 +176,7 @@ class CalibrationRoot:
         return [self._home, *self._failovers]
 
     @property
-    def environment(self) -> CalibrationEnvironment:
+    def environment(self) -> DeployEnvEnum:
         return self._environment
 
     ##

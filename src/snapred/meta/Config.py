@@ -20,9 +20,13 @@ from snapred.meta.Time import isoFromTimestamp, timestamp
 
 
 class DeployEnvEnum(StrEnum):
+    # Each value is also the name of the environment's yml resource.
+    # TODO: `neutrons_standard.config` has no way to declare an application's deploy environments:
+    #   when migrating, this enum (and `Config.deployEnv`) should move upstream.
     NEXT = "snapred_next"
     QA = "snapred_qa"
     PROD = "snapred_prod"
+    EXP = "snapred_exp"
 
 
 def isTestEnv() -> bool:
@@ -163,14 +167,23 @@ class _Config:
         if "samples" in self._config and "home" in self._config["samples"]:
             self._config["samples"]["home"] = expandhome(self._config["samples"]["home"])
 
-    def configureForDeploy(self) -> None:
+    def deployEnv(self) -> DeployEnvEnum:
+        """
+        The deploy environment, as determined from the *installed version*, not from any yml.
+
+        "exp" is checked first: exp versions may also contain "dev", and must never be classified as next or prod.
+        """
         version = self.snapredVersion()
+        if "exp" in version:
+            return DeployEnvEnum.EXP
         if "dev" in version:
-            self.mergeAndExport(DeployEnvEnum.NEXT)
-        elif "rc" in version:
-            self.mergeAndExport(DeployEnvEnum.QA)
-        else:
-            self.mergeAndExport(DeployEnvEnum.PROD)
+            return DeployEnvEnum.NEXT
+        if "rc" in version:
+            return DeployEnvEnum.QA
+        return DeployEnvEnum.PROD
+
+    def configureForDeploy(self) -> None:
+        self.mergeAndExport(self.deployEnv())
 
     def mergeAndExport(self, envName: str) -> None:
         """

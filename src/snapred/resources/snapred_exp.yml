@@ -3,7 +3,7 @@
 instrument:
   calibration:
     home: ${instrument.home}/shared/CalibrationExp
-    environment: exp
+    environment: snapred_exp
     readFailover:
       enabled: true
       # a mapping of name -> path, in priority order (list elements are not interpolated by `Config`)

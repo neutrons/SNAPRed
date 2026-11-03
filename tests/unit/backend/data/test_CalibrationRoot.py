@@ -5,17 +5,16 @@ from unittest import mock
 import pytest
 from util.Config_helpers import Config_override
 
-from snapred.backend.dao.calibration.CalibrationHomeMarker import CalibrationEnvironment, CalibrationHomeMarker
+from snapred.backend.dao.calibration.CalibrationHomeMarker import CalibrationHomeMarker
 from snapred.backend.data import CalibrationRoot as CalibrationRootModule
 from snapred.backend.data.CalibrationRoot import (
     CalibrationRoot,
-    deployEnvironment,
     isUserMode,
     readFailoverPaths,
 )
 from snapred.backend.error.CalibrationHomeError import CalibrationHomeError
 from snapred.backend.error.CalibrationWriteGuardError import CalibrationWriteGuardError
-from snapred.meta.Config import Config
+from snapred.meta.Config import Config, DeployEnvEnum
 from snapred.meta.redantic import write_model_pretty
 
 SCHEMA = 1
@@ -43,16 +42,16 @@ def mockLogger():
 @pytest.fixture
 def roots(tmp_path):
     # a QA home, with prod and next failovers (in that priority order)
-    home = stamp(tmp_path / "CalibrationQA", "qa")
-    prod = stamp(tmp_path / "Calibration", "prod")
-    next_ = stamp(tmp_path / "CalibrationNext", "next")
+    home = stamp(tmp_path / "CalibrationQA", "snapred_qa")
+    prod = stamp(tmp_path / "Calibration", "snapred_prod")
+    next_ = stamp(tmp_path / "CalibrationNext", "snapred_next")
     return home, prod, next_
 
 
 @pytest.fixture
 def calibrationRoot(roots):
     home, prod, next_ = roots
-    return CalibrationRoot(home, [prod, next_], environment="qa", schemaVersion=SCHEMA)
+    return CalibrationRoot(home, [prod, next_], environment="snapred_qa", schemaVersion=SCHEMA)
 
 
 class FakeConfig:
@@ -69,6 +68,9 @@ class FakeConfig:
 
     def snapredVersion(self):
         return self.version
+
+    # the real version rule, applied to the fake version
+    deployEnv = type(Config).deployEnv
 
 
 @pytest.fixture
@@ -92,23 +94,6 @@ CAL_ENV = "instrument.calibration.environment"
 ##
 
 
-@pytest.mark.parametrize(
-    ("version", "expected"),
-    [
-        ("2.4.0+exp.1", CalibrationEnvironment.EXP),
-        ("2.4.0+exp.1.cycle.aware.calib", CalibrationEnvironment.EXP),
-        # exp is checked before dev: an exp build must never be classified as next
-        ("2.4.1.dev3+exp.1", CalibrationEnvironment.EXP),
-        ("2.4.1.dev3", CalibrationEnvironment.NEXT),
-        ("2.4.0rc1", CalibrationEnvironment.QA),
-        ("2.4.0", CalibrationEnvironment.PROD),
-    ],
-)
-def test_deployEnvironment(version, expected):
-    with mock.patch.object(Config, "snapredVersion", return_value=version):
-        assert deployEnvironment() == expected
-
-
 @pytest.mark.parametrize(("environment", "expected"), [("snapred-user", True), ("test", False), ("snapred_qa", False)])
 def test_isUserMode(environment, expected):
     with Config_override("environment", environment):
@@ -128,32 +113,32 @@ def test_readFailoverPaths_userMode_reads_no_failover_keys(fakeConfig):
 
 
 def test_readFailoverPaths_userMode_in_prod_deployment(fakeConfig):
-    fakeConfig({"environment": "snapred-user", ENABLED: True, CAL_ENV: "prod"}, version="2.4.0")
+    fakeConfig({"environment": "snapred-user", ENABLED: True, CAL_ENV: "snapred_prod"}, version="2.4.0")
     assert readFailoverPaths() == []
 
 
 def test_readFailoverPaths_disabled_does_not_read_paths(fakeConfig):
     # no "paths" key: reading it would raise `KeyError`
-    config = fakeConfig({ENABLED: False, CAL_ENV: "qa"})
+    config = fakeConfig({ENABLED: False, CAL_ENV: "snapred_qa"})
     assert readFailoverPaths() == []
     assert PATHS not in config.reads
 
 
 def test_readFailoverPaths_disabled_in_prod_deployment(fakeConfig):
-    fakeConfig({ENABLED: False, CAL_ENV: "prod"}, version="2.4.0")
+    fakeConfig({ENABLED: False, CAL_ENV: "snapred_prod"}, version="2.4.0")
     assert readFailoverPaths() == []
 
 
 @pytest.mark.parametrize("enabled", ["false", "true", 0, 1, None])
 def test_readFailoverPaths_enabled_must_be_bool(fakeConfig, enabled):
-    config = fakeConfig({ENABLED: enabled, CAL_ENV: "qa", PATHS: {"prod": "/prod"}})
+    config = fakeConfig({ENABLED: enabled, CAL_ENV: "snapred_qa", PATHS: {"prod": "/prod"}})
     with pytest.raises(CalibrationHomeError, match="must be a boolean"):
         readFailoverPaths()
     assert PATHS not in config.reads
 
 
 def test_readFailoverPaths_enabled(fakeConfig):
-    config = fakeConfig({ENABLED: True, CAL_ENV: "qa", PATHS: {"prod": "/a/prod", "next": "/a/next"}})
+    config = fakeConfig({ENABLED: True, CAL_ENV: "snapred_qa", PATHS: {"prod": "/a/prod", "next": "/a/next"}})
     assert readFailoverPaths() == [Path("/a/prod"), Path("/a/next")]
     # read order: "enabled" before "paths"
     assert config.reads.index(ENABLED) < config.reads.index(PATHS)
@@ -161,26 +146,28 @@ def test_readFailoverPaths_enabled(fakeConfig):
 
 def test_readFailoverPaths_enabled_without_paths(fakeConfig):
     # no defaults: `Config`'s normal `KeyError`
-    fakeConfig({ENABLED: True, CAL_ENV: "qa"})
+    fakeConfig({ENABLED: True, CAL_ENV: "snapred_qa"})
     with pytest.raises(KeyError):
         readFailoverPaths()
 
 
 def test_readFailoverPaths_paths_must_be_mapping(fakeConfig):
-    fakeConfig({ENABLED: True, CAL_ENV: "qa", PATHS: ["/a/prod"]})
+    fakeConfig({ENABLED: True, CAL_ENV: "snapred_qa", PATHS: ["/a/prod"]})
     with pytest.raises(CalibrationHomeError, match="mapping"):
         readFailoverPaths()
 
 
 def test_readFailoverPaths_refused_for_prod_calibration_environment(fakeConfig):
     # refused even for a non-prod deployment, and in a test environment
-    config = fakeConfig({ENABLED: True, CAL_ENV: "prod", PATHS: {"prod": "/prod"}}, version="2.4.0rc1", testEnv=True)
+    config = fakeConfig(
+        {ENABLED: True, CAL_ENV: "snapred_prod", PATHS: {"prod": "/prod"}}, version="2.4.0rc1", testEnv=True
+    )
     with pytest.raises(CalibrationHomeError, match="'prod' calibration environment"):
         readFailoverPaths()
     assert PATHS not in config.reads
 
 
-@pytest.mark.parametrize("calibrationEnvironment", ["qa", "next", "exp"])
+@pytest.mark.parametrize("calibrationEnvironment", ["snapred_qa", "snapred_next", "snapred_exp"])
 def test_readFailoverPaths_refused_in_prod_deployment(fakeConfig, calibrationEnvironment):
     # the deployment is detected from the installed version, regardless of what the yml says
     config = fakeConfig(
@@ -194,13 +181,13 @@ def test_readFailoverPaths_refused_in_prod_deployment(fakeConfig, calibrationEnv
 
 @pytest.mark.parametrize("version", ["2.4.0+exp.1", "2.4.1.dev3", "2.4.0rc1"])
 def test_readFailoverPaths_allowed_in_testing_deployments(fakeConfig, version):
-    fakeConfig({ENABLED: True, CAL_ENV: "qa", PATHS: {"prod": "/prod"}}, version=version)
+    fakeConfig({ENABLED: True, CAL_ENV: "snapred_qa", PATHS: {"prod": "/prod"}}, version=version)
     assert readFailoverPaths() == [Path("/prod")]
 
 
 def test_readFailoverPaths_allowed_in_test_environment(fakeConfig):
     # tests run with a "prod" version
-    fakeConfig({ENABLED: True, CAL_ENV: "qa", PATHS: {"prod": "/prod"}}, version="2.4.0", testEnv=True)
+    fakeConfig({ENABLED: True, CAL_ENV: "snapred_qa", PATHS: {"prod": "/prod"}}, version="2.4.0", testEnv=True)
     assert readFailoverPaths() == [Path("/prod")]
 
 
@@ -216,7 +203,7 @@ def test_readFailoverPaths_Config():
     }
     with (
         Config_override("instrument.calibration.readFailover", failover),
-        Config_override(CAL_ENV, "qa"),
+        Config_override(CAL_ENV, "snapred_qa"),
     ):
         assert readFailoverPaths() == [
             Path(f"{instrumentHome}/shared/Calibration"),
@@ -236,20 +223,20 @@ def test_readFailoverPaths_Config_default():
 
 def test_home_valid(roots):
     home, _, _ = roots
-    root = CalibrationRoot(home, environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(home, environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.home == home
     assert root.roots == [home]
     assert root.failovers == []
-    assert root.environment == CalibrationEnvironment.QA
+    assert root.environment == DeployEnvEnum.QA
 
 
 def test_home_missing_marker_required(tmp_path):
     with pytest.raises(CalibrationHomeError, match="no marker file"):
-        CalibrationRoot(tmp_path, environment="qa", schemaVersion=SCHEMA, requireMarker=True)
+        CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, requireMarker=True)
 
 
 def test_home_missing_marker_grace(tmp_path, mockLogger):
-    root = CalibrationRoot(tmp_path, environment="qa", schemaVersion=SCHEMA, requireMarker=False)
+    root = CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, requireMarker=False)
     assert root.roots == [tmp_path]
     mockLogger.warning.assert_called_once()
     assert "no marker file" in mockLogger.warning.call_args[0][0]
@@ -257,32 +244,32 @@ def test_home_missing_marker_grace(tmp_path, mockLogger):
 
 def test_home_does_not_exist_grace(tmp_path, mockLogger):
     home = tmp_path / "doesNotExist"
-    CalibrationRoot(home, environment="qa", schemaVersion=SCHEMA, requireMarker=False)
+    CalibrationRoot(home, environment="snapred_qa", schemaVersion=SCHEMA, requireMarker=False)
     mockLogger.warning.assert_called_once()
     assert not home.exists()
 
 
 def test_home_schema_mismatch(tmp_path):
-    stamp(tmp_path, "qa", schemaVersion=SCHEMA + 1)
+    stamp(tmp_path, "snapred_qa", schemaVersion=SCHEMA + 1)
     with pytest.raises(CalibrationHomeError, match="schema version"):
-        CalibrationRoot(tmp_path, environment="qa", schemaVersion=SCHEMA, requireMarker=False)
+        CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, requireMarker=False)
 
 
 def test_home_environment_mismatch(tmp_path):
     # e.g. a QA deployment whose home was misconfigured to point at prod
-    stamp(tmp_path, "prod")
-    with pytest.raises(CalibrationHomeError, match="stamped for the 'prod' environment"):
-        CalibrationRoot(tmp_path, environment="qa", schemaVersion=SCHEMA, requireMarker=False)
+    stamp(tmp_path, "snapred_prod")
+    with pytest.raises(CalibrationHomeError, match="stamped for the 'snapred_prod' environment"):
+        CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, requireMarker=False)
 
 
 def test_home_corrupt_marker(tmp_path):
     touch(tmp_path / CalibrationHomeMarker.FILENAME, "{ not json")
     with pytest.raises(CalibrationHomeError, match="Unable to read"):
-        CalibrationRoot(tmp_path, environment="qa", schemaVersion=SCHEMA, requireMarker=False)
+        CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, requireMarker=False)
 
 
 def test_invalid_environment(tmp_path):
-    with pytest.raises(ValueError, match="'user' is not a valid CalibrationEnvironment"):
+    with pytest.raises(ValueError, match="'user' is not a valid DeployEnvEnum"):
         CalibrationRoot(tmp_path, environment="user", schemaVersion=SCHEMA, requireMarker=False)
 
 
@@ -292,20 +279,20 @@ def test_invalid_environment(tmp_path):
 
 
 def test_userMode_skips_home_marker_check(tmp_path, mockLogger):
-    root = CalibrationRoot(tmp_path, environment="qa", schemaVersion=SCHEMA, requireMarker=True, userMode=True)
+    root = CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, requireMarker=True, userMode=True)
     assert root.roots == [tmp_path]
     mockLogger.warning.assert_not_called()
 
 
 def test_userMode_skips_home_schema_and_environment_check(tmp_path):
-    stamp(tmp_path, "next", schemaVersion=SCHEMA + 1)
-    CalibrationRoot(tmp_path, environment="qa", schemaVersion=SCHEMA, userMode=True)
+    stamp(tmp_path, "snapred_next", schemaVersion=SCHEMA + 1)
+    CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, userMode=True)
 
 
 def test_userMode_corrupt_home_marker(tmp_path):
     touch(tmp_path / CalibrationHomeMarker.FILENAME, "{ not json")
     with pytest.raises(CalibrationHomeError, match="Unable to read"):
-        CalibrationRoot(tmp_path, environment="qa", schemaVersion=SCHEMA, userMode=True)
+        CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, userMode=True)
 
 
 @pytest.mark.usefixtures("mockLogger")
@@ -314,7 +301,7 @@ def test_userMode_still_validates_failovers(tmp_path):
     home.mkdir()
     failover = tmp_path / "unstamped"
     failover.mkdir()
-    root = CalibrationRoot(home, [failover], environment="qa", schemaVersion=SCHEMA, userMode=True)
+    root = CalibrationRoot(home, [failover], environment="snapred_qa", schemaVersion=SCHEMA, userMode=True)
     assert root.failovers == []
 
 
@@ -331,7 +318,7 @@ def test_failovers_valid(roots, calibrationRoot):
 
 def test_failovers_priority_order(roots):
     home, prod, next_ = roots
-    root = CalibrationRoot(home, [next_, prod], environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(home, [next_, prod], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.roots == [home, next_, prod]
 
 
@@ -339,22 +326,22 @@ def test_failover_missing_marker_skipped(roots, tmp_path, mockLogger):
     home, prod, _ = roots
     unstamped = tmp_path / "unstamped"
     unstamped.mkdir()
-    root = CalibrationRoot(home, [unstamped, prod], environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(home, [unstamped, prod], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.failovers == [prod]
     assert "no marker file" in mockLogger.warning.call_args[0][0]
 
 
 def test_failover_does_not_exist_skipped(roots, tmp_path, mockLogger):
     home, prod, _ = roots
-    root = CalibrationRoot(home, [tmp_path / "doesNotExist", prod], environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(home, [tmp_path / "doesNotExist", prod], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.failovers == [prod]
     mockLogger.warning.assert_called_once()
 
 
 def test_failover_schema_mismatch_skipped(roots, mockLogger):
     home, prod, next_ = roots
-    stamp(prod, "prod", schemaVersion=SCHEMA + 1)
-    root = CalibrationRoot(home, [prod, next_], environment="qa", schemaVersion=SCHEMA)
+    stamp(prod, "snapred_prod", schemaVersion=SCHEMA + 1)
+    root = CalibrationRoot(home, [prod, next_], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.failovers == [next_]
     assert "schema version" in mockLogger.warning.call_args[0][0]
 
@@ -362,7 +349,7 @@ def test_failover_schema_mismatch_skipped(roots, mockLogger):
 def test_failover_corrupt_marker_skipped(roots, mockLogger):
     home, prod, next_ = roots
     touch(prod / CalibrationHomeMarker.FILENAME, '{"schemaVersion": 1}')
-    root = CalibrationRoot(home, [prod, next_], environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(home, [prod, next_], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.failovers == [next_]
     assert "unable to read its marker" in mockLogger.warning.call_args[0][0]
 
@@ -370,13 +357,13 @@ def test_failover_corrupt_marker_skipped(roots, mockLogger):
 def test_failover_environment_mismatch_allowed(roots):
     # failovers are expected to belong to another environment
     home, prod, _ = roots
-    root = CalibrationRoot(home, [prod], environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(home, [prod], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.failovers == [prod]
 
 
 def test_failover_duplicate(roots, mockLogger):
     home, prod, _ = roots
-    root = CalibrationRoot(home, [prod, Path(str(prod) + "/")], environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(home, [prod, Path(str(prod) + "/")], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.failovers == [prod]
     assert "duplicate" in mockLogger.warning.call_args[0][0]
 
@@ -385,7 +372,7 @@ def test_failover_symlinked_duplicate(roots, tmp_path, mockLogger):
     home, prod, _ = roots
     link = tmp_path / "prodLink"
     link.symlink_to(prod)
-    root = CalibrationRoot(home, [prod, link], environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(home, [prod, link], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.failovers == [prod]
     assert "duplicate" in mockLogger.warning.call_args[0][0]
 
@@ -393,7 +380,7 @@ def test_failover_symlinked_duplicate(roots, tmp_path, mockLogger):
 def test_failover_equal_to_home(roots):
     home, _, _ = roots
     with pytest.raises(CalibrationHomeError, match="must not be, contain, or be contained by"):
-        CalibrationRoot(home, [home], environment="qa", schemaVersion=SCHEMA)
+        CalibrationRoot(home, [home], environment="snapred_qa", schemaVersion=SCHEMA)
 
 
 def test_failover_symlink_to_home(roots, tmp_path):
@@ -401,20 +388,20 @@ def test_failover_symlink_to_home(roots, tmp_path):
     link = tmp_path / "homeLink"
     link.symlink_to(home)
     with pytest.raises(CalibrationHomeError, match="must not be, contain, or be contained by"):
-        CalibrationRoot(home, [link], environment="qa", schemaVersion=SCHEMA)
+        CalibrationRoot(home, [link], environment="snapred_qa", schemaVersion=SCHEMA)
 
 
 def test_failover_contains_home(roots, tmp_path):
     home, _, _ = roots
     with pytest.raises(CalibrationHomeError, match="must not be, contain, or be contained by"):
-        CalibrationRoot(home, [tmp_path], environment="qa", schemaVersion=SCHEMA)
+        CalibrationRoot(home, [tmp_path], environment="snapred_qa", schemaVersion=SCHEMA)
 
 
 def test_failover_contained_by_home(roots):
     home, _, _ = roots
-    nested = stamp(home / "nested", "prod")
+    nested = stamp(home / "nested", "snapred_prod")
     with pytest.raises(CalibrationHomeError, match="must not be, contain, or be contained by"):
-        CalibrationRoot(home, [nested], environment="qa", schemaVersion=SCHEMA)
+        CalibrationRoot(home, [nested], environment="snapred_qa", schemaVersion=SCHEMA)
 
 
 ##
@@ -427,13 +414,13 @@ def test_fromConfig(roots):
     failover = {"enabled": True, "paths": {"prod": str(prod), "next": str(next_)}}
     with (
         Config_override("instrument.calibration.home", str(home)),
-        Config_override(CAL_ENV, "qa"),
+        Config_override(CAL_ENV, "snapred_qa"),
         Config_override("instrument.calibration.requireMarker", True),
         Config_override("instrument.calibration.readFailover", failover),
     ):
         root = CalibrationRoot.fromConfig()
     assert root.roots == [home, prod, next_]
-    assert root.environment == CalibrationEnvironment.QA
+    assert root.environment == DeployEnvEnum.QA
 
 
 @pytest.mark.usefixtures("mockLogger")
@@ -442,7 +429,7 @@ def test_fromConfig_default(tmp_path):
     with Config_override("instrument.calibration.home", str(tmp_path)):
         root = CalibrationRoot.fromConfig()
     assert root.roots == [tmp_path]
-    assert root.environment == CalibrationEnvironment.PROD
+    assert root.environment == DeployEnvEnum.PROD
 
 
 def test_fromConfig_userMode(roots):
@@ -452,7 +439,7 @@ def test_fromConfig_userMode(roots):
     with (
         Config_override("environment", "snapred-user"),
         Config_override("instrument.calibration.home", str(home)),
-        Config_override(CAL_ENV, "next"),
+        Config_override(CAL_ENV, "snapred_next"),
         Config_override("instrument.calibration.requireMarker", True),
         Config_override("instrument.calibration.readFailover", failover),
     ):
@@ -507,7 +494,7 @@ def test_resolve_skips_invalid_failover(roots, tmp_path):
     home, _, _ = roots
     unstamped = tmp_path / "unstamped"
     touch(unstamped / "a.json")
-    root = CalibrationRoot(home, [unstamped], environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(home, [unstamped], environment="snapred_qa", schemaVersion=SCHEMA)
     with pytest.raises(FileNotFoundError):
         root.resolve("a.json")
 
@@ -612,7 +599,7 @@ def test_writePath_symlinked_home(roots, tmp_path):
     home, prod, _ = roots
     link = tmp_path / "homeLink"
     link.symlink_to(home)
-    root = CalibrationRoot(link, [prod], environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(link, [prod], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.writePath("a.json") == link / "a.json"
 
 
@@ -622,7 +609,7 @@ def test_writePath_protects_skipped_failover(roots, tmp_path):
     home, _, _ = roots
     unstamped = tmp_path / "unstamped"
     unstamped.mkdir()
-    root = CalibrationRoot(home, [unstamped], environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(home, [unstamped], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.failovers == []
     (home / "Powder").symlink_to(unstamped)
     with pytest.raises(CalibrationWriteGuardError):
@@ -631,9 +618,9 @@ def test_writePath_protects_skipped_failover(roots, tmp_path):
 
 def test_writePath_userMode_home_stamped_for_another_environment(tmp_path):
     # e.g. a user yml pointing the home of a QA deployment at prod
-    stamp(tmp_path, "prod")
-    root = CalibrationRoot(tmp_path, environment="qa", schemaVersion=SCHEMA, userMode=True)
-    with pytest.raises(CalibrationWriteGuardError, match="stamped for the 'prod' environment"):
+    stamp(tmp_path, "snapred_prod")
+    root = CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, userMode=True)
+    with pytest.raises(CalibrationWriteGuardError, match="stamped for the 'snapred_prod' environment"):
         root.writePath("a.json")
     # reads are still allowed
     touch(tmp_path / "a.json")
@@ -641,13 +628,13 @@ def test_writePath_userMode_home_stamped_for_another_environment(tmp_path):
 
 
 def test_writePath_userMode_home_stamped_for_same_environment(tmp_path):
-    stamp(tmp_path, "qa")
-    root = CalibrationRoot(tmp_path, environment="qa", schemaVersion=SCHEMA, userMode=True)
+    stamp(tmp_path, "snapred_qa")
+    root = CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, userMode=True)
     assert root.writePath("a.json") == tmp_path / "a.json"
 
 
 def test_writePath_userMode_unstamped_home(tmp_path):
-    root = CalibrationRoot(tmp_path, environment="qa", schemaVersion=SCHEMA, userMode=True)
+    root = CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, userMode=True)
     assert root.writePath("a.json") == tmp_path / "a.json"
 
 
@@ -688,7 +675,7 @@ def test_guardWrite_skipped_failover(roots, tmp_path):
     home, _, _ = roots
     unstamped = tmp_path / "Unstamped"
     unstamped.mkdir()
-    root = CalibrationRoot(home, [unstamped], environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(home, [unstamped], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.failovers == []
     with pytest.raises(CalibrationWriteGuardError, match="read-failover"):
         root.guardWrite(unstamped / "a.json")
@@ -718,8 +705,10 @@ def test_guardWrite_elsewhere(calibrationRoot, tmp_path):
 
 def test_guardWrite_wrong_environment_home(roots):
     home, prod, _ = roots
-    stamp(home, "next")
-    root = CalibrationRoot(home, [prod], environment="qa", schemaVersion=SCHEMA, requireMarker=False, userMode=True)
+    stamp(home, "snapred_next")
+    root = CalibrationRoot(
+        home, [prod], environment="snapred_qa", schemaVersion=SCHEMA, requireMarker=False, userMode=True
+    )
     with pytest.raises(CalibrationWriteGuardError, match="stamped for"):
         root.guardWrite(home / "a.json")
 
@@ -733,7 +722,7 @@ def test_unstamped_failover_skipped_by_default(roots, tmp_path, mockLogger):
     home, _, _ = roots
     unstamped = tmp_path / "Unstamped"
     touch(unstamped / "a.json", "unstamped")
-    root = CalibrationRoot(home, [unstamped], environment="qa", schemaVersion=SCHEMA)
+    root = CalibrationRoot(home, [unstamped], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.failovers == []
     assert "no marker file" in mockLogger.warning.call_args.args[0]
 
@@ -742,7 +731,9 @@ def test_unstamped_failover_read_without_requireMarker(roots, tmp_path, mockLogg
     home, _, _ = roots
     unstamped = tmp_path / "Unstamped"
     touch(unstamped / "a.json", "unstamped")
-    root = CalibrationRoot(home, [unstamped], environment="qa", schemaVersion=SCHEMA, failoverRequireMarker=False)
+    root = CalibrationRoot(
+        home, [unstamped], environment="snapred_qa", schemaVersion=SCHEMA, failoverRequireMarker=False
+    )
     assert root.failovers == [unstamped]
     assert "unstamped read-failover root" in mockLogger.warning.call_args.args[0]
     assert root.resolve("a.json") == unstamped / "a.json"
@@ -754,8 +745,10 @@ def test_unstamped_failover_read_without_requireMarker(roots, tmp_path, mockLogg
 
 def test_stamped_failover_still_validated_without_requireMarker(roots, tmp_path):
     home, _, _ = roots
-    wrongSchema = stamp(tmp_path / "WrongSchema", "prod", schemaVersion=SCHEMA + 1)
-    root = CalibrationRoot(home, [wrongSchema], environment="qa", schemaVersion=SCHEMA, failoverRequireMarker=False)
+    wrongSchema = stamp(tmp_path / "WrongSchema", "snapred_prod", schemaVersion=SCHEMA + 1)
+    root = CalibrationRoot(
+        home, [wrongSchema], environment="snapred_qa", schemaVersion=SCHEMA, failoverRequireMarker=False
+    )
     assert root.failovers == []
 
 
@@ -765,4 +758,6 @@ def test_requireMarker_without_requireMarker_home_still_checked(roots, tmp_path)
     unstampedHome = tmp_path / "UnstampedHome"
     unstampedHome.mkdir()
     with pytest.raises(CalibrationHomeError, match="no marker file"):
-        CalibrationRoot(unstampedHome, [prod], environment="qa", schemaVersion=SCHEMA, failoverRequireMarker=False)
+        CalibrationRoot(
+            unstampedHome, [prod], environment="snapred_qa", schemaVersion=SCHEMA, failoverRequireMarker=False
+        )

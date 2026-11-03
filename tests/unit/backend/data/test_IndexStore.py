@@ -43,16 +43,16 @@ def snapshot(root: Path):
 @pytest.fixture
 def roots(tmp_path):
     # a QA home, with prod and next failovers (in that priority order)
-    home = stamp(tmp_path / "CalibrationQA", "qa")
-    prod = stamp(tmp_path / "Calibration", "prod")
-    next_ = stamp(tmp_path / "CalibrationNext", "next")
+    home = stamp(tmp_path / "CalibrationQA", "snapred_qa")
+    prod = stamp(tmp_path / "Calibration", "snapred_prod")
+    next_ = stamp(tmp_path / "CalibrationNext", "snapred_next")
     return home, prod, next_
 
 
 @pytest.fixture
 def calibrationRoot(roots):
     home, prod, next_ = roots
-    return CalibrationRoot(home, [prod, next_], environment="qa", schemaVersion=SCHEMA)
+    return CalibrationRoot(home, [prod, next_], environment="snapred_qa", schemaVersion=SCHEMA)
 
 
 def store(calibrationRoot, rel=STATE, **kwargs):
