@@ -6,6 +6,7 @@ These tests use the real filesystem: a "qa" calibration home, and a "prod" read-
 
 import importlib
 import json
+import shutil
 from contextlib import ExitStack
 from pathlib import Path
 from unittest import mock
@@ -48,7 +49,7 @@ RUN = "57514"
 def stamp(root: Path, environment: str) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     marker = CalibrationHomeMarker(schemaVersion=1, environment=environment, createdBy="test")
-    write_model_pretty(marker, root / CalibrationHomeMarker.FILENAME)
+    write_model_pretty(marker, root / CalibrationHomeMarker.filename())
     return root
 
 
@@ -194,7 +195,7 @@ def test_calibrationRoot_rebuilt_when_marker_changes(roots):
     home, _ = roots
     root = calibrationRoot()
     marker = CalibrationHomeMarker(schemaVersion=2, environment="snapred_qa", createdBy="test")
-    write_model_pretty(marker, home / CalibrationHomeMarker.FILENAME)
+    write_model_pretty(marker, home / CalibrationHomeMarker.filename())
     with pytest.raises(CalibrationHomeError, match="schema version 2"):
         calibrationRoot()
     stamp(home, "snapred_qa")
@@ -557,6 +558,29 @@ def test_write_to_failover_state_initializes_home(service, roots):
 
 
 @pytest.mark.usefixtures("prodState")
+def test_write_to_failover_state_initializes_configured_grouping_map(service, roots):
+    # the grouping-schema map's filename comes from `Config`
+    home, prod = roots
+    shutil.copyfile(prod / "Powder" / STATE / "groupingMap.json", prod / "Powder" / STATE / "stateGroupingMap.json")
+    with Config_override("grouping.map.filename", "stateGroupingMap.json"):
+        assert service._groupingMapPath(STATE).name == "stateGroupingMap.json"
+        service.createCalibrationIndexEntry(
+            CreateIndexEntryRequest(
+                runNumber=RUN,
+                useLiteMode=True,
+                version=VersionState.NEXT,
+                appliesTo=f">={RUN}",
+                comments="",
+                author="test",
+            )
+        )
+    assert (home / "Powder" / STATE / "stateGroupingMap.json").read_bytes() == (
+        prod / "Powder" / STATE / "stateGroupingMap.json"
+    ).read_bytes()
+    assert not (home / "Powder" / STATE / "groupingMap.json").exists()
+
+
+@pytest.mark.usefixtures("prodState")
 def test_write_to_failover_state_then_shadows(service, roots):
     home, prod = roots
     before = snapshot(prod)
@@ -878,7 +902,7 @@ def test_failoverRequiresMarker(roots):
 @pytest.mark.usefixtures("prodState")
 def test_unstamped_prod_read_without_requireMarker(service, roots):
     home, prod = roots
-    (prod / CalibrationHomeMarker.FILENAME).unlink()
+    (prod / CalibrationHomeMarker.filename()).unlink()
     assert calibrationRoot().failovers == []
     readFailover = {"enabled": True, "paths": {"prod": str(prod)}, "requireMarker": False}
     with Config_override("instrument.calibration.readFailover", readFailover):

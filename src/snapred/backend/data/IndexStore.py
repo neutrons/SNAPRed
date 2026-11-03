@@ -187,14 +187,13 @@ class StateIndexStore(FailoverIndexStore):
       so that a state that was only initialized in home doesn't shadow a read-failover's calibrations.
       A normalization has no default version: its version 0 is a real normalization.
     * Before the first write to a state that only exists in a read-failover root, the state is initialized in home
-      from the failover: its grouping-schema map, and the default version of its calibration in each mode
-      (`calibrationRels`). Without this, home would start with an incomplete state: e.g. its first calibration would
-      be numbered as the default version. The failover's other versions are not copied: they remain visible until
-      home has its own first non-default calibration (`LocalDataService.copyCalibration` can import them).
+      from the failover: its grouping-schema map (`groupingMapRel`), and the default version of its calibration
+      in each mode (`calibrationRels`). Without this, home would start with an incomplete state: e.g. its first
+      calibration would be numbered as the default version. The failover's other versions are not copied: they
+      remain visible until home has its own first non-default calibration (`LocalDataService.copyCalibration`
+      can import them).
       A new state, which isn't in any read-failover, is initialized as usual (`LocalDataService.initializeState`).
     """
-
-    GROUPING_MAP = "groupingMap.json"
 
     def __init__(
         self,
@@ -203,11 +202,13 @@ class StateIndexStore(FailoverIndexStore):
         rel: Union[str, Path],
         *,
         stateRel: Union[str, Path],
+        groupingMapRel: Union[str, Path],
         calibrationRels: Iterable[Union[str, Path]],
         recoveryMode: bool = False,
     ):
         super().__init__(indexerType, root, rel, recoveryMode=recoveryMode)
         self._stateRel = relativePath(stateRel)
+        self._groupingMapRel = relativePath(groupingMapRel)
         self._calibrationRels = [relativePath(rel) for rel in calibrationRels]
 
     @property
@@ -220,11 +221,10 @@ class StateIndexStore(FailoverIndexStore):
             return
         home = self.root.home
 
-        groupingMapRel = self._stateRel / self.GROUPING_MAP
-        if (failover / groupingMapRel).exists() and not (home / groupingMapRel).exists():
-            target = self.root.writePath(groupingMapRel)
+        if (failover / self._groupingMapRel).exists() and not (home / self._groupingMapRel).exists():
+            target = self.root.writePath(self._groupingMapRel)
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(failover / groupingMapRel, target)
+            shutil.copyfile(failover / self._groupingMapRel, target)
 
         calibrationIndex = indexFilename(IndexerType.CALIBRATION)
         for calibrationRel in self._calibrationRels:

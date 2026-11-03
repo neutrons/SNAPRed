@@ -53,7 +53,7 @@ def stamp(root: Path, environment: str):
         environment=environment,
         createdBy="test_read_failover",
     )
-    write_model_pretty(marker, root / CalibrationHomeMarker.FILENAME)
+    write_model_pretty(marker, root / CalibrationHomeMarker.filename())
 
 
 # larger files are symlinked: they are only ever written by the (guarded) workspace writes
@@ -69,7 +69,7 @@ def copyOrLink(src, dst):
 
 def copyTree(mirror: Path, target: Path):
     def ignore(directory, names):
-        ignored = [name for name in names if name.startswith(".") or name == CalibrationHomeMarker.FILENAME]
+        ignored = [name for name in names if name.startswith(".") or name == CalibrationHomeMarker.filename()]
         if Path(directory) == mirror / "Powder":
             # e.g. the temporary state roots of an interrupted `calibration_home_from_mirror`
             ignored += [name for name in names if name.startswith("tmp")]
@@ -172,7 +172,7 @@ def test_read_failover(failoverHomes):
     assert mtd.doesExist(normalization[0])
 
     # reading wrote nothing to home
-    assert sorted(path.name for path in home.iterdir()) == [CalibrationHomeMarker.FILENAME]
+    assert sorted(path.name for path in home.iterdir()) == [CalibrationHomeMarker.filename()]
 
     ## Saving a calibration writes it to home ##
 
@@ -265,4 +265,4 @@ def test_read_failover_disabled(failoverHomes):
         assert calibrationRoot().failovers == []
         assert not LocalDataService().stateExists(RUN)
         assert DataFactoryService().getLatestApplicableCalibrationVersion(RUN, LITE_MODE, STATE) is None
-    assert sorted(path.name for path in home.iterdir()) == [CalibrationHomeMarker.FILENAME]
+    assert sorted(path.name for path in home.iterdir()) == [CalibrationHomeMarker.filename()]

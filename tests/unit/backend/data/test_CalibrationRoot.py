@@ -23,7 +23,7 @@ SCHEMA = 1
 def stamp(root: Path, environment: str, schemaVersion: int = SCHEMA) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     marker = CalibrationHomeMarker(schemaVersion=schemaVersion, environment=environment, createdBy="test")
-    write_model_pretty(marker, root / CalibrationHomeMarker.FILENAME)
+    write_model_pretty(marker, root / CalibrationHomeMarker.filename())
     return root
 
 
@@ -263,7 +263,7 @@ def test_home_environment_mismatch(tmp_path):
 
 
 def test_home_corrupt_marker(tmp_path):
-    touch(tmp_path / CalibrationHomeMarker.FILENAME, "{ not json")
+    touch(tmp_path / CalibrationHomeMarker.filename(), "{ not json")
     with pytest.raises(CalibrationHomeError, match="Unable to read"):
         CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, requireMarker=False)
 
@@ -290,7 +290,7 @@ def test_userMode_skips_home_schema_and_environment_check(tmp_path):
 
 
 def test_userMode_corrupt_home_marker(tmp_path):
-    touch(tmp_path / CalibrationHomeMarker.FILENAME, "{ not json")
+    touch(tmp_path / CalibrationHomeMarker.filename(), "{ not json")
     with pytest.raises(CalibrationHomeError, match="Unable to read"):
         CalibrationRoot(tmp_path, environment="snapred_qa", schemaVersion=SCHEMA, userMode=True)
 
@@ -348,7 +348,7 @@ def test_failover_schema_mismatch_skipped(roots, mockLogger):
 
 def test_failover_corrupt_marker_skipped(roots, mockLogger):
     home, prod, next_ = roots
-    touch(prod / CalibrationHomeMarker.FILENAME, '{"schemaVersion": 1}')
+    touch(prod / CalibrationHomeMarker.filename(), '{"schemaVersion": 1}')
     root = CalibrationRoot(home, [prod, next_], environment="snapred_qa", schemaVersion=SCHEMA)
     assert root.failovers == [next_]
     assert "unable to read its marker" in mockLogger.warning.call_args[0][0]

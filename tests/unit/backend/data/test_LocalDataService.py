@@ -3552,6 +3552,16 @@ def test__readDefaultGroupingMap():
     assert groupingMap.isDefault
 
 
+def test_groupingMapPaths_from_config():
+    service = LocalDataService()
+    with (
+        Config_override("grouping.map.filename", "stateMap.json"),
+        Config_override("grouping.map.defaultFilename", "defaultMap.json"),
+    ):
+        assert service._groupingMapPath(ENDURING_STATE_ID).name == "stateMap.json"
+        assert service._defaultGroupingMapPath() == GroupingMap.calibrationGroupingHome() / "defaultMap.json"
+
+
 def test_readGroupingMap_default_not_found():
     service = LocalDataService()
     with Config_override("instrument.calibration.powder.grouping.home", Resource.getPath("inputs/")):
@@ -4258,7 +4268,7 @@ class TestReductionPixelMasks:
     def calibrationRoot(home: Path, failovers=()) -> CalibrationRoot:
         for failover in failovers:
             marker = CalibrationHomeMarker(schemaVersion=1, environment="snapred_prod", createdBy="test")
-            write_model_pretty(marker, failover / CalibrationHomeMarker.FILENAME)
+            write_model_pretty(marker, failover / CalibrationHomeMarker.filename())
         return CalibrationRoot(home, failovers, environment="snapred_qa", schemaVersion=1, requireMarker=False)
 
     def test_copyCalibrationRootSkeleton_from_failover(self):

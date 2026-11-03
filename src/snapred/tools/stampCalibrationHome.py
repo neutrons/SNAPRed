@@ -68,7 +68,7 @@ def stamp(
     if home.exists() and not home.is_dir():
         raise NotADirectoryError(f"'{home}' is not a directory")
 
-    markerPath = home / CalibrationHomeMarker.FILENAME
+    markerPath = home / CalibrationHomeMarker.filename()
     if markerPath.exists():
         try:
             existing = f"it is already stamped: {_describe(parse_file_as(CalibrationHomeMarker, markerPath))}"

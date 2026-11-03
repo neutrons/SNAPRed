@@ -26,7 +26,7 @@ INDEX = "CalibrationIndex.json"
 def stamp(root: Path, environment: str) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     marker = CalibrationHomeMarker(schemaVersion=SCHEMA, environment=environment, createdBy="test")
-    write_model_pretty(marker, root / CalibrationHomeMarker.FILENAME)
+    write_model_pretty(marker, root / CalibrationHomeMarker.filename())
     return root
 
 
@@ -262,6 +262,7 @@ def test_isPopulated_errors_are_not_masked(roots, calibrationRoot):
 
 STATE_ROOT = Path("Powder/0123456789abcdef")
 LITE = STATE_ROOT / "lite/diffraction"
+GROUPING_MAP = "groupingMap.json"
 NATIVE = STATE_ROOT / "native/diffraction"
 NORMALIZATION = STATE_ROOT / "lite/normalization"
 
@@ -277,7 +278,14 @@ def writeIndex(directory: Path, versions, indexName: str = INDEX):
 
 
 def stateStore(calibrationRoot, indexerType=IndexerType.CALIBRATION, rel=LITE):
-    return StateIndexStore(indexerType, calibrationRoot, rel, stateRel=STATE_ROOT, calibrationRels=[LITE, NATIVE])
+    return StateIndexStore(
+        indexerType,
+        calibrationRoot,
+        rel,
+        stateRel=STATE_ROOT,
+        groupingMapRel=STATE_ROOT / GROUPING_MAP,
+        calibrationRels=[LITE, NATIVE],
+    )
 
 
 def test_StateIndexStore_calibration_ignores_default_version(roots, calibrationRoot):
@@ -302,7 +310,7 @@ def test_StateIndexStore_normalization_version_0_is_real(roots, calibrationRoot)
 
 def test_StateIndexStore_initializeHome(roots, calibrationRoot):
     home, prod, _ = roots
-    touch(prod / STATE_ROOT / "groupingMap.json", "prod map")
+    touch(prod / STATE_ROOT / GROUPING_MAP, "prod map")
     writeIndex(prod / LITE, [0, 1, 2])
     writeIndex(prod / NATIVE, [0, 3])
     prodBefore = snapshot(prod)
@@ -310,7 +318,7 @@ def test_StateIndexStore_initializeHome(roots, calibrationRoot):
     assert stateStore(calibrationRoot).prepareWrite() == home / LITE
 
     assert snapshot(prod) == prodBefore
-    assert (home / STATE_ROOT / "groupingMap.json").read_text() == "prod map"
+    assert (home / STATE_ROOT / GROUPING_MAP).read_text() == "prod map"
     for rel in (LITE, NATIVE):
         # only the default version, and an index containing only its entry
         assert sorted(path.name for path in (home / rel).iterdir()) == [INDEX, "v_0000"]
@@ -329,15 +337,15 @@ def test_StateIndexStore_initializeHome_from_a_normalization_write(roots, calibr
 
 def test_StateIndexStore_initializeHome_keeps_home(roots, calibrationRoot):
     home, prod, _ = roots
-    touch(home / STATE_ROOT / "groupingMap.json", "home map")
+    touch(home / STATE_ROOT / GROUPING_MAP, "home map")
     writeIndex(home / NATIVE, [0, 5])
-    touch(prod / STATE_ROOT / "groupingMap.json", "prod map")
+    touch(prod / STATE_ROOT / GROUPING_MAP, "prod map")
     writeIndex(prod / LITE, [0, 1])
     writeIndex(prod / NATIVE, [0, 3])
 
     stateStore(calibrationRoot).prepareWrite()
 
-    assert (home / STATE_ROOT / "groupingMap.json").read_text() == "home map"
+    assert (home / STATE_ROOT / GROUPING_MAP).read_text() == "home map"
     assert [e["version"] for e in json.loads((home / NATIVE / INDEX).read_text())] == [0, 5]
     assert [e["version"] for e in json.loads((home / LITE / INDEX).read_text())] == [0]
 
@@ -356,7 +364,7 @@ def test_StateIndexStore_initializeHome_partial_failover_state(roots, calibratio
     writeIndex(prod / LITE, [1])
     writeIndex(prod / NATIVE, [0])
     stateStore(calibrationRoot).prepareWrite()
-    assert not (home / STATE_ROOT / "groupingMap.json").exists()
+    assert not (home / STATE_ROOT / GROUPING_MAP).exists()
     assert not (home / LITE).exists()
     assert (home / NATIVE / INDEX).exists()
 

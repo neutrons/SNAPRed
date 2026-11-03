@@ -37,7 +37,7 @@ class DefaultIgnoringStore(FailoverIndexStore):
 def stamp(root: Path, environment: str) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     marker = CalibrationHomeMarker(schemaVersion=1, environment=environment, createdBy="test")
-    write_model_pretty(marker, root / CalibrationHomeMarker.FILENAME)
+    write_model_pretty(marker, root / CalibrationHomeMarker.filename())
     return root
 
 

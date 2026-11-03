@@ -623,10 +623,18 @@ class LocalDataService:
         calibrationRels = [
             calibrationRelative(self._constructCalibrationStatePath(state, liteMode)) for liteMode in (True, False)
         ]
-        if rel is None or stateRel is None or None in calibrationRels:
+        groupingMapRel = calibrationRelative(self._groupingMapPath(state))
+        if rel is None or stateRel is None or groupingMapRel is None or None in calibrationRels:
             # not under the calibration home (e.g. overridden in a test): used as-is
             return IndexStore(indexerType, path)
-        return StateIndexStore(indexerType, root, rel, stateRel=stateRel, calibrationRels=calibrationRels)
+        return StateIndexStore(
+            indexerType,
+            root,
+            rel,
+            stateRel=stateRel,
+            groupingMapRel=groupingMapRel,
+            calibrationRels=calibrationRels,
+        )
 
     @validate_call
     def calibrationIndexer(self, useLiteMode: bool, state: str) -> Indexer:
@@ -1394,10 +1402,10 @@ class LocalDataService:
             write_model_pretty(groupingMap, groupingMapPath)
 
     def _defaultGroupingMapPath(self) -> Path:
-        return GroupingMap.calibrationGroupingHome() / "defaultGroupingMap.json"
+        return GroupingMap.calibrationGroupingHome() / Config["grouping.map.defaultFilename"]
 
     def _groupingMapPath(self, stateId) -> Path:
-        return self.constructCalibrationStateRoot(stateId) / "groupingMap.json"
+        return self.constructCalibrationStateRoot(stateId) / Config["grouping.map.filename"]
 
     ## PIXEL-MASK SUPPORT METHODS
 

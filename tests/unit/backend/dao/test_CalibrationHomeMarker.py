@@ -2,6 +2,7 @@ import json
 
 import pytest
 from pydantic import ValidationError
+from util.Config_helpers import Config_override
 
 from snapred.backend.dao.calibration.CalibrationHomeMarker import CalibrationHomeMarker
 from snapred.meta.Config import DeployEnvEnum
@@ -9,10 +10,15 @@ from snapred.meta.redantic import parse_file_as, write_model_pretty
 
 
 def test_filename():
-    assert CalibrationHomeMarker.FILENAME == "calibrationHome.json"
+    assert CalibrationHomeMarker.filename() == "calibrationHome.json"
     # the filename is not part of the serialized marker
     marker = CalibrationHomeMarker(schemaVersion=1, environment="snapred_prod", createdBy="admin")
-    assert "FILENAME" not in marker.model_dump()
+    assert set(marker.model_dump()) == {"schemaVersion", "environment", "createdBy", "createdAt"}
+
+
+def test_filename_from_config():
+    with Config_override("instrument.calibration.markerFilename", "otherMarker.json"):
+        assert CalibrationHomeMarker.filename() == "otherMarker.json"
 
 
 def test_environment_values():
@@ -22,7 +28,7 @@ def test_environment_values():
 def test_roundtrip(tmp_path):
     marker = CalibrationHomeMarker(schemaVersion=2, environment="snapred_exp", createdBy="admin")
     assert marker.environment == DeployEnvEnum.EXP
-    path = tmp_path / CalibrationHomeMarker.FILENAME
+    path = tmp_path / CalibrationHomeMarker.filename()
     write_model_pretty(marker, path)
 
     raw = json.loads(path.read_text())

@@ -140,8 +140,8 @@ def stamped_mirror_calibration_home():  # noqa: PT004
         from snapred.meta.redantic import write_model_pretty
 
         home = Path(Config["instrument.calibration.home"])
-        if home.is_dir() and not (home / CalibrationHomeMarker.FILENAME).exists():
-            marker = home / CalibrationHomeMarker.FILENAME
+        if home.is_dir() and not (home / CalibrationHomeMarker.filename()).exists():
+            marker = home / CalibrationHomeMarker.filename()
             write_model_pretty(
                 CalibrationHomeMarker(
                     schemaVersion=Config["instrument.calibration.schemaVersion"],

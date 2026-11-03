@@ -1,8 +1,6 @@
-from typing import ClassVar
-
 from pydantic import BaseModel, Field, field_serializer, field_validator
 
-from snapred.meta.Config import DeployEnvEnum
+from snapred.meta.Config import Config, DeployEnvEnum
 from snapred.meta.Time import isoFromTimestamp, parseTimestamp, timestamp
 
 
@@ -14,13 +12,14 @@ class CalibrationHomeMarker(BaseModel, extra="forbid"):
     so that deployed software can refuse to use (or write to) the wrong calibration folder.
     """
 
-    # deliberately not a dotfile, so that it is easy to find
-    FILENAME: ClassVar[str] = "calibrationHome.json"
-
     schemaVersion: int
     environment: DeployEnvEnum
     createdBy: str
     createdAt: float = Field(default_factory=timestamp)
+
+    @classmethod
+    def filename(cls) -> str:
+        return Config["instrument.calibration.markerFilename"]
 
     @field_validator("createdAt", mode="before")
     @classmethod

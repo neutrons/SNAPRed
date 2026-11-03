@@ -10,7 +10,7 @@ from snapred.tools.stampCalibrationHome import main, stamp
 
 
 def readMarker(home):
-    return parse_file_as(CalibrationHomeMarker, home / CalibrationHomeMarker.FILENAME)
+    return parse_file_as(CalibrationHomeMarker, home / CalibrationHomeMarker.filename())
 
 
 def test_stamp_empty_directory(tmp_path):
@@ -18,7 +18,7 @@ def test_stamp_empty_directory(tmp_path):
     assert marker.environment == DeployEnvEnum.QA
     assert readMarker(tmp_path) == marker
     # the directory contains only the marker: no temporary file is left behind
-    assert [p.name for p in tmp_path.iterdir()] == [CalibrationHomeMarker.FILENAME]
+    assert [p.name for p in tmp_path.iterdir()] == [CalibrationHomeMarker.filename()]
 
 
 def test_stamp_creates_directory(tmp_path):
@@ -44,7 +44,7 @@ def test_stamp_refuses_non_empty_directory(tmp_path):
     (tmp_path / "Powder").mkdir()
     with pytest.raises(FileExistsError, match="it is not empty"):
         stamp(tmp_path, "snapred_qa", 1)
-    assert not (tmp_path / CalibrationHomeMarker.FILENAME).exists()
+    assert not (tmp_path / CalibrationHomeMarker.filename()).exists()
 
 
 def test_stamp_non_empty_directory_force(tmp_path):
@@ -70,7 +70,7 @@ def test_stamp_restamp_force(tmp_path, capsys):
 
 
 def test_stamp_refuses_unreadable_marker(tmp_path):
-    (tmp_path / CalibrationHomeMarker.FILENAME).write_text("{ corrupt")
+    (tmp_path / CalibrationHomeMarker.filename()).write_text("{ corrupt")
     with pytest.raises(FileExistsError, match="unreadable marker file"):
         stamp(tmp_path, "snapred_qa", 1)
     stamp(tmp_path, "snapred_qa", 1, createdBy="admin", force=True)
@@ -96,7 +96,7 @@ def test_stamped_home_is_accepted(tmp_path):
 
 def test_main(tmp_path, capsys):
     assert main(["--home", str(tmp_path), "--env", "snapred_exp", "--schema", "1", "--created-by", "admin"]) == 0
-    raw = json.loads((tmp_path / CalibrationHomeMarker.FILENAME).read_text())
+    raw = json.loads((tmp_path / CalibrationHomeMarker.filename()).read_text())
     assert raw["environment"] == "snapred_exp"
     assert raw["schemaVersion"] == 1
     assert raw["createdBy"] == "admin"
@@ -107,7 +107,7 @@ def test_main_refused(tmp_path, capsys):
     (tmp_path / "Powder").mkdir()
     assert main(["--home", str(tmp_path), "--env", "snapred_qa", "--schema", "1"]) == 1
     assert "it is not empty" in capsys.readouterr().err
-    assert not (tmp_path / CalibrationHomeMarker.FILENAME).exists()
+    assert not (tmp_path / CalibrationHomeMarker.filename()).exists()
 
 
 def test_main_force(tmp_path):

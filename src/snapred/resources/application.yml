@@ -21,6 +21,8 @@ instrument:
     schemaVersion: 1
     # intended deploy environment of "instrument.calibration.home": overridden in each "snapred_<env>.yml".
     environment: snapred_prod
+    # the marker file at the root of a calibration home: deliberately not a dotfile, so that it is easy to find.
+    markerFilename: calibrationHome.json
     # while "false", a missing marker file in "instrument.calibration.home" only warns.
     requireMarker: false
     # testing only: read calibration data that is missing from "home" from these roots (never written to).
@@ -157,6 +159,15 @@ grouping:
   workspacename:
     lite: SNAPLite_grouping_
     native: SNAP_grouping_
+  map:
+    # the grouping-schema map of a calibration state, in its state root
+    filename: groupingMap.json
+    # the default grouping-schema map, in "instrument.calibration.powder.grouping.home"
+    defaultFilename: defaultGroupingMap.json
+
+indexer:
+  # the index of an indexed directory: "{indexerType}" is the `IndexerType` value, e.g. "Calibration"
+  filename: "{indexerType}Index.json"
 
 calibration:
   file:

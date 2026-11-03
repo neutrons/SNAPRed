@@ -1,3 +1,4 @@
+from snapred.meta.Config import Config
 from snapred.meta.Enum import StrEnum
 
 
@@ -10,4 +11,4 @@ class IndexerType(StrEnum):
 
 
 def indexFilename(indexerType: IndexerType) -> str:
-    return f"{indexerType}Index.json"
+    return Config["indexer.filename"].format(indexerType=indexerType)

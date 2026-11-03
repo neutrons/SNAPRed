@@ -185,7 +185,7 @@ class CalibrationRoot:
 
     @staticmethod
     def markerPath(root: Path) -> Path:
-        return Path(root) / CalibrationHomeMarker.FILENAME
+        return Path(root) / CalibrationHomeMarker.filename()
 
     @classmethod
     def readMarker(cls, root: Path) -> Optional[CalibrationHomeMarker]:
@@ -209,7 +209,7 @@ class CalibrationRoot:
 
         if marker is None:
             msg = (
-                f"The calibration home '{self._home}' has no marker file '{CalibrationHomeMarker.FILENAME}': "
+                f"The calibration home '{self._home}' has no marker file '{CalibrationHomeMarker.filename()}': "
                 f"it must be stamped for the '{self._environment}' environment."
             )
             if requireMarker:
@@ -253,7 +253,7 @@ class CalibrationRoot:
                 if self._failoverRequireMarker:
                     logger.warning(
                         f"Skipping read-failover root '{failover}': "
-                        f"it has no marker file '{CalibrationHomeMarker.FILENAME}'."
+                        f"it has no marker file '{CalibrationHomeMarker.filename()}'."
                     )
                     continue
                 logger.warning(
