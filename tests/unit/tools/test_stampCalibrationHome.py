@@ -1,12 +1,12 @@
 import json
 
 import pytest
+from cis_tests.tools.stampCalibrationHome import main, stamp
 
 from snapred.backend.dao.calibration.CalibrationHomeMarker import CalibrationHomeMarker
 from snapred.backend.data.CalibrationRoot import CalibrationRoot
 from snapred.meta.Config import DeployEnvEnum
 from snapred.meta.redantic import parse_file_as
-from snapred.tools.stampCalibrationHome import main, stamp
 
 
 def readMarker(home):

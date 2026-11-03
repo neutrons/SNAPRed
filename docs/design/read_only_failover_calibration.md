@@ -148,7 +148,7 @@ If wanted later, so that copied-but-inert keys like `readFailover` don't even ap
 - **Never auto-stamp an existing non-empty home** — a misconfigured QA install would stamp prod as `qa` and defeat
   the guard.
 - Provide an explicit admin tool, e.g.
-  `python -m snapred.tools.stampCalibrationHome --home <path> --env snapred_prod --schema 1`, refusing non-empty dirs
+  `python tests/cis_tests/tools/stampCalibrationHome.py --home <path> --env snapred_prod --schema 1`, refusing non-empty dirs
   without `--force`.
 - Optional grace flag `instrument.calibration.requireMarker: false`: missing home marker gives a warning instead
   of failing. Flip to `true` once prod, qa and next homes are stamped.

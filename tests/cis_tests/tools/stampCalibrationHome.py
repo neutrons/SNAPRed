@@ -1,7 +1,7 @@
 """
 Admin tool: stamp a calibration home with its marker file.
 
-  python -m snapred.tools.stampCalibrationHome --home <path> --env <environment> --schema <version>
+  python tests/cis_tests/tools/stampCalibrationHome.py --home <path> --env <environment> --schema <version>
 
 `<environment>` is a `DeployEnvEnum` value: snapred_next, snapred_qa, snapred_prod or snapred_exp.
 
@@ -25,7 +25,7 @@ from snapred.meta.redantic import parse_file_as
 
 def _createArgparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m snapred.tools.stampCalibrationHome",
+        prog="python tests/cis_tests/tools/stampCalibrationHome.py",
         description="Stamp a calibration home with its marker file.",
     )
     parser.add_argument("--home", required=True, type=Path, help="the calibration home directory")
