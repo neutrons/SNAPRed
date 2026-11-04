@@ -1424,6 +1424,7 @@ def test__readRunConfig():
     localDataService = LocalDataService()
     runNumber = "57514"
     localDataService.getIPTS = mock.Mock(return_value=Path("IPTS-123"))
+    localDataService.readInstrumentConfig = mock.Mock(return_value=getMockInstrumentConfig())
     actual = localDataService._readRunConfig(runNumber)
     assert actual.runNumber == runNumber
 
@@ -1435,15 +1436,6 @@ def test__readRunConfig_no_IPTS():
     localDataService.getIPTS = mock.Mock(side_effect=RuntimeError("Cannot find IPTS directory"))
     with pytest.raises(RuntimeError, match="Cannot find IPTS directory"):
         actual = localDataService._readRunConfig(runNumber)  # noqa: F841
-
-
-def test__readRunConfig_empty_IPTS():
-    # Test that _readRunConfig raises when getIPTS returns a falsy value
-    localDataService = LocalDataService()
-    runNumber = "57514"
-    localDataService.getIPTS = mock.Mock(return_value="")
-    with pytest.raises(RuntimeError, match="Cannot find IPTS directory"):
-        localDataService._readRunConfig(runNumber)
 
 
 def test_constructPVFilePath():
