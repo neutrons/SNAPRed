@@ -245,11 +245,9 @@ class SousChef(Service):
     ) -> FarmFreshIngredients:
         if ingredients.versions.calibration is None:
             raise ValueError("Calibration version must be specified")
-        cycleID = self.dataFactoryService.getCycle(ingredients.runNumber).cycleID
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(
             ingredients.runNumber,
             ingredients.useLiteMode,
-            cycleID,
             ingredients.versions.calibration,
             ingredients.state,
         )
@@ -280,13 +278,8 @@ class SousChef(Service):
         self,
         ingredients: FarmFreshIngredients,
     ) -> Tuple[FarmFreshIngredients, float, Optional[str]]:
-        cycleID = self.dataFactoryService.getCycle(ingredients.runNumber).cycleID
         normalizationRecord = self.dataFactoryService.getNormalizationRecord(
-            ingredients.runNumber,
-            ingredients.useLiteMode,
-            ingredients.state,
-            cycleID,
-            ingredients.versions.normalization,
+            ingredients.runNumber, ingredients.useLiteMode, ingredients.state, ingredients.versions.normalization
         )
         smoothingParameter = Config["calibration.parameters.default.smoothing"]
         calibrantSamplePath = None
