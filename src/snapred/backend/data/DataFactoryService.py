@@ -56,11 +56,16 @@ class DataFactoryService:
     def getInstrumentConfig(self, runId: str) -> InstrumentConfig:
         return self.lookupService.readInstrumentConfig(runId)
 
-    def cycleInfoExists(self, runNumber: str) -> bool:
-        return self.lookupService.cycleInfoExists(runNumber)
-
-    def getCycle(self, runNumber: str) -> Cycle:
-        return self.lookupService.getCycle(runNumber)
+    def getCycleID(self, runNumber: str) -> str:
+        instrumentConfig = self.lookupService.readInstrumentParameters(runNumber)
+        if instrumentConfig.cycle is None:
+            raise ValueError(f"No cycle information found for run {runNumber}")
+        if int(runNumber) < instrumentConfig.cycle.firstRun:
+            raise ValueError(
+                f"Run {runNumber} is not within cycle {instrumentConfig.cycle.cycleID}"
+                f" (first run: {instrumentConfig.cycle.firstRun})"
+            )
+        return instrumentConfig.cycle.cycleID
 
     def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
         return self.lookupService.readStateConfig(runId, useLiteMode)
@@ -146,7 +151,7 @@ class DataFactoryService:
         If no version is passed, will use the latest version applicable to runId.
         Validates that runId belongs to the given cycle.
         """
-        actualCycleID = self.getCycle(runId).cycleID
+        actualCycleID = self.getCycleID(runId)
         if actualCycleID != cycleID:
             raise ValueError(f"Run {runId} belongs to cycle {actualCycleID}, not the requested cycle {cycleID}")
         return self.lookupService.readCalibrationRecord(runId, useLiteMode, state, version)
@@ -196,7 +201,7 @@ class DataFactoryService:
         If no version is passed, will use the latest version applicable to runId.
         Validates that runId belongs to the given cycle.
         """
-        actualCycleID = self.getCycle(runId).cycleID
+        actualCycleID = self.getCycleID(runId)
         if actualCycleID != cycleID:
             raise ValueError(f"Run {runId} belongs to cycle {actualCycleID}, not the requested cycle {cycleID}")
         return self.lookupService.readNormalizationRecord(runId, useLiteMode, state, version)

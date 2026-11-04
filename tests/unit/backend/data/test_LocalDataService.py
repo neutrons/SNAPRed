@@ -398,55 +398,6 @@ def test_readInstrumentParameters():
     assert actual.name == "SNAP"
 
 
-def test_getCycle():
-    from snapred.backend.dao.state.Cycle import Cycle
-
-    cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
-    mockConfig = mock.Mock(cycle=cycle)
-    localDataService = LocalDataService()
-    localDataService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
-    actual = localDataService.getCycle("200")
-    assert actual is cycle
-    assert actual.cycleID == "2024-A"
-    localDataService.readInstrumentParameters.assert_called_once_with("200")
-
-
-def test_getCycle_no_cycle():
-    # Missing cycle info is not an error: a fallback sentinel cycle is returned so reduction
-    #   can proceed (the output will be labelled "diagnostic").
-    from snapred.backend.dao.state.Cycle import Cycle
-
-    mockConfig = mock.Mock(cycle=None)
-    localDataService = LocalDataService()
-    localDataService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
-    assert localDataService.getCycle("200").cycleID == Cycle.NO_CYCLE
-
-
-def test_getCycle_run_before_cycle():
-    # A run that predates the cycle's first run is treated as invalid cycle info: fall back.
-    from snapred.backend.dao.state.Cycle import Cycle
-
-    cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
-    mockConfig = mock.Mock(cycle=cycle)
-    localDataService = LocalDataService()
-    localDataService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
-    assert localDataService.getCycle("50").cycleID == Cycle.NO_CYCLE
-
-
-def test_cycleInfoExists():
-    from snapred.backend.dao.state.Cycle import Cycle
-
-    cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
-    mockConfig = mock.Mock(cycle=cycle)
-    localDataService = LocalDataService()
-    localDataService.readInstrumentParameters = mock.Mock(return_value=mockConfig)
-    assert localDataService.cycleInfoExists("200") is True
-    # A run before the cycle's first run, or with no cycle at all, has no usable cycle info.
-    assert localDataService.cycleInfoExists("50") is False
-    mockConfig.cycle = None
-    assert localDataService.cycleInfoExists("200") is False
-
-
 def test_readInstrumentConfig_bad_calibration_directory():
     localDataService = LocalDataService()
     localDataService.readInstrumentParameters = mock.Mock(return_value=_readInstrumentParameters())

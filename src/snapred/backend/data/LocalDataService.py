@@ -39,7 +39,6 @@ from snapred.backend.dao.state import (
     InstrumentState,
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
-from snapred.backend.dao.state.Cycle import Cycle
 from snapred.backend.data.Indexer import Indexer, IndexerType
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.backend.error.RecoverableException import RecoverableException
@@ -651,22 +650,6 @@ class LocalDataService:
         if version is None:
             raise FileNotFoundError(f"No instrument parameters found for run {runNumber}")
         return indexer.readIndexedObject(InstrumentConfig, version)
-
-    def cycleInfoExists(self, runNumber: str) -> bool:
-        # Cycle info is considered present only when a cycle is defined *and* the run
-        #   falls within it. Absent/incomplete/invalid cycle info is not an error: like a
-        #   missing calibration, reduction proceeds with output labelled "diagnostic".
-        instrumentConfig = self.readInstrumentParameters(runNumber)
-        if instrumentConfig.cycle is None:
-            return False
-        return int(runNumber) >= instrumentConfig.cycle.firstRun
-
-    def getCycle(self, runNumber: str) -> Cycle:
-        instrumentConfig = self.readInstrumentParameters(runNumber)
-        if instrumentConfig.cycle is None or int(runNumber) < instrumentConfig.cycle.firstRun:
-            # No usable cycle info: fall back so reduction can continue (output marked diagnostic).
-            return Cycle.noCycle()
-        return instrumentConfig.cycle
 
     ##### NORMALIZATION METHODS #####
 
