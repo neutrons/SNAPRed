@@ -16,12 +16,13 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import h5py
 import numpy as np
 from mantid.api import IEventWorkspace, Run
-from mantid.dataobjects import MaskWorkspace
+from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
 from mantid.kernel import ConfigService, PhysicalConstants
 from pydantic import validate_call
 
 from snapred.backend.dao import GSASParameters, ObjectSHA, ParticleBounds, RunConfig, RunMetadata, StateConfig
 from snapred.backend.dao.calibration import Calibration, CalibrationDefaultRecord, CalibrationRecord
+from snapred.backend.dao.Hook import Hook, hookArgumentsOfType
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import Version, VersionState
 from snapred.backend.dao.Limit import Limit, Pair
@@ -704,6 +705,8 @@ class LocalDataService:
         indexer.writeRecord(record)
         # separately write the normalization state
         indexer.writeParameters(record.calculationParameters)
+        # write the workspaces named by the record's hook arguments
+        self.writeHookWorkspaces(record.hooks, indexer.versionPath(record.version))
 
         logger.info(f"wrote NormalizationRecord: version: {record.version}")
 
@@ -794,6 +797,8 @@ class LocalDataService:
         indexer.writeRecord(record)
         # separately write the calibration state
         indexer.writeParameters(record.calculationParameters)
+        # write the workspaces named by the record's hook arguments
+        self.writeHookWorkspaces(record.hooks, indexer.versionPath(record.version))
 
         logger.info(f"Wrote CalibrationRecord: version: {record.version}")
 
@@ -868,6 +873,8 @@ class LocalDataService:
             filePath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(record, filePath)
         logger.info(f"wrote reduction record to file: {filePath}")
+        # write the workspaces named by the record's hook arguments
+        self.writeHookWorkspaces(record.hooks, filePath.parent)
 
     def writeReductionData(self, record: ReductionRecord):
         """
@@ -1469,6 +1476,48 @@ class LocalDataService:
         # At present, this method is just a wrapper for 'writeDiffCalWorkspaces':
         #   its existence allows for the separation of pixel-mask I/O from diffraction-calibration workspace I/O.
         self.writeDiffCalWorkspaces(path, filename, maskWorkspaceName=maskWorkspaceName)
+
+    def writeWorkspaceByType(self, path: Path, workspaceName: WorkspaceName) -> Path:
+        """
+        Write a workspace to disk in the format that its type requires:
+        -- mask and grouping workspaces in 'SaveDiffCal' hdf-5 format, any other workspace in nexus format.
+        The filename is the workspace name, with the extension for that format.
+        -- returns the path of the written file.
+        """
+        ws = self.mantidSnapper.mtd[workspaceName]
+        extension = Config["hook.workspaces.extension"]
+        # Note: a `MaskWorkspace` is also a `MatrixWorkspace`, so the special cases must be checked first.
+        if isinstance(ws, MaskWorkspace):
+            filename = Path(workspaceName + extension["diffCal"])
+            self.writePixelMask(path, filename, workspaceName)
+        elif isinstance(ws, GroupingWorkspace):
+            filename = Path(workspaceName + extension["diffCal"])
+            self.writeGroupingWorkspace(path, filename, workspaceName)
+        else:
+            filename = Path(workspaceName + extension["nexus"])
+            self.writeWorkspace(path, filename, workspaceName)
+        return path / filename
+
+    def writeHookWorkspaces(self, hooks: Dict[str, List[Hook]] | None, recordPath: Path) -> List[Path]:
+        """
+        Write every workspace named by a hook argument, so that a persisted record's hooks can be replayed:
+        -- the workspaces are written into the 'hook.workspaces.directory' subdirectory of `recordPath`;
+        -- a workspace that no longer exists is skipped, with a warning.
+        -- returns the paths of the written files.
+        """
+        # a workspace may be named by more than one hook argument: write it only once
+        wsNames = list(dict.fromkeys(hookArgumentsOfType(hooks, WorkspaceName)))
+        if not wsNames:
+            return []
+        hookWorkspacesPath = recordPath / Config["hook.workspaces.directory"]
+        hookWorkspacesPath.mkdir(parents=True, exist_ok=True)
+        written = []
+        for wsName in wsNames:
+            if not self.mantidSnapper.mtd.doesExist(wsName):
+                logger.warning(f"hook-argument workspace '{wsName}' does not exist: it will not be saved")
+                continue
+            written.append(self.writeWorkspaceByType(hookWorkspacesPath, wsName))
+        return written
 
     ## RunMetadata SUPPORT METHODS
 
