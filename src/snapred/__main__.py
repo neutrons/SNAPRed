@@ -91,15 +91,6 @@ def _createArgparser():
     return parser
 
 
-def _configureForDeploy():
-    # `Config.configureForDeploy` only distinguishes next / qa / prod:
-    #   "exp" builds must be checked first, as their versions may also contain "dev".
-    if "exp" in Config.snapredVersion():
-        Config.mergeAndExport("snapred_exp")
-    else:
-        Config.configureForDeploy()
-
-
 def workbench_start(options):
     """Start workbench with necessary preloaded snapred imports."""
     from workbench.app.start import start as workbench_start
@@ -128,8 +119,13 @@ def main(args=None):
     }
     with amend_config(**new_config):
         if options.configure:
-            _configureForDeploy()
+            Config.configureForDeploy()
             print(f"SNAPRed configured to use {Config['instrument.calibration.home']}")
+            from snapred.backend.data.CalibrationRoot import describeReadFailover
+
+            readFailover = describeReadFailover()
+            if readFailover:
+                print(readFailover)
             return 0
         else:
             if options.workbench:
