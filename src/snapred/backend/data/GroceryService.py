@@ -15,6 +15,7 @@ from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
+from snapred.backend.data.CalibrationRoot import resolveCalibrationPath
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.error.LiveDataState import LiveDataState
 from snapred.backend.error.RunStatus import RunStatus
@@ -228,7 +229,7 @@ class GroceryService:
     @validate_call
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
         if groupingScheme == "Lite":
-            path = str(Config["instrument.lite.map.file"])
+            path = str(resolveCalibrationPath(Config["instrument.lite.map.file"]))
         else:
             groupingMap = self.dataService.readGroupingMap(runNumber)
             path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
