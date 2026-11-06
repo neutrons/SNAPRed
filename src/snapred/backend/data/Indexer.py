@@ -1,5 +1,7 @@
+import functools
 import os
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Dict, List, Type, TypeVar
 
@@ -18,8 +20,9 @@ from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
+from snapred.backend.data.IndexerType import IndexerType
+from snapred.backend.data.IndexStore import IndexStore
 from snapred.backend.log.logger import snapredLogger
-from snapred.meta.Enum import StrEnum
 from snapred.meta.LockFile import LockFile, LockManager
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
@@ -44,15 +47,37 @@ T = TypeVar("T", bound=IndexedObject)
 
     The Indexer version list will only update when both a record and a corresponding inex entry
     have been written.
+
+    Where the index and its versions are read from and written to is decided by the Indexer's `IndexStore`:
+
+    * `rootDirectory` is the directory that the in-memory index belongs to.
+    * Read methods first re-bind to the store's current read directory (e.g. once home contains the index).
+    * Write methods (including `nextVersion`, which numbers the next write) first let the store prepare its write
+      directory, then bind to it for their whole duration: the version numbering, the index, and every path used
+      come from the write directory alone.
+    * In the store's `recoveryMode`, a missing or corrupt index, or an index referring to missing versions,
+      is tolerated: see `recoverIndex`.
 """
 
 
-class IndexerType(StrEnum):
-    DEFAULT = ""
-    CALIBRATION = "Calibration"
-    NORMALIZATION = "Normalization"
-    REDUCTION = "Reduction"
-    INSTRUMENT_PARAMETER = "InstrumentParameter"
+def _reads(method):
+    # Re-bind to the store's current read directory before reading.
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        self._syncReadRoot()
+        return method(self, *args, **kwargs)
+
+    return wrapper
+
+
+def _writes(method):
+    # Bind to the store's write directory for the duration of the write.
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._writeContext():
+            return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 # the record type for each indexer type
@@ -98,14 +123,49 @@ class Indexer:
 
     ## CONSTRUCTOR / DESTRUCTOR METHODS ##
 
-    @validate_call
-    def __init__(self, *, indexerType: IndexerType, directory: Path | str, recoveryMode: bool = False) -> None:
-        self.recoveryMode = recoveryMode
-        self.indexerType = indexerType
-        self.rootDirectory = Path(directory)
+    @validate_call(config={"arbitrary_types_allowed": True})
+    def __init__(self, store: IndexStore) -> None:
+        self.store = store
+        self.indexerType = store.indexerType
+        # while non-zero, `rootDirectory` is pinned: read methods do not re-bind it
+        self._pinDepth = 0
+        self.index = {}
         # no index on disk is valid until we attempt to read an indexed object.
-        self.index = self.readIndex(init=True)
-        self.reconcileIndexToFiles()
+        self._bind(store.readDirectory)
+
+    @property
+    def indexFilename(self) -> str:
+        return self.store.indexFilename
+
+    def _bind(self, directory: Path):
+        # load the index belonging to `directory`
+        self._pinDepth += 1
+        try:
+            self.rootDirectory = directory
+            self.index = self.readIndex(init=True)
+            self.reconcileIndexToFiles()
+        finally:
+            self._pinDepth -= 1
+
+    def _syncReadRoot(self):
+        if self._pinDepth > 0:
+            return
+        readDirectory = self.store.readDirectory
+        if readDirectory != self.rootDirectory:
+            logger.debug(f"{self.indexerType} indexer: reading from '{readDirectory}'")
+            self._bind(readDirectory)
+
+    @contextmanager
+    def _writeContext(self):
+        if self._pinDepth == 0:
+            writeDirectory = self.store.prepareWrite()
+            if writeDirectory != self.rootDirectory:
+                self._bind(writeDirectory)
+        self._pinDepth += 1
+        try:
+            yield
+        finally:
+            self._pinDepth -= 1
 
     @property
     def dirVersions(self):
@@ -116,11 +176,12 @@ class Indexer:
         Obtain a lock on the indexer directory.
         This is used to prevent concurrent writes to the indexer.
         """
-        return LockFile(self.rootDirectory)
+        return LockFile(self.store.writeDirectory)
 
     def _lockContext(self):
-        return LockManager(self.rootDirectory)
+        return LockManager(self.store.writeDirectory)
 
+    @_reads
     def readDirectoryList(self):
         # create the directory version list from the directory structure
         versions = set()
@@ -156,7 +217,7 @@ class Indexer:
             indexVersions = indexVersions - missingRecords
             # This exception would otherwise always be thrown during a test-teardown sequence,
             #   which spams the test logs, even when nothing is wrong.
-            if "pytest" not in sys.modules:
+            if "pytest" not in sys.modules and not self.store.recoveryMode:
                 raise FileNotFoundError(
                     f"The following records were expected, but not available on disk: {missingRecords}"
                 )
@@ -172,6 +233,7 @@ class Indexer:
 
     ## VERSION GETTERS ##
 
+    @_reads
     def allVersions(self) -> List[int]:
         return list(self.index.keys())
 
@@ -181,6 +243,7 @@ class Indexer:
         """
         return VERSION_START()
 
+    @_reads
     def currentVersion(self) -> int:
         """
         The largest version found by the Indexer.
@@ -196,6 +259,7 @@ class Indexer:
             version = max(versions)
         return version
 
+    @_reads
     def latestApplicableEntry(self, runNumber: str) -> IndexEntry:
         """
         The most recent index entry in time, which is applicable to the run number.
@@ -231,12 +295,14 @@ class Indexer:
             version = latestEntry.version
         return version
 
+    @_reads
     def getApplicableEntries(self, runRange: RunRange) -> List[IndexEntry]:
         """Every entry that applies somewhere in `runRange`, oldest first."""
         entries = [entry for entry in self.index.values() if self._entryRunRange(entry).overlaps(runRange)]
         entries.sort(key=lambda entry: entry.timestamp)
         return entries
 
+    @_reads
     def applicableVersionSegments(self, runRange: RunRange) -> List[VersionSegment]:
         """
         Split `runRange` into the segments that each version governs.
@@ -263,6 +329,7 @@ class Indexer:
         segments.sort(key=lambda segment: segment.runRange.firstRun)
         return segments
 
+    @_writes
     def nextVersion(self) -> int:
         """
         A new version number to use for saving calibration records.
@@ -339,11 +406,12 @@ class Indexer:
 
     ## PATH METHODS ##
 
+    @_reads
     def indexPath(self):
         """
         Path to the index
         """
-        return self.rootDirectory / f"{self.indexerType}Index.json"
+        return self.rootDirectory / self.indexFilename
 
     def recordPath(self, version: int):
         """
@@ -361,9 +429,20 @@ class Indexer:
         parameterFriendlyName = FRIENDLY_NAME_MAPPING[parameterType.__name__]
         return self.versionPath(version) / f"{parameterFriendlyName}.json"
 
+    @_reads
     def versionPath(self, version: int) -> Path:
+        """
+        Path to read a specific version from.
+        """
         self.validateVersion(version)
         return self.rootDirectory / wnvf.pathVersion(version)
+
+    @_writes
+    def writeVersionPath(self, version: int) -> Path:
+        """
+        Path to write a specific version to: always under the write directory.
+        """
+        return self.versionPath(version)
 
     def currentPath(self) -> Path:
         """
@@ -383,6 +462,7 @@ class Indexer:
             **other_arguments,
         )
 
+    @_reads
     def getIndex(self) -> List[IndexEntry]:
         if self.index == {}:
             self.index = self.readIndex()
@@ -392,6 +472,7 @@ class Indexer:
         res.pop(self.defaultVersion(), None)
         return list(res.values())
 
+    @_reads
     def isValidVersionFolder(self, version: Version):
         """
         Validates that the version folder exists and is a directory.
@@ -425,6 +506,7 @@ class Indexer:
 
         return True
 
+    @_reads
     def indexEntryForVersion(self, version: Version) -> IndexEntry:
         """
         Returns the index entry for a given version.
@@ -454,6 +536,15 @@ class Indexer:
         return entry
 
     def recoverIndex(self, dryrun=True) -> Dict[int, IndexEntry]:
+        # Unless it's a dry run, the index is recovered from, and written to, the write directory:
+        #   an index written to home must never refer to the versions in a read-failover root.
+        if dryrun:
+            self._syncReadRoot()
+            return self._recoverIndex(dryrun)
+        with self._writeContext():
+            return self._recoverIndex(dryrun)
+
+    def _recoverIndex(self, dryrun: bool) -> Dict[int, IndexEntry]:
         # iterate through the directory structure and create an index from the files
         indexPath: Path = self.indexPath()
         entries = []
@@ -487,6 +578,7 @@ class Indexer:
             write_model_list_pretty(entries, indexPath)
         return entries
 
+    @_reads
     def readIndex(self, init=False) -> Dict[int, IndexEntry]:
         # create the index from the index file
         indexPath: Path = self.indexPath()
@@ -494,19 +586,21 @@ class Indexer:
         try:
             indexList = parse_file_as(List[IndexEntry], indexPath)
         except Exception as e:  # noqa: BLE001
-            if not init and not self.recoveryMode:
+            if not init and not self.store.recoveryMode:
                 raise RuntimeError(
                     f"Index file {indexPath} is corrupted, invalid, or missing. "
                     "Please contact your IS or CIS for assistance."
                 ) from e
         return {entry.version: entry for entry in indexList}
 
+    @_writes
     def writeIndex(self):
         with self._lockContext():
             path = self.indexPath()
             path.parent.mkdir(parents=True, exist_ok=True)
             write_model_list_pretty(self.index.values(), path)
 
+    @_writes
     def addIndexEntry(self, entry: IndexEntry):
         """
         Will save at the version on the index entry.
@@ -571,6 +665,7 @@ class Indexer:
             )
         return flattenedVersion
 
+    @_reads
     def versionExists(self, version: Version):
         return self._flattenVersion(version) in self.index
 
@@ -581,6 +676,7 @@ class Indexer:
         fileName = FRIENDLY_NAME_MAPPING.get(type_.__name__, type_.__name__)
         return self.versionPath(version) / f"{fileName}.json"
 
+    @_writes
     @validate_call
     def writeIndexedObject(self, obj: IndexedObject, overwrite: bool = False):
         """
@@ -607,6 +703,7 @@ class Indexer:
 
             write_model_pretty(obj, filePath)
 
+    @_reads
     def readIndexedObject(self, type_: Type[T], version: Version) -> IndexedObject:
         """
         If no version given, defaults to current version
@@ -620,6 +717,7 @@ class Indexer:
             raise FileNotFoundError(f"No {type_.__name__} found at {filePath} for version {version}")
         return obj
 
+    @_writes
     def writeRecord(self, record: Record, overwrite: bool = False):
         """
         Will save at the version on the record.
@@ -644,6 +742,7 @@ class Indexer:
         """
         return self.readIndexedObject(PARAMS_TYPE[self.indexerType], version)
 
+    @_writes
     def writeParameters(self, parameters: CalculationParameters, overwrite: bool = False):
         """
         Will save at the version on the calculation parameters.

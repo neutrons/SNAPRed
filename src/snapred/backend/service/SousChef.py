@@ -18,6 +18,7 @@ from snapred.backend.dao.ingredients import (
 from snapred.backend.dao.request import FarmFreshIngredients
 from snapred.backend.dao.state import FocusGroup, InstrumentState, PixelGroup
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
+from snapred.backend.data.CalibrationRoot import resolveCalibrationPath
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.RecoverableException import RecoverableException
@@ -367,7 +368,7 @@ class SousChef(Service):
         else:
             if not Path(calibrantSamplePath).is_absolute():
                 samplePath: str = Config["samples.home"]
-                calibrantSamplePath = os.path.join(samplePath, calibrantSamplePath)
+                calibrantSamplePath = str(resolveCalibrationPath(os.path.join(samplePath, calibrantSamplePath)))
             if not os.path.exists(calibrantSamplePath):
                 raise FileNotFoundError(f"Calibrant sample file {calibrantSamplePath} does not exist.")
             calibrantSample = self.prepCalibrantSample(calibrantSamplePath)

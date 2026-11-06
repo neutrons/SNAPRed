@@ -23,7 +23,11 @@ class GroupingMap(BaseModel):
     def _asAbsolutePath(cls, filePath: Path) -> Path:
         if filePath.is_absolute():
             return filePath
-        return cls.calibrationGroupingHome().joinpath(filePath)
+        # avoid a circular import
+        from snapred.backend.data.CalibrationRoot import resolveCalibrationPath
+
+        # the definition in the first calibration root that has it
+        return resolveCalibrationPath(cls.calibrationGroupingHome().joinpath(filePath))
 
     # Use the StateId hash to enforce filesystem-as-database integrity requirements:
     # * verify that this GroupingMap's file is at its expected location (e.g. it hasn't been moved or copied);

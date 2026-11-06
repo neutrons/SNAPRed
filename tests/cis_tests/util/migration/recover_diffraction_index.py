@@ -1,5 +1,6 @@
 
 from snapred.backend.data.Indexer import Indexer, IndexerType
+from snapred.backend.data.IndexStore import IndexStore
 from snapred.backend.data.LocalDataService import LocalDataService
 
 
@@ -8,7 +9,7 @@ useLiteMode = True
 
 lds = LocalDataService()
 path = lds._constructCalibrationStatePath(state, useLiteMode)
-calibrationIndexer = Indexer(indexerType=IndexerType.CALIBRATION, directory=path, recoveryMode=True)
+calibrationIndexer = Indexer(IndexStore(IndexerType.CALIBRATION, path, recoveryMode=True))
 
 calibrationIndexer.recoverIndex(dryrun=False)
 

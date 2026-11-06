@@ -15,6 +15,22 @@ instrument:
   home: ${IPTS.root}/SNAP
   calibration:
     home: ${instrument.home}/shared/Calibration
+    # calibration folder schema version: must match the "schemaVersion" in the home's marker file.
+    #   Bump manually when the calibration folder layout or index format changes,
+    #   and re-stamp the deployed calibration homes before that release ships.
+    schemaVersion: 1
+    # intended deploy environment of "instrument.calibration.home": overridden in each "snapred_<env>.yml".
+    environment: snapred_prod
+    # the marker file at the root of a calibration home: deliberately not a dotfile, so that it is easy to find.
+    markerFilename: calibrationHome.json
+    # while "false", a missing marker file in "instrument.calibration.home" only warns.
+    requireMarker: false
+    # testing only: read calibration data that is missing from "home" from these roots (never written to).
+    #   Must remain disabled for prod: enabling it in a prod deployment is an error at startup. Ignored in user mode.
+    readFailover:
+      enabled: false
+      # testing only: "requireMarker: false" reads a failover root that has no marker file (with a warning),
+      #   instead of skipping it.  When missing, failover roots must be stamped.
     sample:
       home: ${instrument.calibration.home}/CalibrantSamples
       extensions:
@@ -143,6 +159,15 @@ grouping:
   workspacename:
     lite: SNAPLite_grouping_
     native: SNAP_grouping_
+  map:
+    # the grouping-schema map of a calibration state, in its state root
+    filename: groupingMap.json
+    # the default grouping-schema map, in "instrument.calibration.powder.grouping.home"
+    defaultFilename: defaultGroupingMap.json
+
+indexer:
+  # the index of an indexed directory: "{indexerType}" is the `IndexerType` value, e.g. "Calibration"
+  filename: "{indexerType}Index.json"
 
 calibration:
   file:
