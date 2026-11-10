@@ -3,14 +3,17 @@ Neutron data sources, and registered neutron data (live reduction under ``livere
 
 **Status: proposed design, not yet implemented.**
 
-This design has two parts:
+This design has three parts:
 
 1. **Neutron data sources** (PR 1): a refactoring of the neutron-data fetch in ``GroceryService`` into
    a single system of *data sources*.  This changes no behavior, except that every fetched workspace is
-   now tagged with its provenance.
+   now tagged with its provenance.  The framework is designed for all of the kinds of data that
+   ``GroceryService`` loads, not only neutron data.
 2. **Registered neutron data** (PR 2): a new data source, for a workspace that is registered with
    SNAPRed by an external process, such as ``livereduce``.  With part 1 in place, this is one more
    source, plus its registration.
+3. **Other data** (PR 3): diffraction-calibration tables and masks, normalization, grouping, pixel
+   masks and monitor data are moved onto the same framework.
 
 Motivation
 ==========
@@ -54,23 +57,26 @@ is produced (the processing script) is outside the scope of SNAPRed.
 Decisions
 =========
 
-1. **One system describes where neutron data comes from.**  Each source is an object that declares the
-   resolution (native or lite) that it provides, and the resolution that it requires as input, if any.
-   The order in which sources are tried is configuration, not code.
+1. **One system describes where data comes from.**  Each source is an object that declares the kind
+   of data and the resolution (native or lite) that it provides, and the resolution that it requires as
+   input, if any.  The order in which sources are tried is configuration, not code.
 
-2. **Every fetched workspace records its provenance**: the chain of sources that produced it.
+2. **Each source provides exactly one output.**  Where two outputs come from the same file (a
+   diffraction-calibration table and its mask), there are two sources, which share an implementation.
 
-3. **Reduction is not aware of registered data.**  ``ReductionRequest`` and ``GroceryListItem`` are
+3. **Every fetched workspace records its provenance**: the chain of sources that produced it.
+
+4. **Reduction is not aware of registered data.**  ``ReductionRequest`` and ``GroceryListItem`` are
    *not* extended with an input-workspace field.  That would bloat the request, would allow arbitrary
    workspaces to be passed into any reduction, and would add a second way of initializing run data,
    with its lifecycle outside of SNAPRed's control.
 
-4. **An external workspace is formally *registered* with SNAPRed as the data source for a run
+5. **An external workspace is formally *registered* with SNAPRed as the data source for a run
    number.**  Registration goes through an API endpoint (a ``SNAPRequest``), so that it passes
    through the interface layer like any other request.  A reduction of that run number then proceeds
    exactly as it does now; only the source of the neutron data differs.
 
-5. **Output is not saved on each update.**  Whether, and when, to save is a decision for the caller
+6. **Output is not saved on each update.**  Whether, and when, to save is a decision for the caller
    (SNAPWrap or the post-processing script), and does not involve SNAPRed.
 
 Design: neutron data sources
@@ -173,6 +179,42 @@ this metadata, so ``dataSource`` could later be carried into the ``ReductionReco
 
 A single chain value is used, rather than separate fields for the original and the final source, so
 that it remains correct if more transforming sources are added.
+
+Design: other data
+==================
+
+The same framework applies to the other kinds of data that ``GroceryService`` loads.  Each of these is
+currently a separate method, with its own check for a resident workspace, its own load, and its own
+cache.
+
+=====================  ======================================  ===========================================
+kind                   sources                                 cache
+=====================  ======================================  ===========================================
+diffCal table          indexed ``.h5`` file; generated         resident in the ADS, by name
+                       default table (now
+                       ``fetchDefaultDiffCalTable``)
+diffCal mask           indexed ``.h5`` file                    resident in the ADS, by name
+normalization          indexed file                            ``normalizationCache`` (a single entry)
+grouping               grouping-definition file                ``_groupingCache``
+reduction pixel mask   reduction-record file                   resident in the ADS, by name
+monitor                NeXus file                              none
+=====================  ======================================  ===========================================
+
+* **Kind and key:** each source declares the kind of data it provides.  Each kind has its own key:
+  run number and resolution for neutron and monitor data; state, version and resolution for
+  calibration and normalization data.  The resolver is the same for every kind.
+* **One output per source:** the diffCal table and mask sources share an implementation, which runs
+  ``LoadCalibrationWorkspaces`` with only the one output requested (each of its outputs is optional).
+  A fetch of both is then two reads of the same file.
+* **Cache:** the cache policy is set per kind, as above.
+* **Processing steps:** the normalization load currently runs ``_processNeutronDataCopy`` on the
+  loaded data.  This becomes an explicit processing step of that kind.
+* **Provenance:** these workspaces are also tagged with ``dataSource``.  The existing ``diffcalState``
+  and ``normalizationState`` tags are unchanged: they record what was *applied* to a sample workspace,
+  not where a workspace came from.
+* **Boundary:** a source decides how a product is brought into the ADS.  *Which* file and version
+  contain it is still decided by the indexer and ``LocalDataService`` (including, on ``exp``, the
+  read-only calibration failover), below the source layer.
 
 Design: registered neutron data
 ===============================
