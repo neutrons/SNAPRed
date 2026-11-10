@@ -15,4 +15,4 @@ provide additional information that will be useful during SNAPRed development.
    grouping_workspaces.rst
    mantid_config_ownership.rst
    profiling_and_progress_recording.rst
-   registered_neutron_data.rst
+   data_sources.rst
