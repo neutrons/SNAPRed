@@ -3,7 +3,6 @@ from typing import Any, Dict, Optional
 from pydantic import ConfigDict, Field, PrivateAttr, model_validator
 
 from snapred.backend.dao.indexing.IndexedObject import IndexedObject
-from snapred.backend.dao.state.Cycle import Cycle
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.meta.Config import Config
 
@@ -34,8 +33,6 @@ class InstrumentConfig(IndexedObject):
     nexusDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
     reducedDataDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
     reductionRecordDirectory: Optional[str] = Field(default=None, deprecated=True, exclude=True)
-
-    cycle: Optional[Cycle] = None
 
     # attributes supporting extensible `DetectorState`:
     stateIdSchema: Dict[str, Any] = DetectorState.LEGACY_SCHEMA

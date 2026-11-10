@@ -157,17 +157,6 @@ class ReductionService(Service):
                 "<p>Would you like to continue anyway?</p>"
             )
 
-        # Check that cycle information is available for the run.
-        #   Missing/invalid cycle info is handled like a missing calibration: reduction may
-        #   proceed, but the output will be labelled "diagnostic" rather than "reduced".
-        if not self.dataFactoryService.cycleInfoExists(request.runNumber):
-            continueFlags |= ContinueWarning.Type.MISSING_CYCLE_INFO
-            message += (
-                "<p><b>Cycle information is missing.</b></p>"
-                "<p>Reduction will proceed, but the output will be marked as diagnostic.</p>"
-                "<p>Would you like to continue anyway?</p>"
-            )
-
         # Remove any continue flags that are also present in the request by XOR-ing with the request flags
         if request.continueFlags:
             continueFlags ^= request.continueFlags & continueFlags
@@ -259,12 +248,9 @@ class ReductionService(Service):
         workspaceMetadata: WorkspaceMetadata = self.groceryService.getSNAPRedWorkspaceMetadata(
             groceries["inputWorkspace"]
         )
-        # Absent/invalid cycle info forces diagnostic output, just like a missing calibration.
-        ingredients.isDiagnostic = (
-            workspaceMetadata.diffcalState != DiffcalStateMetadata.EXISTS
-            or workspaceMetadata.normalizationState != NormalizationStateMetadata.EXISTS
-            or not self.dataFactoryService.cycleInfoExists(request.runNumber)
-        )
+        isDiagnostic = workspaceMetadata.diffcalState != DiffcalStateMetadata.EXISTS
+        isDiagnostic = isDiagnostic or workspaceMetadata.normalizationState != NormalizationStateMetadata.EXISTS
+        ingredients.isDiagnostic = isDiagnostic
 
         # Profiling sub-step: "reduce-data":
         #   * Alternatively, we could decorate the `ReductionRecipe` itself,
@@ -303,13 +289,12 @@ class ReductionService(Service):
             #     its version will have been filled in by `fetchReductionGroceries`.
             #   * `MISSING_DIFFRACTION_CALIBRATION` now means that the default diffraction calibration
             #     with `VERSION_START` is being applied.
-            cycleID = self.dataFactoryService.getCycle(request.runNumber).cycleID
             calibration = self.dataFactoryService.getCalibrationRecord(
-                request.runNumber, request.useLiteMode, cycleID, request.versions.calibration, state
+                request.runNumber, request.useLiteMode, request.versions.calibration, state
             )
             if ContinueWarning.Type.MISSING_NORMALIZATION not in request.continueFlags:
                 normalization = self.dataFactoryService.getNormalizationRecord(
-                    request.runNumber, request.useLiteMode, state, cycleID, request.versions.normalization
+                    request.runNumber, request.useLiteMode, state, request.versions.normalization
                 )
 
         return ReductionRecord(
