@@ -47,5 +47,9 @@ class WorkspaceMetadata(BaseModel):
     normalizeByMonitorFactor: Union[float, Literal["unset"]] = UNSET
     normalizeByMonitorID: Union[int, Literal["unset"]] = UNSET
     particleNormalizationMethod: ParticleNormalizationMethod = UNSET
+    # The provenance of the data: the chain of data sources that produced it, for example
+    #   "nexusFile>liteConversion" (see `snapred.backend.data.source`).
+    #   `Literal["unset"]` is listed first, so that an unset value validates to `UNSET` itself.
+    dataSource: Union[Literal["unset"], str] = UNSET
 
     model_config = ConfigDict(extra="forbid", use_enum_values=True)

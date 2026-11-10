@@ -99,38 +99,42 @@ Sources
 
 .. code-block:: python
 
-    class NeutronDataSource(ABC):
+    class DataSource(ABC):
         kind: DataSourceKind                # nexusFile, liteFile, live, registered, liteConversion
         provides: Resolution                # native or lite
         requires: Resolution | None = None  # the resolution of the input data, for a transforming source
         cacheable: bool = True
-        exclusive: bool = False
+        exclusive: bool = False             # added with `RegisteredSource`
 
         def available(self, item: GroceryListItem) -> bool: ...
-        def load(self, item: GroceryListItem, outputName: WorkspaceName,
-                 input: SourcedData | None = None) -> SourcedData: ...
+        def load(self, item: GroceryListItem, outputWorkspace: WorkspaceName,
+                 inputData: SourcedData | None = None) -> SourcedData: ...
 
-``SourcedData`` holds the workspace name, the provenance chain, and the loader that was used.
+``SourcedData`` holds the workspace name, the loader that was used, the provenance chain, and the input
+data of a transforming source.
 
 =========================  ===========  ==========  ==========  =========
 source                     provides     requires    cacheable   exclusive
 =========================  ===========  ==========  ==========  =========
-``NexusFileSource``        native                   yes
-``LiteFileSource``         lite                     yes
-``LiveListenerSource``     native                   yes [#]_
+``FileSource`` (native)    native                   yes
+``FileSource`` (lite)      lite                     yes
+``LiveListenerSource``     native                   no [#]_
 ``LiteConversionSource``   lite         native      yes
 ``RegisteredSource``       native                   **no**      **yes**
 =========================  ===========  ==========  ==========  =========
 
-.. [#] As now: live data is cached, and is removed by ``clearLiveDataCache``.
+.. [#] As now: live data has a cache entry, which ``clearLiveDataCache`` removes, but no raw workspace,
+   so it is never reused.
 
-* ``NexusFileSource`` and ``LiteFileSource`` are not available when the item requests live data
+* ``FileSource`` is one implementation for both resolutions: its kind is ``nexusFile`` or ``liteFile``.
+  It is not available when the item requests live data
   (``item.liveDataArgs`` is set), as now.
 * ``LiveListenerSource`` keeps all of its existing behavior: the run-status checks, the run-number
   checks, the ``LiveDataState`` exceptions, and the different errors for an explicit live-data request
   and for the live-data fallback.
 * ``LiteConversionSource`` clones its native input and converts the clone to lite mode.  It exports the
-  converted data to disk **only when its input came from** ``nexusFile``.  This replaces the
+  converted data to disk **only when its input came from** ``nexusFile`` (or has no recorded provenance:
+  a cached workspace that was not loaded through a data source).  This replaces the
   ``fromLiveData`` flag, and means that neither live nor registered data is ever exported: a lite-mode
   file of a partially-acquired run would otherwise be loaded later, by every file-based reduction of
   that run, as though it were the complete data.
@@ -161,11 +165,13 @@ The order is set in ``application.yml``:
 Cache
 ~~~~~
 
-The ``_loadedRuns`` cache becomes a layer *around* the resolver, not a step in each fetch.  It keeps
-its current behavior (a raw workspace per run number and resolution, and numbered copies for each
-cached fetch, including the cached native input of a lite-mode conversion), and it skips any result
-whose provenance includes a source that is not cacheable.  A cache hit does not add to the provenance:
-a copy of a cached workspace has the provenance of the original.
+The ``_loadedRuns`` cache moves out of ``GroceryService`` into its own object, ``NeutronDataCache``.  It
+keeps its current behavior: a raw workspace per run number and resolution, and numbered copies for each
+cached fetch, including the cached native input of a lite-mode conversion.  The resolver checks it
+before any source, at each resolution, so that a lite-mode conversion can use cached native data.  Data
+from a source that is not cacheable is given a cache entry without a raw workspace, so that it is never
+reused.  A cache hit does not add to the provenance: a copy of a cached workspace has the provenance of
+the original.
 
 Provenance metadata
 ~~~~~~~~~~~~~~~~~~~
