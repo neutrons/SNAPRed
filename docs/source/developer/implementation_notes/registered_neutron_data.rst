@@ -216,6 +216,11 @@ monitor                NeXus file                              none
   grocery items.  At present, either one loads both workspaces, so that applying a diffraction
   calibration in ``_processNeutronDataCopy`` also loads a mask that is not used.  Repeated fetches are
   cache hits, as now.
+* **Native and lite share an implementation:** unlike neutron data, the native and lite versions of
+  calibration and normalization data have no conversion between them.  Their sources use the same
+  lookup inputs (run number, state and version) and the same loader; the resolution only selects which
+  file the lookup finds.  So the native and lite sources of each of these kinds are one implementation,
+  parameterized by resolution.
 * **Cache:** the cache policy is set per kind, as above.
 * **Processing steps:** the normalization load currently runs ``_processNeutronDataCopy`` on the
   loaded data.  This becomes an explicit processing step of that kind.
