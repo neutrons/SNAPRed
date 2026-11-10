@@ -67,14 +67,21 @@ Decisions
 3. **Every fetched workspace records its provenance**: the chain of sources that produced it.
 
 4. **Reduction is not aware of registered data.**  ``ReductionRequest`` and ``GroceryListItem`` are
-   *not* extended with an input-workspace field.  That would bloat the request, would allow arbitrary
-   workspaces to be passed into any reduction, and would add a second way of initializing run data,
-   with its lifecycle outside of SNAPRed's control.
+   *not* extended with an input-workspace field.  The concern is not that a workspace comes from
+   outside SNAPRed, but that it would be *unmanaged*: any request could name any workspace, as a
+   second way of initializing run data, with no record of where that data came from and no SNAPRed
+   control of its lifecycle.  It would also bloat the request.
 
 5. **An external workspace is formally *registered* with SNAPRed as the data source for a run
    number.**  Registration goes through an API endpoint (a ``SNAPRequest``), so that it passes
    through the interface layer like any other request.  A reduction of that run number then proceeds
    exactly as it does now; only the source of the neutron data differs.
+
+   By registering a workspace, the caller hands it over to SNAPRed as the data for that run -- in
+   spirit.  This is a compromise: SNAPRed cannot guarantee that the caller does not go on to modify or
+   delete the workspace (``livereduce`` itself adds to it on every update).  SNAPRed limits the effect
+   of this: it validates the registration on each fetch, works only on a clone, never caches the data,
+   and records the origin of the data in its provenance.
 
 6. **Output is not saved on each update.**  Whether, and when, to save is a decision for the caller
    (SNAPWrap or the post-processing script), and does not involve SNAPRed.
