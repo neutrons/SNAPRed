@@ -4,7 +4,7 @@ Behavior tests for the neutron-data fetch of `GroceryService`.
 These tests exercise only the public fetch methods, and observe only:
 
 * the returned dictionary;
-* the workspaces in the ADS, and their logs;
+* the workspaces in the ADS, and their logs (including the `dataSource` provenance tag);
 * `getCachedWorkspaces`;
 * the calls to the external boundaries: the live-data listener (via `FetchGroceriesRecipe`),
   and the lite-mode conversion (via `LiteDataService`).
@@ -191,6 +191,16 @@ def origin(workspace: str) -> str:
     return mtd[workspace].getRun().getLogData("sample_origin").value
 
 
+def dataSource(workspace: str) -> str:
+    """The provenance tag that SNAPRed writes to every fetched neutron-data workspace."""
+    return mtd[workspace].getRun().getLogData(f"{Config['metadata.tagPrefix']}dataSource").value
+
+
+def assertDataSource(result, expected: str):
+    assert result["dataSource"] == expected
+    assert dataSource(result["workspace"]) == expected
+
+
 def convertedToLite(workspace: str) -> bool:
     return mtd[workspace].getRun().hasProperty("converted_to_lite")
 
@@ -216,6 +226,7 @@ class TestFileData:
         assert result["workspace"] == plainName(RUN_NUMBER, False)
         assert runWorkspaces() == {plainName(RUN_NUMBER, False)}
         assert origin(result["workspace"]) == "nexusFile"
+        assertDataSource(result, "nexusFile")
         assert harness.service.getCachedWorkspaces() == []
         assert harness.exports == []
 
@@ -238,6 +249,9 @@ class TestFileData:
         }
         assert harness.service.getCachedWorkspaces() == [rawName(RUN_NUMBER, False)]
         assert origin(second["workspace"]) == "nexusFile"
+        # a copy of cached data keeps the provenance of the original
+        assertDataSource(first, "nexusFile")
+        assertDataSource(second, "nexusFile")
 
     def test_native_single_use_after_cached_uses_cache(self, harness):
         harness.service.fetchNeutronDataCached(harness.item(False))
@@ -260,6 +274,7 @@ class TestFileData:
         assert result["loader"] == "LoadNexusProcessed"
         assert result["workspace"] == copyName(RUN_NUMBER, True, 1)
         assert origin(result["workspace"]) == "liteFile"
+        assertDataSource(result, "liteFile")
         assert not convertedToLite(result["workspace"])
         assert harness.exports == []
         assert runWorkspaces() == {rawName(RUN_NUMBER, True), copyName(RUN_NUMBER, True, 1)}
@@ -279,6 +294,8 @@ class TestFileData:
         assert first["workspace"] == copyName(RUN_NUMBER, True, 1)
         assert origin(first["workspace"]) == "nexusFile"
         assert convertedToLite(first["workspace"])
+        assertDataSource(first, "nexusFile>liteConversion")
+        assert dataSource(rawName(RUN_NUMBER, False)) == "nexusFile"
         # converted from file data: it is exported
         assert harness.exports == [(plainName(RUN_NUMBER, True), True)]
         assert runWorkspaces() == {
@@ -302,6 +319,7 @@ class TestFileData:
         assert result["loader"] == "cached"
         assert result["workspace"] == copyName(RUN_NUMBER, True, 1)
         assert convertedToLite(result["workspace"])
+        assertDataSource(result, "nexusFile>liteConversion")
         assert harness.exports == [(plainName(RUN_NUMBER, True), True)]
 
     def test_lite_single_use_converted_from_native_file(self, harness):
@@ -335,6 +353,7 @@ class TestLiveDataFallback:
         assert result["loader"] == LIVE_LOADER
         assert result["workspace"] == plainName(RUN_NUMBER, False)
         assert origin(result["workspace"]) == "live"
+        assertDataSource(result, "live")
         assert len(harness.liveCalls) == 1
         workspace, _ = harness.liveCalls[0]
         assert workspace == plainName(RUN_NUMBER, False)
@@ -344,6 +363,7 @@ class TestLiveDataFallback:
         assert result["workspace"] == copyName(RUN_NUMBER, True, 1)
         assert origin(result["workspace"]) == "live"
         assert convertedToLite(result["workspace"])
+        assertDataSource(result, "live>liteConversion")
         assert harness.exports == [(plainName(RUN_NUMBER, True), False)]
 
     def test_native_cached_repeat(self, harness):
@@ -389,6 +409,7 @@ class TestLiveDataRequested:
         result = harness.service.fetchNeutronDataCached(harness.item(True, LIVE_ARGS))
         assert result["workspace"] == copyName(RUN_NUMBER, True, 1)
         assert origin(result["workspace"]) == "live"
+        assertDataSource(result, "live>liteConversion")
         assert harness.exports == [(plainName(RUN_NUMBER, True), False)]
         assert len(harness.liveCalls) == 1
 
