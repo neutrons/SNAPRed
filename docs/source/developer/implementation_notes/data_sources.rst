@@ -1,5 +1,5 @@
-Neutron data sources, and registered neutron data (live reduction under ``livereduce``)
--------------------------------------------------------------------------------------------
+Data sources, and registered neutron data (live reduction under ``livereduce``)
+-------------------------------------------------------------------------------
 
 **Status: proposed design, not yet implemented.**
 
@@ -90,7 +90,7 @@ Design: neutron data sources
 ============================
 
 The sources, the resolver and the registration owner go into a new package,
-``snapred.backend.data.neutron``.  ``GroceryService`` keeps its public fetch methods
+``snapred.backend.data.source``.  ``GroceryService`` keeps its public fetch methods
 (``fetchNeutronDataSingleUse``, ``fetchNeutronDataCached``, ``clearLiveDataCache``, ...), and delegates to
 the resolver.
 
