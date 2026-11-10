@@ -1,15 +1,43 @@
-Registered neutron data (live reduction under ``livereduce``)
--------------------------------------------------------------
+Neutron data sources, and registered neutron data (live reduction under ``livereduce``)
+-------------------------------------------------------------------------------------------
 
 **Status: proposed design, not yet implemented.**
+
+This design has two parts:
+
+1. **Neutron data sources** (PR 1): a refactoring of the neutron-data fetch in ``GroceryService`` into
+   a single system of *data sources*.  This changes no behavior, except that every fetched workspace is
+   now tagged with its provenance.
+2. **Registered neutron data** (PR 2): a new data source, for a workspace that is registered with
+   SNAPRed by an external process, such as ``livereduce``.  With part 1 in place, this is one more
+   source, plus its registration.
 
 Motivation
 ==========
 
-SNAPRed reduces data either from a NeXus file on disk, or, in live-data mode, directly from the ADARA
-stream through its own listener connection.  There is also a need to run reduction -- with all of the
-additions that SNAPWrap makes to it -- from within Mantid's live-reduction framework,
-`livereduce <https://github.com/mantidproject/livereduce>`_.
+Neutron data sources
+~~~~~~~~~~~~~~~~~~~~
+
+The neutron data for a run can now come from:
+
+* the native NeXus file on disk;
+* the lite-mode file on disk;
+* SNAPRed's own live-data listener;
+* conversion of native data to lite mode, in this process.  The converted data is then (optionally)
+  exported to disk, where it becomes the lite-mode file for later fetches.
+
+The choice between these is spread over the nested ``_fetchNeutronDataLite`` -> ``_fetchNeutronDataNative``
+-> ``_fetchNeutronDataSingleUse`` calls, a ``missingDataHandler`` callback, and an ad-hoc
+``fromLiveData`` flag, which decides whether converted data is exported.  The ``_loadedRuns`` cache is
+interleaved with all of these.  Nothing records which of the sources a workspace actually came from.
+Adding a further source to this structure would make it harder to follow, and ``GroceryService`` is
+already very large.
+
+Registered neutron data
+~~~~~~~~~~~~~~~~~~~~~~~
+
+There is a need to run reduction -- with all of the additions that SNAPWrap makes to it -- from within
+Mantid's live-reduction framework, `livereduce <https://github.com/mantidproject/livereduce>`_.
 
 ``livereduce`` is a headless daemon, run by ``systemd`` as ``snsdata`` on the beamline.  It calls
 ``StartLiveData`` itself (``AccumulationMethod="Add"``, ``FromStartOfRun=True``,
@@ -26,87 +54,161 @@ is produced (the processing script) is outside the scope of SNAPRed.
 Decisions
 =========
 
-1. **Reduction is not aware of this mechanism.**  ``ReductionRequest`` and ``GroceryListItem`` are
+1. **One system describes where neutron data comes from.**  Each source is an object that declares the
+   resolution (native or lite) that it provides, and the resolution that it requires as input, if any.
+   The order in which sources are tried is configuration, not code.
+
+2. **Every fetched workspace records its provenance**: the chain of sources that produced it.
+
+3. **Reduction is not aware of registered data.**  ``ReductionRequest`` and ``GroceryListItem`` are
    *not* extended with an input-workspace field.  That would bloat the request, would allow arbitrary
    workspaces to be passed into any reduction, and would add a second way of initializing run data,
    with its lifecycle outside of SNAPRed's control.
 
-2. **An external workspace is formally *registered* with SNAPRed as the data source for a run
+4. **An external workspace is formally *registered* with SNAPRed as the data source for a run
    number.**  Registration goes through an API endpoint (a ``SNAPRequest``), so that it passes
    through the interface layer like any other request.  A reduction of that run number then proceeds
    exactly as it does now; only the source of the neutron data differs.
 
-3. **The ``GroceryService`` treats a registered workspace as one more data source for a run**,
-   checked before the existing live-data fallback.
-
-4. **The origin of the data is recorded as SNAPRed workspace metadata**, so that data from a
-   registered workspace can never be mistaken for data loaded from a file.
-
 5. **Output is not saved on each update.**  Whether, and when, to save is a decision for the caller
    (SNAPWrap or the post-processing script), and does not involve SNAPRed.
 
-Design
-======
+Design: neutron data sources
+============================
+
+The sources, the resolver and the registration owner go into a new package,
+``snapred.backend.data.neutron``.  ``GroceryService`` keeps its public fetch methods
+(``fetchNeutronDataSingleUse``, ``fetchNeutronDataCached``, ``clearLiveDataCache``, ...), and delegates to
+the resolver.
+
+Sources
+~~~~~~~
+
+.. code-block:: python
+
+    class NeutronDataSource(ABC):
+        kind: DataSourceKind                # nexusFile, liteFile, live, registered, liteConversion
+        provides: Resolution                # native or lite
+        requires: Resolution | None = None  # the resolution of the input data, for a transforming source
+        cacheable: bool = True
+        exclusive: bool = False
+
+        def available(self, item: GroceryListItem) -> bool: ...
+        def load(self, item: GroceryListItem, outputName: WorkspaceName,
+                 input: SourcedData | None = None) -> SourcedData: ...
+
+``SourcedData`` holds the workspace name, the provenance chain, and the loader that was used.
+
+=========================  ===========  ==========  ==========  =========
+source                     provides     requires    cacheable   exclusive
+=========================  ===========  ==========  ==========  =========
+``NexusFileSource``        native                   yes
+``LiteFileSource``         lite                     yes
+``LiveListenerSource``     native                   yes [#]_
+``LiteConversionSource``   lite         native      yes
+``RegisteredSource``       native                   **no**      **yes**
+=========================  ===========  ==========  ==========  =========
+
+.. [#] As now: live data is cached, and is removed by ``clearLiveDataCache``.
+
+* ``NexusFileSource`` and ``LiteFileSource`` are not available when the item requests live data
+  (``item.liveDataArgs`` is set), as now.
+* ``LiveListenerSource`` keeps all of its existing behavior: the run-status checks, the run-number
+  checks, the ``LiveDataState`` exceptions, and the different errors for an explicit live-data request
+  and for the live-data fallback.
+* ``LiteConversionSource`` clones its native input and converts the clone to lite mode.  It exports the
+  converted data to disk **only when its input came from** ``nexusFile``.  This replaces the
+  ``fromLiveData`` flag, and means that neither live nor registered data is ever exported: a lite-mode
+  file of a partially-acquired run would otherwise be loaded later, by every file-based reduction of
+  that run, as though it were the complete data.
+
+Resolver
+~~~~~~~~
+
+The resolver produces the data for an item at the requested resolution:
+
+1. If an *exclusive* source is available for the item, it is the only source that may start the chain.
+   For a lite-mode request, its native data is then converted, by the source that provides lite mode
+   from native.
+2. Otherwise, the sources that provide the requested resolution are tried in the configured order.  The
+   first available source is used.
+3. If that source requires input, the input resolution is resolved first, in the same way, and passed to
+   it.
+4. If no source is available, the resolver raises an error that lists the sources that were tried.
+
+The order is set in ``application.yml``:
+
+.. code-block:: yaml
+
+    neutronData:
+      sources:
+        native: [registered, nexusFile, live]
+        lite: [liteFile, liteConversion]
+
+Cache
+~~~~~
+
+The ``_loadedRuns`` cache becomes a layer *around* the resolver, not a step in each fetch.  It keeps
+its current behavior (a raw workspace per run number and resolution, and numbered copies for each
+cached fetch, including the cached native input of a lite-mode conversion), and it skips any result
+whose provenance includes a source that is not cacheable.  A cache hit does not add to the provenance:
+a copy of a cached workspace has the provenance of the original.
+
+Provenance metadata
+~~~~~~~~~~~~~~~~~~~
+
+Add a ``dataSource`` field to ``WorkspaceMetadata`` (``snapred.backend.dao.WorkspaceMetadata``).  Its value
+is the provenance chain, from the original source to the final one, for example:
+
+* ``nexusFile``
+* ``liteFile``
+* ``nexusFile>liteConversion``
+* ``live>liteConversion``
+* ``registered>liteConversion``
+
+The value is ``unset`` for workspaces created before this field existed.  The resolver writes it on
+*every* neutron-data fetch -- otherwise a missing tag would be ambiguous.  As workspace metadata is held
+in the logs, it propagates through cloning to the reduction output.  ``ReductionService`` already reads
+this metadata, so ``dataSource`` could later be carried into the ``ReductionRecord`` as well.
+
+A single chain value is used, rather than separate fields for the original and the final source, so
+that it remains correct if more transforming sources are added.
+
+Design: registered neutron data
+===============================
 
 Registration owner
 ~~~~~~~~~~~~~~~~~~
 
 A dedicated ``@Singleton`` owns the run-number -> registered-workspace associations, and their
-validation.  It is used by both the ``GroceryService`` and the run-metadata lookup (below); it is
-exposed through the registration endpoint.  No parameters are added to existing classes to support it.
+validation.  It is used by ``RegisteredSource`` and by the run-metadata lookup (below); it is exposed
+through the registration endpoints.  No parameters are added to existing classes to support it.
 
 * Registration should be performed from the *post-processing* script: only that script sees the
   accumulation workspace (its name is generated by ``livereduce`` as
   ``mtd.unique_name(prefix="accumulation_")``).  Re-registering on every update must be harmless.
-* There must also be a way to remove a registration.
+* There is also an endpoint to remove a registration.
+* **Validate the registration on each lookup:**
 
-``GroceryService``
-~~~~~~~~~~~~~~~~~~
+  - if the workspace no longer exists (for example, ``livereduce``'s memory watchdog has restarted the
+    daemon and cleared the ADS), drop the registration: the source is then not available, and the
+    resolver falls through to the other sources;
+  - if its ``run_number`` log no longer matches, a run transition has occurred: drop the registration
+    and raise ``LiveDataState.runStateTransition``.  The live listener does not always set
+    ``run_number``, so a missing log value must be tolerated.
 
-When neutron data is fetched for a run that has a registration:
+``RegisteredSource``
+~~~~~~~~~~~~~~~~~~~~
 
 * **Clone** the registered workspace, and operate only on the clone: event filtering, prompt-pulse
   removal and ``ApplyDiffCal`` all modify their workspace in place.
 * **Never delete, rename or otherwise modify** the registered workspace itself; exclude it from
   ``clearADS`` and from the cache-clearing paths.
-* **Bypass the neutron-data cache** (``_loadedRuns``): the registered workspace grows between updates,
-  so a cached clone would be stale.
-* The registered source is placed in the *native* fetch, at the same level as the file.  Lite-mode
-  data is then produced by the existing native -> lite conversion.
-* **Validate the registration on each fetch:**
-
-  - if the workspace no longer exists (for example, ``livereduce``'s memory watchdog has restarted the
-    daemon and cleared the ADS), drop the registration and fall through to the existing chain;
-  - if its ``run_number`` log no longer matches, a run transition has occurred: drop the registration
-    and raise ``LiveDataState.runStateTransition``.  The live listener does not always set
-    ``run_number``, so a missing log value must be tolerated.
-
-Origin metadata
-~~~~~~~~~~~~~~~
-
-Add a ``dataSource`` field to ``WorkspaceMetadata`` (``snapred.backend.dao.WorkspaceMetadata``), with
-values:
-
-* ``unset``: workspaces created before this field existed;
-* ``file``: loaded from a NeXus file on disk;
-* ``live``: loaded through SNAPRed's own live-data listener;
-* ``registered``: cloned from a registered workspace.
-
-The ``GroceryService`` writes it on *every* neutron-data fetch, for all of the sources -- otherwise a
-missing tag would be ambiguous.  It is written to the clone only, never to the registered workspace.
-As workspace metadata is held in the logs, it propagates through cloning and lite-mode conversion to
-the reduction output.  ``ReductionService`` already reads this metadata, so ``dataSource`` could later
-be carried into the ``ReductionRecord`` as well.
-
-Lite-mode export
-~~~~~~~~~~~~~~~~
-
-The lite-mode fetch currently writes the converted lite-mode data to disk unless the data came from
-SNAPRed's own listener (``export=data.get("fromLiveData") is None``).  Registered data must **never**
-be exported: a lite-mode file of a partially-acquired run would later be loaded, by every file-based
-reduction of that run, as though it were the complete data.  The export decision should be driven by
-``dataSource`` rather than by the ad-hoc ``fromLiveData`` flag, so that a single rule covers both of the
-live cases.
+* It is **not cacheable**: the registered workspace grows between updates, so a cached clone would be
+  stale.
+* It is **exclusive**: while a run is registered, its data never comes from a file, and a lite-mode
+  request is converted from the registered data.  A lite-mode file on disk could only be from an
+  earlier, partial, acquisition.
 
 Run metadata
 ~~~~~~~~~~~~
@@ -115,8 +217,9 @@ State and instrument parameters are derived from ``LocalDataService.readRunMetad
 live run there is no PV file yet, so this falls back to ``readLiveMetadata``, which opens its *own*
 listener connection, and the result is cached by run number.  For a registered run, the metadata should
 instead be read from the registered workspace's logs (as ``LocalDataService.stateIdFromWorkspace``
-already does, using ``RunMetadata.fromRun``).  This lookup should consult the same registration owner,
-so that the state is always derived from the data actually being reduced.
+already does, using ``RunMetadata.fromRun``).  ``readRunMetadata`` checks the registration owner first,
+and only then the cached PV-file / live-data lookup, so that the state is always derived from the data
+actually being reduced, and a registered run never uses a cached result.
 
 Open questions
 ==============
@@ -125,8 +228,10 @@ Open questions
   documentation is inconsistent on this point.  If it is not, a clone could capture a partially-added
   chunk.
 * ``livereduce`` runs for a long time in a single process, so SNAPRed's singletons and caches persist
-  across updates and across runs.  Which caches (for example, ``readRunMetadata``'s) must be reset on a
-  run transition?
+  across updates and across runs.  Registered data bypasses the neutron-data and run-metadata caches;
+  are there other caches that must be reset on a run transition?
 * With ``normalizeByBeamMonitor`` enabled, ``fetchMonitorWorkspace`` loads the monitors from the NeXus
   file, which does not exist for a live run.  Should monitor data also be registrable, or should this
   combination be rejected?
+* Should an explicit live-data request (``item.liveDataArgs``) be satisfied by a registered workspace?
+  Under this design it is, because ``RegisteredSource`` is exclusive.
