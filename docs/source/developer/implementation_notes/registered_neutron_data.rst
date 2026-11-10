@@ -205,7 +205,10 @@ monitor                NeXus file                              none
   calibration and normalization data.  The resolver is the same for every kind.
 * **One output per source:** the diffCal table and mask sources share an implementation, which runs
   ``LoadCalibrationWorkspaces`` with only the one output requested (each of its outputs is optional).
-  A fetch of both is then two reads of the same file.
+  This matches how they are requested now: ``diffcal_table`` and ``diffcal_mask`` are already separate
+  grocery items.  At present, either one loads both workspaces, so that applying a diffraction
+  calibration in ``_processNeutronDataCopy`` also loads a mask that is not used.  Repeated fetches are
+  cache hits, as now.
 * **Cache:** the cache policy is set per kind, as above.
 * **Processing steps:** the normalization load currently runs ``_processNeutronDataCopy`` on the
   loaded data.  This becomes an explicit processing step of that kind.
