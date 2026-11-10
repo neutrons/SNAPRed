@@ -186,6 +186,16 @@ reduction:
     # convert the instrument for the output workspaces into the reduced form
     useEffectiveInstrument: false
 
+hook:
+  workspaces:
+    # Workspaces named by hook arguments are written with a record, into this subdirectory of the record's directory.
+    directory: hookWorkspaces
+    extension:
+      # mask and grouping workspaces: 'SaveDiffCal' format
+      diffCal: .h5
+      # all other workspaces: NeXus format
+      nexus: .nxs.h5
+
 mantid:
     workspace:
       # WARNING: 'normalizeByBeamMonitor' and 'liveData.enabled' should not be set at the same time.
