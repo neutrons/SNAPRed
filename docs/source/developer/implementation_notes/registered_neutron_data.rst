@@ -266,6 +266,9 @@ through the registration endpoints.  No parameters are added to existing classes
 * It is **exclusive**: while a run is registered, its data never comes from a file, and a lite-mode
   request is converted from the registered data.  A lite-mode file on disk could only be from an
   earlier, partial, acquisition.
+* **A live-data request for a registered run is an error.**  If the item requests live data
+  (``item.liveDataArgs`` is set) for a run that is registered, the fetch raises an error that asks for
+  the registration to be removed first.  SNAPRed does not silently choose either source.
 
 Run metadata
 ~~~~~~~~~~~~
@@ -278,17 +281,18 @@ already does, using ``RunMetadata.fromRun``).  ``readRunMetadata`` checks the re
 and only then the cached PV-file / live-data lookup, so that the state is always derived from the data
 actually being reduced, and a registered run never uses a cached result.
 
-Open questions
-==============
+Resolved questions
+==================
 
-* Is chunk accumulation suspended while the post-processing script runs?  The ``livereduce``
-  documentation is inconsistent on this point.  If it is not, a clone could capture a partially-added
-  chunk.
-* ``livereduce`` runs for a long time in a single process, so SNAPRed's singletons and caches persist
-  across updates and across runs.  Registered data bypasses the neutron-data and run-metadata caches;
-  are there other caches that must be reset on a run transition?
-* With ``normalizeByBeamMonitor`` enabled, ``fetchMonitorWorkspace`` loads the monitors from the NeXus
-  file, which does not exist for a live run.  Should monitor data also be registrable, or should this
-  combination be rejected?
-* Should an explicit live-data request (``item.liveDataArgs``) be satisfied by a registered workspace?
-  Under this design it is, because ``RegisteredSource`` is exclusive.
+* **Is chunk accumulation suspended while the post-processing script runs?**  This does not need to be
+  handled by SNAPRed.  The registered workspace is cloned only on lookup, at the start of a fetch, as
+  for the existing cached data; everything after that operates on the clone.  Any coordination
+  between ``livereduce``'s accumulation and the post-processing script is a matter of the
+  ``livereduce`` setup.
+* **Which caches must be reset on a run transition?**  None are known.  Registered data bypasses the
+  neutron-data and run-metadata caches, and the other caches manage their own lifetimes.
+* **Beam-monitor normalization** (``normalizeByBeamMonitor``): ``fetchMonitorWorkspace`` only loads the
+  monitors from the NeXus file, so SNAPRed's own live-data mode does not support it either.  Registered
+  data has the same limitation, and no monitor source is added for it.
+* **Can an explicit live-data request be satisfied by a registered workspace?**  No: it is an error, as
+  described under ``RegisteredSource``.
