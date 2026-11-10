@@ -15,6 +15,7 @@ from snapred.backend.dao.request.CreateIndexEntryRequest import CreateIndexEntry
 from snapred.backend.dao.request.NormalizationExportRequest import NormalizationExportRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.RunMetadata import RunMetadata
+from snapred.backend.dao.state.Cycle import Cycle
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.dao.state.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.StateConfig import StateConfig
@@ -55,6 +56,12 @@ class DataFactoryService:
     def getInstrumentConfig(self, runId: str) -> InstrumentConfig:
         return self.lookupService.readInstrumentConfig(runId)
 
+    def cycleInfoExists(self, runNumber: str) -> bool:
+        return self.lookupService.cycleInfoExists(runNumber)
+
+    def getCycle(self, runNumber: str) -> Cycle:
+        return self.lookupService.getCycle(runNumber)
+
     def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
         return self.lookupService.readStateConfig(runId, useLiteMode)
 
@@ -81,6 +88,43 @@ class DataFactoryService:
 
     def getDefaultInstrumentState(self, runId: str):
         return self.lookupService.generateInstrumentState(runId)
+
+    def updateInstrumentConfigCycle(self, cycle: Cycle, author: str):
+        """
+        Attach `cycle` to the instrument parameters that govern its runs.
+
+        Each configuration epoch within the cycle gets its own entry, bounded to that epoch.
+        An entry therefore never reaches past the end of the cycle, into a neighbouring cycle,
+        or into the runs collected between cycles.
+
+        Every epoch keeps the parameters that already govern it. Those parameters carry
+        `stateIdSchema`, which fixes a run's state ID and so which calibrations it can see.
+
+        Returns the parameters that govern the start of the cycle.
+
+        Raises FileNotFoundError if no parameters govern the cycle, and RuntimeError if an
+        entry already carries a different cycle.
+        """
+        segments = self.lookupService.getRelevantInstrumentParameterSegments(cycle.runRange)
+        if not segments:
+            raise FileNotFoundError(f"No instrument parameters found for cycle '{cycle.cycleID}'")
+
+        # Read every segment before writing any, so that a write cannot change what is read next.
+        instrumentConfigs = [
+            self.lookupService.readInstrumentParametersVersion(segment.version) for segment in segments
+        ]
+        for segment, instrumentConfig in zip(segments, instrumentConfigs):
+            priorCycle = instrumentConfig.cycle
+            if priorCycle is not None and priorCycle.cycleID != cycle.cycleID:
+                raise RuntimeError(
+                    f"instrument parameters v{segment.version} already carry cycle "
+                    f"'{priorCycle.cycleID}'. Each cycle needs its own entry, so one entry "
+                    f"cannot also serve '{cycle.cycleID}'."
+                )
+        for segment, instrumentConfig in zip(segments, instrumentConfigs):
+            instrumentConfig.cycle = cycle
+            self.lookupService.writeInstrumentParameters(instrumentConfig, segment.runRange.toAppliesTo(), author)
+        return instrumentConfigs[0]
 
     def getCompatibleStates(self, runId: str, useLiteMode: bool):
         return self.lookupService.findCompatibleStates(runId, useLiteMode)
@@ -123,12 +167,17 @@ class DataFactoryService:
         self,
         runId: str,
         useLiteMode: bool,
+        cycleID: str,
         version: Version = VersionState.LATEST,
         state: Optional[str] = None,
     ) -> CalibrationRecord:
         """
-        If no version is passed, will use the latest version applicable to runId
+        If no version is passed, will use the latest version applicable to runId.
+        Validates that runId belongs to the given cycle.
         """
+        actualCycleID = self.getCycle(runId).cycleID
+        if actualCycleID != cycleID:
+            raise ValueError(f"Run {runId} belongs to cycle {actualCycleID}, not the requested cycle {cycleID}")
         return self.lookupService.readCalibrationRecord(runId, useLiteMode, state, version)
 
     @validate_call
@@ -165,11 +214,20 @@ class DataFactoryService:
 
     @validate_call
     def getNormalizationRecord(
-        self, runId: str, useLiteMode: bool, state: str, version: Version = VersionState.LATEST
+        self,
+        runId: str,
+        useLiteMode: bool,
+        state: str,
+        cycleID: str,
+        version: Version = VersionState.LATEST,
     ) -> NormalizationRecord:
         """
-        If no version is passed, will use the latest version applicable to runId
+        If no version is passed, will use the latest version applicable to runId.
+        Validates that runId belongs to the given cycle.
         """
+        actualCycleID = self.getCycle(runId).cycleID
+        if actualCycleID != cycleID:
+            raise ValueError(f"Run {runId} belongs to cycle {actualCycleID}, not the requested cycle {cycleID}")
         return self.lookupService.readNormalizationRecord(runId, useLiteMode, state, version)
 
     @validate_call

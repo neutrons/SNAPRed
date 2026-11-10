@@ -21,6 +21,8 @@ class ContinueWarning(Exception):
         NO_WRITE_PERMISSIONS = auto()
         CALIBRATION_HOME_WRITE_PERMISSION = auto()
         CONTINUE_WITHOUT_NORMALIZATION = auto()
+        # Cycle info is absent/invalid: reduction proceeds, but output is labelled "diagnostic".
+        MISSING_CYCLE_INFO = auto()
 
     class Model(BaseModel):
         message: str

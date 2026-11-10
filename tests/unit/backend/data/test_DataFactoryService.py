@@ -4,9 +4,12 @@ import unittest.mock as mock
 from pathlib import Path
 from random import randint
 
+import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, DeleteWorkspace, mtd
 
 from snapred.backend.dao.calibration import Calibration
+from snapred.backend.dao.indexing.RunRange import RunRange
+from snapred.backend.dao.indexing.VersionSegment import VersionSegment
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state import InstrumentConfig, InstrumentState
@@ -136,6 +139,19 @@ class TestDataFactoryService(unittest.TestCase):
         actual = self.instance.getDefaultInstrumentState("123")
         assert actual == self.instance.lookupService.generateInstrumentState.return_value
 
+    def test_getCycle(self):
+        # The cycle logic lives in `LocalDataService`; `DataFactoryService` just delegates.
+        self.instance.lookupService.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
+        actual = self.instance.getCycle("200")
+        assert actual == self.instance.lookupService.getCycle.return_value
+        self.instance.lookupService.getCycle.assert_called_once_with("200")
+
+    def test_cycleInfoExists(self):
+        self.instance.lookupService.cycleInfoExists = mock.Mock(return_value=True)
+        actual = self.instance.cycleInfoExists("200")
+        assert actual == self.instance.lookupService.cycleInfoExists.return_value
+        self.instance.lookupService.cycleInfoExists.assert_called_once_with("200")
+
     ## TEST CALIBRATION METHODS
 
     def test_getCalibrationDataPath(self):
@@ -169,9 +185,29 @@ class TestDataFactoryService(unittest.TestCase):
 
     def test_getCalibrationRecord(self):
         runId = "345"
+        self.instance.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
         for useLiteMode in [True, False]:
-            actual = self.instance.getCalibrationRecord(runId, useLiteMode, self.version, "stateId")
+            actual = self.instance.getCalibrationRecord(runId, useLiteMode, "2024-A", self.version, "stateId")
             assert actual == self.expected(runId, useLiteMode, "stateId", self.version)
+
+    def test_getCalibrationRecord_with_valid_cycleID(self):
+        runId = "345"
+        self.instance.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
+        for useLiteMode in [True, False]:
+            actual = self.instance.getCalibrationRecord(runId, useLiteMode, "2024-A", self.version, "stateId")
+            assert actual == self.expected(runId, useLiteMode, "stateId", self.version)
+        self.instance.getCycle.assert_called_with(runId)
+
+    def test_getCalibrationRecord_with_invalid_cycleID(self):
+        runId = "345"
+        self.instance.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
+        with pytest.raises(ValueError, match="Run 345 belongs to cycle 2024-A, not the requested cycle 2024-B"):
+            self.instance.getCalibrationRecord(runId, True, "2024-B", self.version, "stateId")
+
+    def test_getCalibrationRecord_without_cycleID_raises_error(self):
+        runId = "345"
+        with pytest.raises(Exception):  # noqa: PT011
+            self.instance.getCalibrationRecord(runId, True, self.version, "stateId")
 
     def test_getCalibrationDataWorkspace(self):
         self.instance.groceryService.fetchWorkspace = mock.Mock()
@@ -212,9 +248,29 @@ class TestDataFactoryService(unittest.TestCase):
             assert actual == [self.expected("Normalization")]
 
     def test_getNormalizationRecord(self):
+        self.instance.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
         for useLiteMode in [True, False]:
-            actual = self.instance.getNormalizationRecord("123", useLiteMode, "stateId", self.version)
+            actual = self.instance.getNormalizationRecord("123", useLiteMode, "stateId", "2024-A", self.version)
             assert actual == self.expected("123", useLiteMode, "stateId", self.version)
+
+    def test_getNormalizationRecord_with_valid_cycleID(self):
+        runId = "123"
+        self.instance.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
+        for useLiteMode in [True, False]:
+            actual = self.instance.getNormalizationRecord(runId, useLiteMode, "stateId", "2024-A", self.version)
+            assert actual == self.expected(runId, useLiteMode, "stateId", self.version)
+        self.instance.getCycle.assert_called_with(runId)
+
+    def test_getNormalizationRecord_with_invalid_cycleID(self):
+        runId = "123"
+        self.instance.getCycle = mock.Mock(return_value=mock.Mock(cycleID="2024-A"))
+        with pytest.raises(ValueError, match="Run 123 belongs to cycle 2024-A, not the requested cycle 2024-B"):
+            self.instance.getNormalizationRecord(runId, True, "stateId", "2024-B", self.version)
+
+    def test_getNormalizationRecord_without_cycleID_raises_error(self):
+        runId = "123"
+        with pytest.raises(Exception):  # noqa: PT011
+            self.instance.getNormalizationRecord(runId, True, "stateId", self.version)
 
     def test_getNormalizationDataWorkspace(self):
         self.instance.groceryService.fetchWorkspace = mock.Mock()
@@ -336,6 +392,136 @@ class TestDataFactoryService(unittest.TestCase):
         assert self.instance.workspaceDoesExist(wsname)
         self.instance.deleteWorkspaceUnconditional(wsname)
         assert not self.instance.workspaceDoesExist(wsname)
+
+    ##### TEST CYCLE METHODS ####
+
+    def test_updateInstrumentConfigCycle(self):
+        from snapred.backend.dao.state.Cycle import Cycle
+
+        cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+        mockInstrumentConfig = mock.MagicMock()
+        mockInstrumentConfig.cycle = None  # a fresh epoch entry carries no cycle yet
+        # one segment: the cycle spans no configuration boundary
+        self.instance.lookupService.getRelevantInstrumentParameterSegments = mock.Mock(
+            return_value=[VersionSegment(runRange=RunRange(firstRun=100), version=7)]
+        )
+        self.instance.lookupService.readInstrumentParametersVersion = mock.Mock(return_value=mockInstrumentConfig)
+        self.instance.lookupService.writeInstrumentParameters = mock.Mock()
+
+        result = self.instance.updateInstrumentConfigCycle(cycle, "testAuthor")
+
+        self.instance.lookupService.getRelevantInstrumentParameterSegments.assert_called_once_with(cycle.runRange)
+        self.instance.lookupService.readInstrumentParametersVersion.assert_called_once_with(7)
+        assert mockInstrumentConfig.cycle == cycle
+        self.instance.lookupService.writeInstrumentParameters.assert_called_once_with(
+            mockInstrumentConfig, ">=100", "testAuthor"
+        )
+        assert result == mockInstrumentConfig
+
+    def test_updateInstrumentConfigCycle_boundedAtConfigBoundary(self):
+        # A cycle spanning a configuration boundary must be written as one entry per segment,
+        # each keeping the configuration already governing its range.  A single open-ended
+        # ">=100" would instead impose `configAtStart` -- and its `stateIdSchema` -- on every
+        # run from 200 up, moving those runs to a different state.
+        from snapred.backend.dao.state.Cycle import Cycle
+
+        cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+        configAtStart = mock.MagicMock()
+        configAbove = mock.MagicMock()
+        configAtStart.cycle = configAbove.cycle = None
+        self.instance.lookupService.getRelevantInstrumentParameterSegments = mock.Mock(
+            return_value=[
+                VersionSegment(runRange=RunRange(firstRun=100, lastRun=199), version=1),
+                VersionSegment(runRange=RunRange(firstRun=200), version=2),
+            ]
+        )
+        self.instance.lookupService.readInstrumentParametersVersion = mock.Mock(
+            side_effect=[configAtStart, configAbove]
+        )
+        self.instance.lookupService.writeInstrumentParameters = mock.Mock()
+
+        result = self.instance.updateInstrumentConfigCycle(cycle, "testAuthor")
+
+        # both segments carry the cycle ...
+        assert configAtStart.cycle == cycle
+        assert configAbove.cycle == cycle
+        # ... but each keeps its own configuration, read back by version
+        assert self.instance.lookupService.readInstrumentParametersVersion.call_args_list == [
+            mock.call(1),
+            mock.call(2),
+        ]
+        assert self.instance.lookupService.writeInstrumentParameters.call_args_list == [
+            mock.call(configAtStart, ">=100,<=199", "testAuthor"),
+            mock.call(configAbove, ">=200", "testAuthor"),
+        ]
+        # the configuration governing the start of the cycle is what is returned
+        assert result == configAtStart
+
+    def test_updateInstrumentConfigCycle_boundedByTheCycleEnd(self):
+        # A cycle with a known last run must not reach past it: the runs collected after a
+        # cycle ends belong to no cycle, and only a bounded entry can leave them alone.
+        from snapred.backend.dao.state.Cycle import Cycle
+
+        cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100, lastRun=250)
+        mockInstrumentConfig = mock.MagicMock()
+        mockInstrumentConfig.cycle = None
+        self.instance.lookupService.getRelevantInstrumentParameterSegments = mock.Mock(
+            return_value=[VersionSegment(runRange=RunRange(firstRun=100, lastRun=250), version=1)]
+        )
+        self.instance.lookupService.readInstrumentParametersVersion = mock.Mock(return_value=mockInstrumentConfig)
+        self.instance.lookupService.writeInstrumentParameters = mock.Mock()
+
+        self.instance.updateInstrumentConfigCycle(cycle, "testAuthor")
+
+        self.instance.lookupService.getRelevantInstrumentParameterSegments.assert_called_once_with(cycle.runRange)
+        self.instance.lookupService.writeInstrumentParameters.assert_called_once_with(
+            mockInstrumentConfig, ">=100,<=250", "testAuthor"
+        )
+
+    def test_updateInstrumentConfigCycle_entrySpanningTwoCycles(self):
+        # Each cycle gets its own instrument-parameter entry, so an entry that already carries
+        # a different cycle must not be quietly retagged with this one.
+        from snapred.backend.dao.state.Cycle import Cycle
+
+        priorCycle = Cycle(cycleID="2023-A", startDate="2023-01-01", stopDate="2023-06-30", firstRun=50)
+        cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+        instrumentConfig = mock.MagicMock()
+        instrumentConfig.cycle = priorCycle
+        self.instance.lookupService.getRelevantInstrumentParameterSegments = mock.Mock(
+            return_value=[VersionSegment(runRange=RunRange(firstRun=100), version=4)]
+        )
+        self.instance.lookupService.readInstrumentParametersVersion = mock.Mock(return_value=instrumentConfig)
+        self.instance.lookupService.writeInstrumentParameters = mock.Mock()
+
+        with pytest.raises(RuntimeError, match="already carry cycle '2023-A'"):
+            self.instance.updateInstrumentConfigCycle(cycle, "testAuthor")
+        # nothing is written when the check fails
+        self.instance.lookupService.writeInstrumentParameters.assert_not_called()
+        assert instrumentConfig.cycle == priorCycle
+
+    def test_updateInstrumentConfigCycle_reregisteringTheSameCycleIsAllowed(self):
+        from snapred.backend.dao.state.Cycle import Cycle
+
+        cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+        instrumentConfig = mock.MagicMock()
+        instrumentConfig.cycle = cycle
+        self.instance.lookupService.getRelevantInstrumentParameterSegments = mock.Mock(
+            return_value=[VersionSegment(runRange=RunRange(firstRun=100), version=4)]
+        )
+        self.instance.lookupService.readInstrumentParametersVersion = mock.Mock(return_value=instrumentConfig)
+        self.instance.lookupService.writeInstrumentParameters = mock.Mock()
+
+        self.instance.updateInstrumentConfigCycle(cycle, "testAuthor")
+        self.instance.lookupService.writeInstrumentParameters.assert_called_once()
+
+    def test_updateInstrumentConfigCycle_noParameters(self):
+        from snapred.backend.dao.state.Cycle import Cycle
+
+        cycle = Cycle(cycleID="2024-A", startDate="2024-01-01", stopDate="2024-06-30", firstRun=100)
+        self.instance.lookupService.getRelevantInstrumentParameterSegments = mock.Mock(return_value=[])
+
+        with pytest.raises(FileNotFoundError, match="No instrument parameters found for cycle '2024-A'"):
+            self.instance.updateInstrumentConfigCycle(cycle, "testAuthor")
 
     ##### TEST LIVE-DATA SUPPORT METHODS ####
 
