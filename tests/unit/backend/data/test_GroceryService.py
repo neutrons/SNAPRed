@@ -663,9 +663,9 @@ class TestGroceryService(unittest.TestCase):
         runId = "555"
         useLiteMode = True
         key = (runId, useLiteMode)
-        self.instance.neutronDataCache.loadedRuns[key] = 1
+        self.instance.neutronData.cache.loadedRuns[key] = 1
         self.instance.rebuildNeutronCache()
-        assert self.instance.neutronDataCache.loadedRuns == {}
+        assert self.instance.neutronData.cache.loadedRuns == {}
 
     def test_rebuildGroupingCache(self):
         """Test the correct behavior of the rebuildGroupingCache method"""
@@ -697,11 +697,11 @@ class TestGroceryService(unittest.TestCase):
         wsname = "_test_ws_"
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
         key = (runId, useLiteMode)
-        self.instance.neutronDataCache.loadedRuns[key] = 1
+        self.instance.neutronData.cache.loadedRuns[key] = 1
         self.instance._loadedGroupings[self.instance._key(groupingScheme, runId, useLiteMode)] = wsname
         self.instance._loadedInstruments[key] = wsname
         self.instance.rebuildCache()
-        assert self.instance.neutronDataCache.loadedRuns == {}
+        assert self.instance.neutronData.cache.loadedRuns == {}
         assert self.instance._loadedGroupings == {}
         assert self.instance._loadedInstruments == {}
 
@@ -715,13 +715,13 @@ class TestGroceryService(unittest.TestCase):
         for useLiteMode in (True, False):
             runNumbers = ("12345", "12346", "12347", "12348", "12349")
             keys = [(runNumber, useLiteMode) for runNumber in runNumbers]
-            self.instance.neutronDataCache.loadedRuns = startRunCache.copy()
-            self.instance.neutronDataCache.loadedRuns.update({k: 0 for k in keys})
+            self.instance.neutronData.cache.loadedRuns = startRunCache.copy()
+            self.instance.neutronData.cache.loadedRuns.update({k: 0 for k in keys})
 
-            self.instance.neutronDataCache.uncacheableKeys = keys
+            self.instance.neutronData.cache.uncacheableKeys = keys
             self.instance.clearLiveDataCache()
-            assert self.instance.neutronDataCache.uncacheableKeys == []
-            assert self.instance.neutronDataCache.loadedRuns == startRunCache
+            assert self.instance.neutronData.cache.uncacheableKeys == []
+            assert self.instance.neutronData.cache.loadedRuns == startRunCache
             for k in keys:
                 self.instance.deleteWorkspaceUnconditional.assert_called_with(
                     self.instance._createRawNeutronWorkspaceName(*k)
@@ -1598,7 +1598,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=self.sampleWS)
         self.instance._updateNeutronCacheFromADS = mock.Mock()
         self.instance._updateInstrumentCacheFromADS = mock.Mock()
-        self.instance.neutronDataCache.loadedRuns = {(self.runNumber, self.useLiteMode): 0}
+        self.instance.neutronData.cache.loadedRuns = {(self.runNumber, self.useLiteMode): 0}
         self.instance._loadedInstruments = {}
         testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
         assert testWS == self.sampleWS
@@ -1607,7 +1607,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=self.sampleWS)
         self.instance._updateNeutronCacheFromADS = mock.Mock()
         self.instance._updateInstrumentCacheFromADS = mock.Mock()
-        self.instance.neutronDataCache.loadedRuns = {(self.runNumber, self.useLiteMode): 0}
+        self.instance.neutronData.cache.loadedRuns = {(self.runNumber, self.useLiteMode): 0}
         self.instance._loadedInstruments = {}
         testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)  # noqa: F841
         assert self.instance._loadedInstruments == {(self.stateId, self.useLiteMode): self.sampleWS}
@@ -1615,7 +1615,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_instrument_donor_cached(self):
         self.instance._updateNeutronCacheFromADS = mock.Mock()
         self.instance._updateInstrumentCacheFromADS = mock.Mock()
-        self.instance.neutronDataCache.loadedRuns = {}
+        self.instance.neutronData.cache.loadedRuns = {}
         self.instance._loadedInstruments = {(self.stateId, self.useLiteMode): self.sampleWS}
         testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
         assert testWS == self.sampleWS
@@ -1624,7 +1624,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance.dataService.generateStateId = mock.Mock(return_value=(self.stateId2, self.detectorState2))
         self.instance._updateNeutronCacheFromADS = mock.Mock()
         self.instance._updateInstrumentCacheFromADS = mock.Mock()
-        self.instance.neutronDataCache.loadedRuns = {}
+        self.instance.neutronData.cache.loadedRuns = {}
         self.instance._loadedInstruments = {}
         testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
         assert mtd.doesExist(testWS)
@@ -1655,7 +1655,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance.dataService.generateStateId = mock.Mock(return_value=(self.stateId2, self.detectorState2))
         self.instance._updateNeutronCacheFromADS = mock.Mock()
         self.instance._updateInstrumentCacheFromADS = mock.Mock()
-        self.instance.neutronDataCache.loadedRuns = {}
+        self.instance.neutronData.cache.loadedRuns = {}
         self.instance._loadedInstruments = {}
         testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
         assert self.instance._loadedInstruments == {(self.stateId2, self.useLiteMode): testWS}
@@ -1824,13 +1824,13 @@ class TestGroceryService(unittest.TestCase):
 
     def test_getCachedWorkspaces(self):
         rawWsName = self.instance._createRawNeutronWorkspaceName("556854", False)
-        self.instance.neutronDataCache.loadedRuns = {("556854", False): 0}
+        self.instance.neutronData.cache.loadedRuns = {("556854", False): 0}
         self.instance._loadedGroupings = {("column", "556854", True): "d"}
         self.instance._loadedInstruments = {("556854", False): rawWsName, ("556855", True): "hello"}
         assert set(self.instance.getCachedWorkspaces()) == set([rawWsName, "d", "hello"])
 
     def test_getCachedWorkspaces_empty(self):
-        self.instance.neutronDataCache.loadedRuns = {}
+        self.instance.neutronData.cache.loadedRuns = {}
         self.instance._loadedGroupings = {}
         self.instance._loadedInstruments = {}
 
@@ -1859,7 +1859,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_clearADS(self):
         rawWsName = self.instance._createRawNeutronWorkspaceName(0, "a")
-        self.instance.neutronDataCache.loadedRuns = {(0, "a"): rawWsName}
+        self.instance.neutronData.cache.loadedRuns = {(0, "a"): rawWsName}
         self.instance._loadedGroupings = {(1, "c"): "d"}
 
         with mock.patch.object(self.instance, "rebuildCache") as mockRebuildCache:
@@ -1924,7 +1924,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_getResidentWorkspaces_exclude_cache(self):
         rawWsName = self.instance._createRawNeutronWorkspaceName(0, "a")
-        self.instance.neutronDataCache.loadedRuns = {(0, "a"): rawWsName}
+        self.instance.neutronData.cache.loadedRuns = {(0, "a"): rawWsName}
         expected = list(set(mtd.getObjectNames()).difference([rawWsName]))
         assert len(expected)
 

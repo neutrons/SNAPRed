@@ -91,10 +91,10 @@ Decisions
 Design: neutron data sources
 ============================
 
-The sources, the resolver and the registration owner go into a new package,
+The sources, the registries, the resolvers and the registration owner go into a new package,
 ``snapred.backend.data.source``.  ``GroceryService`` keeps its public fetch methods
 (``fetchNeutronDataSingleUse``, ``fetchNeutronDataCached``, ``clearLiveDataCache``, ...), and delegates to
-the resolver.
+``NeutronDataSources``.
 
 Sources
 ~~~~~~~
@@ -117,7 +117,9 @@ Sources
 ``SourcedData`` holds the workspace name, the loader that was used, its resolution, the provenance chain,
 and, for derived data, the data that it was derived from (``derivedFrom``).
 
-``GroceryService`` holds two registries:
+``NeutronDataSources`` builds the two registries, a resolver for each, and the shared cache.
+``GroceryService`` holds only that object (``neutronData``), and delegates its neutron-data fetches to
+it.  The registries are:
 
 =========================  ===========  ==========  =========
 native registry            provides     cacheable   exclusive
@@ -156,7 +158,7 @@ Resolver
 ~~~~~~~~
 
 A ``NeutronDataResolver`` produces the data for an item from one registry, so at one resolution.
-``GroceryService`` has a resolver for each registry, and chooses one by the item's ``useLiteMode``.
+``NeutronDataSources`` has a resolver for each registry, and chooses one by the item's ``useLiteMode``.
 
 1. If an *exclusive* source is available for the item, it is the only source that may be used.  For a
    lite-mode request, an exclusive native source must also exclude the lite-mode file: the lite
