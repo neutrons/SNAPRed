@@ -13,14 +13,8 @@ from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.backend.data.source.DataSourceRegistry import DataSourceRegistry
-from snapred.backend.data.source.FileSource import FileSource
-from snapred.backend.data.source.LiteConversionSource import LiteConversionSource
-from snapred.backend.data.source.LiveListenerSource import LiveListenerSource
-from snapred.backend.data.source.NeutronDataCache import NeutronDataCache
-from snapred.backend.data.source.NeutronDataResolver import NeutronDataResolver
+from snapred.backend.data.source.NeutronDataSources import NeutronDataSources
 from snapred.backend.data.source.NeutronWorkspaceNames import NeutronWorkspaceNames
-from snapred.backend.data.source.Resolution import Resolution
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
@@ -61,9 +55,6 @@ class GroceryService:
 
         self.workspaceMetadataService = WorkspaceMetadataService()
 
-        # The neutron-data cache: see `NeutronDataCache`.
-        self.neutronDataCache = NeutronDataCache(self)
-
         # Cache maps to workspace names, for various purposes
 
         #   -- (<grouping scheme>, stateId, useLiteMode) -> <workspace name>
@@ -77,27 +68,8 @@ class GroceryService:
         self.grocer = FetchGroceriesRecipe()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
 
-        # The sources of native-resolution data are used by the lite-mode conversion, as well as for
-        #   native-resolution fetches.
-        self.nativeNeutronSources = DataSourceRegistry(
-            Resolution.NATIVE,
-            [
-                FileSource(Resolution.NATIVE, self.dataService, self.grocer),
-                LiveListenerSource(self.dataService, self.grocer, self),
-            ],
-        )
-        self._liteConversion = LiteConversionSource(self.nativeNeutronSources, self.neutronDataCache, self)
-        self.liteNeutronSources = DataSourceRegistry(
-            Resolution.LITE,
-            [
-                FileSource(Resolution.LITE, self.dataService, self.grocer),
-                self._liteConversion,
-            ],
-        )
-        self.neutronDataResolvers: Dict[Resolution, NeutronDataResolver] = {
-            sources.resolution: NeutronDataResolver(sources, self.neutronDataCache, self)
-            for sources in (self.nativeNeutronSources, self.liteNeutronSources)
-        }
+        # The neutron-data sources, and the neutron-data cache.
+        self.neutronData = NeutronDataSources(self.dataService, self.grocer, self)
 
     def _defaultClass(self, val, clazz):
         if val is None:
@@ -124,7 +96,7 @@ class GroceryService:
         """
         Rebuild the neutron data cache
         """
-        self.neutronDataCache.rebuild()
+        self.neutronData.cache.rebuild()
 
     def rebuildGroupingCache(self):
         """
@@ -153,7 +125,7 @@ class GroceryService:
         :rtype: List[WorkspaceName]
         """
         cachedWorkspaces = set()
-        cachedWorkspaces.update(self.neutronDataCache.cachedWorkspaces())
+        cachedWorkspaces.update(self.neutronData.cache.cachedWorkspaces())
         cachedWorkspaces.update(self._loadedGroupings.values())
         cachedWorkspaces.update(self._loadedInstruments.values())
 
@@ -169,7 +141,7 @@ class GroceryService:
         :param useLiteMode: whether to use lite or native resolution
         :type useLiteMode: bool
         """
-        self.neutronDataCache.updateFromADS(runNumber, useLiteMode)
+        self.neutronData.cache.updateFromADS(runNumber, useLiteMode)
 
     def _updateGroupingCacheFromADS(self, key, workspace):
         """
@@ -646,7 +618,7 @@ class GroceryService:
         wsName = self._loadedInstruments.get(instrumentKey)
         if wsName is None:
             self._updateNeutronCacheFromADS(runNumber, useLiteMode)
-            if self.neutronDataCache.contains(runKey):
+            if self.neutronData.cache.contains(runKey):
                 # If possible, use a cached neutron-data workspace as an instrument donor
                 wsName = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
             else:
@@ -814,12 +786,9 @@ class GroceryService:
 
         :rtype: Dict[str, Any]
         """
-        result = self._neutronDataResolver(item).fetchSingleUse(item)
+        result = self.neutronData.fetchSingleUse(item)
         self._processNeutronDataCopy(item, result["workspace"])
         return result
-
-    def _neutronDataResolver(self, item: GroceryListItem) -> NeutronDataResolver:
-        return self.neutronDataResolvers[Resolution.fromLiteMode(item.useLiteMode)]
 
     def fetchNeutronDataCached(self, item: GroceryListItem) -> Dict[str, Any]:
         """
@@ -836,7 +805,7 @@ class GroceryService:
 
         :rtype: Dict[str, Any]
         """
-        result = self._neutronDataResolver(item).fetchCached(item)
+        result = self.neutronData.fetchCached(item)
         self._processNeutronDataCopy(item, result["workspace"])
         return result
 
@@ -844,7 +813,7 @@ class GroceryService:
         """
         Clear cache for and delete any live-data workspaces.
         """
-        self.neutronDataCache.clearUncacheable()
+        self.neutronData.cache.clearUncacheable()
 
     def fetchLiteDataMap(self) -> WorkspaceName:
         """
@@ -1407,7 +1376,7 @@ class GroceryService:
         :param export: export the converted data to disk
         :type export: bool
         """
-        self._liteConversion.convert(workspace, export=export)
+        self.neutronData.convertToLiteMode(workspace, export=export)
 
     ## CLEANUP METHODS
 
