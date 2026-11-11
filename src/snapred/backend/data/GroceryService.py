@@ -13,6 +13,7 @@ from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.backend.data.source.DataSourceRegistry import DataSourceRegistry
 from snapred.backend.data.source.FileSource import FileSource
 from snapred.backend.data.source.LiteConversionSource import LiteConversionSource
 from snapred.backend.data.source.LiveListenerSource import LiveListenerSource
@@ -76,17 +77,27 @@ class GroceryService:
         self.grocer = FetchGroceriesRecipe()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
 
-        self._liteConversion = LiteConversionSource(self)
-        self.neutronDataResolver = NeutronDataResolver(
-            sources=[
+        # The sources of native-resolution data are used by the lite-mode conversion, as well as for
+        #   native-resolution fetches.
+        self.nativeNeutronSources = DataSourceRegistry(
+            Resolution.NATIVE,
+            [
                 FileSource(Resolution.NATIVE, self.dataService, self.grocer),
-                FileSource(Resolution.LITE, self.dataService, self.grocer),
                 LiveListenerSource(self.dataService, self.grocer, self),
+            ],
+        )
+        self._liteConversion = LiteConversionSource(self.nativeNeutronSources, self.neutronDataCache, self)
+        self.liteNeutronSources = DataSourceRegistry(
+            Resolution.LITE,
+            [
+                FileSource(Resolution.LITE, self.dataService, self.grocer),
                 self._liteConversion,
             ],
-            cache=self.neutronDataCache,
-            workspaces=self,
         )
+        self.neutronDataResolvers: Dict[Resolution, NeutronDataResolver] = {
+            sources.resolution: NeutronDataResolver(sources, self.neutronDataCache, self)
+            for sources in (self.nativeNeutronSources, self.liteNeutronSources)
+        }
 
     def _defaultClass(self, val, clazz):
         if val is None:
@@ -803,9 +814,12 @@ class GroceryService:
 
         :rtype: Dict[str, Any]
         """
-        result = self.neutronDataResolver.fetchSingleUse(item)
+        result = self._neutronDataResolver(item).fetchSingleUse(item)
         self._processNeutronDataCopy(item, result["workspace"])
         return result
+
+    def _neutronDataResolver(self, item: GroceryListItem) -> NeutronDataResolver:
+        return self.neutronDataResolvers[Resolution.fromLiteMode(item.useLiteMode)]
 
     def fetchNeutronDataCached(self, item: GroceryListItem) -> Dict[str, Any]:
         """
@@ -822,7 +836,7 @@ class GroceryService:
 
         :rtype: Dict[str, Any]
         """
-        result = self.neutronDataResolver.fetchCached(item)
+        result = self._neutronDataResolver(item).fetchCached(item)
         self._processNeutronDataCopy(item, result["workspace"])
         return result
 

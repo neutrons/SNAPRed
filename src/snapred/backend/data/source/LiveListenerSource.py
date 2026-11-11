@@ -1,6 +1,5 @@
 import json
 from datetime import datetime, timedelta
-from typing import Optional
 
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.RunMetadata import RunMetadata
@@ -43,12 +42,7 @@ class LiveListenerSource(DataSource):
     def available(self, item: GroceryListItem) -> bool:  # noqa: ARG002
         return self.dataService.hasLiveDataConnection()
 
-    def load(
-        self,
-        item: GroceryListItem,
-        outputWorkspace: WorkspaceName,
-        inputData: Optional[SourcedData] = None,  # noqa: ARG002
-    ) -> SourcedData:
+    def load(self, item: GroceryListItem, outputWorkspace: WorkspaceName) -> SourcedData:
         runNumber, liveDataArgs = item.runNumber, item.liveDataArgs
         if not self.dataService.hasLiveDataConnection():
             raise ConnectionError("no live-data connection is available")
