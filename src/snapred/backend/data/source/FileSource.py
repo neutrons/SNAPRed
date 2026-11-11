@@ -1,5 +1,3 @@
-from typing import Optional
-
 from mantid.api import FileLoaderRegistry
 
 from snapred.backend.dao.ingredients import GroceryListItem
@@ -38,12 +36,7 @@ class FileSource(DataSource):
         filePath = self._filePath(item)
         return bool(filePath) and filePath.exists()
 
-    def load(
-        self,
-        item: GroceryListItem,
-        outputWorkspace: WorkspaceName,
-        inputData: Optional[SourcedData] = None,  # noqa: ARG002
-    ) -> SourcedData:
+    def load(self, item: GroceryListItem, outputWorkspace: WorkspaceName) -> SourcedData:
         filePath = self._filePath(item)
         loader = item.loader
         loaderArgs = "{}"

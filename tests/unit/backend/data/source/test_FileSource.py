@@ -45,7 +45,6 @@ def test_kind(resolution, kind):
     src = source(resolution)
     assert src.kind == kind
     assert src.provides == resolution
-    assert src.requires is None
     assert src.cacheable
 
 
@@ -78,7 +77,8 @@ def test_load_with_specified_loader(filePath):
     assert data.workspace == "out"
     assert data.loader == "LoadNexusProcessed"
     assert data.provenance == [DataSourceKind.NEXUS_FILE]
-    assert data.inputData is None
+    assert data.derivedFrom is None
+    assert data.resolution == Resolution.NATIVE
 
 
 @mock.patch(ThisModule + "FileLoaderRegistry")

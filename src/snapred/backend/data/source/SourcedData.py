@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from snapred.backend.data.source.DataSourceKind import DataSourceKind
+from snapred.backend.data.source.Resolution import Resolution
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 PROVENANCE_SEPARATOR = ">"
@@ -13,13 +14,14 @@ class SourcedData:
     A workspace produced by a data source.
 
     `provenance` is the chain of sources that produced it, from the original source to the final one.
-    `inputData` is the data that a transforming source was given, if any.
+    `derivedFrom` is the data that a deriving source obtained, and derived this data from, if any.
     """
 
     workspace: WorkspaceName
     loader: str
+    resolution: Resolution
     provenance: List[DataSourceKind] = field(default_factory=list)
-    inputData: Optional["SourcedData"] = None
+    derivedFrom: Optional["SourcedData"] = None
 
     @property
     def dataSource(self) -> str:

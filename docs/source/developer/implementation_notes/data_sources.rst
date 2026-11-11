@@ -58,8 +58,10 @@ Decisions
 =========
 
 1. **One system describes where data comes from.**  Each source is an object that declares the kind
-   of data and the resolution (native or lite) that it provides, and the resolution that it requires as
-   input, if any.  The order in which sources are tried is configuration, not code.
+   of data and the resolution (native or lite) that it provides.  The sources of each resolution are
+   held in a registry of their own.  A source that derives its data from other data obtains that data
+   itself, from the registry that provides it.  The order in which sources are tried is configuration,
+   not code.
 
 2. **Each source provides exactly one output.**  Where two outputs come from the same file (a
    diffraction-calibration table and its mask), there are two sources, which share an implementation.
@@ -100,28 +102,37 @@ Sources
 .. code-block:: python
 
     class DataSource(ABC):
-        kind: DataSourceKind                # nexusFile, liteFile, live, registered, liteConversion
-        provides: Resolution                # native or lite
-        requires: Resolution | None = None  # the resolution of the input data, for a transforming source
+        kind: DataSourceKind      # nexusFile, liteFile, live, registered, liteConversion
+        provides: Resolution      # native or lite
         cacheable: bool = True
-        exclusive: bool = False             # added with `RegisteredSource`
+        exclusive: bool = False   # added with `RegisteredSource`
 
         def available(self, item: GroceryListItem) -> bool: ...
-        def load(self, item: GroceryListItem, outputWorkspace: WorkspaceName,
-                 inputData: SourcedData | None = None) -> SourcedData: ...
+        def load(self, item: GroceryListItem, outputWorkspace: WorkspaceName) -> SourcedData: ...
 
-``SourcedData`` holds the workspace name, the loader that was used, the provenance chain, and the input
-data of a transforming source.
+    class DataSourceRegistry:
+        resolution: Resolution    # every source in the registry provides this resolution
+        def ordered(self) -> list[DataSource]: ...   # in the order set by `neutronData.sources.<resolution>`
 
-=========================  ===========  ==========  ==========  =========
-source                     provides     requires    cacheable   exclusive
-=========================  ===========  ==========  ==========  =========
-``FileSource`` (native)    native                   yes
-``FileSource`` (lite)      lite                     yes
-``LiveListenerSource``     native                   no [#]_
-``LiteConversionSource``   lite         native      yes
-``RegisteredSource``       native                   **no**      **yes**
-=========================  ===========  ==========  ==========  =========
+``SourcedData`` holds the workspace name, the loader that was used, its resolution, the provenance chain,
+and, for derived data, the data that it was derived from (``derivedFrom``).
+
+``GroceryService`` holds two registries:
+
+=========================  ===========  ==========  =========
+native registry            provides     cacheable   exclusive
+=========================  ===========  ==========  =========
+``FileSource`` (native)    native       yes
+``LiveListenerSource``     native       no [#]_
+``RegisteredSource``       native       **no**      **yes**
+=========================  ===========  ==========  =========
+
+=========================  ===========  ==========  =========
+lite registry              provides     cacheable   exclusive
+=========================  ===========  ==========  =========
+``FileSource`` (lite)      lite         yes
+``LiteConversionSource``   lite         yes
+=========================  ===========  ==========  =========
 
 .. [#] As now: live data has a cache entry, which ``clearLiveDataCache`` removes, but no raw workspace,
    so it is never reused.
@@ -132,8 +143,10 @@ source                     provides     requires    cacheable   exclusive
 * ``LiveListenerSource`` keeps all of its existing behavior: the run-status checks, the run-number
   checks, the ``LiveDataState`` exceptions, and the different errors for an explicit live-data request
   and for the live-data fallback.
-* ``LiteConversionSource`` clones its native input and converts the clone to lite mode.  It exports the
-  converted data to disk **only when its input came from** ``nexusFile`` (or has no recorded provenance:
+* ``LiteConversionSource`` depends on the native sources, so it is not their neighbor: it is given the
+  *native registry*, and obtains its native data through a ``NeutronDataResolver`` of its own, built
+  from that registry and the shared cache.  It clones the native data and converts the clone to lite
+  mode.  It exports the converted data to disk **only when the native data came from** ``nexusFile`` (or has no recorded provenance:
   a cached workspace that was not loaded through a data source).  This replaces the
   ``fromLiveData`` flag, and means that neither live nor registered data is ever exported: a lite-mode
   file of a partially-acquired run would otherwise be loaded later, by every file-based reduction of
@@ -142,16 +155,19 @@ source                     provides     requires    cacheable   exclusive
 Resolver
 ~~~~~~~~
 
-The resolver produces the data for an item at the requested resolution:
+A ``NeutronDataResolver`` produces the data for an item from one registry, so at one resolution.
+``GroceryService`` has a resolver for each registry, and chooses one by the item's ``useLiteMode``.
 
-1. If an *exclusive* source is available for the item, it is the only source that may start the chain.
-   For a lite-mode request, its native data is then converted, by the source that provides lite mode
-   from native.
-2. Otherwise, the sources that provide the requested resolution are tried in the configured order.  The
-   first available source is used.
-3. If that source requires input, the input resolution is resolved first, in the same way, and passed to
-   it.
-4. If no source is available, the resolver raises an error that lists the sources that were tried.
+1. If an *exclusive* source is available for the item, it is the only source that may be used.  For a
+   lite-mode request, an exclusive native source must also exclude the lite-mode file: the lite
+   registry treats ``LiteConversionSource`` as exclusive when its native registry has an exclusive
+   source available for the item, so that the registered data is converted.
+2. Otherwise, the sources in the registry are tried in the configured order.  The first available
+   source is used.
+3. If no source is available, the resolver raises an error.
+
+The resolvers do not resolve one resolution from another: a deriving source (``LiteConversionSource``)
+does that itself, through its own resolver.
 
 The order is set in ``application.yml``:
 
@@ -167,8 +183,9 @@ Cache
 
 The ``_loadedRuns`` cache moves out of ``GroceryService`` into its own object, ``NeutronDataCache``.  It
 keeps its current behavior: a raw workspace per run number and resolution, and numbered copies for each
-cached fetch, including the cached native input of a lite-mode conversion.  The resolver checks it
-before any source, at each resolution, so that a lite-mode conversion can use cached native data.  Data
+cached fetch, including the native data of a lite-mode conversion (its ``derivedFrom``), which is
+cached at its own resolution.  Each resolver checks the cache before any source; the cache is shared, so
+the conversion's native resolver uses cached native data.  Data
 from a source that is not cacheable is given a cache entry without a raw workspace, so that it is never
 reused.  A cache hit does not add to the provenance: a copy of a cached workspace has the provenance of
 the original.

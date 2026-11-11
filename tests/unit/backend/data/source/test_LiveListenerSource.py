@@ -53,7 +53,6 @@ def test_kind():
     source = Harness().source
     assert source.kind == DataSourceKind.LIVE
     assert source.provides == Resolution.NATIVE
-    assert source.requires is None
     assert not source.cacheable
 
 

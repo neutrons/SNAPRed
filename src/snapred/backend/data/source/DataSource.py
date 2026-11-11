@@ -12,16 +12,16 @@ class DataSource(ABC):
     """
     A source of one kind of data, at one resolution.
 
-    * `requires`: the resolution of the input data that a transforming source needs, if any;
-      the resolver produces this input, and passes it to `load`.
+    A source that derives its data from other data (for example, lite-mode data converted from
+    native-resolution data) obtains that data itself, from the sources that provide it.
+
     * `cacheable`: whether the data that it produces may be reused from the cache.
     """
 
     cacheable: ClassVar[bool] = True
 
-    def __init__(self, provides: Resolution, requires: Optional[Resolution] = None):
+    def __init__(self, provides: Resolution):
         self.provides = provides
-        self.requires = requires
 
     @property
     @abstractmethod
@@ -33,11 +33,15 @@ class DataSource(ABC):
         """Whether this source can provide the data for the item."""
 
     @abstractmethod
-    def load(
-        self, item: GroceryListItem, outputWorkspace: WorkspaceName, inputData: Optional[SourcedData] = None
-    ) -> SourcedData:
+    def load(self, item: GroceryListItem, outputWorkspace: WorkspaceName) -> SourcedData:
         """Bring the data for the item into the ADS, as `outputWorkspace`."""
 
-    def _sourced(self, workspace: WorkspaceName, loader: str, inputData: Optional[SourcedData] = None) -> SourcedData:
-        provenance = ([*inputData.provenance] if inputData is not None else []) + [self.kind]
-        return SourcedData(workspace=workspace, loader=loader, provenance=provenance, inputData=inputData)
+    def _sourced(self, workspace: WorkspaceName, loader: str, derivedFrom: Optional[SourcedData] = None) -> SourcedData:
+        provenance = ([*derivedFrom.provenance] if derivedFrom is not None else []) + [self.kind]
+        return SourcedData(
+            workspace=workspace,
+            loader=loader,
+            resolution=self.provides,
+            provenance=provenance,
+            derivedFrom=derivedFrom,
+        )
