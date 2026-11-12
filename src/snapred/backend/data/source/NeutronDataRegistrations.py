@@ -18,6 +18,9 @@ class NeutronDataRegistrations:
     A registered workspace is owned by the process that registered it (for example, the ``livereduce``
     post-processing script), which may go on to change or delete it.  So each registration is validated
     on every lookup.  SNAPRed never changes or deletes a registered workspace itself.
+
+    A registration is removed only when it is explicitly removed, or replaced: a registration that is no
+    longer valid is an error, not a reason to use another source of data for the run.
     """
 
     def __init__(self):
@@ -62,28 +65,30 @@ class NeutronDataRegistrations:
 
     def lookup(self, runNumber: str) -> Optional[WorkspaceName]:
         """
-        The workspace registered for a run number, or `None`.
+        The workspace registered for a run number, or `None` if the run is not registered.
 
-        * If the workspace no longer exists, the registration is removed, and `None` is returned.
-        * If its 'run_number' log no longer matches, the run has changed: the registration is removed,
-          and `LiveDataState` is raised.
+        * If the workspace no longer exists, `RuntimeError` is raised.
+        * If its 'run_number' log no longer matches, the run has changed: `LiveDataState` is raised.
+
+        In either case the registration is kept: it must be explicitly removed, or replaced.
         """
         runNumber = str(runNumber)
         workspace = self._workspaces.get(runNumber)
         if workspace is None:
             return None
         if not mtd.doesExist(workspace):
-            logger.warning(
-                f"the workspace '{workspace}' registered for run '{runNumber}' no longer exists: "
-                "its registration is removed"
+            raise RuntimeError(
+                f"The workspace '{workspace}' that is registered as the neutron data for run '{runNumber}' "
+                "no longer exists.  Register the data for the run again, or remove the registration."
             )
-            del self._workspaces[runNumber]
-            return None
         logRunNumber = self._logRunNumber(workspace)
         if not self._matches(runNumber, logRunNumber):
-            del self._workspaces[runNumber]
             raise LiveDataState.runStateTransition(logRunNumber, runNumber)
         return workspace
+
+    def isRegistered(self, runNumber: str) -> bool:
+        """Whether the run is registered, without validation."""
+        return str(runNumber) in self._workspaces
 
     def registeredWorkspaces(self) -> List[WorkspaceName]:
         """All of the registered workspaces, without validation."""
