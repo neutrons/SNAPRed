@@ -19,7 +19,7 @@ def item(useLiteMode: bool) -> GroceryListItem:
 def test_registries():
     s = sources()
     assert s.native.resolution == Resolution.NATIVE
-    assert set(s.native.sources) == {K.NEXUS_FILE, K.LIVE}
+    assert set(s.native.sources) == {K.REGISTERED, K.NEXUS_FILE, K.LIVE}
     assert s.lite.resolution == Resolution.LITE
     assert set(s.lite.sources) == {K.LITE_FILE, K.LITE_CONVERSION}
 

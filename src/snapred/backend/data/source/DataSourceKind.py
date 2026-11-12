@@ -7,4 +7,5 @@ class DataSourceKind(StrEnum):
     NEXUS_FILE = "nexusFile"
     LITE_FILE = "liteFile"
     LIVE = "live"
+    REGISTERED = "registered"
     LITE_CONVERSION = "liteConversion"

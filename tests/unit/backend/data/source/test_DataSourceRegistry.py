@@ -26,14 +26,18 @@ class FakeSource(DataSource):
 
 
 def nativeSources():
-    return [FakeSource(K.NEXUS_FILE, Resolution.NATIVE), FakeSource(K.LIVE, Resolution.NATIVE)]
+    return [
+        FakeSource(K.REGISTERED, Resolution.NATIVE),
+        FakeSource(K.NEXUS_FILE, Resolution.NATIVE),
+        FakeSource(K.LIVE, Resolution.NATIVE),
+    ]
 
 
 def test_sources_are_keyed_by_kind():
     sources = nativeSources()
     registry = DataSourceRegistry(Resolution.NATIVE, sources)
     assert registry.resolution == Resolution.NATIVE
-    assert registry.sources == {K.NEXUS_FILE: sources[0], K.LIVE: sources[1]}
+    assert registry.sources == {K.REGISTERED: sources[0], K.NEXUS_FILE: sources[1], K.LIVE: sources[2]}
 
 
 def test_source_of_another_resolution_is_rejected():
@@ -58,6 +62,7 @@ def test_ordered_rejects_a_source_not_in_the_registry():
 def test_configured_order():
     # The order in `application.yml`.
     assert [source.kind for source in DataSourceRegistry(Resolution.NATIVE, nativeSources()).ordered()] == [
+        K.REGISTERED,
         K.NEXUS_FILE,
         K.LIVE,
     ]
