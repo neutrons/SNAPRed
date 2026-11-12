@@ -7,6 +7,7 @@ from snapred.backend.data.source.LiteConversionSource import LiteConversionSourc
 from snapred.backend.data.source.LiveListenerSource import LiveListenerSource
 from snapred.backend.data.source.NeutronDataCache import NeutronDataCache
 from snapred.backend.data.source.NeutronDataResolver import NeutronDataResolver
+from snapred.backend.data.source.RegisteredSource import RegisteredSource
 from snapred.backend.data.source.Resolution import Resolution
 from snapred.backend.data.source.WorkspaceOperations import WorkspaceOperations
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -26,6 +27,7 @@ class NeutronDataSources:
         self.native = DataSourceRegistry(
             Resolution.NATIVE,
             [
+                RegisteredSource(workspaces),
                 FileSource(Resolution.NATIVE, dataService, grocer),
                 LiveListenerSource(dataService, grocer, workspaces),
             ],

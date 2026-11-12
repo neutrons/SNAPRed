@@ -86,7 +86,7 @@ neutronData:
   sources:
     # The order in which the data sources are tried, for each resolution
     #   (see `docs/source/developer/implementation_notes/data_sources.rst`).
-    native: [nexusFile, live]
+    native: [registered, nexusFile, live]
     lite: [liteFile, liteConversion]
 
 liveData:

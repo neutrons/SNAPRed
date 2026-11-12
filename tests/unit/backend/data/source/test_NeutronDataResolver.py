@@ -21,10 +21,11 @@ K = DataSourceKind
 
 
 class FakeSource(DataSource):
-    def __init__(self, kind, provides, available=True, cacheable=True):
+    def __init__(self, kind, provides, available=True, cacheable=True, exclusive=False):
         super().__init__(provides=provides)
         self._kind = kind
         self._available = available
+        self._exclusive = exclusive
         self.cacheable = cacheable
         self.loads = []
 
@@ -35,13 +36,16 @@ class FakeSource(DataSource):
     def available(self, item):  # noqa: ARG002
         return self._available
 
+    def exclusiveFor(self, item):  # noqa: ARG002
+        return self._exclusive
+
     def load(self, item, outputWorkspace):  # noqa: ARG002
         self.loads.append(outputWorkspace)
         return self._sourced(outputWorkspace, f"load:{self.kind}")
 
 
 class Harness:
-    def __init__(self, sources, native=("nexusFile", "live"), lite=("liteFile", "liteConversion")):
+    def __init__(self, sources, native=("registered", "nexusFile", "live"), lite=("liteFile", "liteConversion")):
         self.ads = {}
         self.tags = {}
         self.workspaces = mock.Mock()
@@ -102,8 +106,9 @@ class Harness:
         self._stack.close()
 
 
-def standardSources(fileAvailable=True, liveAvailable=True, liteFileAvailable=False):
+def standardSources(fileAvailable=True, liveAvailable=True, liteFileAvailable=False, registered=False):
     return [
+        FakeSource(K.REGISTERED, Resolution.NATIVE, available=registered, cacheable=False, exclusive=registered),
         FakeSource(K.NEXUS_FILE, Resolution.NATIVE, available=fileAvailable),
         FakeSource(K.LIVE, Resolution.NATIVE, available=liveAvailable, cacheable=False),
         FakeSource(K.LITE_FILE, Resolution.LITE, available=liteFileAvailable),
@@ -283,3 +288,37 @@ def test_fetchCached_uncacheable_is_not_reused(harness):
     assert second["loader"] == "load:live"
     assert second["workspace"] == names.copy(RUN_NUMBER, False, 1)
     assert len(harness.sources[K.LIVE].loads) == 2
+
+
+@pytest.mark.parametrize(
+    "harness",
+    [{"sources": standardSources(registered=True), "native": ("nexusFile", "live", "registered")}],
+    indirect=True,
+)
+def test_exclusive_source_is_used_whatever_the_order(harness):
+    data = harness.resolver.resolve(item())
+    assert data.provenance == [K.REGISTERED]
+    assert harness.sources[K.NEXUS_FILE].loads == []
+
+
+@pytest.mark.parametrize(
+    "harness", [{"sources": standardSources(registered=True, liteFileAvailable=True)}], indirect=True
+)
+def test_exclusive_native_source_excludes_the_lite_file(harness):
+    assert harness.liteConversion.exclusiveFor(item(True))
+    data = harness.liteResolver.resolve(item(True))
+    assert data.provenance == [K.REGISTERED, K.LITE_CONVERSION]
+    assert harness.sources[K.LITE_FILE].loads == []
+    harness.liteConversion.convert.assert_called_once_with(names.plain(RUN_NUMBER, True), export=False)
+
+
+@pytest.mark.parametrize(
+    "harness", [{"sources": standardSources(registered=True), "native": ("nexusFile", "live")}], indirect=True
+)
+def test_exclusive_source_not_configured_is_not_used(harness):
+    assert harness.resolver.resolve(item()).provenance == [K.NEXUS_FILE]
+    assert not harness.liteConversion.exclusiveFor(item(True))
+
+
+def test_no_exclusive_source(harness):
+    assert not harness.liteConversion.exclusiveFor(item(True))
