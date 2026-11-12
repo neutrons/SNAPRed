@@ -8,7 +8,12 @@ from snapred.backend.dao.indexing.RunRange import RunRange
 class Cycle(BaseModel):
     # SNS facility cycle designation, e.g. "2024-A": a four-digit year, a hyphen,
     #   and an uppercase letter identifying the run cycle within that year.
-    CYCLE_ID_PATTERN: ClassVar[str] = r"^\d{4}-[A-Z]$"
+    #   An optional ".1" to ".9" marks a split of that cycle, e.g. "2024-A.1": when the
+    #   instrument changes mid-cycle enough to need recalibrating, the cycle is closed and
+    #   the rest of it registered as "2024-A.1", so a calibration from either side can't
+    #   apply to the other. A single digit keeps lexicographic order chronological:
+    #   "2024-A" < "2024-A.1" < "2024-A.2" < "2024-B".
+    CYCLE_ID_PATTERN: ClassVar[str] = r"^\d{4}-[A-Z](\.[1-9])?$"
 
     # Sentinel cycle ID used when cycle info is absent/invalid; reduction continues as "diagnostic".
     #   Deliberately does not match `CYCLE_ID_PATTERN`, so it can never collide with a real cycle.
