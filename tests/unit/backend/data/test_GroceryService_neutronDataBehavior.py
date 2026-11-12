@@ -537,19 +537,29 @@ class TestRegisteredData:
         assert harness.liveCalls == []
         assert runWorkspaces() == set()
 
-    def test_deleted_workspace_falls_back_to_the_file(self, harness):
+    @pytest.mark.parametrize("useLiteMode", [False, True])
+    def test_deleted_workspace_is_an_error(self, harness, useLiteMode):
+        # The registration was not removed: the data does not silently come from another source.
+        harness.liteOnDisk = True
+        harness.liveConnection = True
         DeleteWorkspace(self.workspace)
-        result = harness.service.fetchNeutronDataSingleUse(harness.item(False))
-        assertDataSource(result, "nexusFile")
-        assert NeutronDataRegistrations().lookup(RUN_NUMBER) is None
+        with pytest.raises(RuntimeError, match=r"no longer exists.*or remove the registration"):
+            harness.service.fetchNeutronDataSingleUse(harness.item(useLiteMode))
+        assert runWorkspaces() == set()
+        assert harness.liveCalls == []
+
+        NeutronDataRegistrations().unregister(RUN_NUMBER)
+        result = harness.service.fetchNeutronDataSingleUse(harness.item(useLiteMode))
+        assertDataSource(result, "liteFile" if useLiteMode else "nexusFile")
 
     def test_run_transition(self, harness):
         AddSampleLog(Workspace=self.workspace, LogName="run_number", LogText=OTHER_RUN_NUMBER, LogType="String")
         with pytest.raises(LiveDataState):
             harness.service.fetchNeutronDataSingleUse(harness.item(False))
         assert runWorkspaces() == set()
-        # The registration is removed: the workspace itself is not deleted.
-        assert NeutronDataRegistrations().lookup(RUN_NUMBER) is None
+        # The registration is kept, and the workspace is not deleted.
+        with pytest.raises(LiveDataState):
+            harness.service.fetchNeutronDataSingleUse(harness.item(False))
         assert mtd.doesExist(self.workspace)
 
     def test_unregistered(self, harness):

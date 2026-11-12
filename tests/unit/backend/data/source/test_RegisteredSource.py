@@ -61,6 +61,17 @@ def test_registered_is_exclusive(registered):
     assert source.exclusiveFor(item())
 
 
+def test_deleted_workspace_is_an_error(registered):
+    name, _ = registered
+    NeutronDataRegistrations().register(RUN_NUMBER, name)
+    DeleteWorkspace(name)
+    source = RegisteredSource(Workspaces())
+    with pytest.raises(RuntimeError, match=r"no longer exists"):
+        source.exclusiveFor(item())
+    with pytest.raises(RuntimeError, match=r"no longer exists"):
+        source.available(item())
+
+
 def test_live_data_request_is_an_error(registered):
     name, _ = registered
     NeutronDataRegistrations().register(RUN_NUMBER, name)
