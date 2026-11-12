@@ -79,11 +79,17 @@ def test_unregister(workspace):
 
 
 def test_lookup_deleted_workspace(workspace):
+    # The registration is kept: it was not removed, so a missing workspace is an error.
     registrations = NeutronDataRegistrations()
     registrations.register(RUN_NUMBER, workspace)
     DeleteWorkspace(workspace)
+    for _ in range(2):
+        with pytest.raises(RuntimeError, match=r"no longer exists.*or remove the registration"):
+            registrations.lookup(RUN_NUMBER)
+    assert registrations.isRegistered(RUN_NUMBER)
+    assert registrations.registeredWorkspaces() == [workspace]
+    registrations.unregister(RUN_NUMBER)
     assert registrations.lookup(RUN_NUMBER) is None
-    assert registrations.registeredWorkspaces() == []
 
 
 def test_lookup_after_run_transition(workspace):
@@ -93,5 +99,16 @@ def test_lookup_after_run_transition(workspace):
     with pytest.raises(LiveDataState) as e:
         registrations.lookup(RUN_NUMBER)
     assert e.value.transition == LiveDataState.Type.RUN_GAP
-    assert registrations.lookup(RUN_NUMBER) is None
+    # The registration is kept.
+    assert registrations.isRegistered(RUN_NUMBER)
+    with pytest.raises(LiveDataState):
+        registrations.lookup(RUN_NUMBER)
     assert mtd.doesExist(workspace)
+
+
+def test_isRegistered(workspace):
+    registrations = NeutronDataRegistrations()
+    assert not registrations.isRegistered(RUN_NUMBER)
+    registrations.register(RUN_NUMBER, workspace)
+    assert registrations.isRegistered(RUN_NUMBER)
+    assert registrations.isRegistered(int(RUN_NUMBER))

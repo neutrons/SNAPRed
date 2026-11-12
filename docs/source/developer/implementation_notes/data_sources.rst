@@ -277,11 +277,15 @@ through the registration endpoints.  No parameters are added to existing classes
 * **Validate the registration on each lookup:**
 
   - if the workspace no longer exists (for example, ``livereduce``'s memory watchdog has restarted the
-    daemon and cleared the ADS), drop the registration: the source is then not available, and the
-    resolver falls through to the other sources;
-  - if its ``run_number`` log no longer matches, a run transition has occurred: drop the registration
-    and raise ``LiveDataState.runStateTransition``.  The live listener does not always set
-    ``run_number``, so a missing log value must be tolerated.
+    daemon and cleared the ADS), raise an error that asks for the data to be registered again, or for
+    the registration to be removed;
+  - if its ``run_number`` log no longer matches, a run transition has occurred: raise
+    ``LiveDataState.runStateTransition``.  The live listener does not always set ``run_number``, so a
+    missing log value must be tolerated.
+
+  In both cases the registration is kept.  A registration is removed only explicitly, or by registering
+  the workspace for another run: the data for a registered run never silently comes from another source,
+  which could hide an error in the process that registered it.
 
 ``RegisteredSource``
 ~~~~~~~~~~~~~~~~~~~~
