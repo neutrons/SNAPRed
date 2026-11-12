@@ -30,13 +30,17 @@ class RegisteredSource(DataSource):
         return DataSourceKind.REGISTERED
 
     def exclusiveFor(self, item: GroceryListItem) -> bool:
-        registered = NeutronDataRegistrations().lookup(item.runNumber) is not None
-        if registered and item.liveDataArgs is not None:
+        registrations = NeutronDataRegistrations()
+        if not registrations.isRegistered(item.runNumber):
+            return False
+        if item.liveDataArgs is not None:
             raise RuntimeError(
                 f"Live data was requested for run '{item.runNumber}', but a workspace is registered as its "
                 "neutron data.  Remove the registration first."
             )
-        return registered
+        # A registration that is no longer valid is an error: the lookup raises.
+        registrations.lookup(item.runNumber)
+        return True
 
     def available(self, item: GroceryListItem) -> bool:
         return self.exclusiveFor(item)
