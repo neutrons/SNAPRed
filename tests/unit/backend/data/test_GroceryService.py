@@ -11,12 +11,13 @@ import time
 import unittest
 from pathlib import Path
 from random import randint
+from typing import List
 from unittest import mock
 
 import pytest
 from mantid.api import MatrixWorkspace, Run
 from mantid.dataobjects import MaskWorkspace
-from mantid.kernel import V3D, Quat
+from mantid.kernel import V3D, Quat, amend_config
 from mantid.simpleapi import (
     CloneWorkspace,
     CreateSampleWorkspace,
@@ -147,7 +148,7 @@ class TestGroceryService(unittest.TestCase):
         assert os.path.exists(cls.samplePixelMaskFilePath)
 
         # cleanup at per-test teardown
-        cls.excludeAtTeardown = [cls.sampleWS, cls.sampleTableWS, cls.sampleMaskWS]
+        cls.excludeAtTeardown = [cls.sampleWS, cls.sampleWSBareInstrument, cls.sampleTableWS, cls.sampleMaskWS]
 
         # cleanup during running tests:
         cls.exclude = cls.excludeAtTeardown + [cls.fetchedWSname]
@@ -209,9 +210,17 @@ class TestGroceryService(unittest.TestCase):
             getProperty=mock.Mock(side_effect=lambda s: mock.Mock(value=runNumber) if s == "run_number" else None),
         )
 
+    @staticmethod
+    def allWorkspaceNames() -> List[str]:
+        """The names of all workspaces in the ADS, including the hidden ones"""
+        # `mtd.getObjectNames()` leaves out hidden workspaces (names starting with "__") unless this is set:
+        #   a hidden workspace left by one test would otherwise be seen by later tests.
+        with amend_config(**{"MantidOptions.InvisibleWorkspaces": "1"}):
+            return mtd.getObjectNames()
+
     def clearoutWorkspaces(self) -> None:
         """Delete the workspaces created by loading"""
-        for ws in mtd.getObjectNames():
+        for ws in self.allWorkspaceNames():
             if ws not in self.excludeAtTeardown and ws in mtd:
                 DeleteWorkspace(ws)
 
@@ -227,7 +236,7 @@ class TestGroceryService(unittest.TestCase):
         At the end of the test suite, delete all workspaces
         and remove the test file.
         """
-        for ws in mtd.getObjectNames():
+        for ws in cls.allWorkspaceNames():
             DeleteWorkspace(ws)
         os.remove(cls.sampleWSFilePath)
         os.remove(cls.sampleDiffCalFilePath)
