@@ -3,12 +3,15 @@ from typing import List
 from snapred.backend.dao.request import (
     ClearWorkspacesRequest,
     ListWorkspacesRequest,
+    RegisterNeutronDataRequest,
     RenameWorkspaceRequest,
     RenameWorkspacesFromTemplateRequest,
+    UnregisterNeutronDataRequest,
 )
 from snapred.backend.dao.request.CompatibleMasksRequest import CompatibleMasksRequest
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.data.source.NeutronDataRegistrations import NeutronDataRegistrations
 from snapred.backend.service.Service import Register, Service
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -80,3 +83,22 @@ class WorkspaceService(Service):
         Gets the list of resident pixel masks compatible with the given run number and lite-mode setting.
         """
         return self.dataFactoryService.getCompatibleResidentPixelMasks(request.useLiteMode)
+
+    @Register("registerNeutronData")
+    @FromString
+    def registerNeutronData(self, request: RegisterNeutronDataRequest):
+        """
+        Registers a workspace as the neutron data for a run number.
+
+        While it is registered, the neutron data for that run is cloned from this workspace, and from no
+        other source.  SNAPRed never changes or deletes the registered workspace.
+        """
+        NeutronDataRegistrations().register(request.runNumber, request.workspace)
+
+    @Register("unregisterNeutronData")
+    @FromString
+    def unregisterNeutronData(self, request: UnregisterNeutronDataRequest):
+        """
+        Removes the registration of neutron data for a run number, if there is one.
+        """
+        NeutronDataRegistrations().unregister(request.runNumber)

@@ -19,7 +19,8 @@ class NeutronDataResolver:
     Produces the neutron data for a grocery-list item, at one resolution, from the first available
     source in a registry.
 
-    The cache is checked before any source.
+    The cache is checked before any source.  If a source is exclusive for the item, it is the only
+    source that is used.
     Every workspace that is produced is tagged with its provenance, as the `dataSource` workspace metadata.
     """
 
@@ -69,7 +70,10 @@ class NeutronDataResolver:
                 provenance=self._provenanceOf(rawWorkspace),
             )
 
-        source = next((source for source in self.sources.ordered() if source.available(item)), None)
+        sources = self.sources.ordered()
+        source = next((source for source in sources if source.exclusiveFor(item)), None)
+        if source is None:
+            source = next((source for source in sources if source.available(item)), None)
         if source is None:
             raise self._notFound(item)
 

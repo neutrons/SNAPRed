@@ -44,6 +44,11 @@ class LiteConversionSource(DataSource):
         #   if it is not available, that resolver's error is the one that should be reported.
         return True
 
+    def exclusiveFor(self, item: GroceryListItem) -> bool:
+        # Data from an exclusive native source (registered data) is converted: a lite-mode file must not
+        #   be used instead.
+        return any(source.exclusiveFor(item) for source in self.nativeData.sources.ordered())
+
     @staticmethod
     def exportsFrom(nativeData: SourcedData) -> bool:
         """
