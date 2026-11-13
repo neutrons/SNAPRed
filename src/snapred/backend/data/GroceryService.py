@@ -13,8 +13,8 @@ from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.backend.data.source.NeutronDataCache import NeutronDataCache
 from snapred.backend.data.source.NeutronDataSources import NeutronDataSources
-from snapred.backend.data.source.NeutronWorkspaceNames import NeutronWorkspaceNames
 from snapred.backend.data.source.WorkspaceOperations import WorkspaceOperations
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -289,16 +289,20 @@ class GroceryService:
     ## WORKSPACE NAME METHODS
 
     def _createNeutronWorkspaceNameBuilder(self, runNumber: str, useLiteMode: bool) -> NameBuilder:
-        return NeutronWorkspaceNames.builder(runNumber, useLiteMode)
+        return wng.run().runNumber(runNumber).lite(wng.Lite.fromLiteMode(useLiteMode))
 
     def _createNeutronWorkspaceName(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:
-        return NeutronWorkspaceNames.plain(runNumber, useLiteMode)
+        return self._createNeutronWorkspaceNameBuilder(runNumber, useLiteMode).build()
 
     def _createRawNeutronWorkspaceName(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:
-        return NeutronWorkspaceNames.raw(runNumber, useLiteMode)
+        return NeutronDataCache.rawWorkspace(runNumber, useLiteMode)
 
     def _createCopyNeutronWorkspaceName(self, runNumber: str, useLiteMode: bool, numCopies: int) -> WorkspaceName:
-        return NeutronWorkspaceNames.copy(runNumber, useLiteMode, numCopies)
+        return (
+            self._createNeutronWorkspaceNameBuilder(runNumber, useLiteMode)
+            .auxiliary(wng.Auxiliary.cachedCopy(numCopies))
+            .build()
+        )
 
     def _createGroupingWorkspaceName(self, groupingScheme: str, runNumber: str, useLiteMode: bool) -> WorkspaceName:
         # TODO: use WNG here!

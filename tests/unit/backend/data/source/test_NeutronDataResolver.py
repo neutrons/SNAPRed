@@ -2,6 +2,7 @@ from contextlib import ExitStack
 from unittest import mock
 
 import pytest
+import util.neutron_workspace_names as names
 from util.Config_helpers import Config_override
 
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
@@ -12,7 +13,6 @@ from snapred.backend.data.source.DataSourceRegistry import DataSourceRegistry
 from snapred.backend.data.source.LiteConversionSource import LiteConversionSource
 from snapred.backend.data.source.NeutronDataCache import NeutronDataCache
 from snapred.backend.data.source.NeutronDataResolver import NeutronDataResolver
-from snapred.backend.data.source.NeutronWorkspaceNames import NeutronWorkspaceNames as names
 from snapred.backend.data.source.Resolution import Resolution
 
 ThisModule = "snapred.backend.data.source.NeutronDataResolver."

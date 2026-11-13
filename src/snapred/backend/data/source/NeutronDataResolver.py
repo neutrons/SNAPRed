@@ -5,11 +5,11 @@ from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.data.source.DataSourceKind import DataSourceKind
 from snapred.backend.data.source.DataSourceRegistry import DataSourceRegistry
 from snapred.backend.data.source.NeutronDataCache import NeutronDataCache
-from snapred.backend.data.source.NeutronWorkspaceNames import NeutronWorkspaceNames as names
 from snapred.backend.data.source.Resolution import Resolution
 from snapred.backend.data.source.SourcedData import SourcedData
 from snapred.backend.data.source.WorkspaceOperations import WorkspaceOperations
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 CACHED_LOADER = "cached"
 
@@ -55,12 +55,12 @@ class NeutronDataResolver:
         runNumber = item.runNumber
         useLiteMode = self.resolution.useLiteMode
         key = self.cache.key(runNumber, useLiteMode)
-        outputWorkspace = names.plain(runNumber, useLiteMode)
+        outputWorkspace = wng.run().runNumber(runNumber).lite(wng.Lite.fromLiteMode(useLiteMode)).build()
 
         # Make sure that the existing cache entry is valid.
         self.cache.updateFromADS(runNumber, useLiteMode)
         if self.cache.contains(key):
-            rawWorkspace = names.raw(runNumber, useLiteMode)
+            rawWorkspace = self.cache.rawWorkspace(runNumber, useLiteMode)
             self.workspaces.getCloneOfWorkspace(rawWorkspace, outputWorkspace)
             return SourcedData(
                 workspace=outputWorkspace,
@@ -108,17 +108,25 @@ class NeutronDataResolver:
         key = self.cache.key(runNumber, useLiteMode)
         if not self.cache.contains(key):
             self.cache.loadedRuns[key] = 0
-            sourceWorkspace = self.workspaces.renameWorkspace(data.workspace, names.raw(runNumber, useLiteMode))
+            sourceWorkspace = self.workspaces.renameWorkspace(
+                data.workspace, self.cache.rawWorkspace(runNumber, useLiteMode)
+            )
         derived = data.derivedFrom
         while derived is not None:
             derivedLiteMode = derived.resolution.useLiteMode
             derivedKey = self.cache.key(runNumber, derivedLiteMode)
             if not self.cache.contains(derivedKey):
                 self.cache.loadedRuns[derivedKey] = 0
-                self.workspaces.renameWorkspace(derived.workspace, names.raw(runNumber, derivedLiteMode))
+                self.workspaces.renameWorkspace(derived.workspace, self.cache.rawWorkspace(runNumber, derivedLiteMode))
             derived = derived.derivedFrom
 
-        workspace = names.copy(runNumber, useLiteMode, self.cache.loadedRuns[key] + 1)
+        workspace = (
+            wng.run()
+            .runNumber(runNumber)
+            .lite(wng.Lite.fromLiteMode(useLiteMode))
+            .auxiliary(wng.Auxiliary.cachedCopy(self.cache.loadedRuns[key] + 1))
+            .build()
+        )
         self.workspaces.getCloneOfWorkspace(sourceWorkspace, workspace)
         self.cache.loadedRuns[key] += 1
         return self._result(data, workspace)

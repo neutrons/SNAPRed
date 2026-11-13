@@ -1,9 +1,9 @@
 from unittest import mock
 
 import pytest
+import util.neutron_workspace_names as names
 
 from snapred.backend.data.source.NeutronDataCache import NeutronDataCache
-from snapred.backend.data.source.NeutronWorkspaceNames import NeutronWorkspaceNames as names
 
 RUN_NUMBER = "12345"
 
