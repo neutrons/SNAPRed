@@ -41,6 +41,7 @@ from snapred.backend.dao.state import (
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
 from snapred.backend.data.Indexer import Indexer, IndexerType
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
+from snapred.backend.data.source.NeutronDataRegistrations import NeutronDataRegistrations
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
@@ -1093,8 +1094,8 @@ class LocalDataService:
     def readDetectorState(self, runNumber: str) -> DetectorState | None:
         # Assemble a detector state from either the PVLogs, or the current live-data run.
 
-        # Note that `readRunMetadata` uses `lru_cache`: it is redundant to additionally apply it to this
-        #   method.
+        # Note that `readRunMetadata` is cached (except for registered data): it is redundant to additionally
+        #   apply `lru_cache` to this method.
         return self.readRunMetadata(runNumber).detectorState
 
     @validate_call
@@ -1472,8 +1473,28 @@ class LocalDataService:
 
     ## RunMetadata SUPPORT METHODS
 
-    @lru_cache
     def readRunMetadata(self, runNumber: str) -> RunMetadata:
+        """
+        The metadata of a run.
+
+        For a run with registered neutron data, the metadata is read from the logs of the registered
+        workspace, every time: the state must come from the data that is actually reduced.
+        Otherwise, it is read from the PV file, or from the live run, and cached.
+        """
+        registered = NeutronDataRegistrations().lookup(runNumber)
+        if registered is not None:
+            return self._readRegisteredRunMetadata(runNumber, registered)
+        return self._readRunMetadata(runNumber)
+
+    def _readRegisteredRunMetadata(self, runNumber: str, workspace: WorkspaceName) -> RunMetadata:
+        run = self.mantidSnapper.mtd[workspace].getRun()
+        metadata = RunMetadata.fromRun(run, self.readInstrumentConfig(runNumber).stateIdSchema)
+        # The run number of the registration is used: the 'run_number' log may not be set, and then
+        #   `fromRun` reports an inactive run.  (A log value that does not match was rejected by the lookup.)
+        return metadata.model_copy(update={"runNumber": str(runNumber)})
+
+    @lru_cache
+    def _readRunMetadata(self, runNumber: str) -> RunMetadata:
         success = False
         metadata = None
         try:

@@ -16,6 +16,7 @@ class DataSource(ABC):
     native-resolution data) obtains that data itself, from the sources that provide it.
 
     * `cacheable`: whether the data that it produces may be reused from the cache.
+    * `exclusiveFor(item)`: whether this source is the only one that may provide the data for the item.
     """
 
     cacheable: ClassVar[bool] = True
@@ -31,6 +32,10 @@ class DataSource(ABC):
     @abstractmethod
     def available(self, item: GroceryListItem) -> bool:
         """Whether this source can provide the data for the item."""
+
+    def exclusiveFor(self, item: GroceryListItem) -> bool:  # noqa: ARG002
+        """Whether this source must provide the data for the item, to the exclusion of any other source."""
+        return False
 
     @abstractmethod
     def load(self, item: GroceryListItem, outputWorkspace: WorkspaceName) -> SourcedData:

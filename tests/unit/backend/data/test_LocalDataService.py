@@ -566,6 +566,34 @@ def test_readRunMetadata(mockRunMetadata):
     mockRunMetadata.fromNeXusLogs.assert_called_once_with(mock.sentinel.h5, mock.sentinel.stateIdSchema)
 
 
+@mock.patch(ThisService + "NeutronDataRegistrations")
+@mock.patch(ThisService + "RunMetadata")
+def test_readRunMetadata_registered(mockRunMetadata, mockRegistrations):
+    # For a run with registered neutron data, the metadata is read from the registered workspace,
+    #   with the run number of the registration, and it is not cached.
+    runNumber = "12345"
+    mockRegistrations.return_value.lookup.return_value = "accumulation_ws"
+    mockMetadata = mock.Mock(spec=RunMetadata)
+    mockMetadata.model_copy.return_value = mock.sentinel.metadata
+    mockRunMetadata.fromRun.return_value = mockMetadata
+    mockInstrumentConfig = mock.Mock(spec=InstrumentConfig, stateIdSchema=mock.sentinel.stateIdSchema)
+    instance = LocalDataService()
+    instance.mantidSnapper = mock.MagicMock()
+    instance._readPVFile = mock.Mock()
+    instance.readInstrumentConfig = mock.Mock(return_value=mockInstrumentConfig)
+
+    assert instance.readRunMetadata(runNumber) == mock.sentinel.metadata
+    assert instance.readRunMetadata(runNumber) == mock.sentinel.metadata
+    mockRegistrations.return_value.lookup.assert_called_with(runNumber)
+    instance.mantidSnapper.mtd.__getitem__.assert_called_with("accumulation_ws")
+    mockRunMetadata.fromRun.assert_called_with(
+        instance.mantidSnapper.mtd.__getitem__.return_value.getRun.return_value, mock.sentinel.stateIdSchema
+    )
+    assert mockRunMetadata.fromRun.call_count == 2
+    mockMetadata.model_copy.assert_called_with(update={"runNumber": runNumber})
+    instance._readPVFile.assert_not_called()
+
+
 @mock.patch(ThisService + "RunMetadata")
 def test_readRunMetadata_runNumber_mismatch(mockRunMetadata):
     runNumber1 = "12345"

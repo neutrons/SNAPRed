@@ -14,6 +14,16 @@ class TestWorkspaceService:
     def test_name(self):
         assert WorkspaceService.name() == "workspace"
 
+    @mock.patch("snapred.backend.service.WorkspaceService.NeutronDataRegistrations")
+    def test_registerNeutronData(self, mockRegistrations):
+        WorkspaceService().registerNeutronData('{"runNumber": "12345", "workspace": "accumulation_ws"}')
+        mockRegistrations.return_value.register.assert_called_once_with("12345", "accumulation_ws")
+
+    @mock.patch("snapred.backend.service.WorkspaceService.NeutronDataRegistrations")
+    def test_unregisterNeutronData(self, mockRegistrations):
+        WorkspaceService().unregisterNeutronData('{"runNumber": "12345"}')
+        mockRegistrations.return_value.unregister.assert_called_once_with("12345")
+
     def test_rename(self):
         mockGroceryService = MagicMock()
         service = WorkspaceService()
