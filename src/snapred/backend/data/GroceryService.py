@@ -13,6 +13,7 @@ from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.backend.data.source.InstrumentDonors import InstrumentDonors
 from snapred.backend.data.source.NeutronDataCache import NeutronDataCache
 from snapred.backend.data.source.NeutronDataRegistrations import NeutronDataRegistrations
 from snapred.backend.data.source.NeutronDataSources import NeutronDataSources
@@ -24,7 +25,6 @@ from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataSe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     NameBuilder,
     WorkspaceName,
@@ -62,9 +62,6 @@ class GroceryService:
         #   -- (<grouping scheme>, stateId, useLiteMode) -> <workspace name>
         self._loadedGroupings: Dict[Tuple[str, str, bool], str] = {}
 
-        #   -- (stateId, useLiteMode) -> <workspace name>
-        self._loadedInstruments: Dict[Tuple[str, bool], str] = {}
-
         self.normalizationCache: Set[WorkspaceName] = set()
 
         self.grocer = FetchGroceriesRecipe()
@@ -74,6 +71,9 @@ class GroceryService:
 
         # The neutron-data sources, and the neutron-data cache.
         self.neutronData = NeutronDataSources(self.dataService, self.grocer, self.workspaces)
+
+        # The instrument donors, for data that is loaded without an instrument.
+        self.instrumentDonors = InstrumentDonors(self.dataService, self.workspaces, self.neutronData.cache)
 
     def _defaultClass(self, val, clazz):
         if val is None:
@@ -113,15 +113,7 @@ class GroceryService:
         """
         Rebuild the instrument cache
         """
-        # Implementation notes:
-        #   * We do not call `_updateInstrumentCacheFromADS` here, because that requires the 'runNumber',
-        #     and the instrument cache is keyed by 'stateId';
-        #   * However, at each call to `_fetchInstrumentDonor`, _updateInstrumentCacheFromADS` will be called,
-        #     and at that time the runNumber-based update will be performed.
-
-        for key, workspace in self._loadedInstruments.copy().items():
-            if not self.workspaceDoesExist(workspace):
-                del self._loadedInstruments[key]
+        self.instrumentDonors.rebuild()
 
     def getCachedWorkspaces(self):
         """
@@ -131,7 +123,7 @@ class GroceryService:
         cachedWorkspaces = set()
         cachedWorkspaces.update(self.neutronData.cache.cachedWorkspaces())
         cachedWorkspaces.update(self._loadedGroupings.values())
-        cachedWorkspaces.update(self._loadedInstruments.values())
+        cachedWorkspaces.update(self.instrumentDonors.cachedWorkspaces())
 
         return list(cachedWorkspaces)
 
@@ -172,14 +164,7 @@ class GroceryService:
         :param cacheKey: the instrument-cache key, using the 'stateId' instead of the 'runNumber'
         :type cacheKey: Tuple[str, bool]
         """
-        # The workspace name in the cache may be either a neutron data workspace or an empty-instrument workspace.
-        workspace = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
-        if self.workspaceDoesExist(workspace) and self._loadedInstruments.get(cacheKey) is None:
-            self._loadedInstruments[cacheKey] = workspace
-        elif self._loadedInstruments.get(cacheKey) is not None:
-            workspace = self._loadedInstruments.get(cacheKey)
-            if not self.workspaceDoesExist(workspace):
-                del self._loadedInstruments[cacheKey]
+        self.instrumentDonors.updateFromADS(runNumber, useLiteMode, cacheKey)
 
     def _clearNormalizationCache(self):
         # clear normalization cache
@@ -601,44 +586,7 @@ class GroceryService:
         :return: the name of a workspace in the ADS with a correctly updated instrument
         :rtype: WorkspaceName
         """
-
-        stateId, detectorState = self.dataService.generateStateId(runNumber)
-        instrumentKey = self._key(stateId, useLiteMode)
-        runKey = self._key(runNumber, useLiteMode)
-        self._updateInstrumentCacheFromADS(runNumber, useLiteMode, instrumentKey)
-
-        wsName = self._loadedInstruments.get(instrumentKey)
-        if wsName is None:
-            self._updateNeutronCacheFromADS(runNumber, useLiteMode)
-            if self.neutronData.cache.contains(runKey):
-                # If possible, use a cached neutron-data workspace as an instrument donor
-                wsName = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
-            else:
-                # Otherwise, create an instrument donor.
-                #   Alternatively, depending on performance, loading the corresponding neutron-data workspace
-                #   could also be triggered here.
-
-                wsName = self.uniqueHiddenName()
-
-                # Load the bare instrument:
-                instrumentFilename = (
-                    Config["instrument.lite.definition.file"]
-                    if useLiteMode
-                    else Config["instrument.native.definition.file"]
-                )
-                self.mantidSnapper.LoadEmptyInstrument(
-                    f"Loading instrument at {instrumentFilename} to {wsName}",
-                    Filename=instrumentFilename,
-                    OutputWorkspace=wsName,
-                )
-                self.mantidSnapper.executeQueue()
-
-                # Initialize the instrument parameters
-                # (Reserved run-numbers will use the unmodified instrument.)
-                if runNumber not in ReservedRunNumber.values():
-                    self.updateInstrumentParameters(wsName, detectorState)
-            self._loadedInstruments[instrumentKey] = wsName
-        return wsName
+        return self.instrumentDonors.fetch(runNumber, useLiteMode)
 
     def updateInstrumentParameters(self, wsName: WorkspaceName, detectorState: DetectorState):
         """
@@ -654,41 +602,7 @@ class GroceryService:
         :param detectorState: the detector state which contains the mutable parameters to be applied
         :type detectorState: DetectorState
         """
-
-        # Add _ALL_ of the sample logs required to determine the instrument state:
-        #
-        #   * these logs include `det_arc..` and `det_lin..` parameters, which determine
-        #   the instrument position, as well as the logs for <wavelength>, <frequency>
-        #   and <guide state>.
-        #
-        #   * NOTE: after adding the logs, it is necessary to update the instrument to
-        #   factor in these new parameters, or else calculations will be inconsistent.
-        #   This is done with a call to `ws->populateInstrumentParameters()` from within mantid.
-        #   This call only needs to happen with the last log
-
-        # It's important here to add the ACTUAL PVs that are used by the `DetectorState`:
-        #   these may change depending on the current `InstrumentConfig.stateIdSchema`.
-        logNames = [k for k in detectorState.PVs.keys()]
-        logTypes = ["Number Series" for _ in logNames]
-        logValues = [f"{detectorState[k]:.16f}" for k in logNames]
-
-        self.mantidSnapper.AddSampleLogMultiple(
-            f"Updating instrument parameters for {wsName}",
-            Workspace=wsName,
-            LogNames=logNames[:-1],
-            LogValues=logValues[:-1],
-            LogTypes=logTypes[:-1],
-            ParseType=False,
-        )
-        self.mantidSnapper.AddSampleLog(
-            "...",
-            Workspace=wsName,
-            LogName=logNames[-1],
-            logText=logValues[-1],
-            logType=logTypes[-1],
-            UpdateInstrumentParameters=True,
-        )
-        self.mantidSnapper.executeQueue()
+        self.instrumentDonors.updateInstrumentParameters(wsName, detectorState)
 
     @validate_call
     def _getCalibrationDataPath(self, useLiteMode: bool, version: int, state: str) -> str:
