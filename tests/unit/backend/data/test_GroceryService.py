@@ -55,7 +55,6 @@ from snapred.meta.Config import Config, Resource
 from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType
 
 ThisService = "snapred.backend.data.GroceryService."
 
@@ -356,36 +355,6 @@ class TestGroceryService(unittest.TestCase):
         assert "some" in res
         assert ".nxs.h5" in res
 
-    def test_diffcal_table_filename_from_workspaceName(self):
-        workspaceName = wng.diffCalTable().runNumber(self.runNumber).version(self.version).build()
-        with mock.patch.object(self.instance, "_lookupDiffcalRunNumber", return_value=self.runNumber):
-            res = self.instance._createDiffCalTableFilepathFromWsName(
-                self.useLiteMode,
-                self.version,
-                workspaceName,
-                self.stateId,
-            )
-            assert workspaceName in res
-            assert self.runNumber in res
-            assert wnvf.formatVersion(self.version) in res
-            assert ".h5" in res
-
-    def test_diffcal_table_filename_from_workspaceName_failure_name_mismatch(self):
-        workspaceName = "bogus_name_"
-        mockIndexer = mock.Mock()
-        mockIndexer.readRecord = mock.Mock()
-        mockDataService = mock.Mock()
-        mockDataService.calibrationIndexer = mock.Mock(return_value=mockIndexer)
-        with mock.patch.object(self.instance, "_lookupDiffcalRunNumber", return_value=self.runNumber):
-            self.instance.dataService = mockDataService
-            with pytest.raises(ValueError, match=r".*Workspace name .* does not match the expected *"):
-                self.instance._createDiffCalTableFilepathFromWsName(
-                    self.useLiteMode,
-                    self.version,
-                    workspaceName,
-                    "stateId",
-                )
-
     def test_diffcal_table_filename(self):
         # Test name generation for diffraction-calibration table filename
         res = self.instance._createDiffCalTableFilepath(self.runNumber, self.useLiteMode, self.version, self.stateId)
@@ -393,18 +362,6 @@ class TestGroceryService(unittest.TestCase):
         assert self.runNumber in res
         assert wnvf.formatVersion(self.version) in res
         assert ".h5" in res
-
-    def test_normalization_workspace_filename(self):
-        # Test name generation for diffraction-calibration table filename
-        self.instance.dataService.normalizationIndexer = self.mockIndexer("root", "normalization")
-        res = self.instance._lookupNormalizationWorkspaceFilename(
-            self.runNumber, self.useLiteMode, self.version, self.stateId
-        )
-        assert self.runNumber in res
-        assert wnvf.formatVersion(self.version) in res
-        assert ".nxs" in res
-
-    ## TESTS OF WORKSPACE NAME METHODS
 
     def test_neutron_workspacename_plain(self):
         """Test the creation of a plain nexus workspace name"""
@@ -497,14 +454,6 @@ class TestGroceryService(unittest.TestCase):
         assert self.runNumber in res
         assert wnvf.formatVersion(self.version) in res
         assert "mask" in res
-
-    def test_normalization_workspacename(self):
-        # Test name generation for normalization workspaces
-        res = self.instance._createNormalizationWorkspaceName(self.runNumber, self.useLiteMode, self.version, False)
-        assert self.runNumber in res
-        assert wnvf.formatVersion(self.version) in res
-
-    ## TESTS OF ACCESS METHODS
 
     def test_workspaceDoesExist_false(self):
         wsname = "_test_ws_"
@@ -1017,37 +966,6 @@ class TestGroceryService(unittest.TestCase):
         assert mtd.doesExist(diffCalOutputName)
         assert mtd[diffCalOutputName].getTitle() == testTitle
 
-    def test_fetch_grocery_list_diffcal_table(self):
-        # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`
-        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-        with state_root_redirect(self.instance.dataService) as tmpRoot:
-            self.instance.dataService.calibrationIndexer = self.mockIndexer(tmpRoot.path(), "diffraction")
-            groceryList = (
-                GroceryListItem.builder().native().diffcal_table("stateId", self.version, self.runNumber1).buildList()
-            )
-            # independently construct the pathname, move file to there, assert exists
-            diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
-            diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
-            self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-            diffCalTableFilename = self.instance._createDiffCalTableFilepath(
-                diffcalRunNumber=groceryList[0].runNumber,
-                useLiteMode=groceryList[0].useLiteMode,
-                version=self.version,
-                state="stateId",
-            )
-            tmpRoot.addFileAs(self.sampleDiffCalFilePath, diffCalTableFilename)
-            assert Path(diffCalTableFilename).exists()
-            # fetch the workspace
-            assert not mtd.doesExist(diffCalTableName)
-
-            with (
-                Config_override("instrument.native.pixelResolution", 16),
-                Config_override("instrument.native.name", "fakesnap"),
-            ):
-                items = self.instance.fetchGroceryList(groceryList)
-            assert items[0] == diffCalTableName
-            assert mtd.doesExist(diffCalTableName)
-
     def test_validateCalibrationMask(self):
         # load a diffcal mask and validate it
         item = mock.Mock(useLiteMode=False)
@@ -1066,356 +984,6 @@ class TestGroceryService(unittest.TestCase):
                 match="Expected 16 spectra for the native resolution.",
             ):
                 self.instance._validateWorkspaceInstrument(item, "someMask")
-
-    def test_validateCalibrationTable(self):
-        # load a diffcal table and validate it
-        testCalibrationTable = self.generateTestDiffcalTable()
-        item = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()[0]
-        with Config_override("instrument.native.pixelResolution", 16):
-            self.instance._validateCalibrationTable(item, testCalibrationTable)
-
-    def test_validateCalibrationTable_fail_workspaceExists(self):
-        item = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()[0]
-        with pytest.raises(
-            RuntimeError,
-            match="does not exist in the ADS.",
-        ):
-            self.instance._validateCalibrationTable(item, "does not exist")
-
-    def test_validateCalibrationTable(self):
-        # load a diffcal table and validate it
-        testCalibrationTable = self.generateTestDiffcalTable()
-        item = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()[0]
-        with pytest.raises(
-            RuntimeError,
-            match="Expected 1179648 rows for the native resolution.",
-        ):
-            self.instance._validateCalibrationTable(item, testCalibrationTable)
-
-    def test_validateCalibrationTable_fail_invalidDifcValues(self):
-        # load a diffcal table and validate it
-        testCalibrationTable = self.generateTestDiffcalTable()
-        mtd[testCalibrationTable].removeColumn("difc")
-        mtd[testCalibrationTable].addColumn("float", "difc")
-        item = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()[0]
-        with Config_override("instrument.native.pixelResolution", 16):
-            with pytest.raises(
-                RuntimeError,
-                match="All 'difc' values must be positive floats.",
-            ):
-                self.instance._validateCalibrationTable(item, testCalibrationTable)
-
-    def test_fetch_grocery_list_diffcal_table_cached(self):
-        # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:
-        #   workspace already in ADS
-        self.instance.grocer = mock.Mock()
-        groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()
-
-        diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
-        diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
-        self.instance.dataService.calibrationIndexer = self.mockIndexer(calType="calibration")
-        self.instance._createDiffCalTableFilepathFromWsName = mock.Mock(return_value="does/not/matter/is/cached")
-        self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-
-        # Both table and mask workspace must be resident in the ADS, otherwise a reload will be triggered.
-        CloneWorkspace(
-            InputWorkspace=self.sampleTableWS,
-            OutputWorkspace=diffCalTableName,
-        )
-        assert mtd.doesExist(diffCalTableName)
-        CloneWorkspace(
-            InputWorkspace=self.sampleMaskWS,
-            OutputWorkspace=diffCalMaskName,
-        )
-        assert mtd.doesExist(diffCalMaskName)
-
-        items = self.instance.fetchGroceryList(groceryList)
-        assert items[0] == diffCalTableName
-        self.instance.grocer.executeRecipe.assert_not_called()
-
-    def test_fetch_grocery_list_diffcal_table_cached_no_mask(self):
-        # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:
-        #   the table workspace is already in the ADS but the corresponding mask workspace is absent.
-        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-        with state_root_redirect(self.instance.dataService) as tmpRoot:
-            self.instance.dataService.calibrationIndexer = self.mockIndexer(tmpRoot.path(), "diffraction")
-            groceryList = (
-                GroceryListItem.builder().native().diffcal_table("stateId", self.version, self.runNumber1).buildList()
-            )
-            # independently construct the pathname, move file to there, assert exists
-            diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
-            diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
-            self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-            diffCalTableFilename = self.instance._createDiffCalTableFilepath(
-                diffcalRunNumber=groceryList[0].runNumber,
-                useLiteMode=groceryList[0].useLiteMode,
-                version=self.version,
-                state="stateId",
-            )
-            tmpRoot.addFileAs(self.sampleDiffCalFilePath, diffCalTableFilename)
-            assert Path(diffCalTableFilename).exists()
-
-            # When both table and mask workspaces exist for the given calibration:
-            #   both must be resident in the ADS, otherwise a reload will be triggered.
-            CloneWorkspace(
-                InputWorkspace=self.sampleTableWS,
-                OutputWorkspace=diffCalTableName,
-            )
-            assert mtd.doesExist(diffCalTableName)
-            assert not mtd.doesExist(diffCalMaskName)
-            with (
-                Config_override("instrument.native.pixelResolution", 16),
-                Config_override("instrument.native.name", "fakesnap"),
-            ):
-                wss = self.instance.fetchGroceryList(groceryList)  # noqa: F841
-            assert mtd.doesExist(diffCalTableName)
-            assert mtd.doesExist(diffCalMaskName)
-
-    def test_fetch_grocery_list_diffcal_table_loads_mask(self):
-        # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:
-        #   * corresponding mask workspace is also loaded from the hdf5-format file.
-        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-        with state_root_redirect(self.instance.dataService) as tmpRoot:
-            self.instance.dataService.calibrationIndexer = self.mockIndexer(tmpRoot.path(), "diffraction")
-            groceryList = (
-                GroceryListItem.builder().native().diffcal_table("stateId", self.version, self.runNumber1).buildList()
-            )
-            diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
-            diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
-            self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-            diffCalTableFilename = self.instance._createDiffCalTableFilepath(
-                diffcalRunNumber=groceryList[0].runNumber,
-                useLiteMode=groceryList[0].useLiteMode,
-                version=self.version,
-                state="stateId",
-            )
-            tmpRoot.addFileAs(self.sampleDiffCalFilePath, diffCalTableFilename)
-            assert Path(diffCalTableFilename).exists()
-
-            assert not mtd.doesExist(diffCalTableName)
-            assert not mtd.doesExist(diffCalMaskName)
-            with (
-                Config_override("instrument.native.pixelResolution", 16),
-                Config_override("instrument.native.name", "fakesnap"),
-            ):
-                items = self.instance.fetchGroceryList(groceryList)
-            assert items[0] == diffCalTableName
-            assert mtd.doesExist(diffCalTableName)
-            assert mtd.doesExist(diffCalMaskName)
-
-    def test_fetch_grocery_list_diffcal_mask(self):
-        # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`
-        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-        with state_root_redirect(self.instance.dataService) as tmpRoot:
-            self.instance.dataService.calibrationIndexer = self.mockIndexer(tmpRoot.path(), "diffraction")
-            groceryList = (
-                GroceryListItem.builder().native().diffcal_mask("stateId", self.version, self.runNumber1).buildList()
-            )
-            diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
-            diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
-
-            # DiffCal filename is constructed from the table name
-            diffCalTableFilename = self.instance._createDiffCalTableFilepath(
-                diffcalRunNumber=groceryList[0].runNumber,
-                useLiteMode=groceryList[0].useLiteMode,
-                version=groceryList[0].diffCalVersion,
-                state="stateId",
-            )
-            tmpRoot.addFileAs(self.sampleDiffCalFilePath, diffCalTableFilename)
-            assert Path(diffCalTableFilename).exists()
-
-            assert not mtd.doesExist(diffCalMaskName)
-            self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-            with (
-                Config_override("instrument.native.pixelResolution", 16),
-                Config_override("instrument.native.name", "fakesnap"),
-            ):
-                items = self.instance.fetchGroceryList(groceryList)
-            assert items[0] == diffCalMaskName
-            assert mtd.doesExist(diffCalMaskName)
-
-    def test_fetch_grocery_list_diffcal_mask_no_mask(self):
-        # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`:
-        #   a mask may not exist corresponding to a given calibration -- this is not an error.
-        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-        with state_root_redirect(self.instance.dataService) as tmpRoot:
-            self.instance.dataService.calibrationIndexer = self.mockIndexer(tmpRoot.path(), "diffraction")
-            groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1, self.version).buildList()
-            diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
-            diffCalMaskName = None
-            self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-            self.instance.fetchCalibrationWorkspaces = mock.Mock(return_value=(diffCalTableName, None))
-            with Config_override("instrument.native.pixelResolution", 16):
-                items = self.instance.fetchGroceryList(groceryList)
-            assert items[0] == ""
-
-    def test_fetch_grocery_list_diffcal_mask_cached(self):
-        # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`:
-        #   workspace already in ADS
-        groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1, self.version).buildList()
-        diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
-        diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
-        self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-        self.instance.dataService.calibrationIndexer = self.mockIndexer("root", "diffraction")
-        CloneWorkspace(
-            InputWorkspace=self.sampleMaskWS,
-            OutputWorkspace=diffCalMaskName,
-        )
-        assert mtd.doesExist(diffCalMaskName)
-        testTitle = "I'm a little teapot"
-        mtd[diffCalMaskName].setTitle(testTitle)
-
-        # Reloading is triggered based on whether or not the corresponding table workspace is in the ADS.
-        diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
-        CloneWorkspace(
-            InputWorkspace=self.sampleTableWS,
-            OutputWorkspace=diffCalTableName,
-        )
-        assert mtd.doesExist(diffCalTableName)
-
-        items = self.instance.fetchGroceryList(groceryList)
-        assert items[0] == diffCalMaskName
-        assert mtd.doesExist(diffCalMaskName)
-        assert mtd[diffCalMaskName].getTitle() == testTitle
-
-    def test_fetch_grocery_list_diffcal_mask_loads_table(self):
-        # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`:
-        #   * corresponding table workspace is also loaded from the hdf5-format file.
-
-        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-        with state_root_redirect(self.instance.dataService) as tmpRoot:
-            self.instance.dataService.calibrationIndexer = self.mockIndexer(tmpRoot.path(), "diffraction")
-            groceryList = (
-                GroceryListItem.builder().native().diffcal_mask("stateId", self.version, self.runNumber1).buildList()
-            )
-            diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
-            diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
-
-            # DiffCal filename is constructed from the table name
-            diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
-            self.instance._lookupDiffCalWorkspaceNames = mock.Mock(return_value=(diffCalTableName, diffCalMaskName))
-            diffCalTableFilename = self.instance._createDiffCalTableFilepath(
-                diffcalRunNumber=groceryList[0].runNumber,
-                useLiteMode=groceryList[0].useLiteMode,
-                version=groceryList[0].diffCalVersion,
-                state="stateId",
-            )
-            tmpRoot.addFileAs(self.sampleDiffCalFilePath, diffCalTableFilename)
-            assert Path(diffCalTableFilename).exists()
-
-            assert not mtd.doesExist(diffCalMaskName)
-            assert not mtd.doesExist(diffCalTableName)
-            with (
-                Config_override("instrument.native.pixelResolution", 16),
-                Config_override("instrument.native.name", "fakesnap"),
-            ):
-                items = self.instance.fetchGroceryList(groceryList)
-            assert items[0] == diffCalMaskName
-            assert mtd.doesExist(diffCalMaskName)
-            assert mtd.doesExist(diffCalTableName)
-
-    @mock.patch(ThisService + "logger")
-    def test_fetch_grocery_list_normalization(self, mockLogger):
-        # Test of workspace type "normalization" as `Input` argument in the `GroceryList`
-        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-        with state_root_redirect(self.instance.dataService) as tmpRoot:
-            self.instance.dataService.normalizationIndexer = self.mockIndexer(tmpRoot.path(), "normalization")
-            groceryList = (
-                GroceryListItem.builder().lite().normalization(self.runNumber1, "statId", self.version).buildList()
-            )
-            self.instance._processNeutronDataCopy = mock.Mock()
-            self.instance._validateWorkspaceInstrument = mock.Mock()
-            self.instance.dataService.generateInstrumentState = mock.Mock(
-                return_value=DAOFactory.default_instrument_state
-            )
-            # normalization filename is constructed
-            normalizationWorkspaceName = (
-                wng.rawVanadium().runNumber(self.runNumber1).version(self.version).hidden(True).build()
-            )
-            normalizationFilename = self.instance._lookupNormalizationWorkspaceFilename(
-                normcalRunNumber=groceryList[0].runNumber,
-                useLiteMode=groceryList[0].useLiteMode,
-                version=self.version,
-                state="stateId",
-            )
-            tmpRoot.addFileAs(self.sampleWSFilePath, normalizationFilename)
-            assert Path(normalizationFilename).exists()
-
-            assert not mtd.doesExist(normalizationWorkspaceName)
-            items = self.instance.fetchGroceryList(groceryList)
-            assert items[0] == normalizationWorkspaceName
-            assert mtd.doesExist(normalizationWorkspaceName)
-            self.instance._processNeutronDataCopy.assert_called_once_with(groceryList[0], normalizationWorkspaceName)
-            self.instance._validateWorkspaceInstrument.assert_called_once_with(
-                groceryList[0], normalizationWorkspaceName
-            )
-
-            mockLogger.info.assert_any_call(
-                f"Fetching normalization workspace for run {self.runNumber1}, version {self.version}"
-            )
-
-    @mock.patch(ThisService + "logger")
-    def test_fetch_grocery_list_normalization_bust_cache(self, mockLogger):
-        # Test of workspace type "normalization" as `Input` argument in the `GroceryList`
-        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-        self.instance._processNeutronDataCopy = mock.Mock()
-        self.instance._validateWorkspaceInstrument = mock.Mock()
-        with state_root_redirect(self.instance.dataService) as tmpRoot:
-            self.instance.dataService.normalizationIndexer = self.mockIndexer(tmpRoot.path(), "normalization")
-            self.instance.dataService.generateInstrumentState = mock.Mock(
-                return_value=DAOFactory.default_instrument_state
-            )
-
-            version2 = self.version + 1
-            groceryList = (
-                GroceryListItem.builder().native().normalization(self.runNumber1, "stateId", self.version).buildList()
-            )
-            groceryList2 = (
-                GroceryListItem.builder().native().normalization(self.runNumber1, "stateId", version2).buildList()
-            )
-
-            # normalization filename is constructed
-            normalizationWorkspaceName = (
-                wng.rawVanadium().runNumber(self.runNumber1).version(self.version).hidden(True).build()
-            )
-            normalizationFilename = self.instance._lookupNormalizationWorkspaceFilename(
-                normcalRunNumber=groceryList[0].runNumber,
-                useLiteMode=groceryList[0].useLiteMode,
-                version=self.version,
-                state="stateID",
-            )
-            tmpRoot.addFileAs(self.sampleWSFilePath, normalizationFilename)
-            assert Path(normalizationFilename).exists()
-
-            normalizationWorkspaceName2 = (
-                wng.rawVanadium().runNumber(self.runNumber1).version(version2).hidden(True).build()
-            )
-            normalizationFilename2 = self.instance._lookupNormalizationWorkspaceFilename(
-                normcalRunNumber=groceryList2[0].runNumber,
-                useLiteMode=groceryList2[0].useLiteMode,
-                version=version2,
-                state="stateId",
-            )
-            tmpRoot.addFileAs(self.sampleWSFilePath, normalizationFilename2)
-            assert Path(normalizationFilename2).exists()
-
-            assert not mtd.doesExist(normalizationWorkspaceName)
-            items = self.instance.fetchGroceryList(groceryList)
-            assert items[0] == normalizationWorkspaceName
-            assert mtd.doesExist(normalizationWorkspaceName)
-            self.instance._processNeutronDataCopy.assert_called_once()
-            self.instance._processNeutronDataCopy.reset_mock()
-
-            assert not mtd.doesExist(normalizationWorkspaceName2)
-            items = self.instance.fetchGroceryList(groceryList2)
-            assert mtd.doesExist(normalizationWorkspaceName2)
-            assert not mtd.doesExist(normalizationWorkspaceName)
-            assert items[0] == normalizationWorkspaceName2
-            self.instance._processNeutronDataCopy.assert_called_once()
-
-            mockLogger.info.assert_any_call(
-                f"Fetching normalization workspace for run {self.runNumber1}, version {self.version}"
-            )
 
     def test_fetch_grocery_list_normalization_cached(self):
         # Test of workspace type "normalization" as `Input` argument in the `GroceryList`:
@@ -1443,21 +1011,6 @@ class TestGroceryService(unittest.TestCase):
         assert mtd[normalizationWorkspaceName].getTitle() == testTitle
         assert self.instance.grocer.executeRecipe.call_count == 0
         self.instance._processNeutronDataCopy.assert_not_called()
-
-    def test_fetch_grocery_list_normalization_not_found_unreachable_code(self):
-        # Test of workspace type "normalization": no normalization exists
-        with state_root_redirect(self.instance.dataService) as tmpRoot:
-            self.instance.dataService.normalizationIndexer = self.mockIndexer(tmpRoot.path(), "normalization")
-            self.instance.dataService.normalizationIndexer.latestApplicableVersion = mock.Mock(return_value=None)
-
-            # Bypass "version" validation, to trigger "unreachable code" section:
-            groceryList = (
-                GroceryListItem.builder().native().normalization(self.runNumber1, "stateId", self.version).buildList()
-            )
-            groceryList[0].normCalVersion = None
-
-            with pytest.raises(RuntimeError, match="Could not find any Normalizations associated with run.*"):
-                self.instance.fetchGroceryList(groceryList)
 
     def test_fetch_grocery_list_reductionPixelMask(self):
         # Test of workspace type "reduction_pixel_mask" as `Input` argument in the `GroceryList`
@@ -1901,73 +1454,6 @@ class TestGroceryService(unittest.TestCase):
         actual = self.instance.getResidentWorkspaces(excludeCache=True)
         assert actual == expected
 
-    def test__lookupDiffCalWorkspaceNames_no_record(self):
-        runNumber = 123
-        version = 1
-        mockIndexer = mock.Mock()
-        mockIndexer.readRecord = mock.Mock(return_value=None)
-        mockDataService = mock.Mock()
-        mockDataService.calibrationIndexer = mock.Mock(return_value=mockIndexer)
-        self.instance.dataService = mockDataService
-
-        with pytest.raises(RuntimeError, match=r".*Could not find calibration record*"):
-            self.instance._lookupDiffCalWorkspaceNames(runNumber, True, "stateId", version)
-
-    def test__lookupDiffCalWorkspaceNames_nonInt_version(self):
-        runNumber = 123
-        version = "v1"
-        mockRecord = mock.Mock()
-        mockRecord.version = 1
-        mockRecord.workspaces = {
-            WorkspaceType.DIFFCAL_TABLE: ["diffcal_table"],
-            WorkspaceType.DIFFCAL_MASK: ["diffcal_mask"],
-        }
-        mockIndexer = mock.Mock()
-        mockIndexer.latestApplicableVersion = mock.Mock(return_value=1)
-        mockIndexer.readRecord = mock.Mock(return_value=mockRecord)
-        mockDataService = mock.Mock()
-        mockDataService.calibrationIndexer = mock.Mock(return_value=mockIndexer)
-        self.instance.dataService = mockDataService
-
-        self.instance._lookupDiffCalWorkspaceNames(runNumber, True, "stateId", version)
-
-        mockIndexer.latestApplicableVersion.assert_called_once_with(runNumber)
-
-    def test__lookupDiffCalWorkspaceNames_missing_table_workspace_in_record(self):
-        runNumber = 123
-        version = "v1"
-        mockRecord = mock.Mock()
-        mockRecord.version = 1
-        mockRecord.workspaces = {"does_not_exist": ["diffcal_table"], WorkspaceType.DIFFCAL_MASK: ["diffcal_mask"]}
-        mockIndexer = mock.Mock()
-        mockIndexer.readRecord = mock.Mock(return_value=mockRecord)
-        mockDataService = mock.Mock()
-        mockDataService.calibrationIndexer = mock.Mock(return_value=mockIndexer)
-        self.instance.dataService = mockDataService
-
-        with pytest.raises(RuntimeError, match=r".*Could not find any table workspaces in calibration record*"):
-            self.instance._lookupDiffCalWorkspaceNames(runNumber, True, "stateId", version)
-
-    def test__lookupDiffCalWorkspaceNames_missing_mask_workspace_in_record(self):
-        # In a calibration record, the mask workspace is optional.
-
-        runNumber = 123
-        version = "v1"
-        mockRecord = mock.Mock()
-        mockRecord.version = 1
-        mockRecord.workspaces = {WorkspaceType.DIFFCAL_TABLE: ["diffcal_table"], "does_not_exist": ["lah_dee_dah"]}
-        mockIndexer = mock.Mock()
-        mockIndexer.readRecord = mock.Mock(return_value=mockRecord)
-        mockDataService = mock.Mock()
-        mockDataService.calibrationIndexer = mock.Mock(return_value=mockIndexer)
-        self.instance.dataService = mockDataService
-
-        tableWorkspaceName, maskWorkspaceName = self.instance._lookupDiffCalWorkspaceNames(
-            runNumber, True, "stateId", version
-        )
-        assert tableWorkspaceName == mockRecord.workspaces[WorkspaceType.DIFFCAL_TABLE][0]
-        assert maskWorkspaceName is None
-
     def test_checkPixelMask(self):
         # raises an error if workspace not in ADS
         nonexistent = mtd.unique_name(prefix="_mask_check_")
@@ -2000,22 +1486,6 @@ class TestGroceryService(unittest.TestCase):
         assert mtd[nonemptymask].getNumberMasked() != 0
         assert self.instance.checkPixelMask(nonemptymask)
 
-    def test_fetchDiffCalForSample_altPath(self):
-        item = GroceryListItem(
-            workspaceType="diffcal_table",
-            diffCalFilePath=Path("some/path/to/diffcal_table.h5"),
-            state="stateId",
-            useLiteMode=True,
-            diffCalVersion=0,
-        )
-        with mock.patch.object(
-            self.instance,
-            "_loadCalibrationFile",
-        ):
-            tableName, maskName = self.instance.fetchDiffCalForSample(item)
-            assert tableName == "diffcal_table"
-            assert maskName == "diffcal_table_mask"
-
     def test_processNeutronDataCopy(self):
         # confirm that appropriate algorthims are applied to the workspace
         testCalibrationData = DAOFactory.calibrationParameters()
@@ -2027,7 +1497,7 @@ class TestGroceryService(unittest.TestCase):
             instance.mantidSnapper = mock.Mock()
             instance.dataService = mock.Mock()
             instance.dataService.generateInstrumentState = mock.Mock(return_value=DAOFactory.default_instrument_state)
-            instance.fetchDiffCalForSample = mock.Mock(return_value=("diffcal_table", "diffcal_mask"))
+            instance.fetchDiffCalTable = mock.Mock(return_value="diffcal_table")
 
             item = GroceryListItem(
                 workspaceType="neutron", runNumber="123", useLiteMode=True, loader="", diffCalVersion="3"

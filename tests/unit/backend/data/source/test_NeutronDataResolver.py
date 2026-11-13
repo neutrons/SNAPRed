@@ -95,8 +95,8 @@ class Harness:
         self.liteResolver = NeutronDataResolver(self.liteSources, self.cache, self.workspaces)
 
         self._stack = ExitStack()
-        self._stack.enter_context(Config_override("neutronData.sources.native", list(native)))
-        self._stack.enter_context(Config_override("neutronData.sources.lite", list(lite)))
+        self._stack.enter_context(Config_override("dataSources.neutron.native", list(native)))
+        self._stack.enter_context(Config_override("dataSources.neutron.lite", list(lite)))
         mockMetadataService = self._stack.enter_context(mock.patch(ThisModule + "WorkspaceMetadataService"))
         self.metadata = mockMetadataService.return_value
         self.metadata.writeWorkspaceMetadata.side_effect = lambda ws, md: self.tags.__setitem__(ws, md.dataSource)
@@ -159,7 +159,7 @@ def test_no_source_available(harness):
     "harness", [{"sources": standardSources(), "native": ("nexusFile", "liteFile")}], indirect=True
 )
 def test_misconfigured_order(harness):
-    with pytest.raises(RuntimeError, match=r"lists 'liteFile', which is not a source of native data"):
+    with pytest.raises(RuntimeError, match=r"lists 'liteFile', which is not a source of native neutron data"):
         harness.resolver.resolve(item())
 
 

@@ -167,6 +167,11 @@ class Harness:
         return workspace
 
 
+def dataSource(workspace: str) -> str:
+    """The provenance tag that SNAPRed writes to each fetched workspace that has logs (a table has none)."""
+    return mtd[workspace].getRun().getLogData(f"{Config['metadata.tagPrefix']}dataSource").value
+
+
 def calibrationWorkspaces() -> set:
     return {
         name
@@ -202,8 +207,8 @@ class TestDiffCalTable:
         workspace = harness.fetch(harness.item("diffcal_table", useLiteMode, diffCalVersion=VERSION))
         assert workspace == tableName()
         assert mtd[workspace].rowCount() == harness.sampleData.pixelCount
-        # Today, the mask in the same file is loaded as well.
-        assert calibrationWorkspaces() == {tableName(), maskName()}
+        # Only the table is loaded: the mask in the same file is a separate product.
+        assert calibrationWorkspaces() == {tableName()}
 
     def test_cached(self, harness):
         path = harness.addDiffCal()
@@ -248,6 +253,9 @@ class TestDiffCalMask:
         workspace = harness.fetch(harness.item("diffcal_mask", diffCalVersion=VERSION))
         assert workspace == maskName()
         assert isinstance(mtd[workspace], MaskWorkspace)
+        assert dataSource(workspace) == "calibrationRecord"
+        # Only the mask is loaded.
+        assert calibrationWorkspaces() == {maskName()}
 
     def test_cached(self, harness):
         path = harness.addDiffCal()
@@ -267,6 +275,7 @@ class TestDiffCalMask:
         workspace = harness.fetch(harness.item("diffcal_mask", diffCalVersion=VERSION, diffCalFilePath=path))
         assert workspace == "explicit_diffcal_mask"
         assert isinstance(mtd[workspace], MaskWorkspace)
+        assert dataSource(workspace) == "calibrationFile"
 
 
 class TestNormalization:
@@ -275,6 +284,7 @@ class TestNormalization:
         harness.addNormalization(useLiteMode)
         workspace = harness.fetch(harness.item("normalization", useLiteMode, normCalVersion=VERSION))
         assert workspace == normalizationName()
+        assert dataSource(workspace) == "normalizationRecord"
         # The normalization data is processed: its events are cropped to the instrument's TOF bounds.
         bounds = DAOFactory.calibrationParameters().instrumentState.particleBounds.tof
         assert mtd[workspace].getTofMin() >= bounds.minimum
