@@ -620,10 +620,10 @@ class TestGroceryService(unittest.TestCase):
         key = self.instance._key(stateId, useLiteMode)
         wsname = "_test_ws_"
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
-        assert self.instance._loadedInstruments == {}
+        assert self.instance.instrumentDonors.loadedInstruments == {}
         assert not mtd.doesExist(wsname)
         self.instance._updateInstrumentCacheFromADS(runId, useLiteMode, key)
-        assert self.instance._loadedInstruments == {}
+        assert self.instance.instrumentDonors.loadedInstruments == {}
         assert not mtd.doesExist(wsname)
 
     def test_updateInstrumentCacheFromADS_both(self):
@@ -634,11 +634,11 @@ class TestGroceryService(unittest.TestCase):
         key = self.instance._key(stateId, useLiteMode)
         wsname = "_test_ws_"
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
-        self.instance._loadedInstruments[key] = wsname
+        self.instance.instrumentDonors.loadedInstruments[key] = wsname
         self.create_dumb_workspace(wsname)
         assert mtd.doesExist(wsname)
         self.instance._updateInstrumentCacheFromADS(runId, useLiteMode, key)
-        assert self.instance._loadedInstruments == {key: wsname}
+        assert self.instance.instrumentDonors.loadedInstruments == {key: wsname}
 
     def test_updateInstrumentCacheFromADS_cache_no_ADS(self):
         """ws is in cache but not ADS"""
@@ -648,24 +648,10 @@ class TestGroceryService(unittest.TestCase):
         key = self.instance._key(stateId, useLiteMode)
         wsname = "_test_ws_"
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
-        self.instance._loadedInstruments[key] = wsname
+        self.instance.instrumentDonors.loadedInstruments[key] = wsname
         assert not mtd.doesExist(wsname)
         self.instance._updateInstrumentCacheFromADS(runId, useLiteMode, key)
-        assert self.instance._loadedInstruments == {}
-
-    def test_updateInstrumentCacheFromADS_ADS_no_cache(self):
-        """ws is in ADS and not in cache"""
-        runId = "555"
-        stateId = self.stateId
-        useLiteMode = True
-        key = self.instance._key(stateId, useLiteMode)
-        wsname = "_test_ws_"
-        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
-        self.create_dumb_workspace(wsname)
-        assert self.instance._loadedInstruments == {}
-        assert mtd.doesExist(wsname)
-        self.instance._updateInstrumentCacheFromADS(runId, useLiteMode, key)
-        assert self.instance._loadedInstruments == {key: wsname}
+        assert self.instance.instrumentDonors.loadedInstruments == {}
 
     def test_rebuildNeutronCache(self):
         """Test the correct behavior of the rebuildNeutronCache method"""
@@ -694,9 +680,9 @@ class TestGroceryService(unittest.TestCase):
         key = self.instance._key(stateId, useLiteMode)
         wsname = "_test_ws_"
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
-        self.instance._loadedInstruments[key] = wsname
+        self.instance.instrumentDonors.loadedInstruments[key] = wsname
         self.instance.rebuildInstrumentCache()
-        assert self.instance._loadedInstruments == {}
+        assert self.instance.instrumentDonors.loadedInstruments == {}
 
     def test_rebuildCache(self):
         """Test the correct behavior of the rebuildCache method"""
@@ -708,11 +694,11 @@ class TestGroceryService(unittest.TestCase):
         key = (runId, useLiteMode)
         self.instance.neutronData.cache.loadedRuns[key] = 1
         self.instance._loadedGroupings[self.instance._key(groupingScheme, runId, useLiteMode)] = wsname
-        self.instance._loadedInstruments[key] = wsname
+        self.instance.instrumentDonors.loadedInstruments[key] = wsname
         self.instance.rebuildCache()
         assert self.instance.neutronData.cache.loadedRuns == {}
         assert self.instance._loadedGroupings == {}
-        assert self.instance._loadedInstruments == {}
+        assert self.instance.instrumentDonors.loadedInstruments == {}
 
     def test_clearLiveDataCache(self):
         self.instance._createRawNeutronWorkspaceName = mock.Mock(
@@ -1603,29 +1589,11 @@ class TestGroceryService(unittest.TestCase):
             6.496040375624123,
         )
 
-    def test_fetch_instrument_donor_neutron_data(self):
-        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=self.sampleWS)
-        self.instance._updateNeutronCacheFromADS = mock.Mock()
-        self.instance._updateInstrumentCacheFromADS = mock.Mock()
-        self.instance.neutronData.cache.loadedRuns = {(self.runNumber, self.useLiteMode): 0}
-        self.instance._loadedInstruments = {}
-        testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
-        assert testWS == self.sampleWS
-
-    def test_fetch_instrument_donor_neutron_data_is_cached(self):
-        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=self.sampleWS)
-        self.instance._updateNeutronCacheFromADS = mock.Mock()
-        self.instance._updateInstrumentCacheFromADS = mock.Mock()
-        self.instance.neutronData.cache.loadedRuns = {(self.runNumber, self.useLiteMode): 0}
-        self.instance._loadedInstruments = {}
-        testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)  # noqa: F841
-        assert self.instance._loadedInstruments == {(self.stateId, self.useLiteMode): self.sampleWS}
-
     def test_fetch_instrument_donor_cached(self):
         self.instance._updateNeutronCacheFromADS = mock.Mock()
         self.instance._updateInstrumentCacheFromADS = mock.Mock()
         self.instance.neutronData.cache.loadedRuns = {}
-        self.instance._loadedInstruments = {(self.stateId, self.useLiteMode): self.sampleWS}
+        self.instance.instrumentDonors.loadedInstruments = {(self.stateId, self.useLiteMode): self.sampleWS}
         testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
         assert testWS == self.sampleWS
 
@@ -1634,7 +1602,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance._updateNeutronCacheFromADS = mock.Mock()
         self.instance._updateInstrumentCacheFromADS = mock.Mock()
         self.instance.neutronData.cache.loadedRuns = {}
-        self.instance._loadedInstruments = {}
+        self.instance.instrumentDonors.loadedInstruments = {}
         testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
         assert mtd.doesExist(testWS)
         assert not testWS == self.sampleWS
@@ -1665,24 +1633,17 @@ class TestGroceryService(unittest.TestCase):
         self.instance._updateNeutronCacheFromADS = mock.Mock()
         self.instance._updateInstrumentCacheFromADS = mock.Mock()
         self.instance.neutronData.cache.loadedRuns = {}
-        self.instance._loadedInstruments = {}
+        self.instance.instrumentDonors.loadedInstruments = {}
         testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
-        assert self.instance._loadedInstruments == {(self.stateId2, self.useLiteMode): testWS}
-
-    def test_update_instrument_cache_from_ADS_to_cache(self):
-        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=self.sampleWS)
-        self.instance._loadedInstruments = {}
-        key = self.instance._key(self.stateId, self.useLiteMode)
-        self.instance._updateInstrumentCacheFromADS(self.runNumber, self.useLiteMode, key)
-        assert self.instance._loadedInstruments == {(self.stateId, self.useLiteMode): self.sampleWS}
+        assert self.instance.instrumentDonors.loadedInstruments == {(self.stateId2, self.useLiteMode): testWS}
 
     def test_update_instrument_cache_from_ADS_cache_del(self):
         testWSName = "not_any_workspace"
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=testWSName)
         key = self.instance._key(self.stateId, self.useLiteMode)
-        self.instance._loadedInstruments = {key: testWSName}
+        self.instance.instrumentDonors.loadedInstruments = {key: testWSName}
         self.instance._updateInstrumentCacheFromADS(self.runNumber, self.useLiteMode, key)
-        assert self.instance._loadedInstruments == {}
+        assert self.instance.instrumentDonors.loadedInstruments == {}
 
     def test_fetchCompatibleMask(self):
         # Add an actual instrument state to the sample workspace
@@ -1835,13 +1796,13 @@ class TestGroceryService(unittest.TestCase):
         rawWsName = self.instance._createRawNeutronWorkspaceName("556854", False)
         self.instance.neutronData.cache.loadedRuns = {("556854", False): 0}
         self.instance._loadedGroupings = {("column", "556854", True): "d"}
-        self.instance._loadedInstruments = {("556854", False): rawWsName, ("556855", True): "hello"}
+        self.instance.instrumentDonors.loadedInstruments = {("556854", False): rawWsName, ("556855", True): "hello"}
         assert set(self.instance.getCachedWorkspaces()) == set([rawWsName, "d", "hello"])
 
     def test_getCachedWorkspaces_empty(self):
         self.instance.neutronData.cache.loadedRuns = {}
         self.instance._loadedGroupings = {}
-        self.instance._loadedInstruments = {}
+        self.instance.instrumentDonors.loadedInstruments = {}
 
         assert self.instance.getCachedWorkspaces() == []
 
