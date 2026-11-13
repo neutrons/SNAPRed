@@ -505,7 +505,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = mock.Mock(return_value=tmpDir)
             self.instance.groceryService.dataService.readCalibrationRecord = mock.Mock()
-            self.instance.groceryService.fetchCalibrationWorkspaces = mock.Mock()
             self.instance.groceryService.createDiffCalTableWorkspaceName = mock.Mock()
             self.instance.groceryService.fetchGroceryDict = mock.Mock()
             self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
