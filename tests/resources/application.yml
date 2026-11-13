@@ -269,6 +269,10 @@ mantid:
           all: all
           column: column
           bank: bank
+        auxiliary:
+          # the cached neutron data of a run, and the numbered copies made from it
+          cachedRaw: Raw
+          cachedCopy: "Copy{copyNumber}"
 
 localdataservice:
   config:

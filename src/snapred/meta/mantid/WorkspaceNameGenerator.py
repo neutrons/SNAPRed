@@ -371,9 +371,26 @@ class _WorkspaceNameGenerator:
         def UNFOC(cls):
             return Config[f"{cls._templateRoot}.unfocussed"]
 
+    class Auxiliary:
+        _templateRoot = "mantid.workspace.nameTemplate.auxiliary"
+
+        @classproperty
+        def CACHED_RAW(cls):
+            """The cached neutron data of a run."""
+            return Config[f"{cls._templateRoot}.cachedRaw"]
+
+        @classmethod
+        def cachedCopy(cls, copyNumber: int) -> str:
+            """A numbered copy of the cached neutron data of a run."""
+            return Config[f"{cls._templateRoot}.cachedCopy"].format(copyNumber=copyNumber)
+
     class Lite:
         TRUE = "lite"
         FALSE = ""
+
+        @classmethod
+        def fromLiteMode(cls, useLiteMode: bool) -> str:
+            return cls.TRUE if useLiteMode else cls.FALSE
 
     class ArtificialNormWorkspaceType:
         PREVIEW = "preview"

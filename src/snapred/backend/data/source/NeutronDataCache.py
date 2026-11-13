@@ -1,8 +1,8 @@
 from typing import Dict, List, Tuple
 
-from snapred.backend.data.source.NeutronWorkspaceNames import NeutronWorkspaceNames as names
 from snapred.backend.data.source.WorkspaceOperations import WorkspaceOperations
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 CacheKey = Tuple[str, bool]
 
@@ -28,6 +28,17 @@ class NeutronDataCache:
         self.uncacheableKeys: List[CacheKey] = []
 
     @staticmethod
+    def rawWorkspace(runNumber: str, useLiteMode: bool) -> WorkspaceName:
+        """The name of the cached workspace of a run."""
+        return (
+            wng.run()
+            .runNumber(runNumber)
+            .lite(wng.Lite.fromLiteMode(useLiteMode))
+            .auxiliary(wng.Auxiliary.CACHED_RAW)
+            .build()
+        )
+
+    @staticmethod
     def key(runNumber: str, useLiteMode: bool) -> CacheKey:
         return (runNumber, useLiteMode)
 
@@ -36,7 +47,7 @@ class NeutronDataCache:
 
     def updateFromADS(self, runNumber: str, useLiteMode: bool):
         """Make the entry for a key consistent with the ADS."""
-        workspace = names.raw(runNumber, useLiteMode)
+        workspace = self.rawWorkspace(runNumber, useLiteMode)
         key = self.key(runNumber, useLiteMode)
         if self.workspaces.workspaceDoesExist(workspace) and self.loadedRuns.get(key) is None:
             # 0 => loaded with no copies
@@ -49,7 +60,7 @@ class NeutronDataCache:
             self.updateFromADS(*key)
 
     def cachedWorkspaces(self) -> List[WorkspaceName]:
-        return [names.raw(runNumber, useLiteMode) for runNumber, useLiteMode in self.loadedRuns.keys()]
+        return [self.rawWorkspace(runNumber, useLiteMode) for runNumber, useLiteMode in self.loadedRuns.keys()]
 
     def recordUncacheable(self, key: CacheKey):
         self.loadedRuns[key] = 0
@@ -60,4 +71,4 @@ class NeutronDataCache:
             key = self.uncacheableKeys.pop()
             # The entry may already have been dropped by `updateFromADS`, or recorded more than once.
             self.loadedRuns.pop(key, None)
-            self.workspaces.deleteWorkspaceUnconditional(names.raw(*key))
+            self.workspaces.deleteWorkspaceUnconditional(self.rawWorkspace(*key))
