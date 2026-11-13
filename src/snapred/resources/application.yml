@@ -82,6 +82,13 @@ instrument:
   minimumRunNumber: 46342
   maxNumberOfRuns: 10
 
+neutronData:
+  sources:
+    # The order in which the data sources are tried, for each resolution
+    #   (see `docs/source/developer/implementation_notes/data_sources.rst`).
+    native: [nexusFile, live]
+    lite: [liteFile, liteConversion]
+
 liveData:
   enabled: true
   # Override 'liveData.facility' and 'liveData.instrument'
