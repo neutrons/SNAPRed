@@ -323,3 +323,17 @@ def test_formatVersion_nonsense():
     expected = ""
     ans = wnvf.formatVersion("matt")
     assert ans == expected
+
+
+def test_Lite_fromLiteMode():
+    assert wng.Lite.fromLiteMode(True) == wng.Lite.TRUE
+    assert wng.Lite.fromLiteMode(False) == wng.Lite.FALSE
+
+
+def test_Auxiliary_cached_neutron_data():
+    assert wng.Auxiliary.CACHED_RAW == Config["mantid.workspace.nameTemplate.auxiliary.cachedRaw"]
+    assert wng.Auxiliary.cachedCopy(3) == "Copy3"
+    # The names of cached neutron data are unchanged by moving them into the name generator.
+    assert wng.run().runNumber("57482").auxiliary(wng.Auxiliary.CACHED_RAW).build() == "_tof_all_raw_057482"
+    lite = wng.run().runNumber("57482").lite(wng.Lite.fromLiteMode(True))
+    assert lite.auxiliary(wng.Auxiliary.cachedCopy(2)).build() == "_tof_all_lite_copy2_057482"
