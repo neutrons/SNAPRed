@@ -15,6 +15,7 @@ from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.source.NeutronDataSources import NeutronDataSources
 from snapred.backend.data.source.NeutronWorkspaceNames import NeutronWorkspaceNames
+from snapred.backend.data.source.WorkspaceOperations import WorkspaceOperations
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
@@ -67,9 +68,11 @@ class GroceryService:
 
         self.grocer = FetchGroceriesRecipe()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
+        # The ADS operations, shared with the data sources.
+        self.workspaces = WorkspaceOperations(self.mantidSnapper)
 
         # The neutron-data sources, and the neutron-data cache.
-        self.neutronData = NeutronDataSources(self.dataService, self.grocer, self)
+        self.neutronData = NeutronDataSources(self.dataService, self.grocer, self.workspaces)
 
     def _defaultClass(self, val, clazz):
         if val is None:
@@ -441,7 +444,7 @@ class GroceryService:
         :return: True if the workspace exists, False if it does not exist
         :rtype: bool
         """
-        return self.mantidSnapper.mtd.doesExist(name)
+        return self.workspaces.workspaceDoesExist(name)
 
     def renameWorkspace(self, oldName: WorkspaceName, newName: WorkspaceName) -> WorkspaceName:
         """
@@ -452,14 +455,7 @@ class GroceryService:
         :param newName: the name to replace the workspace name in the ADS
         :type newName: WorkspaceName
         """
-        if oldName != newName:
-            self.mantidSnapper.RenameWorkspace(
-                f"Renaming '{oldName}' to '{newName}'",
-                InputWorkspace=oldName,
-                OutputWorkspace=newName,
-            )
-            self.mantidSnapper.executeQueue()
-        return newName
+        return self.workspaces.renameWorkspace(oldName, newName)
 
     def renameWorkspaces(self, oldNames: List[WorkspaceName], newNames: List[WorkspaceName]):
         """
@@ -488,10 +484,7 @@ class GroceryService:
         :return: a pointer to the workspace in the ADS corresponding to name
         :rtype: a C++ shared pointer to a MatrixWorkspace
         """
-        if self.workspaceDoesExist(name):
-            return self.mantidSnapper.mtd[name]
-        else:
-            return None
+        return self.workspaces.getWorkspaceForName(name)
 
     def getCloneOfWorkspace(self, name: WorkspaceName, copy: WorkspaceName) -> WorkspaceName:
         """
@@ -504,13 +497,7 @@ class GroceryService:
         :return: the name of the cloned workspace
         :rtype: WorkspaceName
         """
-        self.mantidSnapper.CloneWorkspace(
-            f"Cloning {name} to {copy}",
-            InputWorkspace=name,
-            OutputWorkspace=copy,
-        )
-        self.mantidSnapper.executeQueue()
-        return copy
+        return self.workspaces.getCloneOfWorkspace(name, copy)
 
     def writeWorkspaceMetadataAsTags(self, workspaceName: WorkspaceName, workspaceMetadata: WorkspaceMetadata):
         """
@@ -1405,12 +1392,7 @@ class GroceryService:
         :param name: the name of the workspace in the ADS to be deleted
         :type name: WorkspaceName
         """
-        if self.workspaceDoesExist(name):
-            self.mantidSnapper.DeleteWorkspace(
-                f"Deleting workspace {name}",
-                Workspace=name,
-            )
-            self.mantidSnapper.executeQueue()
+        self.workspaces.deleteWorkspaceUnconditional(name)
 
     def clearADS(self, exclude: List[WorkspaceName] = [], clearCache: bool = False):
         """
