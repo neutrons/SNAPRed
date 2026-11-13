@@ -1,26 +1,21 @@
 import datetime
 
 import pytest
-from mantid.simpleapi import AddSampleLog, CloneWorkspace, CreateSingleValuedWorkspace, DeleteWorkspace, mtd
+from mantid.simpleapi import AddSampleLog, CreateSingleValuedWorkspace, DeleteWorkspace, mtd
 
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem, LiveDataArgs
 from snapred.backend.data.source.DataSourceKind import DataSourceKind
 from snapred.backend.data.source.NeutronDataRegistrations import NeutronDataRegistrations
 from snapred.backend.data.source.RegisteredSource import RegisteredSource
 from snapred.backend.data.source.Resolution import Resolution
+from snapred.backend.data.source.WorkspaceOperations import WorkspaceOperations
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 RUN_NUMBER = "12345"
 
 
-class Workspaces:
-    """The ADS operations of `GroceryService`, on the real ADS."""
-
-    def getCloneOfWorkspace(self, name, copy):
-        CloneWorkspace(InputWorkspace=name, OutputWorkspace=copy)
-        return copy
-
-    def getWorkspaceForName(self, name):
-        return mtd[name]
+def Workspaces() -> WorkspaceOperations:
+    return WorkspaceOperations(MantidSnapper(None, "Utensils"))
 
 
 @pytest.fixture
