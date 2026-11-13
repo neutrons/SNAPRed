@@ -3,6 +3,7 @@ from typing import ClassVar, Optional
 
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.data.source.DataSourceKind import DataSourceKind
+from snapred.backend.data.source.Product import Product
 from snapred.backend.data.source.Resolution import Resolution
 from snapred.backend.data.source.SourcedData import SourcedData
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -10,7 +11,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 class DataSource(ABC):
     """
-    A source of one kind of data, at one resolution.
+    A source of one product (see `Product`), at one resolution.
 
     A source that derives its data from other data (for example, lite-mode data converted from
     native-resolution data) obtains that data itself, from the sources that provide it.
@@ -21,8 +22,9 @@ class DataSource(ABC):
 
     cacheable: ClassVar[bool] = True
 
-    def __init__(self, provides: Resolution):
+    def __init__(self, provides: Resolution, product: Product = Product.NEUTRON):
         self.provides = provides
+        self.product = product
 
     @property
     @abstractmethod
