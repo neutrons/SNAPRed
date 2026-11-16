@@ -49,6 +49,7 @@ from util.state_helpers import reduction_root_redirect, state_root_redirect
 from snapred.backend.dao import StateConfig
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.GroupPeakList import GroupPeakList
+from snapred.backend.dao.Hook import Hook
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import ReductionIngredients
@@ -3636,6 +3637,153 @@ def test_writePixelMask(cleanup_workspace_at_exit, create_per_test_sample_worksp
         assert mtd.doesExist(maskWSName)
         localDataService.writePixelMask(basePath, filename, maskWorkspaceName=maskWSName)
         assert (basePath / filename).exists()
+
+
+def test_writeWorkspaceByType(cleanup_workspace_at_exit, create_per_test_sample_workspace):
+    # each type of workspace is written using its own format, with that format's extension
+    localDataService = LocalDataService()
+    extension = Config["hook.workspaces.extension"]
+    with tempfile.TemporaryDirectory(dir=Resource.getPath("outputs"), suffix=os.sep) as basePath:
+        basePath = Path(basePath)
+        instrumentDonor = "test_instrument_donor"
+        detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+        create_per_test_sample_workspace(instrumentDonor, detectorState1, fakeInstrumentFilePath, "12345")
+
+        maskWSName = "test_mask"
+        createCompatibleMask(maskWSName, instrumentDonor)
+        cleanup_workspace_at_exit(maskWSName)
+        groupingWSName = "test_grouping"
+        CreateGroupingWorkspace(
+            OutputWorkspace=groupingWSName,
+            CustomGroupingString="1",
+            InstrumentFilename=fakeInstrumentFilePath,
+        )
+        cleanup_workspace_at_exit(groupingWSName)
+        tableWSName = "test_table"
+        createCompatibleDiffCalTable(tableWSName, instrumentDonor)
+        cleanup_workspace_at_exit(tableWSName)
+
+        expected = {
+            maskWSName: basePath / (maskWSName + extension["diffCal"]),
+            groupingWSName: basePath / (groupingWSName + extension["diffCal"]),
+            tableWSName: basePath / (tableWSName + extension["nexus"]),
+            instrumentDonor: basePath / (instrumentDonor + extension["nexus"]),
+        }
+        for wsName, filePath in expected.items():
+            assert localDataService.writeWorkspaceByType(basePath, wsName) == filePath
+            assert filePath.exists()
+
+
+def test_writeWorkspaceByType_dispatch():
+    # the mask check precedes the general case: a `MaskWorkspace` is also a `MatrixWorkspace`
+    localDataService = LocalDataService()
+    localDataService.mantidSnapper = mock.Mock()
+    localDataService.writePixelMask = mock.Mock()
+    localDataService.writeGroupingWorkspace = mock.Mock()
+    localDataService.writeWorkspace = mock.Mock()
+    extension = Config["hook.workspaces.extension"]
+    path = Path("/some/path")
+
+    localDataService.mantidSnapper.mtd = {"mask": mock.Mock(spec=MaskWorkspace)}
+    assert localDataService.writeWorkspaceByType(path, "mask") == path / ("mask" + extension["diffCal"])
+    localDataService.writePixelMask.assert_called_once_with(path, Path("mask" + extension["diffCal"]), "mask")
+    localDataService.writeWorkspace.assert_not_called()
+
+
+class TestWriteHookWorkspaces:
+    @pytest.fixture(autouse=True)
+    def _setup(self):
+        self.service = LocalDataService()
+        self.service.writeWorkspaceByType = mock.Mock(side_effect=lambda path, wsName: path / wsName)
+        self.service.mantidSnapper = mock.Mock()
+        self.existing = {"ws_a", "ws_b"}
+        self.service.mantidSnapper.mtd.doesExist.side_effect = lambda wsName: wsName in self.existing
+        with tempfile.TemporaryDirectory(dir=Resource.getPath("outputs"), suffix=os.sep) as tmpPath:
+            self.recordPath = Path(tmpPath)
+            self.hookPath = self.recordPath / Config["hook.workspaces.directory"]
+            yield
+
+    def test_no_hooks(self):
+        assert self.service.writeHookWorkspaces(None, self.recordPath) == []
+        assert self.service.writeHookWorkspaces({}, self.recordPath) == []
+        self.service.writeWorkspaceByType.assert_not_called()
+        assert not self.hookPath.exists()
+
+    def test_no_workspace_arguments(self):
+        hooks = {"point": [Hook(func=lambda: None, name="ws_a", n=1)]}
+        assert self.service.writeHookWorkspaces(hooks, self.recordPath) == []
+        self.service.writeWorkspaceByType.assert_not_called()
+        assert not self.hookPath.exists()
+
+    def test_writes_each_workspace_once(self):
+        hooks = {
+            "point1": [Hook(func=lambda: None, mask=WorkspaceName("ws_a"), plain="ws_b")],
+            "point2": [
+                Hook(func=lambda: None, masks=[WorkspaceName("ws_b"), WorkspaceName("ws_a")]),
+            ],
+        }
+        written = self.service.writeHookWorkspaces(hooks, self.recordPath)
+        assert written == [self.hookPath / "ws_a", self.hookPath / "ws_b"]
+        assert self.service.writeWorkspaceByType.call_args_list == [
+            mock.call(self.hookPath, "ws_a"),
+            mock.call(self.hookPath, "ws_b"),
+        ]
+        assert self.hookPath.is_dir()
+
+    def test_missing_workspace_is_skipped(self, caplog):
+        hooks = {"point": [Hook(func=lambda: None, a=WorkspaceName("ws_a"), gone=WorkspaceName("ws_gone"))]}
+        with caplog.at_level(logging.WARNING):
+            written = self.service.writeHookWorkspaces(hooks, self.recordPath)
+        assert written == [self.hookPath / "ws_a"]
+        assert "ws_gone" in caplog.text
+
+    def test_hooks_read_back_from_a_record(self):
+        # the workspace-name types survive serialization of the hooks
+        hook = Hook(func=lambda: None, mask=WorkspaceName("ws_a"))
+        hooks = {"point": [Hook.model_validate_json(hook.model_dump_json())]}
+        assert self.service.writeHookWorkspaces(hooks, self.recordPath) == [self.hookPath / "ws_a"]
+
+
+@pytest.mark.parametrize("workflow", ["Calibration", "Normalization"])
+def test_write_indexed_record_writes_hook_workspaces(workflow):
+    mockIndexer = mock.Mock()
+    localDataService = LocalDataService()
+    localDataService.generateStateId = mock.Mock(return_value=("stateId", None))
+    localDataService.writeHookWorkspaces = mock.Mock()
+    hooks = {"point": [Hook(func=lambda: None, mask=WorkspaceName("ws_a"))]}
+    indexEntry = IndexEntry(
+        runNumber="123", useLiteMode=True, appliesTo=">=1", comments="test comment", author="test author", version=3
+    )
+    record = globals()[f"{workflow}Record"].model_construct(
+        runNumber="123",
+        useLiteMode=True,
+        workspaces={},
+        version=3,
+        calculationParameters=mock.Mock(),
+        indexEntry=indexEntry,
+        hooks=hooks,
+    )
+    with mock.patch.object(localDataService, f"{workflow.lower()}Indexer", mock.Mock(return_value=mockIndexer)):
+        getattr(localDataService, f"write{workflow}Record")(record)
+    mockIndexer.versionPath.assert_called_once_with(3)
+    localDataService.writeHookWorkspaces.assert_called_once_with(hooks, mockIndexer.versionPath.return_value)
+
+
+def test_writeReductionRecord_writes_hook_workspaces():
+    with open(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"), "r") as f:
+        testRecord = ReductionRecord.model_validate_json(f.read())
+    testRecord.hooks = {"point": [Hook(func=lambda: None, mask=WorkspaceName("ws_a"))]}
+    localDataService = LocalDataService()
+    localDataService.writeHookWorkspaces = mock.Mock()
+    with reduction_root_redirect(localDataService, stateId=ENDURING_STATE_ID):
+        localDataService._instrumentConfig = mock.Mock()
+        localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
+        localDataService.groceryService = mock.Mock()
+        localDataService.writeReductionRecord(testRecord)
+        recordPath = localDataService._constructReductionRecordFilePath(
+            testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
+        )
+    localDataService.writeHookWorkspaces.assert_called_once_with(testRecord.hooks, recordPath.parent)
 
 
 ## TESTS OF REDUCTION PIXELMASK METHODS
