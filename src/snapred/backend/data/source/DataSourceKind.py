@@ -9,3 +9,6 @@ class DataSourceKind(StrEnum):
     LIVE = "live"
     REGISTERED = "registered"
     LITE_CONVERSION = "liteConversion"
+    CALIBRATION_RECORD = "calibrationRecord"
+    CALIBRATION_FILE = "calibrationFile"
+    NORMALIZATION_RECORD = "normalizationRecord"
