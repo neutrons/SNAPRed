@@ -1,23 +1,21 @@
 # ruff: noqa: F811
 import json
 from collections.abc import Iterable
-from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
-from mantid.api import FileLoaderRegistry
 from mantid.dataobjects import MaskWorkspace
 from pydantic import validate_call
 
 from snapred.backend.dao.indexing.Versioning import VERSION_START, Version, VersionState
 from snapred.backend.dao.ingredients import GroceryListItem
-from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.backend.error.LiveDataState import LiveDataState
-from snapred.backend.error.RunStatus import RunStatus
+from snapred.backend.data.source.NeutronDataCache import NeutronDataCache
+from snapred.backend.data.source.NeutronDataSources import NeutronDataSources
+from snapred.backend.data.source.WorkspaceOperations import WorkspaceOperations
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
@@ -58,17 +56,6 @@ class GroceryService:
 
         self.workspaceMetadataService = WorkspaceMetadataService()
 
-        # _loadedRuns caches a count of the number of copies made from the neutron-data workspace
-        #   corresponding to a given (runNumber, isLiteMode) key:
-        #   This count is:
-        #     None: if a workspace is not loaded;
-        #        0: if it is loaded, but no copies have been made;
-        #       >0: if any copies have been made, since loading
-        self._loadedRuns: Dict[Tuple[str, bool], int] = {}
-
-        # _liveDataKeys: cache keys into `_loadedRuns` for any live data that has been loaded
-        self._liveDataKeys: List[Tuple[str, bool]] = []
-
         # Cache maps to workspace names, for various purposes
 
         #   -- (<grouping scheme>, stateId, useLiteMode) -> <workspace name>
@@ -81,6 +68,11 @@ class GroceryService:
 
         self.grocer = FetchGroceriesRecipe()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
+        # The ADS operations, shared with the data sources.
+        self.workspaces = WorkspaceOperations(self.mantidSnapper)
+
+        # The neutron-data sources, and the neutron-data cache.
+        self.neutronData = NeutronDataSources(self.dataService, self.grocer, self.workspaces)
 
     def _defaultClass(self, val, clazz):
         if val is None:
@@ -107,8 +99,7 @@ class GroceryService:
         """
         Rebuild the neutron data cache
         """
-        for loadedRun in self._loadedRuns.copy():
-            self._updateNeutronCacheFromADS(*loadedRun)
+        self.neutronData.cache.rebuild()
 
     def rebuildGroupingCache(self):
         """
@@ -137,12 +128,7 @@ class GroceryService:
         :rtype: List[WorkspaceName]
         """
         cachedWorkspaces = set()
-        cachedWorkspaces.update(
-            [
-                self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
-                for runNumber, useLiteMode in self._loadedRuns.keys()
-            ]
-        )
+        cachedWorkspaces.update(self.neutronData.cache.cachedWorkspaces())
         cachedWorkspaces.update(self._loadedGroupings.values())
         cachedWorkspaces.update(self._loadedInstruments.values())
 
@@ -158,13 +144,7 @@ class GroceryService:
         :param useLiteMode: whether to use lite or native resolution
         :type useLiteMode: bool
         """
-        workspace = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
-        key = self._key(runNumber, useLiteMode)
-        if self.workspaceDoesExist(workspace) and self._loadedRuns.get(key) is None:
-            # 0 => loaded with no copies
-            self._loadedRuns[key] = 0
-        elif self._loadedRuns.get(key) is not None and not self.workspaceDoesExist(workspace):
-            del self._loadedRuns[key]
+        self.neutronData.cache.updateFromADS(runNumber, useLiteMode)
 
     def _updateGroupingCacheFromADS(self, key, workspace):
         """
@@ -309,19 +289,20 @@ class GroceryService:
     ## WORKSPACE NAME METHODS
 
     def _createNeutronWorkspaceNameBuilder(self, runNumber: str, useLiteMode: bool) -> NameBuilder:
-        runNameBuilder = wng.run().runNumber(runNumber)
-        if useLiteMode:
-            runNameBuilder.lite(wng.Lite.TRUE)
-        return runNameBuilder
+        return wng.run().runNumber(runNumber).lite(wng.Lite.fromLiteMode(useLiteMode))
 
     def _createNeutronWorkspaceName(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:
         return self._createNeutronWorkspaceNameBuilder(runNumber, useLiteMode).build()
 
     def _createRawNeutronWorkspaceName(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:
-        return self._createNeutronWorkspaceNameBuilder(runNumber, useLiteMode).auxiliary("Raw").build()
+        return NeutronDataCache.rawWorkspace(runNumber, useLiteMode)
 
     def _createCopyNeutronWorkspaceName(self, runNumber: str, useLiteMode: bool, numCopies: int) -> WorkspaceName:
-        return self._createNeutronWorkspaceNameBuilder(runNumber, useLiteMode).auxiliary(f"Copy{numCopies}").build()
+        return (
+            self._createNeutronWorkspaceNameBuilder(runNumber, useLiteMode)
+            .auxiliary(wng.Auxiliary.cachedCopy(numCopies))
+            .build()
+        )
 
     def _createGroupingWorkspaceName(self, groupingScheme: str, runNumber: str, useLiteMode: bool) -> WorkspaceName:
         # TODO: use WNG here!
@@ -467,7 +448,7 @@ class GroceryService:
         :return: True if the workspace exists, False if it does not exist
         :rtype: bool
         """
-        return self.mantidSnapper.mtd.doesExist(name)
+        return self.workspaces.workspaceDoesExist(name)
 
     def renameWorkspace(self, oldName: WorkspaceName, newName: WorkspaceName) -> WorkspaceName:
         """
@@ -478,14 +459,7 @@ class GroceryService:
         :param newName: the name to replace the workspace name in the ADS
         :type newName: WorkspaceName
         """
-        if oldName != newName:
-            self.mantidSnapper.RenameWorkspace(
-                f"Renaming '{oldName}' to '{newName}'",
-                InputWorkspace=oldName,
-                OutputWorkspace=newName,
-            )
-            self.mantidSnapper.executeQueue()
-        return newName
+        return self.workspaces.renameWorkspace(oldName, newName)
 
     def renameWorkspaces(self, oldNames: List[WorkspaceName], newNames: List[WorkspaceName]):
         """
@@ -514,10 +488,7 @@ class GroceryService:
         :return: a pointer to the workspace in the ADS corresponding to name
         :rtype: a C++ shared pointer to a MatrixWorkspace
         """
-        if self.workspaceDoesExist(name):
-            return self.mantidSnapper.mtd[name]
-        else:
-            return None
+        return self.workspaces.getWorkspaceForName(name)
 
     def getCloneOfWorkspace(self, name: WorkspaceName, copy: WorkspaceName) -> WorkspaceName:
         """
@@ -530,13 +501,7 @@ class GroceryService:
         :return: the name of the cloned workspace
         :rtype: WorkspaceName
         """
-        self.mantidSnapper.CloneWorkspace(
-            f"Cloning {name} to {copy}",
-            InputWorkspace=name,
-            OutputWorkspace=copy,
-        )
-        self.mantidSnapper.executeQueue()
-        return copy
+        return self.workspaces.getCloneOfWorkspace(name, copy)
 
     def writeWorkspaceMetadataAsTags(self, workspaceName: WorkspaceName, workspaceMetadata: WorkspaceMetadata):
         """
@@ -644,7 +609,7 @@ class GroceryService:
         wsName = self._loadedInstruments.get(instrumentKey)
         if wsName is None:
             self._updateNeutronCacheFromADS(runNumber, useLiteMode)
-            if self._loadedRuns.get(runKey) is not None:
+            if self.neutronData.cache.contains(runKey):
                 # If possible, use a cached neutron-data workspace as an instrument donor
                 wsName = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
             else:
@@ -795,214 +760,6 @@ class GroceryService:
                 raise RuntimeError(f"unable to load workspace {name} from {filePath}")
         return data
 
-    def _fetchNeutronDataSingleUse(self, item: GroceryListItem, missingDataHandler: Callable) -> Dict[str, Any]:
-        """
-        Fetch a neutron data file, without copy-protection.
-        If the workspace is truly only needed once, this saves time and memory.
-        If the workspace needs to be loaded more than once, use the cached method.
-
-        :param item: the grocery-list item
-        :type item: GroceryListItem
-        :return: a dictionary with the following keys
-
-            - "result": true if everything ran correctly
-            - "loader": the loader that was used by the algorithm; use it next time
-            - "workspace": the name of the workspace created in the ADS
-
-        :rtype: Dict[str, Any]
-        """
-
-        runNumber, useLiteMode, loader = item.runNumber, item.useLiteMode, item.loader
-
-        data = {}
-        key = self._key(runNumber, useLiteMode)
-        rawWorkspaceName: WorkspaceName = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
-
-        # Warning: `filePath` will be `None` if no IPTS directory exists!
-        #   This situation occurs during diagnostic runs in live-data mode.
-        filePath = self.createNeutronFilePath(runNumber, useLiteMode)
-
-        # This checks to make sure existing cache is valid
-        self._updateNeutronCacheFromADS(runNumber, useLiteMode)
-
-        # 1. check cache
-        # 2. check if file exists
-        # e. cannot find data.
-        workspaceName: str = None
-        if self._loadedRuns.get(key) is not None:
-            data = {"loader": "cached"}
-            workspaceName = self._createNeutronWorkspaceName(runNumber, useLiteMode)
-            self.getCloneOfWorkspace(rawWorkspaceName, workspaceName)
-        elif bool(filePath) and filePath.exists() and item.liveDataArgs is None:
-            workspaceName = self._createNeutronWorkspaceName(runNumber, useLiteMode)
-            loaderArgs = "{}"
-            if not bool(loader) and Config["nexus.dataFormat.event"]:
-                # If the loader hasn't been specified, check if this is original input data in event format.
-                # In this case, specifying only a single bin allows a much faster load.
-                loader = FileLoaderRegistry.Instance().chooseLoader(str(filePath)).name()
-                if loader == "LoadEventNexus":
-                    loaderArgs = '{"NumberOfBins": 1}'
-            data = self.grocer.executeRecipe(str(filePath), workspaceName, loader, loaderArgs=loaderArgs)
-        else:
-            data = missingDataHandler()
-            workspaceName = data["workspace"]
-
-        data["workspace"] = workspaceName
-        # NOTE: When would it ever be false?  If the workspace is not found, it should raise an error.
-        data["result"] = True
-        return data
-
-    def _fetchLiveData(self, item: GroceryListItem):
-        loader = "LoadLiveDataInterval"
-        runNumber, useLiteMode, liveDataArgs = item.runNumber, item.useLiteMode, item.liveDataArgs
-        workspaceName: WorkspaceName = self._createNeutronWorkspaceName(runNumber, useLiteMode)
-        # Live-data fallback
-        if self.dataService.hasLiveDataConnection():
-            if liveDataArgs is None:
-                # Only warn if live-data mode hasn't been explicitly requested.
-                logger.warning(f"Input data for run '{runNumber}' was not found in IPTS, trying live-data fallback...")
-
-            # When not specified in the `liveDataArgs` or when `liveDataArgs.duration == timedelta(0)`,
-            #   the default behavior will be to load the entire run.
-            startTime = (
-                (datetime.utcnow() - liveDataArgs.duration).isoformat()
-                if liveDataArgs is not None and liveDataArgs.duration != timedelta(0)
-                else RunMetadata.FROM_START_ISO8601
-            )
-
-            loaderArgs = {
-                "Facility": Config["liveData.facility.name"],
-                "Instrument": Config["liveData.instrument.name"],
-                "PreserveEvents": True,
-                "StartTime": startTime,
-            }
-            data = self.grocer.executeRecipe(workspace=workspaceName, loader=loader, loaderArgs=json.dumps(loaderArgs))
-            data["fromLiveData"] = True
-            if data["result"]:
-                if data.get("runStatus"):
-                    try:
-                        runStatus = RunStatus(data["runStatus"])
-                        if runStatus != RunStatus.RUNNING:
-                            # There is some type of issue with the live run.
-                            self.deleteWorkspaceUnconditional(workspaceName)
-                            data = {"result": False}
-                            if liveDataArgs is not None:
-                                match runStatus:
-                                    case RunStatus.PAUSED:
-                                        raise LiveDataState.runStateTransition(runNumber, runNumber)
-                                    case RunStatus.STOPPED:
-                                        raise LiveDataState.runStateTransition("0", runNumber)
-                                    case RunStatus.ERROR:
-                                        raise LiveDataState.runError(runNumber)
-                                    case _:
-                                        raise RuntimeError(
-                                            f"implementation error: unexpected 'RunStatus' value: '{runStatus}'"
-                                        )
-                            raise RuntimeError(
-                                f"Neutron data for run '{runNumber}' is not present on disk, "
-                                "and there is a problem with the live-data run:\n"
-                                f"    live-run status: {runStatus}."
-                            )
-                    except ValueError as e:
-                        logger.debug(
-                            f"Error when parsing 'RunStatus' returned by `FetchGroceriesAlgorithm`:\n"
-                            f"    {data['runStatus']}:\n"
-                            f"    {e}."
-                        )
-
-                run = self.mantidSnapper.mtd[workspaceName].getRun()
-                # IMPORTANT: due to issues with the `SNSLiveEventData` listener implementation, we cannot assume
-                #   that the 'run_number' property has actually been set.
-                liveRunNumber = run.getProperty("run_number").value if run.hasProperty("run_number") else None
-
-                if liveRunNumber is not None:
-                    if int(runNumber) != int(liveRunNumber):
-                        # Live run number is unexpected => there has been a live-data run-state change.
-                        self.deleteWorkspaceUnconditional(workspaceName)
-                        data = {"result": False}
-                        if liveDataArgs is not None:
-                            raise LiveDataState.runStateTransition(liveRunNumber, runNumber)
-                        raise RuntimeError(
-                            f"Neutron data for run '{runNumber}' is not present on disk, nor is it the live-data run"
-                        )
-                elif liveDataArgs is not None:
-                    # Temporary fix for `SNSLiveEventDataListener` not setting the run-number:
-                    #   just set it here.
-                    self.mantidSnapper.mtd[workspaceName].mutableRun()["run_number"] = str(runNumber)
-                else:
-                    # Do NOT fix the run-number in the fallback case.
-                    self.deleteWorkspaceUnconditional(workspaceName)
-                    data = {"result": False}
-                    raise RuntimeError(
-                        f"Neutron data for run '{runNumber}' is not present on disk, nor is it the live-data run"
-                    )
-
-                self._loadedRuns[self._key(runNumber, False)] = 0
-                self._liveDataKeys.append(self._key(runNumber, False))
-        else:
-            raise ConnectionError("no live-data connection is available")
-        return data
-
-    def _fetchNeutronDataNative(self, item: GroceryListItem) -> Dict[str, Any]:
-        _item = item.model_copy(deep=True)
-        _item.useLiteMode = False
-
-        def tryLiveData():
-            try:
-                return self._fetchLiveData(_item)
-            except ConnectionError:
-                raise RuntimeError(
-                    (
-                        f"Neutron data for run '{_item.runNumber}' is not present on disk,"
-                        " and no live-data connection is available."
-                    )
-                )
-
-        return self._fetchNeutronDataSingleUse(_item, tryLiveData)
-
-    def _fetchNeutronDataLite(self, item: GroceryListItem, export=True) -> Dict[str, Any]:
-        _item = item.model_copy(deep=True)
-        _item.useLiteMode = True
-
-        def tryNative():
-            data = self._fetchNeutronDataNative(_item)
-            data["fromNative"] = data["workspace"]
-            nativeWorkspaceName = data["workspace"]
-            liteWorkspaceName = self._createNeutronWorkspaceName(_item.runNumber, True)
-            self.getCloneOfWorkspace(nativeWorkspaceName, liteWorkspaceName)
-            self.convertToLiteMode(liteWorkspaceName, export=data.get("fromLiveData") is None and export)
-            data["workspace"] = liteWorkspaceName
-            return data
-
-        return self._fetchNeutronDataSingleUse(_item, tryNative)
-
-    def _fetchNeutronDataCached(self, item: GroceryListItem, loadMethod: Callable, **kwargs) -> Dict[str, Any]:
-        # 1. get single use neutron data
-        # 2. rename it to raw
-        # 3. clone it with proper name scheme
-        runNumber, useLiteMode = item.runNumber, item.useLiteMode
-
-        # NOTE: This relies on _fetchNeutronDataSingleUse to handle the case where the data is not found/cached
-        data = loadMethod(item, **kwargs)
-        rawWorkspaceName = data["workspace"]
-        key = self._key(runNumber, useLiteMode)
-        if key not in self._loadedRuns:
-            self._loadedRuns[key] = 0
-            rawWorkspaceName = self.renameWorkspace(
-                rawWorkspaceName, self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
-            )
-        if "fromNative" in data:
-            nativeKey = self._key(runNumber, False)
-            if nativeKey not in self._loadedRuns:
-                self._loadedRuns[nativeKey] = 0
-                self.renameWorkspace(data["fromNative"], self._createRawNeutronWorkspaceName(runNumber, False))
-
-        workspaceName = self._createCopyNeutronWorkspaceName(runNumber, useLiteMode, self._loadedRuns[key] + 1)
-        data["result"] = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
-        data["workspace"] = workspaceName
-        self._loadedRuns[key] += 1
-        return data
-
     def fetchNeutronDataSingleUse(self, item: GroceryListItem) -> Dict[str, Any]:
         """
         Fetch a neutron data file, without copy-protection.
@@ -1016,16 +773,11 @@ class GroceryService:
             - "result": true if everything ran correctly
             - "loader": the loader that was used by the algorithm; use it next time
             - "workspace": the name of the workspace created in the ADS
+            - "dataSource": the provenance of the data (see `snapred.backend.data.source`)
 
         :rtype: Dict[str, Any]
         """
-        useLiteMode = item.useLiteMode
-        result = None
-
-        if useLiteMode:
-            result = self._fetchNeutronDataLite(item, export=True)
-        else:
-            result = self._fetchNeutronDataNative(item)
+        result = self.neutronData.fetchSingleUse(item)
         self._processNeutronDataCopy(item, result["workspace"])
         return result
 
@@ -1040,16 +792,11 @@ class GroceryService:
             - "result": true if everything ran correctly
             - "loader": the loader that was used by the algorithm; use it next time
             - "workspace": the name of the workspace created in the ADS
+            - "dataSource": the provenance of the data (see `snapred.backend.data.source`)
 
         :rtype: Dict[str, Any]
         """
-        useLiteMode = item.useLiteMode
-        result = None
-
-        if useLiteMode:
-            result = self._fetchNeutronDataCached(item, self._fetchNeutronDataLite, export=True)
-        else:
-            result = self._fetchNeutronDataCached(item, self._fetchNeutronDataNative)
+        result = self.neutronData.fetchCached(item)
         self._processNeutronDataCopy(item, result["workspace"])
         return result
 
@@ -1057,10 +804,7 @@ class GroceryService:
         """
         Clear cache for and delete any live-data workspaces.
         """
-        while self._liveDataKeys:
-            key = self._liveDataKeys.pop()
-            del self._loadedRuns[key]
-            self.deleteWorkspaceUnconditional(self._createRawNeutronWorkspaceName(*key))
+        self.neutronData.cache.clearUncacheable()
 
     def fetchLiteDataMap(self) -> WorkspaceName:
         """
@@ -1623,18 +1367,7 @@ class GroceryService:
         :param export: export the converted data to disk
         :type export: bool
         """
-
-        from snapred.backend.service.LiteDataService import LiteDataService
-
-        _, tolerance = LiteDataService().createLiteData(workspace, workspace, export=export)
-
-        tag = UNSET
-        if Config["constants.LiteDataCreationAlgo.toggleCompressionTolerance"]:
-            tag = tolerance
-
-        metadata = WorkspaceMetadata(liteDataCompressionTolerance=tag)
-
-        self.writeWorkspaceMetadataAsTags(workspace, metadata)
+        self.neutronData.convertToLiteMode(workspace, export=export)
 
     ## CLEANUP METHODS
 
@@ -1663,12 +1396,7 @@ class GroceryService:
         :param name: the name of the workspace in the ADS to be deleted
         :type name: WorkspaceName
         """
-        if self.workspaceDoesExist(name):
-            self.mantidSnapper.DeleteWorkspace(
-                f"Deleting workspace {name}",
-                Workspace=name,
-            )
-            self.mantidSnapper.executeQueue()
+        self.workspaces.deleteWorkspaceUnconditional(name)
 
     def clearADS(self, exclude: List[WorkspaceName] = [], clearCache: bool = False):
         """

@@ -180,14 +180,14 @@ class InstaEats(GroceryService):
         nativeRawWorkspaceName: WorkspaceName = self._createRawNeutronWorkspaceName(runNumber, False)
 
         # if the raw data has already been loaded, clone it
-        if self._loadedRuns.get(key) is not None:
+        if self.neutronData.cache.loadedRuns.get(key) is not None:
             data = {"loader": "cached"}
             success = True
 
         if not success and not liveDataMode:
             liteModeFilePath: Path = self._createNeutronFilename(runNumber, True)
             nativeModeFilePath: Path = self._createNeutronFilename(runNumber, False)
-            cachedNativeMode = self._loadedRuns.get(self._key(runNumber, False)) is not None
+            cachedNativeMode = self.neutronData.cache.loadedRuns.get(self._key(runNumber, False)) is not None
 
             match (useLiteMode, cachedNativeMode, liteModeFilePath.exists(), nativeModeFilePath.exists()):
                 # THERE ARE MANY SPECIAL CASES HERE, but basically the end result of a cached fetch will be
@@ -198,8 +198,8 @@ class InstaEats(GroceryService):
                 case (True, _, True, _):
                     # lite mode and lite-mode exists on disk
                     data = self.grocer.executeRecipe(str(liteModeFilePath), rawWorkspaceName, loader)
-                    self._loadedRuns[key] = 0
-                    self._liveDataKeys.append(key)
+                    self.neutronData.cache.loadedRuns[key] = 0
+                    self.neutronData.cache.uncacheableKeys.append(key)
                     success = True
 
                 case (True, True, _, _):
@@ -212,16 +212,16 @@ class InstaEats(GroceryService):
                     # lite mode and native exists on disk
                     goingNative = self._key(runNumber, False)
                     data = self.grocer.executeRecipe(str(nativeModeFilePath), nativeRawWorkspaceName, loader="")
-                    self._loadedRuns[self._key(*goingNative)] = 0
-                    self._liveDataKeys.append(self._key(*goingNative))
+                    self.neutronData.cache.loadedRuns[self._key(*goingNative)] = 0
+                    self.neutronData.cache.uncacheableKeys.append(self._key(*goingNative))
                     convertToLiteMode = True
                     success = True
 
                 case (False, _, _, True):
                     # native mode and native exists on disk
                     data = self.grocer.executeRecipe(str(nativeModeFilePath), nativeRawWorkspaceName, loader)
-                    self._loadedRuns[key] = 0
-                    self._liveDataKeys.append(key)
+                    self.neutronData.cache.loadedRuns[key] = 0
+                    self.neutronData.cache.uncacheableKeys.append(key)
                     success = True
 
                 case _:
@@ -264,8 +264,8 @@ class InstaEats(GroceryService):
                         raise RuntimeError(
                             f"Neutron data for run '{runNumber}' is not present on disk, nor is it the live-data run"
                         )
-                    self._loadedRuns[self._key(runNumber, False)] = 0
-                    self._liveDataKeys.append(self._key(runNumber, False))
+                    self.neutronData.cache.loadedRuns[self._key(runNumber, False)] = 0
+                    self.neutronData.cache.uncacheableKeys.append(self._key(runNumber, False))
                     success = True
             else:
                 raise RuntimeError(
@@ -278,15 +278,17 @@ class InstaEats(GroceryService):
                 # clone the native raw workspace
                 # then reduce its resolution to make the lite raw workspace
                 self.getCloneOfWorkspace(nativeRawWorkspaceName, rawWorkspaceName)
-                self._loadedRuns[key] = 0
-                self._liveDataKeys.append(key)
+                self.neutronData.cache.loadedRuns[key] = 0
+                self.neutronData.cache.uncacheableKeys.append(key)
                 self.convertToLiteMode(rawWorkspaceName, export=not liveDataMode)
 
             # create a copy of the raw data for use
-            workspaceName = self._createCopyNeutronWorkspaceName(runNumber, useLiteMode, self._loadedRuns[key] + 1)
+            workspaceName = self._createCopyNeutronWorkspaceName(
+                runNumber, useLiteMode, self.neutronData.cache.loadedRuns[key] + 1
+            )
             data["result"] = True
             data["workspace"] = workspaceName
-            self._loadedRuns[key] += 1
+            self.neutronData.cache.loadedRuns[key] += 1
 
         return data
 
@@ -294,10 +296,7 @@ class InstaEats(GroceryService):
         """
         Clear cache for and delete any live-data workspaces.
         """
-        while self._liveDataKeys:
-            key = self._liveDataKeys.pop()
-            del self._loadedRuns[key]
-            self.deleteWorkspaceUnconditional(self._createRawNeutronWorkspaceName(key))
+        self.neutronData.cache.clearUncacheable()
 
     def fetchGroupingDefinition(self, item: GroceryListItem) -> Dict[str, Any]:
         key = self._key(item.groupingScheme, item.runNumber, item.useLiteMode)
