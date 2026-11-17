@@ -1,6 +1,6 @@
 import sys
 
-from qtpy.QtCore import Property, QEasingCurve, QPropertyAnimation, Qt, Signal, Slot
+from qtpy.QtCore import Property, QEasingCurve, QPointF, QPropertyAnimation, Qt, Signal, Slot
 from qtpy.QtGui import QColor, QLinearGradient, QPainter
 from qtpy.QtWidgets import QSizePolicy, QWidget
 
@@ -139,7 +139,7 @@ class Toggle(QWidget):
         painter.drawRoundedRect(self.rect(), self.width(), self.height() / 2)
 
         # add gradient to background
-        gradient = QLinearGradient(self.rect().topLeft(), self.rect().bottomLeft())
+        gradient = QLinearGradient(QPointF(self.rect().topLeft()), QPointF(self.rect().bottomLeft()))
         gradient.setColorAt(1.0, gradEndColor)
         gradient.setColorAt(0.3, Qt.gray if not self._state else gradStartColor)
         painter.setBrush(gradient)

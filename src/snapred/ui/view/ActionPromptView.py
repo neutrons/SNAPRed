@@ -1,5 +1,6 @@
 from qtpy.QtCore import Slot
-from qtpy.QtWidgets import QDesktopWidget, QGridLayout, QLabel, QMainWindow, QPushButton, QWidget
+from qtpy.QtGui import QGuiApplication
+from qtpy.QtWidgets import QGridLayout, QLabel, QMainWindow, QPushButton, QWidget
 
 
 class ActionPromptView(QMainWindow):
@@ -33,7 +34,7 @@ class ActionPromptView(QMainWindow):
 
     def _center(self):
         qtRectangle = self.frameGeometry()
-        centerPoint = QDesktopWidget().availableGeometry().center()
+        centerPoint = QGuiApplication.primaryScreen().availableGeometry().center()
         qtRectangle.moveCenter(centerPoint)
         self.move(qtRectangle.topLeft())
 

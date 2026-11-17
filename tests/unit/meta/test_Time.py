@@ -39,7 +39,8 @@ class TestTime(TestCase):
 
     def test_isoFromTimestamp(self):
         ts = 1717227296.789012
-        localTimeZone = time.strftime("%z", time.localtime())
-        offsetHours = int(localTimeZone[:3])
-        expected = f"2024-06-01T{(7 + offsetHours):02d}:34:56.789011968" + localTimeZone
+        # Use the local UTC offset *at the timestamp*, not the current one:
+        #   otherwise the expected offset is wrong whenever daylight-saving time differs between now and then.
+        localTime = time.localtime(ts)
+        expected = time.strftime("%Y-%m-%dT%H:%M:%S", localTime) + ".789011968" + time.strftime("%z", localTime)
         assert isoFromTimestamp(ts) == expected
