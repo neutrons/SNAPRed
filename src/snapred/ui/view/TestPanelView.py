@@ -1,5 +1,6 @@
 from qtpy.QtCore import Slot
-from qtpy.QtWidgets import QDesktopWidget, QGridLayout, QMainWindow, QTabWidget, QWidget
+from qtpy.QtGui import QGuiApplication
+from qtpy.QtWidgets import QGridLayout, QMainWindow, QTabWidget, QWidget
 
 
 class TestPanelView(QMainWindow):
@@ -36,6 +37,6 @@ class TestPanelView(QMainWindow):
 
     def center(self):
         qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
+        cp = QGuiApplication.primaryScreen().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())

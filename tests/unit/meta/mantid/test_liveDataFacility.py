@@ -7,6 +7,7 @@ import mantid.simpleapi  # noqa: F401  (import registers `LoadLiveData` with the
 import pytest
 from mantid.api import AlgorithmManager
 from mantid.kernel import ConfigService
+from util.liveDataFacility_helpers import requiresPreMantid7LiveDataValidation
 
 from snapred.meta.Config import Config
 from snapred.meta.mantid.liveDataFacility import liveDataFacility
@@ -59,6 +60,7 @@ def test_restoresTheUsersConfigurationAfterAnException(otherDefaultFacility):
     assert otherDefaultFacility[DEFAULT_INSTRUMENT_KEY] == OTHER_INSTRUMENT
 
 
+@requiresPreMantid7LiveDataValidation
 def test_theScopeIsWhatMakesTheInstrumentAcceptable(otherDefaultFacility):  # noqa: ARG001
     """The reason the workaround exists: `Instrument=SNAP` is only settable inside the scope.
 
@@ -79,6 +81,7 @@ def test_theScopeIsWhatMakesTheInstrumentAcceptable(otherDefaultFacility):  # no
         outside.setProperty("Instrument", instrument)
 
 
+@requiresPreMantid7LiveDataValidation
 def test_allowedInstrumentsArePopulatedOnlyInsideTheScope(otherDefaultFacility):  # noqa: ARG001
     """The allowed-values list is what rejects the instrument, and it is fixed at `initialize()`."""
     with liveDataFacility():

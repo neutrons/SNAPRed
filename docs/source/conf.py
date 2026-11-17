@@ -19,6 +19,10 @@ except ImportError:
 
 import unittest.mock as mock
 
+# Mantid 7 uses Qt6, so only PyQt6 is installed.  `qtpy` tries PyQt5 first, and the import mock below
+#   would hand it a `MagicMock` for the missing PyQt5, which breaks `qtpy`.  Select PyQt6 explicitly.
+os.environ.setdefault("QT_API", "pyqt6")
+
 # Create mock classes for mantid and qtpy before any imports
 class MockPythonAlgorithm:
     """Mock class for mantid.api.PythonAlgorithm"""

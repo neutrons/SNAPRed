@@ -28,6 +28,7 @@ import mantid.simpleapi  # noqa: F401  (import registers `LoadLiveData` with the
 import pytest
 from mantid.api import AlgorithmManager
 from mantid.kernel import ConfigService, amend_config
+from util.liveDataFacility_helpers import requiresPreMantid7LiveDataValidation
 
 from snapred.meta.Config import Config
 
@@ -70,6 +71,7 @@ def _allowedInstruments(name: str):
     return list(_initializedLiveDataAlgorithm(name).getProperty("Instrument").allowedValues)
 
 
+@requiresPreMantid7LiveDataValidation
 @pytest.mark.parametrize("algorithmName", LIVE_DATA_ALGORITHMS)
 def test_liveDataInstrumentRejectedWhenDefaultFacilityIsNotSNS(mantidFacilityConfig, algorithmName):
     """The defect itself: a non-SNS default facility makes the SNAP live-data instrument unusable."""
@@ -84,6 +86,7 @@ def test_liveDataInstrumentRejectedWhenDefaultFacilityIsNotSNS(mantidFacilityCon
         algorithm.setProperty("Instrument", liveDataInstrument)
 
 
+@requiresPreMantid7LiveDataValidation
 @pytest.mark.parametrize("algorithmName", LIVE_DATA_ALGORITHMS)
 def test_liveDataInstrumentAcceptedWhenFacilityAndInstrumentAreSet(mantidFacilityConfig, algorithmName):
     """Setting *both* the facility and the instrument makes the live-data instrument usable again."""
@@ -144,6 +147,7 @@ def test_settingFacilityAloneDoesNotSetTheInstrument(mantidFacilityConfig):
     assert mantidFacilityConfig[DEFAULT_INSTRUMENT_KEY] != instrument
 
 
+@requiresPreMantid7LiveDataValidation
 @pytest.mark.parametrize("algorithmName", LIVE_DATA_ALGORITHMS)
 def test_allowedInstrumentsAreSnapshottedAtInitialize(mantidFacilityConfig, algorithmName):
     """The allowed-values list is fixed at `initialize()` and not re-evaluated afterwards.

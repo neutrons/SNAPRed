@@ -176,7 +176,7 @@ pydantic = ">=2.7.3,<3"
 qtpy = "*"
 muparser = "=2.3.4"
 pycifrw = "*"
-pyqtwebengine = "*"
+pyqt6-webengine = "*"
 git-lfs = "*"
 pre-commit = ">=4.3.0,<5"
 virtualenv = "<21"  #mismatched pins causes hatch to fail
@@ -189,7 +189,7 @@ versioningit = "*"
 setuptools = "*" # ci fails in binstar because `No module named 'pkg_resources'`
 
 [tool.pixi.package.run-dependencies]
-mantidworkbench = ">=6.16.0,<6.17"
+mantidworkbench = ">=7.0.0,<7.1"
 pydantic = ">=2.7.3,<3"
 "ruamel.yaml" = "*"
 
@@ -246,7 +246,6 @@ pytest-cov = "*"
 pyyaml = "*"
 
 [tool.pixi.feature.package.dependencies]
-boa = "*"
 anaconda-client = ">=1.14"
 conda-build = "*"
 check-wheel-contents = ">=0.6.0"
@@ -281,14 +280,14 @@ versioningit = "*"
 python = ">=3.10"
 pip = ">=26.1.2"
 pydantic = ">=2.7.3,<3"
-# Channel-specific dependencies: Dev uses nightly Mantid builds
-mantidworkbench = { version = ">=6.16", channel = "mantid-ornl/label/rc" }
-mantid = { version = ">=6.16", channel = "mantid-ornl/label/rc" }
-mantidqt = { version = ">=6.16", channel = "mantid-ornl/label/rc" }
+# Channel-specific dependencies: Dev uses upstream Mantid release builds
+mantidworkbench = { version = ">=7.0", channel = "mantid/label/main" }
+mantid = { version = ">=7.0", channel = "mantid/label/main" }
+mantidqt = { version = ">=7.0", channel = "mantid/label/main" }
 qtpy = "*"
 muparser = "=2.3.4"
 pycifrw = "*"
-pyqtwebengine = "*"
+pyqt6-webengine = "*"
 git-lfs = "*"
 
 # ------------------------------- #
@@ -298,14 +297,14 @@ git-lfs = "*"
 python = ">=3.10"
 pip = ">=26.1.2"
 pydantic = ">=2.7.3,<3"
-# Channel-specific dependencies: QA uses RC Mantid builds
-mantidworkbench = { version = ">=6.16,<6.17", channel = "mantid-ornl/label/rc" }
-mantid = { version = ">=6.16,<6.17", channel = "mantid-ornl/label/rc" }
-mantidqt = { version = ">=6.16,<6.17", channel = "mantid-ornl/label/rc" }
+# Channel-specific dependencies: QA uses upstream Mantid release builds (mantid-ornl has no 7.x RC yet)
+mantidworkbench = { version = ">=7.0,<7.1", channel = "mantid/label/main" }
+mantid = { version = ">=7.0,<7.1", channel = "mantid/label/main" }
+mantidqt = { version = ">=7.0,<7.1", channel = "mantid/label/main" }
 qtpy = "*"
 muparser = "=2.3.4"
 pycifrw = "*"
-pyqtwebengine = "*"
+pyqt6-webengine = "*"
 git-lfs = "*"
 
 # ------------------------------- #
@@ -315,14 +314,14 @@ git-lfs = "*"
 python = ">=3.10"
 pip = ">=26.1.2"
 pydantic = ">=2.7.3,<3"
-# Channel-specific dependencies: Prod uses stable Mantid builds
-mantidworkbench = { version = ">=6.16,<6.17", channel = "mantid-ornl/label/main" }
-mantid = { version = ">=6.16,<6.17", channel = "mantid-ornl/label/main" }
-mantidqt = { version = ">=6.16,<6.17", channel = "mantid-ornl/label/main" }
+# Channel-specific dependencies: Prod uses upstream Mantid release builds (mantid-ornl has no 7.x release yet)
+mantidworkbench = { version = ">=7.0,<7.1", channel = "mantid/label/main" }
+mantid = { version = ">=7.0,<7.1", channel = "mantid/label/main" }
+mantidqt = { version = ">=7.0,<7.1", channel = "mantid/label/main" }
 qtpy = "*"
 muparser = "=2.3.4"
 pycifrw = "*"
-pyqtwebengine = "*"
+pyqt6-webengine = "*"
 git-lfs = "*"
 
 # ------------------------------- #
