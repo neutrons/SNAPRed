@@ -86,7 +86,12 @@ class Harness:
             Resolution.NATIVE, [s for s in sources if s.provides == Resolution.NATIVE]
         )
         self.liteConversion = LiteConversionSource(self.nativeSources, self.cache, self.workspaces)
-        self.liteConversion.convert = mock.Mock()
+
+        # The conversion writes its output workspace, from its input workspace.
+        def convert(inputWorkspace, outputWorkspace, export):  # noqa: ARG001
+            self.ads[outputWorkspace] = None
+
+        self.liteConversion._convert = mock.Mock(side_effect=convert)
         self.sources[K.LITE_CONVERSION] = self.liteConversion
         self.liteSources = DataSourceRegistry(
             Resolution.LITE, [s for s in sources if s.provides == Resolution.LITE] + [self.liteConversion]
@@ -178,10 +183,11 @@ def test_lite_conversion_obtains_native_data(harness):
     assert data.derivedFrom.workspace == names.plain(RUN_NUMBER, False)
     assert data.derivedFrom.resolution == Resolution.NATIVE
     assert harness.sources[K.NEXUS_FILE].loads == [names.plain(RUN_NUMBER, False)]
-    harness.workspaces.getCloneOfWorkspace.assert_called_once_with(
-        names.plain(RUN_NUMBER, False), names.plain(RUN_NUMBER, True)
+    # The native data is converted into the lite-mode workspace: it is not copied.
+    harness.workspaces.getCloneOfWorkspace.assert_not_called()
+    harness.liteConversion._convert.assert_called_once_with(
+        names.plain(RUN_NUMBER, False), names.plain(RUN_NUMBER, True), export=True
     )
-    harness.liteConversion.convert.assert_called_once_with(names.plain(RUN_NUMBER, True), export=True)
     assert harness.tags == {
         names.plain(RUN_NUMBER, False): "nexusFile",
         names.plain(RUN_NUMBER, True): "nexusFile>liteConversion",
@@ -192,9 +198,12 @@ def test_lite_conversion_obtains_native_data(harness):
 def test_lite_conversion_of_live_data(harness):
     data = harness.liteResolver.resolve(item(True))
     assert data.provenance == [K.LIVE, K.LITE_CONVERSION]
-    harness.liteConversion.convert.assert_called_once_with(names.plain(RUN_NUMBER, True), export=False)
-    # The native live data is recorded as uncacheable, by the conversion's own native resolver.
-    assert harness.cache.uncacheableKeys == [(RUN_NUMBER, False)]
+    harness.liteConversion._convert.assert_called_once_with(
+        names.plain(RUN_NUMBER, False), names.plain(RUN_NUMBER, True), export=False
+    )
+    # The native live data is recorded as uncacheable, by the conversion's own native resolver;
+    #   the lite-mode data converted from it is uncacheable as well.
+    assert harness.cache.uncacheableKeys == [(RUN_NUMBER, False), (RUN_NUMBER, True)]
 
 
 def test_lite_conversion_uses_cached_native_data(harness):
@@ -309,7 +318,9 @@ def test_exclusive_native_source_excludes_the_lite_file(harness):
     data = harness.liteResolver.resolve(item(True))
     assert data.provenance == [K.REGISTERED, K.LITE_CONVERSION]
     assert harness.sources[K.LITE_FILE].loads == []
-    harness.liteConversion.convert.assert_called_once_with(names.plain(RUN_NUMBER, True), export=False)
+    harness.liteConversion._convert.assert_called_once_with(
+        names.plain(RUN_NUMBER, False), names.plain(RUN_NUMBER, True), export=False
+    )
 
 
 @pytest.mark.parametrize(

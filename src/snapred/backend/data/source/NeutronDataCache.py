@@ -62,6 +62,10 @@ class NeutronDataCache:
     def cachedWorkspaces(self) -> List[WorkspaceName]:
         return [self.rawWorkspace(runNumber, useLiteMode) for runNumber, useLiteMode in self.loadedRuns.keys()]
 
+    def isUncacheable(self, key: CacheKey) -> bool:
+        """Whether the data for a key came from a source that is not cacheable."""
+        return key in self.uncacheableKeys
+
     def recordUncacheable(self, key: CacheKey):
         self.loadedRuns[key] = 0
         self.uncacheableKeys.append(key)

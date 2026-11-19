@@ -156,6 +156,8 @@ class Harness:
         class FakeLiteDataService:
             def createLiteData(self, inputWorkspace, outputWorkspace, instrumentDefinition=None, export=True):  # noqa: ARG002
                 harness.exports.append((outputWorkspace, export))
+                if inputWorkspace != outputWorkspace:
+                    CloneWorkspace(InputWorkspace=inputWorkspace, OutputWorkspace=outputWorkspace)
                 AddSampleLog(Workspace=outputWorkspace, LogName="converted_to_lite", LogText="1", LogType="String")
                 return outputWorkspace, 0.0
 
@@ -329,8 +331,8 @@ class TestFileData:
         assert result["workspace"] == plainName(RUN_NUMBER, True)
         assert convertedToLite(result["workspace"])
         assert harness.exports == [(plainName(RUN_NUMBER, True), True)]
-        # the native input of the conversion is left in the ADS
-        assert runWorkspaces() == {plainName(RUN_NUMBER, False), plainName(RUN_NUMBER, True)}
+        # the native input of the conversion is not kept
+        assert runWorkspaces() == {plainName(RUN_NUMBER, True)}
         assert harness.service.getCachedWorkspaces() == []
 
     @pytest.mark.parametrize("useLiteMode", [False, True])
@@ -455,17 +457,19 @@ class TestLiveDataRequested:
     def test_clearLiveDataCache(self, harness):
         harness.service.fetchNeutronDataCached(harness.item(True, LIVE_ARGS))
         before = runWorkspaces()
-        assert before == {plainName(RUN_NUMBER, False), rawName(RUN_NUMBER, True), copyName(RUN_NUMBER, True, 1)}
+        # Lite-mode data converted from live data is not cacheable either: neither has a raw workspace,
+        #   and the native input of the conversion is not kept.
+        assert before == {plainName(RUN_NUMBER, True), copyName(RUN_NUMBER, True, 1)}
         assert sorted(harness.service.getCachedWorkspaces()) == sorted(
             [rawName(RUN_NUMBER, False), rawName(RUN_NUMBER, True)]
         )
 
         harness.service.clearLiveDataCache()
 
-        # Only the native live-data entry is removed from the cache.  Its raw workspace never existed,
+        # Both live-data entries are removed from the cache.  Their raw workspaces never existed,
         #   so no workspace is deleted.
         assert runWorkspaces() == before
-        assert harness.service.getCachedWorkspaces() == [rawName(RUN_NUMBER, True)]
+        assert harness.service.getCachedWorkspaces() == []
 
 
 class TestRegisteredData:
@@ -527,6 +531,22 @@ class TestRegisteredData:
         assert convertedToLite(result["workspace"])
         assertDataSource(result, "registered>liteConversion")
         assert harness.exports == [(plainName(RUN_NUMBER, True), False)]
+        self.assertRegisteredUnchanged()
+
+    @pytest.mark.parametrize("singleUse", [False, True])
+    def test_lite_is_converted_again_on_every_fetch(self, harness, singleUse):
+        fetch = harness.service.fetchNeutronDataSingleUse if singleUse else harness.service.fetchNeutronDataCached
+        fetch(harness.item(True))
+
+        # The registered workspace changes between fetches (as `livereduce` adds to it).
+        AddSampleLog(Workspace=self.workspace, LogName="update", LogText="2", LogType="String")
+        second = fetch(harness.item(True))
+        assert second["loader"] == "CloneWorkspace"
+        assert mtd[second["workspace"]].getRun().getLogData("update").value == "2"
+        assert harness.exports == [(plainName(RUN_NUMBER, True), False)] * 2
+        # No native-resolution copy of the registered workspace is kept, and no lite-mode data is cached.
+        assert not mtd.doesExist(plainName(RUN_NUMBER, False))
+        assert not mtd.doesExist(rawName(RUN_NUMBER, True))
         self.assertRegisteredUnchanged()
 
     @pytest.mark.parametrize("useLiteMode", [False, True])

@@ -79,9 +79,19 @@ class NeutronDataResolver:
 
         data = source.load(item, outputWorkspace)
         self._tag(data)
-        if not source.cacheable:
+        if not source.cacheable or self._derivedFromUncacheable(runNumber, data):
             self.cache.recordUncacheable(key)
         return data
+
+    def _derivedFromUncacheable(self, runNumber: str, data: SourcedData) -> bool:
+        # Data derived from data that is not cacheable (lite-mode data converted from registered or live data)
+        #   is not cacheable either: it would not change when the data that it was derived from does.
+        derived = data.derivedFrom
+        while derived is not None:
+            if self.cache.isUncacheable(self.cache.key(runNumber, derived.resolution.useLiteMode)):
+                return True
+            derived = derived.derivedFrom
+        return False
 
     def _checkResolution(self, item: GroceryListItem):
         if item.useLiteMode != self.resolution.useLiteMode:
@@ -93,6 +103,11 @@ class NeutronDataResolver:
     def fetchSingleUse(self, item: GroceryListItem) -> Dict[str, Any]:
         self._checkResolution(item)
         data = self.resolve(item)
+        # Nothing is cached: the copies that the data was derived from are not kept.
+        derived = data.derivedFrom
+        while derived is not None:
+            self.workspaces.deleteWorkspaceUnconditional(derived.workspace)
+            derived = derived.derivedFrom
         return self._result(data, data.workspace)
 
     def fetchCached(self, item: GroceryListItem) -> Dict[str, Any]:
@@ -122,6 +137,9 @@ class NeutronDataResolver:
             if not self.cache.contains(derivedKey):
                 self.cache.loadedRuns[derivedKey] = 0
                 self.workspaces.renameWorkspace(derived.workspace, self.cache.rawWorkspace(runNumber, derivedLiteMode))
+            else:
+                # Already cached, or not cacheable: the copy that the data was derived from is not kept.
+                self.workspaces.deleteWorkspaceUnconditional(derived.workspace)
             derived = derived.derivedFrom
 
         workspace = (
