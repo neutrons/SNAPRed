@@ -60,21 +60,25 @@ class LiteConversionSource(DataSource):
         return not nativeData.provenance or nativeData.provenance[0] == DataSourceKind.NEXUS_FILE
 
     def load(self, item: GroceryListItem, outputWorkspace: WorkspaceName) -> SourcedData:
+        # The native data is only read: the converted data is written to `outputWorkspace`.
+        #   What becomes of the native workspace is decided by the resolver (see `NeutronDataResolver`).
         nativeData = self.nativeData.resolve(item)
-        self.workspaces.getCloneOfWorkspace(nativeData.workspace, outputWorkspace)
-        self.convert(outputWorkspace, export=self.exportsFrom(nativeData))
+        self._convert(nativeData.workspace, outputWorkspace, export=self.exportsFrom(nativeData))
         return self._sourced(outputWorkspace, nativeData.loader, derivedFrom=nativeData)
 
     def convert(self, workspace: WorkspaceName, export: bool = True):
         """Convert a workspace (in place) to lite mode, and optionally export it to disk."""
+        self._convert(workspace, workspace, export=export)
+
+    def _convert(self, inputWorkspace: WorkspaceName, outputWorkspace: WorkspaceName, export: bool):
         from snapred.backend.service.LiteDataService import LiteDataService
 
-        _, tolerance = LiteDataService().createLiteData(workspace, workspace, export=export)
+        _, tolerance = LiteDataService().createLiteData(inputWorkspace, outputWorkspace, export=export)
 
         tag = UNSET
         if Config["constants.LiteDataCreationAlgo.toggleCompressionTolerance"]:
             tag = tolerance
         if tag != UNSET:
             WorkspaceMetadataService().writeWorkspaceMetadata(
-                workspace, WorkspaceMetadata(liteDataCompressionTolerance=tag)
+                outputWorkspace, WorkspaceMetadata(liteDataCompressionTolerance=tag)
             )
