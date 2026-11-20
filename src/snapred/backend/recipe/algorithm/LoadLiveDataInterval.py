@@ -30,6 +30,7 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.classproperty import classproperty
 from snapred.meta.decorators.ConfigDefault import ConfigDefault, ConfigValue
 from snapred.meta.mantid.liveDataFacility import liveDataFacility
+from snapred.meta.mantid.liveDataReplay import replayChunks, usingFileReplay
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -42,9 +43,7 @@ class LoadLiveDataInterval(PythonAlgorithm):
     @classproperty
     def USING_ADARA_FileReader(cls):
         # Enable a correction for the limitations of the mock "ADARA_FileReader":
-        return (
-            Config["liveData.facility.name"] == "TEST_LIVE" and Config["liveData.instrument.name"] == "ADARA_FileReader"
-        )
+        return usingFileReplay()
 
     def category(self):
         return "Live data"
@@ -387,10 +386,34 @@ class LoadLiveDataInterval(PythonAlgorithm):
 
     # --------- end: `LoadLiveDataInterval` call break out to static methods. ------------------------------------------
 
+    def _isComplete(self, outputWs: str, startTime: str) -> bool:
+        # The replay listener's chunks divide the events of its file, not its time: each chunk spans the whole
+        #   run, so the time interval is covered by the first chunk.  Its data is complete only when every
+        #   chunk has been read.  (And when the last chunk has been read, the listener isn't loading another
+        #   one in the background, which its destruction would wait for.)
+        if self.USING_ADARA_FileReader:
+            return self._chunksRead >= replayChunks()
+        return self._loadIsComplete(outputWs, startTime, self.chunkIntervals)
+
+    def _drainReplay(self, loadLiveData):
+        # Read any chunks left (after an error): the replay listener loads its next chunk in the background,
+        #   and its destruction waits for that load, which needs the GIL in order to log.  `execute` releases
+        #   the GIL, and once the last chunk has been read nothing is loading.
+        while self._chunksRead < replayChunks():
+            self._chunksRead += 1
+            try:
+                loadLiveData.execute()
+            except Exception as e:  # noqa: BLE001
+                # A failed load has finished, so nothing is left loading.
+                logger.debug(f"replay listener: reading the remaining chunks stopped: {e}")
+                break
+
     def PyExec(self):
         runStatus: RunStatus | None = None
         chunkWs = self.mantidSnapper.mtd.unique_hidden_name()
         self.chunkIntervals = []
+        self._chunksRead = 0
+        loadLiveData = None
         try:
             outputWs = self.getProperty("OutputWorkspace").valueAsStr
             startTime = self.getProperty("StartTime").value
@@ -429,6 +452,8 @@ class LoadLiveDataInterval(PythonAlgorithm):
                 loadLiveData.setProperty("AccumulationMethod", "Replace")
 
             # Load the first data-chunk: this replaces any contents of the output workspace.
+            # (A chunk is counted when it's attempted: if it fails, nothing is left loading.)
+            self._chunksRead += 1
             loadLiveData.execute()
 
             runStatus: RunStatus = RunStatus.RUNNING
@@ -479,10 +504,13 @@ class LoadLiveDataInterval(PythonAlgorithm):
             dataLoadTimeout = Config["liveData.dataLoadTimeout"]
             waitTimeIncrement = Config["liveData.chunkLoadWait"]
             maxDeadTime = Config["liveData.time_comparison_threshold"]  # this is also the maximum data-gap duration
-            while (waitTime < dataLoadTimeout) and not self._loadIsComplete(outputWs, startTime, self.chunkIntervals):
-                sleep(waitTimeIncrement)
-                waitTime += waitTimeIncrement
+            while (waitTime < dataLoadTimeout) and not self._isComplete(outputWs, startTime):
+                if not self.USING_ADARA_FileReader:
+                    # The replay listener doesn't wait for new data: each `execute` reads its next chunk.
+                    sleep(waitTimeIncrement)
+                    waitTime += waitTimeIncrement
                 # Load another chunk of data.
+                self._chunksRead += 1
                 loadLiveData.execute()
 
                 # Check for run-state transitions.
@@ -546,13 +574,15 @@ class LoadLiveDataInterval(PythonAlgorithm):
                 )
                 self.mantidSnapper.executeQueue()
 
-            if not self._loadIsComplete(outputWs, startTime, self.chunkIntervals):
+            if not self._isComplete(outputWs, startTime):
                 if waitTime >= dataLoadTimeout:
                     logger.warning("A timeout occurred during data loading.")
                 logger.warning(
                     "The complete data interval could not be loaded -- please check ADARA status at 'monitor.sns.gov'"
                 )
         finally:
+            if loadLiveData is not None and self.USING_ADARA_FileReader:
+                self._drainReplay(loadLiveData)
             if self.mantidSnapper.mtd.doesExist(chunkWs):
                 self.mantidSnapper.DeleteWorkspace("delete chunk workspace", Workspace=chunkWs)
                 self.mantidSnapper.executeQueue()

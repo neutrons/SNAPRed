@@ -2,6 +2,8 @@ from enum import StrEnum
 
 import mantid.api
 
+from snapred.meta.mantid.liveDataReplay import usingFileReplay
+
 
 class RunStatus(StrEnum):
     STOPPED = "STOPPED"
@@ -36,9 +38,13 @@ class RunStatus(StrEnum):
         if abort_state:  # Evaluates to True if 1 or True
             return cls.ERROR
 
+        # The replay listener's data is that of a finished run, with that run's 'end_time' and final run-state:
+        #   the replay itself stands for a running run (see `snapred.meta.mantid.liveDataReplay`).
+        replay = usingFileReplay()
+
         # 2. Check if the run is officially STOPPED
         # Mantid still injects 'end_time' when the run finishes and is packaged.
-        if run.hasProperty("end_time"):
+        if run.hasProperty("end_time") and not replay:
             return cls.STOPPED
 
         # 3. Check for a PAUSED state using the dedicated 'pause' log
@@ -48,7 +54,7 @@ class RunStatus(StrEnum):
 
         # 4. Check the explicit Run Status PV (which unfortunately, usually does not exist  :(  ):
         status = get_last_value("BL3:CS:RunControl:StateEnum")
-        if status is not None:
+        if status is not None and not replay:
             status_str = str(status).strip().upper()
             if "PAUSE" in status_str:
                 return cls.PAUSED

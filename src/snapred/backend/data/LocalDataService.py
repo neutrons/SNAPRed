@@ -55,6 +55,7 @@ from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.InternalConstants import ReservedRunNumber, ReservedStateId
 from snapred.meta.LockFile import LockFile
 from snapred.meta.mantid.liveDataFacility import liveDataFacility
+from snapred.meta.mantid.liveDataReplay import replayFile, usingFileReplay
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     ValueFormatter as wnvf,
 )
@@ -1602,7 +1603,14 @@ class LocalDataService:
         # If this method returns True, then the `SNSLiveEventDataListener` should be able to function.
 
         status = False
-        if Config["liveData.enabled"]:
+        if Config["liveData.enabled"] and usingFileReplay():
+            # The replay listener has no address: it is available when its file is.
+            status = replayFile() is not None
+            if not status:
+                logger.debug(
+                    "`hasLiveDataConnection` returns `False`: the file of the replay listener is not set, or not found"
+                )
+        elif Config["liveData.enabled"]:
             # `liveDataAddress()` returns a string similar to "bl3-daq1.sns.gov:31415",
             #   but during testing, it might also return a Unix domain socket (UDS) path string.
 
