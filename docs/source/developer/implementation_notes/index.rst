@@ -16,3 +16,4 @@ provide additional information that will be useful during SNAPRed development.
    mantid_config_ownership.rst
    profiling_and_progress_recording.rst
    data_sources.rst
+   registered_neutron_data_flow.rst
