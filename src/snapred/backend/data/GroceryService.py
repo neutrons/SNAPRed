@@ -635,7 +635,7 @@ class GroceryService:
 
                 # Initialize the instrument parameters
                 # (Reserved run-numbers will use the unmodified instrument.)
-                if runNumber not in ReservedRunNumber.values():
+                if runNumber not in ReservedRunNumber.unmodifiedInstrument():
                     self.updateInstrumentParameters(wsName, detectorState)
             self._loadedInstruments[instrumentKey] = wsName
         return wsName

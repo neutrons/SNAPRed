@@ -27,6 +27,7 @@ from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.data.Indexer import DEFAULT_RECORD_TYPE, Indexer, IndexerType
 from snapred.meta.Config import Config, Resource
+from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
 
@@ -425,6 +426,18 @@ class TestIndexer(unittest.TestCase):
         # get latest applicable
         latest = indexer.latestApplicableVersion(runNumber)
         assert latest == applicableVersions[-1]
+
+    def test_latestApplicableVersion_live(self):
+        # `ReservedRunNumber.LIVE` is later than any real run: open-ended entries apply to it, and the
+        #   latest of those in time is chosen; entries with an upper bound do not apply.
+        versionList = [3, 4, 5, 6]
+        self.prepareVersions(versionList)
+        indexer = self.initIndexer()
+        appliesTo = {3: ">=123", 4: ">=456", 5: ">=100,<500", 6: "<=789"}
+        for i, version in enumerate(versionList):
+            indexer.index[version].appliesTo = appliesTo[version]
+            indexer.index[version].timestamp = i + 1
+        assert indexer.latestApplicableVersion(ReservedRunNumber.LIVE) == 4
 
     def test_latestApplicableVersion_sorts_in_time(self):
         # ensure latest applicable version will sort several applicable versions
