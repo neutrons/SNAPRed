@@ -23,6 +23,7 @@ from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, Normaliz
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.data.source.NeutronDataRegistrations import NeutronDataRegistrations
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
@@ -37,6 +38,7 @@ from snapred.backend.service.SousChef import SousChef
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import (
@@ -169,8 +171,9 @@ class ReductionService(Service):
         continueFlags = ContinueWarning.Type.UNSET
 
         # Check that the user has write permissions to the save directory
-        # (In live-data mode, this check should not apply.)
-        if not request.liveDataMode and not self.checkReductionWritePermissions(request.runNumber):
+        # (In live-data mode, this check should not apply.  Nor does it for live data without a run number,
+        #   registered under `ReservedRunNumber.LIVE`, for example by the `livereduce` post-processing script.)
+        if not self._isLiveData(request) and not self.checkReductionWritePermissions(request.runNumber):
             continueFlags |= ContinueWarning.Type.NO_WRITE_PERMISSIONS
 
         # Remove any continue flags that are present in the request by XOR-ing with the flags
@@ -613,8 +616,22 @@ class ReductionService(Service):
         )
         self.groceryService.writeWorkspaceMetadataAsTags(workspace, metadata)
 
+    @staticmethod
+    def _isLiveData(request: ReductionRequest) -> bool:
+        # Live data: SNAPRed's own live-data mode, or registered live data without a run number.
+        #   (Data registered under a real run number is that run's data, and is treated as such.)
+        return bool(request.liveDataMode) or (
+            request.runNumber == ReservedRunNumber.LIVE and NeutronDataRegistrations().isRegistered(request.runNumber)
+        )
+
     @Register("save")
     def saveReduction(self, request: ReductionExportRequest):
+        # As in live-data mode, nothing is written to disk for live data without a run number
+        #   (`ReservedRunNumber.LIVE`): it has no IPTS directory, and it is not the data of any one run.
+        runNumber = request.record.runNumber
+        if runNumber == ReservedRunNumber.LIVE:
+            logger.warning(f"Run '{runNumber}' is live data without a run number: its reduction is not saved.")
+            return
         self.dataExportService.exportReductionRecord(request.record)
         self.dataExportService.exportReductionData(request.record)
 
