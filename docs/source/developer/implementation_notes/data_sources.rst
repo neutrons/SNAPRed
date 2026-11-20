@@ -274,18 +274,22 @@ through the registration endpoints.  No parameters are added to existing classes
 * Registration fails if the workspace does not exist, or if its ``run_number`` log is set to a different
   run.  A workspace is registered for one run only: registering it for a new run removes its earlier
   registration.  Removing a registration that does not exist is harmless.
-* **Validate the registration on each lookup:**
-
-  - if the workspace no longer exists (for example, ``livereduce``'s memory watchdog has restarted the
-    daemon and cleared the ADS), raise an error that asks for the data to be registered again, or for
-    the registration to be removed;
-  - if its ``run_number`` log no longer matches, a run transition has occurred: raise
-    ``LiveDataState.runStateTransition``.  The live listener does not always set ``run_number``, so a
-    missing log value must be tolerated.
-
-  In both cases the registration is kept.  A registration is removed only explicitly, or by registering
-  the workspace for another run: the data for a registered run never silently comes from another source,
-  which could hide an error in the process that registered it.
+* **Data without a run number** (the ``run_number`` log is missing, or 0: live data between runs, or
+  before a run has been set up) is registered under ``ReservedRunNumber.LIVE`` (``999999``).  Any data
+  can be registered under it.  It is numeric and later than any real run, so the run-number rules
+  (validation, ``Indexer`` applicability) need no special case: the latest calibration and normalization
+  for the state apply, where the state is read from the data.  When a run starts, the registering process
+  registers the same workspace under the run number, which removes its ``LIVE`` registration.
+* **Validate the registration on each lookup:** if the workspace no longer exists (for example,
+  ``livereduce``'s memory watchdog has restarted the daemon and cleared the ADS), raise an error that asks
+  for the data to be registered again, or for the registration to be removed.  The registration is kept.
+  A registration is removed only explicitly, or by registering the workspace for another run: the data
+  for a registered run never silently comes from another source, which could hide an error in the process
+  that registered it.
+* **The ``run_number`` log is checked once**, when the data is registered under a real run number, and
+  not on lookup.  Run changes and accumulation are the business of the registering process, which
+  registers its data again on each update.  The clone that ``RegisteredSource`` makes is given the run
+  number of the registration.
 
 ``RegisteredSource``
 ~~~~~~~~~~~~~~~~~~~~
@@ -314,6 +318,13 @@ already does, using ``RunMetadata.fromRun``).  ``readRunMetadata`` checks the re
 and only then the cached PV-file / live-data lookup, so that the state is always derived from the data
 actually being reduced, and a registered run never uses a cached result.
 
+``ReservedRunNumber.LIVE`` is only for registered data: without a registration, its metadata is an error,
+not a PV-file or listener lookup.  Its state can change between acquisitions, so the caches that are
+keyed by run number as a stand-in for the state do not cache it by run number alone:
+``LocalDataService.generateStateId`` does not cache it, and ``SousChef``'s pixel-group and peak caches
+include its state in their keys.  (The grouping and instrument caches in ``GroceryService`` are keyed by
+state already.)
+
 Resolved questions
 ==================
 
@@ -323,7 +334,8 @@ Resolved questions
   between ``livereduce``'s accumulation and the post-processing script is a matter of the
   ``livereduce`` setup.
 * **Which caches must be reset on a run transition?**  None are known.  Registered data bypasses the
-  neutron-data and run-metadata caches, and the other caches manage their own lifetimes.
+  neutron-data and run-metadata caches, and the other caches manage their own lifetimes.  For
+  ``ReservedRunNumber.LIVE``, whose state can change, see *Run metadata*.
 * **Beam-monitor normalization** (``normalizeByBeamMonitor``): ``fetchMonitorWorkspace`` only loads the
   monitors from the NeXus file, so SNAPRed's own live-data mode does not support it either.  Registered
   data has the same limitation, and no monitor source is added for it.

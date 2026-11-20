@@ -92,3 +92,15 @@ def test_load_keeps_an_existing_run_number(registered):
     NeutronDataRegistrations().register(RUN_NUMBER, name)
     RegisteredSource(Workspaces()).load(item(), output)
     assert mtd[output].getRun().getLogData("run_number").value == RUN_NUMBER
+
+
+@pytest.mark.parametrize("logRunNumber", ["0", "99999"])
+def test_load_replaces_another_run_number(registered, logRunNumber):
+    # After registration, the 'run_number' log of the data is not checked again: the clone has the run
+    #   number of the registration, and the registered workspace is unchanged.
+    name, output = registered
+    NeutronDataRegistrations().register(RUN_NUMBER, name)
+    AddSampleLog(Workspace=name, LogName="run_number", LogText=logRunNumber, LogType="String")
+    RegisteredSource(Workspaces()).load(item(), output)
+    assert mtd[output].getRun().getLogData("run_number").value == RUN_NUMBER
+    assert mtd[name].getRun().getLogData("run_number").value == logRunNumber

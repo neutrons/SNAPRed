@@ -51,9 +51,9 @@ class RegisteredSource(DataSource):
             raise RuntimeError(f"no workspace is registered as the neutron data for run '{item.runNumber}'")
         self.workspaces.getCloneOfWorkspace(workspace, outputWorkspace)
 
-        # As for live data: the live-data listener does not always set the 'run_number' log.
-        #   Set it on the clone (never on the registered workspace).
+        # The clone has the run number of the registration: the live-data listener does not always set the
+        #   'run_number' log, it may be '0', and it is not checked after registration (it may be anything for
+        #   `ReservedRunNumber.LIVE`).  It is set on the clone, never on the registered workspace.
         run = self.workspaces.getWorkspaceForName(outputWorkspace).mutableRun()
-        if not run.hasProperty("run_number"):
-            run["run_number"] = str(item.runNumber)
+        run.addProperty("run_number", str(item.runNumber), True)
         return self._sourced(outputWorkspace, self.LOADER)

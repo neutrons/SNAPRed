@@ -572,15 +572,14 @@ class TestRegisteredData:
         result = harness.service.fetchNeutronDataSingleUse(harness.item(useLiteMode))
         assertDataSource(result, "liteFile" if useLiteMode else "nexusFile")
 
-    def test_run_transition(self, harness):
+    def test_run_number_is_not_checked_again(self, harness):
+        # Run changes are the business of the registering process: after registration, the run number in
+        #   the data is not checked again.  The clone has the run number of the registration.
         AddSampleLog(Workspace=self.workspace, LogName="run_number", LogText=OTHER_RUN_NUMBER, LogType="String")
-        with pytest.raises(LiveDataState):
-            harness.service.fetchNeutronDataSingleUse(harness.item(False))
-        assert runWorkspaces() == set()
-        # The registration is kept, and the workspace is not deleted.
-        with pytest.raises(LiveDataState):
-            harness.service.fetchNeutronDataSingleUse(harness.item(False))
-        assert mtd.doesExist(self.workspace)
+        result = harness.service.fetchNeutronDataSingleUse(harness.item(False))
+        assertDataSource(result, "registered")
+        assert mtd[result["workspace"]].getRun().getLogData("run_number").value == RUN_NUMBER
+        assert mtd[self.workspace].getRun().getLogData("run_number").value == OTHER_RUN_NUMBER
 
     def test_unregistered(self, harness):
         NeutronDataRegistrations().unregister(RUN_NUMBER)

@@ -2,9 +2,9 @@ from typing import Dict, List, Optional
 
 from mantid.api import mtd
 
-from snapred.backend.error.LiveDataState import LiveDataState
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
@@ -21,6 +21,11 @@ class NeutronDataRegistrations:
 
     A registration is removed only when it is explicitly removed, or replaced: a registration that is no
     longer valid is an error, not a reason to use another source of data for the run.
+
+    Data without a run number (for example, live data between runs) is registered under
+    `ReservedRunNumber.LIVE`.  The run number in the data is checked only once, when it is registered under
+    a real run number: after that, run changes are the business of the registering process, which
+    registers its data again on each update.
     """
 
     def __init__(self):
@@ -35,7 +40,7 @@ class NeutronDataRegistrations:
 
     @staticmethod
     def _matches(runNumber: str, logRunNumber: Optional[str]) -> bool:
-        return logRunNumber is None or int(logRunNumber) == int(runNumber)
+        return runNumber == ReservedRunNumber.LIVE or logRunNumber is None or int(logRunNumber) == int(runNumber)
 
     def register(self, runNumber: str, workspace: WorkspaceName):
         """
@@ -43,6 +48,9 @@ class NeutronDataRegistrations:
 
         Registering it again is harmless.  A workspace is registered for one run number only: any earlier
         registration of the same workspace is removed.
+
+        Its 'run_number' log, if set, must match a real run number.  Any data can be registered under
+        `ReservedRunNumber.LIVE`.
         """
         runNumber = str(runNumber)
         if not mtd.doesExist(workspace):
@@ -67,10 +75,8 @@ class NeutronDataRegistrations:
         """
         The workspace registered for a run number, or `None` if the run is not registered.
 
-        * If the workspace no longer exists, `RuntimeError` is raised.
-        * If its 'run_number' log no longer matches, the run has changed: `LiveDataState` is raised.
-
-        In either case the registration is kept: it must be explicitly removed, or replaced.
+        If the workspace no longer exists, `RuntimeError` is raised, and the registration is kept: it must be
+        explicitly removed, or replaced.  Its 'run_number' log is not checked again: see the class description.
         """
         runNumber = str(runNumber)
         workspace = self._workspaces.get(runNumber)
@@ -81,9 +87,6 @@ class NeutronDataRegistrations:
                 f"The workspace '{workspace}' that is registered as the neutron data for run '{runNumber}' "
                 "no longer exists.  Register the data for the run again, or remove the registration."
             )
-        logRunNumber = self._logRunNumber(workspace)
-        if not self._matches(runNumber, logRunNumber):
-            raise LiveDataState.runStateTransition(logRunNumber, runNumber)
         return workspace
 
     def isRegistered(self, runNumber: str) -> bool:

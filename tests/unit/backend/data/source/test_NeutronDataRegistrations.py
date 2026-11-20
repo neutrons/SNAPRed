@@ -2,7 +2,7 @@ import pytest
 from mantid.simpleapi import AddSampleLog, CreateSingleValuedWorkspace, DeleteWorkspace, mtd
 
 from snapred.backend.data.source.NeutronDataRegistrations import NeutronDataRegistrations
-from snapred.backend.error.LiveDataState import LiveDataState
+from snapred.meta.InternalConstants import ReservedRunNumber
 
 RUN_NUMBER = "12345"
 OTHER_RUN_NUMBER = "12346"
@@ -92,18 +92,33 @@ def test_lookup_deleted_workspace(workspace):
     assert registrations.lookup(RUN_NUMBER) is None
 
 
-def test_lookup_after_run_transition(workspace):
+def test_lookup_does_not_check_the_run_number_again(workspace):
+    # Run changes are the business of the registering process, which registers its data again on each update.
     registrations = NeutronDataRegistrations()
     registrations.register(RUN_NUMBER, workspace)
     setRunNumber(workspace, OTHER_RUN_NUMBER)
-    with pytest.raises(LiveDataState) as e:
-        registrations.lookup(RUN_NUMBER)
-    assert e.value.transition == LiveDataState.Type.RUN_GAP
-    # The registration is kept.
-    assert registrations.isRegistered(RUN_NUMBER)
-    with pytest.raises(LiveDataState):
-        registrations.lookup(RUN_NUMBER)
-    assert mtd.doesExist(workspace)
+    assert registrations.lookup(RUN_NUMBER) == workspace
+
+
+@pytest.mark.parametrize("logRunNumber", [None, "0", RUN_NUMBER])
+def test_register_live(workspace, logRunNumber):
+    # Data without a run number (or with any run number) is registered under `ReservedRunNumber.LIVE`.
+    if logRunNumber is not None:
+        setRunNumber(workspace, logRunNumber)
+    registrations = NeutronDataRegistrations()
+    registrations.register(ReservedRunNumber.LIVE, workspace)
+    assert registrations.lookup(ReservedRunNumber.LIVE) == workspace
+    registrations.unregister(ReservedRunNumber.LIVE)
+
+
+def test_register_live_then_a_run(workspace):
+    # When a run starts, the same workspace is registered under its run number instead.
+    registrations = NeutronDataRegistrations()
+    registrations.register(ReservedRunNumber.LIVE, workspace)
+    setRunNumber(workspace, RUN_NUMBER)
+    registrations.register(RUN_NUMBER, workspace)
+    assert registrations.lookup(ReservedRunNumber.LIVE) is None
+    assert registrations.lookup(RUN_NUMBER) == workspace
 
 
 def test_isRegistered(workspace):
