@@ -7,10 +7,11 @@
 # `StartLiveData` runs this with `input`: the accumulation workspace, and `output`: the name of its
 # output workspace.  `run_livereduce.py` puts this directory on `sys.path`.
 
-from mantid.simpleapi import CloneWorkspace
+from mantid.simpleapi import CreateSingleValuedWorkspace
 from snapred_live_reduction import reduceAccumulation
 
 reduceAccumulation(input)  # noqa: F821  (defined by `StartLiveData`)
 
-# `StartLiveData` requires the output workspace.
-CloneWorkspace(InputWorkspace=input, OutputWorkspace=output)  # noqa: F821
+# `StartLiveData` requires the output workspace, but nothing uses it: a copy of the accumulation workspace
+#   would double its memory.
+CreateSingleValuedWorkspace(OutputWorkspace=output)  # noqa: F821
