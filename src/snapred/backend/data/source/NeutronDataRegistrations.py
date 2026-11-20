@@ -19,8 +19,10 @@ class NeutronDataRegistrations:
     post-processing script), which may go on to change or delete it.  So each registration is validated
     on every lookup.  SNAPRed never changes or deletes a registered workspace itself.
 
-    A registration is removed only when it is explicitly removed, or replaced: a registration that is no
-    longer valid is an error, not a reason to use another source of data for the run.
+    A registration is removed only when it is explicitly removed, or replaced by another registration for the
+    same run number: a registration that is no longer valid is an error, not a reason to use another source
+    of data for the run.  The registrations of different run numbers are independent, even when they are of
+    the same workspace.
 
     Data without a run number (for example, live data between runs) is registered under
     `ReservedRunNumber.LIVE`.  The run number in the data is checked only once, when it is registered under
@@ -46,8 +48,8 @@ class NeutronDataRegistrations:
         """
         Register a workspace as the neutron data for a run number.
 
-        Registering it again is harmless.  A workspace is registered for one run number only: any earlier
-        registration of the same workspace is removed.
+        Registering it again is harmless.  It replaces any earlier registration for the run number.  The same
+        workspace may be registered for several run numbers: its other registrations are kept.
 
         Its 'run_number' log, if set, must match a real run number.  Any data can be registered under
         `ReservedRunNumber.LIVE`.
@@ -61,9 +63,6 @@ class NeutronDataRegistrations:
                 f"cannot register workspace '{workspace}' for run '{runNumber}': "
                 f"its 'run_number' log is '{logRunNumber}'"
             )
-        for other in [r for r, ws in self._workspaces.items() if ws == workspace and r != runNumber]:
-            logger.info(f"workspace '{workspace}' is no longer registered for run '{other}'")
-            del self._workspaces[other]
         self._workspaces[runNumber] = workspace
 
     def unregister(self, runNumber: str):
@@ -94,5 +93,5 @@ class NeutronDataRegistrations:
         return str(runNumber) in self._workspaces
 
     def registeredWorkspaces(self) -> List[WorkspaceName]:
-        """All of the registered workspaces, without validation."""
-        return list(self._workspaces.values())
+        """All of the registered workspaces, each once, without validation."""
+        return list(dict.fromkeys(self._workspaces.values()))

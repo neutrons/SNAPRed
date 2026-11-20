@@ -61,9 +61,14 @@ def test_register_missing_workspace():
 
 
 def test_register_workspace_for_a_new_run(workspace):
+    # The registrations of different run numbers are independent: the earlier one is kept.
     registrations = NeutronDataRegistrations()
     registrations.register(RUN_NUMBER, workspace)
     registrations.register(OTHER_RUN_NUMBER, workspace)
+    assert registrations.lookup(RUN_NUMBER) == workspace
+    assert registrations.lookup(OTHER_RUN_NUMBER) == workspace
+    assert registrations.registeredWorkspaces() == [workspace]
+    registrations.unregister(RUN_NUMBER)
     assert registrations.lookup(RUN_NUMBER) is None
     assert registrations.lookup(OTHER_RUN_NUMBER) == workspace
 
@@ -112,12 +117,13 @@ def test_register_live(workspace, logRunNumber):
 
 
 def test_register_live_then_a_run(workspace):
-    # When a run starts, the same workspace is registered under its run number instead.
+    # When a run starts, the same workspace is registered under its run number as well:
+    #   the `LIVE` registration is kept, until it is explicitly removed.
     registrations = NeutronDataRegistrations()
     registrations.register(ReservedRunNumber.LIVE, workspace)
     setRunNumber(workspace, RUN_NUMBER)
     registrations.register(RUN_NUMBER, workspace)
-    assert registrations.lookup(ReservedRunNumber.LIVE) is None
+    assert registrations.lookup(ReservedRunNumber.LIVE) == workspace
     assert registrations.lookup(RUN_NUMBER) == workspace
 
 
