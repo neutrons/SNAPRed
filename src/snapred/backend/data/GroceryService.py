@@ -14,6 +14,7 @@ from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.source.NeutronDataCache import NeutronDataCache
+from snapred.backend.data.source.NeutronDataRegistrations import NeutronDataRegistrations
 from snapred.backend.data.source.NeutronDataSources import NeutronDataSources
 from snapred.backend.data.source.WorkspaceOperations import WorkspaceOperations
 from snapred.backend.log.logger import snapredLogger
@@ -634,7 +635,7 @@ class GroceryService:
 
                 # Initialize the instrument parameters
                 # (Reserved run-numbers will use the unmodified instrument.)
-                if runNumber not in ReservedRunNumber.values():
+                if runNumber not in ReservedRunNumber.unmodifiedInstrument():
                     self.updateInstrumentParameters(wsName, detectorState)
             self._loadedInstruments[instrumentKey] = wsName
         return wsName
@@ -1408,7 +1409,8 @@ class GroceryService:
         :type clearCache: bool
         """  # noqa E501
         workspacesToClear = set(self.mantidSnapper.mtd.getObjectNames())
-        # filter exclude
+        # filter exclude, and the registered neutron data: SNAPRed never deletes a registered workspace
+        exclude = [*exclude, *NeutronDataRegistrations().registeredWorkspaces()]
         workspacesToClear = workspacesToClear.difference(exclude)
         # properly handle workspace groups -- also exclude deleting their constituents
         for ws in exclude:

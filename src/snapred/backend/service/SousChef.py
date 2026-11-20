@@ -31,6 +31,7 @@ from snapred.backend.service.CrystallographicInfoService import Crystallographic
 from snapred.backend.service.Service import Service
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
@@ -55,6 +56,13 @@ class SousChef(Service):
     def dumpCache(self):
         self._pixelGroupCache = {}
         self._peaksCache = {}
+
+    def _runKey(self, runNumber: str) -> str | Tuple[str, str]:
+        # The caches are keyed by run number, which stands for the state.  The state of
+        #   `ReservedRunNumber.LIVE` can change, so it is part of the key.
+        if runNumber == ReservedRunNumber.LIVE:
+            return (runNumber, self.dataFactoryService.constructStateId(runNumber)[0])
+        return runNumber
 
     @staticmethod
     def name():
@@ -115,7 +123,7 @@ class SousChef(Service):
     ) -> PixelGroup:
         groupingSchema = ingredients.focusGroup.name
         key = (
-            ingredients.runNumber,
+            self._runKey(ingredients.runNumber),
             ingredients.useLiteMode,
             groupingSchema,
             ingredients.calibrantSamplePath,
@@ -190,7 +198,7 @@ class SousChef(Service):
         # NOTE purging overlapping peaks is necessary for proper functioning inside the DiffCal process
         # this should not be user-settable, and therefore should not be included inside the FarmFreshIngredients list
         key = (
-            ingredients.runNumber,
+            self._runKey(ingredients.runNumber),
             ingredients.useLiteMode,
             ingredients.focusGroup.name,
             ingredients.crystalDBounds.minimum,

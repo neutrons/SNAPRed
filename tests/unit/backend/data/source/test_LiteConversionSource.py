@@ -93,8 +93,9 @@ def test_load(mockLiteDataService, kind, export):
     data = src.load(item(), "lite")
 
     src.nativeData.resolve.assert_called_once_with(item())
-    workspaces.getCloneOfWorkspace.assert_called_once_with("native", "lite")
-    mockLiteDataService.return_value.createLiteData.assert_called_once_with("lite", "lite", export=export)
+    # The native data is only read: it is not copied.
+    workspaces.getCloneOfWorkspace.assert_not_called()
+    mockLiteDataService.return_value.createLiteData.assert_called_once_with("native", "lite", export=export)
     assert data.workspace == "lite"
     assert data.loader == "LoadNexusProcessed"
     assert data.provenance == [kind, DataSourceKind.LITE_CONVERSION]

@@ -11,6 +11,7 @@ from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredient
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
+from snapred.meta.InternalConstants import ReservedRunNumber
 
 thisService = "snapred.backend.service.SousChef."
 
@@ -234,6 +235,43 @@ class TestSousChef(unittest.TestCase):
 
         assert not PixelGroupingParametersCalculationRecipe.called
         assert res == self.instance._pixelGroupCache[key]
+
+    def test_runKey(self):
+        # The caches are keyed by run number; for `ReservedRunNumber.LIVE`, whose state can change, by state too.
+        self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("abcdef0123456789", None))
+        assert self.instance._runKey("12345") == "12345"
+        self.instance.dataFactoryService.constructStateId.assert_not_called()
+        assert self.instance._runKey(ReservedRunNumber.LIVE) == (ReservedRunNumber.LIVE, "abcdef0123456789")
+
+    @mock.patch(thisService + "PixelGroup")
+    @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
+    @mock.patch(thisService + "PixelGroupingIngredients")
+    def test_prepPixelGroup_live_cache_follows_the_state(
+        self,
+        PixelGroupingIngredients,  # noqa: ARG002
+        PixelGroupingParametersCalculationRecipe,
+        PixelGroup,  # noqa: ARG002
+    ):
+        states = iter([("0000000000000001", None), ("0000000000000002", None)])
+        self.instance.dataFactoryService.constructStateId = mock.Mock(side_effect=lambda _: next(states))
+        self.ingredients.runNumber = ReservedRunNumber.LIVE
+        self.instance._pixelGroupCache[
+            (
+                (ReservedRunNumber.LIVE, "0000000000000001"),
+                self.ingredients.useLiteMode,
+                self.ingredients.focusGroup.name,
+                self.ingredients.calibrantSamplePath,
+                self.pixelMask,
+            )
+        ] = mock.sentinel.pixel
+        # The first state is cached; the second is not.
+        assert self.instance.prepPixelGroup(self.ingredients, self.pixelMask) == mock.sentinel.pixel
+        assert not PixelGroupingParametersCalculationRecipe.called
+        self.instance.prepFocusGroup = mock.Mock(return_value=self.ingredients.focusGroup)
+        self.instance.prepInstrumentState = mock.Mock()
+        self.instance.groceryService.fetchGroceryDict = mock.Mock()
+        self.instance.prepPixelGroup(self.ingredients, self.pixelMask)
+        assert PixelGroupingParametersCalculationRecipe.called
 
     def test_prepPixelGroup_cache_not_altered(self):
         # ensure the cache is prepared

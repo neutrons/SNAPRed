@@ -567,6 +567,45 @@ def test_readRunMetadata(mockRunMetadata):
     mockRunMetadata.fromNeXusLogs.assert_called_once_with(mock.sentinel.h5, mock.sentinel.stateIdSchema)
 
 
+@mock.patch(ThisService + "NeutronDataRegistrations")
+@mock.patch(ThisService + "RunMetadata")
+def test_readRunMetadata_registered(mockRunMetadata, mockRegistrations):
+    # For a run with registered neutron data, the metadata is read from the registered workspace,
+    #   with the run number of the registration, and it is not cached.
+    runNumber = "12345"
+    mockRegistrations.return_value.lookup.return_value = "accumulation_ws"
+    mockMetadata = mock.Mock(spec=RunMetadata)
+    mockMetadata.model_copy.return_value = mock.sentinel.metadata
+    mockRunMetadata.fromRun.return_value = mockMetadata
+    mockInstrumentConfig = mock.Mock(spec=InstrumentConfig, stateIdSchema=mock.sentinel.stateIdSchema)
+    instance = LocalDataService()
+    instance.mantidSnapper = mock.MagicMock()
+    instance._readPVFile = mock.Mock()
+    instance.readInstrumentConfig = mock.Mock(return_value=mockInstrumentConfig)
+
+    assert instance.readRunMetadata(runNumber) == mock.sentinel.metadata
+    assert instance.readRunMetadata(runNumber) == mock.sentinel.metadata
+    mockRegistrations.return_value.lookup.assert_called_with(runNumber)
+    instance.mantidSnapper.mtd.__getitem__.assert_called_with("accumulation_ws")
+    mockRunMetadata.fromRun.assert_called_with(
+        instance.mantidSnapper.mtd.__getitem__.return_value.getRun.return_value, mock.sentinel.stateIdSchema
+    )
+    assert mockRunMetadata.fromRun.call_count == 2
+    mockMetadata.model_copy.assert_called_with(update={"runNumber": runNumber})
+    instance._readPVFile.assert_not_called()
+
+
+@mock.patch(ThisService + "NeutronDataRegistrations")
+def test_readRunMetadata_live_not_registered(mockRegistrations):
+    # `ReservedRunNumber.LIVE` is only for registered data: it is never looked up in a file or a listener.
+    mockRegistrations.return_value.lookup.return_value = None
+    instance = LocalDataService()
+    instance._readRunMetadata = mock.Mock()
+    with pytest.raises(RuntimeError, match=r"no data is registered for it"):
+        instance.readRunMetadata(ReservedRunNumber.LIVE)
+    instance._readRunMetadata.assert_not_called()
+
+
 @mock.patch(ThisService + "RunMetadata")
 def test_readRunMetadata_runNumber_mismatch(mockRunMetadata):
     runNumber1 = "12345"
@@ -702,6 +741,22 @@ def test_hasLiveDataConnection_config_disabled(mockGetHostByAddr):
         instance = LocalDataService()
         assert not instance.hasLiveDataConnection()
         mockGetHostByAddr.assert_not_called()
+
+
+@pytest.mark.parametrize("fileFound", [True, False])
+@mock.patch("socket.gethostbyaddr")
+def test_hasLiveDataConnection_replay(mockGetHostByAddr, fileFound):
+    # The replay listener has no address (its port is 0): it is available when its file is.
+    with (
+        Config_override("liveData.enabled", True),
+        mock.patch(ThisService + "usingFileReplay", return_value=True),
+        mock.patch(ThisService + "replayFile", return_value=Path("SNAP_12345.nxs.h5") if fileFound else None),
+    ):
+        instance = LocalDataService()
+        instance.hasLiveDataConnection.cache_clear()
+        assert instance.hasLiveDataConnection() == fileFound
+        mockGetHostByAddr.assert_not_called()
+        instance.hasLiveDataConnection.cache_clear()
 
 
 ## ====== Tests for: `LocalDataService.hasLiveDataConnection` (UDS paths) ======
@@ -1539,7 +1594,7 @@ def test_generateStateId_bug_not_mislabeled():
     # A genuine bug (e.g. `list.remove(x): x not in list`) must propagate as itself,
     # not be mislabeled as a `StateValidationException` ("Instrument State ... is invalid!").
     service = LocalDataService()
-    service.generateStateId.cache_clear()
+    service._cachedStateIdOf.cache_clear()
     service.readRunMetadata = mock.Mock(side_effect=ValueError("list.remove(x): x not in list"))
 
     with pytest.raises(ValueError, match=r"list\.remove\(x\)"):
@@ -1551,7 +1606,7 @@ def test_generateStateId_unrelated_OSError_not_mislabeled(exceptionType):
     # `STATE_EXCEPTIONS` deliberately lists concrete types rather than the `OSError` base class:
     #   these `OSError` subclasses are NOT state failures and must propagate as themselves.
     service = LocalDataService()
-    service.generateStateId.cache_clear()
+    service._cachedStateIdOf.cache_clear()
     service.readRunMetadata = mock.Mock(side_effect=exceptionType("not a state problem"))
 
     with pytest.raises(exceptionType, match="not a state problem"):
@@ -1562,7 +1617,7 @@ def test_generateStateId_unrelated_OSError_not_mislabeled(exceptionType):
 def test_generateStateId_state_failures_are_routed(exceptionType):
     # The listed types DO mean "can't read this run's state data": they become `StateValidationException`.
     service = LocalDataService()
-    service.generateStateId.cache_clear()
+    service._cachedStateIdOf.cache_clear()
     service.readRunMetadata = mock.Mock(side_effect=exceptionType("no state data"))
 
     with pytest.raises(StateValidationException) as excinfo:
@@ -1573,8 +1628,8 @@ def test_generateStateId_state_failures_are_routed(exceptionType):
 @mock.patch(ThisService + "RunMetadata")
 def test_generateStateId_cache(mockRunMetadata):
     service = LocalDataService()
-    service.generateStateId.cache_clear()
-    assert service.generateStateId.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
+    service._cachedStateIdOf.cache_clear()
+    assert service._cachedStateIdOf.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
 
     service._readPVFile = mock.Mock(
         side_effect=lambda runNumber: mockPVFile(
@@ -1611,26 +1666,43 @@ def test_generateStateId_cache(mockRunMetadata):
 
     actual = service.generateStateId(runNumber1)
     assert actual == (stateSHA1.hex, detectorState1)
-    assert service.generateStateId.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
+    assert service._cachedStateIdOf.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
 
     # check cached value
     actual = service.generateStateId(runNumber1)
     assert actual == (stateSHA1.hex, detectorState1)
-    assert service.generateStateId.cache_info() == functools._CacheInfo(hits=1, misses=1, maxsize=128, currsize=1)
+    assert service._cachedStateIdOf.cache_info() == functools._CacheInfo(hits=1, misses=1, maxsize=128, currsize=1)
 
     # check a different value
     actual = service.generateStateId(runNumber2)
     assert actual == (stateSHA2.hex, detectorState2)
-    assert service.generateStateId.cache_info() == functools._CacheInfo(hits=1, misses=2, maxsize=128, currsize=2)
+    assert service._cachedStateIdOf.cache_info() == functools._CacheInfo(hits=1, misses=2, maxsize=128, currsize=2)
     # ... and its cached value
     actual = service.generateStateId(runNumber2)
     assert actual == (stateSHA2.hex, detectorState2)
-    assert service.generateStateId.cache_info() == functools._CacheInfo(hits=2, misses=2, maxsize=128, currsize=2)
+    assert service._cachedStateIdOf.cache_info() == functools._CacheInfo(hits=2, misses=2, maxsize=128, currsize=2)
+
+
+def test_generateStateId_live_is_not_cached():
+    # The state of `ReservedRunNumber.LIVE` can change between acquisitions: it is read every time.
+    service = LocalDataService()
+    service._cachedStateIdOf.cache_clear()
+    states = [mockGenerateStateId("12345"), mockGenerateStateId("67890")]
+    service.readRunMetadata = mock.Mock(
+        side_effect=[
+            RunMetadata.model_construct(runNumber=ReservedRunNumber.LIVE, detectorState=state, stateId=sha)
+            for sha, state in states
+        ]
+    )
+    assert service.generateStateId(ReservedRunNumber.LIVE) == (states[0][0].hex, states[0][1])
+    assert service.generateStateId(ReservedRunNumber.LIVE) == (states[1][0].hex, states[1][1])
+    assert service.readRunMetadata.call_count == 2
+    assert service._cachedStateIdOf.cache_info().currsize == 0
 
 
 def test_generateStateId_reserved_runNumbers():
     instance = LocalDataService()
-    for runNumber in ReservedRunNumber.values():
+    for runNumber in ReservedRunNumber.unmodifiedInstrument():
         expected = ReservedStateId.forRun(runNumber), None
         actual = instance.generateStateId(runNumber)
         assert actual == expected
