@@ -272,18 +272,20 @@ through the registration endpoints.  No parameters are added to existing classes
 * The endpoints are ``workspace/registerNeutronData`` (``RegisterNeutronDataRequest``: ``runNumber``,
   ``workspace``) and ``workspace/unregisterNeutronData`` (``UnregisterNeutronDataRequest``: ``runNumber``).
 * Registration fails if the workspace does not exist, or if its ``run_number`` log is set to a different
-  run.  A workspace is registered for one run only: registering it for a new run removes its earlier
-  registration.  Removing a registration that does not exist is harmless.
+  run.  The registrations of different run numbers are independent: the same workspace may be registered
+  under several run numbers, and registering it under one doesn't remove the others.  Removing a
+  registration never deletes the workspace.  Removing a registration that does not exist is harmless.
 * **Data without a run number** (the ``run_number`` log is missing, or 0: live data between runs, or
   before a run has been set up) is registered under ``ReservedRunNumber.LIVE`` (``999999``).  Any data
   can be registered under it.  It is numeric and later than any real run, so the run-number rules
   (validation, ``Indexer`` applicability) need no special case: the latest calibration and normalization
-  for the state apply, where the state is read from the data.  When a run starts, the registering process
-  registers the same workspace under the run number, which removes its ``LIVE`` registration.
+  for the state apply, where the state is generated from the data's PV logs.  When a run starts, the
+  registering process registers the workspace under the run number too.  Its ``LIVE`` registration is kept
+  until the registering process removes it.
 * **Validate the registration on each lookup:** if the workspace no longer exists (for example,
   ``livereduce``'s memory watchdog has restarted the daemon and cleared the ADS), raise an error that asks
   for the data to be registered again, or for the registration to be removed.  The registration is kept.
-  A registration is removed only explicitly, or by registering the workspace for another run: the data
+  A registration is removed only explicitly, or replaced by another registration for the same run: the data
   for a registered run never silently comes from another source, which could hide an error in the process
   that registered it.
 * **The ``run_number`` log is checked once**, when the data is registered under a real run number, and

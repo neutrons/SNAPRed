@@ -100,5 +100,7 @@ class WorkspaceService(Service):
     def unregisterNeutronData(self, request: UnregisterNeutronDataRequest):
         """
         Removes the registration of neutron data for a run number, if there is one.
+
+        The workspace itself is not deleted, and any registrations of it for other run numbers are kept.
         """
         NeutronDataRegistrations().unregister(request.runNumber)

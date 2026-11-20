@@ -96,8 +96,8 @@ Register it under ``ReservedRunNumber.LIVE`` (``999999``).
 * Its state can change between updates, so ``generateStateId`` doesn't cache it, and ``SousChef``'s caches
   include the state in their keys.
 * Without a registration, ``LIVE`` is an error.
-* When the run starts, the script registers the workspace under the run number, which removes the ``LIVE``
-  registration.
+* When the run starts, the script registers the workspace under the run number too.  The ``LIVE``
+  registration is kept until it is explicitly removed.  Removing a registration never deletes the workspace.
 * As in SNAPRed's own live-data mode, nothing is written to disk: ``reduction/save`` saves nothing, and
   ``reduction/validate`` skips the write-permission check.
 
