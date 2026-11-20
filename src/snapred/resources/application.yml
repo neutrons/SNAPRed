@@ -116,12 +116,11 @@ liveData:
   #   any other mode requires stay-resident `LoadLiveData` treatment.
   accumulationMethod: Replace
 
+  # The file that the mock listener replays, and the number of chunks it is replayed in.
+  #   The chunks divide the events of the file, not its time (each spans the whole run):
+  #   a live-data load reads every chunk (see `snapred.meta.mantid.liveDataReplay`).
   testInput:
     inputFilename: SNAP_46680.nxs.h5
-    # WARNING: "chunks" seems a bit glitchy:
-    #   event workspaces are not loaded uniformly with respect to
-    #   event _pixel_ assignment.
-    # For thorough testing "1" might actually be the best value!
     chunks: 1 # 50
 
   # Update-interval slider limits and position in seconds.

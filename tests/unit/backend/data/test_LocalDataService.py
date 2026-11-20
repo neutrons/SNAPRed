@@ -732,6 +732,22 @@ def test_hasLiveDataConnection_config_disabled(mockGetHostByAddr):
         mockGetHostByAddr.assert_not_called()
 
 
+@pytest.mark.parametrize("fileFound", [True, False])
+@mock.patch("socket.gethostbyaddr")
+def test_hasLiveDataConnection_replay(mockGetHostByAddr, fileFound):
+    # The replay listener has no address (its port is 0): it is available when its file is.
+    with (
+        Config_override("liveData.enabled", True),
+        mock.patch(ThisService + "usingFileReplay", return_value=True),
+        mock.patch(ThisService + "replayFile", return_value=Path("SNAP_12345.nxs.h5") if fileFound else None),
+    ):
+        instance = LocalDataService()
+        instance.hasLiveDataConnection.cache_clear()
+        assert instance.hasLiveDataConnection() == fileFound
+        mockGetHostByAddr.assert_not_called()
+        instance.hasLiveDataConnection.cache_clear()
+
+
 ## ====== Tests for: `LocalDataService.hasLiveDataConnection` (UDS paths) ======
 
 
