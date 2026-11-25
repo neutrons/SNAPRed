@@ -6,7 +6,7 @@ from mantid.simpleapi import CreateEmptyTableWorkspace, CreateSingleValuedWorksp
 from util.Config_helpers import Config_override
 
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-from snapred.backend.data.source.DataCache import ResidentDataCache, SingleEntryDataCache
+from snapred.backend.data.source.DataCache import DataCache, ResidentDataCache, SingleEntryDataCache
 from snapred.backend.data.source.DataResolver import DataResolver
 from snapred.backend.data.source.DataSourceKind import DataSourceKind
 from snapred.backend.data.source.DataSourceRegistry import DataSourceRegistry
@@ -171,7 +171,43 @@ def test_resident_cache_policy():
     ops = mock.Mock()
     ops.workspaceDoesExist.return_value = True
     cache = ResidentDataCache(ops)
-    assert cache.contains("ws")
-    cache.beforeLoad("ws")
-    cache.record("ws")
+    assert cache.lookup(item(), "ws") == ("ws", True)
+    ops.workspaceDoesExist.return_value = False
+    assert cache.lookup(item(), "ws") == ("ws", False)
+    cache.beforeLoad(item(), "ws")
+    cache.record(item(), "ws")
     assert cache.cachedWorkspaces() == []
+
+
+class RenamingCache(DataCache):
+    """A cache that names the data of every item as one workspace: as a cache keyed by more than the name."""
+
+    def __init__(self, ops, name):
+        self.ops = ops
+        self.name = name
+        self.recorded = []
+
+    def lookup(self, item, proposedName):  # noqa: ARG002
+        return self.name, self.ops.workspaceDoesExist(self.name)
+
+    def record(self, item, workspace):
+        self.recorded.append((item.runNumber, workspace))
+
+
+def test_cache_decides_the_name(workspaces, resolver):
+    ops, created = workspaces
+    created.append("ws_cached_name")
+    source = FakeSource(K.CALIBRATION_RECORD, "ws_source_name")
+    cache = RenamingCache(ops, "ws_cached_name")
+    r = resolver([source], ["calibrationRecord"], cache=cache)
+    # The source loads under the name that the cache decided.
+    data = r.resolve(item())
+    assert data.workspace == "ws_cached_name"
+    assert mtd.doesExist("ws_cached_name")
+    assert not mtd.doesExist("ws_source_name")
+    assert cache.recorded == [(item().runNumber, "ws_cached_name")]
+    # Then it is reused.
+    data = r.resolve(item())
+    assert data.workspace == "ws_cached_name"
+    assert data.loader == "cached"
+    assert len(cache.recorded) == 1
