@@ -1,8 +1,7 @@
 Data sources, and registered neutron data (live reduction under ``livereduce``)
 -------------------------------------------------------------------------------
 
-**Status: parts 1 and 2 are implemented; part 3 is implemented for calibration and normalization; the
-grouping, the reduction pixel mask and the monitor are designed, and not yet implemented.**
+**Status: implemented.**
 
 This design has three parts:
 
