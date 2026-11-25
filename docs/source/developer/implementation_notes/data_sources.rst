@@ -1,7 +1,8 @@
 Data sources, and registered neutron data (live reduction under ``livereduce``)
 -------------------------------------------------------------------------------
 
-**Status: proposed design, not yet implemented.**
+**Status: parts 1 and 2 are implemented; part 3 is implemented for calibration and normalization, and
+the grouping, the reduction pixel mask and the monitor are to follow.**
 
 This design has three parts:
 
@@ -12,8 +13,8 @@ This design has three parts:
 2. **Registered neutron data** (PR 2): a new data source, for a workspace that is registered with
    SNAPRed by an external process, such as ``livereduce``.  With part 1 in place, this is one more
    source, plus its registration.
-3. **Other data** (PR 3): diffraction-calibration tables and masks, normalization, grouping, pixel
-   masks and monitor data are moved onto the same framework.
+3. **Other data** (PRs 3 and 4): diffraction-calibration tables and masks, and normalization (PR 3);
+   then grouping, reduction pixel masks and monitor data (PR 4), are moved onto the same framework.
 
 Motivation
 ==========
