@@ -68,7 +68,7 @@ class InstaEats(GroceryService):
         return self.getIPTS(runNumber) / (Config[pre] + str(runNumber) + Config[ext])
 
     @validate_call
-    def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
+    def _groupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
         if groupingScheme == "Lite":
             path = str(Config["instrument.lite.map.file"])
         else:
@@ -302,8 +302,10 @@ class InstaEats(GroceryService):
         key = self._key(item.groupingScheme, item.runNumber, item.useLiteMode)
         workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.runNumber, item.useLiteMode)
 
-        self._updateGroupingCacheFromADS(key, workspaceName)
-        groupingIsLoaded = self._loadedGroupings.get(key) is not None
+        # As before: unlike `GroceryService`, a grouping is cached by run number, not by state.
+        groupingCache = self.reductionData.groupingCache
+        groupingCache.updateFromADS(key, workspaceName)
+        groupingIsLoaded = groupingCache.entries.get(key) is not None
 
         if groupingIsLoaded:
             data = {
@@ -312,7 +314,7 @@ class InstaEats(GroceryService):
                 "workspace": workspaceName,
             }
         else:
-            filename = self._createGroupingFilename(item.runNumber, item.groupingScheme, item.useLiteMode)
+            filename = self._groupingFilename(item.runNumber, item.groupingScheme, item.useLiteMode)
             groupingLoader = "LoadGroupingDefinition"
 
             # Unless overridden: use a cached workspace as the instrument donor.
@@ -331,7 +333,7 @@ class InstaEats(GroceryService):
                 "loader": groupingLoader,
                 "workspace": workspaceName,
             }
-            self._loadedGroupings[key] = data["workspace"]
+            groupingCache.entries[key] = data["workspace"]
 
         return data
 

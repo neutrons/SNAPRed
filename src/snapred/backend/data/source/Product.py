@@ -8,3 +8,6 @@ class Product(StrEnum):
     DIFFCAL_TABLE = "diffcalTable"
     DIFFCAL_MASK = "diffcalMask"
     NORMALIZATION = "normalization"
+    GROUPING = "grouping"
+    REDUCTION_PIXEL_MASK = "reductionPixelMask"
+    MONITOR = "monitor"

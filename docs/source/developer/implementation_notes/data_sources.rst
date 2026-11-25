@@ -1,8 +1,7 @@
 Data sources, and registered neutron data (live reduction under ``livereduce``)
 -------------------------------------------------------------------------------
 
-**Status: parts 1 and 2 are implemented; part 3 is implemented for calibration and normalization, and
-the grouping, the reduction pixel mask and the monitor are to follow.**
+**Status: implemented.**
 
 This design has three parts:
 
@@ -105,7 +104,8 @@ Sources
     class DataSource(ABC):
         kind: DataSourceKind      # nexusFile, liteFile, live, registered, liteConversion, ...
         provides: Resolution      # native or lite
-        product: Product          # neutron, diffcalTable, diffcalMask, normalization
+        product: Product          # neutron, diffcalTable, diffcalMask, normalization,
+                                  #   grouping, reductionPixelMask, monitor
         cacheable: bool = True
 
         def available(self, item: GroceryListItem) -> bool: ...
@@ -271,15 +271,72 @@ normalization          ``normalizationRecord``                    one entry: the
 Grouping, reduction pixel mask and monitor
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To follow.
+``ReductionDataSources`` builds the registries, the resolvers and the caches of three more products.
+``GroceryService`` holds it as ``reductionData``.  All three are named sources, resolved by the generic
+``DataResolver``.
 
-=====================  ======================================  ===========================================
-product                sources                                 cache
-=====================  ======================================  ===========================================
-grouping               grouping-definition file                ``_loadedGroupings``
-reduction pixel mask   reduction-record file                   resident in the ADS, by name
-monitor                NeXus file                              none
-=====================  ======================================  ===========================================
+=====================  ===========================  ==========  ===========================================
+product                sources                      resolution  cache
+=====================  ===========================  ==========  ===========================================
+grouping               ``groupingFile``             both        by grouping scheme and state
+                                                                (``GroupingDataCache``)
+reduction pixel mask   ``reductionRecord``          both        resident in the ADS, by name
+monitor                ``nexusFile``                native      resident in the ADS, by name
+=====================  ===========================  ==========  ===========================================
+
+.. code-block:: yaml
+
+    dataSources:
+      ...
+      grouping:
+        native: [groupingFile]
+        lite: [groupingFile]
+      reductionPixelMask:
+        native: [reductionRecord]
+        lite: [reductionRecord]
+      monitor:
+        native: [nexusFile]
+
+* **Cache lookup by item:** a grouping workspace is reused for every run of the same state, under the
+  name that it was first loaded with, which names the run it was loaded for.  So the cache cannot be
+  checked by the name that the source gives: the cache decides the name.  The cache interface becomes
+  ``lookup(item, proposedName) -> (name, cached)`` and ``record(item, name)``.  ``DataResolver`` passes
+  the name that the source gives, and uses the name that the cache returns, whether to reuse or to load.
+
+  * ``ResidentDataCache`` and ``SingleEntryDataCache`` ignore the item: they return ``proposedName``, and
+    whether it is resident.  The calibration and normalization fetches are unchanged.
+  * ``GroupingDataCache`` is keyed by grouping scheme, state and resolution.  It chooses the name
+    recorded for the key, or else ``proposedName``.  Then it makes the entry agree with the ADS, as
+    ``_updateGroupingCacheFromADS`` does now: if that workspace is resident and has no entry, it is
+    recorded, and if it has an entry but is no longer resident, the entry is dropped.  It returns the
+    chosen name, and whether the key now has an entry.
+
+  ``_loadedGroupings``, ``_updateGroupingCacheFromADS`` and ``rebuildGroupingCache`` move into
+  ``GroupingDataCache``; ``GroceryService.rebuildGroupingCache`` and ``getCachedWorkspaces`` delegate to
+  it.  Nothing outside ``GroceryService`` uses the grouping cache, except the tests and their
+  ``InstaEats`` stand-in, which are updated.
+* **A grouping that is no longer resident is reloaded under the name that was cached for the state**, as
+  now: the name is chosen before the entry is checked against the ADS.
+* **Which file:** ``groupingFile`` loads the file that the state's grouping map names for the scheme, or
+  ``instrument.lite.map.file`` for the ``Lite`` scheme, as now.  That choice stays in ``LocalDataService``
+  and ``Config``, below the source layer, as for the calibration files.
+* **Instrument donor:** the grouping and pixel-mask sources use ``InstrumentDonors``, unless the item sets
+  ``instrumentPropertySource``, as now.
+* **One output per source:** the pixel-mask source runs ``LoadCalibrationWorkspaces`` with only the mask
+  requested, as now.
+* **Monitor is native only:** a monitor has no lite-mode form.  ``fetchMonitorWorkspace`` resolves a
+  copy of the item with ``useLiteMode`` set to ``False``, using the native resolver, and there is no lite
+  registry.  A monitor that is in the ADS is reused, as now: until now that was only because
+  ``FetchGroceriesAlgorithm`` skips the load of an existing workspace.  It is not one of the service's
+  cached workspaces, as now.
+* **Missing IPTS directory:** the monitor source is always available, and its ``load`` raises the
+  existing ``Cannot find IPTS directory`` error: ``ReductionService`` matches that message.
+* **Provenance:** the grouping, the pixel mask and the monitor have logs, so all three are tagged with
+  ``dataSource``.  ``nexusFile`` is the same kind as for neutron data: a kind records where data came
+  from, not which product it is.
+* **Not sources:** ``fetchCompatiblePixelMask`` generates a blank mask, so like
+  ``fetchDefaultDiffCalTable`` it is not a source.  The public return values of
+  ``fetchGroupingDefinition``, ``fetchReductionPixelMask`` and ``fetchMonitorWorkspace`` are unchanged.
 
 Design: registered neutron data
 ===============================

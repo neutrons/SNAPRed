@@ -49,6 +49,7 @@ from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, DiffcalStateMetadata, WorkspaceMetadata
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.data.source.GroupingSources import GroupingFileSource
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config, Resource
@@ -151,6 +152,12 @@ class TestGroceryService(unittest.TestCase):
 
         # cleanup during running tests:
         cls.exclude = cls.excludeAtTeardown + [cls.fetchedWSname]
+
+    def _patchGroupingFilename(self, filename):
+        # The grouping-definition file that the grouping source loads, for every item.
+        patcher = mock.patch.object(GroupingFileSource, "filename", return_value=filename)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def setUp(self):
         # rather than the LocalDataService, just grab whatevers in the fridge
@@ -320,23 +327,6 @@ class TestGroceryService(unittest.TestCase):
             self.instance.dataService.createNeutronFilePath.assert_called_once_with(self.runNumber, useLiteMode)
             self.instance.dataService.createNeutronFilePath.reset_mock()
 
-    def test_grouping_filename(self):
-        """Test the creation of the grouping filename"""
-        runNumber = "123"
-        useLiteMode = False  # NOTE just use false due to grouping map file
-        groupingMap = self.fridge.readGroupingMap(runNumber).getMap(useLiteMode)
-        for key, value in groupingMap.items():
-            res = self.instance._createGroupingFilename(runNumber, key, useLiteMode)
-            assert res == value.definition
-
-    def test_litedatamap_filename(self):
-        """Test it will return name of Lite data map"""
-        runNumber = GroceryListItem.RESERVED_NATIVE_RUNNUMBER
-        res = self.instance._createGroupingFilename(runNumber, "Lite", False)
-        assert res == str(Config["instrument.lite.map.file"])
-        res2 = self.instance._createGroupingFilename(runNumber, "Lite", True)
-        assert res2 == res
-
     def test_diffcal_output_filename(self):
         # Test name generation for diffraction-calibration table filename
         item = GroceryListItem(
@@ -502,65 +492,6 @@ class TestGroceryService(unittest.TestCase):
             rtol=self.rtolValue,
         )
 
-    def test_updateGroupingCacheFromADS_noop(self):
-        """ws is not in cache and not in ADS"""
-        groupingScheme = "column"
-        stateId = self.stateId
-        useLiteMode = True
-        wsname = "_test_ws_"
-        key = self.instance._key(groupingScheme, stateId, useLiteMode)
-        self.instance._createGroupingWorkspaceName = mock.Mock(return_value=wsname)
-        assert self.instance._loadedGroupings == {}
-        assert not mtd.doesExist(wsname)
-        self.instance._updateGroupingCacheFromADS(key, wsname)
-        self.instance._createGroupingWorkspaceName.assert_not_called()
-        assert self.instance._loadedGroupings == {}
-        assert not mtd.doesExist(wsname)
-
-    def test_updateGroupingCacheFromADS_both(self):
-        """ws is in cache and in ADS"""
-        groupingScheme = "column"
-        stateId = self.stateId
-        useLiteMode = True
-        wsname = "_test_ws_"
-        key = self.instance._key(groupingScheme, stateId, useLiteMode)
-        self.instance._createGroupingWorkspaceName = mock.Mock(return_value=wsname)
-        self.instance._loadedGroupings[key] = wsname
-        self.create_dumb_workspace(wsname)
-        assert mtd.doesExist(wsname)
-        self.instance._updateGroupingCacheFromADS(key, wsname)
-        self.instance._createGroupingWorkspaceName.assert_not_called()
-        assert self.instance._loadedGroupings == {key: wsname}
-
-    def test_updateGroupingCacheFromADS_cache_no_ADS(self):
-        """ws is in cache but not ADS"""
-        groupingScheme = "column"
-        stateId = self.stateId
-        useLiteMode = True
-        wsname = "_test_ws_"
-        key = self.instance._key(groupingScheme, stateId, useLiteMode)
-        self.instance._createGroupingWorkspaceName = mock.Mock(return_value=wsname)
-        self.instance._loadedGroupings[key] = wsname
-        assert not mtd.doesExist(wsname)
-        self.instance._updateGroupingCacheFromADS(key, wsname)
-        self.instance._createGroupingWorkspaceName.assert_not_called()
-        assert self.instance._loadedGroupings == {}
-
-    def test_updateGroupingCacheFromADS_ADS_no_cache(self):
-        """ws is in ADS and not in cache"""
-        groupingScheme = "column"
-        stateId = self.stateId
-        useLiteMode = True
-        wsname = "_test_ws_"
-        key = self.instance._key(groupingScheme, stateId, useLiteMode)
-        self.instance._createGroupingWorkspaceName = mock.Mock(return_value=wsname)
-        self.create_dumb_workspace(wsname)
-        assert self.instance._loadedGroupings == {}
-        assert mtd.doesExist(wsname)
-        self.instance._updateGroupingCacheFromADS(key, wsname)
-        self.instance._createGroupingWorkspaceName.assert_not_called()
-        assert self.instance._loadedGroupings == {key: wsname}
-
     def test_updateInstrumentCacheFromADS_noop(self):
         """ws is not in cache and not in ADS"""
         runId = "555"
@@ -618,9 +549,9 @@ class TestGroceryService(unittest.TestCase):
         useLiteMode = True
         wsname = "_test_ws_"
         key = self.instance._key(groupingScheme, runId, useLiteMode)
-        self.instance._loadedGroupings[key] = wsname
+        self.instance.reductionData.groupingCache.entries[key] = wsname
         self.instance.rebuildGroupingCache()
-        assert self.instance._loadedGroupings == {}
+        assert self.instance.reductionData.groupingCache.entries == {}
 
     def test_rebuildInstrumentCache(self):
         """Test the correct behavior of the rebuildInstrumentCache method"""
@@ -642,11 +573,13 @@ class TestGroceryService(unittest.TestCase):
         self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
         key = (runId, useLiteMode)
         self.instance.neutronData.cache.loadedRuns[key] = 1
-        self.instance._loadedGroupings[self.instance._key(groupingScheme, runId, useLiteMode)] = wsname
+        self.instance.reductionData.groupingCache.entries[self.instance._key(groupingScheme, runId, useLiteMode)] = (
+            wsname
+        )
         self.instance.instrumentDonors.loadedInstruments[key] = wsname
         self.instance.rebuildCache()
         assert self.instance.neutronData.cache.loadedRuns == {}
-        assert self.instance._loadedGroupings == {}
+        assert self.instance.reductionData.groupingCache.entries == {}
         assert self.instance.instrumentDonors.loadedInstruments == {}
 
     def test_clearLiveDataCache(self):
@@ -798,7 +731,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_fetch_grouping(self):
         groupFilepath = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
-        self.instance._createGroupingFilename = mock.Mock(return_value=groupFilepath)
+        self._patchGroupingFilename(groupFilepath)
         testItem = (self.groupingItem.groupingScheme, self.runNumber, self.groupingItem.useLiteMode)
         testKey = (self.groupingItem.groupingScheme, self.stateId, self.groupingItem.useLiteMode)
 
@@ -809,19 +742,19 @@ class TestGroceryService(unittest.TestCase):
         assert res["result"]
         assert res["loader"] == "LoadGroupingDefinition"
         assert res["workspace"] == groupingWorkspaceName
-        assert self.instance._loadedGroupings == {groupKey: groupingWorkspaceName}
+        assert self.instance.reductionData.groupingCache.entries == {groupKey: groupingWorkspaceName}
 
         # call again and no load
         res = self.instance.fetchGroupingDefinition(self.groupingItem)
         assert res["result"]
         assert res["loader"] == "cached"
         assert res["workspace"] == groupingWorkspaceName
-        assert self.instance._loadedGroupings == {groupKey: groupingWorkspaceName}
+        assert self.instance.reductionData.groupingCache.entries == {groupKey: groupingWorkspaceName}
 
     def test_failed_fetch_grouping(self):
         # this is some file that it can't load
         fakeFilepath = Resource.getPath("inputs/crystalInfo/blank_file.cif")
-        self.instance._createGroupingFilename = mock.Mock(return_value=fakeFilepath)
+        self._patchGroupingFilename(fakeFilepath)
         with pytest.raises(AlgorithmException, match=".*Grouping file extension CIF is not supported.*"):
             self.instance.fetchGroupingDefinition(self.groupingItem)
 
@@ -831,9 +764,9 @@ class TestGroceryService(unittest.TestCase):
         This is a special case of the fetch grouping method.
         """
         groupMapFilepath = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+        self.instance.instrumentDonors.fetch = mock.Mock(return_value=self.sampleWS)
         # self.instance._createGroupingWorkspaceName = mock.Mock(return_value="lite_map")
-        self.instance._createGroupingFilename = mock.Mock(return_value=groupMapFilepath)
+        self._patchGroupingFilename(groupMapFilepath)
         # have to subvert the validation methods in grocerylistitem
         mockLiteMapGroceryItem = GroceryListItem(
             workspaceType="grouping",
@@ -852,7 +785,7 @@ class TestGroceryService(unittest.TestCase):
 
         res = self.instance.fetchLiteDataMap()
         assert res == groupingWorkspaceName
-        assert self.instance._loadedGroupings == {groupKey: groupingWorkspaceName}
+        assert self.instance.reductionData.groupingCache.entries == {groupKey: groupingWorkspaceName}
 
     def test_fetch_grocery_list(self):
         # expected workspaces
@@ -1014,7 +947,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_fetch_grocery_list_reductionPixelMask(self):
         # Test of workspace type "reduction_pixel_mask" as `Input` argument in the `GroceryList`
-        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+        self.instance.instrumentDonors.fetch = mock.Mock(return_value=self.sampleWS)
 
         stateId = "ab8704b0bc2a2342"
         with reduction_root_redirect(self.instance.dataService, stateId=stateId):
@@ -1348,13 +1281,13 @@ class TestGroceryService(unittest.TestCase):
     def test_getCachedWorkspaces(self):
         rawWsName = self.instance._createRawNeutronWorkspaceName("556854", False)
         self.instance.neutronData.cache.loadedRuns = {("556854", False): 0}
-        self.instance._loadedGroupings = {("column", "556854", True): "d"}
+        self.instance.reductionData.groupingCache.entries = {("column", "556854", True): "d"}
         self.instance.instrumentDonors.loadedInstruments = {("556854", False): rawWsName, ("556855", True): "hello"}
         assert set(self.instance.getCachedWorkspaces()) == set([rawWsName, "d", "hello"])
 
     def test_getCachedWorkspaces_empty(self):
         self.instance.neutronData.cache.loadedRuns = {}
-        self.instance._loadedGroupings = {}
+        self.instance.reductionData.groupingCache.entries = {}
         self.instance.instrumentDonors.loadedInstruments = {}
 
         assert self.instance.getCachedWorkspaces() == []
@@ -1383,7 +1316,7 @@ class TestGroceryService(unittest.TestCase):
     def test_clearADS(self):
         rawWsName = self.instance._createRawNeutronWorkspaceName(0, "a")
         self.instance.neutronData.cache.loadedRuns = {(0, "a"): rawWsName}
-        self.instance._loadedGroupings = {(1, "c"): "d"}
+        self.instance.reductionData.groupingCache.entries = {(1, "c"): "d"}
 
         with mock.patch.object(self.instance, "rebuildCache") as mockRebuildCache:
             self.create_dumb_workspace(rawWsName)  # in the cache
@@ -1556,33 +1489,6 @@ class TestGroceryService(unittest.TestCase):
 
                 assert instance.deleteWorkspaceUnconditional.call_count == 1
                 assert instance.deleteWorkspaceUnconditional.call_args[0][0] == "monitor"
-
-    def test_fetchMonitorWorkspace(self):
-        item = GroceryListItem(workspaceType="neutron", runNumber="123", useLiteMode=True, loader="")
-        instance = GroceryService()
-        instance.dataService.generateInstrumentState = mock.Mock(
-            return_value=DAOFactory.calibrationParameters().instrumentState
-        )
-        instance.createNeutronFilePath = mock.Mock(return_value="neutron")
-        with (
-            mock.patch.object(instance, "_createMonitorWorkspaceName", wraps=instance._createMonitorWorkspaceName) as _,
-            mock.patch.object(instance, "createNeutronFilePath", wraps=instance.createNeutronFilePath) as _,
-            mock.patch.object(instance, "grocer") as _,
-        ):
-            name = instance.fetchMonitorWorkspace(item)
-
-            assert name == wng.monitor().runNumber("123").build()
-            assert instance._createMonitorWorkspaceName.call_count == 1
-            assert instance._createMonitorWorkspaceName.call_args[0][0] == item.runNumber
-
-            assert instance.createNeutronFilePath.call_count == 1
-            assert instance.createNeutronFilePath.call_args[0][0] == item.runNumber
-            assert not instance.createNeutronFilePath.call_args[0][1]
-
-            assert instance.grocer.executeRecipe.call_count == 1
-            assert instance.grocer.executeRecipe.call_args[0][0] == str(
-                self.instance.createNeutronFilePath(item.runNumber, False)
-            )
 
     def test_validateWorkspaceInstrument(self):
         with mock.patch.object(self.instance, "mantidSnapper") as mockSnapper:

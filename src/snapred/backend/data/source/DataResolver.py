@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
-from snapred.backend.data.source.DataCache import ResidentDataCache
+from snapred.backend.data.source.DataCache import DataCache
 from snapred.backend.data.source.DataSourceKind import DataSourceKind
 from snapred.backend.data.source.DataSourceRegistry import DataSourceRegistry
 from snapred.backend.data.source.SourcedData import SourcedData
@@ -18,13 +18,14 @@ class DataResolver:
 
     1. An exclusive source is used, if there is one; otherwise, the first available source, in the configured order.
     2. That source names the workspace.  If it has no such data for the item, there is no data (`None`).
-    3. If the cache has the workspace, it is reused.  Otherwise, the source loads it.
+    3. Given that name, the cache decides the name to use.  If it has that workspace, it is reused.
+       Otherwise, the source loads it, under that name.
 
     A workspace that has logs is tagged with its provenance, as the `dataSource` workspace metadata.
     (A table workspace has no logs: its provenance is only returned.)
     """
 
-    def __init__(self, sources: DataSourceRegistry, cache: ResidentDataCache, workspaces: WorkspaceOperations):
+    def __init__(self, sources: DataSourceRegistry, cache: DataCache, workspaces: WorkspaceOperations):
         self.sources = sources
         self.cache = cache
         self.workspaces = workspaces
@@ -66,15 +67,16 @@ class DataResolver:
         workspace = source.outputName(item)
         if workspace is None:
             return None
-        if self.cache.contains(workspace):
+        workspace, cached = self.cache.lookup(item, workspace)
+        if cached:
             return SourcedData(
                 workspace=workspace,
                 loader=CACHED_LOADER,
                 resolution=self.resolution,
                 provenance=self._provenanceOf(workspace),
             )
-        self.cache.beforeLoad(workspace)
+        self.cache.beforeLoad(item, workspace)
         data = source.load(item, workspace)
         self._tag(data)
-        self.cache.record(workspace)
+        self.cache.record(item, workspace)
         return data

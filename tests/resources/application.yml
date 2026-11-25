@@ -97,6 +97,15 @@ dataSources:
   normalization:
     native: [normalizationRecord]
     lite: [normalizationRecord]
+  grouping:
+    native: [groupingFile]
+    lite: [groupingFile]
+  reductionPixelMask:
+    native: [reductionRecord]
+    lite: [reductionRecord]
+  monitor:
+    # A monitor has no lite-mode form.
+    native: [nexusFile]
 
 liveData:
   enabled: false
