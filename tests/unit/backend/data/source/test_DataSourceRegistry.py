@@ -4,6 +4,7 @@ from util.Config_helpers import Config_override
 from snapred.backend.data.source.DataSource import DataSource
 from snapred.backend.data.source.DataSourceKind import DataSourceKind
 from snapred.backend.data.source.DataSourceRegistry import DataSourceRegistry
+from snapred.backend.data.source.Product import Product
 from snapred.backend.data.source.Resolution import Resolution
 
 K = DataSourceKind
@@ -41,21 +42,23 @@ def test_sources_are_keyed_by_kind():
 
 
 def test_source_of_another_resolution_is_rejected():
-    with pytest.raises(RuntimeError, match=r"the 'liteFile' source provides lite data, not native data"):
+    with pytest.raises(
+        RuntimeError, match=r"the 'liteFile' source provides lite neutron data, not native neutron data"
+    ):
         DataSourceRegistry(Resolution.NATIVE, [*nativeSources(), FakeSource(K.LITE_FILE, Resolution.LITE)])
 
 
 @pytest.mark.parametrize("order", [["nexusFile", "live"], ["live", "nexusFile"], ["live"]])
 def test_ordered_follows_the_configuration(order):
     registry = DataSourceRegistry(Resolution.NATIVE, nativeSources())
-    with Config_override("neutronData.sources.native", order):
+    with Config_override("dataSources.neutron.native", order):
         assert [source.kind for source in registry.ordered()] == [K(kind) for kind in order]
 
 
 def test_ordered_rejects_a_source_not_in_the_registry():
     registry = DataSourceRegistry(Resolution.NATIVE, nativeSources())
-    with Config_override("neutronData.sources.native", ["nexusFile", "liteFile"]):
-        with pytest.raises(RuntimeError, match=r"lists 'liteFile', which is not a source of native data"):
+    with Config_override("dataSources.neutron.native", ["nexusFile", "liteFile"]):
+        with pytest.raises(RuntimeError, match=r"lists 'liteFile', which is not a source of native neutron data"):
             registry.ordered()
 
 
@@ -66,3 +69,18 @@ def test_configured_order():
         K.NEXUS_FILE,
         K.LIVE,
     ]
+
+
+def test_source_of_another_product_is_rejected():
+    source = FakeSource(K.NEXUS_FILE, Resolution.NATIVE)
+    source.product = Product.NORMALIZATION
+    with pytest.raises(RuntimeError, match=r"provides native normalization data, not native neutron data"):
+        DataSourceRegistry(Resolution.NATIVE, [source])
+
+
+def test_order_is_configured_per_product():
+    source = FakeSource(K.NORMALIZATION_RECORD, Resolution.LITE)
+    source.product = Product.NORMALIZATION
+    registry = DataSourceRegistry(Resolution.LITE, [source], product=Product.NORMALIZATION)
+    assert registry.product == Product.NORMALIZATION
+    assert registry.ordered() == [source]

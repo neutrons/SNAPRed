@@ -1,7 +1,8 @@
 Data sources, and registered neutron data (live reduction under ``livereduce``)
 -------------------------------------------------------------------------------
 
-**Status: proposed design, not yet implemented.**
+**Status: parts 1 and 2 are implemented; part 3 is implemented for calibration and normalization, and
+the grouping, the reduction pixel mask and the monitor are to follow.**
 
 This design has three parts:
 
@@ -12,8 +13,8 @@ This design has three parts:
 2. **Registered neutron data** (PR 2): a new data source, for a workspace that is registered with
    SNAPRed by an external process, such as ``livereduce``.  With part 1 in place, this is one more
    source, plus its registration.
-3. **Other data** (PR 3): diffraction-calibration tables and masks, normalization, grouping, pixel
-   masks and monitor data are moved onto the same framework.
+3. **Other data** (PRs 3 and 4): diffraction-calibration tables and masks, and normalization (PR 3);
+   then grouping, reduction pixel masks and monitor data (PR 4), are moved onto the same framework.
 
 Motivation
 ==========
@@ -102,8 +103,9 @@ Sources
 .. code-block:: python
 
     class DataSource(ABC):
-        kind: DataSourceKind      # nexusFile, liteFile, live, registered, liteConversion
+        kind: DataSourceKind      # nexusFile, liteFile, live, registered, liteConversion, ...
         provides: Resolution      # native or lite
+        product: Product          # neutron, diffcalTable, diffcalMask, normalization
         cacheable: bool = True
 
         def available(self, item: GroceryListItem) -> bool: ...
@@ -111,8 +113,9 @@ Sources
         def load(self, item: GroceryListItem, outputWorkspace: WorkspaceName) -> SourcedData: ...
 
     class DataSourceRegistry:
-        resolution: Resolution    # every source in the registry provides this resolution
-        def ordered(self) -> list[DataSource]: ...   # in the order set by `neutronData.sources.<resolution>`
+        product: Product
+        resolution: Resolution    # every source in the registry provides this product, at this resolution
+        def ordered(self) -> list[DataSource]: ...   # in the order set by `dataSources.<product>.<resolution>`
 
 ``SourcedData`` holds the workspace name, the loader that was used, its resolution, the provenance chain,
 and, for derived data, the data that it was derived from (``derivedFrom``).
@@ -175,10 +178,14 @@ The order is set in ``application.yml``:
 
 .. code-block:: yaml
 
-    neutronData:
-      sources:
+    dataSources:
+      neutron:
         native: [registered, nexusFile, live]
         lite: [liteFile, liteConversion]
+      diffcalTable:
+        native: [calibrationFile, calibrationRecord]
+        lite: [calibrationFile, calibrationRecord]
+      ...
 
 Cache
 ~~~~~
@@ -215,46 +222,64 @@ that it remains correct if more transforming sources are added.
 Design: other data
 ==================
 
-The same framework applies to the other kinds of data that ``GroceryService`` loads.  Each of these is
-currently a separate method, with its own check for a resident workspace, its own load, and its own
-cache.
+The same framework applies to the other kinds of data that ``GroceryService`` loads.  Each of these was
+a separate method, with its own check for a resident workspace, its own load, and its own cache.  This is
+done in two steps: first the calibration and normalization data, then the grouping, the reduction pixel
+mask and the monitor.
+
+Calibration and normalization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``CalibrationDataSources`` builds the registries, the resolvers and the caches of three products, at each
+resolution.  ``GroceryService`` holds it as ``calibrationData``.
+
+=====================  =========================================  =================================
+product                sources                                    cache
+=====================  =========================================  =================================
+diffCal table          ``calibrationFile`` (exclusive),            resident in the ADS, by name
+                       ``calibrationRecord``
+diffCal mask           ``calibrationFile`` (exclusive),            resident in the ADS, by name
+                       ``calibrationRecord``
+normalization          ``normalizationRecord``                    one entry: the last one loaded
+=====================  =========================================  =================================
+
+* **Named sources:** where the name of the workspace depends on where the data comes from (the calibration
+  record, or the file that ``item.diffCalFilePath`` names), the source names it.  So the generic
+  ``DataResolver`` chooses the source first, asks it for the name, and then checks the cache: the reverse
+  of the neutron-data resolver, whose names do not depend on the source.  A source may have no such data
+  for an item (a calibration record without a mask): the result is then ``None``.
+* **One output per source:** the diffCal table and mask sources share an implementation, which runs
+  ``LoadCalibrationWorkspaces`` with only the one output requested.  So a ``diffcal_table`` fetch no longer
+  also loads the mask, and applying a diffraction calibration in ``_processNeutronDataCopy`` loads only the
+  table.
+* **Native and lite share an implementation:** the native and lite sources of each product are one
+  implementation, parameterized by resolution, which only selects which file the lookup finds.
+* **Instrument donor:** the calibration sources need an instrument donor.  The donor cache moves out of
+  ``GroceryService`` into ``InstrumentDonors``, which the sources use directly.
+* **Processing step:** a normalization that is loaded (not reused) is then processed as neutron data, by
+  ``GroceryService`` (``_processNeutronDataCopy``): the processing is not part of the source.
+* **Provenance:** the mask and the normalization are tagged with ``dataSource``.  A table workspace has no
+  logs, so its provenance is only returned, and is unknown when the table is reused.  The existing
+  ``diffcalState`` and ``normalizationState`` tags are unchanged: they record what was *applied* to a
+  sample workspace, not where a workspace came from.
+* **Boundary:** a source decides how a product is brought into the ADS.  *Which* file and version contain
+  it is still decided by the indexer and ``LocalDataService`` (including, on ``exp``, the read-only
+  calibration failover), below the source layer.
+* ``fetchDefaultDiffCalTable`` is not a source: it generates a default table under its own name, and is
+  never a fallback for an indexed table.
+
+Grouping, reduction pixel mask and monitor
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To follow.
 
 =====================  ======================================  ===========================================
-kind                   sources                                 cache
+product                sources                                 cache
 =====================  ======================================  ===========================================
-diffCal table          indexed ``.h5`` file; generated         resident in the ADS, by name
-                       default table (now
-                       ``fetchDefaultDiffCalTable``)
-diffCal mask           indexed ``.h5`` file                    resident in the ADS, by name
-normalization          indexed file                            ``normalizationCache`` (a single entry)
-grouping               grouping-definition file                ``_groupingCache``
+grouping               grouping-definition file                ``_loadedGroupings``
 reduction pixel mask   reduction-record file                   resident in the ADS, by name
 monitor                NeXus file                              none
 =====================  ======================================  ===========================================
-
-* **Kind and key:** each source declares the kind of data it provides.  Each kind has its own key:
-  run number and resolution for neutron and monitor data; state, version and resolution for
-  calibration and normalization data.  The resolver is the same for every kind.
-* **One output per source:** the diffCal table and mask sources share an implementation, which runs
-  ``LoadCalibrationWorkspaces`` with only the one output requested (each of its outputs is optional).
-  This matches how they are requested now: ``diffcal_table`` and ``diffcal_mask`` are already separate
-  grocery items.  At present, either one loads both workspaces, so that applying a diffraction
-  calibration in ``_processNeutronDataCopy`` also loads a mask that is not used.  Repeated fetches are
-  cache hits, as now.
-* **Native and lite share an implementation:** unlike neutron data, the native and lite versions of
-  calibration and normalization data have no conversion between them.  Their sources use the same
-  lookup inputs (run number, state and version) and the same loader; the resolution only selects which
-  file the lookup finds.  So the native and lite sources of each of these kinds are one implementation,
-  parameterized by resolution.
-* **Cache:** the cache policy is set per kind, as above.
-* **Processing steps:** the normalization load currently runs ``_processNeutronDataCopy`` on the
-  loaded data.  This becomes an explicit processing step of that kind.
-* **Provenance:** these workspaces are also tagged with ``dataSource``.  The existing ``diffcalState``
-  and ``normalizationState`` tags are unchanged: they record what was *applied* to a sample workspace,
-  not where a workspace came from.
-* **Boundary:** a source decides how a product is brought into the ADS.  *Which* file and version
-  contain it is still decided by the indexer and ``LocalDataService`` (including, on ``exp``, the
-  read-only calibration failover), below the source layer.
 
 Design: registered neutron data
 ===============================

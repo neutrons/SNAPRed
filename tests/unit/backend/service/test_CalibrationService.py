@@ -505,13 +505,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = mock.Mock(return_value=tmpDir)
             self.instance.groceryService.dataService.readCalibrationRecord = mock.Mock()
-            self.instance.groceryService.fetchCalibrationWorkspaces = mock.Mock()
             self.instance.groceryService.createDiffCalTableWorkspaceName = mock.Mock()
             self.instance.groceryService.fetchGroceryDict = mock.Mock()
             self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
 
             self.instance.groceryService._getCalibrationDataPath = mock.Mock(return_value=tmpDir)
-            self.instance.groceryService._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+            self.instance.groceryService.instrumentDonors.fetch = mock.Mock(return_value=self.sampleWS)
             mockRequest = CalibrationLoadAssessmentRequest(
                 runId=calibRecord.runNumber,
                 useLiteMode=calibRecord.useLiteMode,
@@ -555,7 +554,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 version=version,
                 checkExistent=False,
             )
-            self.instance.groceryService._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+            self.instance.groceryService.instrumentDonors.fetch = mock.Mock(return_value=self.sampleWS)
             self.instance.groceryService._validateWorkspaceInstrument = mock.Mock(return_value=True)
 
             with Config_override("instrument.lite.pixelResolution", 16):
@@ -598,7 +597,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 version=version,
                 checkExistent=False,
             )
-            self.instance.groceryService._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+            self.instance.groceryService.instrumentDonors.fetch = mock.Mock(return_value=self.sampleWS)
             self.instance.groceryService._validateWorkspaceInstrument = mock.Mock(return_value=True)
 
             with Config_override("instrument.lite.pixelResolution", 16):

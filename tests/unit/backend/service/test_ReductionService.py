@@ -28,7 +28,6 @@ from util.InstaEats import InstaEats
 from util.SculleryBoy import SculleryBoy
 from util.state_helpers import reduction_root_redirect
 
-## SNAPRed imports
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.indexing.Versioning import VERSION_START, VersionState
 from snapred.backend.dao.ingredients import ArtificialNormalizationIngredients
@@ -47,6 +46,9 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.WorkspaceMetadata import DiffcalStateMetadata, NormalizationStateMetadata, WorkspaceMetadata
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
+
+## SNAPRed imports
+from snapred.backend.data.source.Product import Product
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
@@ -57,6 +59,14 @@ from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 thisService = "snapred.backend.service.ReductionService."
+
+
+def mockNormcalRunNumber(groceryService, runNumber: str):
+    """The normalization records name this calibration run."""
+    for (product, _), registry in groceryService.calibrationData.registries.items():
+        if product == Product.NORMALIZATION:
+            for source in registry.sources.values():
+                source._normcalRunNumber = mock.Mock(return_value=runNumber)
 
 
 class TestReductionService(unittest.TestCase):
@@ -226,7 +236,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
         self.instance.groceryService._validateWorkspaceInstrument = mock.Mock()
-        self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
+        mockNormcalRunNumber(self.instance.groceryService, "123456")
         self.instance.groceryService.mantidSnapper = mock.Mock()
         self.instance.groceryService.checkPixelMask = mock.Mock(return_value=True)
         self.instance._markWorkspaceMetadata = mock.Mock()
@@ -243,7 +253,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("state", None))
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
         self.instance.groceryService._validateWorkspaceInstrument = mock.Mock()
-        self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
+        mockNormcalRunNumber(self.instance.groceryService, "123456")
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.instance.groceryService.dataService.hasLiveDataConnection = mock.Mock(return_value=True)
 
@@ -273,7 +283,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.getLatestApplicableNormalizationVersion = mock.Mock(return_value=1)
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
         self.instance.groceryService._validateWorkspaceInstrument = mock.Mock()
-        self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
+        mockNormcalRunNumber(self.instance.groceryService, "123456")
         self.instance._markWorkspaceMetadata = mock.Mock()
         self.instance.prepCombinedMask = mock.Mock(return_value=mock.sentinel.mask)
         self.request.continueFlags = ContinueWarning.Type.UNSET
@@ -366,7 +376,7 @@ class TestReductionService(unittest.TestCase):
         self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("state", None))
         self.instance.groceryService._processNeutronDataCopy = mock.Mock()
         self.instance.groceryService._validateWorkspaceInstrument = mock.Mock()
-        self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
+        mockNormcalRunNumber(self.instance.groceryService, "123456")
         self.instance.groceryService.getSNAPRedWorkspaceMetadata = mock.Mock(
             return_value=WorkspaceMetadata(
                 diffcalState=DiffcalStateMetadata.EXISTS,
@@ -492,7 +502,7 @@ class TestReductionService(unittest.TestCase):
             self.instance.dataFactoryService.normalizationExists = mock.Mock(return_value=True)
             self.instance.dataFactoryService.constructStateId = mock.Mock(return_value=("state", None))
             self.instance.groceryService._processNeutronDataCopy = mock.Mock()
-            self.instance.groceryService._lookupNormcalRunNumber = mock.Mock(return_value="123456")
+            mockNormcalRunNumber(self.instance.groceryService, "123456")
             self.instance._markWorkspaceMetadata = mock.Mock()
 
             self.instance.fetchReductionGroupings = mock.Mock(
@@ -1276,9 +1286,9 @@ class TestReductionServiceMasks:
             ),
             mock.patch.object(
                 self.service.groceryService,
-                "fetchDiffCalForSample",
-                # return a table, but "" => there's no corresponding mask
-                return_value=(mock.sentinel.table, ""),
+                "fetchDiffCalMask",
+                # there's no mask
+                return_value=None,
             ),
             Config_override("instrument.lite.pixelResolution", 4),
             Config_override("instrument.lite.name", "fakesnaplite"),

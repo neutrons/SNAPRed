@@ -82,12 +82,21 @@ instrument:
   minimumRunNumber: 46342
   maxNumberOfRuns: 10
 
-neutronData:
-  sources:
-    # The order in which the data sources are tried, for each resolution
-    #   (see `docs/source/developer/implementation_notes/data_sources.rst`).
+dataSources:
+  # The order in which the data sources of each product are tried, for each resolution
+  #   (see `docs/source/developer/implementation_notes/data_sources.rst`).
+  neutron:
     native: [registered, nexusFile, live]
     lite: [liteFile, liteConversion]
+  diffcalTable:
+    native: [calibrationFile, calibrationRecord]
+    lite: [calibrationFile, calibrationRecord]
+  diffcalMask:
+    native: [calibrationFile, calibrationRecord]
+    lite: [calibrationFile, calibrationRecord]
+  normalization:
+    native: [normalizationRecord]
+    lite: [normalizationRecord]
 
 liveData:
   enabled: true
@@ -163,6 +172,9 @@ calibration:
       extension: .nxs.h5
     diagnostic:
       extension: .nxs.h5
+    table:
+      # the diffraction-calibration table and its mask, in one file
+      extension: .h5
     maximumIterations: 5
     convergenceThreshold: 0.5
     nBinsAcrossPeakWidth: 10
