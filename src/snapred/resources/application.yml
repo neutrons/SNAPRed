@@ -103,6 +103,9 @@ dataSources:
   reductionPixelMask:
     native: [reductionRecord]
     lite: [reductionRecord]
+  monitor:
+    # A monitor has no lite-mode form.
+    native: [nexusFile]
 
 liveData:
   enabled: true

@@ -10,3 +10,4 @@ class Product(StrEnum):
     NORMALIZATION = "normalization"
     GROUPING = "grouping"
     REDUCTION_PIXEL_MASK = "reductionPixelMask"
+    MONITOR = "monitor"

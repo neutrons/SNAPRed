@@ -78,7 +78,7 @@ class GroceryService:
             self.dataService, self.grocer, self.workspaces, self.instrumentDonors
         )
 
-        # The sources of the grouping workspaces and of the reduction pixel masks, and their caches.
+        # The sources of the grouping workspaces, the reduction pixel masks and the monitors, and their caches.
         self.reductionData = ReductionDataSources(self.dataService, self.grocer, self.workspaces, self.instrumentDonors)
 
     def _defaultClass(self, val, clazz):
@@ -714,25 +714,8 @@ class GroceryService:
 
         return maskWSName
 
-    def _createMonitorWorkspaceName(self, runNumber: str) -> WorkspaceName:
-        # a monitor cannot be lite
-        return wng.monitor().runNumber(runNumber).build()
-
     def fetchMonitorWorkspace(self, item: GroceryListItem) -> WorkspaceName:
-        runNumber, useLiteMode = item.runNumber, False
-        workspaceName = self._createMonitorWorkspaceName(runNumber)
-
-        # monitors take ~1 second to load, probably unnecessary to cache
-
-        # Warning: `filePath` will be `None` if no IPTS directory exists!
-        #   This situation occurs during diagnostic runs in live-data mode.
-        filePath = self.createNeutronFilePath(runNumber, useLiteMode)
-        if not bool(filePath):
-            raise RuntimeError(f"Cannot find IPTS directory for run '{runNumber}'")
-
-        self.grocer.executeRecipe(str(filePath), workspaceName, "LoadNexusMonitors")
-
-        return workspaceName
+        return self.reductionData.fetchMonitor(item).workspace
 
     def fetchNormCalForSample(self, item: GroceryListItem) -> Dict[str, Any]:
         logger.info(f"Fetching normalization workspace for run {item.runNumber}, version {item.normCalVersion}")

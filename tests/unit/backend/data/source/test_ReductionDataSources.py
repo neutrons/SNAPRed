@@ -40,6 +40,26 @@ def test_grouping_cache_is_shared_by_the_resolutions():
     assert s.resolver(Product.GROUPING, item(True)).cache is s.groupingCache
 
 
+def test_monitor_is_native_only():
+    s = sources()
+    registry = s.registries[(Product.MONITOR, Resolution.NATIVE)]
+    assert set(registry.sources) == {K.NEXUS_FILE}
+    assert [source.kind for source in registry.ordered()] == [K.NEXUS_FILE]
+    assert (Product.MONITOR, Resolution.LITE) not in s.registries
+    assert type(s.resolver(Product.MONITOR, item(False)).cache) is ResidentDataCache
+
+
+@pytest.mark.parametrize("useLiteMode", [False, True])
+def test_fetchMonitor_is_native(useLiteMode):
+    s = sources()
+    resolver = s.resolver(Product.MONITOR, item(False))
+    with mock.patch.object(resolver, "resolve", return_value=mock.sentinel.data) as resolve:
+        assert s.fetchMonitor(item(useLiteMode)) is mock.sentinel.data
+    [nativeItem] = resolve.call_args.args
+    assert not nativeItem.useLiteMode
+    assert nativeItem.runNumber == item(useLiteMode).runNumber
+
+
 def test_reduction_pixel_mask_is_reused_while_resident():
     s = sources()
     for useLiteMode in (False, True):

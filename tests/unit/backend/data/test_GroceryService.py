@@ -1490,33 +1490,6 @@ class TestGroceryService(unittest.TestCase):
                 assert instance.deleteWorkspaceUnconditional.call_count == 1
                 assert instance.deleteWorkspaceUnconditional.call_args[0][0] == "monitor"
 
-    def test_fetchMonitorWorkspace(self):
-        item = GroceryListItem(workspaceType="neutron", runNumber="123", useLiteMode=True, loader="")
-        instance = GroceryService()
-        instance.dataService.generateInstrumentState = mock.Mock(
-            return_value=DAOFactory.calibrationParameters().instrumentState
-        )
-        instance.createNeutronFilePath = mock.Mock(return_value="neutron")
-        with (
-            mock.patch.object(instance, "_createMonitorWorkspaceName", wraps=instance._createMonitorWorkspaceName) as _,
-            mock.patch.object(instance, "createNeutronFilePath", wraps=instance.createNeutronFilePath) as _,
-            mock.patch.object(instance, "grocer") as _,
-        ):
-            name = instance.fetchMonitorWorkspace(item)
-
-            assert name == wng.monitor().runNumber("123").build()
-            assert instance._createMonitorWorkspaceName.call_count == 1
-            assert instance._createMonitorWorkspaceName.call_args[0][0] == item.runNumber
-
-            assert instance.createNeutronFilePath.call_count == 1
-            assert instance.createNeutronFilePath.call_args[0][0] == item.runNumber
-            assert not instance.createNeutronFilePath.call_args[0][1]
-
-            assert instance.grocer.executeRecipe.call_count == 1
-            assert instance.grocer.executeRecipe.call_args[0][0] == str(
-                self.instance.createNeutronFilePath(item.runNumber, False)
-            )
-
     def test_validateWorkspaceInstrument(self):
         with mock.patch.object(self.instance, "mantidSnapper") as mockSnapper:
             mockWorkspace = mock.Mock()

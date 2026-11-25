@@ -337,6 +337,7 @@ class TestMonitor:
         workspace = harness.service.fetchMonitorWorkspace(harness.monitor(useLiteMode=useLiteMode))
         assert workspace == monitorName()
         assert mtd[workspace].getNumberHistograms() == 1
+        assert dataSource(workspace) == "nexusFile"
         assert list(mtd[workspace].readY(0)) == list(range(10))
 
     def test_reused_while_resident(self, harness):
