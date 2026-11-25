@@ -764,7 +764,7 @@ class TestGroceryService(unittest.TestCase):
         This is a special case of the fetch grouping method.
         """
         groupMapFilepath = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+        self.instance.instrumentDonors.fetch = mock.Mock(return_value=self.sampleWS)
         # self.instance._createGroupingWorkspaceName = mock.Mock(return_value="lite_map")
         self._patchGroupingFilename(groupMapFilepath)
         # have to subvert the validation methods in grocerylistitem
@@ -947,7 +947,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_fetch_grocery_list_reductionPixelMask(self):
         # Test of workspace type "reduction_pixel_mask" as `Input` argument in the `GroceryList`
-        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+        self.instance.instrumentDonors.fetch = mock.Mock(return_value=self.sampleWS)
 
         stateId = "ab8704b0bc2a2342"
         with reduction_root_redirect(self.instance.dataService, stateId=stateId):

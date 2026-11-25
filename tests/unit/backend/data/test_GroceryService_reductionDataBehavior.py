@@ -300,6 +300,7 @@ class TestReductionPixelMask:
         workspace = harness.fetch(harness.pixelMask(useLiteMode=useLiteMode))
         assert workspace == pixelMaskName()
         assert isinstance(mtd[workspace], MaskWorkspace)
+        assert dataSource(workspace) == "reductionRecord"
         # Only the mask is loaded: the table in the same file is not.
         assert fetchedWorkspaces() == {workspace}
 

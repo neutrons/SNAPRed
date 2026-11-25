@@ -13,3 +13,4 @@ class DataSourceKind(StrEnum):
     CALIBRATION_FILE = "calibrationFile"
     NORMALIZATION_RECORD = "normalizationRecord"
     GROUPING_FILE = "groupingFile"
+    REDUCTION_RECORD = "reductionRecord"

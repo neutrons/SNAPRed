@@ -1,5 +1,4 @@
 # ruff: noqa: F811
-import json
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -79,7 +78,7 @@ class GroceryService:
             self.dataService, self.grocer, self.workspaces, self.instrumentDonors
         )
 
-        # The sources of the grouping workspaces, and the grouping cache.
+        # The sources of the grouping workspaces and of the reduction pixel masks, and their caches.
         self.reductionData = ReductionDataSources(self.dataService, self.grocer, self.workspaces, self.instrumentDonors)
 
     def _defaultClass(self, val, clazz):
@@ -205,16 +204,6 @@ class GroceryService:
             )
         )
 
-    @validate_call
-    def _createReductionPixelMaskWorkspaceFilename(self, runNumber: str, useLiteMode: bool, timestamp: float) -> str:
-        return str(
-            Path(self._getReductionDataPath(runNumber, useLiteMode, timestamp))
-            / (
-                self._createReductionPixelMaskWorkspaceName(runNumber, useLiteMode, timestamp)
-                + self.diffcalTableFileExtension
-            )
-        )
-
     ## WORKSPACE NAME METHODS
 
     def _createNeutronWorkspaceNameBuilder(self, runNumber: str, useLiteMode: bool) -> NameBuilder:
@@ -280,14 +269,6 @@ class GroceryService:
         version: Optional[int],
     ) -> WorkspaceName:
         return wng.diffCalMask().runNumber(runNumber).version(version).build()
-
-    def _createReductionPixelMaskWorkspaceName(
-        self,
-        runNumber: str,
-        useLiteMode: bool,  # noqa: ARG002
-        timestamp: Optional[float],
-    ) -> WorkspaceName:
-        return wng.reductionPixelMask().runNumber(runNumber).timestamp(timestamp).build()
 
     ## ACCESSING WORKSPACES
     """
@@ -494,18 +475,6 @@ class GroceryService:
         """
         return self.dataService.calibrationIndexer(useLiteMode, state=state).versionPath(version)
 
-    @validate_call
-    def _getReductionDataPath(self, runNumber: str, useLiteMode: bool, timestamp: float) -> str:
-        """
-        Get a path to the directory with the reduction data
-
-        :param runNumber: a run number, whose state will be looked up
-        :type runNumber: str
-        :param timestamp: the reduction timestamp to use in the lookup
-        :type timestamp: float
-        """
-        return self.dataService._constructReductionDataPath(runNumber, useLiteMode, timestamp)
-
     def fetchWorkspace(self, filePath: str, name: WorkspaceName, loader: str = "") -> Dict[str, Any]:
         """
         Will fetch a workspace given a name and a path.
@@ -698,36 +667,8 @@ class GroceryService:
 
         :rtype: Dict[str, Any]
         """
-        maskWorkspaceName = self._createReductionPixelMaskWorkspaceName(
-            item.runNumber, item.useLiteMode, item.timestamp
-        )
-        if self.workspaceDoesExist(maskWorkspaceName):
-            data = {
-                "result": True,
-                "loader": "cached",
-                "workspace": maskWorkspaceName,
-            }
-        else:
-            filename = self._createReductionPixelMaskWorkspaceFilename(item.runNumber, item.useLiteMode, item.timestamp)
-
-            # Unless overridden: use a cached workspace as the instrument donor.
-            instrumentPropertySource, instrumentSource = (
-                ("InstrumentDonor", self._fetchInstrumentDonor(item.runNumber, item.useLiteMode))
-                if not item.instrumentPropertySource
-                else (item.instrumentPropertySource, item.instrumentSource)
-            )
-
-            # For now, reduction pixel masks share the "LoadCalibrationWorkspaces" loader
-            data = self.grocer.executeRecipe(
-                filename=filename,
-                workspace=maskWorkspaceName,
-                loader="LoadCalibrationWorkspaces",
-                instrumentPropertySource=instrumentPropertySource,
-                instrumentSource=instrumentSource,
-                loaderArgs=json.dumps({"MaskWorkspace": maskWorkspaceName}),
-            )
-
-        return data
+        data = self.reductionData.fetchReductionPixelMask(item)
+        return {"result": True, "loader": data.loader, "workspace": data.workspace}
 
     # @validate_call # For the moment, `@validate_call` is not supported with `WorkspaceName`.
     def fetchCompatiblePixelMask(self, maskWSName: WorkspaceName, runNumber: str, useLiteMode: bool) -> WorkspaceName:
@@ -873,9 +814,6 @@ class GroceryService:
                 case "normalization":
                     result = self.fetchNormCalForSample(item)
                 case "reduction_pixel_mask":
-                    maskWorkspaceName = self._createReductionPixelMaskWorkspaceName(  # noqa: F841
-                        item.runNumber, item.useLiteMode, item.timestamp
-                    )
                     result = self.fetchReductionPixelMask(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")

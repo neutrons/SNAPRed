@@ -100,6 +100,9 @@ dataSources:
   grouping:
     native: [groupingFile]
     lite: [groupingFile]
+  reductionPixelMask:
+    native: [reductionRecord]
+    lite: [reductionRecord]
 
 liveData:
   enabled: false
