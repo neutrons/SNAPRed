@@ -21,10 +21,11 @@ K = DataSourceKind
 
 
 class FakeSource(DataSource):
-    def __init__(self, kind, provides, available=True, cacheable=True):
+    def __init__(self, kind, provides, available=True, cacheable=True, exclusive=False):
         super().__init__(provides=provides)
         self._kind = kind
         self._available = available
+        self._exclusive = exclusive
         self.cacheable = cacheable
         self.loads = []
 
@@ -35,13 +36,16 @@ class FakeSource(DataSource):
     def available(self, item):  # noqa: ARG002
         return self._available
 
+    def exclusiveFor(self, item):  # noqa: ARG002
+        return self._exclusive
+
     def load(self, item, outputWorkspace):  # noqa: ARG002
         self.loads.append(outputWorkspace)
         return self._sourced(outputWorkspace, f"load:{self.kind}")
 
 
 class Harness:
-    def __init__(self, sources, native=("nexusFile", "live"), lite=("liteFile", "liteConversion")):
+    def __init__(self, sources, native=("registered", "nexusFile", "live"), lite=("liteFile", "liteConversion")):
         self.ads = {}
         self.tags = {}
         self.workspaces = mock.Mock()
@@ -82,7 +86,12 @@ class Harness:
             Resolution.NATIVE, [s for s in sources if s.provides == Resolution.NATIVE]
         )
         self.liteConversion = LiteConversionSource(self.nativeSources, self.cache, self.workspaces)
-        self.liteConversion.convert = mock.Mock()
+
+        # The conversion writes its output workspace, from its input workspace.
+        def convert(inputWorkspace, outputWorkspace, export):  # noqa: ARG001
+            self.ads[outputWorkspace] = None
+
+        self.liteConversion._convert = mock.Mock(side_effect=convert)
         self.sources[K.LITE_CONVERSION] = self.liteConversion
         self.liteSources = DataSourceRegistry(
             Resolution.LITE, [s for s in sources if s.provides == Resolution.LITE] + [self.liteConversion]
@@ -102,8 +111,9 @@ class Harness:
         self._stack.close()
 
 
-def standardSources(fileAvailable=True, liveAvailable=True, liteFileAvailable=False):
+def standardSources(fileAvailable=True, liveAvailable=True, liteFileAvailable=False, registered=False):
     return [
+        FakeSource(K.REGISTERED, Resolution.NATIVE, available=registered, cacheable=False, exclusive=registered),
         FakeSource(K.NEXUS_FILE, Resolution.NATIVE, available=fileAvailable),
         FakeSource(K.LIVE, Resolution.NATIVE, available=liveAvailable, cacheable=False),
         FakeSource(K.LITE_FILE, Resolution.LITE, available=liteFileAvailable),
@@ -173,10 +183,11 @@ def test_lite_conversion_obtains_native_data(harness):
     assert data.derivedFrom.workspace == names.plain(RUN_NUMBER, False)
     assert data.derivedFrom.resolution == Resolution.NATIVE
     assert harness.sources[K.NEXUS_FILE].loads == [names.plain(RUN_NUMBER, False)]
-    harness.workspaces.getCloneOfWorkspace.assert_called_once_with(
-        names.plain(RUN_NUMBER, False), names.plain(RUN_NUMBER, True)
+    # The native data is converted into the lite-mode workspace: it is not copied.
+    harness.workspaces.getCloneOfWorkspace.assert_not_called()
+    harness.liteConversion._convert.assert_called_once_with(
+        names.plain(RUN_NUMBER, False), names.plain(RUN_NUMBER, True), export=True
     )
-    harness.liteConversion.convert.assert_called_once_with(names.plain(RUN_NUMBER, True), export=True)
     assert harness.tags == {
         names.plain(RUN_NUMBER, False): "nexusFile",
         names.plain(RUN_NUMBER, True): "nexusFile>liteConversion",
@@ -187,9 +198,12 @@ def test_lite_conversion_obtains_native_data(harness):
 def test_lite_conversion_of_live_data(harness):
     data = harness.liteResolver.resolve(item(True))
     assert data.provenance == [K.LIVE, K.LITE_CONVERSION]
-    harness.liteConversion.convert.assert_called_once_with(names.plain(RUN_NUMBER, True), export=False)
-    # The native live data is recorded as uncacheable, by the conversion's own native resolver.
-    assert harness.cache.uncacheableKeys == [(RUN_NUMBER, False)]
+    harness.liteConversion._convert.assert_called_once_with(
+        names.plain(RUN_NUMBER, False), names.plain(RUN_NUMBER, True), export=False
+    )
+    # The native live data is recorded as uncacheable, by the conversion's own native resolver;
+    #   the lite-mode data converted from it is uncacheable as well.
+    assert harness.cache.uncacheableKeys == [(RUN_NUMBER, False), (RUN_NUMBER, True)]
 
 
 def test_lite_conversion_uses_cached_native_data(harness):
@@ -283,3 +297,39 @@ def test_fetchCached_uncacheable_is_not_reused(harness):
     assert second["loader"] == "load:live"
     assert second["workspace"] == names.copy(RUN_NUMBER, False, 1)
     assert len(harness.sources[K.LIVE].loads) == 2
+
+
+@pytest.mark.parametrize(
+    "harness",
+    [{"sources": standardSources(registered=True), "native": ("nexusFile", "live", "registered")}],
+    indirect=True,
+)
+def test_exclusive_source_is_used_whatever_the_order(harness):
+    data = harness.resolver.resolve(item())
+    assert data.provenance == [K.REGISTERED]
+    assert harness.sources[K.NEXUS_FILE].loads == []
+
+
+@pytest.mark.parametrize(
+    "harness", [{"sources": standardSources(registered=True, liteFileAvailable=True)}], indirect=True
+)
+def test_exclusive_native_source_excludes_the_lite_file(harness):
+    assert harness.liteConversion.exclusiveFor(item(True))
+    data = harness.liteResolver.resolve(item(True))
+    assert data.provenance == [K.REGISTERED, K.LITE_CONVERSION]
+    assert harness.sources[K.LITE_FILE].loads == []
+    harness.liteConversion._convert.assert_called_once_with(
+        names.plain(RUN_NUMBER, False), names.plain(RUN_NUMBER, True), export=False
+    )
+
+
+@pytest.mark.parametrize(
+    "harness", [{"sources": standardSources(registered=True), "native": ("nexusFile", "live")}], indirect=True
+)
+def test_exclusive_source_not_configured_is_not_used(harness):
+    assert harness.resolver.resolve(item()).provenance == [K.NEXUS_FILE]
+    assert not harness.liteConversion.exclusiveFor(item(True))
+
+
+def test_no_exclusive_source(harness):
+    assert not harness.liteConversion.exclusiveFor(item(True))

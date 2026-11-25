@@ -42,6 +42,7 @@ from snapred.backend.dao.state import (
 from snapred.backend.dao.state.CalibrantSample import CalibrantSample
 from snapred.backend.data.Indexer import Indexer, IndexerType
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
+from snapred.backend.data.source.NeutronDataRegistrations import NeutronDataRegistrations
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
@@ -54,6 +55,7 @@ from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.InternalConstants import ReservedRunNumber, ReservedStateId
 from snapred.meta.LockFile import LockFile
 from snapred.meta.mantid.liveDataFacility import liveDataFacility
+from snapred.meta.mantid.liveDataReplay import replayFile, usingFileReplay
 from snapred.meta.mantid.WorkspaceNameGenerator import (
     ValueFormatter as wnvf,
 )
@@ -310,12 +312,21 @@ class LocalDataService:
                 OSError(f"The PVFile for run '{runId}' at '{filePath}' cannot be read: {e}")
             ) from e
 
+    def generateStateId(self, runId: str) -> Tuple[str | None, DetectorState | None]:
+        if runId == ReservedRunNumber.LIVE:
+            # The state of live data without a run number can change from one acquisition to the next.
+            return self._stateIdOf(runId)
+        return self._cachedStateIdOf(runId)
+
     # NOTE `lru_cache` decorator needs to be on the outside
     @lru_cache
+    def _cachedStateIdOf(self, runId: str) -> Tuple[str | None, DetectorState | None]:
+        return self._stateIdOf(runId)
+
     @ExceptionHandler(StateValidationException, rewrap=STATE_EXCEPTIONS)
-    def generateStateId(self, runId: str) -> Tuple[str | None, DetectorState | None]:
+    def _stateIdOf(self, runId: str) -> Tuple[str | None, DetectorState | None]:
         detectorState = None
-        if runId in ReservedRunNumber.values():
+        if runId in ReservedRunNumber.unmodifiedInstrument():
             SHA = ObjectSHA(hex=ReservedStateId.forRun(runId))
         else:
             metadata = self.readRunMetadata(runId)
@@ -1100,8 +1111,8 @@ class LocalDataService:
     def readDetectorState(self, runNumber: str) -> DetectorState | None:
         # Assemble a detector state from either the PVLogs, or the current live-data run.
 
-        # Note that `readRunMetadata` uses `lru_cache`: it is redundant to additionally apply it to this
-        #   method.
+        # Note that `readRunMetadata` is cached (except for registered data): it is redundant to additionally
+        #   apply `lru_cache` to this method.
         return self.readRunMetadata(runNumber).detectorState
 
     @validate_call
@@ -1521,8 +1532,33 @@ class LocalDataService:
 
     ## RunMetadata SUPPORT METHODS
 
-    @lru_cache
     def readRunMetadata(self, runNumber: str) -> RunMetadata:
+        """
+        The metadata of a run.
+
+        For a run with registered neutron data, the metadata is read from the logs of the registered
+        workspace, every time: the state must come from the data that is actually reduced.
+        Otherwise, it is read from the PV file, or from the live run, and cached.
+        """
+        registered = NeutronDataRegistrations().lookup(runNumber)
+        if registered is not None:
+            return self._readRegisteredRunMetadata(runNumber, registered)
+        if runNumber == ReservedRunNumber.LIVE:
+            raise RuntimeError(
+                f"Run number '{runNumber}' stands for registered neutron data without a run number, "
+                "but no data is registered for it."
+            )
+        return self._readRunMetadata(runNumber)
+
+    def _readRegisteredRunMetadata(self, runNumber: str, workspace: WorkspaceName) -> RunMetadata:
+        run = self.mantidSnapper.mtd[workspace].getRun()
+        metadata = RunMetadata.fromRun(run, self.readInstrumentConfig(runNumber).stateIdSchema)
+        # The run number of the registration is used: the 'run_number' log may not be set (and then `fromRun`
+        #   reports an inactive run), or, for `ReservedRunNumber.LIVE`, may be anything.
+        return metadata.model_copy(update={"runNumber": str(runNumber)})
+
+    @lru_cache
+    def _readRunMetadata(self, runNumber: str) -> RunMetadata:
         success = False
         metadata = None
         try:
@@ -1581,7 +1617,14 @@ class LocalDataService:
         # If this method returns True, then the `SNSLiveEventDataListener` should be able to function.
 
         status = False
-        if Config["liveData.enabled"]:
+        if Config["liveData.enabled"] and usingFileReplay():
+            # The replay listener has no address: it is available when its file is.
+            status = replayFile() is not None
+            if not status:
+                logger.debug(
+                    "`hasLiveDataConnection` returns `False`: the file of the replay listener is not set, or not found"
+                )
+        elif Config["liveData.enabled"]:
             # `liveDataAddress()` returns a string similar to "bl3-daq1.sns.gov:31415",
             #   but during testing, it might also return a Unix domain socket (UDS) path string.
 

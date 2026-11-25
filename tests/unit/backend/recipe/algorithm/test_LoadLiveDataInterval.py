@@ -968,6 +968,60 @@ class TestLoadLiveDataInterval(unittest.TestCase):
             # Verify that no filtering was required:
             self.instance.mantidSnapper.FilterByTime.assert_not_called()
 
+    def _executeReplay(self, mock_LoadLiveData, nChunks: int) -> bool:
+        # Execute with the replay listener configured, reading the file in `nChunks` chunks: whether it succeeded.
+        def createChildAlgorithm_(self_, *args, **_kwargs):  # noqa: ARG001
+            if args[0] == "LoadLiveData":
+                return mock_LoadLiveData
+            raise RuntimeError(f"'createChildAlgorithm' mock unimplemented for args: '{args}'")
+
+        self.instance.initialize()
+        self._setProperties(
+            self.instance,
+            OutputWorkspace=self.outputWs,
+            StartTime=RunMetadata.FROM_START_ISO8601,
+            Instrument=Config["instrument.name"],
+            PreserveEvents=self.preserveEvents,
+        )
+        module = inspect.getmodule(LoadLiveDataInterval)
+        with (
+            mock.patch.object(module, "ConfigService") as mock_ConfigService,
+            mock.patch.object(LoadLiveDataInterval, "_createChildAlgorithm") as mock_createChildAlgorithm,
+            mock.patch.object(module, "usingFileReplay", return_value=True),
+            mock.patch.object(module, "replayChunks", return_value=nChunks),
+            mock.patch.object(module, "sleep") as mock_sleep,
+        ):
+            mock_ConfigService.getFacility.return_value.instrument.return_value = mock.sentinel.InstrumentInfo
+            mock_createChildAlgorithm.side_effect = createChildAlgorithm_
+            executed = self.instance.execute()
+            # The replay listener doesn't wait for new data.
+            mock_sleep.assert_not_called()
+            return executed
+
+    def test_exec_replay_reads_every_chunk(self):
+        # The replay listener's chunks divide the events, not the time: each spans the whole run.  The first
+        #   chunk covers the time interval, but the data is complete only when every chunk has been read.
+        mock_LoadLiveData = self._mockLoadLiveData([self.fullWs] * self.N_chunk)
+        assert self._executeReplay(mock_LoadLiveData, self.N_chunk)
+        assert mock_LoadLiveData.execute.call_count == self.N_chunk
+        assert mtd[self.outputWs].getNumberEvents() == self.N_chunk * mtd[self.fullWs].getNumberEvents()
+
+    def test_exec_replay_reads_the_remaining_chunks_after_an_error(self):
+        # The replay listener loads its next chunk in the background, and its destruction waits for that load
+        #   (which needs the GIL): after an error, the remaining chunks are read before it is released.
+        mock_LoadLiveData = self._mockLoadLiveData([self.fullWs] * self.N_chunk)
+        mock_LoadLiveData.execute.side_effect = [mock.DEFAULT, RuntimeError("load failed"), mock.DEFAULT, mock.DEFAULT]
+        assert not self._executeReplay(mock_LoadLiveData, self.N_chunk)
+        # The second chunk fails; the third and fourth are read on the way out.
+        assert mock_LoadLiveData.execute.call_count == self.N_chunk
+
+    def test_exec_replay_stops_reading_after_a_failure_on_the_way_out(self):
+        # A failed load has finished: nothing is left loading, so the remaining chunks aren't read.
+        mock_LoadLiveData = self._mockLoadLiveData([self.fullWs] * self.N_chunk)
+        mock_LoadLiveData.execute.side_effect = [mock.DEFAULT, RuntimeError("load failed"), RuntimeError("again")]
+        assert not self._executeReplay(mock_LoadLiveData, self.N_chunk)
+        assert mock_LoadLiveData.execute.call_count == 3
+
     def test_exec_backward_chunks(self):
         # For this test, the interval is loaded as four chunks, moving backwards in time.
         mock_LoadLiveData = self._mockLoadLiveData(self.chunkWss[-1::-1])

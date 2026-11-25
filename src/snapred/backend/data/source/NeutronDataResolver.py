@@ -19,7 +19,8 @@ class NeutronDataResolver:
     Produces the neutron data for a grocery-list item, at one resolution, from the first available
     source in a registry.
 
-    The cache is checked before any source.
+    The cache is checked before any source.  If a source is exclusive for the item, it is the only
+    source that is used.
     Every workspace that is produced is tagged with its provenance, as the `dataSource` workspace metadata.
     """
 
@@ -69,15 +70,28 @@ class NeutronDataResolver:
                 provenance=self._provenanceOf(rawWorkspace),
             )
 
-        source = next((source for source in self.sources.ordered() if source.available(item)), None)
+        sources = self.sources.ordered()
+        source = next((source for source in sources if source.exclusiveFor(item)), None)
+        if source is None:
+            source = next((source for source in sources if source.available(item)), None)
         if source is None:
             raise self._notFound(item)
 
         data = source.load(item, outputWorkspace)
         self._tag(data)
-        if not source.cacheable:
+        if not source.cacheable or self._derivedFromUncacheable(runNumber, data):
             self.cache.recordUncacheable(key)
         return data
+
+    def _derivedFromUncacheable(self, runNumber: str, data: SourcedData) -> bool:
+        # Data derived from data that is not cacheable (lite-mode data converted from registered or live data)
+        #   is not cacheable either: it would not change when the data that it was derived from does.
+        derived = data.derivedFrom
+        while derived is not None:
+            if self.cache.isUncacheable(self.cache.key(runNumber, derived.resolution.useLiteMode)):
+                return True
+            derived = derived.derivedFrom
+        return False
 
     def _checkResolution(self, item: GroceryListItem):
         if item.useLiteMode != self.resolution.useLiteMode:
@@ -89,6 +103,11 @@ class NeutronDataResolver:
     def fetchSingleUse(self, item: GroceryListItem) -> Dict[str, Any]:
         self._checkResolution(item)
         data = self.resolve(item)
+        # Nothing is cached: the copies that the data was derived from are not kept.
+        derived = data.derivedFrom
+        while derived is not None:
+            self.workspaces.deleteWorkspaceUnconditional(derived.workspace)
+            derived = derived.derivedFrom
         return self._result(data, data.workspace)
 
     def fetchCached(self, item: GroceryListItem) -> Dict[str, Any]:
@@ -118,6 +137,9 @@ class NeutronDataResolver:
             if not self.cache.contains(derivedKey):
                 self.cache.loadedRuns[derivedKey] = 0
                 self.workspaces.renameWorkspace(derived.workspace, self.cache.rawWorkspace(runNumber, derivedLiteMode))
+            else:
+                # Already cached, or not cacheable: the copy that the data was derived from is not kept.
+                self.workspaces.deleteWorkspaceUnconditional(derived.workspace)
             derived = derived.derivedFrom
 
         workspace = (

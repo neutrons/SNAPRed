@@ -53,6 +53,7 @@ from snapred.backend.error.StateValidationException import StateValidationExcept
 from snapred.backend.profiling.ProgressRecorder import ComputationalOrder, ProgressRecorder
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.meta.Config import Resource
+from snapred.meta.InternalConstants import ReservedRunNumber
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 thisService = "snapred.backend.service.ReductionService."
@@ -661,6 +662,21 @@ class TestReductionService(unittest.TestCase):
                 mockExportRecord.assert_called_once_with(record)
                 mockExportData.assert_called_once_with(record)
 
+    def test_saveReduction_LIVE(self):
+        # Nothing is written to disk for live data without a run number.
+        with (
+            mock.patch.object(self.instance.dataExportService, "exportReductionRecord") as mockExportRecord,
+            mock.patch.object(self.instance.dataExportService, "exportReductionData") as mockExportData,
+        ):
+            record = ReductionRecord.model_construct(
+                runNumber=ReservedRunNumber.LIVE.value,
+                useLiteMode=True,
+                timestamp=self.instance.getUniqueTimestamp(),
+            )
+            self.instance.saveReduction(ReductionExportRequest(record=record))
+            mockExportRecord.assert_not_called()
+            mockExportData.assert_not_called()
+
     def test_loadReduction(self):
         ## this makes codecov happy
         with pytest.raises(NotImplementedError):
@@ -849,6 +865,35 @@ class TestReductionService(unittest.TestCase):
         with pytest.raises(ContinueWarning) as excInfo:
             self.instance.validateReduction(self.request)
         assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
+
+    def test_validateReduction_no_permissions_LIVE(self):
+        # Registered live data without a run number is treated as live data: the write-permissions check
+        #   does not apply.  Data registered under a real run number is checked as usual.
+        fakeDataService = mock.Mock()
+        fakeDataService.getLatestApplicableCalibrationVersion.return_value = mock.sentinel.version
+        fakeDataService.normalizationExists.return_value = True
+        fakeDataService.constructStateId.return_value = ("state", None)
+        self.instance.dataFactoryService = fakeDataService
+        for runNumber, registered, checked in (
+            (ReservedRunNumber.LIVE.value, True, False),
+            (ReservedRunNumber.LIVE.value, False, True),
+            (self.request.runNumber, True, True),
+        ):
+            with (
+                self.subTest(runNumber=runNumber, registered=registered),
+                mock.patch("snapred.backend.service.ReductionService.NeutronDataRegistrations") as mockRegistrations,
+            ):
+                mockRegistrations.return_value.isRegistered.return_value = registered
+                self.instance.checkReductionWritePermissions = mock.Mock(return_value=False)
+                request = self.request.model_copy(update={"runNumber": runNumber})
+                if checked:
+                    with pytest.raises(ContinueWarning) as excInfo:
+                        self.instance.validateReduction(request)
+                    assert excInfo.value.model.flags == ContinueWarning.Type.NO_WRITE_PERMISSIONS
+                    self.instance.checkReductionWritePermissions.assert_called_once_with(runNumber)
+                else:
+                    self.instance.validateReduction(request)
+                    self.instance.checkReductionWritePermissions.assert_not_called()
 
     def test_validateReduction_no_permissions_with_path(self):
         # assert ContinueWarning is raised, and a path actually exists

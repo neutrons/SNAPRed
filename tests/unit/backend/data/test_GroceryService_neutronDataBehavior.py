@@ -35,6 +35,7 @@ import snapred.backend.recipe.algorithm  # noqa: F401
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem, LiveDataArgs
 from snapred.backend.dao.RunMetadata import RunMetadata
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.data.source.NeutronDataRegistrations import NeutronDataRegistrations
 from snapred.backend.error.LiveDataState import LiveDataState
 from snapred.backend.error.RunStatus import RunStatus
 from snapred.meta.Config import Config, Resource
@@ -155,6 +156,8 @@ class Harness:
         class FakeLiteDataService:
             def createLiteData(self, inputWorkspace, outputWorkspace, instrumentDefinition=None, export=True):  # noqa: ARG002
                 harness.exports.append((outputWorkspace, export))
+                if inputWorkspace != outputWorkspace:
+                    CloneWorkspace(InputWorkspace=inputWorkspace, OutputWorkspace=outputWorkspace)
                 AddSampleLog(Workspace=outputWorkspace, LogName="converted_to_lite", LogText="1", LogType="String")
                 return outputWorkspace, 0.0
 
@@ -328,8 +331,8 @@ class TestFileData:
         assert result["workspace"] == plainName(RUN_NUMBER, True)
         assert convertedToLite(result["workspace"])
         assert harness.exports == [(plainName(RUN_NUMBER, True), True)]
-        # the native input of the conversion is left in the ADS
-        assert runWorkspaces() == {plainName(RUN_NUMBER, False), plainName(RUN_NUMBER, True)}
+        # the native input of the conversion is not kept
+        assert runWorkspaces() == {plainName(RUN_NUMBER, True)}
         assert harness.service.getCachedWorkspaces() == []
 
     @pytest.mark.parametrize("useLiteMode", [False, True])
@@ -454,14 +457,139 @@ class TestLiveDataRequested:
     def test_clearLiveDataCache(self, harness):
         harness.service.fetchNeutronDataCached(harness.item(True, LIVE_ARGS))
         before = runWorkspaces()
-        assert before == {plainName(RUN_NUMBER, False), rawName(RUN_NUMBER, True), copyName(RUN_NUMBER, True, 1)}
+        # Lite-mode data converted from live data is not cacheable either: neither has a raw workspace,
+        #   and the native input of the conversion is not kept.
+        assert before == {plainName(RUN_NUMBER, True), copyName(RUN_NUMBER, True, 1)}
         assert sorted(harness.service.getCachedWorkspaces()) == sorted(
             [rawName(RUN_NUMBER, False), rawName(RUN_NUMBER, True)]
         )
 
         harness.service.clearLiveDataCache()
 
-        # Only the native live-data entry is removed from the cache.  Its raw workspace never existed,
+        # Both live-data entries are removed from the cache.  Their raw workspaces never existed,
         #   so no workspace is deleted.
         assert runWorkspaces() == before
-        assert harness.service.getCachedWorkspaces() == [rawName(RUN_NUMBER, True)]
+        assert harness.service.getCachedWorkspaces() == []
+
+
+class TestRegisteredData:
+    """Neutron data from a workspace registered for the run, by an outside process (`livereduce`)."""
+
+    @pytest.fixture(autouse=True)
+    def registered(self, harness):
+        # As from the live-data listener: no 'run_number' log.  Its name does not include the run number.
+        workspace = mtd.unique_name(prefix="accumulation_")
+        CloneWorkspace(InputWorkspace=harness.sampleData["live"], OutputWorkspace=workspace)
+        AddSampleLog(Workspace=workspace, LogName="sample_origin", LogText="registered", LogType="String")
+        NeutronDataRegistrations().register(RUN_NUMBER, workspace)
+        self.workspace = workspace
+        yield workspace
+        if mtd.doesExist(workspace):
+            DeleteWorkspace(workspace)
+
+    def assertRegisteredUnchanged(self):
+        run = mtd[self.workspace].getRun()
+        assert origin(self.workspace) == "registered"
+        assert not run.hasProperty("run_number")
+        assert not run.hasProperty(f"{Config['metadata.tagPrefix']}dataSource")
+        assert not run.hasProperty("converted_to_lite")
+
+    def test_native_single_use(self, harness):
+        result = harness.service.fetchNeutronDataSingleUse(harness.item(False))
+        assert result["result"]
+        assert result["loader"] == "CloneWorkspace"
+        assert result["workspace"] == plainName(RUN_NUMBER, False)
+        assert origin(result["workspace"]) == "registered"
+        assertDataSource(result, "registered")
+        # the run number is set on the clone only
+        assert mtd[result["workspace"]].getRun().getLogData("run_number").value == RUN_NUMBER
+        self.assertRegisteredUnchanged()
+        # As for live data: the uncacheable entry is listed under its raw name, but no raw workspace exists.
+        assert harness.service.getCachedWorkspaces() == [rawName(RUN_NUMBER, False)]
+        assert not mtd.doesExist(rawName(RUN_NUMBER, False))
+
+    def test_native_cached_is_not_reused(self, harness):
+        first = harness.service.fetchNeutronDataCached(harness.item(False))
+        assert first["workspace"] == copyName(RUN_NUMBER, False, 1)
+
+        # The registered workspace changes between fetches (as `livereduce` adds to it).
+        AddSampleLog(Workspace=self.workspace, LogName="update", LogText="2", LogType="String")
+        second = harness.service.fetchNeutronDataCached(harness.item(False))
+        assert second["loader"] == "CloneWorkspace"
+        assert second["workspace"] == copyName(RUN_NUMBER, False, 1)
+        assert mtd[second["workspace"]].getRun().getLogData("update").value == "2"
+        assertDataSource(second, "registered")
+        assert mtd.doesExist(self.workspace)
+
+    @pytest.mark.parametrize("liteOnDisk", [False, True])
+    def test_lite_is_converted_and_not_exported(self, harness, liteOnDisk):
+        # A lite-mode file on disk is not used while the run is registered.
+        harness.liteOnDisk = liteOnDisk
+        result = harness.service.fetchNeutronDataCached(harness.item(True))
+        assert result["workspace"] == copyName(RUN_NUMBER, True, 1)
+        assert origin(result["workspace"]) == "registered"
+        assert convertedToLite(result["workspace"])
+        assertDataSource(result, "registered>liteConversion")
+        assert harness.exports == [(plainName(RUN_NUMBER, True), False)]
+        self.assertRegisteredUnchanged()
+
+    @pytest.mark.parametrize("singleUse", [False, True])
+    def test_lite_is_converted_again_on_every_fetch(self, harness, singleUse):
+        fetch = harness.service.fetchNeutronDataSingleUse if singleUse else harness.service.fetchNeutronDataCached
+        fetch(harness.item(True))
+
+        # The registered workspace changes between fetches (as `livereduce` adds to it).
+        AddSampleLog(Workspace=self.workspace, LogName="update", LogText="2", LogType="String")
+        second = fetch(harness.item(True))
+        assert second["loader"] == "CloneWorkspace"
+        assert mtd[second["workspace"]].getRun().getLogData("update").value == "2"
+        assert harness.exports == [(plainName(RUN_NUMBER, True), False)] * 2
+        # No native-resolution copy of the registered workspace is kept, and no lite-mode data is cached.
+        assert not mtd.doesExist(plainName(RUN_NUMBER, False))
+        assert not mtd.doesExist(rawName(RUN_NUMBER, True))
+        self.assertRegisteredUnchanged()
+
+    @pytest.mark.parametrize("useLiteMode", [False, True])
+    def test_live_data_request_is_an_error(self, harness, useLiteMode):
+        harness.liveConnection = True
+        with pytest.raises(RuntimeError, match=r"Remove the registration first"):
+            harness.service.fetchNeutronDataSingleUse(harness.item(useLiteMode, LIVE_ARGS))
+        assert harness.liveCalls == []
+        assert runWorkspaces() == set()
+
+    @pytest.mark.parametrize("useLiteMode", [False, True])
+    def test_deleted_workspace_is_an_error(self, harness, useLiteMode):
+        # The registration was not removed: the data does not silently come from another source.
+        harness.liteOnDisk = True
+        harness.liveConnection = True
+        DeleteWorkspace(self.workspace)
+        with pytest.raises(RuntimeError, match=r"no longer exists.*or remove the registration"):
+            harness.service.fetchNeutronDataSingleUse(harness.item(useLiteMode))
+        assert runWorkspaces() == set()
+        assert harness.liveCalls == []
+
+        NeutronDataRegistrations().unregister(RUN_NUMBER)
+        result = harness.service.fetchNeutronDataSingleUse(harness.item(useLiteMode))
+        assertDataSource(result, "liteFile" if useLiteMode else "nexusFile")
+
+    def test_run_number_is_not_checked_again(self, harness):
+        # Run changes are the business of the registering process: after registration, the run number in
+        #   the data is not checked again.  The clone has the run number of the registration.
+        AddSampleLog(Workspace=self.workspace, LogName="run_number", LogText=OTHER_RUN_NUMBER, LogType="String")
+        result = harness.service.fetchNeutronDataSingleUse(harness.item(False))
+        assertDataSource(result, "registered")
+        assert mtd[result["workspace"]].getRun().getLogData("run_number").value == RUN_NUMBER
+        assert mtd[self.workspace].getRun().getLogData("run_number").value == OTHER_RUN_NUMBER
+
+    def test_unregistered(self, harness):
+        NeutronDataRegistrations().unregister(RUN_NUMBER)
+        result = harness.service.fetchNeutronDataSingleUse(harness.item(False))
+        assertDataSource(result, "nexusFile")
+        assert mtd.doesExist(self.workspace)
+
+    @pytest.mark.parametrize("clearCache", [False, True])
+    def test_clearADS_keeps_the_registered_workspace(self, harness, clearCache):
+        harness.service.fetchNeutronDataCached(harness.item(False))
+        harness.service.clearADS(exclude=[], clearCache=clearCache)
+        assert mtd.doesExist(self.workspace)
+        assert runWorkspaces() == set()

@@ -320,3 +320,26 @@ def test_get_last_value_string_prop_value_returns_string_directly():
 
     # get_last_value("BL3:CS:RunControl:StateEnum") returns "ACQUIRING" via the string branch.
     assert RunStatus.from_run(run) == RunStatus.RUNNING
+
+
+# --- from_run: the replay listener ---
+
+
+def _replay():
+    # SNAPRed's live data comes from the replay listener ('ADARA_FileReader' of 'TEST_LIVE').
+    return mock.patch("snapred.backend.error.RunStatus.usingFileReplay", return_value=True)
+
+
+@pytest.mark.parametrize("run_control", [None, "STOPPED", "IDLE"])
+def test_from_run_replay_is_running_after_the_recorded_run_ended(run_control):
+    """A replayed run has the 'end_time' and final run-state of the recorded run: the replay is running."""
+    run = _make_run(has_end_time=True, run_control=run_control)
+    with _replay():
+        assert RunStatus.from_run(run) == RunStatus.RUNNING
+    assert RunStatus.from_run(run) == RunStatus.STOPPED
+
+
+def test_from_run_replay_abort_and_pause_still_apply():
+    with _replay():
+        assert RunStatus.from_run(_make_run(has_end_time=True, scan_abort=True)) == RunStatus.ERROR
+        assert RunStatus.from_run(_make_run(has_end_time=True, pause=True)) == RunStatus.PAUSED
