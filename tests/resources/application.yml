@@ -97,6 +97,9 @@ dataSources:
   normalization:
     native: [normalizationRecord]
     lite: [normalizationRecord]
+  grouping:
+    native: [groupingFile]
+    lite: [groupingFile]
 
 liveData:
   enabled: false

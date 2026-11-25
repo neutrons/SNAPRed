@@ -191,6 +191,11 @@ class Harness:
         return workspace
 
 
+def dataSource(workspace: str) -> str:
+    """The provenance tag that SNAPRed writes to each fetched workspace that has logs."""
+    return mtd[workspace].getRun().getLogData(f"{Config['metadata.tagPrefix']}dataSource").value
+
+
 def fetchedWorkspaces() -> set:
     """The workspaces of these runs in the ADS, including hidden ones (grouping workspaces are hidden)."""
     with amend_config(**{"MantidOptions.InvisibleWorkspaces": "1"}):
@@ -219,6 +224,7 @@ class TestGrouping:
         assert workspace == groupingName(useLiteMode=useLiteMode)
         assert isinstance(mtd[workspace], GroupingWorkspace)
         assert mtd[workspace].getNumberHistograms() == harness.sampleData.pixelCount
+        assert dataSource(workspace) == "groupingFile"
         assert fetchedWorkspaces() == {workspace}
 
     def test_lite_scheme(self, harness):
